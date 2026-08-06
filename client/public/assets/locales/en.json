@@ -1666,6 +1666,10 @@
           "description": "Runs once after connecting, in a newly created shell. Leave empty to disable.",
           "placeholder": "docker compose up -d"
         },
+        "tmux": {
+          "title": "Offer tmux sessions",
+          "description": "Before opening a terminal, ask which tmux session to attach to. Only affects hosts that run tmux."
+        },
         "jumpHosts": {
           "title": "Jump Hosts",
           "description": "Connect through intermediate servers to reach this target server",

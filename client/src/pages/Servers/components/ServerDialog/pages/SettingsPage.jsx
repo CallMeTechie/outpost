@@ -3,7 +3,7 @@ import SelectBox from "@/common/components/SelectBox";
 import ToggleSwitch from "@/common/components/ToggleSwitch";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import Icon from "@mdi/react";
-import { mdiServerNetwork, mdiClose, mdiPlus, mdiChartLine, mdiMonitor, mdiPalette, mdiVolumeHigh, mdiPowerPlug, mdiKeyboardOutline, mdiShieldLock, mdiConsoleLine } from "@mdi/js";
+import { mdiServerNetwork, mdiClose, mdiPlus, mdiChartLine, mdiMonitor, mdiPalette, mdiVolumeHigh, mdiPowerPlug, mdiKeyboardOutline, mdiShieldLock, mdiConsoleLine, mdiViewSplitVertical } from "@mdi/js";
 import { useTranslation } from "react-i18next";
 
 const COLOR_DEPTHS = [
@@ -88,6 +88,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
     const [deleteMode, setDeleteMode] = useState(config?.deleteMode || "vt");
     const [functionKeyMode, setFunctionKeyMode] = useState(config?.functionKeyMode || "xterm");
     const [initialCommand, setInitialCommand] = useState(config?.initialCommand || "");
+    const [tmuxEnabled, setTmuxEnabled] = useState(config?.tmuxEnabled === true);
 
     const handleKeyboardLayoutChange = (newLayout) => {
         setKeyboardLayout(newLayout);
@@ -103,6 +104,11 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
         const sanitized = value.replace(/[\r\n]/g, "");
         setInitialCommand(sanitized);
         setConfig(prev => ({ ...prev, initialCommand: sanitized }));
+    };
+
+    const handleTmuxEnabledChange = (value) => {
+        setTmuxEnabled(value);
+        setConfig(prev => ({ ...prev, tmuxEnabled: value }));
     };
 
     useEffect(() => {
@@ -125,6 +131,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
         if (config?.deleteMode !== undefined) setDeleteMode(config.deleteMode);
         if (config?.functionKeyMode !== undefined) setFunctionKeyMode(config.functionKeyMode);
         if (config?.initialCommand !== undefined) setInitialCommand(config.initialCommand);
+        if (config?.tmuxEnabled !== undefined) setTmuxEnabled(config.tmuxEnabled);
     }, [config]);
 
     useEffect(() => {
@@ -262,6 +269,21 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
                     <input type="text" className="settings-command-input" value={initialCommand} maxLength={512}
                            placeholder={t('servers.dialog.settings.initialCommand.placeholder')}
                            onChange={(e) => handleInitialCommandChange(e.target.value)} />
+                </div>
+            )}
+
+            {showJumpHosts && (
+                <div className="settings-toggle">
+                    <div className="settings-toggle-info">
+                        <span className="settings-toggle-label">
+                            <Icon path={mdiViewSplitVertical} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                            {t('servers.dialog.settings.tmux.title')}
+                        </span>
+                        <span className="settings-toggle-description">
+                            {t('servers.dialog.settings.tmux.description')}
+                        </span>
+                    </div>
+                    <ToggleSwitch checked={tmuxEnabled} onChange={handleTmuxEnabledChange} id="tmux-toggle" />
                 </div>
             )}
 
