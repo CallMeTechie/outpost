@@ -8,6 +8,7 @@ import ViewContainer from "@/pages/Servers/components/ViewContainer";
 import ProxmoxDialog from "@/pages/Servers/components/ProxmoxDialog";
 import SSHConfigImportDialog from "@/pages/Servers/components/SSHConfigImportDialog";
 import ConnectionReasonDialog from "@/pages/Servers/components/ConnectionReasonDialog";
+import TmuxSessionDialog from "@/pages/Servers/components/TmuxSessionDialog";
 import DirectConnectDialog from "@/pages/Servers/components/DirectConnectDialog";
 import FileEditorWindow from "@/common/components/FileEditorWindow";
 import FilePreviewWindow from "@/common/components/FilePreviewWindow";
@@ -27,6 +28,8 @@ export const Servers = () => {
     const [proxmoxDialogOpen, setProxmoxDialogOpen] = useState(false);
     const [sshConfigImportDialogOpen, setSSHConfigImportDialogOpen] = useState(false);
     const [connectionReasonDialogOpen, setConnectionReasonDialogOpen] = useState(false);
+    const [tmuxDialogOpen, setTmuxDialogOpen] = useState(false);
+    const [pendingTmuxConnection, setPendingTmuxConnection] = useState(null);
     const [directConnectDialogOpen, setDirectConnectDialogOpen] = useState(false);
     const [directConnectServer, setDirectConnectServer] = useState(null);
     const [pendingConnection, setPendingConnection] = useState(null);
@@ -211,7 +214,7 @@ export const Servers = () => {
         initiateConnection({ server: getServerById(server), identity, type: "sftp" });
     };
 
-    const performConnection = async (server, identity, connectionReason = null, type = null, directIdentity = null, scriptId = null, scriptName = null) => {
+    const performConnection = async (server, identity, connectionReason = null, type = null, directIdentity = null, scriptId = null, scriptName = null, tmux = null) => {
         try {
             const payload = {
                 entryId: server.id,
@@ -224,6 +227,10 @@ export const Servers = () => {
 
             if (directIdentity) payload.directIdentity = directIdentity;
             if (scriptId) payload.scriptId = scriptId;
+            if (tmux) {
+                payload.tmuxSession = tmux.name;
+                payload.tmuxCreate = tmux.create;
+            }
             const session = await postRequest("/connections", payload);
 
             const organization = findOrganizationForServer(server.id, servers);
@@ -247,6 +254,13 @@ export const Servers = () => {
         }
     };
 
+    // Only for a plain terminal on an SSH host with the toggle on. Scripts, SFTP
+    // and file-manager terminals keep their existing path untouched.
+    const shouldOfferTmux = (options) =>
+        Boolean(options.server?.config?.tmuxEnabled)
+        && !options.scriptId
+        && !options.type;
+
     const initiateConnection = (options) => {
         if (!options.server) return;
 
@@ -254,6 +268,12 @@ export const Servers = () => {
         if (requiresReason) {
             setPendingConnection(options);
             setConnectionReasonDialogOpen(true);
+            return;
+        }
+
+        if (shouldOfferTmux(options)) {
+            setPendingTmuxConnection({ ...options, connectionReason: null });
+            setTmuxDialogOpen(true);
             return;
         }
 
@@ -292,6 +312,14 @@ export const Servers = () => {
 
     const handleConnectionReasonProvided = (reason) => {
         if (pendingConnection) {
+            if (shouldOfferTmux(pendingConnection)) {
+                setPendingTmuxConnection({ ...pendingConnection, connectionReason: reason });
+                setPendingConnection(null);
+                setConnectionReasonDialogOpen(false);
+                setTmuxDialogOpen(true);
+                return;
+            }
+
             void performConnection(
                 pendingConnection.server,
                 pendingConnection.identity ?? null,
@@ -309,6 +337,32 @@ export const Servers = () => {
     const handleConnectionReasonCanceled = () => {
         setPendingConnection(null);
         setConnectionReasonDialogOpen(false);
+    };
+
+    const finishTmuxConnection = (tmux) => {
+        const pending = pendingTmuxConnection;
+        setPendingTmuxConnection(null);
+        setTmuxDialogOpen(false);
+        if (!pending) return;
+
+        void performConnection(
+            pending.server,
+            pending.identity ?? null,
+            pending.connectionReason ?? null,
+            pending.type ?? null,
+            pending.directIdentity ?? null,
+            pending.scriptId ?? null,
+            pending.scriptName ?? null,
+            tmux,
+        );
+    };
+
+    const handleTmuxSelected = (name, create) => finishTmuxConnection({ name, create });
+    const handleTmuxRaw = () => finishTmuxConnection(null);
+
+    const handleTmuxCanceled = () => {
+        setPendingTmuxConnection(null);
+        setTmuxDialogOpen(false);
     };
 
     const disconnectFromServer = useCallback((sessionId) => {
@@ -528,6 +582,14 @@ export const Servers = () => {
                 onClose={handleConnectionReasonCanceled}
                 onConnect={handleConnectionReasonProvided}
                 serverName={pendingConnection?.server?.name || "Unknown Server"}
+            />
+            <TmuxSessionDialog
+                isOpen={tmuxDialogOpen}
+                onClose={handleTmuxCanceled}
+                onSelect={handleTmuxSelected}
+                onConnectRaw={handleTmuxRaw}
+                entryId={pendingTmuxConnection?.server?.id}
+                identityId={pendingTmuxConnection?.identity?.id}
             />
             {leftPaneSlot && createPortal(
                 <ServerList setServerDialogOpen={(protocol = null) => {

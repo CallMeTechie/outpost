@@ -1799,6 +1799,24 @@
         "connect": "Connect"
       }
     },
+    "tmuxDialog": {
+      "title": "Attach to a tmux session",
+      "loading": "Looking for running sessions…",
+      "empty": "No session is running on this host yet.",
+      "newSession": "New session",
+      "newSessionPlaceholder": "Session name",
+      "nameHint": "Letters, digits, underscore and dash only, up to 64 characters.",
+      "windows_one": "{{count}} window",
+      "windows_other": "{{count}} windows",
+      "attachedLabel": "active",
+      "notInstalled": "tmux is not installed on this host. Opening a normal shell.",
+      "actions": {
+        "cancel": "Cancel",
+        "attach": "Attach",
+        "create": "Create",
+        "connectRaw": "Connect without tmux"
+      }
+    },
     "sshConfigImport": {
       "title": "Import SSH Config",
       "configContent": {
