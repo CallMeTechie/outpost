@@ -1661,6 +1661,11 @@
       },
       "engineOffline": "(offline)",
       "settings": {
+        "initialCommand": {
+          "title": "Initial command",
+          "description": "Runs once after connecting, in a newly created shell. Leave empty to disable.",
+          "placeholder": "docker compose up -d"
+        },
         "jumpHosts": {
           "title": "Jump Hosts",
           "description": "Connect through intermediate servers to reach this target server",

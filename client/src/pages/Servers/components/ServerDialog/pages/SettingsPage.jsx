@@ -3,7 +3,7 @@ import SelectBox from "@/common/components/SelectBox";
 import ToggleSwitch from "@/common/components/ToggleSwitch";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import Icon from "@mdi/react";
-import { mdiServerNetwork, mdiClose, mdiPlus, mdiChartLine, mdiMonitor, mdiPalette, mdiVolumeHigh, mdiPowerPlug, mdiKeyboardOutline, mdiShieldLock } from "@mdi/js";
+import { mdiServerNetwork, mdiClose, mdiPlus, mdiChartLine, mdiMonitor, mdiPalette, mdiVolumeHigh, mdiPowerPlug, mdiKeyboardOutline, mdiShieldLock, mdiConsoleLine } from "@mdi/js";
 import { useTranslation } from "react-i18next";
 
 const COLOR_DEPTHS = [
@@ -87,6 +87,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
     const [backspaceMode, setBackspaceMode] = useState(config?.backspaceMode || "del");
     const [deleteMode, setDeleteMode] = useState(config?.deleteMode || "vt");
     const [functionKeyMode, setFunctionKeyMode] = useState(config?.functionKeyMode || "xterm");
+    const [initialCommand, setInitialCommand] = useState(config?.initialCommand || "");
 
     const handleKeyboardLayoutChange = (newLayout) => {
         setKeyboardLayout(newLayout);
@@ -96,6 +97,12 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
     const handleDisplaySettingChange = (key, value, setter) => {
         setter(value);
         setConfig(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleInitialCommandChange = (value) => {
+        const sanitized = value.replace(/[\r\n]/g, "");
+        setInitialCommand(sanitized);
+        setConfig(prev => ({ ...prev, initialCommand: sanitized }));
     };
 
     useEffect(() => {
@@ -117,6 +124,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
         if (config?.backspaceMode !== undefined) setBackspaceMode(config.backspaceMode);
         if (config?.deleteMode !== undefined) setDeleteMode(config.deleteMode);
         if (config?.functionKeyMode !== undefined) setFunctionKeyMode(config.functionKeyMode);
+        if (config?.initialCommand !== undefined) setInitialCommand(config.initialCommand);
     }, [config]);
 
     useEffect(() => {
@@ -237,6 +245,23 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
                             {t('servers.dialog.settings.jumpHosts.noServersAvailable')}
                         </p>
                     )}
+                </div>
+            )}
+
+            {showJumpHosts && (
+                <div className="settings-field">
+                    <div className="settings-toggle-info">
+                        <span className="settings-toggle-label">
+                            <Icon path={mdiConsoleLine} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                            {t('servers.dialog.settings.initialCommand.title')}
+                        </span>
+                        <span className="settings-toggle-description">
+                            {t('servers.dialog.settings.initialCommand.description')}
+                        </span>
+                    </div>
+                    <input type="text" value={initialCommand} maxLength={512}
+                           placeholder={t('servers.dialog.settings.initialCommand.placeholder')}
+                           onChange={(e) => handleInitialCommandChange(e.target.value)} />
                 </div>
             )}
 
