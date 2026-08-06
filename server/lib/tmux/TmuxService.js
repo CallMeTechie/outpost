@@ -1,0 +1,71 @@
+const controlPlane = require("../controlPlane/ControlPlaneServer");
+const { buildListCommand, buildProbeCommand, buildSendKeysCommand, parseSessions } = require("./commands");
+
+const EXEC_TIMEOUT_MS = 5000;
+const TMUX_NOT_INSTALLED_EXIT = 127;
+
+class TmuxTimeoutError extends Error {
+    constructor() {
+        super(`tmux query exceeded ${EXEC_TIMEOUT_MS / 1000}s`);
+        this.name = "TmuxTimeoutError";
+        this.code = "TMUX_TIMEOUT";
+    }
+}
+
+/**
+ * The control plane's own request timeout is 30s, which is far too long for a
+ * dialog that blocks the user from reaching the host. A wedged tmux server or a
+ * blocking NFS home connects fine and then hangs, so the timeout has to sit
+ * here, not in the connection setup.
+ */
+const execWithTimeout = (target, command) => {
+    const exec = controlPlane.execCommand(
+        target.host, target.port, target.params, command, target.jumpHosts || [], target.engineId ?? null,
+    );
+
+    let timer = null;
+    const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new TmuxTimeoutError()), EXEC_TIMEOUT_MS);
+    });
+
+    return Promise.race([exec, timeout]).finally(() => clearTimeout(timer));
+};
+
+const listSessions = async (target) => {
+    const result = await execWithTimeout(target, buildListCommand());
+    const exitCode = result.exitCode ?? (result.success ? 0 : 1);
+    const stderr = result.stderr || "";
+
+    if (exitCode === TMUX_NOT_INSTALLED_EXIT || /command not found|not found/i.test(stderr)) {
+        return { available: false, reason: "not_installed", sessions: [] };
+    }
+
+    // No server running is the normal state on a freshly booted host, not an error.
+    if (exitCode !== 0 && /no server running/i.test(stderr)) {
+        return { available: true, sessions: [] };
+    }
+
+    if (exitCode !== 0) {
+        const error = new Error(stderr.slice(0, 200) || "tmux list-sessions failed");
+        error.code = "TMUX_FAILED";
+        throw error;
+    }
+
+    return { available: true, sessions: parseSessions(result.stdout) };
+};
+
+/**
+ * tmux rejects a duplicate session name atomically, so the exit code of a
+ * detached create is the answer to "did we just create it?" — no separate
+ * has-session call with a race window of its own.
+ */
+const probeSession = async (target, name) => {
+    const result = await execWithTimeout(target, buildProbeCommand(name));
+    return (result.exitCode ?? (result.success ? 0 : 1)) === 0;
+};
+
+const sendKeys = async (target, name, command) => {
+    await execWithTimeout(target, buildSendKeysCommand(name, command));
+};
+
+module.exports = { listSessions, probeSession, sendKeys, EXEC_TIMEOUT_MS, TmuxTimeoutError };
