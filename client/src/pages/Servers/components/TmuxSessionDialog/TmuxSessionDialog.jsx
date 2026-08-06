@@ -3,12 +3,14 @@ import { useTranslation } from "react-i18next";
 import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
 import { getRequest } from "@/common/utils/RequestUtil.js";
+import { useToast } from "@/common/contexts/ToastContext.jsx";
 import "./styles.sass";
 
 const CREATE_NAME_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
 const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, identityId }) => {
     const { t } = useTranslation();
+    const { sendToast } = useToast();
     const [state, setState] = useState({ status: "loading", sessions: [], error: null, available: true });
     const [newName, setNewName] = useState("");
 
@@ -32,7 +34,9 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                 if (cancelled) return;
                 if (result.available === false) {
                     setState({ status: "ready", sessions: [], error: null, available: false });
-                    // A host without tmux must never block the way in.
+                    // A host without tmux must never block the way in: skip straight to a
+                    // normal shell, but say so once so the toggle doesn't look broken.
+                    sendToast("Info", t('servers.tmuxDialog.notInstalled'));
                     onConnectRawRef.current();
                     return;
                 }
@@ -44,7 +48,7 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
             });
 
         return () => { cancelled = true; };
-    }, [isOpen, entryId, identityId]);
+    }, [isOpen, entryId, identityId, sendToast, t]);
 
     const canCreate = CREATE_NAME_PATTERN.test(newName);
 
