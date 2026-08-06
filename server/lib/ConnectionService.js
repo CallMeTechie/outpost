@@ -15,6 +15,7 @@ const controlPlane = require("./controlPlane/ControlPlaneServer");
 const { isRecordingEnabled } = require("../utils/recordingService");
 const EngineSftpClient = require("./EngineSftpClient");
 const { buildPveQemuParams, buildRdpParams, buildVncParams, buildDemoParams } = require("./guacParamBuilders");
+const { writeAfterSettle } = require("./streamCommandWriter");
 
 const GUAC_PROTOCOLS = {
     rdp: { sessionType: SessionType.RDP, defaultPort: 3389 },
@@ -292,14 +293,29 @@ const createSSHConnectionForSession = async (sessionId, entry, identity, organiz
             scriptLayer,
         });
 
-        if (!script && session.configuration.startPath) {
-            const raw = String(session.configuration.startPath);
-            if (/[\r\n\x00]/.test(raw)) {
-                logger.warn("Ignoring startPath containing control characters", { sessionId });
-            } else {
-                const quoted = `'${raw.replace(/'/g, `'\\''`)}'`;
-                dataSocket.write(`cd ${quoted}\n`);
+        if (!script) {
+            const lines = [];
+
+            if (session.configuration.startPath) {
+                const raw = String(session.configuration.startPath);
+                if (/[\r\n\x00]/.test(raw)) {
+                    logger.warn("Ignoring startPath containing control characters", { sessionId });
+                } else {
+                    lines.push(`cd '${raw.replace(/'/g, `'\\''`)}'`);
+                }
             }
+
+            const initialCommand = entry.config?.initialCommand;
+            if (initialCommand) {
+                const raw = String(initialCommand);
+                if (/[\r\n\x00]/.test(raw)) {
+                    logger.warn("Ignoring initialCommand containing control characters", { sessionId });
+                } else {
+                    lines.push(raw);
+                }
+            }
+
+            if (lines.length) void writeAfterSettle(dataSocket, lines);
         }
 
         logger.info("SSH connected", { sessionId, target: host, port });
