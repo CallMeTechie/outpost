@@ -9,6 +9,12 @@ module.exports.createSessionValidation = Joi.object({
     browserId: Joi.string().allow(null).optional(),
     scriptId: Joi.number().allow(null).optional(),
     startPath: Joi.string().allow(null).optional(),
+    tmuxCreate: Joi.boolean().optional(),
+    tmuxSession: Joi.when("tmuxCreate", {
+        is: true,
+        then: Joi.string().pattern(/^[A-Za-z0-9_-]{1,64}$/).required(),
+        otherwise: Joi.string().max(128).pattern(/^[^\x00-\x1F\x7F]+$/).allow(null).optional(),
+    }),
     directIdentity: Joi.object({
         username: Joi.string().max(255).optional(),
         type: Joi.string().valid("password", "ssh", "both", "password-only").required(),
