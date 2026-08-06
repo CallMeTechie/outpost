@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert");
 const {
-    parseSessions, LIST_FORMAT, quote, isValidCreateName, isValidAttachName,
+    parseSessions, LIST_FORMAT, quote, isValidCreateName, isValidAttachName, isAllowedSession,
     buildListCommand, buildProbeCommand, buildSendKeysCommand, buildAttachCommand,
 } = require("../tmux/commands");
 
@@ -136,4 +136,33 @@ test("every -t argument carries the exact-match prefix", () => {
             assert.strictEqual(match[1][0], "=", `missing = prefix in: ${command}`);
         }
     }
+});
+
+const SESSIONS = [
+    { name: "work", windows: 1, created: 1786000000, attached: false },
+    { name: "build|test", windows: 2, created: 1786000001, attached: false },
+    { name: "mein projekt", windows: 1, created: 1786000002, attached: true },
+];
+
+test("isAllowedSession accepts an exact match from the server-side list", () => {
+    assert.strictEqual(isAllowedSession("work", SESSIONS), true);
+    assert.strictEqual(isAllowedSession("build|test", SESSIONS), true);
+    assert.strictEqual(isAllowedSession("mein projekt", SESSIONS), true);
+});
+
+test("isAllowedSession rejects a name that is not in the list", () => {
+    assert.strictEqual(isAllowedSession("other", SESSIONS), false);
+    assert.strictEqual(isAllowedSession("", SESSIONS), false);
+    assert.strictEqual(isAllowedSession(null, SESSIONS), false);
+});
+
+test("isAllowedSession does not accept a prefix or a substring", () => {
+    assert.strictEqual(isAllowedSession("wor", SESSIONS), false);
+    assert.strictEqual(isAllowedSession("workx", SESSIONS), false);
+    assert.strictEqual(isAllowedSession("build", SESSIONS), false);
+});
+
+test("isAllowedSession rejects everything when the list is empty", () => {
+    assert.strictEqual(isAllowedSession("work", []), false);
+    assert.strictEqual(isAllowedSession("work", undefined), false);
 });

@@ -7,6 +7,8 @@ const MonitoringSnapshot = require("../models/MonitoringSnapshot");
 const { validateEntryAccess } = require("./entry");
 const { getIdentityCredentials, getIdentity } = require("./identity");
 const { getOrganizationAuditSettingsInternal, createAuditLog, AUDIT_ACTIONS, RESOURCE_TYPES } = require("./audit");
+const { getTmuxSessions } = require("./tmux");
+const { isAllowedSession } = require("../lib/tmux/commands");
 const { resolveIdentity } = require("../utils/identityResolver");
 const { Permission } = require("../permissions/registry");
 const Organization = require('../models/Organization');
@@ -86,6 +88,14 @@ const createSession = async (accountId, entryId, identityId, connectionReason, t
 
     if (result.requiresIdentity && !identity) {
         return { code: 400, message: "Identity not found" };
+    }
+
+    if (tmuxSession && !tmuxCreate) {
+        const listing = await getTmuxSessions(accountId, entryId, identityId);
+        if (listing?.code) return listing;
+        if (!listing.available || !isAllowedSession(tmuxSession, listing.sessions)) {
+            return { code: 400, message: "Unknown tmux session" };
+        }
     }
 
     const auditLogId = await createAuditLog({

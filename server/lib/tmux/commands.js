@@ -59,7 +59,16 @@ const buildProbeCommand = (name) => `tmux new-session -d -s ${quote(name)}`;
 const buildSendKeysCommand = (name, command) => `tmux send-keys -t ${quote(`=${name}`)} -- ${quote(command)} Enter`;
 const buildAttachCommand = (name) => `tmux new -A -s ${quote(name)}`;
 
+/**
+ * The real guard when attaching: only names the server itself just listed are
+ * accepted, which takes the value out of the client's hands. Exact comparison,
+ * never a prefix — tmux would happily prefix-match, this must not.
+ */
+const isAllowedSession = (name, sessions) =>
+    typeof name === "string" && name.length > 0
+    && Array.isArray(sessions) && sessions.some((session) => session.name === name);
+
 module.exports = {
-    LIST_FORMAT, parseSessions, quote, isValidCreateName, isValidAttachName,
+    LIST_FORMAT, parseSessions, quote, isValidCreateName, isValidAttachName, isAllowedSession,
     buildListCommand, buildProbeCommand, buildSendKeysCommand, buildAttachCommand,
 };
