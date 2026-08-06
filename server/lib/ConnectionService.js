@@ -30,6 +30,18 @@ const requireEngine = () => {
     if (!controlPlane.hasEngine()) throw new Error("No engine connected");
 };
 
+/**
+ * By the time the tmux probe (and, when it created a fresh session, the
+ * send-keys calls) have resolved, the shell's MOTD and prompt have long since
+ * been written and gone quiet — those round trips to the same host each take
+ * far longer than the shell needs to settle. writeAfterSettle's own quiet
+ * detection therefore has nothing left to observe here and would otherwise
+ * ride out the full default hard cap for no reason. A short cap is enough:
+ * it still gives a slow-to-print prompt a moment to finish, without holding
+ * up the common case where there is nothing left to wait for.
+ */
+const TMUX_ATTACH_MAX_WAIT_MS = 300;
+
 const requireSession = (sessionId) => {
     const session = SessionManager.get(sessionId);
     if (!session) throw new Error("Session not found");
@@ -333,7 +345,14 @@ const createSSHConnectionForSession = async (sessionId, entry, identity, organiz
                     }
                 }
 
-                void writeAfterSettle(dataSocket, [buildAttachCommand(tmuxSession)]);
+                // The write must stay ordered after the probe/send-keys calls above:
+                // writing the attach command any earlier would let the interactive
+                // shell's own `tmux new -A` race the probe's `tmux new-session -d` on
+                // the host, which could make the session creation be attributed to the
+                // wrong side and skip send-keys entirely. So this keeps a short,
+                // fixed-cap settle-wait after those awaits rather than starting it
+                // before them.
+                void writeAfterSettle(dataSocket, [buildAttachCommand(tmuxSession)], { maxWaitMs: TMUX_ATTACH_MAX_WAIT_MS });
             } else {
                 if (tmuxSession) logger.warn("Ignoring invalid tmux session name", { sessionId });
 
