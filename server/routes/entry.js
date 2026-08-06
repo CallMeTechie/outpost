@@ -2,6 +2,7 @@ const { Router } = require("express");
 const { createEntry, deleteEntry, editEntry, getEntry, listEntries, duplicateEntry, importSSHConfig, repositionEntry, getRecentConnections, wakeEntry } = require("../controllers/entry");
 const { createServerValidation, updateServerValidation, repositionServerValidation } = require("../validations/server");
 const { validateSchema } = require("../utils/schema");
+const { getTmuxSessions } = require("../controllers/tmux");
 
 const app = Router();
 
@@ -183,6 +184,33 @@ app.post("/:entryId/wake", async (req, res) => {
     if (result?.code) return res.json(result);
 
     res.json({ message: "Wake-On-LAN packet sent successfully" });
+});
+
+/**
+ * GET /entries/{entryId}/tmux
+ * @summary List tmux Sessions
+ * @description Lists the tmux sessions running on an SSH entry, so the user can attach to one instead of opening a bare shell.
+ * @tags Entry
+ * @produces application/json
+ * @security BearerAuth
+ * @param {number} entryId.path.required - Entry ID
+ * @param {number} identityId.query - Identity to use
+ * @return {object} 200 - { available, sessions } or { available: false, reason }
+ */
+app.get("/:entryId/tmux", async (req, res) => {
+    const entryId = parseInt(req.params.entryId, 10);
+    if (isNaN(entryId)) return res.status(400).json({ message: "Invalid entry ID" });
+
+    const identityId = req.query.identityId ? parseInt(req.query.identityId, 10) : null;
+
+    try {
+        const result = await getTmuxSessions(req.user.id, entryId, identityId);
+        if (result?.code) return res.status(result.code).json({ message: result.message });
+        res.json(result);
+    } catch (error) {
+        console.error("Error listing tmux sessions:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
 });
 
 module.exports = app;
