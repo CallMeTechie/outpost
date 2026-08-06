@@ -13,6 +13,8 @@ const configValidation = Joi.object({
     macAddress: Joi.string().pattern(/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/).allow("").optional(),
     wakeOnLanEnabled: Joi.boolean().optional(),
     wolBroadcastAddress: Joi.string().ip({ version: ['ipv4'] }).allow("").optional(),
+    initialCommand: Joi.string().max(512).pattern(/^[^\r\n]*$/).allow("").optional(),
+    tmuxEnabled: Joi.boolean().optional(),
 }).unknown(true);
 
 module.exports.createServerValidation = Joi.object({
