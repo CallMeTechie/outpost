@@ -1,6 +1,7 @@
 import "./styles.sass";
 import ServerList from "@/pages/Servers/components/ServerList";
 import { useContext, useEffect, useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import WelcomePanel from "@/pages/Servers/components/WelcomePanel";
 import ServerDialog from "@/pages/Servers/components/ServerDialog";
@@ -14,6 +15,7 @@ import FileEditorWindow from "@/common/components/FileEditorWindow";
 import FilePreviewWindow from "@/common/components/FilePreviewWindow";
 import { useActiveSessions } from "@/common/contexts/SessionContext.jsx";
 import { useLiveSessions } from "@/common/contexts/LiveSessionContext.jsx";
+import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import { StateStreamContext, STATE_TYPES } from "@/common/contexts/StateStreamContext.jsx";
@@ -44,6 +46,8 @@ export const Servers = () => {
     const { liveSessions } = useLiveSessions();
     const { getServerById, servers } = useContext(ServerContext);
     const { registerHandler } = useContext(StateStreamContext);
+    const { sendToast } = useToast();
+    const { t } = useTranslation();
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -251,6 +255,7 @@ export const Servers = () => {
             setActiveSessionId(session.sessionId);
         } catch (error) {
             console.error("Failed to create session", error);
+            sendToast("Error", t('servers.connectionFailed', { message: error?.message || t('servers.unknownError') }));
         }
     };
 

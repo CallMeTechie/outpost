@@ -1527,6 +1527,8 @@
   "servers": {
     "addServerNote": "Right-click to add a new server",
     "searchPlaceholder": "Search",
+    "connectionFailed": "Failed to connect: {{message}}",
+    "unknownError": "Unknown error",
     "time": {
       "justNow": "Just now",
       "minuteAgo": "{{count}} min ago",

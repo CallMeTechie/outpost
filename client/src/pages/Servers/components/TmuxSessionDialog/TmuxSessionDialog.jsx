@@ -27,6 +27,7 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
 
         let cancelled = false;
         setState({ status: "loading", sessions: [], error: null, available: true });
+        setNewName("");
 
         const query = identityId ? `?identityId=${identityId}` : "";
         getRequest(`/entries/${entryId}/tmux${query}`)
