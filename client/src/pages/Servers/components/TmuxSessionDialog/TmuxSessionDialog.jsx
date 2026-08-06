@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
@@ -12,6 +12,14 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
     const [state, setState] = useState({ status: "loading", sessions: [], error: null, available: true });
     const [newName, setNewName] = useState("");
 
+    // onConnectRaw is a fresh closure from the parent on every render. Reaching it
+    // through a ref keeps the fetch effect's dependency array honest (no re-fetch
+    // on every render) while still calling the latest callback below.
+    const onConnectRawRef = useRef(onConnectRaw);
+    useEffect(() => {
+        onConnectRawRef.current = onConnectRaw;
+    }, [onConnectRaw]);
+
     useEffect(() => {
         if (!isOpen || !entryId) return;
 
@@ -24,6 +32,8 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                 if (cancelled) return;
                 if (result.available === false) {
                     setState({ status: "ready", sessions: [], error: null, available: false });
+                    // A host without tmux must never block the way in.
+                    onConnectRawRef.current();
                     return;
                 }
                 setState({ status: "ready", sessions: result.sessions || [], error: null, available: true });
@@ -35,11 +45,6 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
 
         return () => { cancelled = true; };
     }, [isOpen, entryId, identityId]);
-
-    // A host without tmux must never block the way in.
-    useEffect(() => {
-        if (state.status === "ready" && !state.available) onConnectRaw();
-    }, [state.status, state.available, onConnectRaw]);
 
     const canCreate = CREATE_NAME_PATTERN.test(newName);
 
