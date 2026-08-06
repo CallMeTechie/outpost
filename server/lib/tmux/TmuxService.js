@@ -64,8 +64,24 @@ const probeSession = async (target, name) => {
     return (result.exitCode ?? (result.success ? 0 : 1)) === 0;
 };
 
+/**
+ * The control plane resolves an exec request regardless of the command's exit
+ * status, so a failed send-keys (session gone between probe and send, tmux
+ * killed in between, a permission problem) would otherwise resolve silently
+ * as if the keys had been delivered. The caller is expected to handle the
+ * throw itself — a failed send-keys is not fatal to the connection, the
+ * terminal still attaches, it just means the initial command did not run.
+ */
 const sendKeys = async (target, name, command) => {
-    await execWithTimeout(target, buildSendKeysCommand(name, command));
+    const result = await execWithTimeout(target, buildSendKeysCommand(name, command));
+    const exitCode = result.exitCode ?? (result.success ? 0 : 1);
+
+    if (exitCode !== 0) {
+        const stderr = (result.stderr || "").slice(0, 200);
+        const error = new Error(stderr || `tmux send-keys failed for session "${name}"`);
+        error.code = "TMUX_FAILED";
+        throw error;
+    }
 };
 
 module.exports = { listSessions, probeSession, sendKeys, EXEC_TIMEOUT_MS, TmuxTimeoutError };
