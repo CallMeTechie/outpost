@@ -72,6 +72,10 @@ const createSession = async (accountId, entryId, identityId, connectionReason, t
         return { code: 400, message: "Direct connections are not supported for Proxmox entries" };
     }
 
+    if (tmuxSession && directIdentity) {
+        return { code: 400, message: "tmux sessions are not supported with a direct identity" };
+    }
+
     if (entry.organizationId) {
         const auditSettings = await getOrganizationAuditSettingsInternal(entry.organizationId);
         if (auditSettings?.requireConnectionReason && !connectionReason) {

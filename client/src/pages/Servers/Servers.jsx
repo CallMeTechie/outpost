@@ -255,11 +255,15 @@ export const Servers = () => {
     };
 
     // Only for a plain terminal on an SSH host with the toggle on. Scripts, SFTP
-    // and file-manager terminals keep their existing path untouched.
+    // and file-manager terminals keep their existing path untouched. A direct
+    // identity is excluded too: the picker would query (and the probe would
+    // create sessions under) the entry's stored identity instead of the one
+    // actually being connected with.
     const shouldOfferTmux = (options) =>
         Boolean(options.server?.config?.tmuxEnabled)
         && !options.scriptId
-        && !options.type;
+        && !options.type
+        && !options.directIdentity;
 
     const initiateConnection = (options) => {
         if (!options.server) return;

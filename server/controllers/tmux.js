@@ -5,12 +5,15 @@ const { buildSSHParams, resolveJumpHosts } = require("../lib/ConnectionService")
 const { validateEntryAccess } = require("./entry");
 const controlPlane = require("../lib/controlPlane/ControlPlaneServer");
 const TmuxService = require("../lib/tmux/TmuxService");
+const { Permission } = require("../permissions/registry");
 
 const getTmuxSessions = async (accountId, entryId, identityId) => {
     const entry = await Entry.findByPk(entryId);
     if (!entry) return { code: 404, message: "Entry not found" };
 
-    const accessResult = await validateEntryAccess(accountId, entry);
+    // 404, not 403: a caller without access must not be able to tell "exists
+    // but not yours" apart from "does not exist".
+    const accessResult = await validateEntryAccess(accountId, entry, "Access denied", Permission.CONNECT_SSH);
     if (!accessResult.valid) return { code: 404, message: "Entry not found" };
 
     if (entry.config?.protocol !== "ssh") {
