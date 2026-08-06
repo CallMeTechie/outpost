@@ -449,6 +449,22 @@
         font-size: 0.8rem
         color: colors.$subtext
 
+    .settings-command-input
+      padding: 0.8rem
+      min-width: 16rem
+      flex: 1
+      border: 1px solid colors.$gray
+      background-color: colors.$lighter-background
+      color: colors.$white
+      border-radius: 0.5rem
+      font-size: 14pt
+      outline: none
+      transition: border-color 0.1s ease, background-color 0.1s ease
+
+      &:focus
+        border: 1px solid colors.$primary
+        background-color: colors.$dark-gray
+
   .keyboard-layout-card
     background-color: transparent
     border: 1px solid colors.$gray

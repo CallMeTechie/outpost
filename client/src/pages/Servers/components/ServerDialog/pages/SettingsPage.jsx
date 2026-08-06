@@ -249,7 +249,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
             )}
 
             {showJumpHosts && (
-                <div className="settings-field">
+                <div className="settings-toggle">
                     <div className="settings-toggle-info">
                         <span className="settings-toggle-label">
                             <Icon path={mdiConsoleLine} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
@@ -259,7 +259,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
                             {t('servers.dialog.settings.initialCommand.description')}
                         </span>
                     </div>
-                    <input type="text" value={initialCommand} maxLength={512}
+                    <input type="text" className="settings-command-input" value={initialCommand} maxLength={512}
                            placeholder={t('servers.dialog.settings.initialCommand.placeholder')}
                            onChange={(e) => handleInitialCommandChange(e.target.value)} />
                 </div>
