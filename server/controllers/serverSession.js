@@ -97,7 +97,10 @@ const createSession = async (accountId, entryId, identityId, connectionReason, t
     if (tmuxSession && !tmuxCreate) {
         const listing = await getTmuxSessions(accountId, entryId, identityId);
         if (listing?.code) return listing;
-        if (!listing.available || !isAllowedSession(tmuxSession, listing.sessions)) {
+        if (!listing.available) {
+            return { code: 400, message: "tmux is not available on this host" };
+        }
+        if (!isAllowedSession(tmuxSession, listing.sessions)) {
             return { code: 400, message: "Unknown tmux session" };
         }
     }

@@ -36,7 +36,10 @@ const listSessions = async (target) => {
     const exitCode = result.exitCode ?? (result.success ? 0 : 1);
     const stderr = result.stderr || "";
 
-    if (exitCode === TMUX_NOT_INSTALLED_EXIT || /command not found|not found/i.test(stderr)) {
+    // Deliberately narrow: a bare "not found" also shows up in unrelated stderr
+    // (e.g. a jump host complaining about something else entirely), which would
+    // otherwise be misread as "tmux is missing" and silently skip the picker.
+    if (exitCode === TMUX_NOT_INSTALLED_EXIT || /command not found|tmux: not found/i.test(stderr)) {
         return { available: false, reason: "not_installed", sessions: [] };
     }
 
