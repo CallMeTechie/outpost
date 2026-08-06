@@ -68,3 +68,15 @@ test("writes only once even if data keeps arriving afterwards", async () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     assert.strictEqual(socket.written.length, 1);
 });
+
+test("resolves false if socket.write throws", async () => {
+    class FakeSocketThrows extends EventEmitter {
+        write(chunk) {
+            throw new Error("Socket closed or destroyed");
+        }
+    }
+
+    const socket = new FakeSocketThrows();
+    const result = await writeAfterSettle(socket, ["echo ok"], { quietMs: 5, maxWaitMs: 20 });
+    assert.strictEqual(result, false, "must resolve false when write fails");
+});

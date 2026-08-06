@@ -27,8 +27,12 @@ const writeAfterSettle = (socket, lines, options = {}) => {
             clearTimeout(quietTimer);
             clearTimeout(hardTimer);
             socket.off("data", onData);
-            socket.write(`\n${lines.join("\n")}\n`);
-            resolve(true);
+            try {
+                socket.write(`\n${lines.join("\n")}\n`);
+                resolve(true);
+            } catch (err) {
+                resolve(false);
+            }
         };
 
         const onData = () => {
