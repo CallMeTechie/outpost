@@ -16,6 +16,8 @@ const { isRecordingEnabled } = require("../utils/recordingService");
 const EngineSftpClient = require("./EngineSftpClient");
 const { buildPveQemuParams, buildRdpParams, buildVncParams, buildDemoParams } = require("./guacParamBuilders");
 const { writeAfterSettle } = require("./streamCommandWriter");
+const TmuxService = require("./tmux/TmuxService");
+const { buildAttachCommand, isValidAttachName } = require("./tmux/commands");
 
 const GUAC_PROTOCOLS = {
     rdp: { sessionType: SessionType.RDP, defaultPort: 3389 },
@@ -294,28 +296,52 @@ const createSSHConnectionForSession = async (sessionId, entry, identity, organiz
         });
 
         if (!script) {
-            const lines = [];
-
-            if (session.configuration.startPath) {
-                const raw = String(session.configuration.startPath);
-                if (/[\r\n\x00]/.test(raw)) {
-                    logger.warn("Ignoring startPath containing control characters", { sessionId });
-                } else {
-                    lines.push(`cd '${raw.replace(/'/g, `'\\''`)}'`);
-                }
-            }
-
+            const startPath = session.configuration.startPath;
             const initialCommand = entry.config?.initialCommand;
-            if (initialCommand) {
-                const raw = String(initialCommand);
-                if (/[\r\n\x00]/.test(raw)) {
-                    logger.warn("Ignoring initialCommand containing control characters", { sessionId });
-                } else {
-                    lines.push(raw);
-                }
-            }
+            const clean = (value) => {
+                if (!value) return null;
+                const raw = String(value);
+                if (/[\r\n\x00]/.test(raw)) return null;
+                return raw;
+            };
+            const cleanStartPath = clean(startPath);
+            const cleanInitialCommand = clean(initialCommand);
+            if (startPath && !cleanStartPath) logger.warn("Ignoring startPath containing control characters", { sessionId });
+            if (initialCommand && !cleanInitialCommand) logger.warn("Ignoring initialCommand containing control characters", { sessionId });
 
-            if (lines.length) void writeAfterSettle(dataSocket, lines);
+            const tmuxSession = session.configuration.tmuxSession;
+
+            if (tmuxSession && isValidAttachName(tmuxSession)) {
+                const target = { host, port, params, jumpHosts, engineId: entry.config?.engineId ?? null };
+
+                let created = false;
+                try {
+                    created = await TmuxService.probeSession(target, tmuxSession);
+                } catch (error) {
+                    logger.warn("tmux probe failed, attaching anyway", { sessionId, error: error.message });
+                }
+
+                if (created) {
+                    // send-keys only ever targets a session this very flow created with -d.
+                    // Against an existing session the command would land in whatever the
+                    // user is running there.
+                    try {
+                        if (cleanStartPath) await TmuxService.sendKeys(target, tmuxSession, `cd '${cleanStartPath.replace(/'/g, `'\\''`)}'`);
+                        if (cleanInitialCommand) await TmuxService.sendKeys(target, tmuxSession, cleanInitialCommand);
+                    } catch (error) {
+                        logger.warn("tmux send-keys failed", { sessionId, error: error.message });
+                    }
+                }
+
+                void writeAfterSettle(dataSocket, [buildAttachCommand(tmuxSession)]);
+            } else {
+                if (tmuxSession) logger.warn("Ignoring invalid tmux session name", { sessionId });
+
+                const lines = [];
+                if (cleanStartPath) lines.push(`cd '${cleanStartPath.replace(/'/g, `'\\''`)}'`);
+                if (cleanInitialCommand) lines.push(cleanInitialCommand);
+                if (lines.length) void writeAfterSettle(dataSocket, lines);
+            }
         }
 
         logger.info("SSH connected", { sessionId, target: host, port });
