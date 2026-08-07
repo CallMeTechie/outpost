@@ -20,7 +20,12 @@ const cleanOldLogs = () => {
     } catch {}
 };
 
-setInterval(cleanOldLogs, 24 * 60 * 60 * 1000);
+// unref() so this timer does not by itself keep a process alive: anything
+// that merely imports the logger (tests, one-off scripts) must still be able
+// to exit on its own. The running server is unaffected, since its HTTP
+// listener keeps the event loop open regardless.
+const cleanupTimer = setInterval(cleanOldLogs, 24 * 60 * 60 * 1000);
+cleanupTimer.unref();
 cleanOldLogs();
 
 winston.addColors({
