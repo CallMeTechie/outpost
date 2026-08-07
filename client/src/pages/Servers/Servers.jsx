@@ -263,9 +263,11 @@ export const Servers = () => {
     // and file-manager terminals keep their existing path untouched. A direct
     // identity is excluded too: the picker would query (and the probe would
     // create sessions under) the entry's stored identity instead of the one
-    // actually being connected with.
+    // actually being connected with. `server` objects here come from the flattened
+    // list payload (GET /api/entries/list), which has no nested `config` object,
+    // so the flag must be read from the top level.
     const shouldOfferTmux = (options) =>
-        Boolean(options.server?.config?.tmuxEnabled)
+        Boolean(options.server?.tmuxEnabled)
         && !options.scriptId
         && !options.type
         && !options.directIdentity;
