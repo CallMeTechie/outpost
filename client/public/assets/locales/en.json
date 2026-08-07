@@ -1814,7 +1814,9 @@
       "actions": {
         "cancel": "Cancel",
         "create": "Create",
-        "connectRaw": "Connect without tmux"
+        "connectRaw": "Connect without tmux",
+        "rename": "Rename session",
+        "kill": "End session"
       }
     },
     "sshConfigImport": {

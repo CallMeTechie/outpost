@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
+import Icon from "@mdi/react";
+import { mdiPencil, mdiTrashCan } from "@mdi/js";
 import { getRequest } from "@/common/utils/RequestUtil.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import "./styles.sass";
@@ -69,7 +71,7 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                 {state.status === "ready" && state.sessions.length > 0 && (
                     <ul className="tmux-session-list">
                         {state.sessions.map((session) => (
-                            <li key={session.name}>
+                            <li key={session.name} className="tmux-session-row">
                                 <button className="tmux-session-item" onClick={() => onSelect(session.name, false)}>
                                     <span className="tmux-session-name">{session.name}</span>
                                     <span className="tmux-session-meta">
@@ -77,6 +79,18 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                                         {session.attached && ` · ${t('servers.tmuxDialog.attachedLabel')}`}
                                     </span>
                                 </button>
+                                <div className="tmux-session-actions">
+                                    <button className="tmux-icon-button"
+                                            title={t('servers.tmuxDialog.actions.rename')}
+                                            aria-label={t('servers.tmuxDialog.actions.rename')}>
+                                        <Icon path={mdiPencil} size={0.7} />
+                                    </button>
+                                    <button className="tmux-icon-button"
+                                            title={t('servers.tmuxDialog.actions.kill')}
+                                            aria-label={t('servers.tmuxDialog.actions.kill')}>
+                                        <Icon path={mdiTrashCan} size={0.7} />
+                                    </button>
+                                </div>
                             </li>
                         ))}
                     </ul>

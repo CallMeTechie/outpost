@@ -43,6 +43,49 @@
     opacity: 0.7
     font-size: 0.85em
 
+  .tmux-session-row
+    display: flex
+    align-items: stretch
+    flex-wrap: wrap
+    gap: 0.25rem
+
+    .tmux-session-item
+      flex: 1
+
+      &:disabled
+        opacity: 0.5
+        cursor: default
+
+        &:hover
+          background: none
+
+    .tmux-hint
+      flex-basis: 100%
+
+  .tmux-session-actions
+    display: flex
+    align-items: center
+    gap: 0.25rem
+
+  .tmux-icon-button
+    display: flex
+    align-items: center
+    justify-content: center
+    padding: 0.4rem
+    background: none
+    border: 1px solid transparent
+    border-radius: 0.5rem
+    color: colors.$subtext
+    cursor: pointer
+
+    &:hover
+      background-color: colors.$dark-gray
+      color: colors.$white
+
+    &:disabled
+      opacity: 0.4
+      cursor: default
+
   .tmux-new-session
     display: flex
     gap: 0.5rem
