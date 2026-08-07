@@ -1718,7 +1718,16 @@
           "delete": "löschen",
           "functionKeys": "Funktionstasten"
         },
-        "noSettings": "Keine weiteren Einstellungen für diesen Typ verfügbar."
+        "noSettings": "Keine weiteren Einstellungen für diesen Typ verfügbar.",
+        "initialCommand": {
+          "title": "Kommando nach dem Verbinden",
+          "description": "Läuft einmalig nach dem Verbinden in einer neu erzeugten Shell. Leer lassen zum Deaktivieren",
+          "placeholder": "docker compose up -d"
+        },
+        "tmux": {
+          "title": "tmux-Sessions anbieten",
+          "description": "Vor dem Öffnen des Terminals fragen, an welche tmux-Session angehängt werden soll. Wirkt nur auf Hosts, auf denen tmux läuft"
+        }
       },
       "identities": {
         "organizationIdentities": "Organisation Identitäten",
@@ -2058,7 +2067,25 @@
     "liveSessions": {
       "activeOn": "Live-Sessions: {{users}}",
       "unknownUser": "Unbekannter Nutzer"
-    }
+    },
+    "tmuxDialog": {
+      "title": "An eine tmux-Session anhängen",
+      "loading": "Suche nach laufenden Sessions…",
+      "empty": "Auf diesem Host läuft noch keine Session.",
+      "newSessionPlaceholder": "Session-Name",
+      "nameHint": "Nur Buchstaben, Ziffern, Unterstrich und Bindestrich, höchstens 64 Zeichen.",
+      "windows_one": "{{count}} Fenster",
+      "windows_other": "{{count}} Fenster",
+      "attachedLabel": "aktiv",
+      "notInstalled": "Auf diesem Host ist tmux nicht installiert. Es wird eine normale Shell geöffnet.",
+      "actions": {
+        "cancel": "Abbrechen",
+        "create": "Anlegen",
+        "connectRaw": "Ohne tmux verbinden"
+      }
+    },
+    "connectionFailed": "Verbindung fehlgeschlagen: {{message}}",
+    "unknownError": "Unbekannter Fehler"
   },
   "support": {
     "title": "Unterstützung erhalten",
