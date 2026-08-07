@@ -80,3 +80,24 @@ test("resolves false if socket.write throws", async () => {
     const result = await writeAfterSettle(socket, ["echo ok"], { quietMs: 5, maxWaitMs: 20 });
     assert.strictEqual(result, false, "must resolve false when write fails");
 });
+
+test("reports that it wrote after the stream went quiet", async () => {
+    const socket = new FakeSocket();
+    const promise = writeAfterSettle(socket, ["echo ok"], { quietMs: 20, maxWaitMs: 500 });
+    socket.emit("data", Buffer.from("motd"));
+    const result = await promise;
+    assert.strictEqual(result, true);
+});
+
+test("still resolves true when it wrote at the hard cap without any data", async () => {
+    const socket = new FakeSocket();
+    const result = await writeAfterSettle(socket, ["echo ok"], { quietMs: 1000, maxWaitMs: 30 });
+    assert.strictEqual(result, true);
+    assert.deepStrictEqual(socket.written, ["\necho ok\n"]);
+});
+
+test("accepts a label without changing the return value", async () => {
+    const socket = new FakeSocket();
+    const result = await writeAfterSettle(socket, ["echo ok"], { quietMs: 5, maxWaitMs: 20, label: "test" });
+    assert.strictEqual(result, true);
+});

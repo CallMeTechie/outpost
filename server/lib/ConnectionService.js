@@ -326,6 +326,7 @@ const createSSHConnectionForSession = async (sessionId, entry, identity, organiz
             if (tmuxSession && isValidAttachName(tmuxSession)) {
                 const target = { host, port, params, jumpHosts, engineId: entry.config?.engineId ?? null };
 
+                const tmuxStartedAt = Date.now();
                 let created = false;
                 try {
                     created = await TmuxService.probeSession(target, tmuxSession);
@@ -352,14 +353,18 @@ const createSSHConnectionForSession = async (sessionId, entry, identity, organiz
                 // wrong side and skip send-keys entirely. So this keeps a short,
                 // fixed-cap settle-wait after those awaits rather than starting it
                 // before them.
-                void writeAfterSettle(dataSocket, [buildAttachCommand(tmuxSession)], { maxWaitMs: TMUX_ATTACH_MAX_WAIT_MS });
+                logger.debug("tmux attach prepared", {
+                    sessionId, created, prepareMs: Date.now() - tmuxStartedAt,
+                });
+                void writeAfterSettle(dataSocket, [buildAttachCommand(tmuxSession)],
+                    { maxWaitMs: TMUX_ATTACH_MAX_WAIT_MS, label: "tmux-attach" });
             } else {
                 if (tmuxSession) logger.warn("Ignoring invalid tmux session name", { sessionId });
 
                 const lines = [];
                 if (cleanStartPath) lines.push(`cd '${cleanStartPath.replace(/'/g, `'\\''`)}'`);
                 if (cleanInitialCommand) lines.push(cleanInitialCommand);
-                if (lines.length) void writeAfterSettle(dataSocket, lines);
+                if (lines.length) void writeAfterSettle(dataSocket, lines, { label: "shell-commands" });
             }
         }
 

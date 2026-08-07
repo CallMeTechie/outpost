@@ -1,3 +1,5 @@
+const logger = require("../utils/logger");
+
 const DEFAULT_QUIET_MS = 150;
 const DEFAULT_MAX_WAIT_MS = 3000;
 
@@ -14,33 +16,48 @@ const DEFAULT_MAX_WAIT_MS = 3000;
 const writeAfterSettle = (socket, lines, options = {}) => {
     const quietMs = options.quietMs ?? DEFAULT_QUIET_MS;
     const maxWaitMs = options.maxWaitMs ?? DEFAULT_MAX_WAIT_MS;
+    const label = options.label ?? "shell";
+    const startedAt = Date.now();
 
     if (!Array.isArray(lines) || lines.length === 0) return Promise.resolve(false);
 
     return new Promise((resolve) => {
         let quietTimer = null;
         let settled = false;
+        let sawData = false;
 
-        const finish = () => {
+        const finish = (reason) => {
             if (settled) return;
             settled = true;
             clearTimeout(quietTimer);
             clearTimeout(hardTimer);
             socket.off("data", onData);
+
+            // Which branch fired is the whole point of this log: "cap" means the
+            // shell never went quiet within the budget, so the write landed in
+            // the middle of its output. "quiet" is the healthy case.
+            logger.debug("Stream command write", {
+                label, reason, sawData, lines: lines.length,
+                elapsedMs: Date.now() - startedAt, quietMs, maxWaitMs,
+            });
+
             try {
                 socket.write(`\n${lines.join("\n")}\n`);
-                resolve(true);
-            } catch (err) {
+            } catch {
                 resolve(false);
+                return;
             }
+
+            resolve(true);
         };
 
         const onData = () => {
+            sawData = true;
             clearTimeout(quietTimer);
-            quietTimer = setTimeout(finish, quietMs);
+            quietTimer = setTimeout(() => finish("quiet"), quietMs);
         };
 
-        const hardTimer = setTimeout(finish, maxWaitMs);
+        const hardTimer = setTimeout(() => finish("cap"), maxWaitMs);
         socket.on("data", onData);
     });
 };

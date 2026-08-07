@@ -1,5 +1,6 @@
 const controlPlane = require("../controlPlane/ControlPlaneServer");
 const { buildListCommand, buildProbeCommand, buildSendKeysCommand, parseSessions } = require("./commands");
+const logger = require("../../utils/logger");
 
 const EXEC_TIMEOUT_MS = 5000;
 const TMUX_NOT_INSTALLED_EXIT = 127;
@@ -18,7 +19,9 @@ class TmuxTimeoutError extends Error {
  * blocking NFS home connects fine and then hangs, so the timeout has to sit
  * here, not in the connection setup.
  */
-const execWithTimeout = (target, command) => {
+const execWithTimeout = (target, command, kind) => {
+    const startedAt = Date.now();
+
     const exec = controlPlane.execCommand(
         target.host, target.port, target.params, command, target.jumpHosts || [], target.engineId ?? null,
     );
@@ -28,11 +31,26 @@ const execWithTimeout = (target, command) => {
         timer = setTimeout(() => reject(new TmuxTimeoutError()), EXEC_TIMEOUT_MS);
     });
 
-    return Promise.race([exec, timeout]).finally(() => clearTimeout(timer));
+    return Promise.race([exec, timeout])
+        .then((result) => {
+            logger.debug("tmux exec", {
+                kind, host: target.host, durationMs: Date.now() - startedAt,
+                exitCode: result.exitCode ?? (result.success ? 0 : 1), timedOut: false,
+            });
+            return result;
+        })
+        .catch((error) => {
+            logger.debug("tmux exec", {
+                kind, host: target.host, durationMs: Date.now() - startedAt,
+                timedOut: error.code === "TMUX_TIMEOUT", error: error.message,
+            });
+            throw error;
+        })
+        .finally(() => clearTimeout(timer));
 };
 
 const listSessions = async (target) => {
-    const result = await execWithTimeout(target, buildListCommand());
+    const result = await execWithTimeout(target, buildListCommand(), "list");
     const exitCode = result.exitCode ?? (result.success ? 0 : 1);
     const stderr = result.stderr || "";
 
@@ -63,7 +81,7 @@ const listSessions = async (target) => {
  * has-session call with a race window of its own.
  */
 const probeSession = async (target, name) => {
-    const result = await execWithTimeout(target, buildProbeCommand(name));
+    const result = await execWithTimeout(target, buildProbeCommand(name), "probe");
     return (result.exitCode ?? (result.success ? 0 : 1)) === 0;
 };
 
@@ -76,7 +94,7 @@ const probeSession = async (target, name) => {
  * terminal still attaches, it just means the initial command did not run.
  */
 const sendKeys = async (target, name, command) => {
-    const result = await execWithTimeout(target, buildSendKeysCommand(name, command));
+    const result = await execWithTimeout(target, buildSendKeysCommand(name, command), "send-keys");
     const exitCode = result.exitCode ?? (result.success ? 0 : 1);
 
     if (exitCode !== 0) {

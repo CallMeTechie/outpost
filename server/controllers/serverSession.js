@@ -95,7 +95,12 @@ const createSession = async (accountId, entryId, identityId, connectionReason, t
     }
 
     if (tmuxSession && !tmuxCreate) {
+        const listingStartedAt = Date.now();
         const listing = await getTmuxSessions(accountId, entryId, identityId);
+        logger.debug("tmux allowlist lookup", {
+            entryId, durationMs: Date.now() - listingStartedAt,
+            sessions: listing?.sessions?.length ?? 0, code: listing?.code ?? 200,
+        });
         if (listing?.code) return listing;
         if (!listing.available) {
             return { code: 400, message: "tmux is not available on this host" };
