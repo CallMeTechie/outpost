@@ -1,0 +1,97 @@
+name: Fork Image
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/tmux-sessions]
+
+env:
+  REGISTRY: ghcr.io
+  TAG: tmux
+
+jobs:
+  components:
+    name: "Build ${{ matrix.slug }}"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - slug: server
+            dockerfile: Dockerfile.server
+          - slug: engine
+            dockerfile: Dockerfile.engine
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Lowercase the owner
+        id: owner
+        run: echo "value=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/nexterm-${{ matrix.slug }}:${{ env.TAG }}
+          build-args: |
+            VERSION=1.2.2-BETA-tmux
+          cache-from: type=gha,scope=fork-${{ matrix.slug }}
+          cache-to: type=gha,mode=max,scope=fork-${{ matrix.slug }}
+
+  aio:
+    name: "Build all-in-one"
+    needs: components
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Lowercase the owner
+        id: owner
+        run: echo "value=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/nexterm:${{ env.TAG }}
+          build-args: |
+            SERVER_IMAGE=${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/nexterm-server:${{ env.TAG }}
+            ENGINE_IMAGE=${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/nexterm-engine:${{ env.TAG }}
+          cache-from: type=gha,scope=fork-aio
+          cache-to: type=gha,mode=max,scope=fork-aio
