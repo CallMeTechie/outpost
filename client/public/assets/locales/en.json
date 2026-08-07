@@ -1811,12 +1811,16 @@
       "windows_other": "{{count}} windows",
       "attachedLabel": "active",
       "notInstalled": "tmux is not installed on this host. Opening a normal shell.",
+      "killConfirm": "End \"{{name}}\" and everything running in it?",
+      "refreshFailed": "Action completed, but the list could not be refreshed.",
       "actions": {
         "cancel": "Cancel",
         "create": "Create",
         "connectRaw": "Connect without tmux",
         "rename": "Rename session",
-        "kill": "End session"
+        "kill": "End session",
+        "confirmKill": "End",
+        "cancelKill": "Cancel"
       }
     },
     "sshConfigImport": {

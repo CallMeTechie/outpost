@@ -4,7 +4,7 @@ import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
 import Icon from "@mdi/react";
 import { mdiPencil, mdiTrashCan } from "@mdi/js";
-import { getRequest } from "@/common/utils/RequestUtil.js";
+import { getRequest, deleteRequest } from "@/common/utils/RequestUtil.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import "./styles.sass";
 
@@ -15,6 +15,10 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
     const { sendToast } = useToast();
     const [state, setState] = useState({ status: "loading", sessions: [], error: null, available: true });
     const [newName, setNewName] = useState("");
+    const [pendingKill, setPendingKill] = useState(null);
+    const [busyName, setBusyName] = useState(null);
+    const [notice, setNotice] = useState(null);   // { text, failed }
+    const [reloadToken, setReloadToken] = useState(0);
 
     // onConnectRaw is a fresh closure from the parent on every render. Reaching it
     // through a ref keeps the fetch effect's dependency array honest (no re-fetch
@@ -29,7 +33,7 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
 
         let cancelled = false;
         setState({ status: "loading", sessions: [], error: null, available: true });
-        setNewName("");
+        setPendingKill(null);
 
         const query = identityId ? `?identityId=${identityId}` : "";
         getRequest(`/entries/${entryId}/tmux${query}`)
@@ -51,7 +55,64 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
             });
 
         return () => { cancelled = true; };
-    }, [isOpen, entryId, identityId, sendToast, t]);
+    }, [isOpen, entryId, identityId, reloadToken, sendToast, t]);
+
+    // Cleared when the dialog opens, not on every load: a failed action triggers a
+    // reload, and its message is exactly what the user needs to read afterwards.
+    useEffect(() => {
+        if (isOpen) { setNotice(null); setNewName(""); }
+    }, [isOpen]);
+
+    // Deliberately not named `query`: the fetch effect already has a local of that
+    // name. encodeURIComponent, never encodeURI — the latter leaves ? # and &
+    // untouched, and tmux allows all three in session names.
+    const actionQuery = (name) => {
+        const identityPart = identityId ? `identityId=${identityId}&` : "";
+        return `?${identityPart}session=${encodeURIComponent(name)}`;
+    };
+
+    const applyResult = (result) => {
+        // The list in hand is new; a confirmation from the old list must not carry
+        // over onto a row that is no longer the same one.
+        setPendingKill(null);
+
+        if (result.refreshed === false) {
+            setNotice({ text: t('servers.tmuxDialog.refreshFailed'), failed: false });
+            return false;
+        }
+        setState({ status: "ready", sessions: result.sessions || [], error: null, available: true });
+        setNotice(null);
+        return true;
+    };
+
+    /**
+     * A failed action must not park the dialog in a dead end: status "error" hides
+     * the list and nothing would reload it, so the only way out would be closing
+     * the dialog. The likeliest failure is "that session is gone" — the refreshed
+     * list is the actual answer, so show the message and reload.
+     */
+    const failAction = (error) => {
+        setNotice({ text: error?.message || String(error), failed: true });
+        setReloadToken((token) => token + 1);
+    };
+
+    const killSession = async (name) => {
+        if (busyName !== null) return;
+        setBusyName(name);
+        setPendingKill(null);
+        try {
+            const result = await deleteRequest(`/entries/${entryId}/tmux${actionQuery(name)}`);
+            if (!applyResult(result)) {
+                // The kill happened; only the refresh failed. Drop the row locally
+                // so the user does not act on it a second time.
+                setState((prev) => ({ ...prev, sessions: prev.sessions.filter((s) => s.name !== name) }));
+            }
+        } catch (error) {
+            failAction(error);
+        } finally {
+            setBusyName(null);
+        }
+    };
 
     const canCreate = CREATE_NAME_PATTERN.test(newName);
 
@@ -64,6 +125,8 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
 
                 {state.status === "error" && <p className="tmux-status tmux-error">{state.error}</p>}
 
+                {notice && <p className={notice.failed ? "tmux-status tmux-error" : "tmux-status tmux-notice"}>{notice.text}</p>}
+
                 {state.status === "ready" && state.sessions.length === 0 && (
                     <p className="tmux-status">{t('servers.tmuxDialog.empty')}</p>
                 )}
@@ -72,25 +135,40 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                     <ul className="tmux-session-list">
                         {state.sessions.map((session) => (
                             <li key={session.name} className="tmux-session-row">
-                                <button className="tmux-session-item" onClick={() => onSelect(session.name, false)}>
-                                    <span className="tmux-session-name">{session.name}</span>
-                                    <span className="tmux-session-meta">
-                                        {t('servers.tmuxDialog.windows', { count: session.windows })}
-                                        {session.attached && ` · ${t('servers.tmuxDialog.attachedLabel')}`}
-                                    </span>
-                                </button>
-                                <div className="tmux-session-actions">
-                                    <button className="tmux-icon-button"
-                                            title={t('servers.tmuxDialog.actions.rename')}
-                                            aria-label={t('servers.tmuxDialog.actions.rename')}>
-                                        <Icon path={mdiPencil} size={0.7} />
-                                    </button>
-                                    <button className="tmux-icon-button"
-                                            title={t('servers.tmuxDialog.actions.kill')}
-                                            aria-label={t('servers.tmuxDialog.actions.kill')}>
-                                        <Icon path={mdiTrashCan} size={0.7} />
-                                    </button>
-                                </div>
+                                {pendingKill === session.name ? (
+                                    <div className="tmux-row-confirm">
+                                        <span>{t('servers.tmuxDialog.killConfirm', { name: session.name })}</span>
+                                        <Button text={t('servers.tmuxDialog.actions.confirmKill')} disabled={busyName !== null}
+                                                onClick={() => killSession(session.name)} />
+                                        <Button type="secondary" text={t('servers.tmuxDialog.actions.cancelKill')}
+                                                onClick={() => setPendingKill(null)} />
+                                    </div>
+                                ) : (
+                                    <>
+                                        <button className="tmux-session-item" disabled={busyName !== null}
+                                                onClick={() => onSelect(session.name, false)}>
+                                            <span className="tmux-session-name">{session.name}</span>
+                                            <span className="tmux-session-meta">
+                                                {t('servers.tmuxDialog.windows', { count: session.windows })}
+                                                {session.attached && ` · ${t('servers.tmuxDialog.attachedLabel')}`}
+                                            </span>
+                                        </button>
+                                        <div className="tmux-session-actions">
+                                            <button className="tmux-icon-button"
+                                                    title={t('servers.tmuxDialog.actions.rename')}
+                                                    aria-label={t('servers.tmuxDialog.actions.rename')}>
+                                                <Icon path={mdiPencil} size={0.7} />
+                                            </button>
+                                            <button className="tmux-icon-button"
+                                                    disabled={busyName !== null}
+                                                    title={t('servers.tmuxDialog.actions.kill')}
+                                                    aria-label={t('servers.tmuxDialog.actions.kill')}
+                                                    onClick={() => (session.attached ? setPendingKill(session.name) : killSession(session.name))}>
+                                                <Icon path={mdiTrashCan} size={0.7} />
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
                             </li>
                         ))}
                     </ul>
@@ -100,15 +178,16 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                     <input type="text" value={newName} maxLength={64}
                            placeholder={t('servers.tmuxDialog.newSessionPlaceholder')}
                            onChange={(e) => setNewName(e.target.value)}
-                           onKeyDown={(e) => { if (e.key === "Enter" && canCreate) onSelect(newName, true); }} />
-                    <Button text={t('servers.tmuxDialog.actions.create')} disabled={!canCreate}
+                           onKeyDown={(e) => { if (e.key === "Enter" && canCreate && busyName === null) onSelect(newName, true); }} />
+                    <Button text={t('servers.tmuxDialog.actions.create')} disabled={!canCreate || busyName !== null}
                             onClick={() => onSelect(newName, true)} />
                 </div>
                 {newName.length > 0 && !canCreate && <p className="tmux-hint">{t('servers.tmuxDialog.nameHint')}</p>}
 
                 <div className="dialog-actions">
                     <Button type="secondary" text={t('servers.tmuxDialog.actions.cancel')} onClick={onClose} />
-                    <Button type="secondary" text={t('servers.tmuxDialog.actions.connectRaw')} onClick={onConnectRaw} />
+                    <Button type="secondary" text={t('servers.tmuxDialog.actions.connectRaw')} disabled={busyName !== null}
+                            onClick={onConnectRaw} />
                 </div>
             </div>
         </DialogProvider>
