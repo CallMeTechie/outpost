@@ -28,6 +28,17 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
         onConnectRawRef.current = onConnectRaw;
     }, [onConnectRaw]);
 
+    // The dialog is only ever hidden, never unmounted (see the comment above),
+    // and its Cancel/close button is deliberately left enabled while a kill is
+    // in flight. That means a DELETE issued for one host can still resolve
+    // after the dialog has been closed and reopened for a different one.
+    // entryIdRef always holds the host currently on screen, so killSession can
+    // tell a fresh response from a stale one.
+    const entryIdRef = useRef(entryId);
+    useEffect(() => {
+        entryIdRef.current = entryId;
+    }, [entryId]);
+
     useEffect(() => {
         if (!isOpen || !entryId) return;
 
@@ -100,14 +111,21 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
         if (busyName !== null) return;
         setBusyName(name);
         setPendingKill(null);
+        // Captured now, compared against entryIdRef.current once the request
+        // settles: if the dialog has since been reopened for another host, this
+        // response belongs to a host that is no longer on screen and must not
+        // touch state, notice, or the local row removal below.
+        const requestEntryId = entryId;
         try {
             const result = await deleteRequest(`/entries/${entryId}/tmux${actionQuery(name)}`);
+            if (entryIdRef.current !== requestEntryId) return;
             if (!applyResult(result)) {
                 // The kill happened; only the refresh failed. Drop the row locally
                 // so the user does not act on it a second time.
                 setState((prev) => ({ ...prev, sessions: prev.sessions.filter((s) => s.name !== name) }));
             }
         } catch (error) {
+            if (entryIdRef.current !== requestEntryId) return;
             failAction(error);
         } finally {
             setBusyName(null);
@@ -137,7 +155,7 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                             <li key={session.name} className="tmux-session-row">
                                 {pendingKill === session.name ? (
                                     <div className="tmux-row-confirm">
-                                        <span>{t('servers.tmuxDialog.killConfirm', { name: session.name })}</span>
+                                        <span>{t('servers.tmuxDialog.killConfirm', { name: session.name, interpolation: { escapeValue: false } })}</span>
                                         <Button text={t('servers.tmuxDialog.actions.confirmKill')} disabled={busyName !== null}
                                                 onClick={() => killSession(session.name)} />
                                         <Button type="secondary" text={t('servers.tmuxDialog.actions.cancelKill')}
