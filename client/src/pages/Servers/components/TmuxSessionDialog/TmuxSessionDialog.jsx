@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
 import Icon from "@mdi/react";
-import { mdiPencil, mdiTrashCan } from "@mdi/js";
-import { getRequest, deleteRequest } from "@/common/utils/RequestUtil.js";
+import { mdiPencil, mdiTrashCan, mdiCheck, mdiClose } from "@mdi/js";
+import { getRequest, deleteRequest, patchRequest } from "@/common/utils/RequestUtil.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import "./styles.sass";
 
@@ -16,6 +16,8 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
     const [state, setState] = useState({ status: "loading", sessions: [], error: null, available: true });
     const [newName, setNewName] = useState("");
     const [pendingKill, setPendingKill] = useState(null);
+    const [renaming, setRenaming] = useState(null);
+    const [renameValue, setRenameValue] = useState("");
     const [busyName, setBusyName] = useState(null);
     const [notice, setNotice] = useState(null);   // { text, failed }
     const [reloadToken, setReloadToken] = useState(0);
@@ -45,6 +47,7 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
         let cancelled = false;
         setState({ status: "loading", sessions: [], error: null, available: true });
         setPendingKill(null);
+        setRenaming(null);
 
         const query = identityId ? `?identityId=${identityId}` : "";
         getRequest(`/entries/${entryId}/tmux${query}`)
@@ -83,9 +86,10 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
     };
 
     const applyResult = (result) => {
-        // The list in hand is new; a confirmation from the old list must not carry
-        // over onto a row that is no longer the same one.
+        // The list in hand is new; a confirmation or a half-typed rename from the
+        // old list must not carry over onto a row that is no longer the same one.
         setPendingKill(null);
+        setRenaming(null);
 
         if (result.refreshed === false) {
             setNotice({ text: t('servers.tmuxDialog.refreshFailed'), failed: false });
@@ -133,6 +137,47 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
     };
 
     const canCreate = CREATE_NAME_PATTERN.test(newName);
+    const canRename = CREATE_NAME_PATTERN.test(renameValue);
+
+    const startRename = (name) => {
+        setRenaming(name);
+        setRenameValue(name);
+    };
+
+    const renameSession = async (name) => {
+        // Captured once: the input stays on screen for the whole request, so
+        // renameValue can still change under an in-flight rename. The value we send
+        // and the value we fall back to locally have to be the same one.
+        const nextName = renameValue;
+        if (busyName !== null || !CREATE_NAME_PATTERN.test(nextName)) return;
+
+        // tmux treats a rename onto the identical name as a no-op with exit 0, so
+        // the request would cost three exec round trips to change nothing.
+        if (nextName === name) { setRenaming(null); return; }
+
+        setBusyName(name);
+        // Captured now, compared against entryIdRef.current once the request
+        // settles: if the dialog has since been reopened for another host, this
+        // response belongs to a host that is no longer on screen and must not
+        // touch state, notice, or the local row rename below.
+        const requestEntryId = entryId;
+        try {
+            const result = await patchRequest(`/entries/${entryId}/tmux${actionQuery(name)}`, { name: nextName });
+            if (entryIdRef.current !== requestEntryId) return;
+            setRenaming(null);
+            if (!applyResult(result)) {
+                setState((prev) => ({
+                    ...prev,
+                    sessions: prev.sessions.map((s) => (s.name === name ? { ...s, name: nextName } : s)),
+                }));
+            }
+        } catch (error) {
+            if (entryIdRef.current !== requestEntryId) return;
+            failAction(error);
+        } finally {
+            setBusyName(null);
+        }
+    };
 
     return (
         <DialogProvider open={isOpen} onClose={onClose}>
@@ -153,7 +198,29 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                     <ul className="tmux-session-list">
                         {state.sessions.map((session) => (
                             <li key={session.name} className="tmux-session-row">
-                                {pendingKill === session.name ? (
+                                {renaming === session.name ? (
+                                    <div className="tmux-row-rename">
+                                        <input type="text" value={renameValue} maxLength={64} autoFocus
+                                               disabled={busyName !== null}
+                                               onChange={(e) => setRenameValue(e.target.value)}
+                                               onKeyDown={(e) => {
+                                                   if (e.key === "Enter") renameSession(session.name);
+                                                   if (e.key === "Escape") setRenaming(null);
+                                               }} />
+                                        <button className="tmux-icon-button" disabled={busyName !== null || !canRename}
+                                                title={t('servers.tmuxDialog.actions.confirmRename')}
+                                                aria-label={t('servers.tmuxDialog.actions.confirmRename')}
+                                                onClick={() => renameSession(session.name)}>
+                                            <Icon path={mdiCheck} size={0.7} />
+                                        </button>
+                                        <button className="tmux-icon-button" disabled={busyName !== null}
+                                                title={t('servers.tmuxDialog.actions.cancelRename')}
+                                                aria-label={t('servers.tmuxDialog.actions.cancelRename')}
+                                                onClick={() => setRenaming(null)}>
+                                            <Icon path={mdiClose} size={0.7} />
+                                        </button>
+                                    </div>
+                                ) : pendingKill === session.name ? (
                                     <div className="tmux-row-confirm">
                                         <span>{t('servers.tmuxDialog.killConfirm', { name: session.name, interpolation: { escapeValue: false } })}</span>
                                         <Button text={t('servers.tmuxDialog.actions.confirmKill')} disabled={busyName !== null}
@@ -173,8 +240,10 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                                         </button>
                                         <div className="tmux-session-actions">
                                             <button className="tmux-icon-button"
+                                                    disabled={busyName !== null}
                                                     title={t('servers.tmuxDialog.actions.rename')}
-                                                    aria-label={t('servers.tmuxDialog.actions.rename')}>
+                                                    aria-label={t('servers.tmuxDialog.actions.rename')}
+                                                    onClick={() => startRename(session.name)}>
                                                 <Icon path={mdiPencil} size={0.7} />
                                             </button>
                                             <button className="tmux-icon-button"
@@ -187,6 +256,9 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                                         </div>
                                     </>
                                 )}
+                                {renaming === session.name && !canRename && (
+                                    <p className="tmux-hint">{t('servers.tmuxDialog.nameHint')}</p>
+                                )}
                             </li>
                         ))}
                     </ul>
@@ -195,6 +267,7 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                 <div className="tmux-new-session">
                     <input type="text" value={newName} maxLength={64}
                            placeholder={t('servers.tmuxDialog.newSessionPlaceholder')}
+                           disabled={busyName !== null}
                            onChange={(e) => setNewName(e.target.value)}
                            onKeyDown={(e) => { if (e.key === "Enter" && canCreate && busyName === null) onSelect(newName, true); }} />
                     <Button text={t('servers.tmuxDialog.actions.create')} disabled={!canCreate || busyName !== null}

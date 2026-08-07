@@ -1820,7 +1820,9 @@
         "rename": "Rename session",
         "kill": "End session",
         "confirmKill": "End",
-        "cancelKill": "Cancel"
+        "cancelKill": "Cancel",
+        "confirmRename": "Save",
+        "cancelRename": "Discard"
       }
     },
     "sshConfigImport": {
