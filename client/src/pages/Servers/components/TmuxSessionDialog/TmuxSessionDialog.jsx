@@ -73,8 +73,12 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
 
     // Cleared when the dialog opens, not on every load: a failed action triggers a
     // reload, and its message is exactly what the user needs to read afterwards.
+    // busyName belongs here too: it is set synchronously when an action starts but
+    // only cleared in that action's own `finally`, so without this reset a kill or
+    // rename left in flight on one host would leave the picker for the next host
+    // opened - however unrelated - locked until that old request finally settles.
     useEffect(() => {
-        if (isOpen) { setNotice(null); setNewName(""); }
+        if (isOpen) { setNotice(null); setNewName(""); setBusyName(null); }
     }, [isOpen]);
 
     // Deliberately not named `query`: the fetch effect already has a local of that
@@ -132,7 +136,11 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
             if (entryIdRef.current !== requestEntryId) return;
             failAction(error);
         } finally {
-            setBusyName(null);
+            // A stale settle must not clear a lock it does not own: the dialog resets
+            // busyName to null on reopen, so by the time this fires for a host that is
+            // no longer on screen, a fresh action for the new host may already hold the
+            // lock. Only the request that actually holds it is allowed to release it.
+            if (entryIdRef.current === requestEntryId) setBusyName(null);
         }
     };
 
@@ -175,7 +183,8 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
             if (entryIdRef.current !== requestEntryId) return;
             failAction(error);
         } finally {
-            setBusyName(null);
+            // See killSession: only the request that still owns the lock may clear it.
+            if (entryIdRef.current === requestEntryId) setBusyName(null);
         }
     };
 
@@ -205,7 +214,20 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                                                onChange={(e) => setRenameValue(e.target.value)}
                                                onKeyDown={(e) => {
                                                    if (e.key === "Enter") renameSession(session.name);
-                                                   if (e.key === "Escape") setRenaming(null);
+                                                   if (e.key === "Escape") {
+                                                       // DialogProvider closes the whole dialog on Escape via a
+                                                       // native document-level keydown listener (see Dialog.jsx).
+                                                       // React 19 delegates events at the portal container
+                                                       // (document.body, which is where this dialog is portalled),
+                                                       // and that delegated dispatch runs before the event reaches
+                                                       // `document` in the real DOM bubble order. stopPropagation()
+                                                       // here therefore stops the native event before it ever
+                                                       // reaches DialogProvider's listener, so only the rename is
+                                                       // cancelled and the dialog - and the connection attempt
+                                                       // behind it - stays open.
+                                                       e.stopPropagation();
+                                                       setRenaming(null);
+                                                   }
                                                }} />
                                         <button className="tmux-icon-button" disabled={busyName !== null || !canRename}
                                                 title={t('servers.tmuxDialog.actions.confirmRename')}
