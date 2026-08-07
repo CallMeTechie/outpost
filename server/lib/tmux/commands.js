@@ -66,6 +66,25 @@ const buildSendKeysCommand = (name, command) => `tmux send-keys -t ${quote(`=${n
 const buildAttachCommand = (name) => `tmux new -A -s ${quote(name)}`;
 
 /**
+ * kill-session and rename-session take a target-SESSION, so the exact-match
+ * prefix needs no pane component — unlike send-keys, which takes a target-pane
+ * and needs the trailing colon.
+ *
+ * The prefix itself is not optional: measured against tmux 3.5a,
+ * `kill-session -t 'works'` killed the session `workshop`, because an
+ * unambiguous prefix is enough for tmux to resolve a target.
+ */
+const buildKillCommand = (name) => `tmux kill-session -t ${quote(`=${name}`)}`;
+
+/**
+ * The -- separator ends option parsing. The create name rule allows a leading
+ * dash, and without -- tmux reads '-neu' as an option bundle and fails with
+ * "unknown flag -n".
+ */
+const buildRenameCommand = (name, newName) =>
+    `tmux rename-session -t ${quote(`=${name}`)} -- ${quote(newName)}`;
+
+/**
  * The real guard when attaching: only names the server itself just listed are
  * accepted, which takes the value out of the client's hands. Exact comparison,
  * never a prefix — tmux would happily prefix-match, this must not.
@@ -77,4 +96,5 @@ const isAllowedSession = (name, sessions) =>
 module.exports = {
     LIST_FORMAT, parseSessions, quote, isValidCreateName, isValidAttachName, isAllowedSession,
     buildListCommand, buildProbeCommand, buildSendKeysCommand, buildAttachCommand,
+    buildKillCommand, buildRenameCommand,
 };

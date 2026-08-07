@@ -3,6 +3,7 @@ const assert = require("node:assert");
 const {
     parseSessions, LIST_FORMAT, quote, isValidCreateName, isValidAttachName, isAllowedSession,
     buildListCommand, buildProbeCommand, buildSendKeysCommand, buildAttachCommand,
+    buildKillCommand, buildRenameCommand,
 } = require("../tmux/commands");
 
 test("LIST_FORMAT requests exactly the four fields the parser expects", () => {
@@ -142,13 +143,30 @@ test("buildAttachCommand uses -A and needs no exact-match prefix", () => {
     assert.ok(!buildAttachCommand("work").includes("=work"));
 });
 
-test("every -t argument carries the exact-match prefix and, for a pane target, a trailing colon", () => {
-    const commands = [buildListCommand(), buildProbeCommand("x"), buildSendKeysCommand("x", "y"), buildAttachCommand("x")];
-    for (const command of commands) {
-        for (const match of command.matchAll(/-t '([^']*)/g)) {
-            assert.strictEqual(match[1][0], "=", `missing = prefix in: ${command}`);
-            assert.ok(match[1].endsWith(":"), `pane target must end with ':' in: ${command}`);
-        }
+test("every -t argument carries the exact-match prefix, and only send-keys uses a pane target", () => {
+    // send-keys takes a target-PANE and needs the trailing colon; kill-session
+    // and rename-session take a target-SESSION and must not have it. Getting
+    // this wrong is silent: the command fails with "can't find pane".
+    const paneTargets = [buildSendKeysCommand("x", "y")];
+    const sessionTargets = [buildKillCommand("x"), buildRenameCommand("x", "z")];
+    const noTargets = [buildListCommand(), buildProbeCommand("x"), buildAttachCommand("x")];
+
+    for (const command of [...paneTargets, ...sessionTargets]) {
+        const match = command.match(/-t '([^']*)/);
+        assert.ok(match, `no -t argument in: ${command}`);
+        assert.strictEqual(match[1][0], "=", `missing = prefix in: ${command}`);
+    }
+
+    for (const command of paneTargets) {
+        assert.ok(command.includes("-t '=x:'"), `pane target needs a trailing colon: ${command}`);
+    }
+
+    for (const command of sessionTargets) {
+        assert.ok(!/-t '=[^']*:'/.test(command), `session target must not have a colon: ${command}`);
+    }
+
+    for (const command of noTargets) {
+        assert.ok(!command.includes("-t "), `unexpected -t argument in: ${command}`);
     }
 });
 
@@ -179,4 +197,47 @@ test("isAllowedSession does not accept a prefix or a substring", () => {
 test("isAllowedSession rejects everything when the list is empty", () => {
     assert.strictEqual(isAllowedSession("work", []), false);
     assert.strictEqual(isAllowedSession("work", undefined), false);
+});
+
+test("buildKillCommand targets the session exactly, without a colon", () => {
+    assert.strictEqual(buildKillCommand("work"), "tmux kill-session -t '=work'");
+});
+
+test("buildRenameCommand separates options from the new name", () => {
+    assert.strictEqual(
+        buildRenameCommand("alt", "neu"),
+        "tmux rename-session -t '=alt' -- 'neu'",
+    );
+});
+
+test("buildRenameCommand survives a leading dash in the new name", () => {
+    // Without the -- separator tmux reads '-neu' as the option bundle -n -e -u
+    // and fails with "unknown flag -n". The name rule allows a leading dash.
+    assert.strictEqual(
+        buildRenameCommand("alt", "-neu"),
+        "tmux rename-session -t '=alt' -- '-neu'",
+    );
+});
+
+test("buildKillCommand cannot be broken out of with a single quote", () => {
+    assert.strictEqual(buildKillCommand("a'b"), "tmux kill-session -t '=a'\\''b'");
+});
+
+test("buildRenameCommand quotes both names", () => {
+    assert.strictEqual(
+        buildRenameCommand("a'b", "c'd"),
+        "tmux rename-session -t '=a'\\''b' -- 'c'\\''d'",
+    );
+});
+
+test("names with spaces and pipes stay intact", () => {
+    assert.strictEqual(buildKillCommand("mein projekt"), "tmux kill-session -t '=mein projekt'");
+    assert.strictEqual(buildKillCommand("build|test"), "tmux kill-session -t '=build|test'");
+});
+
+test("a slash in the name reaches the command untouched", () => {
+    // The whole reason the name travels as a query parameter rather than a path
+    // segment. If this ever fails, the addressing decision has been undone.
+    assert.strictEqual(buildKillCommand("a/b"), "tmux kill-session -t '=a/b'");
+    assert.strictEqual(buildRenameCommand("a/b", "neu"), "tmux rename-session -t '=a/b' -- 'neu'");
 });
