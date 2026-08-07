@@ -112,7 +112,7 @@ const killTmuxSession = async (accountId, entryId, identityId, name, ipAddress =
 
         await createAuditLog({
             accountId, organizationId: resolved.organizationId, action: AUDIT_ACTIONS.TMUX_KILL,
-            resource: RESOURCE_TYPES.ENTRY, resourceId: String(entryId),
+            resource: RESOURCE_TYPES.ENTRY, resourceId: entryId,
             details: { session: name }, ipAddress, userAgent,
         });
     } catch (error) {
@@ -143,7 +143,7 @@ const renameTmuxSession = async (accountId, entryId, identityId, name, newName, 
 
         await createAuditLog({
             accountId, organizationId: resolved.organizationId, action: AUDIT_ACTIONS.TMUX_RENAME,
-            resource: RESOURCE_TYPES.ENTRY, resourceId: String(entryId),
+            resource: RESOURCE_TYPES.ENTRY, resourceId: entryId,
             details: { session: name, newName }, ipAddress, userAgent,
         });
     } catch (error) {

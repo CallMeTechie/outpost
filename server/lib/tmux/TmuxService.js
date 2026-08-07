@@ -54,10 +54,14 @@ const listSessions = async (target) => {
     const exitCode = result.exitCode ?? (result.success ? 0 : 1);
     const stderr = result.stderr || "";
 
-    // An exec that never reached the host resolves with success=false and an
-    // unset exitCode of 0. Without this guard that reads as "no sessions",
-    // which the allowlist turns into "Unknown tmux session" for a session that
-    // exists, and the refreshed listing turns into an empty picker.
+    // Defence in depth, not the active guard: today the engine always sets
+    // exit_code to -1 on a transport failure (connect, auth, channel, exec), so
+    // this condition never actually matches - the exitCode !== 0 branch below is
+    // what catches those failures in practice. This guard exists for a
+    // hypothetical engine build that reports success=false without setting
+    // exitCode at all, which would otherwise read as exit 0 and, filtered
+    // through !stderr, as "no sessions" - the allowlist would then turn that
+    // into "Unknown tmux session" for a session that exists.
     if (result.success === false && result.exitCode === 0 && !stderr) {
         const error = new Error("tmux list-sessions did not run");
         error.code = "TMUX_FAILED";
@@ -77,7 +81,11 @@ const listSessions = async (target) => {
     }
 
     if (exitCode !== 0) {
-        const error = new Error(stderr.slice(0, 200) || "tmux list-sessions failed");
+        // stderr is empty on every transport failure (the engine never populates it
+        // for those); errorMessage is where the engine's own reason - "Failed to
+        // connect to SSH host", "SSH authentication failed" - actually lives, so it
+        // takes priority over the generic sentence.
+        const error = new Error(stderr.slice(0, 200) || result.errorMessage || "tmux list-sessions failed");
         error.code = "TMUX_FAILED";
         throw error;
     }
@@ -118,10 +126,14 @@ const sendKeys = async (target, name, command) => {
 const killSession = async (target, name) => {
     const result = await execWithTimeout(target, buildKillCommand(name), "kill");
 
-    // exitCode is a FlatBuffers int32 and reads 0 when the engine never set it,
-    // so a command that failed to reach the host would look like a clean exit.
-    // For a destructive action that is the worst possible misreading: the user
-    // would be told the session is gone while it is still running.
+    // Defence in depth, not the active guard: today the engine always sets
+    // exit_code to -1 on a transport failure (connect, auth, channel, exec), so
+    // this condition never actually matches - the exitCode !== 0 branch below is
+    // what catches those failures in practice. This guard exists for a
+    // hypothetical engine build that reports success=false without setting
+    // exitCode at all, which would otherwise read as a clean exit. For a
+    // destructive action that is the worst possible misreading: the user would
+    // be told the session is gone while it is still running.
     if (result.success === false && result.exitCode === 0) {
         const error = new Error(`tmux kill-session did not run for session "${name}"`);
         error.code = "TMUX_FAILED";
@@ -131,8 +143,12 @@ const killSession = async (target, name) => {
     const exitCode = result.exitCode ?? (result.success ? 0 : 1);
 
     if (exitCode !== 0) {
+        // stderr is empty on every transport failure (the engine never populates it
+        // for those); errorMessage is where the engine's own reason - "Failed to
+        // connect to SSH host", "SSH authentication failed" - actually lives, so it
+        // takes priority over the generic sentence.
         const stderr = (result.stderr || "").slice(0, 200);
-        const error = new Error(stderr || `tmux kill-session failed for session "${name}"`);
+        const error = new Error(stderr || result.errorMessage || `tmux kill-session failed for session "${name}"`);
         error.code = "TMUX_FAILED";
         throw error;
     }
@@ -147,7 +163,10 @@ const killSession = async (target, name) => {
 const renameSession = async (target, name, newName) => {
     const result = await execWithTimeout(target, buildRenameCommand(name, newName), "rename");
 
-    // Same reasoning as killSession: an unset exitCode reads as 0.
+    // Same reasoning as killSession: this is defence in depth for a hypothetical
+    // engine that leaves exitCode unset on a transport failure. Today the engine
+    // always reports -1 for those, so this never actually matches and the
+    // exitCode !== 0 branch below is what does the real work.
     if (result.success === false && result.exitCode === 0) {
         const error = new Error(`tmux rename-session did not run for session "${name}"`);
         error.code = "TMUX_FAILED";
@@ -157,8 +176,13 @@ const renameSession = async (target, name, newName) => {
     const exitCode = result.exitCode ?? (result.success ? 0 : 1);
 
     if (exitCode !== 0) {
+        // stderr is empty on every transport failure (the engine never populates it
+        // for those); errorMessage is where the engine's own reason - "Failed to
+        // connect to SSH host", "SSH authentication failed" - actually lives, so it
+        // takes priority over the generic sentence. Duplicate-name detection stays
+        // keyed on stderr alone: that text comes from tmux itself, not the engine.
         const stderr = (result.stderr || "").slice(0, 200);
-        const error = new Error(stderr || `tmux rename-session failed for session "${name}"`);
+        const error = new Error(stderr || result.errorMessage || `tmux rename-session failed for session "${name}"`);
         error.code = /duplicate session/i.test(stderr) ? "TMUX_DUPLICATE" : "TMUX_FAILED";
         throw error;
     }
