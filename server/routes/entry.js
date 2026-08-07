@@ -2,7 +2,7 @@ const { Router } = require("express");
 const { createEntry, deleteEntry, editEntry, getEntry, listEntries, duplicateEntry, importSSHConfig, repositionEntry, getRecentConnections, wakeEntry } = require("../controllers/entry");
 const { createServerValidation, updateServerValidation, repositionServerValidation } = require("../validations/server");
 const { validateSchema } = require("../utils/schema");
-const { getTmuxSessions } = require("../controllers/tmux");
+const { getTmuxSessions, killTmuxSession, renameTmuxSession } = require("../controllers/tmux");
 
 const app = Router();
 
@@ -209,6 +209,76 @@ app.get("/:entryId/tmux", async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error("Error listing tmux sessions:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+/**
+ * DELETE /entries/{entryId}/tmux
+ * @summary Kill a tmux Session
+ * @description Ends a tmux session on an SSH entry. The session name is passed as a query parameter, not in the path, so names containing slashes survive proxies unchanged.
+ * @tags Entry
+ * @produces application/json
+ * @security BearerAuth
+ * @param {number} entryId.path.required - Entry ID
+ * @param {string} session.query.required - Session name
+ * @param {number} identityId.query - Identity to use
+ * @return {object} 200 - { available, sessions } or { available, refreshed: false }
+ */
+app.delete("/:entryId/tmux", async (req, res) => {
+    const entryId = parseInt(req.params.entryId, 10);
+    if (isNaN(entryId)) return res.status(400).json({ message: "Invalid entry ID" });
+
+    const session = req.query.session;
+    if (!session || typeof session !== "string") return res.status(400).json({ message: "Session name is required" });
+
+    const identityId = req.query.identityId ? parseInt(req.query.identityId, 10) : null;
+
+    try {
+        const ipAddress = req.ip || req.socket?.remoteAddress || "unknown";
+        const userAgent = req.headers["user-agent"] || "unknown";
+        const result = await killTmuxSession(req.user.id, entryId, identityId, session, ipAddress, userAgent);
+        if (result?.code) return res.status(result.code).json({ message: result.message });
+        res.json(result);
+    } catch (error) {
+        console.error("Error killing tmux session:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+/**
+ * PATCH /entries/{entryId}/tmux
+ * @summary Rename a tmux Session
+ * @description Renames a tmux session on an SSH entry.
+ * @tags Entry
+ * @produces application/json
+ * @security BearerAuth
+ * @param {number} entryId.path.required - Entry ID
+ * @param {string} session.query.required - Current session name
+ * @param {number} identityId.query - Identity to use
+ * @param {object} request.body.required - New name
+ * @return {object} 200 - { available, sessions } or { available, refreshed: false }
+ */
+app.patch("/:entryId/tmux", async (req, res) => {
+    const entryId = parseInt(req.params.entryId, 10);
+    if (isNaN(entryId)) return res.status(400).json({ message: "Invalid entry ID" });
+
+    const session = req.query.session;
+    if (!session || typeof session !== "string") return res.status(400).json({ message: "Session name is required" });
+
+    const { name } = req.body || {};
+    if (!name || typeof name !== "string") return res.status(400).json({ message: "New name is required" });
+
+    const identityId = req.query.identityId ? parseInt(req.query.identityId, 10) : null;
+
+    try {
+        const ipAddress = req.ip || req.socket?.remoteAddress || "unknown";
+        const userAgent = req.headers["user-agent"] || "unknown";
+        const result = await renameTmuxSession(req.user.id, entryId, identityId, session, name, ipAddress, userAgent);
+        if (result?.code) return res.status(result.code).json({ message: result.message });
+        res.json(result);
+    } catch (error) {
+        console.error("Error renaming tmux session:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 });

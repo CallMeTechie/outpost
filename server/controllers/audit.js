@@ -30,6 +30,8 @@ const AUDIT_ACTIONS = {
     RDP_CONNECT: "entry.rdp_connect",
     VNC_CONNECT: "entry.vnc_connect",
     DEMO_CONNECT: "entry.demo_connect",
+    TMUX_KILL: "entry.tmux_kill",
+    TMUX_RENAME: "entry.tmux_rename",
 
     FILE_CREATE: "file.create",
     FILE_UPLOAD: "file.upload",
@@ -79,6 +81,8 @@ const ACTION_LABELS = {
     "entry.rdp_connect": "RDP connection",
     "entry.vnc_connect": "VNC connection",
     "entry.demo_connect": "Demo connection",
+    "entry.tmux_kill": "Ended tmux session",
+    "entry.tmux_rename": "Renamed tmux session",
 
     "file.create": "File created",
     "file.upload": "File uploaded",
