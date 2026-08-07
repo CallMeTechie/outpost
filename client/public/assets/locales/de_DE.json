@@ -2078,10 +2078,18 @@
       "windows_other": "{{count}} Fenster",
       "attachedLabel": "aktiv",
       "notInstalled": "Auf diesem Host ist tmux nicht installiert. Es wird eine normale Shell geöffnet.",
+      "killConfirm": "„{{name}}\" und alles, was darin läuft, beenden?",
+      "refreshFailed": "Aktion ausgeführt, aber die Liste konnte nicht aufgefrischt werden.",
       "actions": {
         "cancel": "Abbrechen",
         "create": "Anlegen",
-        "connectRaw": "Ohne tmux verbinden"
+        "connectRaw": "Ohne tmux verbinden",
+        "rename": "Session umbenennen",
+        "kill": "Session beenden",
+        "confirmKill": "Beenden",
+        "cancelKill": "Abbrechen",
+        "confirmRename": "Speichern",
+        "cancelRename": "Verwerfen"
       }
     },
     "connectionFailed": "Verbindung fehlgeschlagen: {{message}}",
