@@ -113,14 +113,27 @@ test("buildProbeCommand creates a detached session", () => {
 test("buildSendKeysCommand uses the exact-match prefix and a -- separator", () => {
     assert.strictEqual(
         buildSendKeysCommand("work", "docker compose up -d"),
-        "tmux send-keys -t '=work' -- 'docker compose up -d' Enter",
+        "tmux send-keys -t '=work:' -- 'docker compose up -d' Enter",
     );
 });
 
 test("buildSendKeysCommand cannot be broken out of with a single quote", () => {
     assert.strictEqual(
         buildSendKeysCommand("a'b", "echo 'hi'"),
-        "tmux send-keys -t '=a'\\''b' -- 'echo '\\''hi'\\''' Enter",
+        "tmux send-keys -t '=a'\\''b:' -- 'echo '\\''hi'\\''' Enter",
+    );
+});
+
+/**
+ * `send-keys -t` targets a pane, not a session: unlike `has-session -t`,
+ * "=<name>" alone does not resolve, because there is no pane component.
+ * The trailing ":" selects that session's current window/pane instead of
+ * hardcoding window/pane indices, which differ per host (base-index 0 vs 1).
+ */
+test("buildSendKeysCommand appends a trailing colon because -t is a pane target, not a session target", () => {
+    assert.strictEqual(
+        buildSendKeysCommand("nx-neu", "echo NEXTERM_OK"),
+        "tmux send-keys -t '=nx-neu:' -- 'echo NEXTERM_OK' Enter",
     );
 });
 
@@ -129,11 +142,12 @@ test("buildAttachCommand uses -A and needs no exact-match prefix", () => {
     assert.ok(!buildAttachCommand("work").includes("=work"));
 });
 
-test("every -t argument carries the exact-match prefix", () => {
+test("every -t argument carries the exact-match prefix and, for a pane target, a trailing colon", () => {
     const commands = [buildListCommand(), buildProbeCommand("x"), buildSendKeysCommand("x", "y"), buildAttachCommand("x")];
     for (const command of commands) {
         for (const match of command.matchAll(/-t '([^']*)/g)) {
             assert.strictEqual(match[1][0], "=", `missing = prefix in: ${command}`);
+            assert.ok(match[1].endsWith(":"), `pane target must end with ':' in: ${command}`);
         }
     }
 });

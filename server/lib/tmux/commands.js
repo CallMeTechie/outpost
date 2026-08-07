@@ -56,7 +56,13 @@ const isValidAttachName = (name) =>
 
 const buildListCommand = () => `tmux list-sessions -F ${quote(LIST_FORMAT)}`;
 const buildProbeCommand = (name) => `tmux new-session -d -s ${quote(name)}`;
-const buildSendKeysCommand = (name, command) => `tmux send-keys -t ${quote(`=${name}`)} -- ${quote(command)} Enter`;
+/**
+ * Unlike `has-session -t`, the `-t` on `send-keys` is a target-*pane*, not a
+ * target-session: `=<name>` alone does not resolve. Appending ":" selects
+ * that session's current window and pane without hardcoding window/pane
+ * indices (which are configurable per host, e.g. base-index 0 vs 1).
+ */
+const buildSendKeysCommand = (name, command) => `tmux send-keys -t ${quote(`=${name}:`)} -- ${quote(command)} Enter`;
 const buildAttachCommand = (name) => `tmux new -A -s ${quote(name)}`;
 
 /**
