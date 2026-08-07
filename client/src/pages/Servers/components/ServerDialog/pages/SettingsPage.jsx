@@ -256,7 +256,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
             )}
 
             {showJumpHosts && (
-                <div className="settings-toggle">
+                <div className="settings-toggle settings-field">
                     <div className="settings-toggle-info">
                         <span className="settings-toggle-label">
                             <Icon path={mdiConsoleLine} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />

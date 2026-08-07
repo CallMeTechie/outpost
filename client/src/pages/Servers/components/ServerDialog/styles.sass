@@ -449,17 +449,27 @@
         font-size: 0.8rem
         color: colors.$subtext
 
+    // A text field needs the whole row, unlike a toggle: side by side it would
+    // squeeze the label and description into a narrow column.
+    &.settings-field
+      flex-direction: column
+      align-items: stretch
+      gap: 0.6rem
+
     .settings-command-input
-      padding: 0.8rem
-      min-width: 16rem
-      flex: 1
+      width: 100%
+      padding: 0.6rem 0.75rem
       border: 1px solid colors.$gray
       background-color: colors.$lighter-background
       color: colors.$white
       border-radius: 0.5rem
-      font-size: 14pt
+      font-size: 0.95rem
+      font-family: inherit
       outline: none
       transition: border-color 0.1s ease, background-color 0.1s ease
+
+      &::placeholder
+        color: colors.$subtext
 
       &:focus
         border: 1px solid colors.$primary
