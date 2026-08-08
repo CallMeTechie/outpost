@@ -136,11 +136,9 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
             if (entryIdRef.current !== requestEntryId) return;
             failAction(error);
         } finally {
-            // A stale settle must not clear a lock it does not own: the dialog resets
-            // busyName to null on reopen, so by the time this fires for a host that is
-            // no longer on screen, a fresh action for the new host may already hold the
-            // lock. Only the request that actually holds it is allowed to release it.
-            if (entryIdRef.current === requestEntryId) setBusyName(null);
+            // Only the request that set the lock may clear it: if busyName is still
+            // the name we locked, release it; otherwise a newer request already replaced it.
+            setBusyName((prev) => (prev === name ? null : prev));
         }
     };
 
@@ -183,8 +181,9 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
             if (entryIdRef.current !== requestEntryId) return;
             failAction(error);
         } finally {
-            // See killSession: only the request that still owns the lock may clear it.
-            if (entryIdRef.current === requestEntryId) setBusyName(null);
+            // Only the request that set the lock may clear it: if busyName is still
+            // the name we locked, release it; otherwise a newer request already replaced it.
+            setBusyName((prev) => (prev === name ? null : prev));
         }
     };
 
