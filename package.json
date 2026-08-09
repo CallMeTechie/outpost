@@ -54,7 +54,7 @@
     "vitepress-openapi": "^0.2.2"
   },
   "scripts": {
-    "test": "node --test \"server/lib/__tests__/*.test.js\"",
+    "test": "node --test \"server/lib/__tests__/*.test.js\" \"client/src/**/__tests__/*.test.js\"",
     "lint": "eslint server scripts",
     "dev:server": "nodemon --ignore docs --ignore vendor --ignore client --ignore mobile --ignore data server/index.js",
     "dev:client": "cd client && yarn run dev",
