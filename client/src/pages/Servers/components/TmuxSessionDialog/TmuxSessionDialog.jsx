@@ -6,9 +6,27 @@ import Icon from "@mdi/react";
 import { mdiPencil, mdiTrashCan, mdiCheck, mdiClose } from "@mdi/js";
 import { getRequest, deleteRequest, patchRequest } from "@/common/utils/RequestUtil.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
+import TmuxWindowView, { displayName } from "./TmuxWindowView.jsx";
 import "./styles.sass";
 
 const CREATE_NAME_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+
+/**
+ * The window count as a 2x2 grid: four slots, filled with as many as are
+ * occupied. From five windows on, all four are full - the exact number then
+ * only lives in the title, which is accepted deliberately.
+ */
+const WindowGrid = ({ count }) => {
+    const slots = [[2.5, 2.5], [13, 2.5], [2.5, 13], [13, 13]];
+    return (
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            {slots.map(([x, y], i) => (
+                <rect key={i} x={x} y={y} width="8.5" height="8.5" rx="1.6"
+                      fill="currentColor" opacity={i < count ? 1 : 0.22} />
+            ))}
+        </svg>
+    );
+};
 
 const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, identityId }) => {
     const { t } = useTranslation();
@@ -21,6 +39,8 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
     const [busyName, setBusyName] = useState(null);
     const [notice, setNotice] = useState(null);   // { text, failed }
     const [reloadToken, setReloadToken] = useState(0);
+    // Name of the session whose windows are shown. null = session list.
+    const [openSession, setOpenSession] = useState(null);
 
     // onConnectRaw is a fresh closure from the parent on every render. Reaching it
     // through a ref keeps the fetch effect's dependency array honest (no re-fetch
@@ -80,6 +100,20 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
     useEffect(() => {
         if (isOpen) { setNotice(null); setNewName(""); setBusyName(null); }
     }, [isOpen]);
+
+    // The dialog is only ever hidden, never unmounted (see the comment above).
+    // Without this reset it keeps showing the window view of the previous host
+    // after a host switch - and if the new host happens to run a session with
+    // the same name, that would not even stand out: the user would see foreign
+    // windows and take them for the old ones.
+    //
+    // Deliberately NOT in the load effect: that one also depends on
+    // reloadToken, which every failed action increments. Placed there, the
+    // view would collapse on every failure - including one after which the
+    // user is meant to stay put (acceptance criterion 12).
+    useEffect(() => {
+        setOpenSession(null);
+    }, [entryId, isOpen]);
 
     // Deliberately not named `query`: the fetch effect already has a local of that
     // name. encodeURIComponent, never encodeURI — the latter leaves ? # and &
@@ -187,6 +221,18 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
         }
     };
 
+    const openedSession = openSession
+        ? state.sessions.find((s) => s.name === openSession) || null
+        : null;
+
+    // The session has vanished from underneath the open view - this is only
+    // noticed on the next request, there is no background check for it.
+    useEffect(() => {
+        if (!openSession || state.status !== "ready" || openedSession) return;
+        setNotice({ text: t('servers.tmuxDialog.sessionGone', { name: openSession }), failed: true });
+        setOpenSession(null);
+    }, [openSession, openedSession, state.status]);
+
     return (
         <DialogProvider open={isOpen} onClose={onClose}>
             <div className="tmux-session-dialog">
@@ -198,11 +244,45 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
 
                 {notice && <p className={notice.failed ? "tmux-status tmux-error" : "tmux-status tmux-notice"}>{notice.text}</p>}
 
-                {state.status === "ready" && state.sessions.length === 0 && (
+                {!openedSession && state.status === "ready" && state.sessions.length === 0 && (
                     <p className="tmux-status">{t('servers.tmuxDialog.empty')}</p>
                 )}
 
-                {state.status === "ready" && state.sessions.length > 0 && (
+                {openedSession && (
+                    <TmuxWindowView
+                        session={openedSession}
+                        entryId={entryId}
+                        identityId={identityId}
+                        onBack={() => setOpenSession(null)}
+                        onConnect={(windowId) => onSelect(openedSession.name, false, windowId)}
+                        onResult={applyResult}
+                        onFailure={failAction}
+                        onLocalRemove={(windowId) => setState((prev) => ({
+                            ...prev,
+                            sessions: prev.sessions.map((s) => (s.name === openedSession.name
+                                ? { ...s, windowList: (s.windowList || []).filter((w) => w.id !== windowId) }
+                                : s)),
+                        }))}
+                        onLocalRename={(windowId, name) => setState((prev) => ({
+                            ...prev,
+                            sessions: prev.sessions.map((s) => (s.name === openedSession.name
+                                ? { ...s, windowList: (s.windowList || []).map((w) => (w.id === windowId ? { ...w, name } : w)) }
+                                : s)),
+                        }))}
+                        onLastWindowClosed={(name) => {
+                            // Taken here rather than through the sessionGone
+                            // effect: that message is red, and the user just
+                            // ended this session themselves, on purpose.
+                            // Because openSession is already null by this
+                            // point, the generic effect no longer applies at
+                            // all.
+                            setOpenSession(null);
+                            setNotice({ text: t('servers.tmuxDialog.sessionEnded', { name: displayName(name) }), failed: false });
+                        }}
+                    />
+                )}
+
+                {!openedSession && state.status === "ready" && state.sessions.length > 0 && (
                     <ul className="tmux-session-list">
                         {state.sessions.map((session) => (
                             <li key={session.name} className="tmux-session-row">
@@ -255,11 +335,17 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                                                 onClick={() => onSelect(session.name, false)}>
                                             <span className="tmux-session-name">{session.name}</span>
                                             <span className="tmux-session-meta">
-                                                {t('servers.tmuxDialog.windows', { count: session.windows })}
-                                                {session.attached && ` · ${t('servers.tmuxDialog.attachedLabel')}`}
+                                                {session.attached && t('servers.tmuxDialog.attachedLabel')}
                                             </span>
                                         </button>
                                         <div className="tmux-session-actions">
+                                            <button className="tmux-icon-button tmux-window-grid"
+                                                    disabled={busyName !== null}
+                                                    title={t('servers.tmuxDialog.windowsOpen', { count: session.windows })}
+                                                    aria-label={t('servers.tmuxDialog.windowsOpen', { count: session.windows })}
+                                                    onClick={() => setOpenSession(session.name)}>
+                                                <WindowGrid count={Math.min(session.windows, 4)} />
+                                            </button>
                                             <button className="tmux-icon-button"
                                                     disabled={busyName !== null}
                                                     title={t('servers.tmuxDialog.actions.rename')}
@@ -285,16 +371,18 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                     </ul>
                 )}
 
-                <div className="tmux-new-session">
-                    <input type="text" value={newName} maxLength={64}
-                           placeholder={t('servers.tmuxDialog.newSessionPlaceholder')}
-                           disabled={busyName !== null}
-                           onChange={(e) => setNewName(e.target.value)}
-                           onKeyDown={(e) => { if (e.key === "Enter" && canCreate && busyName === null) onSelect(newName, true); }} />
-                    <Button text={t('servers.tmuxDialog.actions.create')} disabled={!canCreate || busyName !== null}
-                            onClick={() => onSelect(newName, true)} />
-                </div>
-                {newName.length > 0 && !canCreate && <p className="tmux-hint">{t('servers.tmuxDialog.nameHint')}</p>}
+                {!openedSession && (
+                    <div className="tmux-new-session">
+                        <input type="text" value={newName} maxLength={64}
+                               placeholder={t('servers.tmuxDialog.newSessionPlaceholder')}
+                               disabled={busyName !== null}
+                               onChange={(e) => setNewName(e.target.value)}
+                               onKeyDown={(e) => { if (e.key === "Enter" && canCreate && busyName === null) onSelect(newName, true); }} />
+                        <Button text={t('servers.tmuxDialog.actions.create')} disabled={!canCreate || busyName !== null}
+                                onClick={() => onSelect(newName, true)} />
+                    </div>
+                )}
+                {!openedSession && newName.length > 0 && !canCreate && <p className="tmux-hint">{t('servers.tmuxDialog.nameHint')}</p>}
 
                 <div className="dialog-actions">
                     <Button type="secondary" text={t('servers.tmuxDialog.actions.cancel')} onClick={onClose} />

@@ -1813,6 +1813,19 @@
       "notInstalled": "tmux is not installed on this host. Opening a normal shell.",
       "killConfirm": "End \"{{name}}\" and everything running in it?",
       "refreshFailed": "Action completed, but the list could not be refreshed.",
+      "windowsTitle": "Windows in \"{{name}}\"",
+      "windowsBack": "Back to sessions",
+      "windowsOpen_one": "1 window — show",
+      "windowsOpen_other": "{{count}} windows — show",
+      "windowsUnreadable": "The windows of this session could not be read. Try again.",
+      "windowUnnamed": "unnamed",
+      "windowPanes": "{{count}} panes in this window",
+      "windowNameHint": "1 to 64 characters, no control characters.",
+      "newWindowPlaceholder": "New window (name optional)",
+      "sessionGone": "The session \"{{name}}\" is no longer running.",
+      "sessionEnded": "The session \"{{name}}\" ended with its last window.",
+      "windowKillConfirm": "Someone is looking at this window right now. Close it?",
+      "windowKillLastConfirm": "This is the last window — closing it ends the session \"{{name}}\" completely.",
       "actions": {
         "cancel": "Cancel",
         "create": "Create",
@@ -1822,7 +1835,10 @@
         "confirmKill": "End",
         "cancelKill": "Cancel",
         "confirmRename": "Save",
-        "cancelRename": "Discard"
+        "cancelRename": "Discard",
+        "windowRename": "Rename window",
+        "windowKill": "Close window",
+        "windowCreate": "Create"
       }
     },
     "sshConfigImport": {

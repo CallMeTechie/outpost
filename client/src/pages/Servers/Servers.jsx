@@ -369,7 +369,7 @@ export const Servers = () => {
         );
     };
 
-    const handleTmuxSelected = (name, create) => finishTmuxConnection({ name, create });
+    const handleTmuxSelected = (name, create, windowId = null) => finishTmuxConnection({ name, create, windowId });
     const handleTmuxRaw = () => finishTmuxConnection(null);
 
     const handleTmuxCanceled = () => {

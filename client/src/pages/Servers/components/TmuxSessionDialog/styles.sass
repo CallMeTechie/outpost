@@ -139,6 +139,43 @@
     opacity: 0.7
     font-size: 0.85em
 
+  .tmux-crumb
+    display: flex
+    align-items: center
+    gap: 0.5rem
+    min-width: 0
+
+    h3
+      margin: 0
+      font-size: 1rem
+      font-weight: 600
+      overflow: hidden
+      text-overflow: ellipsis
+      white-space: nowrap
+
+  .tmux-window-index
+    display: inline-block
+    min-width: 1.2em
+    margin-right: 0.5rem
+    opacity: 0.55
+    font-variant-numeric: tabular-nums
+
+  .tmux-window-unnamed
+    opacity: 0.55
+
+  .tmux-window-panes
+    display: inline-flex
+    align-items: center
+    gap: 0.15rem
+    opacity: 0.75
+    margin-right: 0.4rem
+
+  .tmux-window-grid
+    color: colors.$subtext
+
+    &:hover
+      color: colors.$primary
+
   .dialog-actions
     display: flex
     gap: 10px
