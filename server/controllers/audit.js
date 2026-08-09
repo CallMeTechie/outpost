@@ -32,6 +32,8 @@ const AUDIT_ACTIONS = {
     DEMO_CONNECT: "entry.demo_connect",
     TMUX_KILL: "entry.tmux_kill",
     TMUX_RENAME: "entry.tmux_rename",
+    TMUX_WINDOW_KILL: "entry.tmux_window_kill",
+    TMUX_WINDOW_RENAME: "entry.tmux_window_rename",
 
     FILE_CREATE: "file.create",
     FILE_UPLOAD: "file.upload",
@@ -83,6 +85,8 @@ const ACTION_LABELS = {
     "entry.demo_connect": "Demo connection",
     "entry.tmux_kill": "Ended tmux session",
     "entry.tmux_rename": "Renamed tmux session",
+    "entry.tmux_window_kill": "Closed tmux window",
+    "entry.tmux_window_rename": "Renamed tmux window",
 
     "file.create": "File created",
     "file.upload": "File uploaded",

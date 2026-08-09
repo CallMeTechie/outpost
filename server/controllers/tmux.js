@@ -6,7 +6,10 @@ const { validateEntryAccess } = require("./entry");
 const controlPlane = require("../lib/controlPlane/ControlPlaneServer");
 const TmuxService = require("../lib/tmux/TmuxService");
 const { Permission } = require("../permissions/registry");
-const { isAllowedSession, isValidCreateName } = require("../lib/tmux/commands");
+const {
+    isAllowedSession, isValidCreateName,
+    isValidWindowId, isValidWindowName, isAllowedWindow, isValidAttachName,
+} = require("../lib/tmux/commands");
 const { createAuditLog, AUDIT_ACTIONS, RESOURCE_TYPES } = require("./audit");
 const logger = require("../utils/logger");
 
@@ -66,6 +69,35 @@ const requireListedSession = async (target, name) => {
     if (!listing.available) return { code: 400, message: "tmux is not available on this host" };
     if (!isAllowedSession(name, listing.sessions)) return { code: 400, message: "Unknown tmux session" };
     return { listing };
+};
+
+/**
+ * Strip control characters from a name before it reaches the log. A window
+ * name can contain them (unlike a session name), and log entries tend to
+ * get read in a real terminal sooner or later - there ANSI sequences would
+ * be executed rather than displayed.
+ */
+const forLog = (value) => String(value ?? "").replace(/[\x00-\x1F\x7F]/g, "");
+
+/**
+ * The allowlist for windows. Two layers: the shape of the id rules out
+ * injection, and the id must appear in a list the server itself fetched
+ * immediately before this call.
+ *
+ * What it does NOT do: verify that the list itself is correct. Protection
+ * against a forged record comes from the length-based parsing, not this
+ * check.
+ */
+const requireListedWindow = async (target, windowId) => {
+    if (!isValidWindowId(windowId)) return { code: 400, message: "Invalid tmux window id" };
+
+    const listing = await TmuxService.listSessions(target);
+    if (!listing.available) return { code: 400, message: "tmux is not available on this host" };
+    if (!isAllowedWindow(windowId, listing.sessions)) return { code: 400, message: "Unknown tmux window" };
+
+    const session = listing.sessions.find((s) => s.windowList.some((w) => w.id === windowId));
+    const window = session.windowList.find((w) => w.id === windowId);
+    return { listing, session, window };
 };
 
 /**
@@ -157,4 +189,94 @@ const renameTmuxSession = async (accountId, entryId, identityId, name, newName, 
     return await listAfterAction(resolved.target);
 };
 
-module.exports = { getTmuxSessions, killTmuxSession, renameTmuxSession };
+const killTmuxWindow = async (accountId, entryId, identityId, windowId, ipAddress = null, userAgent = null) => {
+    const resolved = await resolveTarget(accountId, entryId, identityId);
+    if (resolved.code) return resolved;
+
+    try {
+        const allowed = await requireListedWindow(resolved.target, windowId);
+        if (allowed.code) return allowed;
+
+        await TmuxService.killWindow(resolved.target, windowId);
+
+        await createAuditLog({
+            accountId, organizationId: resolved.organizationId, action: AUDIT_ACTIONS.TMUX_WINDOW_KILL,
+            resource: RESOURCE_TYPES.ENTRY, resourceId: entryId,
+            details: { window: windowId, name: forLog(allowed.window.name), session: forLog(allowed.session.name) },
+            ipAddress, userAgent,
+        });
+    } catch (error) {
+        // The window vanished between the listing and the kill. That is not a
+        // transport failure, so it must not be a 502.
+        if (error.code === "TMUX_FAILED" && /can'?t find window/i.test(error.message || "")) {
+            return { code: 400, message: "Unknown tmux window" };
+        }
+        return tmuxFailure(error, "tmux kill-window failed");
+    }
+
+    return await listAfterAction(resolved.target);
+};
+
+const renameTmuxWindow = async (accountId, entryId, identityId, windowId, newName, ipAddress = null, userAgent = null) => {
+    if (!isValidWindowName(newName)) {
+        return { code: 400, message: "Window names may be 1 to 64 characters and must not contain control characters" };
+    }
+
+    const resolved = await resolveTarget(accountId, entryId, identityId);
+    if (resolved.code) return resolved;
+
+    try {
+        const allowed = await requireListedWindow(resolved.target, windowId);
+        if (allowed.code) return allowed;
+
+        await TmuxService.renameWindow(resolved.target, windowId, newName);
+
+        await createAuditLog({
+            accountId, organizationId: resolved.organizationId, action: AUDIT_ACTIONS.TMUX_WINDOW_RENAME,
+            resource: RESOURCE_TYPES.ENTRY, resourceId: entryId,
+            details: { window: windowId, name: forLog(allowed.window.name), newName: forLog(newName), session: forLog(allowed.session.name) },
+            ipAddress, userAgent,
+        });
+    } catch (error) {
+        if (error.code === "TMUX_FAILED" && /can'?t find window/i.test(error.message || "")) {
+            return { code: 400, message: "Unknown tmux window" };
+        }
+        return tmuxFailure(error, "tmux rename-window failed");
+    }
+
+    return await listAfterAction(resolved.target);
+};
+
+/**
+ * Not logged: creating a window destroys nothing and changes nothing that
+ * already exists. Same reasoning that keeps creating a session from
+ * producing an entry.
+ */
+const createTmuxWindow = async (accountId, entryId, identityId, sessionName, name) => {
+    if (name !== null && !isValidWindowName(name)) {
+        return { code: 400, message: "Window names may be 1 to 64 characters and must not contain control characters" };
+    }
+    if (!isValidAttachName(sessionName)) return { code: 400, message: "Invalid tmux session name" };
+
+    const resolved = await resolveTarget(accountId, entryId, identityId);
+    if (resolved.code) return resolved;
+
+    try {
+        const allowed = await requireListedSession(resolved.target, sessionName);
+        if (allowed.code) return allowed;
+
+        await TmuxService.newWindow(resolved.target, sessionName, name);
+    } catch (error) {
+        if (error.code === "TMUX_FAILED" && /can'?t find session/i.test(error.message || "")) {
+            return { code: 400, message: "Unknown tmux session" };
+        }
+        return tmuxFailure(error, "tmux new-window failed");
+    }
+
+    return await listAfterAction(resolved.target);
+};
+
+module.exports = {
+    getTmuxSessions, killTmuxSession, renameTmuxSession,
+    killTmuxWindow, renameTmuxWindow, createTmuxWindow,
+};

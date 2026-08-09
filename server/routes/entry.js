@@ -2,7 +2,10 @@ const { Router } = require("express");
 const { createEntry, deleteEntry, editEntry, getEntry, listEntries, duplicateEntry, importSSHConfig, repositionEntry, getRecentConnections, wakeEntry } = require("../controllers/entry");
 const { createServerValidation, updateServerValidation, repositionServerValidation } = require("../validations/server");
 const { validateSchema } = require("../utils/schema");
-const { getTmuxSessions, killTmuxSession, renameTmuxSession } = require("../controllers/tmux");
+const {
+    getTmuxSessions, killTmuxSession, renameTmuxSession,
+    killTmuxWindow, renameTmuxWindow, createTmuxWindow,
+} = require("../controllers/tmux");
 
 const app = Router();
 
@@ -279,6 +282,116 @@ app.patch("/:entryId/tmux", async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error("Error renaming tmux session:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+/**
+ * POST /entries/{entryId}/tmux/windows
+ * @summary Create a tmux Window
+ * @description Opens a new window in a tmux session. The session name is passed as a query parameter, not in the path, so names containing slashes survive proxies unchanged.
+ * @tags Entry
+ * @produces application/json
+ * @security BearerAuth
+ * @param {number} entryId.path.required - Entry ID
+ * @param {string} session.query.required - Session name
+ * @param {number} identityId.query - Identity to use
+ * @param {object} request.body - Optional window name
+ * @return {object} 200 - { available, sessions } or { available, refreshed: false }
+ */
+app.post("/:entryId/tmux/windows", async (req, res) => {
+    const entryId = parseInt(req.params.entryId, 10);
+    if (isNaN(entryId)) return res.status(400).json({ message: "Invalid entry ID" });
+
+    const session = req.query.session;
+    if (!session || typeof session !== "string") return res.status(400).json({ message: "Session name is required" });
+
+    // No name at all is different from an empty name: without one the -n flag is
+    // dropped entirely and tmux picks its own default.
+    const rawName = (req.body || {}).name;
+    if (rawName !== undefined && typeof rawName !== "string") {
+        return res.status(400).json({ message: "Window name must be a string" });
+    }
+    const name = rawName === undefined || rawName === "" ? null : rawName;
+
+    const identityId = req.query.identityId ? parseInt(req.query.identityId, 10) : null;
+
+    try {
+        const result = await createTmuxWindow(req.user.id, entryId, identityId, session, name);
+        if (result?.code) return res.status(result.code).json({ message: result.message });
+        res.json(result);
+    } catch (error) {
+        console.error("Error creating tmux window:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+/**
+ * DELETE /entries/{entryId}/tmux/windows
+ * @summary Close a tmux Window
+ * @description Closes a window in a tmux session. Closing the last window of a session ends that session.
+ * @tags Entry
+ * @produces application/json
+ * @security BearerAuth
+ * @param {number} entryId.path.required - Entry ID
+ * @param {string} window.query.required - Window id, for example @19
+ * @param {number} identityId.query - Identity to use
+ * @return {object} 200 - { available, sessions } or { available, refreshed: false }
+ */
+app.delete("/:entryId/tmux/windows", async (req, res) => {
+    const entryId = parseInt(req.params.entryId, 10);
+    if (isNaN(entryId)) return res.status(400).json({ message: "Invalid entry ID" });
+
+    const window = req.query.window;
+    if (!window || typeof window !== "string") return res.status(400).json({ message: "Window id is required" });
+
+    const identityId = req.query.identityId ? parseInt(req.query.identityId, 10) : null;
+
+    try {
+        const ipAddress = req.ip || req.socket?.remoteAddress || "unknown";
+        const userAgent = req.headers["user-agent"] || "unknown";
+        const result = await killTmuxWindow(req.user.id, entryId, identityId, window, ipAddress, userAgent);
+        if (result?.code) return res.status(result.code).json({ message: result.message });
+        res.json(result);
+    } catch (error) {
+        console.error("Error closing tmux window:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+/**
+ * PATCH /entries/{entryId}/tmux/windows
+ * @summary Rename a tmux Window
+ * @description Renames a window in a tmux session.
+ * @tags Entry
+ * @produces application/json
+ * @security BearerAuth
+ * @param {number} entryId.path.required - Entry ID
+ * @param {string} window.query.required - Window id, for example @19
+ * @param {number} identityId.query - Identity to use
+ * @param {object} request.body.required - New name
+ * @return {object} 200 - { available, sessions } or { available, refreshed: false }
+ */
+app.patch("/:entryId/tmux/windows", async (req, res) => {
+    const entryId = parseInt(req.params.entryId, 10);
+    if (isNaN(entryId)) return res.status(400).json({ message: "Invalid entry ID" });
+
+    const window = req.query.window;
+    if (!window || typeof window !== "string") return res.status(400).json({ message: "Window id is required" });
+
+    const { name } = req.body || {};
+    if (!name || typeof name !== "string") return res.status(400).json({ message: "New name is required" });
+
+    const identityId = req.query.identityId ? parseInt(req.query.identityId, 10) : null;
+
+    try {
+        const ipAddress = req.ip || req.socket?.remoteAddress || "unknown";
+        const userAgent = req.headers["user-agent"] || "unknown";
+        const result = await renameTmuxWindow(req.user.id, entryId, identityId, window, name, ipAddress, userAgent);
+        if (result?.code) return res.status(result.code).json({ message: result.message });
+        res.json(result);
+    } catch (error) {
+        console.error("Error renaming tmux window:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 });
