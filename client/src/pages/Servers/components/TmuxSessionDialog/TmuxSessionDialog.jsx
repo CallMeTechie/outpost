@@ -50,22 +50,15 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
         onConnectRawRef.current = onConnectRaw;
     }, [onConnectRaw]);
 
-    // The dialog is only ever hidden, never unmounted (see the comment above),
-    // and its Cancel/close button is deliberately left enabled while a kill is
-    // in flight. That means a DELETE issued for one host can still resolve
-    // after the dialog has been closed and reopened for a different one.
-    // entryIdRef always holds the host currently on screen, so killSession can
-    // tell a fresh response from a stale one.
-    const entryIdRef = useRef(entryId);
-    useEffect(() => {
-        entryIdRef.current = entryId;
-    }, [entryId]);
-
     useEffect(() => {
         if (!isOpen || !entryId) return;
 
         let cancelled = false;
         setState({ status: "loading", sessions: [], error: null, available: true });
+        // Not made redundant by the remount: this effect also runs on
+        // reloadToken, which every failed action bumps. An open confirmation or
+        // a half-typed rename must not survive a reload whose list may have
+        // changed underneath it.
         setPendingKill(null);
         setRenaming(null);
 
@@ -90,30 +83,6 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
 
         return () => { cancelled = true; };
     }, [isOpen, entryId, identityId, reloadToken, sendToast, t]);
-
-    // Cleared when the dialog opens, not on every load: a failed action triggers a
-    // reload, and its message is exactly what the user needs to read afterwards.
-    // busyName belongs here too: it is set synchronously when an action starts but
-    // only cleared in that action's own `finally`, so without this reset a kill or
-    // rename left in flight on one host would leave the picker for the next host
-    // opened - however unrelated - locked until that old request finally settles.
-    useEffect(() => {
-        if (isOpen) { setNotice(null); setNewName(""); setBusyName(null); }
-    }, [isOpen]);
-
-    // The dialog is only ever hidden, never unmounted (see the comment above).
-    // Without this reset it keeps showing the window view of the previous host
-    // after a host switch - and if the new host happens to run a session with
-    // the same name, that would not even stand out: the user would see foreign
-    // windows and take them for the old ones.
-    //
-    // Deliberately NOT in the load effect: that one also depends on
-    // reloadToken, which every failed action increments. Placed there, the
-    // view would collapse on every failure - including one after which the
-    // user is meant to stay put (acceptance criterion 12).
-    useEffect(() => {
-        setOpenSession(null);
-    }, [entryId, isOpen]);
 
     // Deliberately not named `query`: the fetch effect already has a local of that
     // name. encodeURIComponent, never encodeURI — the latter leaves ? # and &
@@ -154,21 +123,14 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
         if (busyName !== null) return;
         setBusyName(name);
         setPendingKill(null);
-        // Captured now, compared against entryIdRef.current once the request
-        // settles: if the dialog has since been reopened for another host, this
-        // response belongs to a host that is no longer on screen and must not
-        // touch state, notice, or the local row removal below.
-        const requestEntryId = entryId;
         try {
             const result = await deleteRequest(`/entries/${entryId}/tmux${actionQuery(name)}`);
-            if (entryIdRef.current !== requestEntryId) return;
             if (!applyResult(result)) {
                 // The kill happened; only the refresh failed. Drop the row locally
                 // so the user does not act on it a second time.
                 setState((prev) => ({ ...prev, sessions: prev.sessions.filter((s) => s.name !== name) }));
             }
         } catch (error) {
-            if (entryIdRef.current !== requestEntryId) return;
             failAction(error);
         } finally {
             // Only the request that set the lock may clear it: if busyName is still
@@ -197,14 +159,8 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
         if (nextName === name) { setRenaming(null); return; }
 
         setBusyName(name);
-        // Captured now, compared against entryIdRef.current once the request
-        // settles: if the dialog has since been reopened for another host, this
-        // response belongs to a host that is no longer on screen and must not
-        // touch state, notice, or the local row rename below.
-        const requestEntryId = entryId;
         try {
             const result = await patchRequest(`/entries/${entryId}/tmux${actionQuery(name)}`, { name: nextName });
-            if (entryIdRef.current !== requestEntryId) return;
             setRenaming(null);
             if (!applyResult(result)) {
                 setState((prev) => ({
@@ -213,7 +169,6 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                 }));
             }
         } catch (error) {
-            if (entryIdRef.current !== requestEntryId) return;
             failAction(error);
         } finally {
             // Only the request that set the lock may clear it: if busyName is still
