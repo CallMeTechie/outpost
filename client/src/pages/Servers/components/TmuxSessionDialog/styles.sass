@@ -20,6 +20,34 @@
     align-items: center
     gap: 0.5rem
     flex: 1
+    padding: 0.4rem 0.5rem 0.4rem 0.7rem
+    border: 1px solid color-mix(in srgb, var(--error-color, #d9534f) 30%, transparent)
+    background: color-mix(in srgb, var(--error-color, #d9534f) 8%, transparent)
+    border-radius: 0.5rem
+
+    span
+      flex: 1
+      min-width: 0
+      font-size: 0.85rem
+      line-height: 1.35
+
+    &.is-soft
+      border-color: color-mix(in srgb, colors.$primary 30%, transparent)
+      background: color-mix(in srgb, colors.$primary 8%, transparent)
+
+  .tmux-confirm-yes
+    color: var(--error-color, #d9534f)
+
+    &:hover
+      background-color: color-mix(in srgb, var(--error-color, #d9534f) 18%, transparent)
+      color: var(--error-color, #d9534f)
+
+  .tmux-row-confirm.is-soft .tmux-confirm-yes
+    color: colors.$primary
+
+    &:hover
+      background-color: color-mix(in srgb, colors.$primary 18%, transparent)
+      color: colors.$primary
 
   .tmux-row-rename
     display: flex

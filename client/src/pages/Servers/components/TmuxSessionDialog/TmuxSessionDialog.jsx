@@ -118,10 +118,11 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
     // Deliberately not named `query`: the fetch effect already has a local of that
     // name. encodeURIComponent, never encodeURI — the latter leaves ? # and &
     // untouched, and tmux allows all three in session names.
-    const actionQuery = (name) => {
+    const paramQuery = (param, value) => {
         const identityPart = identityId ? `identityId=${identityId}&` : "";
-        return `?${identityPart}session=${encodeURIComponent(name)}`;
+        return `?${identityPart}${param}=${encodeURIComponent(value)}`;
     };
+    const actionQuery = (name) => paramQuery("session", name);
 
     const applyResult = (result) => {
         // The list in hand is new; a confirmation or a half-typed rename from the
