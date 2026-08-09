@@ -2,12 +2,26 @@ name: Fork Image
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag to publish. Defaults to a throwaway tag so a manual build of a lower stack layer cannot overwrite the deployed :tmux image."
+        required: false
+        default: test
   push:
-    branches: [feat/tmux-sessions, feat/tmux-session-management, feat/tmux-window-management, chore/lint-gate, refactor/tmux-dialog-remount]
+    # Only the tip of the fork stack. Every layer below it is an ancestor, so
+    # a push there would publish an older tree under the same mutable tag.
+    branches: [refactor/tmux-dialog-remount]
+
+# A stack rebase force-pushes several layers at once, and the older layers
+# still carry their own copy of this file with their own branch listed. Same
+# tag, same group: the last one started wins instead of the last one finished.
+concurrency:
+  group: fork-image-${{ github.event.inputs.tag || 'tmux' }}
+  cancel-in-progress: true
 
 env:
   REGISTRY: ghcr.io
-  TAG: tmux
+  TAG: ${{ github.event.inputs.tag || 'tmux' }}
 
 jobs:
   components:
