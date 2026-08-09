@@ -100,4 +100,4 @@ jobs:
       - name: Lint the changed files
         if: steps.changed.outputs.any == 'true'
         working-directory: client
-        run: xargs -0 -a "$RUNNER_TEMP/changed-client-files" -- npx eslint --
+        run: xargs -0 -a "$RUNNER_TEMP/changed-client-files" -- node_modules/.bin/eslint --
