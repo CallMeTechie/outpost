@@ -1807,8 +1807,6 @@
       "empty": "No session is running on this host yet.",
       "newSessionPlaceholder": "Session name",
       "nameHint": "Letters, digits, underscore and dash only, up to 64 characters.",
-      "windows_one": "{{count}} window",
-      "windows_other": "{{count}} windows",
       "attachedLabel": "active",
       "notInstalled": "tmux is not installed on this host. Opening a normal shell.",
       "killConfirm": "End \"{{name}}\" and everything running in it?",
