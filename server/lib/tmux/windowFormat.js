@@ -67,8 +67,11 @@ const parseByLength = (buf) => {
         const count = FIXED_FIELDS[type];
 
         if (!count || head[1] !== "|") {
-            // A welcome banner may precede the first record.
-            if (records.length === 0) { pos = headEnd + 1; continue; }
+            // Banner before the first record, or a blank line anywhere: neither can
+            // forge a record, so tolerating them costs nothing. Anything else after
+            // the first record means the output no longer lines up and the rest
+            // would be guesswork.
+            if (records.length === 0 || headEnd === pos) { pos = headEnd + 1; continue; }
             return unreadable("unexpected line");
         }
 

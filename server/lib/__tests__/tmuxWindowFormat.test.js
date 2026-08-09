@@ -120,6 +120,18 @@ test("Begruessungstext vor dem ersten Datensatz wird verworfen", () => {
     assert.strictEqual(out.sessions.length, 1);
 });
 
+test("a trailing blank line does not make the listing unreadable", () => {
+    // A blank line, wherever it occurs, cannot forge a record - unlike stray
+    // text it carries no risk, so tolerating it costs nothing in strictness.
+    // Before this fix it hit the "unexpected line" branch and turned the
+    // entire listing unreadable.
+    const out = parseListing("S|$1|1|100|0|6|arbeit\nW|$1|@1|1|1|1|4|bash\n\n");
+
+    assert.strictEqual(out.ok, true);
+    assert.strictEqual(out.sessions[0].name, "arbeit");
+    assert.strictEqual(out.sessions[0].windowList[0].name, "bash");
+});
+
 test("leere Ausgabe ergibt eine leere Liste", () => {
     assert.deepStrictEqual(parseListing(""), { ok: true, sessions: [], fallbackUsed: false });
     assert.deepStrictEqual(parseListing(null), { ok: true, sessions: [], fallbackUsed: false });
