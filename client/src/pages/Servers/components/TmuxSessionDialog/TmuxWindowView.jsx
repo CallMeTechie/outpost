@@ -150,6 +150,10 @@ const TmuxWindowView = ({ session, entryId, identityId, onBack, onConnect,
                 `/entries/${entryId}/tmux/windows${query("session", session.name)}`, body);
             if (entryIdRef.current !== requestEntryId) return;
             setNewName("");
+            // Unlike kill/rename there is no local follow-up here if the refresh
+            // failed: the response carries no id for the new window, so there is
+            // no row to append or amend by hand. onResult itself already raises
+            // the refreshFailed notice for that case (see applyResult).
             onResult(result);
         } catch (error) {
             if (entryIdRef.current !== requestEntryId) return;
