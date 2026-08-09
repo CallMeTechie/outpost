@@ -60,4 +60,12 @@ export default [
       }],
     },
   },
+  {
+    // vite.config.js and this file itself run under Node, not in the browser -
+    // without node globals they report __dirname as undefined.
+    files: ['*.js'],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+  },
 ]
