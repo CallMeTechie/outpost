@@ -640,7 +640,7 @@ export const Servers = () => {
                                getSessionError={getSessionError}
                                setOpenFileEditors={setOpenFileEditors}
                                openTerminalFromFileManager={openTerminalFromFileManager} />}
-            {openFileEditors.map((editor, index) => (
+            {openFileEditors.map((editor) => (
                 editor.type === "preview" ? (
                     <FilePreviewWindow
                         key={editor.id}
