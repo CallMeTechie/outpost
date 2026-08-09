@@ -2107,7 +2107,18 @@
       }
     },
     "connectionFailed": "Verbindung fehlgeschlagen: {{message}}",
-    "unknownError": "Unbekannter Fehler"
+    "unknownError": "Unbekannter Fehler",
+    "keyBar": {
+      "escape": "Escape",
+      "tab": "Tabulator",
+      "ctrl": "Strg, gilt für die nächste Taste",
+      "alt": "Alt, gilt für die nächste Taste",
+      "shift": "Umschalt, gilt für die nächste Leistentaste",
+      "up": "Pfeil nach oben",
+      "down": "Pfeil nach unten",
+      "left": "Pfeil nach links",
+      "right": "Pfeil nach rechts"
+    }
   },
   "support": {
     "title": "Unterstützung erhalten",
