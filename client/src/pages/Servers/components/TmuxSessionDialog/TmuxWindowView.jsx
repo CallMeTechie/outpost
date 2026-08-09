@@ -97,8 +97,15 @@ const TmuxWindowView = ({ session, entryId, identityId, onBack, onConnect,
             // The refresh may have failed, the action still went through.
             // Update the row locally, otherwise the user clicks a second
             // time and hits nothing.
-            if (!onResult(result)) onLocalRemove(win.id);
-            if (wasLast) onLastWindowClosed(session.name);
+            const refreshed = onResult(result);
+            if (!refreshed) onLocalRemove(win.id);
+            // wasLast is about the confirmation text and reflects the list as
+            // shown, which can be stale. The session-ended notice needs the
+            // truth: only fire it when the fresh listing agrees the session
+            // is actually gone, or when there is no fresh listing to check
+            // against.
+            if (wasLast && (!refreshed || !(result.sessions || []).some((s) => s.name === session.name)))
+                onLastWindowClosed(session.name);
         } catch (error) {
             if (entryIdRef.current !== requestEntryId) return;
             onFailure(error);
