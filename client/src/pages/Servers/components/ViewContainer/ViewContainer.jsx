@@ -1,5 +1,6 @@
 import "./styles.sass";
 import ServerTabs from "./components/ServerTabs";
+import TerminalKeyBar from "./components/TerminalKeyBar";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import GuacamoleRenderer from "@/pages/Servers/components/ViewContainer/renderer/GuacamoleRenderer.jsx";
@@ -13,9 +14,11 @@ import { useTranslation } from "react-i18next";
 import { getTitleBarHeight } from "@/common/utils/TauriUtil.js";
 import { useTauriWindow } from "@/common/hooks/useTauriWindow.js";
 import { useBodyClass } from "@/common/hooks/useBodyClass.js";
+import { barKeySequence } from "@/common/utils/keyBarSequences.js";
 
 const BTN_SIZE = 44;
 const BTN_STORAGE_KEY = "fullscreen-btn-position";
+const EMPTY_LATCH = { ctrl: false, alt: false, shift: false };
 
 const getMinY = () => getTitleBarHeight() + 16;
 const clampPosition = (x, y) => ({
@@ -53,6 +56,7 @@ export const ViewContainer = ({
     const scriptStateRefs = useRef({});
     const tabOrderRef = useRef([]);
     const [broadcastMode, setBroadcastMode] = useState(false);
+    const [modifierLatch, setModifierLatch] = useState(EMPTY_LATCH);
     const [sessionProgress, setSessionProgress] = useState({});
     const [fullscreenMode, setFullscreenMode] = useState(false);
     const [titleBarTabsSlot, setTitleBarTabsSlot] = useState(null);
@@ -140,6 +144,33 @@ export const ViewContainer = ({
     const toggleBroadcastMode = useCallback(() => {
         setBroadcastMode(prev => !prev);
     }, []);
+
+    const toggleModifier = useCallback((name) => {
+        setModifierLatch((prev) => ({ ...prev, [name]: !prev[name] }));
+    }, []);
+
+    const clearLatch = useCallback(() => setModifierLatch(EMPTY_LATCH), []);
+
+    const sendBarKey = useCallback((key) => {
+        const sequence = barKeySequence(key, modifierLatch);
+        if (!sequence) return;
+
+        const term = terminalRefs.current[activeSessionId]?.term;
+        // Nothing to send to while a session is still connecting or already
+        // closing. Keep the latch: clearing it would signal success for
+        // something that never happened.
+        if (!term) return;
+
+        // Through term.input rather than straight to the socket: that is the
+        // path typed characters take, so broadcast and everything else hanging
+        // off onData applies to the bar as well. applyLatchedModifiers leaves
+        // the sequence alone because it is never a single printable character -
+        // it does report the latch as spent, so onLatchConsumed has usually
+        // fired by the time we get here. The line below is what covers the case
+        // where it did not.
+        term.input(sequence);
+        setModifierLatch(EMPTY_LATCH);
+    }, [modifierLatch, activeSessionId]);
 
     const toggleFullscreenMode = useCallback(() => {
         setFullscreenMode(prev => !prev);
@@ -395,6 +426,10 @@ export const ViewContainer = ({
         }
     }, [activeSessions.length, activeSessionId, focusSession]);
 
+    useEffect(() => {
+        setModifierLatch(EMPTY_LATCH);
+    }, [activeSessionId]);
+
     const renderRenderer = (session) => {
         if (session.type === "notes") {
             return <NotesRenderer session={session} />;
@@ -428,6 +463,7 @@ export const ViewContainer = ({
                                       markSessionErrored={markSessionErrored}
                                       getSessionError={getSessionError}
                                       registerTerminalRef={registerTerminalRef} broadcastMode={broadcastMode}
+                                      modifierLatch={modifierLatch} onLatchConsumed={clearLatch}
                                       terminalRefs={terminalRefs} updateProgress={updateSessionProgress}
                                       layoutMode={layoutMode} onBroadcastToggle={toggleBroadcastMode}
                                       onFullscreenToggle={toggleFullscreenMode} />;
@@ -568,6 +604,12 @@ export const ViewContainer = ({
                 {renderAllSessions()}
                 {layoutMode !== "single" && renderFlexLayout()}
             </div>
+
+            {activeSession && !hasGuacamole && (
+                <TerminalKeyBar latch={modifierLatch}
+                                onToggleModifier={toggleModifier}
+                                onSendKey={sendBarKey} />
+            )}
         </div>
     );
 };
