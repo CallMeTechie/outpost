@@ -50,6 +50,14 @@ export default [
         'warn',
         { allowConstantExport: true },
       ],
+
+      // Same rule as the server config (eslint.config.mjs): both codebases
+      // should answer "what counts as an unused var" the same way.
+      'no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        caughtErrors: 'none',
+        ignoreRestSiblings: true,
+      }],
     },
   },
 ]
