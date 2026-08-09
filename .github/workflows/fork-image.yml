@@ -3,7 +3,7 @@ name: Fork Image
 on:
   workflow_dispatch:
   push:
-    branches: [feat/tmux-sessions, feat/tmux-session-management]
+    branches: [feat/tmux-sessions, feat/tmux-session-management, feat/tmux-window-management]
 
 env:
   REGISTRY: ghcr.io
