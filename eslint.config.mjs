@@ -10,7 +10,7 @@ export default [
         ignores: ["**/generated/**"],
     },
     {
-        files: ["server/**/*.js"],
+        files: ["server/**/*.js", "scripts/**/*.js"],
         languageOptions: {
             ecmaVersion: "latest",
             sourceType: "commonjs",
