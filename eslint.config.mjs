@@ -3,13 +3,11 @@ import globals from "globals";
 
 export default [
     {
-        ignores: [
-            "**/node_modules/**",
-            "**/generated/**",
-            "client/**",
-            "mobile/**",
-            "dist/**",
-        ],
+        // The only entry that matters against files: ["server/**/*.js"]: without
+        // it, eslint . reports 2 findings in server/lib/generated/*.js. The other
+        // former entries (node_modules, client, mobile, dist) can never match that
+        // pathspec and were dead weight.
+        ignores: ["**/generated/**"],
     },
     {
         files: ["server/**/*.js"],
