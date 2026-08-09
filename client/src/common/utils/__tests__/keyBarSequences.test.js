@@ -54,3 +54,12 @@ test("ctrl+shift+arrow uses 6", () => {
 test("an unknown key yields null rather than a made-up sequence", () => {
     assert.equal(barKeySequence("f13", none), null);
 });
+
+test("shift wins over ctrl and alt on tab", () => {
+    assert.equal(barKeySequence("tab", { ctrl: true, alt: true, shift: true }), "\x1b[Z");
+});
+
+test("a missing latch does not throw", () => {
+    assert.equal(barKeySequence("tab", undefined), "\x09");
+    assert.equal(barKeySequence("up", null), "\x1b[A");
+});

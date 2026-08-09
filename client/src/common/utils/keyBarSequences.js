@@ -11,9 +11,15 @@ const modifierParameter = (latch) => 1 + (latch.shift ? 1 : 0) + (latch.alt ? 2 
 export const barKeySequence = (key, latch) => {
     if (key === "escape") return "\x1b";
 
+    // Same defensive shape as applyLatchedModifiers, so a caller that has not
+    // built its latch yet gets a plain key rather than an exception.
+    const held = latch || { ctrl: false, alt: false, shift: false };
+
     if (key === "tab") {
-        if (latch.shift) return "\x1b[Z";
-        if (latch.alt) return "\x1b\x09";
+        // Shift wins over the others: Shift+Tab is the combination this whole
+        // bar exists for, and there is no meaningful Ctrl+Shift+Tab to lose.
+        if (held.shift) return "\x1b[Z";
+        if (held.alt) return "\x1b\x09";
         // Ctrl is deliberately dropped here. Terminals encode Ctrl+Tab
         // inconsistently and none of the target applications read it, so an
         // invented sequence would be worse than none.
@@ -23,6 +29,6 @@ export const barKeySequence = (key, latch) => {
     const final = ARROW_FINALS[key];
     if (!final) return null;
 
-    const parameter = modifierParameter(latch);
+    const parameter = modifierParameter(held);
     return parameter === 1 ? `\x1b[${final}` : `\x1b[1;${parameter}${final}`;
 };

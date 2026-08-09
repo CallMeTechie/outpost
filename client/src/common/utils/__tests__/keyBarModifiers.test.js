@@ -28,6 +28,26 @@ test("ctrl+? is DEL, which the mask alone would get wrong", () => {
     assert.equal(applyLatchedModifiers("?", { ...none, ctrl: true }).data, "\x7f");
 });
 
+test("ctrl+[ is escape", () => {
+    assert.equal(applyLatchedModifiers("[", { ...none, ctrl: true }).data, "\x1b");
+});
+
+test("ctrl+@ is NUL", () => {
+    assert.equal(applyLatchedModifiers("@", { ...none, ctrl: true }).data, "\x00");
+});
+
+test("ctrl leaves a digit alone - the mask would turn 3 into XOFF and freeze the terminal", () => {
+    assert.deepEqual(applyLatchedModifiers("3", { ...none, ctrl: true }), { data: "3", consumed: true });
+});
+
+test("ctrl leaves a hyphen alone - the mask would turn it into a carriage return", () => {
+    assert.deepEqual(applyLatchedModifiers("-", { ...none, ctrl: true }), { data: "-", consumed: true });
+});
+
+test("ctrl leaves a slash alone - the mask gets it wrong too", () => {
+    assert.equal(applyLatchedModifiers("/", { ...none, ctrl: true }).data, "/");
+});
+
 test("alt prefixes an escape", () => {
     assert.deepEqual(applyLatchedModifiers("b", { ...none, alt: true }), { data: "\x1bb", consumed: true });
 });
