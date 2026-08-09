@@ -9,8 +9,9 @@ const PRINTABLE_MAX = 0x7e;
 const CTRL_MASKABLE = /[a-zA-Z @[\\\]^_]/;
 
 const withControl = (character) => {
-    // Ctrl+? is DEL, the one case the mask gets wrong rather than merely leaving
-    // undefined.
+    // Ctrl+? is DEL. It needs a hardcoded value because the mask would produce
+    // 0x1f here, which belongs to Ctrl+_ - the other keys outside CTRL_MASKABLE
+    // are simply passed through instead.
     if (character === "?") return "\x7f";
     if (!CTRL_MASKABLE.test(character)) return character;
     return String.fromCharCode(character.toUpperCase().charCodeAt(0) & 0x1f);
