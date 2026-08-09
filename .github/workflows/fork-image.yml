@@ -10,7 +10,7 @@ on:
   push:
     # Only the tip of the fork stack. Every layer below it is an ancestor, so
     # a push there would publish an older tree under the same mutable tag.
-    branches: [refactor/tmux-dialog-remount]
+    branches: [feat/mobile-key-bar]
 
 # A stack rebase force-pushes several layers at once, and the older layers
 # still carry their own copy of this file with their own branch listed. Same
