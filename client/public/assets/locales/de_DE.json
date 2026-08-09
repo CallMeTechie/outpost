@@ -2074,8 +2074,6 @@
       "empty": "Auf diesem Host läuft noch keine Session.",
       "newSessionPlaceholder": "Session-Name",
       "nameHint": "Nur Buchstaben, Ziffern, Unterstrich und Bindestrich, höchstens 64 Zeichen.",
-      "windows_one": "{{count}} Fenster",
-      "windows_other": "{{count}} Fenster",
       "attachedLabel": "aktiv",
       "notInstalled": "Auf diesem Host ist tmux nicht installiert. Es wird eine normale Shell geöffnet.",
       "killConfirm": "„{{name}}\" und alles, was darin läuft, beenden?",
