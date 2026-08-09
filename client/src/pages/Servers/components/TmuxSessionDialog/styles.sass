@@ -20,20 +20,24 @@
     align-items: center
     gap: 0.5rem
     flex: 1
-    padding: 0.4rem 0.5rem 0.4rem 0.7rem
-    border: 1px solid color-mix(in srgb, var(--error-color, #d9534f) 30%, transparent)
-    background: color-mix(in srgb, var(--error-color, #d9534f) 8%, transparent)
-    border-radius: 0.5rem
 
-    span
-      flex: 1
-      min-width: 0
-      font-size: 0.85rem
-      line-height: 1.35
+    // Scoped to the window view: the session picker has its own confirm row
+    // with this same base class and must keep its plain, unboxed look.
+    &.tmux-window-confirm
+      padding: 0.4rem 0.5rem 0.4rem 0.7rem
+      border: 1px solid color-mix(in srgb, var(--error-color, #d9534f) 30%, transparent)
+      background: color-mix(in srgb, var(--error-color, #d9534f) 8%, transparent)
+      border-radius: 0.5rem
 
-    &.is-soft
-      border-color: color-mix(in srgb, colors.$primary 30%, transparent)
-      background: color-mix(in srgb, colors.$primary 8%, transparent)
+      span
+        flex: 1
+        min-width: 0
+        font-size: 0.85rem
+        line-height: 1.35
+
+      &.is-soft
+        border-color: color-mix(in srgb, colors.$primary 30%, transparent)
+        background: color-mix(in srgb, colors.$primary 8%, transparent)
 
   .tmux-confirm-yes
     color: var(--error-color, #d9534f)

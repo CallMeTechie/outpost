@@ -192,7 +192,9 @@ const TmuxWindowView = ({ session, entryId, identityId, onBack, onConnect,
                         if (pendingKill && pendingKill.id === win.id) {
                             return (
                                 <li key={win.id} className="tmux-session-row">
-                                    <div className={pendingKill.soft ? "tmux-row-confirm is-soft" : "tmux-row-confirm"}>
+                                    <div className={pendingKill.soft
+                                        ? "tmux-row-confirm tmux-window-confirm is-soft"
+                                        : "tmux-row-confirm tmux-window-confirm"}>
                                         <span>{pendingKill.text}</span>
                                         <div className="tmux-session-actions">
                                             <button className="tmux-icon-button tmux-confirm-yes" disabled={busy !== null}
