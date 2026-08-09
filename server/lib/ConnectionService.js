@@ -17,7 +17,7 @@ const EngineSftpClient = require("./EngineSftpClient");
 const { buildPveQemuParams, buildRdpParams, buildVncParams, buildDemoParams } = require("./guacParamBuilders");
 const { writeAfterSettle } = require("./streamCommandWriter");
 const TmuxService = require("./tmux/TmuxService");
-const { buildAttachCommand, isValidAttachName, buildAttachLines, isValidWindowId } = require("./tmux/commands");
+const { isValidAttachName, buildAttachLines, isValidWindowId } = require("./tmux/commands");
 
 const GUAC_PROTOCOLS = {
     rdp: { sessionType: SessionType.RDP, defaultPort: 3389 },
