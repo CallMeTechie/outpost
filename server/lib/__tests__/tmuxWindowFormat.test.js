@@ -18,7 +18,7 @@ const W = (sessionId, id, index, active, panes, name) =>
 
 const join = (...lines) => lines.join("\n") + "\n";
 
-test("liest eine gewoehnliche Liste", () => {
+test("reads an ordinary listing", () => {
     const out = parseListing(join(
         S("$3", 2, 1786219844, 0, "arbeit"),
         W("$3", "@17", 1, 1, 1, "bash"),
@@ -36,7 +36,7 @@ test("liest eine gewoehnliche Liste", () => {
     }]);
 });
 
-test("ein Name mit Trennzeichen bleibt vollstaendig", () => {
+test("a name with a delimiter stays intact", () => {
     const out = parseListing(join(
         S("$1", 1, 100, 0, "s"),
         W("$1", "@1", 1, 1, 1, "a|b|c"),
@@ -44,7 +44,7 @@ test("ein Name mit Trennzeichen bleibt vollstaendig", () => {
     assert.strictEqual(out.sessions[0].windowList[0].name, "a|b|c");
 });
 
-test("ein Name mit Zeilenumbruch bleibt ein einziger Datensatz", () => {
+test("a name with a newline stays a single record", () => {
     const out = parseListing(join(
         S("$1", 2, 100, 0, "s"),
         W("$1", "@1", 1, 0, 1, "zeile\numbruch"),
@@ -55,7 +55,7 @@ test("ein Name mit Zeilenumbruch bleibt ein einziger Datensatz", () => {
     assert.strictEqual(out.sessions[0].windowList[1].name, "danach");
 });
 
-test("ein Name, der einen Datensatz vortaeuscht, wird nicht zu einem", () => {
+test("a name that fakes a record does not become one", () => {
     const boese = "foo\nW|$9|@99|1|1|1|5|BOESE";
     const out = parseListing(join(
         S("$1", 1, 100, 0, "s"),
@@ -68,7 +68,7 @@ test("ein Name, der einen Datensatz vortaeuscht, wird nicht zu einem", () => {
     assert.strictEqual(out.sessions[0].windowList[0].id, "@1");
 });
 
-test("Mehrbyte-Zeichen verschieben den naechsten Datensatz nicht", () => {
+test("multi-byte characters do not shift the next record", () => {
     const out = parseListing(join(
         S("$1", 2, 100, 0, "s"),
         W("$1", "@1", 1, 0, 1, "grün-öäü"),
@@ -78,7 +78,7 @@ test("Mehrbyte-Zeichen verschieben den naechsten Datensatz nicht", () => {
     assert.strictEqual(out.sessions[0].windowList[1].name, "danach");
 });
 
-test("ein leerer Name bleibt ein gueltiger Datensatz", () => {
+test("an empty name stays a valid record", () => {
     const out = parseListing(join(
         S("$1", 1, 100, 0, "s"),
         W("$1", "@1", 1, 1, 1, ""),
@@ -87,7 +87,7 @@ test("ein leerer Name bleibt ein gueltiger Datensatz", () => {
     assert.strictEqual(out.sessions[0].windowList[0].name, "");
 });
 
-test("zwei Fenster mit demselben Namen bleiben unterscheidbar", () => {
+test("two windows with the same name stay distinguishable", () => {
     const out = parseListing(join(
         S("$1", 2, 100, 0, "s"),
         W("$1", "@1", 1, 1, 1, "gleich"),
@@ -96,7 +96,7 @@ test("zwei Fenster mit demselben Namen bleiben unterscheidbar", () => {
     assert.deepStrictEqual(out.sessions[0].windowList.map((w) => w.id), ["@1", "@2"]);
 });
 
-test("ein Fenster ohne zugehoerige Session wird verworfen", () => {
+test("a window without a matching session is dropped", () => {
     const out = parseListing(join(
         S("$1", 1, 100, 0, "s"),
         W("$1", "@1", 1, 1, 1, "da"),
@@ -106,13 +106,13 @@ test("ein Fenster ohne zugehoerige Session wird verworfen", () => {
     assert.strictEqual(out.sessions[0].windowList.length, 1);
 });
 
-test("eine Session ohne Fenster behaelt eine leere Liste", () => {
+test("a session without windows keeps an empty list", () => {
     const out = parseListing(join(S("$1", 1, 100, 0, "leer")));
     assert.deepStrictEqual(out.sessions[0].windowList, []);
     assert.strictEqual(out.sessions[0].windows, 1);
 });
 
-test("Begruessungstext vor dem ersten Datensatz wird verworfen", () => {
+test("welcome banner before the first record is discarded", () => {
     const out = parseListing("Welcome to Ubuntu 24.04\nLast login: Fri\n" + join(
         S("$1", 1, 100, 0, "s"),
         W("$1", "@1", 1, 1, 1, "bash"),
@@ -132,12 +132,12 @@ test("a trailing blank line does not make the listing unreadable", () => {
     assert.strictEqual(out.sessions[0].windowList[0].name, "bash");
 });
 
-test("leere Ausgabe ergibt eine leere Liste", () => {
+test("empty output yields an empty list", () => {
     assert.deepStrictEqual(parseListing(""), { ok: true, sessions: [], fallbackUsed: false });
     assert.deepStrictEqual(parseListing(null), { ok: true, sessions: [], fallbackUsed: false });
 });
 
-test("Wagenrueckläufe im Transport machen die Liste nicht unlesbar", () => {
+test("carriage returns in transport do not make the listing unreadable", () => {
     // The existing code had its own test for this ("tolerates carriage returns").
     // Without normalization, the end of every name lands on the \r instead of
     // the newline, and the ENTIRE list would count as unreadable - worse than
@@ -151,24 +151,24 @@ test("Wagenrueckläufe im Transport machen die Liste nicht unlesbar", () => {
     assert.strictEqual(out.sessions[0].windowList[0].name, "bash");
 });
 
-test("ein Datensatz ohne abschliessenden Zeilenumbruch bleibt lesbar", () => {
+test("a record without a trailing newline stays readable", () => {
     const out = parseListing("S|$1|1|100|0|4|name");
     assert.strictEqual(out.ok, true);
     assert.strictEqual(out.sessions[0].name, "name");
 });
 
-test("eine Laenge groesser als der Datenstrom macht die Ausgabe unlesbar", () => {
+test("a length greater than the data stream makes the output unreadable", () => {
     const out = parseListing("S|$1|1|100|0|999|kurz\n");
     assert.strictEqual(out.ok, false);
 });
 
-test("fehlt der Zeilenumbruch nach dem Namen, ist die Ausgabe unlesbar", () => {
+test("a missing newline after the name makes the output unreadable", () => {
     // Length 4, but "bash" is followed by "X" instead of a newline.
     const out = parseListing("S|$1|1|100|0|4|bashX\n");
     assert.strictEqual(out.ok, false);
 });
 
-test("Rueckfallebene: kein Laengenfeld -> Zeilenerkennung, Ausgabe bleibt lesbar", () => {
+test("fallback tier: no length field -> line detection, output stays readable", () => {
     const out = parseListing(
         "S|$1|2|100|0|arbeit\n" +
         "W|$1|@1|1|1|1|bash\n" +
@@ -180,7 +180,7 @@ test("Rueckfallebene: kein Laengenfeld -> Zeilenerkennung, Ausgabe bleibt lesbar
     assert.deepStrictEqual(out.sessions[0].windowList.map((w) => w.name), ["bash", "mit|pipe"]);
 });
 
-test("Rueckfallebene: Fortsetzungszeilen haengen an den Namen davor", () => {
+test("fallback tier: continuation lines attach to the name before them", () => {
     const out = parseListing(
         "S|$1|1|100|0|s\n" +
         "W|$1|@1|1|1|1|zeile\numbruch\n");
@@ -189,7 +189,7 @@ test("Rueckfallebene: Fortsetzungszeilen haengen an den Namen davor", () => {
     assert.strictEqual(out.sessions[0].windowList[0].name, "zeile\numbruch");
 });
 
-test("Rueckfallebene: eine doppelte Kennung wird verworfen", () => {
+test("fallback tier: a duplicate id is dropped", () => {
     const out = parseListing(
         "S|$1|1|100|0|s\n" +
         "W|$1|@1|1|1|1|echt\n" +
@@ -199,7 +199,7 @@ test("Rueckfallebene: eine doppelte Kennung wird verworfen", () => {
     assert.strictEqual(out.sessions[0].windowList[0].name, "echt");
 });
 
-test("das Listenkommando fragt Sessions und Fenster in einem Aufruf ab", () => {
+test("the listing command queries sessions and windows in one call", () => {
     const cmd = buildListWithWindowsCommand();
     assert.match(cmd, /tmux list-sessions -F/);
     assert.match(cmd, /tmux list-windows -a -F/);

@@ -4,6 +4,9 @@ const {
     quote, isValidCreateName, isValidAttachName, isAllowedSession,
     buildProbeCommand, buildSendKeysCommand, buildAttachCommand,
     buildKillCommand, buildRenameCommand,
+    isValidWindowId, isValidWindowName, isAllowedWindow,
+    buildKillWindowCommand, buildRenameWindowCommand,
+    buildNewWindowCommand, buildSelectWindowCommand, buildAttachLines,
 } = require("../tmux/commands");
 
 test("quote wraps in single quotes", () => {
@@ -189,13 +192,7 @@ test("a slash in the name reaches the command untouched", () => {
     assert.strictEqual(buildRenameCommand("a/b", "neu"), "tmux rename-session -t '=a/b' -- 'neu'");
 });
 
-const {
-    isValidWindowId, isValidWindowName, isAllowedWindow,
-    buildKillWindowCommand, buildRenameWindowCommand,
-    buildNewWindowCommand, buildSelectWindowCommand, buildAttachLines,
-} = require("../tmux/commands");
-
-test("isValidWindowId nimmt nur @ gefolgt von Ziffern", () => {
+test("isValidWindowId accepts only @ followed by digits", () => {
     for (const good of ["@1", "@17", "@1234567890"]) {
         assert.strictEqual(isValidWindowId(good), true, good);
     }
@@ -204,7 +201,7 @@ test("isValidWindowId nimmt nur @ gefolgt von Ziffern", () => {
     }
 });
 
-test("isValidWindowName ist grosszuegig, sperrt aber Steuerzeichen", () => {
+test("isValidWindowName is permissive but blocks control characters", () => {
     for (const good of ["mit.punkt", "mit:doppel", "a|b", "mein projekt", "-neu", "ä".repeat(64)]) {
         assert.strictEqual(isValidWindowName(good), true, good);
     }
@@ -213,7 +210,7 @@ test("isValidWindowName ist grosszuegig, sperrt aber Steuerzeichen", () => {
     }
 });
 
-test("isAllowedWindow vergleicht exakt ueber alle Sessions hinweg", () => {
+test("isAllowedWindow compares exactly across all sessions", () => {
     const sessions = [
         { name: "a", windowList: [{ id: "@1" }, { id: "@17" }] },
         { name: "b", windowList: [{ id: "@2" }] },
@@ -229,36 +226,36 @@ test("isAllowedWindow vergleicht exakt ueber alle Sessions hinweg", () => {
     assert.strictEqual(isAllowedWindow("@1", null), false);
 });
 
-test("buildKillWindowCommand zielt ohne =-Praefix auf die Kennung", () => {
+test("buildKillWindowCommand targets the id without a =-prefix", () => {
     const cmd = buildKillWindowCommand("@19");
     assert.strictEqual(cmd, "tmux kill-window -t '@19'");
-    assert.ok(!cmd.includes("=@"), "die Kennung ist exakt, ein =-Praefix waere irrefuehrend");
+    assert.ok(!cmd.includes("=@"), "the id is exact, a =-prefix would be misleading");
 });
 
-test("buildRenameWindowCommand setzt -- vor den neuen Namen", () => {
+test("buildRenameWindowCommand puts -- before the new name", () => {
     assert.strictEqual(buildRenameWindowCommand("@19", "-neu"), "tmux rename-window -t '@19' -- '-neu'");
 });
 
-test("buildRenameWindowCommand entschaerft einfache Anfuehrungszeichen", () => {
+test("buildRenameWindowCommand neutralises single quotes", () => {
     assert.strictEqual(buildRenameWindowCommand("@1", "a'b"), "tmux rename-window -t '@1' -- 'a'\\''b'");
 });
 
-test("buildNewWindowCommand zielt mit Doppelpunkt und =-Praefix auf die Session", () => {
+test("buildNewWindowCommand targets the session with a colon and a =-prefix", () => {
     const cmd = buildNewWindowCommand("arbeit", "logs");
     assert.strictEqual(cmd, "tmux new-window -d -t '=arbeit:' -n 'logs' -P -F '#{window_id}'");
 });
 
-test("buildNewWindowCommand laesst -n weg, wenn kein Name gewuenscht ist", () => {
+test("buildNewWindowCommand omits -n when no name is wanted", () => {
     const cmd = buildNewWindowCommand("arbeit", null);
     assert.strictEqual(cmd, "tmux new-window -d -t '=arbeit:' -P -F '#{window_id}'");
-    assert.ok(!cmd.includes("-n"), "kein Name heisst kein -n, nicht -n ''");
+    assert.ok(!cmd.includes("-n"), "no name means no -n, not -n ''");
 });
 
-test("buildSelectWindowCommand haelt die Fehlerausgabe aus dem Terminal", () => {
+test("buildSelectWindowCommand keeps its error output out of the terminal", () => {
     assert.strictEqual(buildSelectWindowCommand("@19"), "tmux select-window -t '@19' 2>/dev/null");
 });
 
-test("buildAttachLines stellt select-window VOR den Anhaengbefehl", () => {
+test("buildAttachLines puts select-window BEFORE the attach command", () => {
     // The order is the whole point: set the target window first, then attach.
     // The other way around, select-window would run against a session the
     // user is already sitting in, and the command would land in the terminal.
@@ -268,8 +265,8 @@ test("buildAttachLines stellt select-window VOR den Anhaengbefehl", () => {
     ]);
 });
 
-test("buildAttachLines laesst den bestehenden Pfad unveraendert", () => {
-    for (const ohne of [null, undefined, "", "@abc", "17", "@1;rm -rf /"]) {
-        assert.deepStrictEqual(buildAttachLines("arbeit", ohne), ["tmux new -A -s 'arbeit'"], String(ohne));
+test("buildAttachLines leaves the existing path unchanged", () => {
+    for (const without of [null, undefined, "", "@abc", "17", "@1;rm -rf /"]) {
+        assert.deepStrictEqual(buildAttachLines("arbeit", without), ["tmux new -A -s 'arbeit'"], String(without));
     }
 });
