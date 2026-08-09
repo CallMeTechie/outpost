@@ -7,12 +7,14 @@
   // visible the app is taller than the screen and the bottom is unreachable.
   --content-height: 100dvh
   --mobile-nav-height: 0px
+  --key-bar-height: 0px
   --safe-area-top: env(safe-area-inset-top, 0px)
   --ui-scale: 1
   font-size: calc(16px * var(--ui-scale))
 
   @media (max-width: breakpoints.$mobile)
     --mobile-nav-height: calc(3.5rem + env(safe-area-inset-bottom, 0px))
+    --key-bar-height: 2.75rem
     --content-height: calc(100dvh - var(--safe-area-top))
 
 body, html

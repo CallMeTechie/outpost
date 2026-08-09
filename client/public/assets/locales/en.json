@@ -2107,6 +2107,17 @@
     "liveSessions": {
       "activeOn": "Live sessions: {{users}}",
       "unknownUser": "Unknown user"
+    },
+    "keyBar": {
+      "escape": "Escape",
+      "tab": "Tab",
+      "ctrl": "Control, applies to the next key",
+      "alt": "Alt, applies to the next key",
+      "shift": "Shift, applies to the next bar key",
+      "up": "Arrow up",
+      "down": "Arrow down",
+      "left": "Arrow left",
+      "right": "Arrow right"
     }
   },
   "support": {
