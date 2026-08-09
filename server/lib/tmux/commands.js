@@ -84,6 +84,85 @@ const buildKillCommand = (name) => `tmux kill-session -t ${quote(`=${name}`)}`;
 const buildRenameCommand = (name, newName) =>
     `tmux rename-session -t ${quote(`=${name}`)} -- ${quote(newName)}`;
 
+const WINDOW_ID_PATTERN = /^@[0-9]{1,10}$/;
+
+/**
+ * Die Kennung ist die einzige belastbare Handhabe auf ein Fenster: Nummern
+ * verschieben sich bei `renumber-windows on`, und Namen sind weder eindeutig
+ * noch frei von Sonderzeichen. Beides gemessen gegen tmux 3.5a.
+ *
+ * Die Form ist so eng, dass ueber sie nichts in die Kommandozeile gelangen
+ * kann - das Quoting ist die zweite Schicht, nicht die erste.
+ */
+const isValidWindowId = (value) => typeof value === "string" && WINDOW_ID_PATTERN.test(value);
+
+/**
+ * Anders als Sessionnamen schreibt tmux Fensternamen NICHT um: `mit.punkt`
+ * bleibt `mit.punkt` (gemessen). Die Strenge der Sessionregel hatte genau
+ * diesen einen Grund, also entfaellt sie hier. Verboten bleiben nur
+ * Steuerzeichen, die die Darstellung zerstoeren wuerden.
+ */
+const isValidWindowName = (value) =>
+    typeof value === "string" && value.length >= 1 && value.length <= 64 && !CONTROL_CHARS.test(value);
+
+/**
+ * Die Erlaubnisliste fuer Fenster, parallel zu isAllowedSession: nur Kennungen
+ * aus einer Liste, die der Server selbst gerade geholt hat. Exakter Vergleich
+ * ueber alle Sessions hinweg - eine Kennung ist serverweit eindeutig.
+ */
+const isAllowedWindow = (id, sessions) =>
+    isValidWindowId(id) && Array.isArray(sessions)
+    && sessions.some((session) => Array.isArray(session?.windowList)
+        && session.windowList.some((window) => window?.id === id));
+
+/**
+ * Die Kennung braucht kein `=`-Praefix: sie ist ihrer Natur nach exakt, und ein
+ * Praefix wuerde faelschlich nahelegen, hier draeue eine Praefixaufloesung wie
+ * bei Sessionnamen.
+ */
+const buildKillWindowCommand = (id) => `tmux kill-window -t ${quote(id)}`;
+
+/**
+ * Das `--` beendet die Optionsauswertung. Ohne es liest tmux `-neu` als
+ * Optionsbuendel und antwortet mit "unknown flag -n" (gemessen).
+ */
+const buildRenameWindowCommand = (id, newName) =>
+    `tmux rename-window -t ${quote(id)} -- ${quote(newName)}`;
+
+/**
+ * Ziel ist hier eine SESSION, also mit Doppelpunkt (new-window erwartet ein
+ * Fensterziel) und mit `=`-Praefix gegen die Praefixaufloesung, die bei
+ * Sessionnamen gemessen wurde.
+ *
+ * Kein Name ist etwas anderes als ein leerer Name: ohne Wunsch entfaellt `-n`
+ * vollstaendig und tmux vergibt seinen Standardnamen.
+ */
+const buildNewWindowCommand = (sessionName, name) => {
+    const named = typeof name === "string" && name.length > 0 ? ` -n ${quote(name)}` : "";
+    return `tmux new-window -d -t ${quote(`=${sessionName}:`)}${named} -P -F '#{window_id}'`;
+};
+
+/**
+ * Laeuft beim Verbindungsaufbau vor dem Anhaengbefehl. Die Umleitung ist
+ * notwendig: bei einem inzwischen beendeten Fenster schreibt tmux
+ * "can't find window: @19" auf die Fehlerausgabe, und diese Zeile stuende im
+ * Terminal des Nutzers, obwohl der Verbindungsaufbau erfolgreich war.
+ */
+const buildSelectWindowCommand = (id) => `tmux select-window -t ${quote(id)} 2>/dev/null`;
+
+/**
+ * Die beiden Zeilen des Verbindungsaufbaus in der richtigen Reihenfolge.
+ *
+ * Als eigene Funktion statt inline im ConnectionService, weil die Reihenfolge
+ * die eigentliche Aussage ist und sich nur so ohne Engine testen laesst. Ohne
+ * gueltige Kennung bleibt das Ergebnis buchstabengleich zum bisherigen Pfad -
+ * der reine Session-Anhaengbefehl darf sich nicht aendern.
+ */
+const buildAttachLines = (sessionName, windowId) =>
+    (isValidWindowId(windowId)
+        ? [buildSelectWindowCommand(windowId), buildAttachCommand(sessionName)]
+        : [buildAttachCommand(sessionName)]);
+
 /**
  * The real guard when attaching: only names the server itself just listed are
  * accepted, which takes the value out of the client's hands. Exact comparison,
@@ -97,4 +176,7 @@ module.exports = {
     LIST_FORMAT, parseSessions, quote, isValidCreateName, isValidAttachName, isAllowedSession,
     buildListCommand, buildProbeCommand, buildSendKeysCommand, buildAttachCommand,
     buildKillCommand, buildRenameCommand,
+    isValidWindowId, isValidWindowName, isAllowedWindow,
+    buildKillWindowCommand, buildRenameWindowCommand, buildNewWindowCommand,
+    buildSelectWindowCommand, buildAttachLines,
 };
