@@ -1,5 +1,3 @@
-const logger = require("../utils/logger");
-
 module.exports = {
     async up(queryInterface, Sequelize) {
         const { INTEGER, BOOLEAN, TEXT, DATE, NOW } = Sequelize;

@@ -25,7 +25,7 @@ module.exports = {
         );
 
         if (settings.length > 0 && settings[0].providers) {
-            let providers = [];
+            let providers;
             try {
                 providers = JSON.parse(settings[0].providers);
             } catch {

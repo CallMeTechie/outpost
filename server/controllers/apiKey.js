@@ -1,5 +1,4 @@
 const crypto = require("crypto");
-const { Op } = require("sequelize");
 const ApiKey = require("../models/ApiKey");
 const Account = require("../models/Account");
 const logger = require("../utils/logger");

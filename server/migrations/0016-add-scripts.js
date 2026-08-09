@@ -1,5 +1,4 @@
 const { DataTypes } = require("sequelize");
-const logger = require("../utils/logger");
 
 module.exports = {
     async up(queryInterface) {

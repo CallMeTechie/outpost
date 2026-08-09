@@ -71,7 +71,7 @@ test("writes only once even if data keeps arriving afterwards", async () => {
 
 test("resolves false if socket.write throws", async () => {
     class FakeSocketThrows extends EventEmitter {
-        write(chunk) {
+        write(_chunk) {
             throw new Error("Socket closed or destroyed");
         }
     }

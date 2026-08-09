@@ -1,6 +1,6 @@
 const Theme = require("../models/Theme");
 
-module.exports.listThemes = async (accountId) => {
+module.exports.listThemes = async (_accountId) => {
     return await Theme.findAll({
         where: {},
         order: [["name", "ASC"]],

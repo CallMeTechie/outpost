@@ -37,7 +37,7 @@ module.exports = class SmbProvider {
         } catch (error) {
             const output = error.stdout || error.stderr || error.message;
             const status = output.match(/NT_STATUS_\w+/);
-            throw new Error(status ? status[0] : output.split("\n")[0]);
+            throw new Error(status ? status[0] : output.split("\n")[0], { cause: error });
         }
     }
 

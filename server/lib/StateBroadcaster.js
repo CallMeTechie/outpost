@@ -44,9 +44,10 @@ class StateBroadcaster {
                 return require("../controllers/entry").listEntries(accountId);
             case STATE_TYPES.IDENTITIES:
                 return require("../controllers/identity").listIdentities(accountId);
-            case STATE_TYPES.SNIPPETS:
+            case STATE_TYPES.SNIPPETS: {
                 const memberships = await OrganizationMember.findAll({ where: { accountId, status: "active" } });
                 return require("../controllers/snippet").listAllAccessibleSnippets(accountId, memberships.map(m => m.organizationId));
+            }
             case STATE_TYPES.CONNECTIONS:
                 return require("../controllers/serverSession").getSessions(accountId, tabId, browserId);
             case STATE_TYPES.LIVE_SESSIONS:

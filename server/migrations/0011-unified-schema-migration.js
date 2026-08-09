@@ -279,7 +279,7 @@ module.exports = {
                     if (resource && resource.type && resource.id !== undefined) {
                         const resourceConfig = { nodeName: pveServer.nodeName, vmid: resource.id };
                         let renderer = resource.type === "pve-qemu" ? "guac" : "terminal";
-                        let icon = null;
+                        let icon;
 
                         if (resource.type === "pve-shell") {
                             icon = "terminal";
