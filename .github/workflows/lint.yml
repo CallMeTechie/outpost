@@ -55,8 +55,13 @@ jobs:
           #
           # --diff-filter=d (lowercase) excludes deletions; without it eslint
           # aborts on a path that no longer exists.
+          #
+          # Both 'client/*.js' and 'client/**/*.js' are listed: without glob
+          # pathspec magic, git's ** requires at least one directory segment,
+          # so it never matches files directly under client/ (eslint.config.js,
+          # vite.config.js). The plain 'client/*.js' pattern covers that gap.
           git diff -z --name-only --diff-filter=d origin/main...HEAD \
-            -- 'client/**/*.js' 'client/**/*.jsx' \
+            -- 'client/*.js' 'client/**/*.js' 'client/**/*.jsx' \
             | sed -z 's|^client/||' > "$RUNNER_TEMP/changed-client-files"
 
           if [ -s "$RUNNER_TEMP/changed-client-files" ]; then
@@ -82,10 +87,11 @@ jobs:
         run: yarn install --frozen-lockfile
 
       # The trailing -- tells eslint to treat everything after it as a path.
-      # Today no collected path can start with a dash, but only because the
-      # pathspec forces at least one directory segment in front of it; that is
-      # a side effect, not a guarantee, and eslint reads --config=FILE as a
-      # module to import and execute.
+      # With 'client/*.js' in the collected pathspec, a file directly under
+      # client/ is no longer forced to carry a directory segment in front of
+      # its name, so a dash-prefixed file is a real possibility, not just a
+      # theoretical one - and eslint reads --config=FILE as a module to import
+      # and execute.
       - name: Lint the changed files
         if: steps.changed.outputs.any == 'true'
         working-directory: client
