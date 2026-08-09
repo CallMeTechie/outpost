@@ -2080,6 +2080,19 @@
       "notInstalled": "Auf diesem Host ist tmux nicht installiert. Es wird eine normale Shell geöffnet.",
       "killConfirm": "„{{name}}\" und alles, was darin läuft, beenden?",
       "refreshFailed": "Aktion ausgeführt, aber die Liste konnte nicht aufgefrischt werden.",
+      "windowsTitle": "Fenster in „{{name}}\"",
+      "windowsBack": "Zurück zur Sessionliste",
+      "windowsOpen_one": "1 Fenster — anzeigen",
+      "windowsOpen_other": "{{count}} Fenster — anzeigen",
+      "windowsUnreadable": "Die Fenster dieser Session konnten nicht gelesen werden. Bitte erneut versuchen.",
+      "windowUnnamed": "ohne Namen",
+      "windowPanes": "{{count}} Bereiche in diesem Fenster",
+      "windowNameHint": "1 bis 64 Zeichen, keine Steuerzeichen.",
+      "newWindowPlaceholder": "Neues Fenster (Name optional)",
+      "sessionGone": "Die Session „{{name}}\" läuft nicht mehr.",
+      "sessionEnded": "Die Session „{{name}}\" ist mit ihrem letzten Fenster beendet worden.",
+      "windowKillConfirm": "In dieses Fenster schaut gerade jemand. Wirklich schließen?",
+      "windowKillLastConfirm": "Das ist das letzte Fenster — damit endet die Session „{{name}}\" vollständig.",
       "actions": {
         "cancel": "Abbrechen",
         "create": "Anlegen",
@@ -2089,7 +2102,10 @@
         "confirmKill": "Beenden",
         "cancelKill": "Abbrechen",
         "confirmRename": "Speichern",
-        "cancelRename": "Verwerfen"
+        "cancelRename": "Verwerfen",
+        "windowRename": "Fenster umbenennen",
+        "windowKill": "Fenster schließen",
+        "windowCreate": "Anlegen"
       }
     },
     "connectionFailed": "Verbindung fehlgeschlagen: {{message}}",
