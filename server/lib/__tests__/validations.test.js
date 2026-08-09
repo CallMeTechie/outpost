@@ -77,3 +77,18 @@ test("tmuxCreate: enforces the strict name rule", () => {
 test("tmuxCreate: requires a session name", () => {
     assert.ok(createSessionValidation.validate(session({ tmuxCreate: true })).error);
 });
+
+test("tmuxWindowId: accepts a valid id", () => {
+    assert.strictEqual(createSessionValidation.validate(session({ tmuxWindowId: "@17" })).error, undefined);
+});
+
+test("tmuxWindowId: rejects malformed ids", () => {
+    assert.ok(createSessionValidation.validate(session({ tmuxWindowId: "@abc" })).error);
+    assert.ok(createSessionValidation.validate(session({ tmuxWindowId: "17" })).error);
+    assert.ok(createSessionValidation.validate(session({ tmuxWindowId: "@1;rm -rf /" })).error);
+});
+
+test("tmuxWindowId: null and absence stay valid", () => {
+    assert.strictEqual(createSessionValidation.validate(session({ tmuxWindowId: null })).error, undefined);
+    assert.strictEqual(createSessionValidation.validate(session({})).error, undefined);
+});

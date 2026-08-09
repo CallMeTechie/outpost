@@ -234,6 +234,7 @@ export const Servers = () => {
             if (tmux) {
                 payload.tmuxSession = tmux.name;
                 payload.tmuxCreate = tmux.create;
+                if (tmux.windowId) payload.tmuxWindowId = tmux.windowId;
             }
             const session = await postRequest("/connections", payload);
 

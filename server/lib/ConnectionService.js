@@ -17,7 +17,7 @@ const EngineSftpClient = require("./EngineSftpClient");
 const { buildPveQemuParams, buildRdpParams, buildVncParams, buildDemoParams } = require("./guacParamBuilders");
 const { writeAfterSettle } = require("./streamCommandWriter");
 const TmuxService = require("./tmux/TmuxService");
-const { buildAttachCommand, isValidAttachName } = require("./tmux/commands");
+const { buildAttachCommand, isValidAttachName, buildAttachLines, isValidWindowId } = require("./tmux/commands");
 
 const GUAC_PROTOCOLS = {
     rdp: { sessionType: SessionType.RDP, defaultPort: 3389 },
@@ -356,7 +356,18 @@ const createSSHConnectionForSession = async (sessionId, entry, identity, organiz
                 logger.debug("tmux attach prepared", {
                     sessionId, created, prepareMs: Date.now() - tmuxStartedAt,
                 });
-                void writeAfterSettle(dataSocket, [buildAttachCommand(tmuxSession)],
+                // An optional leading select-window lets the user land in the
+                // window they picked. Two entries instead of one line joined
+                // with ";" - writeAfterSettle takes an array anyway. If the
+                // first command fails because the window is gone by now, the
+                // attach still runs: the user then lands in the session's
+                // current window instead of nowhere at all.
+                const tmuxWindowId = session.configuration.tmuxWindowId;
+                if (tmuxWindowId && !isValidWindowId(tmuxWindowId)) {
+                    logger.warn("Ignoring invalid tmux window id", { sessionId });
+                }
+
+                void writeAfterSettle(dataSocket, buildAttachLines(tmuxSession, tmuxWindowId),
                     { maxWaitMs: TMUX_ATTACH_MAX_WAIT_MS, label: "tmux-attach" });
             } else {
                 if (tmuxSession) logger.warn("Ignoring invalid tmux session name", { sessionId });

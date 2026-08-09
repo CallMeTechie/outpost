@@ -56,7 +56,7 @@ const getRequiredConnectPermission = (entry, type, scriptId) => {
     return ENTRY_TYPE_TO_CONNECT_PERMISSION[entryType] || Permission.CONNECT_SSH;
 };
 
-const createSession = async (accountId, entryId, identityId, connectionReason, type = null, directIdentity = null, tabId = null, browserId = null, scriptId = null, startPath = null, ipAddress = null, userAgent = null, tmuxSession = null, tmuxCreate = false) => {
+const createSession = async (accountId, entryId, identityId, connectionReason, type = null, directIdentity = null, tabId = null, browserId = null, scriptId = null, startPath = null, ipAddress = null, userAgent = null, tmuxSession = null, tmuxCreate = false, tmuxWindowId = null) => {
     const entry = await Entry.findByPk(entryId);
     if (!entry) {
         return { code: 404, message: "Entry not found" };
@@ -129,6 +129,7 @@ const createSession = async (accountId, entryId, identityId, connectionReason, t
         startPath: startPath || null,
         tmuxSession: tmuxSession || null,
         tmuxCreate: Boolean(tmuxCreate),
+        tmuxWindowId: tmuxWindowId || null,
         renderer: type === "sftp" ? "sftp" : entry.renderer,
     };
 
@@ -329,7 +330,8 @@ const duplicateSession = async (accountId, sessionId, tabId = null, browserId = 
         ipAddress,
         userAgent,
         config.tmuxSession || null,
-        false
+        false,
+        config.tmuxWindowId || null
     );
 };
 
