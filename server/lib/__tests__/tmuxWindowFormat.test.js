@@ -3,9 +3,9 @@ const assert = require("node:assert");
 const { parseListing, buildListWithWindowsCommand } = require("../tmux/windowFormat");
 
 /**
- * Baut einen Datensatz genau so, wie tmux ihn ausgibt: feste Felder, dann die
- * Bytelänge des Namens, dann der Name. Die Länge wird hier berechnet und nicht
- * von Hand gezählt - genau wie tmux es tut.
+ * Builds a record exactly the way tmux outputs it: fixed fields, then the
+ * byte length of the name, then the name. The length is computed here rather
+ * than counted by hand - just as tmux itself does it.
  */
 const rec = (type, fixed, name) =>
     `${type}|${fixed.join("|")}|${Buffer.byteLength(name, "utf8")}|${name}`;
@@ -126,10 +126,10 @@ test("leere Ausgabe ergibt eine leere Liste", () => {
 });
 
 test("Wagenrueckläufe im Transport machen die Liste nicht unlesbar", () => {
-    // Der Bestand hatte dafuer einen eigenen Test ("tolerates carriage returns").
-    // Ohne Normalisierung landet das Ende jedes Namens auf dem \r statt auf dem
-    // Zeilenumbruch, und die GESAMTE Liste gaelte als unlesbar - schlimmer als
-    // der heutige Stand.
+    // The existing code had its own test for this ("tolerates carriage returns").
+    // Without normalization, the end of every name lands on the \r instead of
+    // the newline, and the ENTIRE list would count as unreadable - worse than
+    // the current state.
     const out = parseListing(
         "S|$1|1|100|0|6|arbeit\r\n" +
         "W|$1|@1|1|1|1|4|bash\r\n");
@@ -151,7 +151,7 @@ test("eine Laenge groesser als der Datenstrom macht die Ausgabe unlesbar", () =>
 });
 
 test("fehlt der Zeilenumbruch nach dem Namen, ist die Ausgabe unlesbar", () => {
-    // Laenge 4, aber nach "bash" folgt "X" statt eines Zeilenumbruchs.
+    // Length 4, but "bash" is followed by "X" instead of a newline.
     const out = parseListing("S|$1|1|100|0|4|bashX\n");
     assert.strictEqual(out.ok, false);
 });

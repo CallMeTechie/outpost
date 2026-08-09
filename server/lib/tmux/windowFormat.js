@@ -1,12 +1,11 @@
 const { quote } = require("./commands");
 
 /**
- * Das vorletzte Feld ist die von tmux berechnete Laenge des Namens. Ohne sie
- * ist das Format faelschbar: ein Fenstername darf Zeilenumbrueche enthalten,
- * also auch eine Zeile, die aussieht wie ein eigener Datensatz. Gemessen gegen
- * tmux 3.5a - ein Fenster namens "foo\nW|$3|@99|1|1|1|boese" erzeugt genau das.
- * Die Laenge liefert tmux, nicht der Name; sie laesst sich vom Inhalt nicht
- * faelschen.
+ * The second-to-last field is the name length tmux itself computed. Without
+ * it the format is forgeable: a window name may contain newlines, including
+ * one that looks like a record of its own. Measured against tmux 3.5a - a
+ * window named "foo\nW|$3|@99|1|1|1|evil" produces exactly that. The length
+ * comes from tmux, not from the name; the content cannot forge it.
  */
 const SESSION_FORMAT =
     "S|#{session_id}|#{session_windows}|#{session_created}|#{session_attached}|#{n:session_name}|#{session_name}";
@@ -14,15 +13,15 @@ const WINDOW_FORMAT =
     "W|#{session_id}|#{window_id}|#{window_index}|#{window_active}|#{window_panes}|#{n:window_name}|#{window_name}";
 
 /**
- * Beide Kommandos in einem exec: die spuerbare Zeit steckt in der SSH-Runde,
- * nicht in tmux (list-windows -a kostet gemessen 2 ms). Das Semikolon statt &&
- * ist beabsichtigt - laeuft kein Server, scheitern beide gleich, und der
- * Exit-Code des letzten Kommandos traegt die Ursache.
+ * Both commands in one exec: the noticeable time is in the SSH round trip,
+ * not in tmux (list-windows -a measured at 2 ms). The semicolon instead of &&
+ * is deliberate - if no server is running, both fail the same way, and the
+ * exit code of the last command carries the cause.
  */
 const buildListWithWindowsCommand = () =>
     `tmux list-sessions -F ${quote(SESSION_FORMAT)}; tmux list-windows -a -F ${quote(WINDOW_FORMAT)}`;
 
-/** Anzahl fester Felder nach dem Typkennzeichen, das Laengenfeld eingeschlossen. */
+/** Number of fixed fields after the type tag, the length field included. */
 const FIXED_FIELDS = { S: 5, W: 6 };
 
 const PIPE = 0x7c;
@@ -36,9 +35,9 @@ const toNumber = (value) => {
 };
 
 /**
- * Sucht den Anfang des Namens: die Stelle direkt hinter dem (count+1)-ten
- * senkrechten Strich ab `from`. Zaehlt ueber Bytes, weil danach ueber Bytes
- * geschnitten wird.
+ * Finds the start of the name: the position right after the (count+1)-th
+ * pipe character starting at `from`. Counts over bytes, because slicing
+ * afterwards is over bytes too.
  */
 const nameStart = (buf, from, count) => {
     let at = from;
@@ -51,11 +50,10 @@ const nameStart = (buf, from, count) => {
 };
 
 /**
- * Laengenbasierte Zerlegung. Gibt null zurueck, wenn ein Datensatz kein
- * numerisches Laengenfeld traegt - dann kennt der Host `#{n:}` nicht und der
- * Aufrufer schaltet fuer die GESAMTE Ausgabe auf die Zeilenerkennung um.
- * Ein Mischbetrieb kann nicht entstehen: beide Kommandos laufen im selben exec
- * gegen dasselbe tmux-Programm.
+ * Length-based parsing. Returns null when a record carries no numeric length
+ * field - then the host doesn't know `#{n:}`, and the caller switches to
+ * line-based detection for the ENTIRE output. A mixed mode cannot occur:
+ * both commands run in the same exec against the same tmux binary.
  */
 const parseByLength = (buf) => {
     const records = [];
@@ -69,7 +67,7 @@ const parseByLength = (buf) => {
         const count = FIXED_FIELDS[type];
 
         if (!count || head[1] !== "|") {
-            // Vor dem ersten Datensatz steht moeglicherweise Begruessungstext.
+            // A welcome banner may precede the first record.
             if (records.length === 0) { pos = headEnd + 1; continue; }
             return unreadable("unexpected line");
         }
@@ -78,7 +76,7 @@ const parseByLength = (buf) => {
         if (parts.length < count + 1) return unreadable("too few fields");
 
         const lengthField = parts[count];
-        if (!/^[0-9]+$/.test(lengthField)) return null;   // -> Rueckfallebene
+        if (!/^[0-9]+$/.test(lengthField)) return null;   // -> fallback tier
 
         const start = nameStart(buf, pos, count);
         if (start === -1) return unreadable("malformed record");
@@ -87,9 +85,9 @@ const parseByLength = (buf) => {
         const end = start + length;
         if (end > buf.length) return unreadable("length beyond output");
 
-        // Nach dem Namen muss ein Zeilenumbruch stehen - tmux haengt an jeden
-        // Datensatz einen an. Steht dort etwas anderes, passt die Laenge nicht
-        // zum Datenstrom und der Rest waere geraten.
+        // A newline must follow the name - tmux appends one to every record.
+        // If something else stands there, the length doesn't match the data
+        // stream, and the rest would be a guess.
         if (end !== buf.length && buf[end] !== NEWLINE) return unreadable("no newline after name");
 
         records.push({ type, fields: parts.slice(1, count), name: buf.toString("utf8", start, end) });
@@ -100,10 +98,10 @@ const parseByLength = (buf) => {
 };
 
 /**
- * Rueckfallebene fuer tmux ohne `#{n:}`. Datensaetze werden am strengen
- * Zeilenanfang erkannt; alles andere gehoert zum Namen der Zeile davor. Diese
- * Ebene ist gegen eine bewusst praeparierte Zeile NICHT dicht - das ist die in
- * D9 getroffene Entscheidung, die Funktion auf alten Hosts zu erhalten.
+ * Fallback tier for tmux without `#{n:}`. Records are recognized by a strict
+ * line start; everything else belongs to the name of the line before it.
+ * This tier is NOT tight against a deliberately crafted line - that is the
+ * decision made in D9 to keep the feature working on old hosts.
  */
 const parseByLine = (text) => {
     const records = [];
@@ -112,21 +110,21 @@ const parseByLine = (text) => {
         const line = raw.replace(/\r$/, "");
         const type = line[0];
         const count = FIXED_FIELDS[type];
-        // Beide Datensatzarten tragen an dritter Stelle die Session-Kennung,
-        // die immer mit "$" beginnt - das macht den Zeilenanfang streng genug,
-        // um Fortsetzungszeilen in aller Regel zu erkennen.
+        // Both record kinds carry the session id in third position, which
+        // always starts with "$" - that makes the line start strict enough
+        // to recognize continuation lines in the common case.
         const isRecord = Boolean(count) && line[1] === "|" && line[2] === "$";
 
         if (!isRecord) {
-            if (records.length === 0) continue;                 // Begruessungstext
+            if (records.length === 0) continue;                 // welcome banner
             const last = records[records.length - 1];
             last.name += "\n" + line;
             continue;
         }
 
         const parts = line.split("|");
-        // Ohne Laengenfeld ist das letzte feste Feld eines nach vorn; der Name
-        // ist alles ab dort, inklusive enthaltener senkrechter Striche.
+        // Without a length field, the last fixed field is off by one; the
+        // name is everything from there on, including any embedded pipes.
         const fixedCount = count - 1;
         if (parts.length < fixedCount + 2) continue;
 
@@ -137,14 +135,14 @@ const parseByLine = (text) => {
         });
     }
 
-    // Eine letzte, leere Zeile aus dem abschliessenden Zeilenumbruch haengt
-    // sonst als "\n" am letzten Namen.
+    // A final, empty line from the trailing newline would otherwise hang
+    // off the last name as "\n".
     if (records.length > 0) records[records.length - 1].name = records[records.length - 1].name.replace(/\n$/, "");
 
     return records;
 };
 
-/** Fasst die flachen Datensaetze zu Sessions mit ihren Fenstern zusammen. */
+/** Groups the flat records into sessions with their windows. */
 const group = (records) => {
     const bySessionId = new Map();
     const order = [];
@@ -169,14 +167,13 @@ const group = (records) => {
         if (record.type !== "W") continue;
         const [sessionId, windowId, index, active, panes] = record.fields;
 
-        // Ein Fenster ohne Session hat in der Oberflaeche keinen Platz. Das
-        // passiert legitim, wenn zwischen den beiden Kommandos eine Session
-        // entsteht.
+        // A window without a session has no place in the UI. This happens
+        // legitimately when a session is created between the two commands.
         const session = bySessionId.get(sessionId);
         if (!session) continue;
 
-        // Tiefenstaffelung fuer die Rueckfallebene: echtes list-windows gibt
-        // jede Kennung genau einmal aus.
+        // Deduping for the fallback tier: real list-windows outputs each id
+        // exactly once.
         if (seenWindows.has(windowId)) continue;
         seenWindows.add(windowId);
 
@@ -193,17 +190,17 @@ const group = (records) => {
 };
 
 /**
- * Wagenruecklaeufe herausnehmen, BEVOR ueber Byteoffsets geschnitten wird.
+ * Strip carriage returns BEFORE slicing by byte offsets.
  *
- * tmux zaehlt die Namenslaenge ohne jedes \r - der Transport fuegt sie
- * hinzu. Ohne diese Normalisierung landet das Ende jedes Namens auf einem \r
- * statt auf dem Zeilenumbruch, und die gesamte Liste gaelte als unlesbar. Der
- * Bestand kennt dieselbe Notwendigkeit: parseSessions entfernte \r$ je Zeile,
- * mit eigenem Test dafuer.
+ * tmux counts the name length without any \r - the transport adds it. Without
+ * this normalization, the end of every name would land on a \r instead of the
+ * newline, and the whole list would count as unreadable. The existing code
+ * knows the same necessity: parseSessions stripped \r$ per line, with its own
+ * test for it.
  *
- * Der Sonderfall, dass ein Fenstername selbst ein \r\n enthaelt, wird dabei zu
- * einem \n verkuerzt. Dann passt die gemeldete Laenge nicht mehr, und die Liste
- * gilt als unlesbar - fail-safe, nicht falsch.
+ * The edge case of a window name itself containing \r\n gets shortened to \n
+ * here. Then the reported length no longer matches, and the list counts as
+ * unreadable - fail-safe, not wrong.
  */
 const stripCarriageReturns = (buf) => {
     if (!buf.includes(0x0d)) return buf;

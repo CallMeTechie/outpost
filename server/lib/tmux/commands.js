@@ -87,28 +87,28 @@ const buildRenameCommand = (name, newName) =>
 const WINDOW_ID_PATTERN = /^@[0-9]{1,10}$/;
 
 /**
- * Die Kennung ist die einzige belastbare Handhabe auf ein Fenster: Nummern
- * verschieben sich bei `renumber-windows on`, und Namen sind weder eindeutig
- * noch frei von Sonderzeichen. Beides gemessen gegen tmux 3.5a.
+ * The id is the only reliable handle on a window: numbers shift under
+ * `renumber-windows on`, and names are neither unique nor free of special
+ * characters. Both measured against tmux 3.5a.
  *
- * Die Form ist so eng, dass ueber sie nichts in die Kommandozeile gelangen
- * kann - das Quoting ist die zweite Schicht, nicht die erste.
+ * The shape is narrow enough that nothing can reach the command line through
+ * it - quoting is the second layer, not the first.
  */
 const isValidWindowId = (value) => typeof value === "string" && WINDOW_ID_PATTERN.test(value);
 
 /**
- * Anders als Sessionnamen schreibt tmux Fensternamen NICHT um: `mit.punkt`
- * bleibt `mit.punkt` (gemessen). Die Strenge der Sessionregel hatte genau
- * diesen einen Grund, also entfaellt sie hier. Verboten bleiben nur
- * Steuerzeichen, die die Darstellung zerstoeren wuerden.
+ * Unlike session names, tmux does NOT rewrite window names: `with.dot` stays
+ * `with.dot` (measured). The strictness of the session rule had exactly that
+ * one reason, so it doesn't apply here. Only control characters, which would
+ * break the display, remain forbidden.
  */
 const isValidWindowName = (value) =>
     typeof value === "string" && value.length >= 1 && value.length <= 64 && !CONTROL_CHARS.test(value);
 
 /**
- * Die Erlaubnisliste fuer Fenster, parallel zu isAllowedSession: nur Kennungen
- * aus einer Liste, die der Server selbst gerade geholt hat. Exakter Vergleich
- * ueber alle Sessions hinweg - eine Kennung ist serverweit eindeutig.
+ * The allowlist for windows, parallel to isAllowedSession: only ids from a
+ * list the server itself just fetched. Exact comparison across all sessions -
+ * an id is unique server-wide.
  */
 const isAllowedWindow = (id, sessions) =>
     isValidWindowId(id) && Array.isArray(sessions)
@@ -116,26 +116,26 @@ const isAllowedWindow = (id, sessions) =>
         && session.windowList.some((window) => window?.id === id));
 
 /**
- * Die Kennung braucht kein `=`-Praefix: sie ist ihrer Natur nach exakt, und ein
- * Praefix wuerde faelschlich nahelegen, hier draeue eine Praefixaufloesung wie
- * bei Sessionnamen.
+ * The id needs no `=` prefix: it is exact by its very nature, and a prefix
+ * would falsely suggest that prefix resolution, as with session names, were
+ * lurking here too.
  */
 const buildKillWindowCommand = (id) => `tmux kill-window -t ${quote(id)}`;
 
 /**
- * Das `--` beendet die Optionsauswertung. Ohne es liest tmux `-neu` als
- * Optionsbuendel und antwortet mit "unknown flag -n" (gemessen).
+ * The `--` ends option parsing. Without it, tmux reads `-neu` as an option
+ * bundle and responds with "unknown flag -n" (measured).
  */
 const buildRenameWindowCommand = (id, newName) =>
     `tmux rename-window -t ${quote(id)} -- ${quote(newName)}`;
 
 /**
- * Ziel ist hier eine SESSION, also mit Doppelpunkt (new-window erwartet ein
- * Fensterziel) und mit `=`-Praefix gegen die Praefixaufloesung, die bei
- * Sessionnamen gemessen wurde.
+ * The target here is a SESSION, so with a colon (new-window expects a window
+ * target) and with the `=` prefix against the prefix resolution measured for
+ * session names.
  *
- * Kein Name ist etwas anderes als ein leerer Name: ohne Wunsch entfaellt `-n`
- * vollstaendig und tmux vergibt seinen Standardnamen.
+ * No name is something other than an empty name: without a request, `-n` is
+ * omitted entirely and tmux assigns its default name.
  */
 const buildNewWindowCommand = (sessionName, name) => {
     const named = typeof name === "string" && name.length > 0 ? ` -n ${quote(name)}` : "";
@@ -143,20 +143,20 @@ const buildNewWindowCommand = (sessionName, name) => {
 };
 
 /**
- * Laeuft beim Verbindungsaufbau vor dem Anhaengbefehl. Die Umleitung ist
- * notwendig: bei einem inzwischen beendeten Fenster schreibt tmux
- * "can't find window: @19" auf die Fehlerausgabe, und diese Zeile stuende im
- * Terminal des Nutzers, obwohl der Verbindungsaufbau erfolgreich war.
+ * Runs before the attach command during connection setup. The redirect is
+ * necessary: for a window that has since ended, tmux writes
+ * "can't find window: @19" to stderr, and that line would show up in the
+ * user's terminal even though the connection setup itself succeeded.
  */
 const buildSelectWindowCommand = (id) => `tmux select-window -t ${quote(id)} 2>/dev/null`;
 
 /**
- * Die beiden Zeilen des Verbindungsaufbaus in der richtigen Reihenfolge.
+ * The two lines of connection setup in the right order.
  *
- * Als eigene Funktion statt inline im ConnectionService, weil die Reihenfolge
- * die eigentliche Aussage ist und sich nur so ohne Engine testen laesst. Ohne
- * gueltige Kennung bleibt das Ergebnis buchstabengleich zum bisherigen Pfad -
- * der reine Session-Anhaengbefehl darf sich nicht aendern.
+ * A function of its own instead of inline in ConnectionService, because the
+ * order is the actual point being made, and this is the only way to test it
+ * without an engine. Without a valid id, the result stays byte-identical to
+ * the existing path - the plain session attach command must not change.
  */
 const buildAttachLines = (sessionName, windowId) =>
     (isValidWindowId(windowId)

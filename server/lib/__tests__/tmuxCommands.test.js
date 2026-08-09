@@ -274,11 +274,11 @@ test("isAllowedWindow vergleicht exakt ueber alle Sessions hinweg", () => {
     assert.strictEqual(isAllowedWindow("@17", sessions), true);
     assert.strictEqual(isAllowedWindow("@2", sessions), true);
     assert.strictEqual(isAllowedWindow("@1", sessions), true);
-    // Kein Praefixtreffer: "@1" darf nicht auf "@17" passen und umgekehrt.
+    // No prefix match: "@1" must not match "@17" and vice versa.
     assert.strictEqual(isAllowedWindow("@170", sessions), false);
     assert.strictEqual(isAllowedWindow("@", sessions), false);
     assert.strictEqual(isAllowedWindow("@99", sessions), false);
-    assert.strictEqual(isAllowedWindow("@1", [{ name: "a" }]), false);   // ohne windowList
+    assert.strictEqual(isAllowedWindow("@1", [{ name: "a" }]), false);   // without windowList
     assert.strictEqual(isAllowedWindow("@1", null), false);
 });
 
@@ -312,9 +312,9 @@ test("buildSelectWindowCommand haelt die Fehlerausgabe aus dem Terminal", () => 
 });
 
 test("buildAttachLines stellt select-window VOR den Anhaengbefehl", () => {
-    // Die Reihenfolge ist die ganze Aussage: erst das Zielfenster setzen, dann
-    // anhaengen. Andersherum liefe select-window gegen eine Sitzung, in der der
-    // Nutzer schon sitzt, und der Befehl landete im Terminal.
+    // The order is the whole point: set the target window first, then attach.
+    // The other way around, select-window would run against a session the
+    // user is already sitting in, and the command would land in the terminal.
     assert.deepStrictEqual(buildAttachLines("arbeit", "@19"), [
         "tmux select-window -t '@19' 2>/dev/null",
         "tmux new -A -s 'arbeit'",
