@@ -197,9 +197,7 @@ const group = (records) => {
  *
  * tmux counts the name length without any \r - the transport adds it. Without
  * this normalization, the end of every name would land on a \r instead of the
- * newline, and the whole list would count as unreadable. The existing code
- * knows the same necessity: parseSessions stripped \r$ per line, with its own
- * test for it.
+ * newline, and the whole list would count as unreadable.
  *
  * The edge case of a window name itself containing \r\n gets shortened to \n
  * here. Then the reported length no longer matches, and the list counts as
