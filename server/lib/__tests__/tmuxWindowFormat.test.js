@@ -168,22 +168,41 @@ test("a missing newline after the name makes the output unreadable", () => {
     assert.strictEqual(out.ok, false);
 });
 
-test("fallback tier: no length field -> line detection, output stays readable", () => {
+// The length field is always sent as #{n:session_name} / #{n:window_name}. A
+// host without that modifier does not drop the field - it stays in its slot,
+// just not as a number: either as the literal modifier text or as an empty
+// value. Both are exercised below, because both are plausible.
+
+test("fallback tier: literal #{n:} modifier -> line detection, output stays readable", () => {
     const out = parseListing(
-        "S|$1|2|100|0|arbeit\n" +
-        "W|$1|@1|1|1|1|bash\n" +
-        "W|$1|@2|2|0|1|mit|pipe\n");
+        "S|$1|2|100|0|#{n:session_name}|arbeit\n" +
+        "W|$1|@1|1|1|1|#{n:window_name}|bash\n" +
+        "W|$1|@2|2|0|1|#{n:window_name}|mit|pipe\n");
 
     assert.strictEqual(out.ok, true);
     assert.strictEqual(out.fallbackUsed, true);
     assert.strictEqual(out.sessions[0].name, "arbeit");
     assert.deepStrictEqual(out.sessions[0].windowList.map((w) => w.name), ["bash", "mit|pipe"]);
+    assert.deepStrictEqual(out.sessions[0].windowList.map((w) => w.id), ["@1", "@2"]);
+});
+
+test("fallback tier: empty length field -> line detection, output stays readable", () => {
+    const out = parseListing(
+        "S|$1|2|100|0||arbeit\n" +
+        "W|$1|@1|1|1|1||bash\n" +
+        "W|$1|@2|2|0|1||mit|pipe\n");
+
+    assert.strictEqual(out.ok, true);
+    assert.strictEqual(out.fallbackUsed, true);
+    assert.strictEqual(out.sessions[0].name, "arbeit");
+    assert.deepStrictEqual(out.sessions[0].windowList.map((w) => w.name), ["bash", "mit|pipe"]);
+    assert.deepStrictEqual(out.sessions[0].windowList.map((w) => w.id), ["@1", "@2"]);
 });
 
 test("fallback tier: continuation lines attach to the name before them", () => {
     const out = parseListing(
-        "S|$1|1|100|0|s\n" +
-        "W|$1|@1|1|1|1|zeile\numbruch\n");
+        "S|$1|1|100|0||s\n" +
+        "W|$1|@1|1|1|1||zeile\numbruch\n");
 
     assert.strictEqual(out.fallbackUsed, true);
     assert.strictEqual(out.sessions[0].windowList[0].name, "zeile\numbruch");
@@ -191,9 +210,9 @@ test("fallback tier: continuation lines attach to the name before them", () => {
 
 test("fallback tier: a duplicate id is dropped", () => {
     const out = parseListing(
-        "S|$1|1|100|0|s\n" +
-        "W|$1|@1|1|1|1|echt\n" +
-        "W|$1|@1|2|0|1|gefaelscht\n");
+        "S|$1|1|100|0||s\n" +
+        "W|$1|@1|1|1|1||echt\n" +
+        "W|$1|@1|2|0|1||gefaelscht\n");
 
     assert.strictEqual(out.sessions[0].windowList.length, 1);
     assert.strictEqual(out.sessions[0].windowList[0].name, "echt");

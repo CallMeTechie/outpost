@@ -126,15 +126,15 @@ const parseByLine = (text) => {
         }
 
         const parts = line.split("|");
-        // Without a length field, the last fixed field is off by one; the
-        // name is everything from there on, including any embedded pipes.
-        const fixedCount = count - 1;
-        if (parts.length < fixedCount + 2) continue;
+        // The length field is always present positionally, even when the host
+        // does not understand #{n:} - it just is not a number then. Only its
+        // value is useless here, not its slot.
+        if (parts.length < count + 2) continue;
 
         records.push({
             type,
-            fields: parts.slice(1, fixedCount + 1),
-            name: parts.slice(fixedCount + 1).join("|"),
+            fields: parts.slice(1, count),
+            name: parts.slice(count + 1).join("|"),
         });
     }
 
