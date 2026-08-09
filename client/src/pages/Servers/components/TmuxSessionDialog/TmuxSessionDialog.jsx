@@ -230,7 +230,7 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
     // noticed on the next request, there is no background check for it.
     useEffect(() => {
         if (!openSession || state.status !== "ready" || openedSession) return;
-        setNotice({ text: t('servers.tmuxDialog.sessionGone', { name: openSession }), failed: true });
+        setNotice({ text: t('servers.tmuxDialog.sessionGone', { name: displayName(openSession) }), failed: true });
         setOpenSession(null);
     }, [openSession, openedSession, state.status]);
 
