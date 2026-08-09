@@ -42,6 +42,11 @@ jobs:
 
       - name: Collect the changed client files
         id: changed
+        # GitHub's default is 'bash -e {0}', which does not set pipefail: the exit
+        # code of a pipe is the last command's (sed), not git diff's. Without this,
+        # a failing git diff would leave the file empty and read as "nothing
+        # changed" instead of failing the job.
+        shell: bash
         run: |
           # Three dots: compare against the common ancestor, not against the tip
           # of main. Without it, unrelated work on main counts as changed here
