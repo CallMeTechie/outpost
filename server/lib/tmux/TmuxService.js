@@ -1,5 +1,9 @@
 const controlPlane = require("../controlPlane/ControlPlaneServer");
-const { buildListCommand, buildProbeCommand, buildSendKeysCommand, buildKillCommand, buildRenameCommand, parseSessions } = require("./commands");
+const {
+    buildProbeCommand, buildSendKeysCommand, buildKillCommand, buildRenameCommand,
+    buildKillWindowCommand, buildRenameWindowCommand, buildNewWindowCommand,
+} = require("./commands");
+const { buildListWithWindowsCommand, parseListing } = require("./windowFormat");
 const logger = require("../../utils/logger");
 
 const EXEC_TIMEOUT_MS = 5000;
@@ -50,7 +54,7 @@ const execWithTimeout = (target, command, kind) => {
 };
 
 const listSessions = async (target) => {
-    const result = await execWithTimeout(target, buildListCommand(), "list");
+    const result = await execWithTimeout(target, buildListWithWindowsCommand(), "list");
     const exitCode = result.exitCode ?? (result.success ? 0 : 1);
     const stderr = result.stderr || "";
 
@@ -90,7 +94,25 @@ const listSessions = async (target) => {
         throw error;
     }
 
-    return { available: true, sessions: parseSessions(result.stdout) };
+    const parsed = parseListing(result.stdout);
+
+    // If the reported name length doesn't match the data stream, the rest of
+    // the output is a guess. A half-parsed list would be worse than none: it
+    // would serve as an allowlist for destructive actions.
+    if (!parsed.ok) {
+        const error = new Error("tmux listing could not be read");
+        error.code = "TMUX_FAILED";
+        throw error;
+    }
+
+    // D9: on hosts without #{n:} the feature still works, but the parsing
+    // there is not tight against a crafted window name. In production it
+    // must be visible which hosts this affects.
+    if (parsed.fallbackUsed) {
+        logger.warn("tmux listing parsed without length fields", { host: target.host });
+    }
+
+    return { available: true, sessions: parsed.sessions };
 };
 
 /**
@@ -188,4 +210,83 @@ const renameSession = async (target, name, newName) => {
     }
 };
 
-module.exports = { listSessions, probeSession, sendKeys, killSession, renameSession, EXEC_TIMEOUT_MS, TmuxTimeoutError };
+/**
+ * The core of the safeguard sits with the caller (the allowlist), not here.
+ * This function only checks that the command actually ran: the control plane
+ * resolves an exec request regardless of exit status, so a failed
+ * kill-window would otherwise come back silently as a success.
+ */
+const killWindow = async (target, id) => {
+    const result = await execWithTimeout(target, buildKillWindowCommand(id), "kill-window");
+
+    // Same as killSession: defence in depth for a hypothetical engine that
+    // leaves exitCode unset on a transport failure. For a destructive action
+    // the wrong reading is the worst one: the user would be told the window
+    // is gone while it is still running.
+    if (result.success === false && result.exitCode === 0) {
+        const error = new Error(`tmux kill-window did not run for ${id}`);
+        error.code = "TMUX_FAILED";
+        throw error;
+    }
+
+    const exitCode = result.exitCode ?? (result.success ? 0 : 1);
+    if (exitCode !== 0) {
+        const stderr = (result.stderr || "").slice(0, 200);
+        const error = new Error(stderr || result.errorMessage || `tmux kill-window failed for ${id}`);
+        error.code = "TMUX_FAILED";
+        throw error;
+    }
+};
+
+/**
+ * Unlike sessions, there is no duplicate-name error here: two windows may
+ * share a name (measured). A TMUX_DUPLICATE can therefore not occur and is
+ * not handled.
+ */
+const renameWindow = async (target, id, newName) => {
+    const result = await execWithTimeout(target, buildRenameWindowCommand(id, newName), "rename-window");
+
+    if (result.success === false && result.exitCode === 0) {
+        const error = new Error(`tmux rename-window did not run for ${id}`);
+        error.code = "TMUX_FAILED";
+        throw error;
+    }
+
+    const exitCode = result.exitCode ?? (result.success ? 0 : 1);
+    if (exitCode !== 0) {
+        const stderr = (result.stderr || "").slice(0, 200);
+        const error = new Error(stderr || result.errorMessage || `tmux rename-window failed for ${id}`);
+        error.code = "TMUX_FAILED";
+        throw error;
+    }
+};
+
+/**
+ * Returns the id of the newly created window - `-P -F '#{window_id}'` has
+ * tmux print it, so the UI can highlight the new window without guessing.
+ */
+const newWindow = async (target, sessionName, name) => {
+    const result = await execWithTimeout(target, buildNewWindowCommand(sessionName, name), "new-window");
+
+    if (result.success === false && result.exitCode === 0) {
+        const error = new Error(`tmux new-window did not run in session "${sessionName}"`);
+        error.code = "TMUX_FAILED";
+        throw error;
+    }
+
+    const exitCode = result.exitCode ?? (result.success ? 0 : 1);
+    if (exitCode !== 0) {
+        const stderr = (result.stderr || "").slice(0, 200);
+        const error = new Error(stderr || result.errorMessage || `tmux new-window failed in session "${sessionName}"`);
+        error.code = "TMUX_FAILED";
+        throw error;
+    }
+
+    return (result.stdout || "").trim();
+};
+
+module.exports = {
+    listSessions, probeSession, sendKeys, killSession, renameSession,
+    killWindow, renameWindow, newWindow,
+    EXEC_TIMEOUT_MS, TmuxTimeoutError,
+};
