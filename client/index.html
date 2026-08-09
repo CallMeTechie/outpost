@@ -11,7 +11,10 @@
     <link rel="stylesheet" href="/assets/fonts/ubuntu-mono/index.css" />
     <link rel="stylesheet" href="/assets/fonts/roboto-mono/index.css" />
     <link rel="stylesheet" href="/assets/fonts/hack-font/index.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- interactive-widget: without it the on-screen keyboard only shrinks the visual
+         viewport, so the terminal keeps its full height and its bottom rows - the prompt -
+         end up behind the keyboard, unreachable because the body cannot scroll. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>Nexterm</title>
   </head>
   <body>
