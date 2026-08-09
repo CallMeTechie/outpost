@@ -46,6 +46,17 @@ export default [
       // against a host switch. Kept visible as a warning instead of forcing a
       // rewrite of reviewed code.
       'react-hooks/set-state-in-effect': 'warn',
+
+      // Same rule set, same verdict: 39 places read a ref during render, almost
+      // all of them upstream code computing a disabled state from a terminal or
+      // editor instance. As an error it would block any edit to those files;
+      // as a warning it stays visible.
+      'react-hooks/refs': 'warn',
+
+      // Matches the server config, which already allows this. The empty catch
+      // is the established shape here for storage and clipboard calls that are
+      // allowed to fail silently.
+      'no-empty': ['error', { allowEmptyCatch: true }],
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },
