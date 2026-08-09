@@ -6,7 +6,19 @@
 
   @media (max-width: breakpoints.$mobile)
     display: flex
-    flex: 0 0 auto
+    // Anchored to the viewport rather than sitting at the end of the flex
+    // chain: the terminal view nests four containers that combine height: 100%
+    // with overflow: hidden, and as the last flex child the bar ended up in a
+    // strip one of them clipped. Fixed positioning does not depend on any of
+    // them. It still rides above the on-screen keyboard, because the viewport
+    // meta carries interactive-widget=resizes-content and the layout viewport
+    // shrinks with the keyboard.
+    position: fixed
+    left: 0
+    right: 0
+    bottom: var(--mobile-nav-height)
+    // Below the mobile navigation's own z-index of 100; the two do not overlap.
+    z-index: 90
     align-items: center
     gap: 0.25rem
     padding: 0.25rem 0.5rem

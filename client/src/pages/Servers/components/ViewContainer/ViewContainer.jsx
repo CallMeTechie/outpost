@@ -598,9 +598,13 @@ export const ViewContainer = ({
             )}
             {titleBarTabsSlot ? createPortal(serverTabs, titleBarTabsSlot) : serverTabs}
 
+            {/* The key bar is positioned fixed, so it takes no room of its own.
+                Subtracting its height here is what keeps it from covering the
+                terminal's bottom rows. --key-bar-height is 0px outside the
+                mobile breakpoint, so this stays exactly 100% on the desktop. */}
             <div ref={layoutRef}
                  className={`view-layouter ${layoutMode} ${isResizing ? "resizing" : ""} ${isResizing && resizingDirection ? `resizing-${resizingDirection}` : ""}`}
-                 style={{ position: "relative", width: "100%", height: "100%" }}>
+                 style={{ position: "relative", width: "100%", height: "calc(100% - var(--key-bar-height))" }}>
                 {renderAllSessions()}
                 {layoutMode !== "single" && renderFlexLayout()}
             </div>
