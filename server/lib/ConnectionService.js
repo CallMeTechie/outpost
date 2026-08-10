@@ -206,7 +206,7 @@ const createSFTPConnectionForSession = async (sessionId, entry, accountId) => {
 };
 
 const getAuxiliarySFTPClient = async (sessionId, entry, accountId, opts) => {
-    const { suffix, clientKey, connectingKey, label } = opts;
+    const { suffix, clientKey, connectingKey, label, onEngineSession } = opts;
     const session = requireSession(sessionId);
     const conn = SessionManager.getConnection(sessionId);
     if (!conn) throw new Error("No active SFTP session");
@@ -221,6 +221,7 @@ const getAuxiliarySFTPClient = async (sessionId, entry, accountId, opts) => {
 
         conn._auxGeneration = (conn._auxGeneration || 0) + 1;
         const engineSessionId = `${sessionId}-${suffix}-${conn._auxGeneration}`;
+        onEngineSession?.(engineSessionId);
         if (!conn.auxSessionIds) conn.auxSessionIds = new Set();
         conn.auxSessionIds.add(engineSessionId);
 
@@ -247,6 +248,47 @@ const getSFTPTransferClient = (sessionId, entry, accountId) =>
     getAuxiliarySFTPClient(sessionId, entry, accountId, {
         suffix: "xfer", clientKey: "transferClient", connectingKey: "_transferConnecting", label: "transfer",
     });
+
+const crossTransferKeys = (transferId) => ({
+    suffix: "cxfer",
+    clientKey: `crossTransferClient:${transferId}`,
+    connectingKey: `_crossTransferConnecting:${transferId}`,
+    label: "cross-transfer",
+});
+
+// One client per transfer: EngineSftpClient multiplexes over request IDs, and close() rejects
+// every pending request. A shared client would tear down a foreign transfer on cancel.
+const getSFTPCrossTransferClient = async (sessionId, entry, accountId, transferId) => {
+    const conn = SessionManager.getConnection(sessionId);
+    if (!conn) throw new Error("No active SFTP session");
+    if (!conn.crossTransferClients) conn.crossTransferClients = new Map();
+
+    const keys = crossTransferKeys(transferId);
+    let engineSessionId = null;
+    const client = await getAuxiliarySFTPClient(sessionId, entry, accountId, {
+        ...keys,
+        onEngineSession: (id) => { engineSessionId = id; },
+    });
+
+    conn.crossTransferClients.set(transferId, { client, engineSessionId, clientKey: keys.clientKey });
+    return client;
+};
+
+const releaseSFTPCrossTransferClient = (conn, transferId) => {
+    const entry = conn?.crossTransferClients?.get(transferId);
+    if (!entry) return;
+
+    try { entry.client?.close(); } catch {}
+    // close() only destroys the socket; the control plane has to be told separately — otherwise
+    // the engine session survives until the master session ends.
+    if (entry.engineSessionId) {
+        try { controlPlane.closeSession(entry.engineSessionId); } catch {}
+        conn.auxSessionIds?.delete(entry.engineSessionId);
+    }
+    // detach() only sets conn[clientKey] = null, so without delete a dead property piles up.
+    delete conn[entry.clientKey];
+    conn.crossTransferClients.delete(transferId);
+};
 
 const getSFTPBackgroundClient = (sessionId, entry, accountId) =>
     getAuxiliarySFTPClient(sessionId, entry, accountId, {
@@ -555,6 +597,9 @@ module.exports = {
     getSFTPTransferClient,
     getSFTPBackgroundClient,
     getSFTPAIClient,
+    crossTransferKeys,
+    getSFTPCrossTransferClient,
+    releaseSFTPCrossTransferClient,
     getSessionPassword,
     buildSSHParams,
     resolveJumpHosts,
