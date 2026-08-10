@@ -293,7 +293,10 @@ const releaseSFTPCrossTransferClient = (conn, transferId) => {
         conn.auxSessionIds?.delete(entry.engineSessionId);
     }
     // detach() only sets conn[clientKey] = null, so without delete a dead property piles up.
+    // getAuxiliarySFTPClient parks a per-transfer connectingKey on the same connection and nulls
+    // it in its finally — exactly the same kind of dead property, one line further along.
     delete conn[entry.clientKey];
+    delete conn[crossTransferKeys(transferId).connectingKey];
     conn.crossTransferClients.delete(transferId);
 };
 

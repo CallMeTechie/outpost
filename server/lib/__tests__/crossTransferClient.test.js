@@ -35,6 +35,9 @@ test("releasing a transfer closes the client and clears every bookkeeping entry"
     const conn = {
         auxSessionIds: new Set(["s-cxfer-1"]),
         "crossTransferClient:t1": {},
+        // getAuxiliarySFTPClient leaves this behind as null once it is done connecting; the same
+        // dead property the clientKey delete exists to avoid, only per transfer id.
+        "_crossTransferConnecting:t1": null,
         crossTransferClients: new Map([
             ["t1", {
                 client: { close: () => { closed += 1; } },
@@ -49,6 +52,7 @@ test("releasing a transfer closes the client and clears every bookkeeping entry"
     assert.strictEqual(closed, 1);
     assert.strictEqual(conn.auxSessionIds.size, 0);
     assert.strictEqual("crossTransferClient:t1" in conn, false, "no dead property may survive");
+    assert.strictEqual("_crossTransferConnecting:t1" in conn, false, "the connecting key must go too");
     assert.strictEqual(conn.crossTransferClients.size, 0);
 });
 
