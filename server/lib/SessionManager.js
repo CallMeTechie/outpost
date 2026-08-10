@@ -502,6 +502,9 @@ module.exports.removeAllByEntryId = async (entryId) => {
     return toRemove.length;
 };
 
+// unref() so this timer does not by itself keep a process alive: anything that merely imports
+// SessionManager (tests, scripts) must be able to exit. The running server is unaffected — its
+// HTTP listener keeps the event loop open anyway. Same pattern as logger.js:23-28.
 setInterval(() => {
     const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
     let removed = 0;
@@ -513,4 +516,4 @@ setInterval(() => {
         }
     }
     if (removed > 0) logger.info(`Cleaned up ${removed} old sessions`);
-}, 30 * 60 * 1000);
+}, 30 * 60 * 1000).unref();
