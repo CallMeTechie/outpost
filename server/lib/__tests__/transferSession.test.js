@@ -81,6 +81,28 @@ test("too many conflict rounds abort the transfer", async () => {
     assert.strictEqual(await b.ask({ file: "f2" }), "abort");
 });
 
+// Pins the default fallback to the real setTimeout/clearTimeout: production wiring omits
+// setTimeoutFn/clearTimeoutFn, so a caller without them must still get a working broker instead
+// of a TypeError the first time a real transfer hits a conflict. cancel() settles the pending
+// question at once, so this does not wait for the real 1000 ms window.
+test("the broker works with the default timers when none are supplied", async () => {
+    const sent = [];
+    const b = createConflictBroker({ send: (info) => sent.push(info), timeoutMs: 1000 });
+    const pending = b.ask({ file: "a.txt" });
+    b.cancel();
+    assert.strictEqual(await pending, "abort");
+    assert.strictEqual(sent.length, 1);
+});
+
+// Same pinning for the throttle's default clock: production wiring may omit now, so flush()
+// must not throw when it falls back to Date.now.
+test("the throttle works with the default clock when now is not supplied", () => {
+    const sent = [];
+    const throttle = createProgressThrottle({ send: (p) => sent.push(p), intervalMs: 250 });
+    throttle.flush({ filesDone: 1 });
+    assert.strictEqual(sent.length, 1);
+});
+
 test("the throttle drops intermediate frames but never the last one", () => {
     let now = 0;
     const sent = [];

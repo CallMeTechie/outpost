@@ -1,9 +1,11 @@
 // Both helpers take their time functions from outside. Without that neither the conflict timeout
 // nor the progress throttle can be tested without letting real time pass — and a test that merely
-// runs slower instead of failing proves nothing. There is deliberately no fallback to the real
-// setTimeout/clearTimeout here: a default would still reach the global timer and reintroduce the
-// same untestable path, so callers (Task 7) must always pass them in.
-const createConflictBroker = ({ send, timeoutMs, maxRounds = 100, setTimeoutFn, clearTimeoutFn }) => {
+// runs slower instead of failing proves nothing. The real setTimeout/clearTimeout are only the
+// default fallback, wired in here so a caller that does not need fake timers gets working
+// behavior for free; the function body below never reaches for the globals directly, only for
+// whatever setTimeoutFn/clearTimeoutFn resolves to.
+const createConflictBroker = ({ send, timeoutMs, maxRounds = 100,
+    setTimeoutFn = setTimeout, clearTimeoutFn = clearTimeout }) => {
     let waiting = null;      // { file, resolve, timer }
     let applyAll = null;     // a remembered decision, never "abort"
     let cancelled = false;
@@ -50,9 +52,9 @@ const createConflictBroker = ({ send, timeoutMs, maxRounds = 100, setTimeoutFn, 
     };
 };
 
-// Same reasoning as above: no default here falls back to Date.now, so the throttle stays
-// deterministic under test whenever a caller forgets to pass a clock explicitly.
-const createProgressThrottle = ({ send, intervalMs, now }) => {
+// Same reasoning as above: Date.now is only the default fallback for a caller that has no need
+// for a fake clock; the body below only ever calls the local now(), never the global.
+const createProgressThrottle = ({ send, intervalMs, now = Date.now }) => {
     let lastSentAt = -Infinity;
     return {
         report(progress) {
