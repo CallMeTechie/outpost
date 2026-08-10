@@ -119,3 +119,16 @@ test("an empty folder still produces its directory entry", async () => {
     assert.deepStrictEqual(result.dirs.map((d) => d.relPath), ["empty"]);
     assert.deepStrictEqual(result.files, []);
 });
+
+test("a single wide directory exceeding MAX_WALK_ENTRIES is rejected", async () => {
+    // Generate 201000 entries in a single flat directory — exceeds MAX_WALK_ENTRIES (200000)
+    const entries = [];
+    for (let i = 0; i < 201000; i++) {
+        entries.push(file(`file${i}.txt`, { size: 1 }));
+    }
+    const source = fakeSource(
+        { "/srv/wide": entries },
+        { "/srv/wide": { size: 0, type: "folder", mtime: 1 } },
+    );
+    await assert.rejects(() => walk(source, ["/srv/wide"]), /too many entries/i);
+});

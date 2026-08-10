@@ -41,10 +41,19 @@ const walk = async (source, paths, { isCancelled = () => false } = {}) => {
         }
     };
 
+    // Check cancellation and size limit without depth check — for use within entry loops
+    const guardSize = () => {
+        if (isCancelled()) throw new Error("Transfer cancelled");
+        if (files.length + dirs.length + skipped.length > MAX_WALK_ENTRIES) {
+            throw new Error("Source tree has too many entries");
+        }
+    };
+
     const walkDir = async (srcDir, relDir, depth) => {
         guard(depth);
         dirs.push({ srcPath: srcDir, relPath: relDir });
         for (const entry of await source.listDir(srcDir)) {
+            guardSize();
             const name = assertSafeName(entry.name);
             const srcPath = `${srcDir.endsWith("/") ? srcDir : `${srcDir}/`}${name}`;
             const relPath = `${relDir}/${name}`;
