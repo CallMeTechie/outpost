@@ -270,6 +270,13 @@ const getSFTPCrossTransferClient = async (sessionId, entry, accountId, transferI
         onEngineSession: (id) => { engineSessionId = id; },
     });
 
+    // getAuxiliarySFTPClient only calls onEngineSession while it is actually opening a fresh
+    // engine session. When it instead serves an already-open client (or another caller is
+    // concurrently mid-connect for the same transferId) that callback never fires, so fall back
+    // to whatever engineSessionId bookkeeping already has — otherwise a cache hit would stomp a
+    // correct entry with null and release() would then skip the control-plane cleanup entirely.
+    if (!engineSessionId) engineSessionId = conn.crossTransferClients.get(transferId)?.engineSessionId ?? null;
+
     conn.crossTransferClients.set(transferId, { client, engineSessionId, clientKey: keys.clientKey });
     return client;
 };
