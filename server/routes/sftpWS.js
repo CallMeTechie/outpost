@@ -12,6 +12,7 @@ const { hasResourcePermission } = require("../utils/permission");
 const { Permission } = require("../permissions/registry");
 const Entry = require("../models/Entry");
 const logger = require("../utils/logger");
+const { getCapabilities, CHECKSUM_COMMANDS, escapePath } = require("../lib/fileCapabilities");
 
 const OP = {
     READY: 0x0, LIST_FILES: 0x1, CREATE_FILE: 0x4, CREATE_FOLDER: 0x5, DELETE_FILE: 0x6,
@@ -20,14 +21,10 @@ const OP = {
     STAT: 0xF, CHECKSUM: 0x10, FOLDER_SIZE: 0x11, PATH_SYNC: 0x12,
 };
 
-const CHECKSUM_COMMANDS = { md5: "md5sum", sha1: "sha1sum", sha256: "sha256sum", sha512: "sha512sum" };
-
 const MUTATING_OPS = new Set([
     OP.CREATE_FILE, OP.CREATE_FOLDER, OP.DELETE_FILE, OP.DELETE_FOLDER,
     OP.RENAME_FILE, OP.MOVE_FILES, OP.COPY_FILES, OP.CHMOD,
 ]);
-
-const escapePath = (p) => `'${p.replaceAll("'", String.raw`'\''`)}'`;
 
 const safeSend = (ws, data) => {
     if (ws.readyState !== 1) return false;
@@ -41,17 +38,6 @@ const sendError = (ws, msg) => sendResult(ws, OP.ERROR, { message: msg });
 const requirePath = (p) => { if (!p?.path) throw new Error("Invalid path"); };
 const requirePaths = (p) => { if (!p?.path || !p?.newPath) throw new Error("Invalid paths"); };
 const requireMultiPaths = (p) => { if (!p?.sources?.length || !p?.destination) throw new Error("Invalid paths"); };
-
-const SHELL_LESS_PROTOCOLS = new Set(["ftp", "ftps"]);
-const TERMINAL_LESS_PROTOCOLS = new Set(["sftp", "ftp", "ftps"]);
-
-const getCapabilities = (entry) => {
-    const protocol = entry.type === "server" ? entry.config?.protocol : entry.type;
-    return {
-        shell: !SHELL_LESS_PROTOCOLS.has(protocol),
-        terminal: !TERMINAL_LESS_PROTOCOLS.has(protocol),
-    };
-};
 
 const requireShell = (capabilities) => {
     if (!capabilities.shell) throw new Error("This operation is not supported over FTP");
