@@ -41,6 +41,20 @@ test("readFile drops totalSizePromise", () => {
     assert.deepStrictEqual(Object.keys(adapter.readFile("/srv/a.txt")).sort(), ["done", "stream"]);
 });
 
+// The transfer runs on its own per-transfer client, so it is the one caller allowed to pause the
+// socket — and the only one that gets end-to-end backpressure out of it.
+test("readFile asks the client for backpressure", () => {
+    const calls = [];
+    const client = fakeClient({
+        readFile: (path, options) => {
+            calls.push({ path, options });
+            return { stream: new PassThrough(), totalSizePromise: Promise.resolve(0), done: Promise.resolve() };
+        },
+    });
+    createEngineSftpAdapter(client, { shell: true }).readFile("/srv/a.txt");
+    assert.deepStrictEqual(calls, [{ path: "/srv/a.txt", options: { backpressure: true } }]);
+});
+
 test("checksum runs the algorithm command and returns only the hash", async () => {
     const calls = [];
     const client = fakeClient({

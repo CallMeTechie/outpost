@@ -34,7 +34,11 @@ const createEngineSftpAdapter = (client, capabilities) => {
         },
 
         readFile(path) {
-            const { stream, done } = client.readFile(path);
+            // The only place where pausing the socket is harmless: getSFTPCrossTransferClient hands
+            // out one client per transfer, and a transfer reads one file at a time. The pause
+            // therefore throttles this transfer's own source and nothing else — which is exactly
+            // what makes the engine's blocking write() slow down instead of this process growing.
+            const { stream, done } = client.readFile(path, { backpressure: true });
             return { stream, done };
         },
 

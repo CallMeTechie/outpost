@@ -108,6 +108,8 @@ class EngineSftpClient extends EventEmitter {
         this._requestId = 0;
         this._pending = new Map();
         this._closed = false;
+        // How many backpressured reads currently hold the socket paused. See _acquireReadPause.
+        this._readPauses = 0;
 
         this._readyPromise = new Promise((resolve, reject) => {
             this._readyResolve = resolve;
@@ -209,7 +211,14 @@ class EngineSftpClient extends EventEmitter {
         });
     }
 
-    readFile(path) {
+    // With `backpressure` the read stops pulling from the socket while the consumer is behind, so
+    // the engine's blocking write() on the control plane throttles the source instead of the data
+    // piling up in this process. It is opt-in because a pause stops the WHOLE client: every request
+    // is multiplexed over this one socket. Only a client that serves a single reader may enable it
+    // — the per-transfer "cxfer" client of the cross-pane transfer. The REST download, the archive
+    // and the AI tool share their client (and fall back to the metadata client), where a pause
+    // would freeze directory browsing, so they keep the unconditional write.
+    readFile(path, { backpressure = false } = {}) {
         const rid = this._nextId();
         const stream = new PassThrough();
         stream.on("error", () => {});
@@ -227,14 +236,45 @@ class EngineSftpClient extends EventEmitter {
             resolveTotalSize(size);
         };
 
+        // Pause bookkeeping for exactly this read. `readPaused` keeps pause and resume balanced —
+        // a second pause without a resume in between would never be undone — and `readClosed`
+        // stops a late frame from pausing a socket that no drain will ever arrive for again.
+        let readPaused = false;
+        let readClosed = false;
+
+        const resumeRead = () => {
+            if (!readPaused) return;
+            readPaused = false;
+            stream.off("drain", resumeRead);
+            this._releaseReadPause();
+        };
+
+        const pauseRead = () => {
+            if (readPaused || readClosed || stream.destroyed || stream.writableEnded) return;
+            readPaused = true;
+            stream.once("drain", resumeRead);
+            this._acquireReadPause();
+        };
+
+        // Every exit runs through here: FileEnd, an error frame, and the consumer destroying the
+        // stream (FileTransfer does that in its finally, on a watchdog abort and on cancel). A
+        // socket left paused would take the whole client down with it, so no path may skip this.
+        const finishRead = () => {
+            readClosed = true;
+            resumeRead();
+        };
+        if (backpressure) stream.on("close", finishRead);
+
         this._pending.set(rid, {
             onFileData: (data, total) => {
                 emitSize(Number(total));
-                stream.write(Buffer.from(data.buffer, data.byteOffset, data.byteLength));
+                const accepted = stream.write(Buffer.from(data.buffer, data.byteOffset, data.byteLength));
+                if (backpressure && !accepted) pauseRead();
             },
             onFileEnd: () => {
                 emitSize(0);
                 stream.end();
+                finishRead();
                 this._pending.delete(rid);
                 resolveDone();
             },
@@ -243,6 +283,7 @@ class EngineSftpClient extends EventEmitter {
                 if (!stream.destroyed) {
                     stream.destroy(new Error(msg));
                 }
+                finishRead();
                 this._pending.delete(rid);
                 rejectDone(new Error(msg));
             },
@@ -358,6 +399,21 @@ class EngineSftpClient extends EventEmitter {
 
     _nextId() {
         return ++this._requestId;
+    }
+
+    // pause() and resume() are not reference counted on a socket, so a single resume would undo
+    // the pause of every other backpressured read on this client. Counting them means the socket
+    // only starts flowing again once the last paused read has let go. The per-read `readPaused`
+    // flag guarantees the count stays balanced.
+    _acquireReadPause() {
+        this._readPauses += 1;
+        if (this._readPauses === 1) this._socket.pause();
+    }
+
+    _releaseReadPause() {
+        if (this._readPauses === 0) return;
+        this._readPauses -= 1;
+        if (this._readPauses === 0) this._socket.resume();
     }
 
     _pathRequest(msgType, path) {
