@@ -56,6 +56,24 @@ const fakeDest = (existing = {}) => {
 const oneFile = (content = "hello") =>
     fakeSource({}, { "/srv/a.txt": { size: content.length, type: "file", mtime: 1 } }, { "/srv/a.txt": content });
 
+// Runs fn after `count` macrotask ticks. Every destination fake in this file attaches its consumer
+// one tick after writeFile started (that is what the real client does after its WriteBegin ack), so
+// a few ticks put an event reliably behind that attach instead of into an empty room.
+const afterTicks = (count, fn) => {
+    const step = (left) => setImmediate(() => (left === 0 ? fn() : step(left - 1)));
+    step(count);
+};
+
+// A source stream that dies mid-read instead of ending — the asynchronous counterpart to every
+// other skip test in this file, which lets readFile throw synchronously before a stream exists.
+const vanishingRead = (message = "Path does not exist") => () => {
+    const stream = new PassThrough();
+    afterTicks(3, () => stream.destroy(new Error(message)));
+    // The engine reports a read that never finished by leaving `done` open — the failure has to
+    // come out of the stream alone, which is exactly the path under test.
+    return { stream, done: new Promise(() => {}) };
+};
+
 // The closest mirror of EngineSftpClient.writeFile there is: it waits for its WriteBegin ack
 // before it looks at the stream at all, and it then listens for "data"/"end"/"error" instead of
 // iterating. Both details matter — an "end" that already fired before this attaches is one the
@@ -156,6 +174,48 @@ test("a source read error with the destination's wording is still a skip", async
     assert.strictEqual(result.filesSkipped, 1);
     assert.strictEqual(result.filesTransferred, 0);
     assert.strictEqual(result.cancelled, false);
+});
+
+// The gap every existing skip test left open: they all let readFile throw SYNCHRONOUSLY, before a
+// stream exists. A source that vanishes mid-read fails asynchronously, the error is piped into the
+// counting Transform on purpose, and the destination's writeFile rejects with it. A classifier that
+// reads the origin off the promise instead of off the error itself then files a source failure as a
+// destination failure and fails the whole transfer. Any file bigger than one round trip hits this.
+test("a source stream failing after the destination attached is still a skip", async () => {
+    const source = oneFile();
+    source.readFile = vanishingRead();
+    const dest = fakeDest();
+
+    const result = await new FileTransfer({ source, dest }).run(["/srv/a.txt"], "/target");
+
+    assert.strictEqual(result.filesSkipped, 1);
+    assert.strictEqual(result.filesTransferred, 0);
+    assert.strictEqual(result.cancelled, false);
+});
+
+// The half of the promise that matters most for a long transfer: one missing file out of thousands
+// must not take the remaining ones down with it.
+test("a source stream failing mid-read does not stop the following files", async () => {
+    const source = fakeSource(
+        {
+            "/srv/data": [
+                { name: "gone.txt", type: "file", size: 5, mtime: 1, isSymlink: false, mode: 33188 },
+                { name: "ok.txt", type: "file", size: 2, mtime: 1, isSymlink: false, mode: 33188 },
+            ],
+        },
+        { "/srv/data": { size: 0, type: "folder", mtime: 1 } },
+        { "/srv/data/ok.txt": "hi" },
+    );
+    const vanish = vanishingRead();
+    const readGood = source.readFile;
+    source.readFile = (path) => (path === "/srv/data/gone.txt" ? vanish() : readGood(path));
+    const dest = fakeDest();
+
+    const result = await new FileTransfer({ source, dest }).run(["/srv/data"], "/target");
+
+    assert.strictEqual(result.filesSkipped, 1);
+    assert.strictEqual(result.filesTransferred, 1, "the healthy file has to be transferred anyway");
+    assert.strictEqual(dest.written["/target/data/ok.txt"], "hi");
 });
 
 // Finding 6: no readFile fake ever rejected its `done`. This is the read error that only shows up
@@ -359,6 +419,49 @@ test("aborts when the buffered data exceeds MAX_BUFFER", async () => {
 
     await assert.rejects(promise, /too slow/i);
     assert.deepStrictEqual(dest.removed, ["/target/big.bin"]);
+});
+
+// "No matter which stream it was passed through": a destination client that wraps the stream error
+// it received rather than rejecting with it verbatim must not launder a source failure into a
+// destination one either, so the whole cause chain carries the origin.
+test("a wrapped source stream error keeps its origin", async () => {
+    const source = oneFile();
+    source.readFile = vanishingRead();
+    const dest = fakeDest();
+    dest.writeFile = (path, src) => new Promise((resolve, reject) => {
+        setImmediate(() => {
+            src.on("data", () => {});
+            src.on("end", resolve);
+            src.on("error", (err) => reject(new Error(`write failed: ${err.message}`, { cause: err })));
+        });
+    });
+
+    const result = await new FileTransfer({ source, dest }).run(["/srv/a.txt"], "/target");
+
+    assert.strictEqual(result.filesSkipped, 1);
+    assert.strictEqual(result.filesTransferred, 0);
+});
+
+// A watchdog abort reaches BOTH streams: fail() destroys the source and the counting Transform with
+// the same error object, so a destination that is already reading rejects writeFile with it too. It
+// belongs to neither side — it must keep its own wording (not be unwrapped as a destination
+// failure) and must never be turned into a harmless skip by the source classifier.
+test("a watchdog abort is reported as itself, not as a source or destination failure", async () => {
+    const clock = fakeClock();
+    const stream = new PassThrough();
+    Object.defineProperty(stream, "writableLength", { get: () => MAX_BUFFER + 1 });
+    // A destination that really consumes the stream, so the abort comes back through writeFile.
+    const dest = fakeDest();
+
+    const transfer = new FileTransfer({ source: stalledSource(stream), dest, ...clock });
+    const promise = transfer.run(["/srv/big.bin"], "/target");
+
+    await new Promise((r) => setImmediate(r));
+    clock.tick();
+
+    const err = await promise.then((r) => new Error(`resolved with ${JSON.stringify(r)}`), (e) => e);
+    assert.match(err.message, /^Destination too slow, transfer aborted$/, "the abort keeps its own wording");
+    assert.strictEqual(transfer.filesSkipped, 0, "an abort is not a vanished source file");
 });
 
 // The readable side must count too — otherwise an implementation that only reads

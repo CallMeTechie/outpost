@@ -153,6 +153,28 @@ test("a vanished source file stops the move from deleting anything", async () =>
     assert.deepStrictEqual(source.unlinked, []);
 });
 
+// The same gap as on the copy path: a source that vanishes MID-READ fails asynchronously, its error
+// is piped into the destination stream, and writeFile rejects with it. Read as a destination failure
+// the move aborts with the destination's wording instead of the "verification incomplete" refusal —
+// the message that tells the user why nothing was deleted.
+test("a source stream failing after the destination attached blocks the move", async () => {
+    const source = oneFileSource();
+    source.readFile = () => {
+        const stream = new PassThrough();
+        // Three ticks put the failure behind makeDest's WriteBegin-style attach, so the error
+        // travels through the destination stream instead of into an empty room.
+        const step = (left) => setImmediate(() => (left === 0
+            ? stream.destroy(new Error("Path does not exist"))
+            : step(left - 1)));
+        step(3);
+        return { stream, done: new Promise(() => {}) };
+    };
+
+    await assert.rejects(() => new FileTransfer({ source, dest: makeDest() })
+        .run(["/srv/a.txt"], "/target", { action: "move" }), /incomplete/i);
+    assert.deepStrictEqual(source.unlinked, [], "nothing may be deleted after a source file vanished");
+});
+
 // Finding 2 on the move path: a failed write must not be filed as "the source vanished". It used to
 // end in the sourceIncomplete branch, so the run did fail — but with a message blaming the source
 // for something the destination did.

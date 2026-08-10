@@ -32,6 +32,29 @@ class DestinationError extends Error {
     }
 }
 
+// The counterpart of DestinationError, and the reason it alone is not enough: a source failure is
+// deliberately handed into the destination stream (see _copyFile), so writeFile rejects with the
+// SOURCE's own error object and the promise an error arrives on says nothing about where it came
+// from. The origin therefore has to sit on the error object itself — the same principle as
+// WalkCancelledError and cancelledMidCopy. A WeakSet keeps the mark off the object, so nothing
+// leaks into an error that gets serialised to the client and the entry dies with the error.
+const sourceErrors = new WeakSet();
+
+const markSourceError = (err) => {
+    if (err !== null && typeof err === "object") sourceErrors.add(err);
+    return err;
+};
+
+// writeFile may reject with the source error itself or with an error that only carries it as its
+// cause, so the whole chain counts. The depth cap keeps a self-referencing cause from looping.
+const isSourceError = (err) => {
+    for (let current = err, depth = 0; current !== null && typeof current === "object" && depth < 10; depth += 1) {
+        if (sourceErrors.has(current)) return true;
+        current = current.cause;
+    }
+    return false;
+};
+
 class FileTransfer {
     constructor({ source, dest, destCleanup, onProgress, onConflict, now, setIntervalFn, clearIntervalFn }) {
         this.source = source;
@@ -295,7 +318,17 @@ class FileTransfer {
             // pipe() never forwards a source error, so it has to be handed on explicitly: the
             // destination waits on `counted` and would otherwise sit there for an "end" that can
             // no longer come.
-            stream.on("error", (err) => { if (!counted.destroyed) counted.destroy(err); });
+            // Everything the source side produces is marked the moment it appears — before it is
+            // passed on and can no longer be told apart from a destination failure. The one
+            // exception is a watchdog abort: fail() delivers it through this very stream, but it
+            // belongs to neither side and marking it would let the classifier below read an abort
+            // as a vanished source file.
+            const fromSource = (err) => (err === watchdogError ? err : markSourceError(err));
+
+            stream.on("error", (err) => {
+                fromSource(err);
+                if (!counted.destroyed) counted.destroy(err);
+            });
             counted.on("error", () => {});
 
             const fail = (message) => {
@@ -344,7 +377,7 @@ class FileTransfer {
             const writePromise = (async () => this.dest.writeFile(destPath, counted))()
                 .catch((err) => { throw new DestinationError(err); });
             writePromise.catch(() => {});
-            const donePromise = Promise.resolve(done);
+            const donePromise = Promise.resolve(done).catch((err) => { throw fromSource(err); });
             donePromise.catch(() => {});
 
             await Promise.race([writePromise, watchdogFailed]);
@@ -355,10 +388,20 @@ class FileTransfer {
             // Scoped to our own hook firing, not just this.cancelled — otherwise an unrelated bug
             // that happens to throw while a cancel is pending would be silently swallowed here.
             if (cancelledMidCopy) return false;
-            // Only the SOURCE can make a file vanish. The type decides, never the text: writeFile
-            // hands the destination server's own wording through, and "Path does not exist" from a
-            // failed write must not turn a hard error into a harmless skip.
-            if (!(err instanceof DestinationError) && isNotFound(err)) {
+            // A watchdog abort is decided first and by identity, before either classifier gets to
+            // see it: fail() destroys BOTH streams with the same error, so the very same object can
+            // come back as a source stream error, as the writeFile rejection, or as both. It is
+            // neither side's failure and has to keep its own wording.
+            if (watchdogError) throw watchdogError;
+
+            // Only the SOURCE can make a file vanish. The origin decides — never the text, and
+            // never the promise the error arrived on. writeFile hands the destination server's own
+            // wording through, so "Path does not exist" from a failed write must not turn a hard
+            // error into a harmless skip; and a source failure piped into the destination stream
+            // comes back as that very writeFile rejection, so it must not lose its origin either.
+            const cause = err instanceof DestinationError ? err.cause : err;
+            const fromDestination = err instanceof DestinationError && !isSourceError(err);
+            if (!fromDestination && isNotFound(cause)) {
                 // A source file that vanished between walk and read counts as skipped, not fatal,
                 // and a move must not delete anything after this. Pull it out of the totals too,
                 // exactly like a conflict skip in _run.
@@ -371,7 +414,7 @@ class FileTransfer {
             }
             // Unwrap again: the tag exists for the decision above, callers want the server's own
             // error with its message and properties intact.
-            throw watchdogError || (err instanceof DestinationError ? err.cause : err);
+            throw cause;
         } finally {
             if (timer !== null) this.clearIntervalFn(timer);
             // There is no read abort in the protocol: the pending entry lives until FileEnd and
