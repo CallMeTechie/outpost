@@ -16,6 +16,13 @@ export default [
             sourceType: "commonjs",
             globals: { ...globals.node },
         },
+        // An eslint-disable directive that no longer suppresses anything is a stale
+        // claim about the code - e.g. "this arg is still unused" after a later change
+        // starts reading it. Failing the lint run on that mismatch beats relying on
+        // someone noticing and removing the directive by hand.
+        linterOptions: {
+            reportUnusedDisableDirectives: "error",
+        },
         rules: {
             ...js.configs.recommended.rules,
 
