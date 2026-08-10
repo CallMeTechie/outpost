@@ -36,7 +36,13 @@ const fakeDest = (existing = {}) => {
             if (path in written) return { size: written[path].length, type: "file", mtime: 1, isSymlink: false };
             throw notFound();
         },
+        // EngineSftpClient.writeFile sends WriteBegin and only attaches its consumer once the
+        // destination server has acknowledged it. Waiting that one beat here keeps the fake from
+        // being friendlier than the real adapter: a FileTransfer that hands the source stream out
+        // in flowing mode loses everything the source delivers inside this window, and the test
+        // sees the same truncated file the user would.
         writeFile: async (path, source) => {
+            await new Promise((r) => setImmediate(r));
             const chunks = [];
             for await (const chunk of source) chunks.push(chunk);
             written[path] = Buffer.concat(chunks).toString();
@@ -49,6 +55,95 @@ const fakeDest = (existing = {}) => {
 
 const oneFile = (content = "hello") =>
     fakeSource({}, { "/srv/a.txt": { size: content.length, type: "file", mtime: 1 } }, { "/srv/a.txt": content });
+
+// The closest mirror of EngineSftpClient.writeFile there is: it waits for its WriteBegin ack
+// before it looks at the stream at all, and it then listens for "data"/"end"/"error" instead of
+// iterating. Both details matter — an "end" that already fired before this attaches is one the
+// real client waits for forever, and the stall watchdog is disarmed by then.
+const roundTripDest = (ticks = 3) => {
+    const dest = fakeDest();
+    dest.writeFile = (path, source) => new Promise((resolve, reject) => {
+        const attach = async () => {
+            for (let i = 0; i < ticks; i++) await new Promise((r) => setImmediate(r));
+            const chunks = [];
+            source.on("data", (chunk) => chunks.push(chunk));
+            source.on("end", () => { dest.written[path] = Buffer.concat(chunks).toString(); resolve(); });
+            source.on("error", reject);
+        };
+        attach();
+    });
+    return dest;
+};
+
+// Finding 1: counting progress must never take bytes away from the actual consumer.
+test("every byte arrives even when the destination attaches its consumer late", async () => {
+    const content = "x".repeat(4096);
+    const source = fakeSource({}, { "/srv/big.txt": { size: content.length, type: "file", mtime: 1 } },
+        { "/srv/big.txt": content });
+    const dest = roundTripDest();
+    const progress = [];
+
+    const result = await new FileTransfer({ source, dest, onProgress: (p) => progress.push(p) })
+        .run(["/srv/big.txt"], "/target");
+
+    assert.strictEqual(dest.written["/target/big.txt"], content, "the destination must receive the whole file");
+    assert.strictEqual(result.filesTransferred, 1);
+    assert.strictEqual(progress.at(-1).bytesDone, content.length);
+});
+
+// Second symptom of the same cause: an empty file ends inside the round-trip window, so the "end"
+// event has already fired by the time the destination listens for it. Without a buffering stage in
+// between the write never completes — and the stall watchdog is disarmed because the source ended.
+test("a source that ends during the round trip does not hang the transfer", { timeout: 2000 }, async () => {
+    const source = fakeSource({}, { "/srv/empty.txt": { size: 0, type: "file", mtime: 1 } }, { "/srv/empty.txt": "" });
+    const dest = roundTripDest();
+
+    const result = await new FileTransfer({ source, dest }).run(["/srv/empty.txt"], "/target");
+
+    assert.strictEqual(dest.written["/target/empty.txt"], "");
+    assert.strictEqual(result.filesTransferred, 1);
+});
+
+// A source that keeps delivering across several ticks straddles the window: the beginning of the
+// file is what gets lost, and the result still claims a successful transfer.
+test("a source delivering across several ticks loses nothing at the start", async () => {
+    const parts = ["one", "two", "three", "four"];
+    const content = parts.join("");
+    const source = {
+        listDir: async () => [],
+        stat: async () => ({ size: content.length, type: "file", mtime: 1 }),
+        readFile: () => {
+            const stream = new PassThrough();
+            const push = (index) => setImmediate(() => {
+                if (index === parts.length) return stream.end();
+                stream.write(Buffer.from(parts[index]));
+                push(index + 1);
+            });
+            push(0);
+            return { stream, done: Promise.resolve() };
+        },
+    };
+    const dest = roundTripDest();
+
+    const result = await new FileTransfer({ source, dest }).run(["/srv/chunked.txt"], "/target");
+
+    assert.strictEqual(dest.written["/target/chunked.txt"], content);
+    assert.strictEqual(result.filesTransferred, 1);
+});
+
+// Finding 6: no readFile fake ever rejected its `done`. This is the read error that only shows up
+// after the destination already confirmed the write — on a move the most dangerous one of all.
+test("a read error arriving after the write completed fails the transfer", async () => {
+    const source = oneFile();
+    source.readFile = () => {
+        const stream = new PassThrough();
+        setImmediate(() => stream.end(Buffer.from("hello")));
+        return { stream, done: Promise.reject(new Error("connection reset by peer")) };
+    };
+
+    await assert.rejects(() => new FileTransfer({ source, dest: fakeDest() }).run(["/srv/a.txt"], "/target"),
+        /connection reset by peer/);
+});
 
 test("copies a single file and reports progress", async () => {
     const dest = fakeDest();

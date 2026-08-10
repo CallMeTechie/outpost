@@ -36,7 +36,11 @@ const makeDest = (sizeOverride = null, { supportsChecksum = false, checksum } = 
             if (!(path in written)) throw notFound();
             return { size: sizeOverride ?? written[path].length, type: "file", mtime: 1, isSymlink: false };
         },
+        // Mirrors EngineSftpClient.writeFile, which only attaches its consumer once the WriteBegin
+        // round trip to the destination server has come back. A fake that reads the stream right
+        // away would never notice a source stream handed out in flowing mode.
         writeFile: async (path, source) => {
+            await new Promise((r) => setImmediate(r));
             const chunks = [];
             for await (const chunk of source) chunks.push(chunk);
             written[path] = Buffer.concat(chunks).toString();
@@ -145,6 +149,21 @@ test("a vanished source file stops the move from deleting anything", async () =>
 
     await assert.rejects(() => new FileTransfer({ source, dest: makeDest() })
         .run(["/srv/a.txt"], "/target", { action: "move" }), /incomplete/i);
+    assert.deepStrictEqual(source.unlinked, []);
+});
+
+// Finding 6: the read error that only arrives once the destination confirmed the write is the most
+// dangerous one on a move — nothing may be deleted on the source after it.
+test("a read error arriving after the write never deletes the source", async () => {
+    const source = oneFileSource();
+    source.readFile = () => {
+        const stream = new PassThrough();
+        setImmediate(() => stream.end(Buffer.from("hello")));
+        return { stream, done: Promise.reject(new Error("connection reset by peer")) };
+    };
+
+    await assert.rejects(() => new FileTransfer({ source, dest: makeDest() })
+        .run(["/srv/a.txt"], "/target", { action: "move" }), /connection reset by peer/);
     assert.deepStrictEqual(source.unlinked, []);
 });
 

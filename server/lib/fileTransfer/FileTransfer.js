@@ -1,3 +1,4 @@
+const { Transform } = require("node:stream");
 const { walk, join, WalkCancelledError } = require("./walk");
 
 // Upper bound for the buffer of one in-flight file. readFile has no backpressure (the engine keeps
@@ -215,6 +216,7 @@ class FileTransfer {
         // false claim to the user.
         let writeAttempted = false;
         let stream = null;
+        let counted = null;
         let timer = null;
         let watchdogError = null;
         let onCancel = null;
@@ -229,12 +231,6 @@ class FileTransfer {
             stream = opened.stream;
             const done = opened.done;
 
-            // fail() below calls stream.destroy(err), which emits "error". Without a listener that
-            // terminates the whole process with an uncaught exception — the failure is reported
-            // through watchdogFailed instead. EngineSftpClient.readFile attaches the same guard,
-            // but the interface does not require it, so FileTransfer must not rely on it.
-            stream.on("error", () => {});
-
             let lastDataAt = this.now();
             let sourceEnded = false;
             let bytesThisFile = 0;
@@ -243,10 +239,44 @@ class FileTransfer {
             const watchdogFailed = new Promise((_, reject) => { rejectWatchdog = reject; });
             watchdogFailed.catch(() => {});
 
+            // Counting the bytes with stream.on("data") would put the source into flowing mode
+            // right here, while the real destination only attaches its consumer after a full round
+            // trip (EngineSftpClient.writeFile awaits the WriteBegin ack first). Everything the
+            // source delivers inside that window would be counted and then dropped — a silently
+            // truncated file at the destination, and an outright hang whenever the source ends
+            // inside the window, because "end" had already fired before writeFile listened for it.
+            // A counting Transform fed by pipe() sees exactly the same bytes but keeps them, with
+            // backpressure, for whoever consumes it — however late that is.
+            counted = new Transform({
+                transform: (chunk, _encoding, callback) => {
+                    lastDataAt = this.now();
+                    bytesThisFile += chunk.length;
+                    if (bytesThisFile > file.size + MAX_SIZE_OVERRUN) {
+                        // No callback: fail() destroys both streams, so this chunk has nowhere to
+                        // go and the transfer is over anyway.
+                        fail("Source delivered more data than announced, transfer aborted");
+                        return;
+                    }
+                    this.bytesDone += chunk.length;
+                    this._report(file.relPath);
+                    callback(null, chunk);
+                },
+            });
+            // fail() destroys both streams, which emits "error". Without a listener that terminates
+            // the whole process with an uncaught exception — the failure is reported through
+            // watchdogFailed instead. EngineSftpClient.readFile attaches the same guard on its own
+            // stream, but the interface does not require it, so FileTransfer must not rely on it.
+            // pipe() never forwards a source error, so it has to be handed on explicitly: the
+            // destination waits on `counted` and would otherwise sit there for an "end" that can
+            // no longer come.
+            stream.on("error", (err) => { if (!counted.destroyed) counted.destroy(err); });
+            counted.on("error", () => {});
+
             const fail = (message) => {
                 if (watchdogError) return;
                 watchdogError = new Error(message);
                 stream.destroy(watchdogError);
+                if (!counted.destroyed) counted.destroy(watchdogError);
                 rejectWatchdog(watchdogError);
             };
 
@@ -259,26 +289,22 @@ class FileTransfer {
             this._cancelHooks.add(onCancel);
             if (this.cancelled) onCancel();
 
-            stream.on("data", (chunk) => {
-                lastDataAt = this.now();
-                bytesThisFile += chunk.length;
-                if (bytesThisFile > file.size + MAX_SIZE_OVERRUN) {
-                    fail("Source delivered more data than announced, transfer aborted");
-                    return;
-                }
-                this.bytesDone += chunk.length;
-                this._report(file.relPath);
-            });
             // After "end" a standstill is no longer a stalled read but the destination's WriteEnd
             // flush, which may take up to WRITE_END_TIMEOUT (120 s).
             stream.on("end", () => { sourceEnded = true; });
+            stream.pipe(counted);
 
             timer = this.setIntervalFn(() => {
                 // readableLength alone is not enough: the PassThrough caps it at its highWaterMark
-                // (16 KB) and piles the rest up on the writable side.
-                if (stream.readableLength + stream.writableLength > MAX_BUFFER) {
+                // (16 KB) and piles the rest up on the writable side. The counting Transform in
+                // between holds real bytes in two buffers of its own, so they count as well.
+                const sourceBuffered = stream.readableLength + stream.writableLength;
+                if (sourceBuffered + counted.readableLength + counted.writableLength > MAX_BUFFER) {
                     fail("Destination too slow, transfer aborted");
-                } else if (!sourceEnded && this.now() - lastDataAt > READ_STALL_TIMEOUT) {
+                } else if (!sourceEnded && sourceBuffered === 0 && this.now() - lastDataAt > READ_STALL_TIMEOUT) {
+                    // Bytes still queued on the source side mean the source did deliver and the
+                    // hold-up is downstream — that is a slow destination, not a stalled read, and
+                    // the buffer check above is the one that has to decide about it.
                     fail("Read stalled, transfer aborted");
                 }
             }, WATCHDOG_INTERVAL);
@@ -287,7 +313,7 @@ class FileTransfer {
             // the source stream, writeFile rejects in turn, and without a handler Node terminates
             // the process with unhandledRejection.
             writeAttempted = true;
-            const writePromise = this.dest.writeFile(destPath, stream);
+            const writePromise = (async () => this.dest.writeFile(destPath, counted))();
             writePromise.catch(() => {});
             const donePromise = Promise.resolve(done);
             donePromise.catch(() => {});
@@ -318,6 +344,7 @@ class FileTransfer {
             // onFileData keeps writing unconditionally. Without destroy() the buffer grows on
             // unmeasured after an error — the watchdog is already stopped here.
             if (stream && !stream.destroyed) stream.destroy();
+            if (counted && !counted.destroyed) counted.destroy();
             if (onCancel) this._cancelHooks.delete(onCancel);
         }
 
