@@ -348,3 +348,76 @@ test("a healthy transfer stops its watchdog", async () => {
 
     assert.strictEqual(cleared, 1, "the watchdog must be stopped in a finally block");
 });
+
+const withExistingTarget = () => fakeDest({ "/target/a.txt": { size: 99, type: "file", mtime: 7, isSymlink: false } });
+
+test("asks about an existing target file and skips on request", async () => {
+    const asked = [];
+    const transfer = new FileTransfer({
+        source: oneFile(), dest: withExistingTarget(),
+        onConflict: async (info) => { asked.push(info); return "skip"; },
+    });
+    const result = await transfer.run(["/srv/a.txt"], "/target", { onConflict: "ask" });
+
+    assert.strictEqual(asked.length, 1);
+    assert.strictEqual(asked[0].destSize, 99);
+    assert.strictEqual(asked[0].srcSize, 5);
+    assert.strictEqual(result.filesSkipped, 1);
+    assert.strictEqual(result.filesTransferred, 0);
+});
+
+test("skipped files leave the progress totals consistent", async () => {
+    const progress = [];
+    const transfer = new FileTransfer({ source: oneFile(), dest: withExistingTarget(), onProgress: (p) => progress.push(p) });
+    await transfer.run(["/srv/a.txt"], "/target", { onConflict: "skip" });
+
+    assert.strictEqual(progress.at(-1).bytesDone, progress.at(-1).bytesTotal);
+    assert.strictEqual(progress.at(-1).filesDone, progress.at(-1).filesTotal);
+});
+
+test("overwrite mode never asks", async () => {
+    let asked = 0;
+    const dest = withExistingTarget();
+    const transfer = new FileTransfer({ source: oneFile(), dest, onConflict: async () => { asked += 1; return "overwrite"; } });
+    const result = await transfer.run(["/srv/a.txt"], "/target", { onConflict: "overwrite" });
+
+    assert.strictEqual(asked, 0);
+    assert.strictEqual(dest.written["/target/a.txt"], "hello");
+    assert.strictEqual(result.filesTransferred, 1);
+});
+
+test("skip mode never asks and never writes", async () => {
+    let asked = 0;
+    const transfer = new FileTransfer({ source: oneFile(), dest: withExistingTarget(), onConflict: async () => { asked += 1; return "skip"; } });
+    const result = await transfer.run(["/srv/a.txt"], "/target", { onConflict: "skip" });
+
+    assert.strictEqual(asked, 0);
+    assert.strictEqual(result.filesSkipped, 1);
+});
+
+test("abort ends the transfer without an error and without deleting anything", async () => {
+    const dest = withExistingTarget();
+    const transfer = new FileTransfer({ source: oneFile(), dest, onConflict: async () => "abort" });
+    const result = await transfer.run(["/srv/a.txt"], "/target", { onConflict: "ask" });
+
+    assert.strictEqual(result.cancelled, true);
+    assert.deepStrictEqual(dest.removed, []);
+});
+
+test("a target of a different type is always an error", async () => {
+    const dest = fakeDest({ "/target/a.txt": { size: 0, type: "folder", mtime: 7, isSymlink: false } });
+    const transfer = new FileTransfer({ source: oneFile(), dest, onConflict: async () => "overwrite" });
+
+    await assert.rejects(() => transfer.run(["/srv/a.txt"], "/target", { onConflict: "overwrite" }),
+        /different type/);
+});
+
+// A failing stat must never be read as "free rein".
+test("a target that cannot be inspected aborts instead of overwriting", async () => {
+    const dest = fakeDest();
+    dest.stat = async () => { throw new Error("permission denied"); };
+    const transfer = new FileTransfer({ source: oneFile(), dest });
+
+    await assert.rejects(() => transfer.run(["/srv/a.txt"], "/target", { onConflict: "skip" }),
+        /Cannot inspect target/);
+});
