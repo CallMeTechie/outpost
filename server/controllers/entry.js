@@ -28,14 +28,23 @@ const PROTOCOL_RENDERERS = {
     ftps: "sftp",
 };
 
-const validateEntryAccess = async (accountId, entry, errorMessage = "You don't have permission to access this entry", requiredPermission = null) => {
-    if (!entry) return { code: 401, message: "Entry does not exist" };
-
+// The effective scope of an entry: a folder overrides what the entry itself carries. Callers that
+// check permissions need this, not entry.organizationId — for an entry inside an organization
+// folder those two differ, and hasResourcePermission falls back to system-wide rights when the
+// organization is null (utils/permission.js), which checks no ownership at all.
+const resolveEntryScope = async (entry) => {
     let { organizationId, accountId: ownerAccountId } = entry;
     if (entry.folderId) {
         const folder = await Folder.findByPk(entry.folderId);
         if (folder) ({ organizationId, accountId: ownerAccountId } = folder);
     }
+    return { organizationId, ownerAccountId };
+};
+
+const validateEntryAccess = async (accountId, entry, errorMessage = "You don't have permission to access this entry", requiredPermission = null) => {
+    if (!entry) return { code: 401, message: "Entry does not exist" };
+
+    const { organizationId, ownerAccountId } = await resolveEntryScope(entry);
 
     if (organizationId) {
         const allowed = requiredPermission
@@ -688,6 +697,7 @@ module.exports.wakeEntry = async (accountId, entryId) => {
 };
 
 module.exports.validateEntryAccess = validateEntryAccess;
+module.exports.resolveEntryScope = resolveEntryScope;
 
 module.exports.getRecentConnections = async (accountId, limit = 5) => {
     try {
