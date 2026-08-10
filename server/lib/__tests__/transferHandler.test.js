@@ -305,6 +305,20 @@ test("the source session's own full quota also names itself, not just the destin
     assert.match(s.sent.find((m) => m.op === OP.TRANSFER_ERROR).data.message, /^Too many/);
 });
 
+// Fix round 4: the mirror image of the test above, and the half fix round 3 left uncovered.
+// Dropping the ctx.sessionId half of the check left every test green — "the caller's own quota
+// names itself" makes both sides read as full at once, and the source-side test only exercises the
+// other half. Here only the destination session is at its limit; the source is empty. A
+// destination at its cap is the ordinary case for a busy pane, and it must still be named as a
+// quota, not misreported as a colliding transfer id the client could just retry with a new one.
+test("the destination session's own full quota names itself, not just the source's", async () => {
+    const s = setup();
+    s.registry.reserve = () => false;
+    s.registry.countFor = (id) => (id === "dst" ? 2 : 0);
+    await s.handlers.start(start());
+    assert.match(s.sent.find((m) => m.op === OP.TRANSFER_ERROR).data.message, /^Too many/);
+});
+
 // Fix round 2, Finding "Kleineres": a key collision (the string was already reserved — typically a
 // zombie transfer whose source vanished mid-run, see SessionManager.js#releaseSession) is not the
 // caller's own quota being full. Neither session is anywhere near MAX_CROSS_TRANSFERS here

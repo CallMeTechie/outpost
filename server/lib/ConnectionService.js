@@ -251,13 +251,35 @@ const createSFTPConnectionForSession = async (sessionId, entry, accountId) => {
     return session._connecting;
 };
 
+// Split out of getAuxiliarySFTPClient and exported as a test helper: the whole point of the
+// connectingKey line is that a second caller arriving mid-connect joins the attempt that is
+// already running instead of opening a second engine session for the same key, and that is only
+// observable from outside as "the same promise comes back".
+const existingAuxClient = (conn, clientKey, connectingKey) => {
+    if (conn[clientKey] && !conn[clientKey]._closed) return conn[clientKey];
+    if (conn[connectingKey]) return conn[connectingKey];
+    return null;
+};
+
+// Split out of getAuxiliarySFTPClient and exported as a test helper. Registering the id on the
+// connection is what lets SessionManager's cleanupConnection force-close this engine session when
+// the session ends; releaseSFTPCrossTransferClient and evictLateConnection take it back out again.
+const registerAuxSession = (conn, sessionId, suffix, onEngineSession) => {
+    conn._auxGeneration = (conn._auxGeneration || 0) + 1;
+    const engineSessionId = `${sessionId}-${suffix}-${conn._auxGeneration}`;
+    onEngineSession?.(engineSessionId);
+    if (!conn.auxSessionIds) conn.auxSessionIds = new Set();
+    conn.auxSessionIds.add(engineSessionId);
+    return engineSessionId;
+};
+
 const getAuxiliarySFTPClient = async (sessionId, entry, accountId, opts) => {
     const { suffix, clientKey, connectingKey, label, onEngineSession, timeoutMs } = opts;
     const session = requireSession(sessionId);
     const conn = SessionManager.getConnection(sessionId);
     if (!conn) throw new Error("No active SFTP session");
-    if (conn[clientKey] && !conn[clientKey]._closed) return conn[clientKey];
-    if (conn[connectingKey]) return conn[connectingKey];
+    const existing = existingAuxClient(conn, clientKey, connectingKey);
+    if (existing) return existing;
 
     const attempt = (async () => {
         requireEngine();
@@ -265,11 +287,7 @@ const getAuxiliarySFTPClient = async (sessionId, entry, accountId, opts) => {
         const { host, port, params } = await resolveFileTransferContext(entry, identityId, directIdentity, accountId);
         const jumpHosts = await resolveJumpHosts(entry);
 
-        conn._auxGeneration = (conn._auxGeneration || 0) + 1;
-        const engineSessionId = `${sessionId}-${suffix}-${conn._auxGeneration}`;
-        onEngineSession?.(engineSessionId);
-        if (!conn.auxSessionIds) conn.auxSessionIds = new Set();
-        conn.auxSessionIds.add(engineSessionId);
+        const engineSessionId = registerAuxSession(conn, sessionId, suffix, onEngineSession);
 
         const dataSocket = await openEngineSession(
             engineSessionId, SessionType.SFTP, host, port, params, jumpHosts, entry.config?.engineId
@@ -282,44 +300,61 @@ const getAuxiliarySFTPClient = async (sessionId, entry, accountId, opts) => {
         dataSocket.on("close", detach);
         dataSocket.on("error", detach);
 
-        conn[clientKey] = client;
         logger.info(`SFTP ${label} connection established`, { sessionId, target: host, port });
-        return client;
+        // Caching is deliberately left to connectWithDeadline: whether this connection may be
+        // published under clientKey at all depends on whether anyone still wants it, which is
+        // only known there.
+        return { client, engineSessionId };
     })();
 
     return connectWithDeadline(conn, clientKey, connectingKey, attempt, timeoutMs, label);
 };
 
+// A connection that finished after its caller's deadline had already passed. Nobody is waiting for
+// it any more, so it is torn down rather than published: a later, unrelated call reusing the same
+// clientKey (registry.js's releaseSession never frees a key early, but the key's own owner will,
+// once its transfer actually ends) would otherwise silently inherit a connection opened for a
+// different request — possibly a different host entirely, since only the transferId needs to
+// repeat, not the entry. Both halves are needed: close() only destroys the socket, the control
+// plane has to be told separately (same reason as in releaseSFTPCrossTransferClient) or the engine
+// session outlives the attempt. That leak has no cap left to hold it back — the registry slot that
+// bounded this connection was released the moment the deadline rejected — so a peer that stalls
+// past every deadline and then answers anyway would otherwise open engine sessions without limit.
+const evictLateConnection = (conn, client, engineSessionId) => {
+    try { client?.close(); } catch {}
+    if (!engineSessionId) return;
+    try { controlPlane.closeSession(engineSessionId); } catch {}
+    conn.auxSessionIds?.delete(engineSessionId);
+};
+
 // Split out of getAuxiliarySFTPClient and exported as a test helper: it only ever touches the
-// plain `conn` object and the two promises it is given, so a test can drive the deadline path with
-// a never-resolving fake `attempt` and a millisecond-scale `timeoutMs` instead of any real I/O.
+// plain `conn` object and the promise it is given, so a test can drive the deadline path with a
+// never-resolving fake `attempt` and a millisecond-scale `timeoutMs` instead of any real I/O.
 //
-// Only ever set for the cross-transfer path (see CROSS_TRANSFER_CONNECT_TIMEOUT_MS above) — a
-// plain `attempt` here for every other caller keeps this identical to before for them.
+// timeoutMs is only ever set for the cross-transfer path (see CROSS_TRANSFER_CONNECT_TIMEOUT_MS
+// above); without it this waits exactly as long as it always has, for every other caller.
 const connectWithDeadline = (conn, clientKey, connectingKey, attempt, timeoutMs, label) => {
+    // attempt cannot actually be cancelled — the underlying connect keeps running even after the
+    // caller gives up on it. Publishing is therefore decided here, once it finishes, and never
+    // inside the attempt itself: past the deadline the clientKey may legitimately belong to a
+    // later, unrelated call by now, and overwriting it (even to null it again a line further on)
+    // would destroy bookkeeping this attempt does not own. What it does own — its own client and
+    // its own engine session, and nothing else — is what gets cleaned up instead.
+    let timedOut = false;
+    const publish = attempt.then(({ client, engineSessionId }) => {
+        if (timedOut) evictLateConnection(conn, client, engineSessionId);
+        else conn[clientKey] = client;
+        return client;
+    });
+
     if (!timeoutMs) {
-        conn[connectingKey] = attempt.finally(() => { conn[connectingKey] = null; });
+        conn[connectingKey] = publish.finally(() => { conn[connectingKey] = null; });
         return conn[connectingKey];
     }
 
-    // attempt cannot actually be cancelled — the underlying connect keeps running even after the
-    // caller gives up on it. If it eventually DOES succeed, past the deadline, evict it instead of
-    // leaving it cached under clientKey: nobody here is waiting for it anymore, and a later,
-    // unrelated call reusing the same key (registry.js's releaseSession never frees a key early
-    // any more, but the key's own owner will, once its transfer actually ends) would otherwise
-    // silently inherit a connection opened for a different request — possibly a different host
-    // entirely, since only the transferId needs to repeat, not the entry.
-    let timedOut = false;
-    attempt.then((client) => {
-        if (timedOut && conn[clientKey] === client) {
-            conn[clientKey] = null;
-            try { client.close(); } catch {}
-        }
-    }).catch(() => {});
-
     // The timeout wraps the whole shared `conn[connectingKey]` promise, not just a piece of it, so
     // a concurrent co-waiter sharing this same in-flight attempt is bounded by the same deadline.
-    conn[connectingKey] = withTimeout(attempt, timeoutMs, `Timed out opening ${label} connection`, () => { timedOut = true; })
+    conn[connectingKey] = withTimeout(publish, timeoutMs, `Timed out opening ${label} connection`, () => { timedOut = true; })
         .finally(() => { conn[connectingKey] = null; });
 
     return conn[connectingKey];
@@ -701,4 +736,8 @@ module.exports = {
     // can be pinned with millisecond-scale fake attempts instead of any real connection.
     withTimeout,
     connectWithDeadline,
+    // Test helpers (fix round 4): the two steps of getAuxiliarySFTPClient that carry a guarantee of
+    // their own — joining a concurrent attempt, and registering the engine session for cleanup.
+    existingAuxClient,
+    registerAuxSession,
 };

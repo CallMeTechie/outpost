@@ -2,6 +2,23 @@ const test = require("node:test");
 const assert = require("node:assert");
 const { reserve, release, releaseSession, countFor, MAX_CROSS_TRANSFERS, _getInternalState } = require("../fileTransfer/registry");
 
+// Fix round 4: every test below derives its expectations from MAX_CROSS_TRANSFERS itself, so the
+// number could be raised to anything (or lowered to 0) without a single one of them noticing —
+// yet this number IS the limit on how many auxiliary connections a single host can be made to
+// open (see registry.js's header comment). Pinned literally, and together with the behavior it
+// buys, so that changing it has to be a deliberate act.
+test("two concurrent cross transfers per session is the cap, and the third is refused", () => {
+    assert.strictEqual(MAX_CROSS_TRANSFERS, 2);
+
+    assert.strictEqual(reserve("cap1", ["capped", "dst-a"]), true);
+    assert.strictEqual(reserve("cap2", ["capped", "dst-b"]), true);
+    assert.strictEqual(reserve("cap3", ["capped", "dst-c"]), false, "a third simultaneous transfer must be refused");
+    assert.strictEqual(countFor("capped"), 2);
+
+    release("cap1");
+    release("cap2");
+});
+
 test("a transfer counts for both of its sessions", () => {
     assert.strictEqual(reserve("t1", ["src", "dst"]), true);
     assert.strictEqual(countFor("src"), 1);
@@ -124,8 +141,8 @@ test("a key survives releaseSession until its own release — a third party cann
 // Fix round 3, Finding 1: the point of leaving the count occupied. Before this fix, a vanished
 // session's own slot (and its surviving partner's) was freed immediately, so repeating "reserve,
 // then let the source vanish" let a party accumulate far more genuinely open auxiliary connections
-// than MAX_CROSS_TRANSFERS while countFor kept reporting the cap as untouched — measured at 50
-// simultaneously open connections against a cap of 2 (see the report for fix round 3). With the
+// than MAX_CROSS_TRANSFERS while countFor kept reporting the cap as untouched — measured at 500
+// successful reservations against a cap of 2 (see the report for fix round 3). With the
 // count honest, the cap enforces the limit even while a vanished session's former transfers are
 // still winding down on the surviving side.
 test("countFor keeps the cap honest across repeated session churn on the surviving side", () => {

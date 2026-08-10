@@ -47,20 +47,26 @@ const release = (key) => {
 // gone for good (a fresh session never reuses an old id) and nothing will ever ask countFor(it)
 // again. Earlier rounds freed the slot for every participant immediately, reasoning that a
 // same-process stall in ConnectionService.js's getSFTPCrossTransferClient (awaiting
-// EngineSftpClient#waitForReady, no timeout of its own) could otherwise strand it forever. Measured
-// instead of assumed: that promise is not actually unbounded. It rejects on the data socket's own
-// close/error (EngineSftpClient.js), AND — decisively — the engine session id is added to
-// conn.auxSessionIds *before* the connection attempt even starts (ConnectionService.js), so
-// SessionManager.js's cleanupConnection sweeps and closes it (closeSession per auxSessionId) the
-// moment either side's session ends, which rejects the pending waitForReady deterministically.
-// On top of that, ConnectionService.js now puts an explicit CROSS_TRANSFER_CONNECT_TIMEOUT_MS
-// deadline on exactly this connection attempt, so a reserve() on the cross-transfer path is now
-// always followed by a release() within a bounded time even if nothing else intervenes. With a
-// release guaranteed, holding the slot until it actually arrives is strictly more honest than
-// freeing it early: MAX_CROSS_TRANSFERS is the only cap on how many auxiliary connections a single
-// host gets (see the header comment), and freeing it while those connections are still open lets a
-// party cycle through session churn to hold far more than two at once — measured before this fix at
-// 50 simultaneously open connections against a cap of 2 (see the report for fix round 3).
+// EngineSftpClient#waitForReady, no timeout of its own) could otherwise strand it forever.
+//
+// What actually keeps that from happening is one single thing: ConnectionService.js puts an
+// explicit CROSS_TRANSFER_CONNECT_TIMEOUT_MS deadline on exactly this connection attempt, so a
+// reserve() on the cross-transfer path is always followed by a release() within a bounded time,
+// with nothing else having to intervene. That is the guarantee this function relies on.
+//
+// SessionManager.js's cleanupConnection sweep over conn.auxSessionIds is a second net, not a
+// second guarantee — it has holes, and they were misdescribed here before fix round 4. It only
+// runs when the session has a masterConnection at all, only for CONTROL_PLANE_TYPES connections,
+// and it only closes the ending session's own auxiliary sessions, never the peer's. Nor is the id
+// registered "before the connection attempt": ConnectionService.js's registerAuxSession runs after
+// two awaited lookups (credentials and jump hosts), so a resolution that hangs leaves no id for
+// any sweep to find. Useful as a backstop, not something to lean on.
+//
+// With a release guaranteed, holding the slot until it actually arrives is strictly more honest
+// than freeing it early: MAX_CROSS_TRANSFERS is the only cap on how many auxiliary connections a
+// single host gets (see the header comment), and freeing it while those connections are still open
+// lets a party cycle through session churn to hold far more than two at once — measured before
+// this fix at 500 successful reservations against a cap of 2 (see the report for fix round 3).
 const releaseSession = (sessionId) => {
     bySession.delete(sessionId);
 };

@@ -58,11 +58,14 @@ test("cross transfer clients are closed when session ends", async () => {
 });
 
 // Fix round 3, Finding 3: this loop can be deleted without any prior test noticing (none of them
-// populate conn.auxSessionIds), and it is exactly what registry.js's releaseSession comment leans
-// on: a cross-transfer connection attempt still stuck in ConnectionService.js's
-// getAuxiliarySFTPClient has its engine session id added to conn.auxSessionIds *before* the
-// connection attempt starts, so closing every id here — not just the master session's own — is
-// what force-closes that socket and lets the stuck attempt's promise finally settle.
+// populate conn.auxSessionIds). It is the backstop registry.js's releaseSession comment describes:
+// an auxiliary engine session registered by ConnectionService.js's registerAuxSession is force
+// closed here when the session ends, which also lets a connection attempt still waiting on it
+// settle. Corrected in fix round 4: a backstop, not a guarantee — it only runs for a session that
+// has a master connection of a control-plane type, it closes only the ending session's own
+// auxiliary sessions and never its transfer partner's, and the id is registered after two awaited
+// lookups, so a stall before that leaves nothing here to find. The deadline in ConnectionService.js
+// is what actually bounds the attempt.
 test("auxiliary engine sessions are closed with the control plane when the session ends", async () => {
     const { sessionId } = SessionManager.create("acc", "entry", {});
     const closedIds = [];

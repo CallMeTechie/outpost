@@ -1,14 +1,41 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const { withTimeout, connectWithDeadline, CROSS_TRANSFER_CONNECT_TIMEOUT_MS } = require("../ConnectionService");
+const {
+    withTimeout,
+    connectWithDeadline,
+    crossTransferKeys,
+    CROSS_TRANSFER_CONNECT_TIMEOUT_MS,
+} = require("../ConnectionService");
+const controlPlane = require("../controlPlane/ControlPlaneServer");
 
 // Small, real deadlines throughout (a few ms) rather than fake timers: no test in this repo mocks
 // modules or global timers, and CROSS_TRANSFER_CONNECT_TIMEOUT_MS itself only needs to be short
 // here, not real, to exercise the same code paths.
 const SHORT_MS = 15;
 
-test("CROSS_TRANSFER_CONNECT_TIMEOUT_MS matches the other connection-adjacent deadlines in this codebase", () => {
-    assert.strictEqual(CROSS_TRANSFER_CONNECT_TIMEOUT_MS, 30000);
+// A finished connection attempt, in the shape getAuxiliarySFTPClient hands to connectWithDeadline.
+const opened = (over = {}) => ({ client: { close: () => {} }, engineSessionId: null, ...over });
+
+const spyOnCloseSession = () => {
+    const original = controlPlane.closeSession;
+    const calls = [];
+    controlPlane.closeSession = (...args) => { calls.push(args); };
+    return { calls, restore: () => { controlPlane.closeSession = original; } };
+};
+
+// Fix round 4: the deadline itself was pinned in isolation, but nothing showed that the
+// cross-transfer path ever hands it over — deleting the timeoutMs line from crossTransferKeys (or
+// weakening it to a falsy 0, which connectWithDeadline reads as "no deadline at all") left the
+// whole suite green while every cross-transfer connect went back to waiting forever. This is the
+// one line the round rests on. A bare "the constant is 30000" assertion, which this replaces,
+// proved nothing about that wiring.
+test("the cross-transfer path is the one that carries the connect deadline", () => {
+    const keys = crossTransferKeys("t1");
+    assert.strictEqual(keys.timeoutMs, CROSS_TRANSFER_CONNECT_TIMEOUT_MS);
+    assert.ok(Number.isFinite(keys.timeoutMs) && keys.timeoutMs > 0,
+        "a falsy or infinite deadline is the same as no deadline to connectWithDeadline");
+    // The other callers (the primary connection, transfer/background/ai clients) deliberately pass
+    // no timeoutMs at all; connectWithDeadline's own no-deadline test below covers what they get.
 });
 
 test("withTimeout resolves normally when the promise settles first", async () => {
@@ -40,19 +67,32 @@ test("withTimeout does not report a timeout when the promise itself rejects firs
     assert.strictEqual(timedOut, false, "a real connection failure must not be reported as a timeout");
 });
 
+// Fix round 4: the clearTimeout in withTimeout's finally is load-bearing and was untested — the
+// timer is deliberately not unref()'d, so without it every single connection that succeeds leaves
+// a live 30 s timer behind, holding the event loop open and firing onTimeout long after the caller
+// has moved on. Observed here through onTimeout rather than through timer internals.
+test("withTimeout leaves no live timer behind once the promise has settled", async () => {
+    let timedOut = false;
+    await withTimeout(Promise.resolve("client"), SHORT_MS, "should not fire", () => { timedOut = true; });
+    await new Promise((r) => setTimeout(r, SHORT_MS * 3));
+    assert.strictEqual(timedOut, false, "the deadline must not still fire after the attempt is done");
+});
+
 test("connectWithDeadline behaves like the plain attempt when no deadline is given", async () => {
     const conn = {};
-    const client = {};
-    const result = await connectWithDeadline(conn, "clientKey", "connectingKey", Promise.resolve(client), undefined, "test");
-    assert.strictEqual(result, client);
+    const done = opened();
+    const result = await connectWithDeadline(conn, "clientKey", "connectingKey", Promise.resolve(done), undefined, "test");
+    assert.strictEqual(result, done.client);
+    assert.strictEqual(conn.clientKey, done.client, "a connection nobody gave up on is cached for reuse");
     assert.strictEqual(conn.connectingKey, null, "the connecting slot must clear once settled");
 });
 
 test("connectWithDeadline resolves normally when the attempt settles before the deadline", async () => {
     const conn = {};
-    const client = {};
-    const result = await connectWithDeadline(conn, "clientKey", "connectingKey", Promise.resolve(client), 1000, "test");
-    assert.strictEqual(result, client);
+    const done = opened();
+    const result = await connectWithDeadline(conn, "clientKey", "connectingKey", Promise.resolve(done), 1000, "test");
+    assert.strictEqual(result, done.client);
+    assert.strictEqual(conn.clientKey, done.client);
     assert.strictEqual(conn.connectingKey, null);
 });
 
@@ -75,42 +115,85 @@ test("connectWithDeadline rejects and frees the connecting slot once a hanging a
 // already given up and moved on, the stray client must not be left cached under clientKey for some
 // unrelated later call (reusing the same key once its own owner releases it) to silently inherit —
 // possibly pointed at a different host than the new call expects.
-test("connectWithDeadline evicts and closes a connection that arrives after its own deadline", async () => {
-    const conn = {};
+//
+// Fix round 4: closing the socket is only half of it. close() destroys the socket; the engine
+// session behind it lives on until the master session ends unless the control plane is told
+// separately — and by that point the registry slot that capped this connection is long released,
+// so nothing counts these any more. A peer that stalls past every deadline and then answers would
+// otherwise open a fresh engine session per attempt, without limit.
+test("connectWithDeadline closes both the socket and the engine session of a late arrival", async () => {
+    const conn = { auxSessionIds: new Set(["s-late"]) };
     let resolveAttempt;
     let closed = false;
-    const client = { close: () => { closed = true; } };
-    const attempt = new Promise((resolve) => { resolveAttempt = resolve; })
-        .then((c) => { conn.clientKey = c; return c; }); // mirrors what the real IIFE does in ConnectionService.js
-
-    const promise = connectWithDeadline(conn, "clientKey", "connectingKey", attempt, SHORT_MS, "cross-transfer");
-    await assert.rejects(() => promise);
-
-    resolveAttempt(client);
-    // Let the eviction's own .then() handler run — it is a separate microtask chain from `attempt`.
-    await new Promise((r) => setTimeout(r, 5));
-
-    assert.strictEqual(conn.clientKey, null, "a late success must not be left cached for an unrelated caller to inherit");
-    assert.strictEqual(closed, true, "the orphaned connection must be closed, not merely forgotten");
-});
-
-// A late success must not undo a legitimate, newer connection that has since taken clientKey's
-// place — eviction only ever removes exactly the stray client it was tracking.
-test("connectWithDeadline's eviction leaves a since-replaced clientKey alone", async () => {
-    const conn = {};
-    let resolveAttempt;
-    let staleClosed = false;
-    const staleClient = { close: () => { staleClosed = true; } };
-    const freshClient = {};
+    const done = opened({ client: { close: () => { closed = true; } }, engineSessionId: "s-late" });
     const attempt = new Promise((resolve) => { resolveAttempt = resolve; });
 
-    const promise = connectWithDeadline(conn, "clientKey", "connectingKey", attempt, SHORT_MS, "cross-transfer");
-    await assert.rejects(() => promise);
+    const spy = spyOnCloseSession();
+    try {
+        await assert.rejects(() => connectWithDeadline(conn, "clientKey", "connectingKey", attempt, SHORT_MS, "cross-transfer"));
 
-    conn.clientKey = freshClient; // a fully independent, later call already installed its own client
-    resolveAttempt(staleClient);
-    await new Promise((r) => setTimeout(r, 5));
+        resolveAttempt(done);
+        // Let the publish/evict handler run — it is a separate microtask chain from `attempt`.
+        await new Promise((r) => setTimeout(r, 5));
 
-    assert.strictEqual(conn.clientKey, freshClient, "a newer, unrelated connection must survive");
-    assert.strictEqual(staleClosed, false, "eviction must not reach for a client it does not own anymore");
+        assert.strictEqual(conn.clientKey, undefined, "a late success must not be cached for an unrelated caller to inherit");
+        assert.strictEqual(closed, true, "the orphaned socket must be closed, not merely forgotten");
+        assert.deepStrictEqual(spy.calls, [["s-late"]], "the engine session must be closed with the control plane too");
+        assert.strictEqual(conn.auxSessionIds.has("s-late"), false, "and taken back out of the connection's bookkeeping");
+    } finally {
+        spy.restore();
+    }
+});
+
+// Fix round 4, replacing a test that modelled a state the real path cannot produce (it wrote the
+// stale client under clientKey itself and then checked that eviction spared a value that had
+// replaced it). What actually has to hold: a late arrival never publishes at all, so a legitimate,
+// newer connection sitting under the same key is neither overwritten nor closed nor nulled — the
+// late attempt only ever touches what it opened itself.
+test("a late arrival leaves a newer, legitimate connection under the same key untouched", async () => {
+    const conn = { auxSessionIds: new Set(["s-stale", "s-fresh"]) };
+    let resolveAttempt;
+    let staleClosed = false;
+    let freshClosed = false;
+    const freshClient = { close: () => { freshClosed = true; } };
+    const done = opened({ client: { close: () => { staleClosed = true; } }, engineSessionId: "s-stale" });
+    const attempt = new Promise((resolve) => { resolveAttempt = resolve; });
+
+    const spy = spyOnCloseSession();
+    try {
+        await assert.rejects(() => connectWithDeadline(conn, "clientKey", "connectingKey", attempt, SHORT_MS, "cross-transfer"));
+
+        // A fully independent, later call has meanwhile opened and cached its own connection.
+        conn.clientKey = freshClient;
+        resolveAttempt(done);
+        await new Promise((r) => setTimeout(r, 5));
+
+        assert.strictEqual(conn.clientKey, freshClient, "a newer, unrelated connection must survive");
+        assert.strictEqual(freshClosed, false, "and must not be closed by someone else's cleanup");
+        assert.strictEqual(staleClosed, true, "while the stale one is still cleaned up");
+        assert.deepStrictEqual(spy.calls, [["s-stale"]], "only its own engine session, never the newer one's");
+        assert.strictEqual(conn.auxSessionIds.has("s-fresh"), true, "the newer engine session stays registered");
+    } finally {
+        spy.restore();
+    }
+});
+
+test("a late arrival with a close() that throws still reaches the control plane", async () => {
+    const conn = {};
+    let resolveAttempt;
+    const done = opened({
+        client: { close: () => { throw new Error("socket already destroyed"); } },
+        engineSessionId: "s-throw",
+    });
+    const attempt = new Promise((resolve) => { resolveAttempt = resolve; });
+
+    const spy = spyOnCloseSession();
+    try {
+        await assert.rejects(() => connectWithDeadline(conn, "clientKey", "connectingKey", attempt, SHORT_MS, "cross-transfer"));
+        resolveAttempt(done);
+        await new Promise((r) => setTimeout(r, 5));
+        assert.deepStrictEqual(spy.calls, [["s-throw"]]);
+    } finally {
+        spy.restore();
+    }
 });

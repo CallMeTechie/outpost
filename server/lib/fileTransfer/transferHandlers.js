@@ -136,7 +136,10 @@ const buildTransferHandlers = (OP, ctx) => {
                         // A question can still be open when the run ends for any other reason
                         // (internal cancel, source error). Nothing else reaches that promise, so
                         // without this it lingers with a live timer until the 120 s window fires.
-                        broker.cancel();
+                        // Wrapped like every other release step in this file: a throw here would
+                        // skip finish() and hold the registry slot — and that slot staying occupied
+                        // is now the cap itself, not just bookkeeping (see registry.js).
+                        try { broker.cancel(); } catch {}
                         finish(transferId, key);
                     })
                     // Terminal, because nothing awaits this chain: a throw out of the reporting

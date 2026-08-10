@@ -4,6 +4,9 @@ const {
     crossTransferKeys,
     getSFTPCrossTransferClient,
     releaseSFTPCrossTransferClient,
+    existingAuxClient,
+    registerAuxSession,
+    connectWithDeadline,
 } = require("../ConnectionService");
 const SessionManager = require("../SessionManager");
 const controlPlane = require("../controlPlane/ControlPlaneServer");
@@ -170,4 +173,61 @@ test("release still cleans up fully when client.close() throws", () => {
     } finally {
         spy.restore();
     }
+});
+
+// Fix round 4: registerAuxSession is the producer side of conn.auxSessionIds. Only the consumer
+// was ever tested (sessionCleanup.test.js closes every registered id when the session ends), so
+// dropping the add() here left both green while nothing was ever registered to close — the engine
+// session would then survive its own connection for as long as the master session lives.
+test("registering an auxiliary session records it on the connection for later cleanup", () => {
+    const conn = {};
+    const reported = [];
+
+    const first = registerAuxSession(conn, "sess", "cxfer", (id) => reported.push(id));
+
+    assert.strictEqual(first, "sess-cxfer-1");
+    assert.deepStrictEqual(reported, [first], "the caller has to learn the id it will have to release");
+    assert.strictEqual(conn.auxSessionIds.has(first), true, "the id must be registered for cleanup");
+});
+
+test("a second auxiliary session on the same connection gets its own id and is registered too", () => {
+    const conn = { auxSessionIds: new Set(["kept"]) };
+
+    const first = registerAuxSession(conn, "sess", "cxfer");
+    const second = registerAuxSession(conn, "sess", "cxfer");
+
+    assert.notStrictEqual(first, second, "reusing an id would make one connection's cleanup close the other's");
+    assert.deepStrictEqual([...conn.auxSessionIds].sort(), ["kept", first, second].sort(),
+        "every id stays registered, including ones already there");
+});
+
+test("registering without a listener is fine", () => {
+    assert.doesNotThrow(() => registerAuxSession({}, "sess", "bg"));
+});
+
+// Fix round 4: the connectingKey line in getAuxiliarySFTPClient. Without it, a second caller
+// arriving while the first connect is still in flight starts a second one — two engine sessions
+// against the target host where the cap accounts for one, and whichever finishes last wins the
+// cache while the other is never released. Driven here through the real connectWithDeadline, so
+// the promise a joining caller receives is the very one the first attempt parked.
+test("a caller arriving mid-connect joins the running attempt instead of starting a second one", async () => {
+    const conn = {};
+    let finishAttempt;
+    const client = { close: () => {} };
+    const attempt = new Promise((resolve) => { finishAttempt = resolve; });
+
+    const first = connectWithDeadline(conn, "clientKey", "connectingKey", attempt, undefined, "cross-transfer");
+    const joined = existingAuxClient(conn, "clientKey", "connectingKey");
+    assert.strictEqual(joined, first, "the second caller must get the in-flight attempt, not null");
+
+    finishAttempt({ client, engineSessionId: "s-1" });
+    assert.strictEqual(await joined, client, "and end up with the same single connection");
+    assert.strictEqual(existingAuxClient(conn, "clientKey", "connectingKey"), client,
+        "once cached, later callers reuse the connection itself");
+});
+
+test("a closed cached client is not reused, so a fresh connect can replace it", () => {
+    const conn = { clientKey: { _closed: true }, connectingKey: null };
+    assert.strictEqual(existingAuxClient(conn, "clientKey", "connectingKey"), null);
+    assert.strictEqual(existingAuxClient({}, "clientKey", "connectingKey"), null);
 });
