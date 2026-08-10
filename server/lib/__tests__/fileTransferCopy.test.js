@@ -100,7 +100,9 @@ test("known parent directories are not created twice", async () => {
     const dest = fakeDest();
     await new FileTransfer({ source, dest }).run(["/srv/data"], "/target");
 
-    assert.strictEqual(new Set(dest.created).size, dest.created.length, "no directory may be created twice");
+    // mkdirRecursive("/target/data/sub") creates "/target/data" as a side effect, so the parent
+    // must never be requested on its own — only the leaf call should reach the destination.
+    assert.deepStrictEqual(dest.created, ["/target/data/sub"]);
 });
 
 test("a file where a target directory belongs is a type conflict", async () => {
@@ -169,4 +171,33 @@ test("a source file that vanished after the walk is skipped, not fatal", async (
 
     assert.strictEqual(result.filesSkipped, 1);
     assert.strictEqual(result.filesTransferred, 0);
+});
+
+// A file that never reached writeFile has no partial to clean up — reporting one would be a
+// false claim about a leftover that was never written.
+test("a vanished source file is never reported as a leftover", async () => {
+    const source = oneFile();
+    source.readFile = () => { throw notFound(); };
+    const dest = fakeDest();
+    dest.unlink = async () => { throw new Error("connection gone"); };
+
+    const result = await new FileTransfer({ source, dest }).run(["/srv/a.txt"], "/target");
+
+    assert.deepStrictEqual(dest.removed, []);
+    assert.deepStrictEqual(result.leftovers, []);
+});
+
+// The spec requires the final progress frame to reach 100% on a successful transfer, even when
+// that transfer skipped a file — otherwise a completed transfer looks stuck to the user.
+test("a vanished-source skip keeps bytesDone/filesDone in sync with the totals", async () => {
+    const source = oneFile();
+    source.readFile = () => { throw notFound(); };
+    const dest = fakeDest();
+    const progress = [];
+
+    await new FileTransfer({ source, dest, onProgress: (p) => progress.push(p) }).run(["/srv/a.txt"], "/target");
+
+    const last = progress.at(-1);
+    assert.strictEqual(last.bytesDone, last.bytesTotal);
+    assert.strictEqual(last.filesDone, last.filesTotal);
 });

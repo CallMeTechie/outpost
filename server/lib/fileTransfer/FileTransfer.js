@@ -36,7 +36,6 @@ class FileTransfer {
         this.filesSkipped = 0;
         this.sourceIncomplete = false;
         this.leftovers = [];
-        this._createdDirs = new Set();
     }
 
     async run(paths, destination, { action = "copy", onConflict = "ask" } = {}) {
@@ -57,9 +56,7 @@ class FileTransfer {
         this.filesTotal = plan.files.length;
         this.filesSkipped = plan.skipped.length;
 
-        for (const dir of plan.dirs) {
-            await this._ensureDir(join(destination, dir.relPath));
-        }
+        await this._ensureDirs(destination, plan.dirs);
 
         for (const file of plan.files) {
             const destPath = join(destination, file.relPath);
@@ -91,22 +88,35 @@ class FileTransfer {
         };
     }
 
-    // mkdirRecursive costs one stat per path segment, so remember what already exists.
-    async _ensureDir(path) {
-        if (this._createdDirs.has(path)) return;
+    // mkdirRecursive creates every parent segment of the path it is given, so a directory that
+    // is itself the ancestor of another directory in this same plan needs no explicit call —
+    // it comes into existence as a side effect of creating its descendant. Skipping it saves a
+    // full stat-per-segment round trip for every level a deep tree shares between branches.
+    // The type-conflict check still runs for every directory in the plan, independent of
+    // whether mkdirRecursive is called for it: a file blocking a directory must be caught even
+    // when the directory itself would only ever be created implicitly.
+    async _ensureDirs(destination, dirs) {
+        const dirPaths = dirs.map((dir) => join(destination, dir.relPath));
 
-        // The spec makes a file/folder type conflict an error with the path, independent of
-        // onConflict. mkdirRecursive would only pass the raw engine text through.
-        const existing = await this.dest.stat(path).catch(() => null);
-        if (existing && existing.type !== "folder") {
-            throw new Error(`Target already exists with a different type: ${path}`);
+        for (const path of dirPaths) {
+            // The spec makes a file/folder type conflict an error with the path, independent of
+            // onConflict. mkdirRecursive would only pass the raw engine text through.
+            const existing = await this.dest.stat(path).catch(() => null);
+            if (existing && existing.type !== "folder") {
+                throw new Error(`Target already exists with a different type: ${path}`);
+            }
+
+            const hasDescendant = dirPaths.some((other) => other !== path && other.startsWith(`${path}/`));
+            if (!hasDescendant) await this.dest.mkdirRecursive(path);
         }
-
-        await this.dest.mkdirRecursive(path);
-        for (let p = path; p && p !== "/"; p = p.slice(0, p.lastIndexOf("/"))) this._createdDirs.add(p);
     }
 
     async _copyFile(file, destPath) {
+        // Only a write attempt that actually reached the destination can have left a partial
+        // file behind. readFile() can fail before that point (e.g. the source vanished) — in
+        // that case there is nothing at destPath to clean up, and reporting it as a leftover
+        // would be a false claim to the user.
+        let writeAttempted = false;
         try {
             const { stream, done } = this.source.readFile(file.srcPath);
 
@@ -115,15 +125,20 @@ class FileTransfer {
                 this._report(file.relPath);
             });
 
+            writeAttempted = true;
             await this.dest.writeFile(destPath, stream);
             await done;
         } catch (err) {
-            await this._removePartial(destPath);
+            if (writeAttempted) await this._removePartial(destPath);
             if (isNotFound(err)) {
                 // The spec wants a source file that vanished between walk and read counted as
-                // skipped. A move must not delete anything after this.
+                // skipped, not fatal, and a move must not delete anything after this. Pull it
+                // out of the totals too, exactly like a conflict skip in _run — otherwise the
+                // final progress frame stays under 100% even though the transfer succeeded.
                 this.filesSkipped += 1;
                 this.sourceIncomplete = true;
+                this.bytesTotal -= file.size;
+                this.filesTotal -= 1;
                 this._report(file.relPath);
                 return false;
             }
