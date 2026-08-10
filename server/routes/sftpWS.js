@@ -57,9 +57,8 @@ const requireMultiPaths = (p) => { if (!p?.sources?.length || !p?.destination) t
 // this socket is gone. `transfers` is this connection's own map, so this can only ever touch
 // transfers this socket registered — never another pane's. An entry can still be a bare
 // placeholder (its two auxiliary connections not opened yet, see TRANSFER_START), which has
-// neither `broker` nor `transfer`; the optional chaining makes that a no-op here, and the setup
-// finishes on its own, releasing the registry slot and both clients through its normal finally
-// once it completes. One entry's cancel throwing must not stop the rest from being cancelled.
+// neither `broker` nor `transfer`; the optional chaining makes that a no-op here. One entry's
+// cancel throwing must not stop the rest from being cancelled.
 //
 // A running entry (it has `transfer`) must NOT be deleted here: transferHandlers.js#finish reads
 // `transfers.get(transferId)` to recover `sourceSessionId` before it deletes the entry itself —
@@ -70,6 +69,13 @@ const requireMultiPaths = (p) => { if (!p?.sources?.length || !p?.destination) t
 // for it again once the socket is gone — so removing it here is safe.
 const cancelAllTransfers = (transfers) => {
     for (const [transferId, transferEntry] of transfers) {
+        // Marked first, on the entry OBJECT rather than through the map, and before anything that
+        // may throw: a still-connecting placeholder is dropped from the map two lines down, but
+        // TRANSFER_START holds a reference to that very object and reads this mark back before it
+        // starts the run. Deleting the placeholder alone loses the cancel entirely — the setup
+        // would finish for a socket that is already gone and, on `action: "move"`, delete source
+        // files for a client that can no longer be told anything.
+        transferEntry.cancelled = true;
         try { transferEntry.broker?.cancel(); } catch {}
         try { transferEntry.transfer?.cancel(); } catch {}
         if (!transferEntry.transfer) transfers.delete(transferId);

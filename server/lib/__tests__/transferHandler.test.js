@@ -484,6 +484,100 @@ test("a cancel during construction is dropped, not thrown", async () => {
     assert.ok(s.transfers.get("t1")?.transfer, "the run starts regardless — the cancel was dropped");
 });
 
+// Fix round 6, Finding A: the socket can close at any point while start() is still building — two
+// database lookups, a stat round trip on a foreign host and two connects bounded only by the 30 s
+// cross-transfer deadline. cancelAllTransfers has nothing to cancel on a placeholder and drops it
+// from the map; the mark it leaves on the entry object is the only thing that outlives that. This
+// drives the REAL cancelAllTransfers against the REAL handler, so a mark that never gets set, or a
+// start() that never reads it, shows up here.
+test("a socket closing while a transfer is still connecting stops the run from ever starting", async () => {
+    let unblock = null;
+    let calls = 0;
+    let runs = 0;
+    const s = setup({
+        getCrossClient: async () => {
+            if (++calls === 1) await new Promise((r) => { unblock = r; });
+            return {};
+        },
+        createTransfer: () => ({ run: () => { runs += 1; return new Promise(() => {}); }, cancel() {} }),
+    });
+
+    // "move" on purpose: this is the case where a run that starts anyway deletes source files for
+    // a client that is already gone.
+    const started = s.handlers.start(start({ action: "move" }));
+    await new Promise((r) => setImmediate(r));
+    assert.ok(s.transfers.get("t1"), "the placeholder must be in place for this test to mean anything");
+    assert.strictEqual(s.transfers.get("t1").transfer, undefined, "still under construction");
+    assert.strictEqual(s.registry.reserved.length, 1, "the slot is taken before the connects start");
+
+    cancelAllTransfers(s.transfers);
+    assert.strictEqual(s.transfers.size, 0, "the placeholder is gone, as it always was");
+
+    unblock();
+    await started;
+
+    assert.strictEqual(runs, 0, "the run started for a socket that is already gone");
+    assert.strictEqual(s.transfers.size, 0, "an aborted setup must not register itself after the fact");
+    assert.deepStrictEqual(s.registry.reserved, [], "the registry slot leaked");
+    assert.deepStrictEqual(s.released, ["dst:t1", "dst:t1"], "both aux clients must be released");
+});
+
+// An abort must give back what this call took and nothing else. Two sockets, each with its own
+// transfer under the same client-chosen id, against one shared source session.
+test("an aborted setup leaves another socket's transfer completely alone", async () => {
+    const svc = fakeConnectionService();
+    let unblock = null;
+    let calls = 0;
+    const a = setup({ ...svc.deps,
+        getCrossClient: async (...args) => {
+            if (++calls === 1) await new Promise((r) => { unblock = r; });
+            return svc.deps.getCrossClient(...args);
+        },
+        createTransfer: () => ({ run: () => new Promise(() => {}), cancel() {} }),
+    }, { sessionId: "dstA", user: { id: "u-a" } });
+    const b = setup({ ...svc.deps,
+        createTransfer: () => ({ run: () => new Promise(() => {}), cancel() {} }),
+    }, { sessionId: "dstB", user: { id: "u-b" } });
+
+    const startedA = a.handlers.start(start());
+    await new Promise((r) => setImmediate(r));
+    await b.handlers.start(start());
+    const sourceOfB = [...svc.connFor("src").crossTransferClients.values()].find((c) => c.accountId === "u-b");
+    assert.ok(sourceOfB, "the second socket never got its own source connection");
+
+    cancelAllTransfers(a.transfers);
+    unblock();
+    await startedA;
+
+    assert.strictEqual(sourceOfB.closed, false, "the aborted setup closed a foreign connection");
+    assert.strictEqual(b.transfers.size, 1, "and disowned a foreign transfer");
+    assert.deepStrictEqual(b.registry.reserved, ["dstB:t1"], "and gave back a foreign registry slot");
+    assert.strictEqual(svc.connFor("src").crossTransferClients.size, 1, "exactly the aborted one must be gone");
+});
+
+// The abort is not a refusal: nothing was decided, and there is nobody left to tell.
+test("an aborted setup neither audits a refusal nor answers a socket that is gone", async () => {
+    const logged = [];
+    let unblock = null;
+    let calls = 0;
+    const s = setup({
+        createAuditLog: (e) => logged.push(e),
+        getCrossClient: async () => {
+            if (++calls === 1) await new Promise((r) => { unblock = r; });
+            return {};
+        },
+    });
+
+    const started = s.handlers.start(start());
+    await new Promise((r) => setImmediate(r));
+    cancelAllTransfers(s.transfers);
+    unblock();
+    await started;
+
+    assert.deepStrictEqual(logged, [], "an abort is not a refusal and must not be logged as one");
+    assert.deepStrictEqual(s.sent, [], "nothing may be sent to a socket that has closed");
+});
+
 // Nothing observes the run's promise chain, so a throw out of the reporting must not become an
 // unhandled rejection. A closed socket throwing inside send() is the realistic trigger.
 test("a throwing send at the end of a run stays inside the chain", async () => {

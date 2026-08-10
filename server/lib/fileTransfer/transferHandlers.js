@@ -29,6 +29,7 @@ const buildTransferHandlers = (OP, ctx) => {
             let sourceSessionId = null;
             let auditPaths = null;
             let destScopeForAudit = null;
+            let aborted = false;
             try {
                 const request = validateTransferStart(payload, ctx.sessionId);
                 auditPaths = request.paths;
@@ -92,6 +93,21 @@ const buildTransferHandlers = (OP, ctx) => {
                 // the identity check — and the first to finish would close the other's.
                 const sourceClient = await deps.getCrossClient(sourceSessionId, sourceEntry, ctx.user.id, key);
                 const destClient = await deps.getCrossClient(ctx.sessionId, destEntry, ctx.user.id, key);
+
+                // The last look before anything starts moving files, and the last point at which a
+                // look is still possible: from here to transfer.run() there is no further await, so
+                // no close can slip in unseen. Everything above it can take a long time — two
+                // database lookups, a stat round trip on a foreign host and two connects bounded
+                // only by the 30 s cross-transfer deadline — and sftpWS.js#cancelAllTransfers marks
+                // this very placeholder object when the socket closes, which is what survives the
+                // placeholder being dropped from the map. Reading our own object, never the map:
+                // the map no longer holds it, and whatever else may be under this id belongs to
+                // somebody else. Thrown rather than returned so the catch below hands back exactly
+                // what this call took — its registry slot and its two auxiliary clients.
+                if (ownEntry.cancelled) {
+                    aborted = true;
+                    throw new Error("Transfer aborted");
+                }
 
                 const broker = createConflictBroker({
                     send: (info) => send(OP.TRANSFER_CONFLICT, { transferId, ...info }),
@@ -162,6 +178,10 @@ const buildTransferHandlers = (OP, ctx) => {
                         try { deps.releaseCrossClient(deps.getConnection(sessionId), key); } catch {}
                     }
                 }
+                // An aborted setup is not a refusal: nothing was decided about this request, and
+                // there is nobody left to tell either — the socket that asked for it has closed.
+                // Returning here keeps both out of the picture, after the release above has run.
+                if (aborted) return;
                 // A refused attempt is exactly what an audit trail is for. Logged on the
                 // destination side, the one organization known to be the caller's; the source
                 // scope is often not resolved yet, and paths are logged as a count so a refusal
