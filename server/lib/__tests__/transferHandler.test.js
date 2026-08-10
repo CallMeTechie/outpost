@@ -119,6 +119,157 @@ test("a second start with a running id costs the first no cleanup", async () => 
     assert.strictEqual(s.registry.reserved.length, 0, "slot leaked");
 });
 
+// The stat sits behind the authorization chain on purpose: run before it, its outcome would turn
+// sourceSessionId into an existence oracle over foreign hosts.
+test("the source is never touched before the authorization chain ran", async () => {
+    let statted = 0;
+    const s = setup({
+        authorizeSource: async () => { throw new Error("Transfer not permitted"); },
+        getConnection: () => ({ sftpClient: { stat: async () => { statted += 1; return { isDir: false }; } } }),
+    });
+    await s.handlers.start(start());
+    assert.strictEqual(statted, 0, "the source was probed for an unauthorized caller");
+});
+
+// sourceIsFolder decides whether the destination check demands FILES_MODIFY.
+test("a folder among the source paths reaches the destination check", async () => {
+    let seen = null;
+    const s = setup({
+        getConnection: () => ({ sftpClient: { stat: async () => ({ isDir: true }) } }),
+        authorizeDestination: async (req) => { seen = req; return { destScope: { organizationId: "o" } }; },
+    });
+    await s.handlers.start(start());
+    assert.strictEqual(seen.sourceIsFolder, true);
+    assert.strictEqual(seen.onConflict, "skip", "the validated conflict mode must reach the check");
+});
+
+test("a destination entry that cannot be loaded is refused before anything is opened", async () => {
+    let opened = 0;
+    const s = setup({ findEntry: async () => null, getCrossClient: async () => { opened += 1; return {}; } });
+    await s.handlers.start(start());
+    assert.strictEqual(s.sent.find((m) => m.op === OP.TRANSFER_ERROR).data.message, "Transfer not permitted");
+    assert.strictEqual(opened, 0, "no aux connection may be opened for an unloadable destination");
+    assert.strictEqual(s.transfers.size, 0);
+    assert.strictEqual(s.registry.reserved.length, 0);
+});
+
+// The identity decides which credentials may be used, so it must be the caller's, and the two
+// entries must not be swapped between the two sides.
+test("both aux clients are opened for the caller and for their own side", async () => {
+    const calls = [];
+    const s = setup({ getCrossClient: async (...args) => { calls.push(args); return {}; } });
+    await s.handlers.start(start());
+    assert.deepStrictEqual(calls, [
+        ["src", { id: "e-src" }, "u", "t1"],
+        ["dst", { id: "e-dst", organizationId: "o" }, "u", "t1"],
+    ]);
+});
+
+// Everything that hangs off the source session must read the same from outside.
+test("a refusal never repeats what the failing dependency said", async () => {
+    for (const boom of ["Session 7f3 does not exist", "No active SFTP session", "connect ECONNREFUSED 10.0.0.5:22"]) {
+        const s = setup({ authorizeSource: async () => { throw new Error(boom); } });
+        await s.handlers.start(start());
+        assert.strictEqual(s.sent.find((m) => m.op === OP.TRANSFER_ERROR).data.message,
+            "Transfer not permitted", `leaked: ${boom}`);
+    }
+});
+
+test("the caller's own quota names itself", async () => {
+    const s = setup();
+    s.registry.reserve = () => false;
+    await s.handlers.start(start());
+    assert.match(s.sent.find((m) => m.op === OP.TRANSFER_ERROR).data.message, /^Too many/);
+});
+
+test("a malformed payload names itself and carries no transfer id", async () => {
+    const s = setup();
+    await s.handlers.start(start({ paths: [] }));
+    const msg = s.sent.find((m) => m.op === OP.TRANSFER_ERROR);
+    assert.strictEqual(msg.data.message, "Invalid transfer request");
+    assert.strictEqual(msg.data.transferId, null);
+    assert.strictEqual(s.registry.reserved.length, 0);
+});
+
+test("a refused attempt is audited with the path count only", async () => {
+    const logged = [];
+    const s = setup({ createAuditLog: (e) => logged.push(e),
+        authorizeSource: async () => { throw new Error("Transfer not permitted"); } });
+    await s.handlers.start(start({ paths: ["/secret/a", "/secret/b"] }));
+    assert.strictEqual(logged.length, 1, "a refusal must leave a trail");
+    assert.strictEqual(logged[0].details.refused, true);
+    assert.strictEqual(logged[0].details.paths, 2, "paths belong in the trail as a count");
+    assert.doesNotMatch(JSON.stringify(logged[0]), /secret/, "no attacker-chosen strings in the trail");
+});
+
+test("a started transfer is audited on both sides", async () => {
+    const logged = [];
+    const s = setup({ createAuditLog: (e) => logged.push(e) });
+    await s.handlers.start(start());
+    assert.strictEqual(logged.length, 2);
+    assert.deepStrictEqual(logged.map((e) => e.details.refused), [undefined, undefined]);
+});
+
+test("a finished run reports, frees the entry and releases both aux clients", async () => {
+    let endRun = null;
+    let runArgs = null;
+    let opts = null;
+    const s = setup({ createTransfer: (o) => { opts = o; return {
+        run: (...args) => { runArgs = args; return new Promise((r) => { endRun = r; }); }, cancel() {} }; } });
+    await s.handlers.start(start());
+    assert.deepStrictEqual(runArgs, [["/a"], "/d", { action: "copy", onConflict: "skip" }]);
+
+    opts.onProgress({ bytesDone: 1 });
+    endRun({ files: 1 });
+    await new Promise((r) => setImmediate(r));
+
+    assert.deepStrictEqual(s.sent.find((m) => m.op === OP.TRANSFER_DONE).data, { transferId: "t1", files: 1 });
+    const progress = s.sent.filter((m) => m.op === OP.TRANSFER_PROGRESS);
+    assert.strictEqual(progress.length, 2, "the last frame is flushed past the throttle");
+    assert.ok(progress.every((m) => m.data.transferId === "t1"));
+    assert.strictEqual(s.transfers.size, 0);
+    assert.strictEqual(s.registry.reserved.length, 0);
+    assert.deepStrictEqual(s.released, ["t1", "t1"]);
+});
+
+test("a failing run is reported with its leftovers and cleans up just the same", async () => {
+    let failRun = null;
+    const s = setup({ createTransfer: () => ({
+        run: () => new Promise((_, reject) => { failRun = reject; }), cancel() {} }) });
+    await s.handlers.start(start());
+    const err = new Error("engine gave up");
+    err.leftovers = ["/d/x"];
+    err.sourceLeftovers = ["/a/y"];
+    failRun(err);
+    await new Promise((r) => setImmediate(r));
+
+    assert.deepStrictEqual(s.sent.find((m) => m.op === OP.TRANSFER_ERROR).data,
+        { transferId: "t1", message: "engine gave up", leftovers: ["/d/x"], sourceLeftovers: ["/a/y"] });
+    assert.strictEqual(s.transfers.size, 0);
+    assert.strictEqual(s.registry.reserved.length, 0);
+    assert.deepStrictEqual(s.released, ["t1", "t1"]);
+});
+
+// A run can end for reasons the client never answered for; the open question is a plain in-memory
+// promise with a 120 s timer that nothing else would ever reach.
+test("an open conflict question is released when the run ends", async () => {
+    let endRun = null;
+    let opts = null;
+    const s = setup({ createTransfer: (o) => { opts = o; return {
+        run: () => new Promise((r) => { endRun = r; }), cancel() {} }; } });
+    await s.handlers.start(start());
+    const broker = s.transfers.get("t1").broker;
+
+    const answer = opts.onConflict({ file: "a.txt" });
+    assert.deepStrictEqual(s.sent.find((m) => m.op === OP.TRANSFER_CONFLICT).data,
+        { transferId: "t1", file: "a.txt" });
+
+    endRun({ files: 0 });
+    const outcome = await Promise.race([answer, new Promise((r) => setImmediate(() => r("still open")))]);
+    broker.cancel();
+    assert.strictEqual(outcome, "abort", "the question outlived its run");
+});
+
 test("cancel reaches both the transfer and the conflict broker", async () => {
     const s = setup();
     await s.handlers.start(start());
