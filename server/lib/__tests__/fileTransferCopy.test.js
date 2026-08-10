@@ -131,6 +131,33 @@ test("a source delivering across several ticks loses nothing at the start", asyn
     assert.strictEqual(result.filesTransferred, 1);
 });
 
+// Finding 2: writeFile passes the destination server's own wording through, and the engine answers
+// a missing path with exactly this text. Classifying by message files a failed write under "the
+// source vanished" — the transfer then reports success with a skipped file although nothing at all
+// was written.
+test("a destination write error is never mistaken for a vanished source file", async () => {
+    const dest = fakeDest();
+    dest.writeFile = async () => { throw new Error("Path does not exist"); };
+
+    const err = await new FileTransfer({ source: oneFile(), dest })
+        .run(["/srv/a.txt"], "/target").then((r) => new Error(`resolved with ${JSON.stringify(r)}`), (e) => e);
+
+    assert.match(err.message, /^Path does not exist$/, "the destination's own message has to survive");
+});
+
+// The other direction of the same decision: a source that really did vanish still has to be a skip,
+// even when its message is the very text the destination uses too.
+test("a source read error with the destination's wording is still a skip", async () => {
+    const source = oneFile();
+    source.readFile = () => { throw new Error("Path does not exist"); };
+
+    const result = await new FileTransfer({ source, dest: fakeDest() }).run(["/srv/a.txt"], "/target");
+
+    assert.strictEqual(result.filesSkipped, 1);
+    assert.strictEqual(result.filesTransferred, 0);
+    assert.strictEqual(result.cancelled, false);
+});
+
 // Finding 6: no readFile fake ever rejected its `done`. This is the read error that only shows up
 // after the destination already confirmed the write — on a move the most dangerous one of all.
 test("a read error arriving after the write completed fails the transfer", async () => {

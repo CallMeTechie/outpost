@@ -152,6 +152,21 @@ test("a vanished source file stops the move from deleting anything", async () =>
     assert.deepStrictEqual(source.unlinked, []);
 });
 
+// Finding 2 on the move path: a failed write must not be filed as "the source vanished". It used to
+// end in the sourceIncomplete branch, so the run did fail — but with a message blaming the source
+// for something the destination did.
+test("a destination write error fails the move with the destination's own message", async () => {
+    const source = oneFileSource();
+    const dest = makeDest();
+    dest.writeFile = async () => { throw new Error("Path does not exist"); };
+
+    const err = await new FileTransfer({ source, dest })
+        .run(["/srv/a.txt"], "/target", { action: "move" }).then(() => null, (e) => e);
+
+    assert.match(err.message, /^Path does not exist$/);
+    assert.deepStrictEqual(source.unlinked, []);
+});
+
 // Finding 6: the read error that only arrives once the destination confirmed the write is the most
 // dangerous one on a move — nothing may be deleted on the source after it.
 test("a read error arriving after the write never deletes the source", async () => {

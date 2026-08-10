@@ -20,6 +20,18 @@ const WATCHDOG_INTERVAL = 500;
 const NOT_FOUND = /no such file|no such path|not found|does not exist|ENOENT/i;
 const isNotFound = (err) => err?.code === "ENOENT" || NOT_FOUND.test(String(err?.message || ""));
 
+// Marks a failure that came from the DESTINATION side, by type rather than by message — the same
+// principle as WalkCancelledError. writeFile() passes the destination server's own wording through
+// verbatim, and the engine answers a missing path with "Path does not exist", which isNotFound
+// matches. Without this tag a failed write would be filed as "the source file vanished": the
+// transfer would report success with a skipped file although not a byte reached the destination.
+class DestinationError extends Error {
+    constructor(cause) {
+        super(cause?.message || String(cause), { cause });
+        this.name = "DestinationError";
+    }
+}
+
 class FileTransfer {
     constructor({ source, dest, destCleanup, onProgress, onConflict, now, setIntervalFn, clearIntervalFn }) {
         this.source = source;
@@ -313,7 +325,10 @@ class FileTransfer {
             // the source stream, writeFile rejects in turn, and without a handler Node terminates
             // the process with unhandledRejection.
             writeAttempted = true;
-            const writePromise = (async () => this.dest.writeFile(destPath, counted))();
+            // The async wrapper also catches a synchronous throw from writeFile, so every failure
+            // of the destination — and only those — carries the DestinationError tag.
+            const writePromise = (async () => this.dest.writeFile(destPath, counted))()
+                .catch((err) => { throw new DestinationError(err); });
             writePromise.catch(() => {});
             const donePromise = Promise.resolve(done);
             donePromise.catch(() => {});
@@ -326,7 +341,10 @@ class FileTransfer {
             // Scoped to our own hook firing, not just this.cancelled — otherwise an unrelated bug
             // that happens to throw while a cancel is pending would be silently swallowed here.
             if (cancelledMidCopy) return false;
-            if (isNotFound(err)) {
+            // Only the SOURCE can make a file vanish. The type decides, never the text: writeFile
+            // hands the destination server's own wording through, and "Path does not exist" from a
+            // failed write must not turn a hard error into a harmless skip.
+            if (!(err instanceof DestinationError) && isNotFound(err)) {
                 // A source file that vanished between walk and read counts as skipped, not fatal,
                 // and a move must not delete anything after this. Pull it out of the totals too,
                 // exactly like a conflict skip in _run.
@@ -337,7 +355,9 @@ class FileTransfer {
                 this._report(file.relPath);
                 return false;
             }
-            throw watchdogError || err;
+            // Unwrap again: the tag exists for the decision above, callers want the server's own
+            // error with its message and properties intact.
+            throw watchdogError || (err instanceof DestinationError ? err.cause : err);
         } finally {
             if (timer !== null) this.clearIntervalFn(timer);
             // There is no read abort in the protocol: the pending entry lives until FileEnd and
@@ -404,4 +424,6 @@ class FileTransfer {
     }
 }
 
-module.exports = { FileTransfer, MAX_BUFFER, READ_STALL_TIMEOUT, WATCHDOG_INTERVAL, MAX_SIZE_OVERRUN };
+module.exports = {
+    FileTransfer, DestinationError, MAX_BUFFER, READ_STALL_TIMEOUT, WATCHDOG_INTERVAL, MAX_SIZE_OVERRUN,
+};
