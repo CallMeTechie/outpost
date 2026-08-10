@@ -1,9 +1,11 @@
 const test = require("node:test");
 const assert = require("node:assert");
+const { PassThrough } = require("node:stream");
 const {
     crossTransferKeys,
     getSFTPCrossTransferClient,
     releaseSFTPCrossTransferClient,
+    CROSS_TRANSFER_CONNECT_TIMEOUT_MS,
 } = require("../ConnectionService");
 const SessionManager = require("../SessionManager");
 const controlPlane = require("../controlPlane/ControlPlaneServer");
@@ -226,7 +228,7 @@ const connectedSession = () => {
     return { sessionId: session.sessionId, conn: SessionManager.getConnection(session.sessionId) };
 };
 
-const withFakeEngine = async (openSession, body) => {
+const withFakeEngine = async (openSession, body, waitForDataConnection = () => new Promise(() => {})) => {
     const original = {
         hasEngine: controlPlane.hasEngine,
         openSession: controlPlane.openSession,
@@ -234,7 +236,7 @@ const withFakeEngine = async (openSession, body) => {
     };
     controlPlane.hasEngine = () => true;
     controlPlane.openSession = openSession;
-    controlPlane.waitForDataConnection = () => new Promise(() => {});
+    controlPlane.waitForDataConnection = waitForDataConnection;
     try {
         return await body();
     } finally {
@@ -242,18 +244,49 @@ const withFakeEngine = async (openSession, body) => {
     }
 };
 
+// A host that accepts the connection and then says nothing: the session opens, the data socket
+// arrives, and no Ready frame ever follows — so EngineSftpClient#waitForReady stays pending and the
+// whole attempt settles neither way. A real PassThrough, because the client attaches real stream
+// listeners to it and close() destroys it.
+const withSilentEngine = (body) =>
+    withFakeEngine(async () => ({ success: true }), body, async () => new PassThrough());
+
+// Runs `body` with the cross-transfer connect deadline shortened to a few milliseconds. Only timers
+// armed with exactly CROSS_TRANSFER_CONNECT_TIMEOUT_MS are touched — that value is the deadline's
+// own signature, so this reaches the production path's timer and nothing else in the process.
+const withShortenedCrossTransferDeadline = async (body) => {
+    const realSetTimeout = global.setTimeout;
+    global.setTimeout = (fn, ms, ...rest) =>
+        realSetTimeout(fn, ms === CROSS_TRANSFER_CONNECT_TIMEOUT_MS ? 5 : ms, ...rest);
+    try {
+        return await body();
+    } finally {
+        global.setTimeout = realSetTimeout;
+    }
+};
+
 test("the connect path itself registers its engine session on the connection", async () => {
     const { sessionId, conn } = connectedSession();
 
-    await withFakeEngine(async () => { throw new Error("engine refused"); }, async () => {
-        await assert.rejects(
-            () => getSFTPCrossTransferClient(sessionId, SFTP_ENTRY, "acc-1", "t-register"),
-            /engine refused/
-        );
-    });
+    // The control plane is made to fail on purpose: since fix round 6 a failed connect closes and
+    // forgets the engine session it registered, and a close that did NOT get through deliberately
+    // leaves the id in place for the session-end sweep (see evictLateConnection). That is what
+    // keeps the registration observable here — without the registration, this list stays empty.
+    const original = controlPlane.closeSession;
+    controlPlane.closeSession = () => { throw new Error("control plane gone"); };
+    try {
+        await withFakeEngine(async () => { throw new Error("engine refused"); }, async () => {
+            await assert.rejects(
+                () => getSFTPCrossTransferClient(sessionId, SFTP_ENTRY, "acc-1", "t-register"),
+                /engine refused/
+            );
+        });
 
-    assert.deepStrictEqual([...(conn.auxSessionIds ?? [])], [`${sessionId}-cxfer-1`],
-        "an unregistered engine session is one nothing can ever force-close at session end");
+        assert.deepStrictEqual([...(conn.auxSessionIds ?? [])], [`${sessionId}-cxfer-1`],
+            "an unregistered engine session is one nothing can ever force-close at session end");
+    } finally {
+        controlPlane.closeSession = original;
+    }
 });
 
 test("a second caller arriving mid-connect joins the running attempt instead of opening a second engine session", async () => {
@@ -266,14 +299,72 @@ test("a second caller arriving mid-connect joins the running attempt instead of 
         return new Promise((_, reject) => setTimeout(() => reject(new Error("engine refused")), 5));
     };
 
-    await withFakeEngine(openSession, async () => {
-        const first = getSFTPCrossTransferClient(sessionId, SFTP_ENTRY, "acc-1", "t-join");
-        const second = getSFTPCrossTransferClient(sessionId, SFTP_ENTRY, "acc-1", "t-join");
-        await assert.rejects(() => first);
-        await assert.rejects(() => second);
-    });
+    const spy = spyOnCloseSession();
+    try {
+        await withFakeEngine(openSession, async () => {
+            const first = getSFTPCrossTransferClient(sessionId, SFTP_ENTRY, "acc-1", "t-join");
+            const second = getSFTPCrossTransferClient(sessionId, SFTP_ENTRY, "acc-1", "t-join");
+            await assert.rejects(() => first);
+            await assert.rejects(() => second);
+        });
 
-    assert.strictEqual(openCalls, 1, "the joining caller must not open a connection of its own");
-    assert.deepStrictEqual([...(conn.auxSessionIds ?? [])], [`${sessionId}-cxfer-1`],
-        "and must not register a second engine session against the same host");
+        assert.strictEqual(openCalls, 1, "the joining caller must not open a connection of its own");
+        // One engine session was created and one was cleaned up. A second, independently opened
+        // attempt would show up as a second `-cxfer-` id here.
+        assert.deepStrictEqual(spy.calls, [[`${sessionId}-cxfer-1`]],
+            "and must not register a second engine session against the same host");
+        assert.strictEqual(conn.auxSessionIds.size, 0);
+    } finally {
+        spy.restore();
+    }
+});
+
+// Fix round 6, Finding D: the cleanup of an unwanted connection used to hang off the success
+// branch alone. A connect that fails still registered its engine session id first — the id goes on
+// the connection before the connect even starts — and nothing ever took it back out again:
+// releaseSFTPCrossTransferClient finds no crossTransferClients entry for an attempt that never
+// finished. The list grew by one per failed try, for the life of the session.
+test("a connect that fails closes the engine session it had already registered", async () => {
+    const { sessionId, conn } = connectedSession();
+
+    const spy = spyOnCloseSession();
+    try {
+        await withFakeEngine(async () => { throw new Error("engine refused"); }, async () => {
+            await assert.rejects(() => getSFTPCrossTransferClient(sessionId, SFTP_ENTRY, "acc-1", "t-fail"));
+        });
+
+        assert.deepStrictEqual(spy.calls, [[`${sessionId}-cxfer-1`]],
+            "a failed attempt's engine session must be closed, not merely forgotten");
+        assert.strictEqual(conn.auxSessionIds.size, 0,
+            "and the connection's aux-session list must not grow with every failed attempt");
+    } finally {
+        spy.restore();
+    }
+});
+
+// The case the deadline exists for, and the one neither settle handler can ever reach: the source
+// host accepts the connection and then never reports ready, so EngineSftpClient#waitForReady stays
+// pending for good. Only the timer itself can still close what that attempt left open — and the
+// registry slot that used to bound it is handed back at that very moment, so nothing else counts
+// these any more.
+test("a source that never reports ready has its engine session closed when the deadline passes", async () => {
+    const { sessionId, conn } = connectedSession();
+
+    const spy = spyOnCloseSession();
+    try {
+        await withShortenedCrossTransferDeadline(async () => {
+            await withSilentEngine(async () => {
+                await assert.rejects(
+                    () => getSFTPCrossTransferClient(sessionId, SFTP_ENTRY, "acc-1", "t-silent"),
+                    /Timed out opening cross-transfer connection/
+                );
+            });
+        });
+
+        assert.deepStrictEqual(spy.calls, [[`${sessionId}-cxfer-1`]],
+            "an attempt that never settles is only ever reachable from the deadline itself");
+        assert.strictEqual(conn.auxSessionIds.size, 0);
+    } finally {
+        spy.restore();
+    }
 });

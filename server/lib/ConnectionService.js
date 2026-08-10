@@ -261,6 +261,12 @@ const getAuxiliarySFTPClient = async (sessionId, entry, accountId, opts) => {
     // second engine session against the same host under the same key — the cap accounts for one.
     if (conn[connectingKey]) return conn[connectingKey];
 
+    // What this attempt opened for itself, readable from outside the attempt — connectWithDeadline
+    // needs it on the two paths where the attempt hands it nothing: when it fails, and when its
+    // deadline passes while it is still running (a host that accepts the connection but never
+    // reports ready leaves a promise that settles neither way). Stays null until the id exists, so
+    // a failure before that point has nothing to clean up and cleans up nothing.
+    let openedEngineSessionId = null;
     const attempt = (async () => {
         requireEngine();
         const { identityId, directIdentity } = session.configuration;
@@ -269,6 +275,7 @@ const getAuxiliarySFTPClient = async (sessionId, entry, accountId, opts) => {
 
         conn._auxGeneration = (conn._auxGeneration || 0) + 1;
         const engineSessionId = `${sessionId}-${suffix}-${conn._auxGeneration}`;
+        openedEngineSessionId = engineSessionId;
         onEngineSession?.(engineSessionId);
         // Registering the id here is what lets SessionManager's cleanupConnection force-close this
         // engine session when the session ends; releaseSFTPCrossTransferClient and
@@ -294,7 +301,8 @@ const getAuxiliarySFTPClient = async (sessionId, entry, accountId, opts) => {
         return { client, engineSessionId };
     })();
 
-    return connectWithDeadline(conn, clientKey, connectingKey, attempt, timeoutMs, label);
+    return connectWithDeadline(conn, clientKey, connectingKey, attempt, timeoutMs, label,
+        () => openedEngineSessionId);
 };
 
 // A connection that finished after its caller's deadline had already passed. Nobody is waiting for
@@ -326,7 +334,7 @@ const evictLateConnection = (conn, client, engineSessionId) => {
 //
 // timeoutMs is only ever set for the cross-transfer path (see CROSS_TRANSFER_CONNECT_TIMEOUT_MS
 // above); without it this waits exactly as long as it always has, for every other caller.
-const connectWithDeadline = (conn, clientKey, connectingKey, attempt, timeoutMs, label) => {
+const connectWithDeadline = (conn, clientKey, connectingKey, attempt, timeoutMs, label, getEngineSessionId) => {
     // attempt cannot actually be cancelled — the underlying connect keeps running even after the
     // caller gives up on it. Publishing is therefore decided here, once it finishes, and never
     // inside the attempt itself: past the deadline the clientKey may legitimately belong to a
@@ -334,11 +342,35 @@ const connectWithDeadline = (conn, clientKey, connectingKey, attempt, timeoutMs,
     // would destroy bookkeeping this attempt does not own. What it does own — its own client and
     // its own engine session, and nothing else — is what gets cleaned up instead.
     let timedOut = false;
-    const publish = attempt.then(({ client, engineSessionId }) => {
-        if (timedOut) evictLateConnection(conn, client, engineSessionId);
-        else conn[clientKey] = client;
-        return client;
-    });
+    let engineSessionClosed = false;
+
+    // Only ever this attempt's own client and its own engine session: the id comes from the
+    // attempt's own closure, never from the connection's shared bookkeeping, so a later unrelated
+    // call reusing the same clientKey is never touched. Closing one engine session twice buys
+    // nothing, so whoever gets there second passes no id — but the client is always closed, since
+    // the deadline path has no client yet and the late-arrival path does.
+    const evictOwn = (client, engineSessionId) => {
+        evictLateConnection(conn, client, engineSessionClosed ? null : engineSessionId);
+        if (engineSessionId) engineSessionClosed = true;
+    };
+
+    const publish = attempt.then(
+        ({ client, engineSessionId }) => {
+            if (timedOut) evictOwn(client, engineSessionId);
+            else conn[clientKey] = client;
+            return client;
+        },
+        (err) => {
+            // A failed attempt hands back no client and no id, but it may well have registered an
+            // engine session before it failed — the id is put on the connection before the connect
+            // even starts. Nothing else would ever take it back out: releaseSFTPCrossTransferClient
+            // finds no crossTransferClients entry for an attempt that never finished, so without
+            // this the connection's aux-session list grows by one on every failed try and the
+            // engine session behind it lives on until the master session ends.
+            evictOwn(null, getEngineSessionId?.() ?? null);
+            throw err;
+        },
+    );
 
     if (!timeoutMs) {
         conn[connectingKey] = publish.finally(() => { conn[connectingKey] = null; });
@@ -347,7 +379,15 @@ const connectWithDeadline = (conn, clientKey, connectingKey, attempt, timeoutMs,
 
     // The timeout wraps the whole shared `conn[connectingKey]` promise, not just a piece of it, so
     // a concurrent co-waiter sharing this same in-flight attempt is bounded by the same deadline.
-    conn[connectingKey] = withTimeout(publish, timeoutMs, `Timed out opening ${label} connection`, () => { timedOut = true; })
+    //
+    // Cleaning up from the timer itself, rather than waiting for the attempt to tell us how it
+    // went, is the only thing that reaches an attempt which never settles at all — a host that
+    // accepts the connection and then never reports ready leaves EngineSftpClient#waitForReady
+    // pending forever, so neither handler above will ever run. By the time the deadline fires the
+    // engine session is open and nobody wants it any more; the registry slot that used to bound it
+    // is handed back at this very moment, so nothing else counts it either.
+    conn[connectingKey] = withTimeout(publish, timeoutMs, `Timed out opening ${label} connection`,
+        () => { timedOut = true; evictOwn(null, getEngineSessionId?.() ?? null); })
         .finally(() => { conn[connectingKey] = null; });
 
     return conn[connectingKey];
