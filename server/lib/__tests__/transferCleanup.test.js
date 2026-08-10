@@ -57,6 +57,23 @@ test("removing a session still releases its transfer slot even if finalizing the
     registry.release("k4");
 });
 
+// Fix round 2, Finding 3: the release above rescues the registry slot, but not the session itself
+// — before this fix, a throw here left `sessions.delete` unreached and `_removing` permanently
+// true, so the session stayed in the collection forever (every later remove() call refused by the
+// guard at the top, yet the session never actually disappears from getAll()/onMasterConnectionClosed/
+// wherever else looks it up).
+test("removing a session removes it from the collection even when cleanup afterward fails", async () => {
+    const { sessionId } = SessionManager.create("acc", "entry", {});
+    const session = SessionManager.get(sessionId);
+    session.recording = { stream: { end: () => { throw new Error("disk full"); }, on: () => {} } };
+
+    await assert.rejects(() => SessionManager.remove(sessionId), /disk full/);
+
+    assert.strictEqual(SessionManager.get(sessionId), null, "the session must be gone, not stranded");
+    // A retry must not be refused forever by a lock on a session that no longer exists.
+    await assert.doesNotReject(() => SessionManager.remove(sessionId));
+});
+
 // Finding 4 (fix round 1): without this, releaseSession freeing every registered session instead
 // of just the vanished one's own transfers would have gone unnoticed — every prior test only
 // checked that the right slots dropped to 0, never that an unrelated one survived.
@@ -124,21 +141,13 @@ test("a throwing cancel does not stop the rest of the socket's transfers from be
     assert.deepStrictEqual([...transfers.keys()].sort(), ["t1", "t3"]);
 });
 
-// Finding 4 (fix round 1): cancelAllTransfers must only ever touch the map it was handed. This
-// asserts that in the direction the coordinator asked for — an unrelated socket's own transfers
-// map is left completely alone.
-test("cancelAllTransfers never touches a different socket's transfers map", () => {
-    const otherCalls = [];
-    const ownTransfers = new Map([["t1", { transfer: { cancel: () => {} } }]]);
-    const otherSocketTransfers = new Map([
-        ["u1", { transfer: { cancel: () => otherCalls.push("u1") } }],
-    ]);
-
-    cancelAllTransfers(ownTransfers);
-
-    assert.deepStrictEqual(otherCalls, [], "a different socket's transfer must not be cancelled");
-    assert.strictEqual(otherSocketTransfers.size, 1, "a different socket's map must be untouched");
-});
+// Fix round 2, Finding 2: the isolation test that used to live here ("cancelAllTransfers never
+// touches a different socket's transfers map") could not fail by construction — it never passed
+// the second map to cancelAllTransfers at all, so nothing exercised it. cancelAllTransfers's
+// signature (`(transfers) =>`) already makes cross-map access structurally impossible; a
+// meaningful isolation test belongs at the level that actually iterates something wider, which is
+// registry.releaseSession (see transferRegistry.test.js) — struck here rather than kept for a
+// false sense of coverage.
 
 // Finding 4 (fix round 1): without a direct test on the ws.on("close") wiring itself, removing the
 // cancelAllTransfers call from the close handler left every other test green — cancelAllTransfers

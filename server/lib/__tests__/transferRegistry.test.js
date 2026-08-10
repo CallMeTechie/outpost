@@ -62,6 +62,27 @@ test("reusing a key is rejected and does not corrupt state", () => {
     assert.strictEqual(countFor("b"), 0);
 });
 
+// Fix round 2, Finding 2: mutating releaseSession to drop a participant's ENTIRE key set instead
+// of just the one key tied to the vanished session left all 342 tests green — both prior
+// isolation tests only used a session that shared NOTHING with the vanished one. This covers the
+// other shape: a session that is a participant of the vanished session's transfer AND of a
+// completely unrelated one at the same time.
+test("releasing a session must not drop a shared participant's other, unrelated transfer", () => {
+    assert.strictEqual(reserve("shared-a", ["gone2", "shared-participant"]), true);
+    assert.strictEqual(reserve("shared-b", ["shared-participant", "third-party"]), true);
+    assert.strictEqual(countFor("shared-participant"), 2);
+
+    releaseSession("gone2");
+
+    assert.strictEqual(countFor("gone2"), 0);
+    assert.strictEqual(countFor("shared-participant"), 1,
+        "the shared participant's OTHER transfer must survive");
+    assert.strictEqual(countFor("third-party"), 1, "unaffected");
+
+    release("shared-a");
+    release("shared-b");
+});
+
 // Finding 3 (fix round 1): SessionManager.remove calls releaseSession while the transfer this key
 // belongs to may still be running on the surviving side. release(key) only ever receives the bare
 // key, with no way to tell an old reservation apart from a new one under the same string — so the

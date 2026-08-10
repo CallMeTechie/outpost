@@ -408,20 +408,31 @@ module.exports.remove = async (sessionId, options = {}) => {
     try { require("./fileTransfer/registry").releaseSession(sessionId); } catch {}
 
     const { code = 1000, reason = "Session terminated" } = options;
-    closeAllWebSockets(sessionId, code, reason);
-    if (session.recording) await finalizeTerminalRecording(sessionId);
-    if (session.masterConnection) {
-        await cleanupConnection(session.masterConnection, sessionId);
-        session.masterConnection = null;
-    }
-    if (session.shareId) shareIndex.delete(session.shareId);
+    // Everything below can throw (finalizeTerminalRecording awaits compression and a DB write,
+    // cleanupConnection awaits socket teardown) — none of it wrapped before this round. Without the
+    // finally, a throw here left the session stuck in `sessions` forever: `_removing` is already
+    // true, so the guard above refuses every later retry for good, yet the session never actually
+    // goes away — still connected to onMasterConnectionClosed, still enumerable by getAll(),
+    // wherever anything looks it up (this is exactly what the fix round 1 recording-failure test
+    // produces). Keep this narrow: only the removal itself is guaranteed here, not a redesign of
+    // what the removal does.
+    try {
+        closeAllWebSockets(sessionId, code, reason);
+        if (session.recording) await finalizeTerminalRecording(sessionId);
+        if (session.masterConnection) {
+            await cleanupConnection(session.masterConnection, sessionId);
+            session.masterConnection = null;
+        }
+        if (session.shareId) shareIndex.delete(session.shareId);
 
-    if (session._presenceTimer) clearTimeout(session._presenceTimer);
-    for (const participant of session.participants.values()) clearTimeout(participant.typingTimer);
-    session.participants.clear();
+        if (session._presenceTimer) clearTimeout(session._presenceTimer);
+        for (const participant of session.participants.values()) clearTimeout(participant.typingTimer);
+        session.participants.clear();
+    } finally {
+        sessions.delete(sessionId);
+    }
 
     const { accountId, organizationId } = session;
-    sessions.delete(sessionId);
     logger.info("Session removed", { sessionId });
     stateBroadcaster.broadcast("CONNECTIONS", { accountId });
     if (organizationId) stateBroadcaster.broadcast("LIVE_SESSIONS", { organizationId });

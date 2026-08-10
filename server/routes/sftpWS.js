@@ -324,9 +324,12 @@ module.exports = async (ws, req) => {
 
         ws.on("message", messageHandler);
 
+        // handleClose is async; an event emitter never awaits its listeners, so a rejection here
+        // (e.g. SessionManager.removeWebSocket throwing on malformed state) would otherwise surface
+        // as an unhandled rejection instead of a clean log line.
         ws.on("close", () => handleClose({
             sftpClient, onSftpClose, ws, messageHandler, transfers, sessionId, auditLogId, startTime,
-        }));
+        }).catch((err) => logger.warn("Error while handling SFTP websocket close", { sessionId, error: err.message })));
     } catch (err) {
         sendError(ws, "Connection failed: " + err.message);
         try { ws.close(4005); } catch {}

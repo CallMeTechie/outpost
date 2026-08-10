@@ -67,7 +67,19 @@ const buildTransferHandlers = (OP, ctx) => {
 
                 key = `${ctx.sessionId}:${transferId}`;
                 if (!deps.registry.reserve(key, [sourceSessionId, ctx.sessionId])) {
-                    throw new Error("Too many concurrent transfers");
+                    // A refusal here has two unrelated causes registry.reserve does not tell
+                    // apart: this key string is already taken (most likely a zombie transfer whose
+                    // source session vanished mid-run, see SessionManager.js — release() only
+                    // arrives when that run actually ends), or one of the two sessions is genuinely
+                    // at its own limit. On a session shared across two sockets the first can fire
+                    // long before either side is anywhere near MAX_CROSS_TRANSFERS — "too many
+                    // transfers" would then blame the wrong thing and hide that simply retrying
+                    // with a different id works immediately. Neither message names a session: the
+                    // collision case has nothing session-specific to say, and the quota case only
+                    // ever reports on the two sessions this very request already carries.
+                    const ownQuotaFull = deps.registry.countFor(sourceSessionId) >= deps.registry.MAX_CROSS_TRANSFERS
+                        || deps.registry.countFor(ctx.sessionId) >= deps.registry.MAX_CROSS_TRANSFERS;
+                    throw new Error(ownQuotaFull ? "Too many concurrent transfers" : "Transfer id already in use");
                 }
                 reserved = true;
 
@@ -163,8 +175,9 @@ const buildTransferHandlers = (OP, ctx) => {
                 }
 
                 // Everything that depends on sourceSessionId must look the same from outside; only
-                // the client's own quota and a malformed payload may carry their own text.
-                const own = /^Invalid |^Too many /.test(err.message);
+                // the client's own quota, a malformed payload, and an own-id collision may carry
+                // their own text — none of the three says anything a foreign session could leak.
+                const own = /^Invalid |^Too many |^Transfer id already in use$/.test(err.message);
                 send(OP.TRANSFER_ERROR, { transferId: transferId ?? null,
                     message: own ? err.message : "Transfer not permitted" });
             }

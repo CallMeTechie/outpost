@@ -14,7 +14,7 @@ const setup = (over = {}, ctxOver = {}) => {
     const transfers = new Map();
     const registry = { reserved: [], reserve(key) { this.reserved.push(key); return true; },
         release(key) { this.reserved = this.reserved.filter((k) => k !== key); },
-        countFor() { return 0; } };
+        countFor() { return 0; }, MAX_CROSS_TRANSFERS: 2 };
     const fakeTransfer = { run: () => new Promise(() => {}), cancel() { this.cancelled = true; } };
 
     const deps = {
@@ -275,8 +275,21 @@ test("a refusal never repeats what the failing dependency said", async () => {
 test("the caller's own quota names itself", async () => {
     const s = setup();
     s.registry.reserve = () => false;
+    s.registry.countFor = () => 2;
     await s.handlers.start(start());
     assert.match(s.sent.find((m) => m.op === OP.TRANSFER_ERROR).data.message, /^Too many/);
+});
+
+// Fix round 2, Finding "Kleineres": a key collision (the string was already reserved — typically a
+// zombie transfer whose source vanished mid-run, see SessionManager.js#releaseSession) is not the
+// caller's own quota being full. Neither session is anywhere near MAX_CROSS_TRANSFERS here
+// (countFor stays 0, the default fake), yet reserve() still refuses — exactly what a shared
+// destination session picking a colliding client-chosen id looks like from the handler's side.
+test("a key collision is reported distinctly from the caller's own quota", async () => {
+    const s = setup();
+    s.registry.reserve = () => false;
+    await s.handlers.start(start());
+    assert.strictEqual(s.sent.find((m) => m.op === OP.TRANSFER_ERROR).data.message, "Transfer id already in use");
 });
 
 test("a malformed payload names itself and carries no transfer id", async () => {
