@@ -38,10 +38,37 @@ test("applyToAll is ignored together with abort", async () => {
     assert.strictEqual(sent.length, 2);
 });
 
+// Guards against a truthy-check regression: "applyAll" is only unset while it is literally null,
+// so a remembered empty-string choice must still short-circuit the next file without asking.
+test("applyToAll is remembered even when the choice is an empty string", () => {
+    const sent = [];
+    const b = broker({ send: (info) => sent.push(info) });
+    const first = b.ask({ file: "a.txt" });
+    b.resolve({ file: "a.txt", choice: "", applyToAll: true });
+    const second = b.ask({ file: "b.txt" });
+    assert.strictEqual(sent.length, 1, "a remembered empty-string choice must short-circuit without asking again");
+    return Promise.all([first, second]).then(([a, b2]) => {
+        assert.strictEqual(a, "");
+        assert.strictEqual(b2, "");
+    });
+});
+
 test("a resolve for the wrong file is ignored", async () => {
     const b = broker();
     const pending = b.ask({ file: "a.txt" });
     b.resolve({ file: "other.txt", choice: "overwrite" });
+    b.resolve({ file: "a.txt", choice: "skip" });
+    assert.strictEqual(await pending, "skip");
+});
+
+// resolve() is fed straight from client input once wired up; a missing or malformed payload must
+// not throw synchronously out of the message handler that will call it.
+test("resolve() with a missing or malformed payload does not throw", async () => {
+    const b = broker();
+    const pending = b.ask({ file: "a.txt" });
+    b.resolve();
+    b.resolve(null);
+    b.resolve({});
     b.resolve({ file: "a.txt", choice: "skip" });
     assert.strictEqual(await pending, "skip");
 });
@@ -81,10 +108,103 @@ test("too many conflict rounds abort the transfer", async () => {
     assert.strictEqual(await b.ask({ file: "f2" }), "abort");
 });
 
-// Pins the default fallback to the real setTimeout/clearTimeout: production wiring omits
-// setTimeoutFn/clearTimeoutFn, so a caller without them must still get a working broker instead
-// of a TypeError the first time a real transfer hits a conflict. cancel() settles the pending
-// question at once, so this does not wait for the real 1000 ms window.
+// The broker holds exactly one waiting slot. A second ask() before the first is answered used to
+// overwrite it silently, leaking the first promise forever. The chosen policy: treat the
+// abandoned question as aborted, the same outcome cancel() produces, instead of losing it.
+test("a new ask() abandons a still-open question with abort instead of losing it silently", async () => {
+    const b = broker();
+    let firstResult;
+    b.ask({ file: "a.txt" }).then((choice) => { firstResult = choice; });
+    const second = b.ask({ file: "b.txt" });
+    b.resolve({ file: "b.txt", choice: "skip" });
+    assert.strictEqual(await second, "skip");
+    assert.strictEqual(firstResult, "abort", "the abandoned question must still settle, as abort");
+});
+
+// The other half of the same fix: settling is bound to the specific question by identity, so a
+// timer captured for an abandoned question can never reach into whatever replaced it, even if
+// clearTimeoutFn (mocked here as a no-op, as a broken/late clear would behave) fails to stop it.
+test("a stale timer from a superseded question cannot abort the current one", async () => {
+    let fireFirst;
+    let calls = 0;
+    const setTimeoutFn = (fn) => {
+        calls += 1;
+        if (calls === 1) fireFirst = fn;
+        return calls;
+    };
+    const b = createConflictBroker({
+        send: () => {}, timeoutMs: 1000, setTimeoutFn, clearTimeoutFn: () => {},
+    });
+    let firstResult;
+    b.ask({ file: "a.txt" }).then((choice) => { firstResult = choice; });
+    const second = b.ask({ file: "b.txt" });
+    fireFirst(); // the orphaned timer for "a.txt" fires anyway
+    b.resolve({ file: "b.txt", choice: "skip" });
+    assert.strictEqual(await second, "skip", "the stale timer must not touch the question that replaced it");
+    assert.strictEqual(firstResult, "abort");
+});
+
+// The real failure mode is a client whose WebSocket already closed. Without cleanup here the
+// timer keeps running and the slot stays occupied, so the next real question inherits both.
+test("a throwing send rejects and does not leave the slot occupied", async () => {
+    const cleared = [];
+    let shouldThrow = true;
+    const sent = [];
+    const b = createConflictBroker({
+        send: (info) => { if (shouldThrow) throw new Error("socket closed"); sent.push(info); },
+        timeoutMs: 1000,
+        setTimeoutFn: () => 7,
+        clearTimeoutFn: (t) => cleared.push(t),
+    });
+    await assert.rejects(() => b.ask({ file: "a.txt" }), /socket closed/);
+    assert.deepStrictEqual(cleared, [7], "the timer for the failed send must be cleared");
+    shouldThrow = false;
+    const pending = b.ask({ file: "b.txt" });
+    assert.strictEqual(sent.length, 1, "the next question must still reach the client");
+    b.resolve({ file: "b.txt", choice: "skip" });
+    assert.strictEqual(await pending, "skip");
+});
+
+test("resolving a question clears its pending timer", async () => {
+    const cleared = [];
+    const b = createConflictBroker({
+        send: () => {}, timeoutMs: 1000, setTimeoutFn: () => 42, clearTimeoutFn: (t) => cleared.push(t),
+    });
+    const pending = b.ask({ file: "a.txt" });
+    b.resolve({ file: "a.txt", choice: "skip" });
+    await pending;
+    assert.deepStrictEqual(cleared, [42]);
+});
+
+// If the waiting slot were not cleared on settle, a late duplicate resolve() for the same file
+// would still pass the file check and clear the (already cleared) timer a second time.
+test("a late duplicate resolve after a question is already settled has no further effect", async () => {
+    const cleared = [];
+    const b = createConflictBroker({
+        send: () => {}, timeoutMs: 1000, setTimeoutFn: () => 42, clearTimeoutFn: (t) => cleared.push(t),
+    });
+    const pending = b.ask({ file: "a.txt" });
+    b.resolve({ file: "a.txt", choice: "skip" });
+    b.resolve({ file: "a.txt", choice: "overwrite" });
+    assert.strictEqual(await pending, "skip");
+    assert.deepStrictEqual(cleared, [42], "the timer must only be cleared once");
+});
+
+test("resolve() with applyToAll is ignored when there is no open question", async () => {
+    const sent = [];
+    const b = broker({ send: (info) => sent.push(info) });
+    b.resolve({ file: "a.txt", choice: "overwrite", applyToAll: true }); // nothing is waiting
+    const answer = b.ask({ file: "b.txt" });
+    b.resolve({ file: "b.txt", choice: "skip" });
+    assert.strictEqual(sent.length, 1, "the real question must still have been asked, not short-circuited");
+    assert.strictEqual(await answer, "skip", "a stray resolve() must not have set a remembered decision");
+});
+
+// Pins the default fallback to the real setTimeout/clearTimeout. There is no wiring of this
+// broker into a transfer yet — that lands in a later task — but its plan omits
+// setTimeoutFn/clearTimeoutFn, so a caller built against that plan must still get a working
+// broker instead of a TypeError the first time a real transfer hits a conflict. cancel() settles
+// the pending question at once, so this does not wait for the real 1000 ms window.
 test("the broker works with the default timers when none are supplied", async () => {
     const sent = [];
     const b = createConflictBroker({ send: (info) => sent.push(info), timeoutMs: 1000 });
@@ -94,8 +214,8 @@ test("the broker works with the default timers when none are supplied", async ()
     assert.strictEqual(sent.length, 1);
 });
 
-// Same pinning for the throttle's default clock: production wiring may omit now, so flush()
-// must not throw when it falls back to Date.now.
+// Same pinning for the throttle's default clock: the same later-task plan may omit now, so
+// flush() must not throw when it falls back to Date.now.
 test("the throttle works with the default clock when now is not supplied", () => {
     const sent = [];
     const throttle = createProgressThrottle({ send: (p) => sent.push(p), intervalMs: 250 });
@@ -115,9 +235,25 @@ test("the throttle drops intermediate frames but never the last one", () => {
     assert.deepStrictEqual(sent.map((p) => p.filesDone), [0, 2, 3]);
 });
 
-test("flush works without a preceding report", () => {
+// The boundary itself counts as due (a strict "<" check), not just strictly-after.
+test("the throttle sends again exactly at the interval boundary", () => {
+    let now = 0;
     const sent = [];
-    const throttle = createProgressThrottle({ send: (p) => sent.push(p), intervalMs: 250, now: () => 0 });
+    const throttle = createProgressThrottle({ send: (p) => sent.push(p), intervalMs: 250, now: () => now });
+    throttle.report({ filesDone: 0 });
+    now = 250;
+    throttle.report({ filesDone: 1 });
+    assert.deepStrictEqual(sent.map((p) => p.filesDone), [0, 1]);
+});
+
+// Proves flush() itself sets the throttle window (not just that it sends): a report() right
+// after must still be suppressed, even though no report() ever ran before this flush().
+test("flush initializes the throttle window even without a preceding report", () => {
+    let now = 0;
+    const sent = [];
+    const throttle = createProgressThrottle({ send: (p) => sent.push(p), intervalMs: 250, now: () => now });
     throttle.flush({ filesDone: 1 });
-    assert.strictEqual(sent.length, 1);
+    now = 100; // still inside the window flush() just opened
+    throttle.report({ filesDone: 2 });
+    assert.deepStrictEqual(sent.map((p) => p.filesDone), [1]);
 });

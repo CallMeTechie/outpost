@@ -6,48 +6,73 @@
 // whatever setTimeoutFn/clearTimeoutFn resolves to.
 const createConflictBroker = ({ send, timeoutMs, maxRounds = 100,
     setTimeoutFn = setTimeout, clearTimeoutFn = clearTimeout }) => {
-    let waiting = null;      // { file, resolve, timer }
-    let applyAll = null;     // a remembered decision, never "abort"
+    let waiting = null;      // the single open question: { file, resolve, timer }
+    let applyAll = null;     // null = nothing remembered yet; any string (even "") counts as set
     let cancelled = false;
     let rounds = 0;
 
-    const settle = (choice) => {
-        if (!waiting) return;
-        const { resolve, timer } = waiting;
+    // The only place that ever settles a question's promise. Bound to a specific entry by
+    // identity rather than "something is open": a timer (or any other reference) captured for an
+    // earlier question must never be able to reach past it and settle whatever replaced it.
+    const finish = (entry, choice) => {
+        if (waiting !== entry) return;
         waiting = null;
-        clearTimeoutFn(timer);
-        resolve(choice);
+        clearTimeoutFn(entry.timer);
+        entry.resolve(choice);
     };
 
     return {
         ask(info) {
+            // Only one question can be open at a time. A new ask() while the previous one is
+            // still unanswered means the caller moved on without waiting for it — the intended
+            // caller always awaits one ask() before starting the next, so this only fires on a
+            // caller bug. Treat the abandoned question as aborted (same outcome as cancel())
+            // instead of silently losing its promise forever.
+            if (waiting) finish(waiting, "abort");
             if (cancelled) return Promise.resolve("abort");
-            if (applyAll) return Promise.resolve(applyAll);
+            if (applyAll !== null) return Promise.resolve(applyAll);
             // Each round holds two engine connections for up to timeoutMs. Without a cap a client
             // can keep them alive indefinitely by answering just before every timeout.
             if (rounds >= maxRounds) return Promise.resolve("abort");
             rounds += 1;
-            return new Promise((resolve) => {
-                const timer = setTimeoutFn(() => settle("abort"), timeoutMs);
-                waiting = { file: info.file, resolve, timer };
-                send(info);
+            const entry = { file: info.file, resolve: null, timer: null };
+            return new Promise((resolve, reject) => {
+                entry.resolve = resolve;
+                entry.timer = setTimeoutFn(() => finish(entry, "abort"), timeoutMs);
+                waiting = entry;
+                try {
+                    send(info);
+                } catch (err) {
+                    // A closed socket throws here in practice. This is a transport failure, not an
+                    // answer, so it rejects with the real error instead of going through finish();
+                    // but the timer and slot still need the same cleanup finish() would have done,
+                    // or the timer keeps running and a later real question inherits both.
+                    waiting = null;
+                    clearTimeoutFn(entry.timer);
+                    reject(err);
+                }
             });
         },
 
-        resolve({ file, choice, applyToAll }) {
-            // A stale dialog or a double click can answer for a file we are no longer waiting on —
-            // dropping it keeps the transfer paused instead of deciding the wrong file.
+        resolve(payload) {
+            // This is the entry point for data coming straight from the client in the follow-up
+            // task; a missing or malformed payload must not throw synchronously out of the
+            // message handler.
+            const { file, choice, applyToAll } = payload || {};
+            // A stale dialog or a double click can answer for a file we are no longer waiting on
+            // (or for none at all) — dropping it keeps the transfer paused instead of deciding
+            // the wrong file, and stops a stray applyToAll from being remembered for nothing.
             if (!waiting || waiting.file !== file) return;
             // "abort" ends the transfer; remembering it would be meaningless.
             if (applyToAll && choice !== "abort") applyAll = choice;
-            settle(choice);
+            finish(waiting, choice);
         },
 
         // A pause is a plain in-memory promise: closing the transfer's clients cannot reach it.
         // Without this a cancel during an open question would wait out the whole timeout.
         cancel() {
             cancelled = true;
-            settle("abort");
+            if (waiting) finish(waiting, "abort");
         },
     };
 };
