@@ -376,7 +376,10 @@ class FileTransfer {
             if (onCancel) this._cancelHooks.delete(onCancel);
         }
 
-        if (this.cancelled) return false;
+        // Reached only once both awaits above returned: the destination confirmed the write and the
+        // source finished reading, so this file IS complete at the destination even if a cancel
+        // landed in the meantime. Counting it keeps filesTransferred honest; _run still keeps it out
+        // of `transferred`, so a cancelled move never deletes it on the source.
         this.filesDone += 1;
         this._report(file.relPath);
         return true;

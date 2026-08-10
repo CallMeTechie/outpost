@@ -534,6 +534,36 @@ test("a target of a different type is always an error", async () => {
         /different type/);
 });
 
+// Finding 7: the cancel lands once both awaits in _copyFile have returned — the file is completely
+// written at the destination and stays there, so it has to be counted. That window sits between
+// writeFile's promise settling and _copyFile's tail, and it is reached by letting the cancel travel
+// a few microtasks behind the resolved write: fewer than two and the cancel still beats the write
+// (the copy ends as cancelled mid-flight), more than six and _copyFile has long returned. Four sits
+// in the middle of that range.
+const CANCEL_HOPS = 4;
+
+test("a file finished just before the cancel still counts as transferred", async () => {
+    const dest = fakeDest();
+    let transfer = null;
+    dest.writeFile = async (path, source) => {
+        await new Promise((r) => setImmediate(r));
+        const chunks = [];
+        for await (const chunk of source) chunks.push(chunk);
+        dest.written[path] = Buffer.concat(chunks).toString();
+        let hop = Promise.resolve();
+        for (let i = 0; i < CANCEL_HOPS; i++) hop = hop.then(() => {});
+        hop.then(() => transfer.cancel());
+    };
+    transfer = new FileTransfer({ source: oneFile(), dest });
+
+    const result = await transfer.run(["/srv/a.txt"], "/target");
+
+    assert.strictEqual(dest.written["/target/a.txt"], "hello");
+    assert.strictEqual(result.cancelled, true);
+    assert.strictEqual(result.filesTransferred, 1, "a file that is fully at the destination has to be counted");
+    assert.deepStrictEqual(dest.removed, [], "a completed file must not be deleted again");
+});
+
 // A failing stat must never be read as "free rein".
 test("a target that cannot be inspected aborts instead of overwriting", async () => {
     const dest = fakeDest();
