@@ -398,6 +398,15 @@ module.exports.remove = async (sessionId, options = {}) => {
     if (!session || session._removing) return false;
     session._removing = true;
 
+    // First, unconditionally, before anything below that can throw: finalizeTerminalRecording and
+    // cleanupConnection both await external I/O (compression, a DB write, socket teardown) and
+    // neither is wrapped here. If either rejects, this function throws too — and _removing is
+    // already true, so every later retry is refused for good (see the guard above). A transfer's
+    // registry slot must not depend on those succeeding; it is reserved as soon as a transfer is
+    // authorized, before either side even opens its auxiliary connection, so a session can hold a
+    // slot without ever having a master connection at all.
+    try { require("./fileTransfer/registry").releaseSession(sessionId); } catch {}
+
     const { code = 1000, reason = "Session terminated" } = options;
     closeAllWebSockets(sessionId, code, reason);
     if (session.recording) await finalizeTerminalRecording(sessionId);
@@ -405,12 +414,6 @@ module.exports.remove = async (sessionId, options = {}) => {
         await cleanupConnection(session.masterConnection, sessionId);
         session.masterConnection = null;
     }
-    // Deliberately outside the masterConnection branch above: a transfer's registry slot is
-    // reserved as soon as it is authorized, before either side opens its auxiliary connection, so
-    // a session can hold a slot without ever having a master connection. Without this a hard-ended
-    // session keeps its quota until the process restarts: the transfer's own finally never runs
-    // when nobody is left to run it.
-    try { require("./fileTransfer/registry").releaseSession(sessionId); } catch {}
     if (session.shareId) shareIndex.delete(session.shareId);
 
     if (session._presenceTimer) clearTimeout(session._presenceTimer);

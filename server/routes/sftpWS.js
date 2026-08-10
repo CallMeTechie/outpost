@@ -60,12 +60,34 @@ const requireMultiPaths = (p) => { if (!p?.sources?.length || !p?.destination) t
 // neither `broker` nor `transfer`; the optional chaining makes that a no-op here, and the setup
 // finishes on its own, releasing the registry slot and both clients through its normal finally
 // once it completes. One entry's cancel throwing must not stop the rest from being cancelled.
+//
+// A running entry (it has `transfer`) must NOT be deleted here: transferHandlers.js#finish reads
+// `transfers.get(transferId)` to recover `sourceSessionId` before it deletes the entry itself —
+// deleting it here first would make that read come back empty, and the source side's auxiliary
+// connection would never be released for the rest of the session. Cancelling still makes run()
+// settle as soon as possible; only the entry's own finish() may remove it from the map. A bare
+// placeholder has no such finish() reading it back — nothing else in this closure will ever look
+// for it again once the socket is gone — so removing it here is safe.
 const cancelAllTransfers = (transfers) => {
     for (const [transferId, transferEntry] of transfers) {
         try { transferEntry.broker?.cancel(); } catch {}
         try { transferEntry.transfer?.cancel(); } catch {}
-        transfers.delete(transferId);
+        if (!transferEntry.transfer) transfers.delete(transferId);
     }
+};
+
+// Pulled out of the ws.on("close") registration and exported so a test can drive it directly: none
+// of its dependencies need a socket, a database, or wsAuth — a plain EventEmitter stands in for
+// `ws`/`sftpClient`, SessionManager.removeWebSocket and updateAuditLogWithSessionDuration are both
+// no-ops for an id nothing is registered under. Without a direct test on this exact wiring, a
+// mutation removing the whole close handler's cancelAllTransfers call leaves every other test green
+// — cancelAllTransfers itself would still be tested, just never proven to run when the socket closes.
+const handleClose = async ({ sftpClient, onSftpClose, ws, messageHandler, transfers, sessionId, auditLogId, startTime }) => {
+    sftpClient.removeListener("close", onSftpClose);
+    ws.removeListener("message", messageHandler);
+    cancelAllTransfers(transfers);
+    SessionManager.removeWebSocket(sessionId, ws);
+    try { await updateAuditLogWithSessionDuration(auditLogId, startTime); } catch {}
 };
 
 const requireShell = (capabilities) => {
@@ -302,13 +324,9 @@ module.exports = async (ws, req) => {
 
         ws.on("message", messageHandler);
 
-        ws.on("close", async () => {
-            sftpClient.removeListener("close", onSftpClose);
-            ws.removeListener("message", messageHandler);
-            cancelAllTransfers(transfers);
-            SessionManager.removeWebSocket(sessionId, ws);
-            try { await updateAuditLogWithSessionDuration(auditLogId, startTime); } catch {}
-        });
+        ws.on("close", () => handleClose({
+            sftpClient, onSftpClose, ws, messageHandler, transfers, sessionId, auditLogId, startTime,
+        }));
     } catch (err) {
         sendError(ws, "Connection failed: " + err.message);
         try { ws.close(4005); } catch {}
@@ -317,3 +335,4 @@ module.exports = async (ws, req) => {
 
 module.exports.OP = OP;
 module.exports.cancelAllTransfers = cancelAllTransfers;
+module.exports.handleClose = handleClose;

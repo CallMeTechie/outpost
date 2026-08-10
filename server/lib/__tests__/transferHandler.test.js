@@ -4,6 +4,7 @@ const assert = require("node:assert");
 // The handler factory takes its heavy dependencies through ctx.deps, which makes it testable
 // without module mocking. The production path fills ctx.deps at the call site.
 const { buildTransferHandlers } = require("../fileTransfer/transferHandlers");
+const { cancelAllTransfers } = require("../../routes/sftpWS");
 
 const OP = { TRANSFER_ERROR: 0x16, TRANSFER_DONE: 0x15, TRANSFER_PROGRESS: 0x14, TRANSFER_CONFLICT: 0x18 };
 
@@ -326,6 +327,38 @@ test("a finished run reports, frees the entry and releases both aux clients", as
     assert.strictEqual(s.transfers.size, 0);
     assert.strictEqual(s.registry.reserved.length, 0);
     assert.deepStrictEqual(s.released, ["dst:t1", "dst:t1"]);
+});
+
+// Regression for fix round 1, Finding 1: sftpWS.js#cancelAllTransfers used to delete every entry
+// from `transfers` on ws.on("close"), including running ones. finish() (above) reads
+// transfers.get(transferId) to recover sourceSessionId before deleting it itself — with the entry
+// already gone, that read comes back empty and only the destination side's aux client is ever
+// released, leaking the source side's connection (and its engine session) for the rest of the
+// source session's lifetime.
+test("closing the socket while a transfer is running still releases both aux clients once it ends", async () => {
+    const svc = fakeConnectionService();
+    let endRun = null;
+    const deps = { ...svc.deps,
+        createTransfer: () => ({ run: () => new Promise((r) => { endRun = r; }), cancel() {} }) };
+    const s = setup(deps);
+    await s.handlers.start(start());
+
+    const sourceClients = () => [...svc.connFor("src").crossTransferClients.values()];
+    const destClients = () => [...svc.connFor("dst").crossTransferClients.values()];
+    assert.strictEqual(sourceClients().length, 1, "setup must have opened the source's aux client");
+    assert.strictEqual(destClients().length, 1, "setup must have opened the destination's aux client");
+
+    // The socket closes while the transfer is still running.
+    cancelAllTransfers(s.transfers);
+    assert.strictEqual(s.transfers.size, 1,
+        "a running entry must stay in the map — only its own finish() may remove it");
+
+    endRun({ files: 1 });
+    await new Promise((r) => setImmediate(r));
+
+    assert.strictEqual(s.transfers.size, 0, "finish() removes the entry once the run actually ends");
+    assert.strictEqual(sourceClients().length, 0, "the source's aux client leaked");
+    assert.strictEqual(destClients().length, 0, "the destination's aux client leaked");
 });
 
 test("a failing run is reported with its leftovers and cleans up just the same", async () => {
