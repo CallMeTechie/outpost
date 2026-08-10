@@ -14,8 +14,13 @@
 
   @media (max-width: breakpoints.$mobile)
     --mobile-nav-height: calc(3.5rem + env(safe-area-inset-bottom, 0px))
-    --key-bar-height: 2.75rem
     --content-height: calc(100dvh - var(--safe-area-top))
+
+  // Same query as the key bar itself, so the height the layouter subtracts is
+  // set exactly where the bar is shown - and nowhere else. A width breakpoint
+  // would miss an unfolded foldable, which is a touch device either way.
+  @media (pointer: coarse)
+    --key-bar-height: 2.75rem
 
 body, html
   margin: 0

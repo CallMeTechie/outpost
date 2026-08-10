@@ -598,10 +598,15 @@ export const ViewContainer = ({
             )}
             {titleBarTabsSlot ? createPortal(serverTabs, titleBarTabsSlot) : serverTabs}
 
-            {/* The key bar is positioned fixed, so it takes no room of its own.
-                Subtracting its height here is what keeps it from covering the
-                terminal's bottom rows. --key-bar-height is 0px outside the
-                mobile breakpoint, so this stays exactly 100% on the desktop. */}
+            {activeSession && !hasGuacamole && (
+                <TerminalKeyBar latch={modifierLatch}
+                                onToggleModifier={toggleModifier}
+                                onSendKey={sendBarKey} />
+            )}
+
+            {/* The bar sits above the layouter and takes real room, so the
+                layouter has to give that room up. --key-bar-height is 0px
+                wherever the bar is not shown, leaving this at exactly 100%. */}
             <div ref={layoutRef}
                  className={`view-layouter ${layoutMode} ${isResizing ? "resizing" : ""} ${isResizing && resizingDirection ? `resizing-${resizingDirection}` : ""}`}
                  style={{ position: "relative", width: "100%", height: "calc(100% - var(--key-bar-height))" }}>
@@ -609,11 +614,6 @@ export const ViewContainer = ({
                 {layoutMode !== "single" && renderFlexLayout()}
             </div>
 
-            {activeSession && !hasGuacamole && (
-                <TerminalKeyBar latch={modifierLatch}
-                                onToggleModifier={toggleModifier}
-                                onSendKey={sendBarKey} />
-            )}
         </div>
     );
 };

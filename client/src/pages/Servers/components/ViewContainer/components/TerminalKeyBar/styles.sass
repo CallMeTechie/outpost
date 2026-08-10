@@ -1,33 +1,29 @@
 @use "@/common/styles/colors"
-@use "@/common/styles/breakpoints"
 
 .terminal-key-bar
   display: none
 
-  @media (max-width: breakpoints.$mobile)
+  // pointer: coarse, not a width breakpoint. Whether someone needs these keys
+  // depends on whether they type with a finger and have no physical keyboard,
+  // not on how wide the screen is - an unfolded foldable is wider than any
+  // mobile breakpoint and needs the bar most of all.
+  @media (pointer: coarse)
     display: flex
-    // Anchored to the viewport rather than sitting at the end of the flex
-    // chain: the terminal view nests four containers that combine height: 100%
-    // with overflow: hidden, and as the last flex child the bar ended up in a
-    // strip one of them clipped. Fixed positioning does not depend on any of
-    // them. It still rides above the on-screen keyboard, because the viewport
-    // meta carries interactive-widget=resizes-content and the layout viewport
-    // shrinks with the keyboard.
-    position: fixed
-    left: 0
-    right: 0
-    bottom: var(--mobile-nav-height)
-    // Below the mobile navigation's own z-index of 100; the two do not overlap.
-    z-index: 90
+    flex: 0 0 auto
+    // Directly under the tabs, above the terminal. The bottom of this view
+    // nests four containers combining height: 100% with overflow: hidden, and
+    // anything placed at the end of that chain gets clipped - which is exactly
+    // what happened. The top is stable, and it stays clear of the on-screen
+    // keyboard by construction.
+    // Border-box so the outer height is exactly --key-bar-height, which is what
+    // the layouter subtracts from its own.
+    box-sizing: border-box
     align-items: center
     gap: 0.25rem
     padding: 0.25rem 0.5rem
     height: var(--key-bar-height)
     overflow-x: auto
     background-color: colors.$dark-gray
-    // The bar rides above the on-screen keyboard because the viewport meta
-    // carries interactive-widget=resizes-content: the layout shrinks with the
-    // keyboard instead of only the visual viewport.
 
     .key
       flex: 0 0 auto
