@@ -62,8 +62,12 @@ const buildTransferHandlers = (OP, ctx) => {
                 const destEntry = await deps.findEntry(ctx.serverSession?.entryId ?? ctx.entry.id);
                 if (!destEntry) throw new Error("Transfer not permitted");
 
+                // destSessionId is this socket's own session — the one being written into — so the
+                // destination side can make the same write-access demand of a shared session that
+                // the source side already makes.
                 const { destScope } = await deps.authorizeDestination({
-                    user: ctx.user, destEntry, onConflict: request.onConflict, sourceIsFolder });
+                    user: ctx.user, destSessionId: ctx.sessionId, destEntry,
+                    onConflict: request.onConflict, sourceIsFolder });
                 destScopeForAudit = destScope;
 
                 key = `${ctx.sessionId}:${transferId}`;

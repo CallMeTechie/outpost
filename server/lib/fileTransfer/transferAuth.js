@@ -20,6 +20,23 @@ const requireScope = (scope) => {
     return scope;
 };
 
+// The one requirement both sides make of a shared session, in one place so they cannot drift
+// apart: taking part in it is not enough, the participant has to be allowed to write. participants
+// is a Map keyed by websocket and is emptied when a socket closes — there is no persistent history,
+// so a non-owner whose tab is gone is no longer a participant. That is intended.
+const requireWritableParticipant = (session, user) => {
+    if (session.accountId === user.id) return;
+    const participant = [...(session.participants?.values() ?? [])]
+        // Redundant while the `user?.id` guard in both callers stands — user.id is truthy by then,
+        // so a link-share participant's accountId: null could never equal it anyway. Kept as a
+        // second line of defense: if that guard is ever loosened, this still stops a link-share
+        // participant from matching by coincidence.
+        .find((p) => p.accountId != null && p.accountId === user.id);
+    // A read-only viewer may watch, not siphon — and not write either. Link shares have no
+    // accountId at all.
+    if (!participant || !participant.writable) refuse();
+};
+
 const authorizeSource = async (deps, { user, sourceSessionId, action }) => {
     const { getSession, getConnection, findEntry, resolveEntryScope, validateEntryAccess,
         hasResourcePermission } = deps;
@@ -35,19 +52,8 @@ const authorizeSource = async (deps, { user, sourceSessionId, action }) => {
     if (!session) refuse();
     if (!getConnection(sourceSessionId)?.sftpClient) refuse();
 
-    // 2. The user takes part in the source session WITH write access. participants is a Map keyed
-    //    by websocket and is emptied when a socket closes — there is no persistent history, so a
-    //    non-owner whose tab is gone is no longer a participant. That is intended.
-    if (session.accountId !== user.id) {
-        const participant = [...(session.participants?.values() ?? [])]
-            // Redundant while the `user?.id` guard above stands — user.id is truthy by then, so
-            // a link-share participant's accountId: null could never equal it anyway. Kept as a
-            // second line of defense: if that guard is ever loosened, this still stops a
-            // link-share participant from matching by coincidence.
-            .find((p) => p.accountId != null && p.accountId === user.id);
-        // A read-only viewer may watch, not siphon. Link shares have no accountId at all.
-        if (!participant || !participant.writable) refuse();
-    }
+    // 2. The user takes part in the source session WITH write access.
+    requireWritableParticipant(session, user);
 
     // 3. The source entry, freshly loaded and put through the same access check the destination
     //    socket passed on connect. Permissions alone are not enough: this covers folder-inherited
@@ -69,12 +75,22 @@ const authorizeSource = async (deps, { user, sourceSessionId, action }) => {
 };
 
 // 5. Runs only after the source was authorized AND the folder probe ran on the source connection.
-const authorizeDestination = async (deps, { user, destEntry, onConflict, sourceIsFolder }) => {
-    const { resolveEntryScope, hasResourcePermission } = deps;
+const authorizeDestination = async (deps, { user, destSessionId, destEntry, onConflict, sourceIsFolder }) => {
+    const { getSession, resolveEntryScope, hasResourcePermission } = deps;
 
     // Same guard as authorizeSource, and for the same reason: this function is exported and
     // callable on its own, so it must not rely on authorizeSource having already screened `user`.
     if (!user?.id) refuse();
+
+    // The same requirement the source side makes, on the session this transfer writes into. Only
+    // organization permissions used to be checked here, which let a read-only participant of a
+    // shared session write through a transfer while an ordinary CREATE_FILE on the very same
+    // socket was refused. Organization rights and session write access are two different things:
+    // FILES_UPLOAD says what this account may do on this organization's servers, not whether this
+    // particular shared session was handed out read-only.
+    const session = getSession(destSessionId);
+    if (!session) refuse();
+    requireWritableParticipant(session, user);
 
     const destScope = requireScope(await resolveEntryScope(destEntry));
     if (!(await hasResourcePermission(user.id, destScope.organizationId, Permission.FILES_UPLOAD))) refuse();

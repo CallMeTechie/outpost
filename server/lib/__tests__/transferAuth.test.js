@@ -17,8 +17,15 @@ const deps = (over = {}) => ({
 const srcReq = (over = {}) => ({ user: { id: "me" }, sourceSessionId: "s-1", action: "copy", ...over });
 const dstReq = (over = {}) => ({
     user: { id: "me" },
+    destSessionId: "d-1",
     destEntry: { id: "dst-entry", folderId: null, organizationId: "org", accountId: "me" },
     onConflict: "skip", sourceIsFolder: false, ...over,
+});
+
+// A destination session owned by someone else, with `me` taking part in it on the given terms.
+const sharedDestSession = (writable) => ({
+    getSession: () => ({ accountId: "owner", entryId: "dst-entry",
+        participants: new Map([[{}, { accountId: "me", writable }]]) }),
 });
 
 test("the owner of the source session is allowed", async () => {
@@ -152,12 +159,60 @@ test("onConflict other than skip needs FILES_MODIFY on the destination", async (
     await assert.rejects(() => authorizeDestination(d, dstReq({ onConflict: "ask" })), TransferNotPermittedError);
 });
 
+// Fix round 6, Finding C: the source side has always demanded write access of a shared session;
+// the destination side only ever checked organization permissions. A participant who joined a
+// shared session read-only could therefore write into it by transfer, while an ordinary
+// CREATE_FILE on the very same socket was refused. Both sides must now make the same demand.
+test("a read-only participant of the destination session may not be transferred into", async () => {
+    // Every organization permission granted (the default fake), so nothing but the session's own
+    // read-only terms can be doing the refusing here.
+    await assert.rejects(() => authorizeDestination(deps(sharedDestSession(false)), dstReq()),
+        TransferNotPermittedError);
+});
+
+test("a writable participant of the destination session is allowed", async () => {
+    await assert.doesNotReject(() => authorizeDestination(deps(sharedDestSession(true)), dstReq()));
+});
+
+// The mirror image, and the confusion this pair exists to rule out: session write access does not
+// stand in for organization rights either. A participant who may write is still refused without
+// FILES_UPLOAD, so neither check can quietly take over for the other.
+test("session write access on the destination does not replace the upload permission", async () => {
+    const d = deps({ ...sharedDestSession(true),
+        hasResourcePermission: async (_a, _o, p) => p !== Permission.FILES_UPLOAD });
+    await assert.rejects(() => authorizeDestination(d, dstReq()), TransferNotPermittedError);
+});
+
+test("a link share participant may not be transferred into either", async () => {
+    const d = deps({ getSession: () => ({ accountId: "owner", entryId: "dst-entry",
+        participants: new Map([[{}, { accountId: null, writable: true }]]) }) });
+    await assert.rejects(() => authorizeDestination(d, dstReq()), TransferNotPermittedError);
+});
+
+test("a stranger to the destination session is refused", async () => {
+    const d = deps({ getSession: () => ({ accountId: "owner", entryId: "dst-entry", participants: new Map() }) });
+    await assert.rejects(() => authorizeDestination(d, dstReq()), TransferNotPermittedError);
+});
+
+test("a destination session that no longer exists is refused", async () => {
+    await assert.rejects(() => authorizeDestination(deps({ getSession: () => null }), dstReq()),
+        TransferNotPermittedError);
+});
+
+test("the owner of the destination session is allowed", async () => {
+    await assert.doesNotReject(() => authorizeDestination(deps(), dstReq()));
+});
+
 test("every refusal carries the same generic message", async () => {
     const cases = [
         [authorizeSource, deps({ getSession: () => null }), srcReq()],
         [authorizeSource, deps({ validateEntryAccess: async () => ({ code: 403 }) }), srcReq()],
         [authorizeSource, deps({ hasResourcePermission: async () => false }), srcReq()],
         [authorizeDestination, deps({ hasResourcePermission: async () => false }), dstReq()],
+        // The two the destination side must not be able to tell apart: "you may not write in this
+        // session" and "you have no rights on this organization".
+        [authorizeDestination, deps(sharedDestSession(false)), dstReq()],
+        [authorizeDestination, deps({ getSession: () => null }), dstReq()],
     ];
     const messages = new Set();
     for (const [fn, d, req] of cases) {

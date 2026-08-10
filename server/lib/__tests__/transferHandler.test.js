@@ -207,6 +207,18 @@ test("the destination entry is loaded from the server session, not from the sock
     assert.deepStrictEqual(checked, { id: "e-dst", organizationId: "o" });
 });
 
+// Fix round 6, Finding C: the destination check can only demand write access on the session being
+// written into if the handler actually hands it that session. Dropping destSessionId at this call
+// site leaves the check itself intact and every transferAuth test green, while every read-only
+// participant is waved through again.
+test("the destination check is told which session is being written into", async () => {
+    let seen = null;
+    const s = setup({ authorizeDestination: async (request) => {
+        seen = request; return { destScope: { organizationId: "o" } }; } });
+    await s.handlers.start(start());
+    assert.strictEqual(seen.destSessionId, "dst", "the socket's own session decides the write check");
+});
+
 test("without a server session the socket's own entry is the fallback", async () => {
     const asked = [];
     const s = setup({ findEntry: async (id) => { asked.push(id); return { id, organizationId: "o" }; } },
