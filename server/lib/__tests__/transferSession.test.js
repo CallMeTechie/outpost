@@ -7,6 +7,15 @@ const broker = (over = {}) => createConflictBroker({
     setTimeoutFn: () => 1, clearTimeoutFn: () => {}, ...over,
 });
 
+// A promise-vs-deadline race, using the real setTimeout (this is test-only tooling, not the
+// module under test). A broker regression that leaks a promise would otherwise report only by
+// running out the whole per-test timeout with no failed assertion — slow and undiagnosable.
+// This turns that into a fast, explicit "did not settle" result within `ms`.
+const settledWithin = (promise, ms = 200) => Promise.race([
+    promise.then((value) => ({ settled: true, value })),
+    new Promise((resolve) => { setTimeout(() => resolve({ settled: false }), ms); }),
+]);
+
 test("a decision is passed through", async () => {
     const sent = [];
     const b = broker({ send: (info) => sent.push(info) });
@@ -73,6 +82,19 @@ test("resolve() with a missing or malformed payload does not throw", async () =>
     assert.strictEqual(await pending, "skip");
 });
 
+// The "payload || {}" fallback above must only stop a synchronous throw, not become
+// decision-relevant itself: a file-less payload is never allowed to match a file-less question,
+// even though undefined (given) trivially equals undefined (waited on).
+test("resolve() never matches a question by both having no file", async () => {
+    const b = broker();
+    const pending = b.ask({}); // a question with no file of its own
+    b.resolve();
+    b.resolve({});
+    b.resolve({ file: undefined, choice: "skip" });
+    assert.deepStrictEqual(await settledWithin(pending), { settled: false },
+        "a file-less resolve() must never decide a file-less question");
+});
+
 test("no answer within the window aborts", async () => {
     let fire;
     const b = broker({ setTimeoutFn: (fn) => { fire = fn; return 1; } });
@@ -81,19 +103,21 @@ test("no answer within the window aborts", async () => {
     assert.strictEqual(await pending, "abort");
 });
 
-// Cancelling during an open question must not wait for the 120 s window.
+// Cancelling during an open question must not wait for the 120 s window. Bounded by
+// settledWithin: a regression that leaves this promise pending would otherwise report by
+// running out the test timeout instead of failing.
 test("cancel resolves a waiting question immediately", async () => {
     const b = broker();
     const pending = b.ask({ file: "a.txt" });
     b.cancel();
-    assert.strictEqual(await pending, "abort");
+    assert.deepStrictEqual(await settledWithin(pending), { settled: true, value: "abort" });
 });
 
 test("cancel before any question makes later questions abort at once", async () => {
     const sent = [];
     const b = broker({ send: (info) => sent.push(info) });
     b.cancel();
-    assert.strictEqual(await b.ask({ file: "a.txt" }), "abort");
+    assert.deepStrictEqual(await settledWithin(b.ask({ file: "a.txt" })), { settled: true, value: "abort" });
     assert.strictEqual(sent.length, 0, "a cancelled transfer must not still ask");
 });
 
@@ -103,9 +127,9 @@ test("too many conflict rounds abort the transfer", async () => {
     for (let i = 0; i < 2; i += 1) {
         const p = b.ask({ file: `f${i}` });
         b.resolve({ file: `f${i}`, choice: "skip" });
-        await p;
+        assert.deepStrictEqual(await settledWithin(p), { settled: true, value: "skip" });
     }
-    assert.strictEqual(await b.ask({ file: "f2" }), "abort");
+    assert.deepStrictEqual(await settledWithin(b.ask({ file: "f2" })), { settled: true, value: "abort" });
 });
 
 // The broker holds exactly one waiting slot. A second ask() before the first is answered used to
@@ -163,6 +187,51 @@ test("a throwing send rejects and does not leave the slot occupied", async () =>
     assert.strictEqual(sent.length, 1, "the next question must still reach the client");
     b.resolve({ file: "b.txt", choice: "skip" });
     assert.strictEqual(await pending, "skip");
+});
+
+// The catch cleanup used to null the shared waiting slot unconditionally. If send() calls back
+// into the broker before throwing (a reentrant ask() for the next file), that reentrant call has
+// already superseded and finished this entry, and moved waiting on to its own. Nulling waiting
+// again here would then wipe out the *new* question instead of the failed one.
+test("a reentrant ask() inside a throwing send() is not clobbered by that send's cleanup", async () => {
+    const sentB = [];
+    let b;
+    let reentered;
+    b = createConflictBroker({
+        send: (info) => {
+            if (info.file === "a.txt") {
+                reentered = b.ask({ file: "b.txt" });
+                throw new Error("socket closed");
+            }
+            sentB.push(info);
+        },
+        timeoutMs: 1000, setTimeoutFn: () => 1, clearTimeoutFn: () => {},
+    });
+    const first = b.ask({ file: "a.txt" });
+    assert.deepStrictEqual(await settledWithin(first), { settled: true, value: "abort" },
+        "superseded by the reentrant question before send() ever throws");
+    assert.strictEqual(sentB.length, 1, "the reentrant question must have reached the client");
+    b.resolve({ file: "b.txt", choice: "skip" });
+    assert.deepStrictEqual(await settledWithin(reentered), { settled: true, value: "skip" },
+        "the reentrant question must still be answerable, not clobbered by a.txt's failed cleanup");
+});
+
+// Symmetric case: send() answers its own question and only fails afterwards (e.g. on some later
+// ack write). The transport error has nowhere to go once the promise already settled, but the
+// timer must still only be cleared the one time finish() already cleared it.
+test("a self-answering send() that also throws clears its timer only once", async () => {
+    const cleared = [];
+    let b;
+    b = createConflictBroker({
+        send: (info) => {
+            b.resolve({ file: info.file, choice: "skip" });
+            throw new Error("late socket error");
+        },
+        timeoutMs: 1000, setTimeoutFn: () => 9, clearTimeoutFn: (t) => cleared.push(t),
+    });
+    const pending = b.ask({ file: "a.txt" });
+    assert.strictEqual(await pending, "skip", "the self-answer wins; the later throw cannot un-resolve it");
+    assert.deepStrictEqual(cleared, [9], "the timer must only be cleared once");
 });
 
 test("resolving a question clears its pending timer", async () => {

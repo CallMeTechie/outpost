@@ -11,14 +11,20 @@ const createConflictBroker = ({ send, timeoutMs, maxRounds = 100,
     let cancelled = false;
     let rounds = 0;
 
-    // The only place that ever settles a question's promise. Bound to a specific entry by
-    // identity rather than "something is open": a timer (or any other reference) captured for an
-    // earlier question must never be able to reach past it and settle whatever replaced it.
+    // The only place that ever settles a question's promise. Guarded by entry.done rather than
+    // "something is open": a timer (or any other reference) captured for an earlier question
+    // must never be able to reach past it and settle whatever replaced it. Once entry.done is
+    // false we know this entry is still the current waiting slot (nothing else can clear
+    // entry.done or reassign waiting without going through this same function first), so a
+    // single per-entry flag is enough to guard both decisions below.
     const finish = (entry, choice) => {
-        if (waiting !== entry) return;
-        waiting = null;
-        clearTimeoutFn(entry.timer);
+        if (entry.done) return;
+        entry.done = true;
+        if (waiting === entry) waiting = null;
+        // Resolve before clearing the timer: if the injected clearTimeoutFn itself throws, the
+        // promise must already be settled, or the question becomes unanswerable forever.
         entry.resolve(choice);
+        clearTimeoutFn(entry.timer);
     };
 
     return {
@@ -35,7 +41,7 @@ const createConflictBroker = ({ send, timeoutMs, maxRounds = 100,
             // can keep them alive indefinitely by answering just before every timeout.
             if (rounds >= maxRounds) return Promise.resolve("abort");
             rounds += 1;
-            const entry = { file: info.file, resolve: null, timer: null };
+            const entry = { file: info.file, resolve: null, timer: null, done: false };
             return new Promise((resolve, reject) => {
                 entry.resolve = resolve;
                 entry.timer = setTimeoutFn(() => finish(entry, "abort"), timeoutMs);
@@ -44,12 +50,18 @@ const createConflictBroker = ({ send, timeoutMs, maxRounds = 100,
                     send(info);
                 } catch (err) {
                     // A closed socket throws here in practice. This is a transport failure, not an
-                    // answer, so it rejects with the real error instead of going through finish();
-                    // but the timer and slot still need the same cleanup finish() would have done,
-                    // or the timer keeps running and a later real question inherits both.
-                    waiting = null;
-                    clearTimeoutFn(entry.timer);
+                    // answer, so it rejects with the real error instead of going through finish().
+                    // But send() can call back into this broker before it throws — a reentrant
+                    // ask() would already have finished this entry (superseding it), or send()
+                    // could have answered its own question via resolve() and only failed on some
+                    // later write. Either way entry.done is already true, so skip out instead of
+                    // re-clearing an already-cleared timer or nulling a waiting slot that has since
+                    // moved on to a different question.
+                    if (entry.done) return;
+                    entry.done = true;
+                    if (waiting === entry) waiting = null;
                     reject(err);
+                    clearTimeoutFn(entry.timer);
                 }
             });
         },
@@ -62,7 +74,11 @@ const createConflictBroker = ({ send, timeoutMs, maxRounds = 100,
             // A stale dialog or a double click can answer for a file we are no longer waiting on
             // (or for none at all) — dropping it keeps the transfer paused instead of deciding
             // the wrong file, and stops a stray applyToAll from being remembered for nothing.
-            if (!waiting || waiting.file !== file) return;
+            // "!file" also stops the "payload || {}" fallback above from turning a missing/blank
+            // payload into an accidental match: without it, an empty resolve() call would decide
+            // a file-less question, because undefined (no file given) equals undefined (no file
+            // asked about) — a real file name is never empty, so requiring one is always safe.
+            if (!waiting || !file || waiting.file !== file) return;
             // "abort" ends the transfer; remembering it would be meaningless.
             if (applyToAll && choice !== "abort") applyAll = choice;
             finish(waiting, choice);
