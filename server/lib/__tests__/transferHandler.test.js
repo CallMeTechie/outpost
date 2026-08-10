@@ -353,6 +353,53 @@ test("cancel reaches both the transfer and the conflict broker", async () => {
     assert.strictEqual(brokerCancelled, true, "a waiting conflict question must be released too");
 });
 
+// A cancel arriving while the entry is still being built is dropped on purpose. The guard has to
+// be on the transfer, not merely on the entry: the placeholder has no transfer, and reaching into
+// it would throw a TypeError out into the dispatcher instead of a TRANSFER_ERROR.
+test("a cancel during construction is dropped, not thrown", async () => {
+    let release = null;
+    let calls = 0;
+    const s = setup({ getCrossClient: async () => {
+        if (++calls === 1) await new Promise((r) => { release = r; });
+        return {};
+    } });
+    const started = s.handlers.start(start());
+    await new Promise((r) => setImmediate(r));
+
+    assert.ok(s.transfers.get("t1"), "the placeholder must be in place for this test to mean anything");
+    assert.strictEqual(s.transfers.get("t1").transfer, undefined, "still under construction");
+    assert.doesNotThrow(() => s.handlers.cancel({ transferId: "t1" }));
+
+    release();
+    await started;
+    assert.ok(s.transfers.get("t1")?.transfer, "the run starts regardless — the cancel was dropped");
+});
+
+// Nothing observes the run's promise chain, so a throw out of the reporting must not become an
+// unhandled rejection. A closed socket throwing inside send() is the realistic trigger.
+test("a throwing send at the end of a run stays inside the chain", async () => {
+    const unhandled = [];
+    const onUnhandled = (err) => unhandled.push(err);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+        let failRun = null;
+        const s = setup({
+            send: (op) => { if (op === OP.TRANSFER_ERROR) throw new Error("socket gone"); },
+            createTransfer: () => ({ run: () => new Promise((_, reject) => { failRun = reject; }), cancel() {} }),
+        });
+        await s.handlers.start(start());
+        failRun(new Error("engine gave up"));
+        await new Promise((r) => setImmediate(r));
+        await new Promise((r) => setImmediate(r));
+
+        assert.deepStrictEqual(unhandled.map((e) => e.message), [], "the chain leaked a rejection");
+        assert.strictEqual(s.transfers.size, 0, "the cleanup must still have run");
+        assert.strictEqual(s.registry.reserved.length, 0);
+    } finally {
+        process.off("unhandledRejection", onUnhandled);
+    }
+});
+
 test("cancel and resolve with an unknown id are ignored", () => {
     const s = setup();
     assert.doesNotThrow(() => s.handlers.cancel({ transferId: "nope" }));

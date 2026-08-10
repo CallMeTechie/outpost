@@ -126,7 +126,11 @@ const buildTransferHandlers = (OP, ctx) => {
                         // without this it lingers with a live timer until the 120 s window fires.
                         broker.cancel();
                         finish(transferId, key);
-                    });
+                    })
+                    // Terminal, because nothing awaits this chain: a throw out of the reporting
+                    // above — a closed socket makes send() throw — would otherwise end as an
+                    // unhandled rejection. The finally has already done the cleanup by then.
+                    .catch(() => {});
             } catch (err) {
                 // Only ever this call's own entry, compared by identity: a second start for an id
                 // that is already running lands here too, and a plain delete would disown the
