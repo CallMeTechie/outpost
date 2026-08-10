@@ -118,6 +118,17 @@ test("a scope with a null organization (a truly personal entry) is allowed", asy
     await assert.doesNotReject(() => authorizeDestination(d, dstReq()));
 });
 
+// authorizeDestination is exported on its own and must not depend on authorizeSource having
+// already screened `user` — the same uniform refusal applies here.
+test("a null user is refused for the destination instead of throwing", async () => {
+    await assert.rejects(() => authorizeDestination(deps(), dstReq({ user: null })), TransferNotPermittedError);
+});
+
+test("a destination user with a null id is refused instead of reaching hasResourcePermission", async () => {
+    await assert.rejects(() => authorizeDestination(deps(), dstReq({ user: { id: null } })),
+        TransferNotPermittedError);
+});
+
 test("missing FILES_UPLOAD on the destination is refused", async () => {
     const d = deps({ hasResourcePermission: async (_a, _o, p) => p !== Permission.FILES_UPLOAD });
     await assert.rejects(() => authorizeDestination(d, dstReq()), TransferNotPermittedError);

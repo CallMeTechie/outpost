@@ -24,7 +24,9 @@ const authorizeSource = async (deps, { user, sourceSessionId, action }) => {
         hasResourcePermission } = deps;
 
     // A caller without a resolved identity (link-share sockets carry user: null) gets the same
-    // uniform refusal as everyone else instead of crashing with a TypeError below.
+    // uniform refusal as everyone else instead of crashing with a TypeError below. Refusing any
+    // other falsy id (e.g. 0) is harmless too: account ids are auto-increment and start at 1, so
+    // 0 never denotes a real account.
     if (!user?.id) refuse();
 
     // 1. The source session exists and still has a live connection.
@@ -37,8 +39,10 @@ const authorizeSource = async (deps, { user, sourceSessionId, action }) => {
     //    non-owner whose tab is gone is no longer a participant. That is intended.
     if (session.accountId !== user.id) {
         const participant = [...(session.participants?.values() ?? [])]
-            // A participant with no accountId (link share) must never match, no matter what
-            // user.id is — comparing two falsy values would otherwise let it through.
+            // Redundant while the `user?.id` guard above stands — user.id is truthy by then, so
+            // a link-share participant's accountId: null could never equal it anyway. Kept as a
+            // second line of defense: if that guard is ever loosened, this still stops a
+            // link-share participant from matching by coincidence.
             .find((p) => p.accountId != null && p.accountId === user.id);
         // A read-only viewer may watch, not siphon. Link shares have no accountId at all.
         if (!participant || !participant.writable) refuse();
@@ -66,6 +70,10 @@ const authorizeSource = async (deps, { user, sourceSessionId, action }) => {
 // 5. Runs only after the source was authorized AND the folder probe ran on the source connection.
 const authorizeDestination = async (deps, { user, destEntry, onConflict, sourceIsFolder }) => {
     const { resolveEntryScope, hasResourcePermission } = deps;
+
+    // Same guard as authorizeSource, and for the same reason: this function is exported and
+    // callable on its own, so it must not rely on authorizeSource having already screened `user`.
+    if (!user?.id) refuse();
 
     const destScope = requireScope(await resolveEntryScope(destEntry));
     if (!(await hasResourcePermission(user.id, destScope.organizationId, Permission.FILES_UPLOAD))) refuse();
