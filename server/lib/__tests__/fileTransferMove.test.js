@@ -140,7 +140,8 @@ test("a skipped symlink leaves its source folder standing", async () => {
         .run(["/srv/data"], "/target", { action: "move" });
 
     assert.deepStrictEqual(source.unlinked, ["/srv/data/x.txt"], "only verified files are deleted");
-    assert.ok(result.leftovers.includes("/srv/data"), "a non-empty source folder is reported, not force-deleted");
+    assert.ok(result.sourceLeftovers.includes("/srv/data"), "a non-empty source folder is reported, not force-deleted");
+    assert.deepStrictEqual(result.leftovers, [], "a source folder is not an undeletable partial file at the destination");
 });
 
 test("a vanished source file stops the move from deleting anything", async () => {

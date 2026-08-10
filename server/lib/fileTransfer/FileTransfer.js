@@ -51,7 +51,13 @@ class FileTransfer {
         this.filesDone = 0;
         this.filesSkipped = 0;
         this.sourceIncomplete = false;
+        // Two different kinds of remains, deliberately kept apart: `leftovers` are partial files at
+        // the DESTINATION that could not be deleted again, `sourceLeftovers` are SOURCE directories
+        // a move could not remove because something is still in them (a skipped symlink, a file
+        // created after the walk). Callers turn both into user-facing messages, and one shared list
+        // would make them report a source folder as an undeletable destination remnant.
         this.leftovers = [];
+        this.sourceLeftovers = [];
         this.cancelled = false;
         this._cancelHooks = new Set();
     }
@@ -87,6 +93,7 @@ class FileTransfer {
             return await this._run(paths, destination);
         } catch (err) {
             if (this.leftovers.length > 0) err.leftovers = this.leftovers;
+            if (this.sourceLeftovers.length > 0) err.sourceLeftovers = this.sourceLeftovers;
             throw err;
         }
     }
@@ -150,6 +157,7 @@ class FileTransfer {
             filesSkipped: this.filesSkipped,
             cancelled,
             leftovers: this.leftovers,
+            sourceLeftovers: this.sourceLeftovers,
         };
     }
 
@@ -169,7 +177,7 @@ class FileTransfer {
         // skipped entries and anything created since the walk. Only what was verified may go, so
         // directories are removed empty and from the inside out. One that stays has content left.
         for (const dir of [...plan.dirs].reverse()) {
-            try { await this.source.rmdir(dir.srcPath, false); } catch { this.leftovers.push(dir.srcPath); }
+            try { await this.source.rmdir(dir.srcPath, false); } catch { this.sourceLeftovers.push(dir.srcPath); }
         }
 
         if (failed.length > 0) {
