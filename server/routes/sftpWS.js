@@ -53,6 +53,21 @@ const requirePath = (p) => { if (!p?.path) throw new Error("Invalid path"); };
 const requirePaths = (p) => { if (!p?.path || !p?.newPath) throw new Error("Invalid paths"); };
 const requireMultiPaths = (p) => { if (!p?.sources?.length || !p?.destination) throw new Error("Invalid paths"); };
 
+// A transfer only cleans up after its own run() settles; nothing else drives that promise once
+// this socket is gone. `transfers` is this connection's own map, so this can only ever touch
+// transfers this socket registered — never another pane's. An entry can still be a bare
+// placeholder (its two auxiliary connections not opened yet, see TRANSFER_START), which has
+// neither `broker` nor `transfer`; the optional chaining makes that a no-op here, and the setup
+// finishes on its own, releasing the registry slot and both clients through its normal finally
+// once it completes. One entry's cancel throwing must not stop the rest from being cancelled.
+const cancelAllTransfers = (transfers) => {
+    for (const [transferId, transferEntry] of transfers) {
+        try { transferEntry.broker?.cancel(); } catch {}
+        try { transferEntry.transfer?.cancel(); } catch {}
+        transfers.delete(transferId);
+    }
+};
+
 const requireShell = (capabilities) => {
     if (!capabilities.shell) throw new Error("This operation is not supported over FTP");
 };
@@ -290,6 +305,7 @@ module.exports = async (ws, req) => {
         ws.on("close", async () => {
             sftpClient.removeListener("close", onSftpClose);
             ws.removeListener("message", messageHandler);
+            cancelAllTransfers(transfers);
             SessionManager.removeWebSocket(sessionId, ws);
             try { await updateAuditLogWithSessionDuration(auditLogId, startTime); } catch {}
         });
@@ -300,3 +316,4 @@ module.exports = async (ws, req) => {
 };
 
 module.exports.OP = OP;
+module.exports.cancelAllTransfers = cancelAllTransfers;

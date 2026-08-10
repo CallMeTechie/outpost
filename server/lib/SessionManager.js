@@ -405,6 +405,12 @@ module.exports.remove = async (sessionId, options = {}) => {
         await cleanupConnection(session.masterConnection, sessionId);
         session.masterConnection = null;
     }
+    // Deliberately outside the masterConnection branch above: a transfer's registry slot is
+    // reserved as soon as it is authorized, before either side opens its auxiliary connection, so
+    // a session can hold a slot without ever having a master connection. Without this a hard-ended
+    // session keeps its quota until the process restarts: the transfer's own finally never runs
+    // when nobody is left to run it.
+    try { require("./fileTransfer/registry").releaseSession(sessionId); } catch {}
     if (session.shareId) shareIndex.delete(session.shareId);
 
     if (session._presenceTimer) clearTimeout(session._presenceTimer);
