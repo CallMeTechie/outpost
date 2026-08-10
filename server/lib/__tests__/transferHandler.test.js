@@ -22,7 +22,8 @@ const setup = (over = {}, ctxOver = {}) => {
         getConnection: () => ({ sftpClient: { stat: async () => ({ isDir: false }) } }),
         authorizeSource: async () => ({ sourceEntry: { id: "e-src" }, sourceScope: { organizationId: "o" } }),
         authorizeDestination: async () => ({ destScope: { organizationId: "o" } }),
-        findEntry: async () => ({ id: "e-dst", organizationId: "o" }),
+        // Echoes its argument, so which of the two entry ids the handler asks for stays visible.
+        findEntry: async (id) => ({ id, organizationId: "o" }),
         getCrossClient: async () => ({}),
         releaseCrossClient: (_conn, id) => released.push(id),
         createAdapter: () => ({}),
@@ -31,8 +32,9 @@ const setup = (over = {}, ctxOver = {}) => {
         createAuditLog: () => {},
         ...over,
     };
+    // The two entries differ on purpose: ctx.entry is the reduced one a shared socket carries.
     const ctx = { user: { id: "u" }, sessionId: "dst", serverSession: { entryId: "e-dst" },
-        entry: { id: "e-dst" }, ipAddress: "1.1.1.1", userAgent: "t", transfers, deps, ...ctxOver };
+        entry: { id: "e-shared" }, ipAddress: "1.1.1.1", userAgent: "t", transfers, deps, ...ctxOver };
     return { handlers: buildTransferHandlers(OP, ctx), sent, released, transfers, registry, fakeTransfer };
 };
 
@@ -49,7 +51,6 @@ const fakeConnectionService = () => {
         return conns.get(sessionId);
     };
     return {
-        conns,
         connFor,
         deps: {
             getConnection: connFor,
@@ -176,6 +177,29 @@ test("a folder among the source paths reaches the destination check", async () =
     await s.handlers.start(start());
     assert.strictEqual(seen.sourceIsFolder, true);
     assert.strictEqual(seen.onConflict, "skip", "the validated conflict mode must reach the check");
+});
+
+// On a shared socket ctx.entry carries a reduced attribute set without organizationId, and
+// hasResourcePermission would then fall back to system-wide rights. The session's own entry is
+// what the destination check must run on.
+test("the destination entry is loaded from the server session, not from the socket", async () => {
+    const asked = [];
+    let checked = null;
+    const s = setup({
+        findEntry: async (id) => { asked.push(id); return { id, organizationId: id === "e-dst" ? "o" : undefined }; },
+        authorizeDestination: async (request) => { checked = request.destEntry; return { destScope: { organizationId: "o" } }; },
+    }, { serverSession: { entryId: "e-dst" }, entry: { id: "e-shared" } });
+    await s.handlers.start(start());
+    assert.deepStrictEqual(asked, ["e-dst"], "the reduced socket entry must not decide the destination");
+    assert.deepStrictEqual(checked, { id: "e-dst", organizationId: "o" });
+});
+
+test("without a server session the socket's own entry is the fallback", async () => {
+    const asked = [];
+    const s = setup({ findEntry: async (id) => { asked.push(id); return { id, organizationId: "o" }; } },
+        { serverSession: null, entry: { id: "e-shared" } });
+    await s.handlers.start(start());
+    assert.deepStrictEqual(asked, ["e-shared"]);
 });
 
 test("a destination entry that cannot be loaded is refused before anything is opened", async () => {

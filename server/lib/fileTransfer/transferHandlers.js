@@ -130,6 +130,10 @@ const buildTransferHandlers = (OP, ctx) => {
                     // Terminal, because nothing awaits this chain: a throw out of the reporting
                     // above — a closed socket makes send() throw — would otherwise end as an
                     // unhandled rejection. The finally has already done the cleanup by then.
+                    // Silent on purpose, not by oversight: nothing under fileTransfer/ reaches for
+                    // a logger, everything it talks to comes through deps, and a report channel
+                    // invented just for this spot would be the only one of its kind. The realistic
+                    // arrival here is a socket that is already gone — nobody left to tell.
                     .catch(() => {});
             } catch (err) {
                 // Only ever this call's own entry, compared by identity: a second start for an id
