@@ -42,7 +42,6 @@ const walk = async (source, paths, { isCancelled = () => false } = {}) => {
     const files = [];
     const dirs = [];
     const skipped = [];
-    const topLevelFolders = [];
 
     const guard = (depth) => {
         if (isCancelled()) throw new WalkCancelledError();
@@ -78,12 +77,26 @@ const walk = async (source, paths, { isCancelled = () => false } = {}) => {
         }
     };
 
+    // A top-level path that lies inside another one would be walked twice: once under its own name
+    // and once as part of its ancestor. The duplicate-target check below cannot see it, because the
+    // two copies end up at different relative paths — on a move the same file lands twice in the
+    // transfer list, the second unlink fails, and the run ends with a misleading "the source was
+    // not fully removed" although everything went through.
+    const normalized = paths.map((path) => String(path).replace(/\/+$/, ""));
+    for (let i = 0; i < normalized.length; i++) {
+        for (let j = i + 1; j < normalized.length; j++) {
+            const [a, b] = [normalized[i], normalized[j]];
+            if (a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`)) {
+                throw new Error(`Overlapping transfer paths: ${paths[i]} and ${paths[j]}`);
+            }
+        }
+    }
+
     for (const path of paths) {
         const name = assertSafeName(basename(path));
         const info = await source.stat(path).catch(() => null);
         if (!info) throw new Error(`Source path no longer exists: ${path}`);
         if (info.type === "folder") {
-            topLevelFolders.push(path);
             await walkDir(path, name, 0);
         } else {
             files.push({ srcPath: path, relPath: name, size: info.size, mtime: info.mtime });
@@ -98,7 +111,7 @@ const walk = async (source, paths, { isCancelled = () => false } = {}) => {
         seen.add(rel);
     }
 
-    return { files, dirs, skipped, topLevelFolders, totalBytes: files.reduce((sum, f) => sum + f.size, 0) };
+    return { files, dirs, skipped, totalBytes: files.reduce((sum, f) => sum + f.size, 0) };
 };
 
-module.exports = { walk, join, basename, WalkCancelledError };
+module.exports = { walk, join, WalkCancelledError };

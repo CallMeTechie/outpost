@@ -22,7 +22,6 @@ test("a single file yields one entry and no directories", async () => {
 
     assert.deepStrictEqual(result.files, [{ srcPath: "/srv/a.txt", relPath: "a.txt", size: 10, mtime: 1 }]);
     assert.deepStrictEqual(result.dirs, []);
-    assert.deepStrictEqual(result.topLevelFolders, []);
     assert.strictEqual(result.totalBytes, 10);
 });
 
@@ -39,8 +38,43 @@ test("a folder is walked recursively, parents before children", async () => {
 
     assert.deepStrictEqual(result.dirs.map((d) => d.relPath), ["data", "data/sub"]);
     assert.deepStrictEqual(result.files.map((f) => f.relPath).sort(), ["data/sub/deep.txt", "data/top.txt"]);
-    assert.deepStrictEqual(result.topLevelFolders, ["/srv/data"]);
     assert.strictEqual(result.totalBytes, 12);
+});
+
+// Finding 11: the duplicate-target check compares relative paths, so "/srv/data" plus
+// "/srv/data/sub" looks harmless to it — the same file would be walked, copied and (on a move)
+// listed for deletion twice, and the second unlink would end the run with a wrong message.
+test("a top level path inside another one is rejected", async () => {
+    const source = fakeSource(
+        {
+            "/srv/data": [dir("sub")],
+            "/srv/data/sub": [file("x.txt")],
+        },
+        {
+            "/srv/data": { size: 0, type: "folder", mtime: 1 },
+            "/srv/data/sub": { size: 0, type: "folder", mtime: 1 },
+        },
+    );
+
+    await assert.rejects(() => walk(source, ["/srv/data", "/srv/data/sub"]), /overlapping/i);
+    await assert.rejects(() => walk(source, ["/srv/data/sub", "/srv/data"]), /overlapping/i,
+        "the order of the two paths must not matter");
+});
+
+test("the same path listed twice is rejected", async () => {
+    const source = fakeSource({}, { "/srv/a.txt": { size: 1, type: "file", mtime: 1 } });
+    await assert.rejects(() => walk(source, ["/srv/a.txt", "/srv/a.txt/"]), /overlapping/i);
+});
+
+// A shared prefix is not containment — rejecting this would block a perfectly ordinary transfer.
+test("sibling paths with a shared prefix stay allowed", async () => {
+    const source = fakeSource({}, {
+        "/srv/data": { size: 1, type: "file", mtime: 1 },
+        "/srv/database": { size: 2, type: "file", mtime: 1 },
+    });
+
+    const result = await walk(source, ["/srv/data", "/srv/database"]);
+    assert.deepStrictEqual(result.files.map((f) => f.relPath), ["data", "database"]);
 });
 
 test("symlinks are skipped and never followed", async () => {
