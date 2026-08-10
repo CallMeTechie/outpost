@@ -15,8 +15,21 @@ const { walk, join, WalkCancelledError } = require("./walk");
 const MAX_BUFFER = 8 * 1024 * 1024;
 
 // No data frame within this window counts as a stalled read. readFile has no timeout of its own —
-// REQUEST_TIMEOUT and WRITE_END_TIMEOUT do not apply there.
+// REQUEST_TIMEOUT and WRITE_END_TIMEOUT do not apply there. It applies only while the pipeline is
+// EMPTY, which means the destination has taken everything and is waiting on us: nothing the
+// destination does, however slow, can trigger it.
 const READ_STALL_TIMEOUT = 60_000;
+
+// The same for a full pipeline, where the destination is the one not moving — and deliberately far
+// longer, because a slow destination and a wedged one are indistinguishable from here for a while.
+// EngineSftpClient.writeFile only pauses its source once WRITE_CHUNK_SIZE * 4 (1 MiB) is queued on
+// the destination socket, so progress arrives in bursts one backlog apart and nothing at all moves
+// in between. That gap is the backlog divided by the destination's rate — 64 s at 16 KiB/s — and
+// none of it is visible from here, so a window shorter than the gap aborts a destination that is
+// working perfectly well, just slowly. This one spans a full cycle down to about 1.7 KiB/s; below
+// that no real transfer would ever finish. The floor is structural, not a guess: shrinking it means
+// making the destination's own progress observable, not picking a smaller number.
+const DEST_STALL_TIMEOUT = 600_000;
 
 // How much a file may grow between the walk and the read. Without a cap a source that reports
 // size 0 and delivers forever (/dev/zero, /proc, a lying server) fills the destination disk —
@@ -24,6 +37,10 @@ const READ_STALL_TIMEOUT = 60_000;
 const MAX_SIZE_OVERRUN = 16 * 1024 * 1024;
 
 const WATCHDOG_INTERVAL = 500;
+
+// An empty pipeline is the source's turn, a full one the destination's — and they are judged on
+// completely different time scales.
+const stallTimeout = (buffered) => (buffered === 0 ? READ_STALL_TIMEOUT : DEST_STALL_TIMEOUT);
 
 const NOT_FOUND = /no such file|no such path|not found|does not exist|ENOENT/i;
 const isNotFound = (err) => err?.code === "ENOENT" || NOT_FOUND.test(String(err?.message || ""));
@@ -65,6 +82,15 @@ const isSourceError = (err) => {
 
 class FileTransfer {
     constructor({ source, dest, destCleanup, onProgress, onConflict, now, setIntervalFn, clearIntervalFn }) {
+        // Reading with backpressure pauses the connection it reads over. If the destination writes
+        // over that SAME connection, the pause blocks the write's own acknowledgement and both
+        // sides wait for each other — measured end to end as a 60 s "Request timeout" with zero
+        // bytes transferred. An adapter that names its transport lets that be refused here, in the
+        // one place that holds both sides, instead of running into the timeout.
+        if (source?.transport !== undefined && source.transport === dest?.transport) {
+            throw new Error("Source and destination must not share one connection");
+        }
+
         this.source = source;
         this.dest = dest;
         this.destCleanup = destCleanup || dest;
@@ -369,16 +395,16 @@ class FileTransfer {
                     + counted.readableLength + counted.writableLength;
                 if (buffered > MAX_BUFFER) {
                     fail("Destination too slow, transfer aborted");
-                } else if (!sourceEnded && this.now() - lastDataAt > READ_STALL_TIMEOUT) {
-                    // Not a byte has moved through the pipeline for a whole window, and the origin
-                    // follows from whether there is anything in it: an empty pipeline means the
-                    // source stopped delivering, bytes waiting in it mean the destination stopped
-                    // taking them. Which of the two buffers holds them says nothing — pipe() moves
-                    // whatever the source writes straight on into the counting Transform, so a
-                    // wedged destination usually leaves the source stream empty.
-                    // A merely slow destination never gets here: it keeps pulling, and every pull
-                    // moves lastDataAt. Only one that stops entirely does, and since readFile got
-                    // backpressure that is the ONLY check left for it — the buffer used to run into
+                } else if (!sourceEnded && this.now() - lastDataAt > stallTimeout(buffered)) {
+                    // Nothing has moved through the pipeline for a whole window, and whether there
+                    // is anything IN the pipeline says which side owes the next move: an empty one
+                    // means the destination took everything and the source stopped delivering, a
+                    // full one means the destination stopped taking. Which of the two buffers holds
+                    // the bytes says nothing — pipe() moves whatever the source writes straight on
+                    // into the counting Transform.
+                    // The two cases get very different windows, see DEST_STALL_TIMEOUT: only the
+                    // source side can be judged in a minute. Since readFile got backpressure this
+                    // is the ONLY check left for a wedged destination — the buffer used to run into
                     // MAX_BUFFER within a second, but a throttled read keeps it at about one frame.
                     fail(buffered === 0
                         ? "Read stalled, transfer aborted"
@@ -503,5 +529,6 @@ class FileTransfer {
 }
 
 module.exports = {
-    FileTransfer, DestinationError, MAX_BUFFER, READ_STALL_TIMEOUT, WATCHDOG_INTERVAL, MAX_SIZE_OVERRUN,
+    FileTransfer, DestinationError, MAX_BUFFER, READ_STALL_TIMEOUT, DEST_STALL_TIMEOUT,
+    WATCHDOG_INTERVAL, MAX_SIZE_OVERRUN,
 };

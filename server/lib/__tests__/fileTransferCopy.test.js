@@ -93,6 +93,22 @@ const roundTripDest = (ticks = 3) => {
     return dest;
 };
 
+// Reading with backpressure pauses the connection, so a source and a destination on ONE connection
+// deadlock: the read pause holds up the write's own acknowledgement. Measured end to end as a 60 s
+// request timeout with nothing transferred — refusing it up front turns that into an answer.
+test("a source and a destination on the same connection are refused", () => {
+    const client = { name: "one and the same" };
+    assert.throws(
+        () => new FileTransfer({ source: { transport: client }, dest: { transport: client } }),
+        /must not share one connection/);
+});
+
+test("two different connections are fine, and an adapter without one is not judged", () => {
+    assert.doesNotThrow(() => new FileTransfer({ source: { transport: {} }, dest: { transport: {} } }));
+    // Every fake in this suite names no transport at all; two undefined sides must not read as equal.
+    assert.doesNotThrow(() => new FileTransfer({ source: {}, dest: {} }));
+});
+
 // Finding 1: counting progress must never take bytes away from the actual consumer.
 test("every byte arrives even when the destination attaches its consumer late", async () => {
     const content = "x".repeat(4096);
@@ -384,7 +400,7 @@ test("a vanished-source skip keeps bytesDone/filesDone in sync with the totals",
     assert.strictEqual(last.filesDone, last.filesTotal);
 });
 
-const { MAX_BUFFER, READ_STALL_TIMEOUT } = require("../fileTransfer/FileTransfer");
+const { MAX_BUFFER, READ_STALL_TIMEOUT, DEST_STALL_TIMEOUT } = require("../fileTransfer/FileTransfer");
 
 const fakeClock = () => {
     let current = 0;
@@ -396,6 +412,15 @@ const fakeClock = () => {
         advance: (ms) => { current += ms; },
         tick: () => ticks.forEach((fn) => fn()),
     };
+};
+
+// A watchdog abort rejects run(); it does NOT set `cancelled` (that flag belongs to cancel()).
+// Asserting on the flag would pass no matter what the watchdog did, so the tests below watch the
+// promise itself settle.
+const watchSettled = (promise) => {
+    const state = { done: false };
+    promise.then(() => { state.done = true; }, () => { state.done = true; });
+    return state;
 };
 
 const stalledSource = (stream) => ({
@@ -513,15 +538,64 @@ test("aborts when the destination stops consuming, even though the buffer stays 
 
     const transfer = new FileTransfer({ source: stalledSource(stream), dest, ...clock });
     const promise = transfer.run(["/srv/big.bin"], "/target");
+    const settled = watchSettled(promise);
 
     await new Promise((r) => setImmediate(r));
     clock.advance(READ_STALL_TIMEOUT + 1);
+    clock.tick();
+    await new Promise((r) => setImmediate(r));
+    assert.strictEqual(settled.done, false, "the read window must not judge the destination");
+
+    clock.advance(DEST_STALL_TIMEOUT);
     clock.tick();
 
     const err = await promise.then((r) => new Error(`resolved with ${JSON.stringify(r)}`), (e) => e);
     assert.match(err.message, /^Destination stalled, transfer aborted$/,
         "a wedged destination must not be reported as a stalled read");
     assert.strictEqual(transfer.filesSkipped, 0, "an abort is not a vanished source file");
+});
+
+// The finding this whole change exists to prevent. EngineSftpClient.writeFile only pauses its
+// source once 1 MiB is queued on the destination socket, so a slow destination makes progress in
+// bursts one backlog apart — 64 s at 16 KiB/s — with nothing moving at all in between. Judging that
+// by READ_STALL_TIMEOUT aborts a destination that is working, just slowly, which is exactly the
+// case backpressure was built for. Every burst here lands after the read window has already passed.
+test("a destination that keeps taking bytes, however slowly, is never aborted", async () => {
+    const clock = fakeClock();
+    const stream = new PassThrough();
+    const source = {
+        listDir: async () => [],
+        stat: async () => ({ size: 8 * 64 * 1024, type: "file", mtime: 1 }),
+        readFile: () => ({ stream, done: new Promise(() => {}) }),
+    };
+    const dest = fakeDest();
+    // A destination that takes exactly one chunk whenever the test lets it, and nothing in between.
+    let pull = () => {};
+    dest.writeFile = (path, src) => new Promise(() => { pull = () => src.read(); });
+
+    const transfer = new FileTransfer({ source, dest, ...clock });
+    const promise = transfer.run(["/srv/slow.bin"], "/target");
+    const settled = watchSettled(promise);
+    promise.catch(() => {});
+
+    for (let i = 0; i < 8; i += 1) stream.write(Buffer.alloc(64 * 1024));
+    await new Promise((r) => setImmediate(r));
+
+    // Four bursts, each one a full read window apart: a rate below the floor of the old check.
+    for (let burst = 0; burst < 4; burst += 1) {
+        clock.advance(READ_STALL_TIMEOUT + 1);
+        clock.tick();
+        await new Promise((r) => setImmediate(r));
+        assert.strictEqual(settled.done, false,
+            `burst ${burst}: a destination making progress must not be aborted`);
+        pull();
+        await new Promise((r) => setImmediate(r));
+    }
+
+    // ... and it still catches the destination that really does stop.
+    clock.advance(DEST_STALL_TIMEOUT + 1);
+    clock.tick();
+    await assert.rejects(promise, /^Error: Destination stalled, transfer aborted$/);
 });
 
 // The WriteEnd flush can take up to 120 s with no data flowing — that is not a stalled read.

@@ -41,6 +41,13 @@ test("readFile drops totalSizePromise", () => {
     assert.deepStrictEqual(Object.keys(adapter.readFile("/srv/a.txt")).sort(), ["done", "stream"]);
 });
 
+// FileTransfer can only refuse a source and a destination that share one connection if the adapter
+// says which connection it is on. Without this the pairing deadlocks in a request timeout.
+test("the adapter names the client it works on", () => {
+    const client = fakeClient();
+    assert.strictEqual(createEngineSftpAdapter(client, { shell: true }).transport, client);
+});
+
 // The transfer runs on its own per-transfer client, so it is the one caller allowed to pause the
 // socket — and the only one that gets end-to-end backpressure out of it.
 test("readFile asks the client for backpressure", () => {

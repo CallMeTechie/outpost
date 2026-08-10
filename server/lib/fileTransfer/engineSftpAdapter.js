@@ -6,6 +6,10 @@ const createEngineSftpAdapter = (client, capabilities) => {
     return {
         supportsChecksum,
 
+        // The connection this side reads and writes over. FileTransfer compares the two sides and
+        // refuses a transfer that would use one connection for both — see readFile below.
+        transport: client,
+
         async listDir(path) {
             const entries = await client.listDir(path);
             return entries.map((entry) => ({
@@ -34,10 +38,19 @@ const createEngineSftpAdapter = (client, capabilities) => {
         },
 
         readFile(path) {
-            // The only place where pausing the socket is harmless: getSFTPCrossTransferClient hands
-            // out one client per transfer, and a transfer reads one file at a time. The pause
-            // therefore throttles this transfer's own source and nothing else — which is exactly
-            // what makes the engine's blocking write() slow down instead of this process growing.
+            // Backpressure pauses the whole client, so whoever wires this adapter up owes it two
+            // things — neither of which this function can check on its own:
+            //
+            // 1. This client serves ONE reader. getSFTPCrossTransferClient hands out one client per
+            //    transfer and a transfer reads one file at a time, so the pause throttles this
+            //    transfer's own source and nothing else. On a shared client (the REST download's
+            //    metadata-client fallback) it would freeze directory browsing instead.
+            // 2. Source and destination are DIFFERENT clients. Reading and writing over one
+            //    connection deadlocks: the read pause holds up the write's WriteBegin
+            //    acknowledgement, and the transfer dies in a request timeout having moved nothing.
+            //    Not reachable today — nothing wires this adapter up yet, and same-session
+            //    transfers take another path — but a later plan will, so FileTransfer's constructor
+            //    rejects it outright via `transport` above rather than letting it time out.
             const { stream, done } = client.readFile(path, { backpressure: true });
             return { stream, done };
         },

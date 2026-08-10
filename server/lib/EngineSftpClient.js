@@ -218,6 +218,16 @@ class EngineSftpClient extends EventEmitter {
     // — the per-transfer "cxfer" client of the cross-pane transfer. The REST download, the archive
     // and the AI tool share their client (and fall back to the metadata client), where a pause
     // would freeze directory browsing, so they keep the unconditional write.
+    //
+    // The caller of a backpressured read takes on two obligations:
+    //
+    // 1. CONSUME OR DESTROY IT. A read that is opened and then left lying around keeps the socket
+    //    paused for good, and every later request on this client waits forever — readFile has no
+    //    timeout of its own, and none of the request timeouts reach a paused socket. Destroying the
+    //    returned stream is enough; the "close" handler below releases the socket.
+    // 2. NEVER WRITE OVER THE SAME CLIENT WHILE READING. The pause holds up the write's own
+    //    acknowledgement, so a transfer that reads and writes over one connection deadlocks until
+    //    the request timeout. FileTransfer refuses that pairing up front.
     readFile(path, { backpressure = false } = {}) {
         const rid = this._nextId();
         const stream = new PassThrough();
