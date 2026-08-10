@@ -112,6 +112,34 @@ test("cancel during a folder walk ends the run without rejecting", async () => {
     assert.strictEqual(result.cancelled, true);
 });
 
+// The top-level loop in walk() (path validation, stat, the final duplicate-target check) has no
+// cancellation checkpoint of its own — cancelling while the first of several top-level paths is
+// still being walked must not make a genuine error from a later path look like a clean cancel.
+// Reproduces the adversarial case from review: a folder whose listDir is pending when cancel()
+// lands, resolved with no entries afterwards (so no per-entry guard trips), followed by a second
+// top-level path with an unsafe basename that the walk only reaches once the first is done.
+test("a genuine walk error surfaces even when the transfer was already cancelled", async () => {
+    let resolveListDir;
+    const pending = new Promise((resolve) => { resolveListDir = resolve; });
+    const source = {
+        stat: async () => ({ size: 0, type: "folder", mtime: 1 }),
+        listDir: async (path) => (path === "/srv/tree" ? pending : []),
+        unlink: async () => {},
+        rmdir: async () => undefined,
+    };
+
+    const transfer = new FileTransfer({ source, dest: hangingDest([]) });
+    const promise = transfer.run(["/srv/tree", "/srv/evil\nname"], "/target");
+
+    await new Promise((r) => setImmediate(r));
+    transfer.cancel();
+    // No entries: walkDir for the first path returns cleanly despite the cancel, and the outer
+    // loop moves on to the second, unsafe path — exactly the gap the review exploited.
+    resolveListDir([]);
+
+    await assert.rejects(() => promise, /Unsafe file name/);
+});
+
 // _copyFile can be entered with this.cancelled already true — e.g. a cancel that lands while
 // _resolveConflict is still awaiting dest.stat(). That takes the synchronous self-call branch
 // (`if (this.cancelled) onCancel();`) instead of the async hook path the other tests exercise.

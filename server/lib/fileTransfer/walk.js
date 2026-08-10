@@ -27,6 +27,17 @@ const assertSafeName = (name) => {
 
 const isLink = (entry) => Boolean(entry.isSymlink) || ((entry.mode & S_IFMT) === S_IFLNK);
 
+// A dedicated type, not a generic Error, so callers can tell a cancel apart from every other
+// failure walk() can throw (unsafe name, path gone, tree too deep, ambiguous target) by what the
+// error IS rather than by re-deriving it from whatever cancellation state happens to hold at
+// catch time — the same class of bug that the state-based check used to be susceptible to.
+class WalkCancelledError extends Error {
+    constructor() {
+        super("Transfer cancelled");
+        this.name = "WalkCancelledError";
+    }
+}
+
 const walk = async (source, paths, { isCancelled = () => false } = {}) => {
     const files = [];
     const dirs = [];
@@ -34,7 +45,7 @@ const walk = async (source, paths, { isCancelled = () => false } = {}) => {
     const topLevelFolders = [];
 
     const guard = (depth) => {
-        if (isCancelled()) throw new Error("Transfer cancelled");
+        if (isCancelled()) throw new WalkCancelledError();
         if (depth > MAX_WALK_DEPTH) throw new Error("Source tree is too deep");
         if (files.length + dirs.length + skipped.length > MAX_WALK_ENTRIES) {
             throw new Error("Source tree has too many entries");
@@ -43,7 +54,7 @@ const walk = async (source, paths, { isCancelled = () => false } = {}) => {
 
     // Check cancellation and size limit without depth check — for use within entry loops
     const guardSize = () => {
-        if (isCancelled()) throw new Error("Transfer cancelled");
+        if (isCancelled()) throw new WalkCancelledError();
         if (files.length + dirs.length + skipped.length > MAX_WALK_ENTRIES) {
             throw new Error("Source tree has too many entries");
         }
@@ -90,4 +101,4 @@ const walk = async (source, paths, { isCancelled = () => false } = {}) => {
     return { files, dirs, skipped, topLevelFolders, totalBytes: files.reduce((sum, f) => sum + f.size, 0) };
 };
 
-module.exports = { walk, join, basename };
+module.exports = { walk, join, basename, WalkCancelledError };

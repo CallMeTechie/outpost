@@ -1,4 +1,4 @@
-const { walk, join } = require("./walk");
+const { walk, join, WalkCancelledError } = require("./walk");
 
 // Upper bound for the buffer of one in-flight file. readFile has no backpressure (the engine keeps
 // pushing even when the PassThrough is full), so the transfer aborts in a controlled way instead
@@ -83,12 +83,11 @@ class FileTransfer {
         try {
             plan = await walk(this.source, paths, { isCancelled: () => this.cancelled });
         } catch (err) {
-            // walk() throws "Transfer cancelled" through the exact same isCancelled() guard that
-            // set this.cancelled in the first place — a genuine walk error (unsafe name, tree too
-            // deep, too many entries) can never coincide with this.cancelled being true, because
-            // the guard checks cancellation first and would have short-circuited before reaching
-            // those checks. So this flag alone tells cancellation and real failure apart.
-            if (this.cancelled) return this._result(true);
+            // Identify the cancel by what the error IS, not by this.cancelled: the top-level loop
+            // in walk() (path validation, stat, the final duplicate-target check) has no
+            // cancellation checkpoint of its own, so a genuine walk error can perfectly well be
+            // thrown while this.cancelled is already true — that must still fail the transfer.
+            if (err instanceof WalkCancelledError) return this._result(true);
             throw err;
         }
         this.bytesTotal = plan.totalBytes;
