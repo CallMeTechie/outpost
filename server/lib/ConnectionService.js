@@ -42,6 +42,13 @@ const requireEngine = () => {
  */
 const TMUX_ATTACH_MAX_WAIT_MS = 300;
 
+class IdentityAccessDeniedError extends Error {
+    constructor() {
+        super("You don't have access to this identity");
+        this.name = "IdentityAccessDeniedError";
+    }
+}
+
 const requireSession = (sessionId) => {
     const session = SessionManager.get(sessionId);
     if (!session) throw new Error("Session not found");
@@ -154,6 +161,10 @@ const createConnectionForSession = async (sessionId, accountId) => {
 
 const resolveFileTransferContext = async (entry, identityId, directIdentity, accountId) => {
     const identityResult = await resolveIdentity(entry, identityId, directIdentity, accountId);
+    // extractIdentity turns { identity: null, accessDenied: true } into plain null, and
+    // resolveCredentials(null) then throws a TypeError on identity.isDirect instead of refusing.
+    // The same latent bug affects the xfer/bg/ai clients — this fixes it for all of them.
+    if (identityResult?.accessDenied) throw new IdentityAccessDeniedError();
     const identity = extractIdentity(identityResult);
     const credentials = await resolveCredentials(identity);
     const protocol = getEntryProtocol(entry);
@@ -613,4 +624,5 @@ module.exports = {
     getSessionPassword,
     buildSSHParams,
     resolveJumpHosts,
+    IdentityAccessDeniedError,
 };
