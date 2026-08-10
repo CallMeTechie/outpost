@@ -1,4 +1,5 @@
 const { Permission } = require("../../permissions/registry");
+const { AUDIT_ACTIONS, RESOURCE_TYPES } = require("../../controllers/audit");
 
 class TransferNotPermittedError extends Error {
     constructor() {
@@ -86,4 +87,61 @@ const authorizeDestination = async (deps, { user, destEntry, onConflict, sourceI
     return { destScope };
 };
 
-module.exports = { authorizeSource, authorizeDestination, TransferNotPermittedError };
+const ACTIONS = new Set(["copy", "move"]);
+const CONFLICT_MODES = new Set(["ask", "overwrite", "skip"]);
+// Restrictive on purpose: the id is used as part of a connection key. Verify this literal with a
+// short `node -e` run against "a:b", "" and a 65-character string before trusting it.
+const TRANSFER_ID = /^[A-Za-z0-9_-]{1,64}$/;
+// The character class alone lets "__proto__" and "constructor" through — harmless today, because
+// the register uses Maps and the connection keys are prefixed, but both would be sharp the moment
+// anyone indexes a plain object by transfer id.
+const RESERVED_IDS = new Set(["__proto__", "constructor", "prototype"]);
+const MAX_TRANSFER_PATHS = 256;
+const MAX_PATH_LENGTH = 4096;
+
+const invalid = () => { throw new Error("Invalid transfer request"); };
+
+const validateTransferStart = (payload, destSessionId) => {
+    const p = payload ?? {};
+    if (typeof p.transferId !== "string" || !TRANSFER_ID.test(p.transferId)) invalid();
+    if (RESERVED_IDS.has(p.transferId)) invalid();
+    if (typeof p.sourceSessionId !== "string" || p.sourceSessionId === "") invalid();
+    // Source and destination on one session resolve to the same auxiliary client, which deadlocks
+    // FileTransfer — and the throw would land behind the reservation, leaking a slot for good.
+    if (p.sourceSessionId === destSessionId) invalid();
+    if (typeof p.destination !== "string" || p.destination === "" || p.destination.length > MAX_PATH_LENGTH) invalid();
+    if (!Array.isArray(p.paths) || p.paths.length === 0 || p.paths.length > MAX_TRANSFER_PATHS) invalid();
+    if (p.paths.some((x) => typeof x !== "string" || x === "" || x.length > MAX_PATH_LENGTH)) invalid();
+
+    const action = p.action ?? "copy";
+    if (!ACTIONS.has(action)) invalid();
+
+    // Not defaulted on an unknown value: onConflict decides in the destination check whether
+    // FILES_MODIFY is required, so quietly turning a typo into "ask" would widen permissions.
+    const onConflict = p.onConflict ?? "ask";
+    if (!CONFLICT_MODES.has(onConflict)) throw new Error("Invalid conflict mode");
+
+    return { transferId: p.transferId, sourceSessionId: p.sourceSessionId,
+        destination: p.destination, paths: p.paths, action, onConflict };
+};
+
+const buildTransferAuditEntries = ({ user, sourceScope, destScope, sourceEntryId, destEntryId,
+    sourceSessionId, paths, destination, action, ipAddress, userAgent, refused = false }) => {
+    const common = { accountId: user.id, resource: RESOURCE_TYPES.FILE, ipAddress, userAgent };
+    // A refusal happens before the source scope is known — it is logged on the destination side,
+    // which is where the request arrived.
+    if (refused) {
+        return [{ ...common, organizationId: destScope?.organizationId ?? null,
+            action: AUDIT_ACTIONS.FILE_DOWNLOAD,
+            details: { refused: true, sourceSessionId, paths: paths.length } }];
+    }
+    return [
+        { ...common, organizationId: sourceScope.organizationId, action: AUDIT_ACTIONS.FILE_DOWNLOAD,
+            details: { sourceSessionId, paths, action, destEntryId } },
+        { ...common, organizationId: destScope.organizationId, action: AUDIT_ACTIONS.FILE_UPLOAD,
+            details: { sourceEntryId, destination, action } },
+    ];
+};
+
+module.exports = { authorizeSource, authorizeDestination, TransferNotPermittedError,
+    validateTransferStart, buildTransferAuditEntries };
