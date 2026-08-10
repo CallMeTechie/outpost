@@ -42,6 +42,41 @@ const requireEngine = () => {
  */
 const TMUX_ATTACH_MAX_WAIT_MS = 300;
 
+/**
+ * Cross-pane transfer fix round 3: a cross-transfer connection is opened on demand, against a
+ * session the caller does not own and that is often a different host entirely from the one it is
+ * already connected to — unlike the primary SFTP connection or an ordinary background/transfer
+ * client on the caller's own session, nothing here bounds resolveFileTransferContext's DB and
+ * credential lookup, openEngineSession's connect, or EngineSftpClient#waitForReady. That matters
+ * specifically for this path: registry.js reserves a cross-transfer slot before this connection is
+ * opened, and only a settled promise here lets the transfer's own cleanup ever run to release it —
+ * a connection attempt that never settles would hold that slot (and, while shared with a co-waiter
+ * at ConnectionService.js's own connectingKey cache, ties up whoever else is waiting on it too)
+ * indefinitely. 30s matches the two other connection-adjacent deadlines already in this codebase —
+ * EngineSftpClient's own per-request REQUEST_TIMEOUT and ControlPlaneServer's SESSION_TIMEOUT for
+ * openSession() — instead of inventing a new number. Deliberately not applied to
+ * getAuxiliarySFTPClient's other callers (the primary connection, getSFTPTransferClient,
+ * getSFTPBackgroundClient, getSFTPAIClient): those keep working today against a merely slow server,
+ * and a blanket deadline would turn "slow" into "broken" for all of them at once.
+ */
+const CROSS_TRANSFER_CONNECT_TIMEOUT_MS = 30000;
+
+// Races `promise` against a timer; the timer is always cleared once the race settles, whichever
+// side wins. Deliberately not unref()'d, matching every other request-deadline timer already in
+// this codebase (ControlPlaneServer.js's SESSION_TIMEOUT and DATA_CONNECTION_TIMEOUT, both plain
+// setTimeout): a live connection attempt is real pending work, not idle housekeeping, so it should
+// count toward keeping the process up during a graceful shutdown like any other in-flight request.
+// onTimeout, if given, fires only when the timer itself wins the race — never when `promise`
+// settles first, timeout or not — so a caller can tell "the deadline passed" apart from "the
+// attempt failed on its own" without inspecting the rejection's message.
+const withTimeout = (promise, ms, message, onTimeout) => {
+    let timer = null;
+    const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => { onTimeout?.(); reject(new Error(message)); }, ms);
+    });
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+};
+
 class IdentityAccessDeniedError extends Error {
     constructor() {
         super("You don't have access to this identity");
@@ -217,14 +252,14 @@ const createSFTPConnectionForSession = async (sessionId, entry, accountId) => {
 };
 
 const getAuxiliarySFTPClient = async (sessionId, entry, accountId, opts) => {
-    const { suffix, clientKey, connectingKey, label, onEngineSession } = opts;
+    const { suffix, clientKey, connectingKey, label, onEngineSession, timeoutMs } = opts;
     const session = requireSession(sessionId);
     const conn = SessionManager.getConnection(sessionId);
     if (!conn) throw new Error("No active SFTP session");
     if (conn[clientKey] && !conn[clientKey]._closed) return conn[clientKey];
     if (conn[connectingKey]) return conn[connectingKey];
 
-    conn[connectingKey] = (async () => {
+    const attempt = (async () => {
         requireEngine();
         const { identityId, directIdentity } = session.configuration;
         const { host, port, params } = await resolveFileTransferContext(entry, identityId, directIdentity, accountId);
@@ -250,7 +285,42 @@ const getAuxiliarySFTPClient = async (sessionId, entry, accountId, opts) => {
         conn[clientKey] = client;
         logger.info(`SFTP ${label} connection established`, { sessionId, target: host, port });
         return client;
-    })().finally(() => { conn[connectingKey] = null; });
+    })();
+
+    return connectWithDeadline(conn, clientKey, connectingKey, attempt, timeoutMs, label);
+};
+
+// Split out of getAuxiliarySFTPClient and exported as a test helper: it only ever touches the
+// plain `conn` object and the two promises it is given, so a test can drive the deadline path with
+// a never-resolving fake `attempt` and a millisecond-scale `timeoutMs` instead of any real I/O.
+//
+// Only ever set for the cross-transfer path (see CROSS_TRANSFER_CONNECT_TIMEOUT_MS above) — a
+// plain `attempt` here for every other caller keeps this identical to before for them.
+const connectWithDeadline = (conn, clientKey, connectingKey, attempt, timeoutMs, label) => {
+    if (!timeoutMs) {
+        conn[connectingKey] = attempt.finally(() => { conn[connectingKey] = null; });
+        return conn[connectingKey];
+    }
+
+    // attempt cannot actually be cancelled — the underlying connect keeps running even after the
+    // caller gives up on it. If it eventually DOES succeed, past the deadline, evict it instead of
+    // leaving it cached under clientKey: nobody here is waiting for it anymore, and a later,
+    // unrelated call reusing the same key (registry.js's releaseSession never frees a key early
+    // any more, but the key's own owner will, once its transfer actually ends) would otherwise
+    // silently inherit a connection opened for a different request — possibly a different host
+    // entirely, since only the transferId needs to repeat, not the entry.
+    let timedOut = false;
+    attempt.then((client) => {
+        if (timedOut && conn[clientKey] === client) {
+            conn[clientKey] = null;
+            try { client.close(); } catch {}
+        }
+    }).catch(() => {});
+
+    // The timeout wraps the whole shared `conn[connectingKey]` promise, not just a piece of it, so
+    // a concurrent co-waiter sharing this same in-flight attempt is bounded by the same deadline.
+    conn[connectingKey] = withTimeout(attempt, timeoutMs, `Timed out opening ${label} connection`, () => { timedOut = true; })
+        .finally(() => { conn[connectingKey] = null; });
 
     return conn[connectingKey];
 };
@@ -265,6 +335,7 @@ const crossTransferKeys = (transferId) => ({
     clientKey: `crossTransferClient:${transferId}`,
     connectingKey: `_crossTransferConnecting:${transferId}`,
     label: "cross-transfer",
+    timeoutMs: CROSS_TRANSFER_CONNECT_TIMEOUT_MS,
 });
 
 // One client per transfer: EngineSftpClient multiplexes over request IDs, and close() rejects
@@ -625,4 +696,9 @@ module.exports = {
     buildSSHParams,
     resolveJumpHosts,
     IdentityAccessDeniedError,
+    CROSS_TRANSFER_CONNECT_TIMEOUT_MS,
+    // Test helpers (fix round 3): pure-ish timing primitives, exported so their deadline behavior
+    // can be pinned with millisecond-scale fake attempts instead of any real connection.
+    withTimeout,
+    connectWithDeadline,
 };

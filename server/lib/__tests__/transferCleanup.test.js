@@ -4,7 +4,13 @@ const SessionManager = require("../SessionManager");
 const registry = require("../fileTransfer/registry");
 const { cancelAllTransfers, handleClose } = require("../../routes/sftpWS");
 
-test("removing a session releases its transfer slots", async () => {
+// Fix round 3, Finding 1: the other side's slot is deliberately NOT released here anymore — see
+// registry.js's own comment on releaseSession. A cross-transfer connection attempt is now
+// deadline-bound (ConnectionService.js's CROSS_TRANSFER_CONNECT_TIMEOUT_MS) and force-closed by
+// SessionManager's own aux-session sweep the moment either side's session ends either way, so a
+// release is guaranteed within a bounded time regardless — holding the slot until then keeps
+// countFor honest instead of reporting capacity that is not actually free yet.
+test("removing a session releases only its own transfer slot", async () => {
     // SessionManager.create returns the session object, not the bare id (see sessionCleanup.test.js).
     const { sessionId } = SessionManager.create("acc", "entry", {});
     registry.reserve("k1", [sessionId, "other"]);
@@ -13,9 +19,7 @@ test("removing a session releases its transfer slots", async () => {
     await SessionManager.remove(sessionId);
 
     assert.strictEqual(registry.countFor(sessionId), 0, "the vanished session still holds a slot");
-    assert.strictEqual(registry.countFor("other"), 0, "the other side must be released too");
-    // releaseSession deliberately leaves "k1" itself tombstoned (Finding 3) until its own transfer
-    // would release it — simulate that so this test does not leak state into the ones after it.
+    assert.strictEqual(registry.countFor("other"), 1, "the other side's own transfer still holds its slot");
     registry.release("k1");
 });
 
@@ -26,7 +30,7 @@ test("removing a session without transfers is harmless", async () => {
 
 // A transfer's registry slot is reserved before either side opens its auxiliary connection
 // (see transferHandlers.js:start), so a session can hold a slot while still connecting.
-test("removing a session with a master connection still releases the registry slot", async () => {
+test("removing a session with a master connection still releases its own registry slot", async () => {
     const { sessionId } = SessionManager.create("acc", "entry", {});
     SessionManager.setConnection(sessionId, { type: "sftp" });
     registry.reserve("k2", [sessionId, "other-dst"]);
@@ -34,7 +38,7 @@ test("removing a session with a master connection still releases the registry sl
     await SessionManager.remove(sessionId);
 
     assert.strictEqual(registry.countFor(sessionId), 0);
-    assert.strictEqual(registry.countFor("other-dst"), 0);
+    assert.strictEqual(registry.countFor("other-dst"), 1, "not released early — see fix round 3, Finding 1");
     registry.release("k2");
 });
 
@@ -44,7 +48,7 @@ test("removing a session with a master connection still releases the registry sl
 // (a second remove() call is permanently refused once _removing is set). stream.end() throwing
 // synchronously inside the async finalizeTerminalRecording turns into a rejection without needing
 // a real filesystem or database.
-test("removing a session still releases its transfer slot even if finalizing the recording fails", async () => {
+test("removing a session still releases its own transfer slot even if finalizing the recording fails", async () => {
     const { sessionId } = SessionManager.create("acc", "entry", {});
     const session = SessionManager.get(sessionId);
     session.recording = { stream: { end: () => { throw new Error("disk full"); }, on: () => {} } };
@@ -52,8 +56,8 @@ test("removing a session still releases its transfer slot even if finalizing the
 
     await assert.rejects(() => SessionManager.remove(sessionId), /disk full/);
 
-    assert.strictEqual(registry.countFor(sessionId), 0, "the slot must be released even though cleanup failed afterward");
-    assert.strictEqual(registry.countFor("other-rec"), 0);
+    assert.strictEqual(registry.countFor(sessionId), 0, "the vanished session's own slot must be released even though cleanup failed afterward");
+    assert.strictEqual(registry.countFor("other-rec"), 1, "not released early — see fix round 3, Finding 1");
     registry.release("k4");
 });
 
@@ -74,6 +78,22 @@ test("removing a session removes it from the collection even when cleanup afterw
     await assert.doesNotReject(() => SessionManager.remove(sessionId));
 });
 
+// Fix round 3, Finding 2: the fix round 1 `finally` only guaranteed sessions.delete — a throw from
+// finalizeTerminalRecording still skipped cleanupConnection entirely (both were inside the same
+// try, and the throw jumped straight to the finally). The master connection and its auxiliary
+// engine sessions were left open with no owner, and both broadcasts after the block never fired.
+test("removing a session still tears down the master connection even if finalizing the recording fails", async () => {
+    const { sessionId } = SessionManager.create("acc", "entry", {});
+    const session = SessionManager.get(sessionId);
+    session.recording = { stream: { end: () => { throw new Error("disk full"); }, on: () => {} } };
+    let sftpClosed = false;
+    SessionManager.setConnection(sessionId, { type: "sftp", sftpClient: { close: () => { sftpClosed = true; } } });
+
+    await assert.rejects(() => SessionManager.remove(sessionId), /disk full/);
+
+    assert.strictEqual(sftpClosed, true, "the master connection must still be torn down");
+});
+
 // Finding 4 (fix round 1): without this, releaseSession freeing every registered session instead
 // of just the vanished one's own transfers would have gone unnoticed — every prior test only
 // checked that the right slots dropped to 0, never that an unrelated one survived.
@@ -86,9 +106,8 @@ test("removing a session must not touch an unrelated session's own transfer slot
 
     assert.strictEqual(registry.countFor("bystander-a"), 1, "an unrelated session's slot must survive");
     assert.strictEqual(registry.countFor("bystander-b"), 1);
+    assert.strictEqual(registry.countFor("other"), 1, "not released early — see fix round 3, Finding 1");
     registry.release("unrelated-key");
-    // "k3" is left tombstoned by design (Finding 3) until its own release() — simulate that here
-    // so this test does not leak state into whatever runs after it in this same process.
     registry.release("k3");
 });
 

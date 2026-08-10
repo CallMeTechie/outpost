@@ -418,7 +418,18 @@ module.exports.remove = async (sessionId, options = {}) => {
     // what the removal does.
     try {
         closeAllWebSockets(sessionId, code, reason);
-        if (session.recording) await finalizeTerminalRecording(sessionId);
+        // Captured, not rethrown here: a failing recording finalization must not skip
+        // cleanupConnection below it — the master connection and its auxiliary engine sessions
+        // would otherwise stay open with no owner left, and both broadcasts after this block would
+        // never fire, so a client would keep believing this session is still live. Rethrown at the
+        // end of the try (still inside it, so the outer finally below still runs either way) once
+        // the rest of the teardown has actually happened, so a caller still learns about the
+        // failure — just after everything that does not depend on it already ran.
+        let recordingError = null;
+        if (session.recording) {
+            try { await finalizeTerminalRecording(sessionId); }
+            catch (err) { recordingError = err; }
+        }
         if (session.masterConnection) {
             await cleanupConnection(session.masterConnection, sessionId);
             session.masterConnection = null;
@@ -428,6 +439,8 @@ module.exports.remove = async (sessionId, options = {}) => {
         if (session._presenceTimer) clearTimeout(session._presenceTimer);
         for (const participant of session.participants.values()) clearTimeout(participant.typingTimer);
         session.participants.clear();
+
+        if (recordingError) throw recordingError;
     } finally {
         sessions.delete(sessionId);
     }

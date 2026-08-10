@@ -118,6 +118,18 @@ test("a failure while building the transfer releases the slot", async () => {
     assert.deepStrictEqual(s.released, ["dst:t1", "dst:t1"], "both aux clients must be released");
 });
 
+// Fix round 3, Finding 1: ConnectionService.js's CROSS_TRANSFER_CONNECT_TIMEOUT_MS makes
+// getCrossClient reject once its deadline passes instead of hanging forever. From this handler's
+// side that is just another setup failure — the existing catch branch already releases the slot
+// and both aux clients for any thrown error here; a timeout does not need special-casing.
+test("a cross-transfer connection attempt that times out is treated like any other setup failure", async () => {
+    const s = setup({ getCrossClient: async () => { throw new Error("Timed out opening cross-transfer connection"); } });
+    await s.handlers.start(start());
+    assert.strictEqual(s.registry.reserved.length, 0, "the reserved slot must be released");
+    assert.strictEqual(s.transfers.size, 0);
+    assert.deepStrictEqual(s.released, ["dst:t1", "dst:t1"], "both aux clients must be released");
+});
+
 test("a full register is reported and reserves nothing", async () => {
     const s = setup();
     s.registry.reserve = () => false;
@@ -276,6 +288,19 @@ test("the caller's own quota names itself", async () => {
     const s = setup();
     s.registry.reserve = () => false;
     s.registry.countFor = () => 2;
+    await s.handlers.start(start());
+    assert.match(s.sent.find((m) => m.op === OP.TRANSFER_ERROR).data.message, /^Too many/);
+});
+
+// Fix round 3, Finding 3: reducing the quota check to only the destination session (ctx.sessionId)
+// and dropping the source-session check left every existing test green — the fake's default
+// countFor(() => 0) never distinguishes which id is asked about, and "the caller's own quota names
+// itself" above makes BOTH sides read as full at once. Here only the source is at its limit; the
+// destination is empty. Must still report the quota, not a collision.
+test("the source session's own full quota also names itself, not just the destination's", async () => {
+    const s = setup();
+    s.registry.reserve = () => false;
+    s.registry.countFor = (id) => (id === "src" ? 2 : 0);
     await s.handlers.start(start());
     assert.match(s.sent.find((m) => m.op === OP.TRANSFER_ERROR).data.message, /^Too many/);
 });

@@ -26,16 +26,20 @@ test("a refused reservation leaves nothing behind", () => {
     for (let i = 0; i < MAX_CROSS_TRANSFERS; i += 1) release(`b${i}`);
 });
 
-test("releasing a session drops all of its transfers", () => {
+// Fix round 3, Finding 1: releaseSession used to drop the count for every participant of a key,
+// not just the vanished session's own — reasoning that a stuck cross-transfer connection attempt
+// could otherwise strand the slot forever. Measured instead: it cannot (see registry.js's own
+// comment on releaseSession — the connection attempt is now deadline-bound, and even without that
+// deadline the engine session is force-closed once either side's own session ends). With a release
+// now guaranteed, holding the slot until it actually arrives is what keeps countFor honest while
+// the auxiliary connections it accounts for are still genuinely open.
+test("releasing a session forgets only its own bookkeeping, not its transfer partners'", () => {
     reserve("c1", ["gone", "dst1"]);
     reserve("c2", ["dst2", "gone"]);
     releaseSession("gone");
     assert.strictEqual(countFor("gone"), 0);
-    assert.strictEqual(countFor("dst1"), 0, "the other side must be released too");
-    assert.strictEqual(countFor("dst2"), 0);
-    // releaseSession deliberately leaves c1/c2 themselves reserved (see the fixture below for why)
-    // — simulate the transfer's own eventual release() so this test does not leak a tombstone into
-    // the ones that follow it in this process.
+    assert.strictEqual(countFor("dst1"), 1, "a partner's own transfer still holds its slot — it is not released early");
+    assert.strictEqual(countFor("dst2"), 1);
     release("c1");
     release("c2");
 });
@@ -62,12 +66,12 @@ test("reusing a key is rejected and does not corrupt state", () => {
     assert.strictEqual(countFor("b"), 0);
 });
 
-// Fix round 2, Finding 2: mutating releaseSession to drop a participant's ENTIRE key set instead
-// of just the one key tied to the vanished session left all 342 tests green — both prior
-// isolation tests only used a session that shared NOTHING with the vanished one. This covers the
-// other shape: a session that is a participant of the vanished session's transfer AND of a
-// completely unrelated one at the same time.
-test("releasing a session must not drop a shared participant's other, unrelated transfer", () => {
+// Fix round 2, Finding 2 (superseded by fix round 3's Finding 1, still guards the same class of
+// mutation): mutating releaseSession to touch a participant's key set at all — rather than just
+// forgetting the vanished session's own — must be caught. A session that shares a key with the
+// vanished one AND holds a completely unrelated second transfer at the same time now keeps BOTH
+// slots; neither is released early.
+test("releasing a session must not touch a shared participant's own count at all", () => {
     assert.strictEqual(reserve("shared-a", ["gone2", "shared-participant"]), true);
     assert.strictEqual(reserve("shared-b", ["shared-participant", "third-party"]), true);
     assert.strictEqual(countFor("shared-participant"), 2);
@@ -75,35 +79,37 @@ test("releasing a session must not drop a shared participant's other, unrelated 
     releaseSession("gone2");
 
     assert.strictEqual(countFor("gone2"), 0);
-    assert.strictEqual(countFor("shared-participant"), 1,
-        "the shared participant's OTHER transfer must survive");
+    assert.strictEqual(countFor("shared-participant"), 2,
+        "neither of the shared participant's transfers is released early");
     assert.strictEqual(countFor("third-party"), 1, "unaffected");
 
     release("shared-a");
     release("shared-b");
 });
 
-// Finding 3 (fix round 1): SessionManager.remove calls releaseSession while the transfer this key
-// belongs to may still be running on the surviving side. release(key) only ever receives the bare
-// key, with no way to tell an old reservation apart from a new one under the same string — so the
-// only way a belated release(key) can stay harmless is if nothing new was ever let onto that exact
-// key in between.
+// Finding 3 (fix round 1), numbers updated for fix round 3's Finding 1: SessionManager.remove
+// calls releaseSession while the transfer this key belongs to is still running on the surviving
+// side. release(key) only ever receives the bare key, with no way to tell an old reservation apart
+// from a new one under the same string — so the only way a belated release(key) can stay harmless
+// is if nothing new was ever let onto that exact key in between. releaseSession no longer touches
+// byKey at all now, so this is simply reserve()'s own byKey.has(key) guard doing its ordinary job —
+// the surviving side's count staying at 1 (not released early) reinforces the same guarantee from
+// the other direction.
 test("a key survives releaseSession until its own release — a third party cannot move in early", () => {
     assert.strictEqual(reserve("shared-key", ["gone", "survivor"]), true);
 
     releaseSession("gone");
     assert.strictEqual(countFor("gone"), 0);
-    assert.strictEqual(countFor("survivor"), 0, "the other side must be released too");
+    assert.strictEqual(countFor("survivor"), 1, "the surviving side's own transfer still holds its slot");
 
     // A late-arriving third party — e.g. a second socket on the same shared destination session,
     // picking a client-chosen transferId that happens to collide — must be refused, not handed
-    // the tombstoned key.
+    // a key that is still in use.
     assert.strictEqual(reserve("shared-key", ["newcomer", "survivor"]), false,
         "the key must stay blocked until its own transfer releases it");
     assert.strictEqual(countFor("newcomer"), 0, "a refused reservation must not half-register");
 
-    // The original transfer's own, delayed release() now arrives — the one release(key) still
-    // owns. It must have no effect on anyone but the tombstone itself.
+    // The original transfer's own release() now arrives.
     release("shared-key");
     assert.strictEqual(countFor("survivor"), 0);
     assert.strictEqual(countFor("newcomer"), 0);
@@ -113,6 +119,25 @@ test("a key survives releaseSession until its own release — a third party cann
     assert.strictEqual(countFor("newcomer"), 1);
     assert.strictEqual(countFor("survivor"), 1);
     release("shared-key");
+});
+
+// Fix round 3, Finding 1: the point of leaving the count occupied. Before this fix, a vanished
+// session's own slot (and its surviving partner's) was freed immediately, so repeating "reserve,
+// then let the source vanish" let a party accumulate far more genuinely open auxiliary connections
+// than MAX_CROSS_TRANSFERS while countFor kept reporting the cap as untouched — measured at 50
+// simultaneously open connections against a cap of 2 (see the report for fix round 3). With the
+// count honest, the cap enforces the limit even while a vanished session's former transfers are
+// still winding down on the surviving side.
+test("countFor keeps the cap honest across repeated session churn on the surviving side", () => {
+    for (let i = 0; i < MAX_CROSS_TRANSFERS; i += 1) {
+        assert.strictEqual(reserve(`churn${i}`, [`gone${i}`, "surviving-dest"]), true);
+        releaseSession(`gone${i}`);
+    }
+    assert.strictEqual(countFor("surviving-dest"), MAX_CROSS_TRANSFERS);
+    assert.strictEqual(reserve("one-too-many", ["fresh-source", "surviving-dest"]), false,
+        "the cap must still hold — the vanished sessions must not have opened up phantom capacity");
+
+    for (let i = 0; i < MAX_CROSS_TRANSFERS; i += 1) release(`churn${i}`);
 });
 
 test("releasing all transfers leaves no orphaned session entries", () => {
