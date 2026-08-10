@@ -39,6 +39,31 @@ class FileTransfer {
         this.filesSkipped = 0;
         this.sourceIncomplete = false;
         this.leftovers = [];
+        this.cancelled = false;
+        this._cancelHooks = new Set();
+    }
+
+    cancel() {
+        this.cancelled = true;
+        for (const hook of this._cancelHooks) hook();
+    }
+
+    // A cancel during a conflict pause has no running _copyFile hook to attach to — without this
+    // race run() would sit there until the conflict timeout.
+    async _ask(info) {
+        let hook;
+        try {
+            return await Promise.race([
+                this.onConflict(info),
+                new Promise((resolve) => {
+                    hook = () => resolve("abort");
+                    this._cancelHooks.add(hook);
+                    if (this.cancelled) hook();
+                }),
+            ]);
+        } finally {
+            this._cancelHooks.delete(hook);
+        }
     }
 
     async run(paths, destination, { action = "copy", onConflict = "ask" } = {}) {
@@ -54,14 +79,16 @@ class FileTransfer {
     }
 
     async _run(paths, destination) {
-        const plan = await walk(this.source, paths);
+        const plan = await walk(this.source, paths, { isCancelled: () => this.cancelled });
         this.bytesTotal = plan.totalBytes;
         this.filesTotal = plan.files.length;
         this.filesSkipped = plan.skipped.length;
 
+        if (this.cancelled) return this._result(true);
         await this._ensureDirs(destination, plan.dirs);
 
         for (const file of plan.files) {
+            if (this.cancelled) return this._result(true);
             const destPath = join(destination, file.relPath);
 
             const decision = await this._resolveConflict(file, destPath);
@@ -77,6 +104,9 @@ class FileTransfer {
             }
 
             await this._copyFile(file, destPath);
+            // Cancellation during _copyFile itself only surfaces here: the loop has no further
+            // iteration to catch it at the top when the cancelled file was the last one.
+            if (this.cancelled) return this._result(true);
         }
 
         return this._result(false);
@@ -122,6 +152,7 @@ class FileTransfer {
         let stream = null;
         let timer = null;
         let watchdogError = null;
+        let onCancel = null;
 
         try {
             const opened = this.source.readFile(file.srcPath);
@@ -148,6 +179,12 @@ class FileTransfer {
                 stream.destroy(watchdogError);
                 rejectWatchdog(watchdogError);
             };
+
+            // Must come after fail(): onCancel calls it, and the synchronous self-call below would
+            // otherwise hit the temporal dead zone.
+            onCancel = () => fail("Transfer cancelled");
+            this._cancelHooks.add(onCancel);
+            if (this.cancelled) onCancel();
 
             stream.on("data", (chunk) => {
                 lastDataAt = this.now();
@@ -186,6 +223,8 @@ class FileTransfer {
             await Promise.race([donePromise, watchdogFailed]);
         } catch (err) {
             if (writeAttempted) await this._removePartial(destPath);
+            // Cancelling is not an error: run() returns cancelled: true instead of throwing.
+            if (this.cancelled) return false;
             if (isNotFound(err)) {
                 // A source file that vanished between walk and read counts as skipped, not fatal,
                 // and a move must not delete anything after this. Pull it out of the totals too,
@@ -204,8 +243,10 @@ class FileTransfer {
             // onFileData keeps writing unconditionally. Without destroy() the buffer grows on
             // unmeasured after an error — the watchdog is already stopped here.
             if (stream && !stream.destroyed) stream.destroy();
+            if (onCancel) this._cancelHooks.delete(onCancel);
         }
 
+        if (this.cancelled) return false;
         this.filesDone += 1;
         this._report(file.relPath);
         return true;
@@ -229,7 +270,7 @@ class FileTransfer {
         if (this.conflictMode === "overwrite") return "overwrite";
         if (this.conflictMode === "skip") return "skip";
 
-        return this.onConflict({
+        return this._ask({
             file: file.relPath,
             destSize: existing.size,
             destMtime: existing.mtime,
