@@ -14,53 +14,61 @@ test("the error is distinguishable from a plain Error", () => {
     assert.strictEqual(new Error("x") instanceof IdentityAccessDeniedError, false);
 });
 
-// Guard test: Set up mock BEFORE test runs, to catch the guard in action
+// Guard test: through public getSessionPassword API
 test("guard intercepts accessDenied and throws by name, not TypeError", async () => {
-    // Mock resolveIdentity in-place before calling resolveFileTransferContext
+    // Mock resolveIdentity before reloading ConnectionService
     const identityResolverPath = require.resolve("../../utils/identityResolver");
-    const originalModule = require.cache[identityResolverPath];
+    const originalResolverModule = require.cache[identityResolverPath];
 
     const mockResolveIdentity = async () => ({
         identity: null,
         accessDenied: true,
     });
 
-    // Replace the cached module
     require.cache[identityResolverPath] = {
         exports: { resolveIdentity: mockResolveIdentity },
     };
 
-    // Now load a fresh instance of ConnectionService that will use the mocked resolveIdentity
-    // Clear the cache first to force a clean require
-    delete require.cache[require.resolve("../ConnectionService")];
+    // Clear only ConnectionService cache (SessionManager stays the same)
+    const connectionServicePath = require.resolve("../ConnectionService");
+    delete require.cache[connectionServicePath];
 
     try {
-        // Import the fresh ConnectionService with mocked dependency
-        const freshCS = require("../ConnectionService");
-        const resolveFileTransferContextFn = freshCS.resolveFileTransferContext;
+        // Import ConnectionService fresh with mocked resolveIdentity
+        const { getSessionPassword } = require("../ConnectionService");
+        const SessionManager = require("../SessionManager");
 
-        // Attempt to call it - should hit the guard and throw IdentityAccessDeniedError
+        // Create a minimal session and extract the sessionId
+        const session = SessionManager.create(
+            "acc-1",
+            "entry-1",
+            { identityId: "test-id", directIdentity: null },
+        );
+        const sessionId = session.sessionId;
+
+        // Call getSessionPassword which internally calls resolveFileTransferContext
+        // Should hit the guard and throw IdentityAccessDeniedError
         let caughtError = null;
         try {
-            await resolveFileTransferContextFn({ protocol: "sftp" }, "test-id", null, "acc-1");
+            await getSessionPassword(sessionId, { protocol: "sftp" }, "acc-1");
         } catch (e) {
             caughtError = e;
         }
 
-        // Verify: error exists, is not TypeError, and is the right custom error
+        // Verify: error is IdentityAccessDeniedError, not TypeError
         assert.ok(caughtError, "should throw an error when accessDenied is true");
         assert.strictEqual(caughtError.name, "IdentityAccessDeniedError", "error name should be IdentityAccessDeniedError");
         assert.match(caughtError.message, /identity/i, "error message should mention identity");
         assert.ok(!(caughtError instanceof TypeError), "should not throw TypeError (this was the bug)");
     } finally {
-        // Restore original module
-        if (originalModule) {
-            require.cache[identityResolverPath] = originalModule;
+        // Restore original identityResolver
+        if (originalResolverModule) {
+            require.cache[identityResolverPath] = originalResolverModule;
         } else {
             delete require.cache[identityResolverPath];
         }
-        delete require.cache[require.resolve("../ConnectionService")];
-        // Re-require to restore normal state for other tests
+        // Re-require ConnectionService to restore normal state
+        delete require.cache[connectionServicePath];
         require("../ConnectionService");
     }
 });
