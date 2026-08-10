@@ -96,6 +96,29 @@ test("a failing source stat is refused without leaking the server text", async (
     assert.doesNotMatch(msg.data.message, /etc\/shadow/, "the source server text must not reach the client");
 });
 
+// The duplicate guard must refuse the second request, not disown the first: the running entry is
+// what cancel() and the cleanup path look up.
+test("a second start with a running id does not evict the running transfer", async () => {
+    const s = setup();
+    await s.handlers.start(start());
+    await s.handlers.start(start());
+    assert.strictEqual(s.transfers.size, 1, "the running transfer was evicted by its duplicate");
+    assert.ok(s.transfers.get("t1")?.transfer, "the running entry must survive the duplicate");
+});
+
+// Losing the entry costs the run its source session, and finish() would then release only the
+// destination client — the source aux connection would stay open for the rest of the session.
+test("a second start with a running id costs the first no cleanup", async () => {
+    let endRun;
+    const s = setup({ createTransfer: () => ({ run: () => new Promise((r) => { endRun = r; }), cancel() {} }) });
+    await s.handlers.start(start());
+    await s.handlers.start(start());
+    endRun({ files: 1 });
+    await new Promise((r) => setImmediate(r));
+    assert.deepStrictEqual(s.released, ["t1", "t1"], "the source aux client was never released");
+    assert.strictEqual(s.registry.reserved.length, 0, "slot leaked");
+});
+
 test("cancel reaches both the transfer and the conflict broker", async () => {
     const s = setup();
     await s.handlers.start(start());

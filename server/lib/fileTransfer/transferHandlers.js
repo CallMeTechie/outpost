@@ -25,6 +25,7 @@ const buildTransferHandlers = (OP, ctx) => {
             let transferId = null;
             let key = null;
             let reserved = false;
+            let ownEntry = null;
             let sourceSessionId = null;
             let auditPaths = null;
             let destScopeForAudit = null;
@@ -36,7 +37,8 @@ const buildTransferHandlers = (OP, ctx) => {
                 // Taken synchronously, before the first await: ws does not wait for the listener's
                 // promise, so two messages with the same id would otherwise both pass this check.
                 if (transfers.has(transferId)) throw new Error("Invalid transfer request");
-                transfers.set(transferId, { pending: true });
+                ownEntry = { pending: true };
+                transfers.set(transferId, ownEntry);
 
                 const { sourceEntry, sourceScope } = await deps.authorizeSource(
                     { user: ctx.user, sourceSessionId, action: request.action });
@@ -93,7 +95,8 @@ const buildTransferHandlers = (OP, ctx) => {
                     onConflict: (info) => broker.ask(info),
                 });
 
-                transfers.set(transferId, { transfer, broker, key, sourceSessionId });
+                ownEntry = { transfer, broker, key, sourceSessionId };
+                transfers.set(transferId, ownEntry);
 
                 for (const entry of buildTransferAuditEntries({
                     user: ctx.user, sourceScope, destScope, sourceEntryId: sourceEntry.id,
@@ -120,7 +123,11 @@ const buildTransferHandlers = (OP, ctx) => {
                         finish(transferId, key);
                     });
             } catch (err) {
-                if (transferId) transfers.delete(transferId);
+                // Only ever this call's own entry, compared by identity: a second start for an id
+                // that is already running lands here too, and a plain delete would disown the
+                // RUNNING transfer — its cleanup would no longer find the source session, leaving
+                // that aux connection open, and its cancel would stop reaching it.
+                if (ownEntry && transfers.get(transferId) === ownEntry) transfers.delete(transferId);
                 if (reserved && key) {
                     try { deps.registry.release(key); } catch {}
                     for (const sessionId of [sourceSessionId, ctx.sessionId].filter(Boolean)) {
