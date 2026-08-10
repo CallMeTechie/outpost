@@ -6,17 +6,19 @@
 // whatever setTimeoutFn/clearTimeoutFn resolves to.
 const createConflictBroker = ({ send, timeoutMs, maxRounds = 100,
     setTimeoutFn = setTimeout, clearTimeoutFn = clearTimeout }) => {
-    let waiting = null;      // the single open question: { file, resolve, timer }
+    let waiting = null;      // the single open question: { file, resolve, timer, done }
     let applyAll = null;     // null = nothing remembered yet; any string (even "") counts as set
     let cancelled = false;
     let rounds = 0;
 
     // The only place that ever settles a question's promise. Guarded by entry.done rather than
     // "something is open": a timer (or any other reference) captured for an earlier question
-    // must never be able to reach past it and settle whatever replaced it. Once entry.done is
-    // false we know this entry is still the current waiting slot (nothing else can clear
-    // entry.done or reassign waiting without going through this same function first), so a
-    // single per-entry flag is enough to guard both decisions below.
+    // must never be able to reach past it and settle whatever replaced it. The flag lives on the
+    // entry and only ever flips false -> true, so it alone decides that the first caller wins.
+    // ask()'s catch branch is the one other place that ends a question without coming through
+    // here, and it checks the same flag first, which keeps the two paths mutually exclusive.
+    // The "waiting === entry" checks are therefore already implied by the flag; they stay as a
+    // second line of defense in case a later change loosens it.
     const finish = (entry, choice) => {
         if (entry.done) return;
         entry.done = true;

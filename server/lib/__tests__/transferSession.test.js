@@ -11,17 +11,24 @@ const broker = (over = {}) => createConflictBroker({
 // module under test). A broker regression that leaks a promise would otherwise report only by
 // running out the whole per-test timeout with no failed assertion — slow and undiagnosable.
 // This turns that into a fast, explicit "did not settle" result within `ms`.
-const settledWithin = (promise, ms = 200) => Promise.race([
-    promise.then((value) => ({ settled: true, value })),
-    new Promise((resolve) => { setTimeout(() => resolve({ settled: false }), ms); }),
-]);
+// The loser of the race is cleared: without that, every call keeps the process busy for the full
+// `ms` after its promise already settled, which is nearly all of this file's runtime. Clearing it
+// rather than unref-ing it is deliberate — an unref'd deadline lets the process exit while a
+// deliberately never-answered question is still pending, cancelling the rest of the file.
+const settledWithin = (promise, ms = 200) => {
+    let timer;
+    return Promise.race([
+        promise.then((value) => ({ settled: true, value })),
+        new Promise((resolve) => { timer = setTimeout(() => resolve({ settled: false }), ms); }),
+    ]).finally(() => clearTimeout(timer));
+};
 
 test("a decision is passed through", async () => {
     const sent = [];
     const b = broker({ send: (info) => sent.push(info) });
     const pending = b.ask({ file: "a.txt" });
     b.resolve({ file: "a.txt", choice: "skip" });
-    assert.strictEqual(await pending, "skip");
+    assert.deepStrictEqual(await settledWithin(pending), { settled: true, value: "skip" });
     assert.strictEqual(sent.length, 1);
 });
 
@@ -30,8 +37,8 @@ test("applyToAll answers later files without asking again", async () => {
     const b = broker({ send: (info) => sent.push(info) });
     const first = b.ask({ file: "a.txt" });
     b.resolve({ file: "a.txt", choice: "overwrite", applyToAll: true });
-    assert.strictEqual(await first, "overwrite");
-    assert.strictEqual(await b.ask({ file: "b.txt" }), "overwrite");
+    assert.deepStrictEqual(await settledWithin(first), { settled: true, value: "overwrite" });
+    assert.deepStrictEqual(await settledWithin(b.ask({ file: "b.txt" })), { settled: true, value: "overwrite" });
     assert.strictEqual(sent.length, 1, "the second file must not be asked about");
 });
 
@@ -40,26 +47,24 @@ test("applyToAll is ignored together with abort", async () => {
     const b = broker({ send: (info) => sent.push(info) });
     const first = b.ask({ file: "a.txt" });
     b.resolve({ file: "a.txt", choice: "abort", applyToAll: true });
-    assert.strictEqual(await first, "abort");
+    assert.deepStrictEqual(await settledWithin(first), { settled: true, value: "abort" });
     const second = b.ask({ file: "b.txt" });
     b.resolve({ file: "b.txt", choice: "skip" });
-    assert.strictEqual(await second, "skip");
+    assert.deepStrictEqual(await settledWithin(second), { settled: true, value: "skip" });
     assert.strictEqual(sent.length, 2);
 });
 
 // Guards against a truthy-check regression: "applyAll" is only unset while it is literally null,
 // so a remembered empty-string choice must still short-circuit the next file without asking.
-test("applyToAll is remembered even when the choice is an empty string", () => {
+test("applyToAll is remembered even when the choice is an empty string", async () => {
     const sent = [];
     const b = broker({ send: (info) => sent.push(info) });
     const first = b.ask({ file: "a.txt" });
     b.resolve({ file: "a.txt", choice: "", applyToAll: true });
     const second = b.ask({ file: "b.txt" });
     assert.strictEqual(sent.length, 1, "a remembered empty-string choice must short-circuit without asking again");
-    return Promise.all([first, second]).then(([a, b2]) => {
-        assert.strictEqual(a, "");
-        assert.strictEqual(b2, "");
-    });
+    assert.deepStrictEqual(await Promise.all([settledWithin(first), settledWithin(second)]),
+        [{ settled: true, value: "" }, { settled: true, value: "" }]);
 });
 
 test("a resolve for the wrong file is ignored", async () => {
@@ -67,7 +72,7 @@ test("a resolve for the wrong file is ignored", async () => {
     const pending = b.ask({ file: "a.txt" });
     b.resolve({ file: "other.txt", choice: "overwrite" });
     b.resolve({ file: "a.txt", choice: "skip" });
-    assert.strictEqual(await pending, "skip");
+    assert.deepStrictEqual(await settledWithin(pending), { settled: true, value: "skip" });
 });
 
 // resolve() is fed straight from client input once wired up; a missing or malformed payload must
@@ -79,7 +84,7 @@ test("resolve() with a missing or malformed payload does not throw", async () =>
     b.resolve(null);
     b.resolve({});
     b.resolve({ file: "a.txt", choice: "skip" });
-    assert.strictEqual(await pending, "skip");
+    assert.deepStrictEqual(await settledWithin(pending), { settled: true, value: "skip" });
 });
 
 // The "payload || {}" fallback above must only stop a synchronous throw, not become
@@ -100,7 +105,7 @@ test("no answer within the window aborts", async () => {
     const b = broker({ setTimeoutFn: (fn) => { fire = fn; return 1; } });
     const pending = b.ask({ file: "a.txt" });
     fire();
-    assert.strictEqual(await pending, "abort");
+    assert.deepStrictEqual(await settledWithin(pending), { settled: true, value: "abort" });
 });
 
 // Cancelling during an open question must not wait for the 120 s window. Bounded by
@@ -141,31 +146,39 @@ test("a new ask() abandons a still-open question with abort instead of losing it
     b.ask({ file: "a.txt" }).then((choice) => { firstResult = choice; });
     const second = b.ask({ file: "b.txt" });
     b.resolve({ file: "b.txt", choice: "skip" });
-    assert.strictEqual(await second, "skip");
+    assert.deepStrictEqual(await settledWithin(second), { settled: true, value: "skip" });
     assert.strictEqual(firstResult, "abort", "the abandoned question must still settle, as abort");
 });
 
-// The other half of the same fix: settling is bound to the specific question by identity, so a
-// timer captured for an abandoned question can never reach into whatever replaced it, even if
-// clearTimeoutFn (mocked here as a no-op, as a broken/late clear would behave) fails to stop it.
+// The other half of the same fix: settling is bound to the one question that owns the entry, so a
+// timer captured for an abandoned question can never reach into whatever replaced it — not even
+// when clearTimeoutFn (mocked here, as a broken or late clear would behave) fails to stop it.
+// The cleared handles are counted because they are the only externally visible trace of the
+// entry.done guard in finish(): the stale fire finds its own entry already settled and its own
+// slot already taken, so every observable effect of it is a no-op except the clear. Drop that one
+// guard and handle 1 gets cleared a second time here, while every other assertion still holds.
 test("a stale timer from a superseded question cannot abort the current one", async () => {
     let fireFirst;
     let calls = 0;
+    const cleared = [];
     const setTimeoutFn = (fn) => {
         calls += 1;
         if (calls === 1) fireFirst = fn;
         return calls;
     };
     const b = createConflictBroker({
-        send: () => {}, timeoutMs: 1000, setTimeoutFn, clearTimeoutFn: () => {},
+        send: () => {}, timeoutMs: 1000, setTimeoutFn, clearTimeoutFn: (t) => cleared.push(t),
     });
     let firstResult;
     b.ask({ file: "a.txt" }).then((choice) => { firstResult = choice; });
     const second = b.ask({ file: "b.txt" });
     fireFirst(); // the orphaned timer for "a.txt" fires anyway
     b.resolve({ file: "b.txt", choice: "skip" });
-    assert.strictEqual(await second, "skip", "the stale timer must not touch the question that replaced it");
+    assert.deepStrictEqual(await settledWithin(second), { settled: true, value: "skip" },
+        "the stale timer must not touch the question that replaced it");
     assert.strictEqual(firstResult, "abort");
+    assert.deepStrictEqual(cleared, [1, 2],
+        "each question's timer is cleared exactly once; the stale fire must add nothing");
 });
 
 // The real failure mode is a client whose WebSocket already closed. Without cleanup here the
@@ -180,13 +193,16 @@ test("a throwing send rejects and does not leave the slot occupied", async () =>
         setTimeoutFn: () => 7,
         clearTimeoutFn: (t) => cleared.push(t),
     });
-    await assert.rejects(() => b.ask({ file: "a.txt" }), /socket closed/);
+    // settledWithin also bounds the rejection: a regression that neither rejects nor resolves
+    // fulfills it with { settled: false }, which assert.rejects reports as a missing rejection
+    // instead of hanging.
+    await assert.rejects(settledWithin(b.ask({ file: "a.txt" })), /socket closed/);
     assert.deepStrictEqual(cleared, [7], "the timer for the failed send must be cleared");
     shouldThrow = false;
     const pending = b.ask({ file: "b.txt" });
     assert.strictEqual(sent.length, 1, "the next question must still reach the client");
     b.resolve({ file: "b.txt", choice: "skip" });
-    assert.strictEqual(await pending, "skip");
+    assert.deepStrictEqual(await settledWithin(pending), { settled: true, value: "skip" });
 });
 
 // The catch cleanup used to null the shared waiting slot unconditionally. If send() calls back
@@ -230,7 +246,8 @@ test("a self-answering send() that also throws clears its timer only once", asyn
         timeoutMs: 1000, setTimeoutFn: () => 9, clearTimeoutFn: (t) => cleared.push(t),
     });
     const pending = b.ask({ file: "a.txt" });
-    assert.strictEqual(await pending, "skip", "the self-answer wins; the later throw cannot un-resolve it");
+    assert.deepStrictEqual(await settledWithin(pending), { settled: true, value: "skip" },
+        "the self-answer wins; the later throw cannot un-resolve it");
     assert.deepStrictEqual(cleared, [9], "the timer must only be cleared once");
 });
 
@@ -241,12 +258,13 @@ test("resolving a question clears its pending timer", async () => {
     });
     const pending = b.ask({ file: "a.txt" });
     b.resolve({ file: "a.txt", choice: "skip" });
-    await pending;
+    assert.deepStrictEqual(await settledWithin(pending), { settled: true, value: "skip" });
     assert.deepStrictEqual(cleared, [42]);
 });
 
-// If the waiting slot were not cleared on settle, a late duplicate resolve() for the same file
-// would still pass the file check and clear the (already cleared) timer a second time.
+// A question settles exactly once, and its entry.done flag is what says so: a late duplicate
+// resolve() for the same file finds the entry already done and stops there, instead of clearing
+// the (already cleared) timer a second time.
 test("a late duplicate resolve after a question is already settled has no further effect", async () => {
     const cleared = [];
     const b = createConflictBroker({
@@ -255,7 +273,7 @@ test("a late duplicate resolve after a question is already settled has no furthe
     const pending = b.ask({ file: "a.txt" });
     b.resolve({ file: "a.txt", choice: "skip" });
     b.resolve({ file: "a.txt", choice: "overwrite" });
-    assert.strictEqual(await pending, "skip");
+    assert.deepStrictEqual(await settledWithin(pending), { settled: true, value: "skip" });
     assert.deepStrictEqual(cleared, [42], "the timer must only be cleared once");
 });
 
@@ -266,7 +284,8 @@ test("resolve() with applyToAll is ignored when there is no open question", asyn
     const answer = b.ask({ file: "b.txt" });
     b.resolve({ file: "b.txt", choice: "skip" });
     assert.strictEqual(sent.length, 1, "the real question must still have been asked, not short-circuited");
-    assert.strictEqual(await answer, "skip", "a stray resolve() must not have set a remembered decision");
+    assert.deepStrictEqual(await settledWithin(answer), { settled: true, value: "skip" },
+        "a stray resolve() must not have set a remembered decision");
 });
 
 // Pins the default fallback to the real setTimeout/clearTimeout. There is no wiring of this
@@ -279,7 +298,7 @@ test("the broker works with the default timers when none are supplied", async ()
     const b = createConflictBroker({ send: (info) => sent.push(info), timeoutMs: 1000 });
     const pending = b.ask({ file: "a.txt" });
     b.cancel();
-    assert.strictEqual(await pending, "abort");
+    assert.deepStrictEqual(await settledWithin(pending), { settled: true, value: "abort" });
     assert.strictEqual(sent.length, 1);
 });
 
