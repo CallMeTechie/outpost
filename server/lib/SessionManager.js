@@ -362,6 +362,13 @@ module.exports.resume = (sessionId, tabId = null, browserId = null) => {
     return true;
 };
 
+const closeCrossTransferClients = (conn) => {
+    for (const entry of conn.crossTransferClients?.values() || []) {
+        try { entry.client?.close(); } catch {}
+    }
+    conn.crossTransferClients?.clear();
+};
+
 const cleanupConnection = async (conn, sessionId) => {
     if (CONTROL_PLANE_TYPES.has(conn.type)) {
         try { require("./controlPlane/ControlPlaneServer").closeSession(sessionId); } catch {}
@@ -378,6 +385,7 @@ const cleanupConnection = async (conn, sessionId) => {
     try { conn.transferClient?.close(); } catch {}
     try { conn.backgroundClient?.close(); } catch {}
     try { conn.aiClient?.close(); } catch {}
+    closeCrossTransferClients(conn);
     if (CONTROL_PLANE_TYPES.has(conn.type)) {
         for (const auxSessionId of conn.auxSessionIds || []) {
             try { require("./controlPlane/ControlPlaneServer").closeSession(auxSessionId); } catch {}
@@ -501,6 +509,8 @@ module.exports.removeAllByEntryId = async (entryId) => {
     }
     return toRemove.length;
 };
+
+module.exports.closeCrossTransferClients = closeCrossTransferClients;
 
 // unref() so this timer does not by itself keep a process alive: anything that merely imports
 // SessionManager (tests, scripts) must be able to exit. The running server is unaffected — its
