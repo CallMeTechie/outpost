@@ -7,12 +7,23 @@ const {
 } = require("../controllers/audit");
 const SessionManager = require("../lib/SessionManager");
 const { buildParticipant } = require("../utils/sessionParticipant");
-const { createSFTPConnectionForSession, getSFTPBackgroundClient } = require("../lib/ConnectionService");
+const {
+    createSFTPConnectionForSession,
+    getSFTPBackgroundClient,
+    getSFTPCrossTransferClient,
+    releaseSFTPCrossTransferClient,
+} = require("../lib/ConnectionService");
 const { hasResourcePermission } = require("../utils/permission");
 const { Permission } = require("../permissions/registry");
 const Entry = require("../models/Entry");
 const logger = require("../utils/logger");
 const { getCapabilities, CHECKSUM_COMMANDS, escapePath } = require("../lib/fileCapabilities");
+const { buildTransferHandlers } = require("../lib/fileTransfer/transferHandlers");
+const { authorizeSource, authorizeDestination } = require("../lib/fileTransfer/transferAuth");
+const { resolveEntryScope, validateEntryAccess } = require("../controllers/entry");
+const { createEngineSftpAdapter } = require("../lib/fileTransfer/engineSftpAdapter");
+const { FileTransfer } = require("../lib/fileTransfer/FileTransfer");
+const registry = require("../lib/fileTransfer/registry");
 
 const OP = {
     READY: 0x0, LIST_FILES: 0x1, CREATE_FILE: 0x4, CREATE_FOLDER: 0x5, DELETE_FILE: 0x6,
@@ -46,104 +57,110 @@ const requireShell = (capabilities) => {
     if (!capabilities.shell) throw new Error("This operation is not supported over FTP");
 };
 
-// ctx carries per-connection state (user, session, and the transfer register) for the
-// transfer opcode handlers landing in a later task; no handler here reads it yet.
-// eslint-disable-next-line no-unused-vars
-const buildOperationHandlers = (sftp, getBg, ws, logAudit, capabilities, ctx) => ({
-    [OP.LIST_FILES]: async (p) => {
-        requirePath(p);
-        sendResult(ws, OP.LIST_FILES, { files: await sftp.listDir(p.path) });
-    },
-    [OP.CREATE_FILE]: async (p) => {
-        requirePath(p);
-        await sftp.writeFile(p.path, Buffer.alloc(0));
-        sendAck(ws, OP.CREATE_FILE);
-        logAudit(AUDIT_ACTIONS.FILE_CREATE, RESOURCE_TYPES.FILE, { filePath: p.path });
-    },
-    [OP.CREATE_FOLDER]: async (p) => {
-        requirePath(p);
-        if (p.recursive) await sftp.mkdirRecursive(p.path);
-        else await sftp.mkdir(p.path);
-        sendAck(ws, OP.CREATE_FOLDER);
-        logAudit(AUDIT_ACTIONS.FOLDER_CREATE, RESOURCE_TYPES.FOLDER, { folderPath: p.path });
-    },
-    [OP.DELETE_FILE]: async (p) => {
-        requirePath(p);
-        await sftp.unlink(p.path);
-        sendAck(ws, OP.DELETE_FILE);
-        logAudit(AUDIT_ACTIONS.FILE_DELETE, RESOURCE_TYPES.FILE, { filePath: p.path });
-    },
-    [OP.DELETE_FOLDER]: async (p) => {
-        requirePath(p);
-        await sftp.rmdir(p.path, true);
-        sendAck(ws, OP.DELETE_FOLDER);
-        logAudit(AUDIT_ACTIONS.FOLDER_DELETE, RESOURCE_TYPES.FOLDER, { folderPath: p.path });
-    },
-    [OP.RENAME_FILE]: async (p) => {
-        requirePaths(p);
-        await sftp.rename(p.path, p.newPath);
-        sendAck(ws, OP.RENAME_FILE);
-        logAudit(AUDIT_ACTIONS.FILE_RENAME, RESOURCE_TYPES.FILE, { oldPath: p.path, newPath: p.newPath });
-    },
-    [OP.SEARCH_DIRECTORIES]: async (p) => {
-        if (!p?.searchPath) throw new Error("Invalid path");
-        sendResult(ws, OP.SEARCH_DIRECTORIES, { directories: await sftp.searchDirs(p.searchPath) });
-    },
-    [OP.RESOLVE_SYMLINK]: async (p) => {
-        requirePath(p);
-        sendResult(ws, OP.RESOLVE_SYMLINK, await sftp.realpath(p.path));
-    },
-    [OP.MOVE_FILES]: async (p) => {
-        requireMultiPaths(p);
-        for (const src of p.sources) {
-            await sftp.rename(src, `${p.destination}/${src.split("/").pop()}`);
-        }
-        sendAck(ws, OP.MOVE_FILES);
-        logAudit(AUDIT_ACTIONS.FILE_RENAME, RESOURCE_TYPES.FILE, { sources: p.sources, destination: p.destination });
-    },
-    [OP.COPY_FILES]: async (p) => {
-        requireMultiPaths(p);
-        requireShell(capabilities);
-        const cmds = p.sources.map((src) => {
-            const dest = `${p.destination}/${src.split("/").pop()}`;
-            return `cp -r ${escapePath(src)} ${escapePath(dest)}`;
-        }).join(" && ");
-        const bg = await getBg();
-        const result = await bg.exec(cmds);
-        if (result.exitCode !== 0) throw new Error(result.stderr.trim() || "Failed to copy files");
-        sendAck(ws, OP.COPY_FILES);
-        logAudit(AUDIT_ACTIONS.FILE_CREATE, RESOURCE_TYPES.FILE, { sources: p.sources, destination: p.destination });
-    },
-    [OP.CHMOD]: async (p) => {
-        if (!p?.path || p?.mode === undefined) throw new Error("Invalid path or mode");
-        await sftp.chmod(p.path, p.mode);
-        sendAck(ws, OP.CHMOD);
-        logAudit(AUDIT_ACTIONS.FILE_CHMOD, RESOURCE_TYPES.FILE, { filePath: p.path, mode: p.mode.toString(8) });
-    },
-    [OP.STAT]: async (p) => {
-        requirePath(p);
-        sendResult(ws, OP.STAT, await sftp.stat(p.path));
-    },
-    [OP.CHECKSUM]: async (p) => {
-        if (!p?.path || !p?.algorithm) throw new Error("Invalid path or algorithm");
-        requireShell(capabilities);
-        const algo = p.algorithm.toLowerCase();
-        const cmd = CHECKSUM_COMMANDS[algo];
-        if (!cmd) throw new Error("Unsupported algorithm");
-        const bg = await getBg();
-        const result = await bg.exec(`${cmd} ${escapePath(p.path)}`);
-        if (result.exitCode !== 0) throw new Error(result.stderr.trim() || "Checksum failed");
-        sendResult(ws, OP.CHECKSUM, { hash: result.stdout.split(/\s+/)[0], algorithm: algo });
-    },
-    [OP.FOLDER_SIZE]: async (p) => {
-        requirePath(p);
-        requireShell(capabilities);
-        const bg = await getBg();
-        const result = await bg.exec(`du -sb ${escapePath(p.path)} 2>/dev/null | cut -f1`);
-        if (result.exitCode !== 0) throw new Error(result.stderr.trim() || "Failed to calculate size");
-        sendResult(ws, OP.FOLDER_SIZE, { size: Number.parseInt(result.stdout.trim(), 10) || 0 });
-    },
-});
+// ctx carries the per-connection state (user, session, the transfer register and the injected
+// dependencies) that the transfer handlers run on.
+const buildOperationHandlers = (sftp, getBg, ws, logAudit, capabilities, ctx) => {
+    const transferHandlers = buildTransferHandlers(OP, ctx);
+
+    return {
+        [OP.LIST_FILES]: async (p) => {
+            requirePath(p);
+            sendResult(ws, OP.LIST_FILES, { files: await sftp.listDir(p.path) });
+        },
+        [OP.CREATE_FILE]: async (p) => {
+            requirePath(p);
+            await sftp.writeFile(p.path, Buffer.alloc(0));
+            sendAck(ws, OP.CREATE_FILE);
+            logAudit(AUDIT_ACTIONS.FILE_CREATE, RESOURCE_TYPES.FILE, { filePath: p.path });
+        },
+        [OP.CREATE_FOLDER]: async (p) => {
+            requirePath(p);
+            if (p.recursive) await sftp.mkdirRecursive(p.path);
+            else await sftp.mkdir(p.path);
+            sendAck(ws, OP.CREATE_FOLDER);
+            logAudit(AUDIT_ACTIONS.FOLDER_CREATE, RESOURCE_TYPES.FOLDER, { folderPath: p.path });
+        },
+        [OP.DELETE_FILE]: async (p) => {
+            requirePath(p);
+            await sftp.unlink(p.path);
+            sendAck(ws, OP.DELETE_FILE);
+            logAudit(AUDIT_ACTIONS.FILE_DELETE, RESOURCE_TYPES.FILE, { filePath: p.path });
+        },
+        [OP.DELETE_FOLDER]: async (p) => {
+            requirePath(p);
+            await sftp.rmdir(p.path, true);
+            sendAck(ws, OP.DELETE_FOLDER);
+            logAudit(AUDIT_ACTIONS.FOLDER_DELETE, RESOURCE_TYPES.FOLDER, { folderPath: p.path });
+        },
+        [OP.RENAME_FILE]: async (p) => {
+            requirePaths(p);
+            await sftp.rename(p.path, p.newPath);
+            sendAck(ws, OP.RENAME_FILE);
+            logAudit(AUDIT_ACTIONS.FILE_RENAME, RESOURCE_TYPES.FILE, { oldPath: p.path, newPath: p.newPath });
+        },
+        [OP.SEARCH_DIRECTORIES]: async (p) => {
+            if (!p?.searchPath) throw new Error("Invalid path");
+            sendResult(ws, OP.SEARCH_DIRECTORIES, { directories: await sftp.searchDirs(p.searchPath) });
+        },
+        [OP.RESOLVE_SYMLINK]: async (p) => {
+            requirePath(p);
+            sendResult(ws, OP.RESOLVE_SYMLINK, await sftp.realpath(p.path));
+        },
+        [OP.MOVE_FILES]: async (p) => {
+            requireMultiPaths(p);
+            for (const src of p.sources) {
+                await sftp.rename(src, `${p.destination}/${src.split("/").pop()}`);
+            }
+            sendAck(ws, OP.MOVE_FILES);
+            logAudit(AUDIT_ACTIONS.FILE_RENAME, RESOURCE_TYPES.FILE, { sources: p.sources, destination: p.destination });
+        },
+        [OP.COPY_FILES]: async (p) => {
+            requireMultiPaths(p);
+            requireShell(capabilities);
+            const cmds = p.sources.map((src) => {
+                const dest = `${p.destination}/${src.split("/").pop()}`;
+                return `cp -r ${escapePath(src)} ${escapePath(dest)}`;
+            }).join(" && ");
+            const bg = await getBg();
+            const result = await bg.exec(cmds);
+            if (result.exitCode !== 0) throw new Error(result.stderr.trim() || "Failed to copy files");
+            sendAck(ws, OP.COPY_FILES);
+            logAudit(AUDIT_ACTIONS.FILE_CREATE, RESOURCE_TYPES.FILE, { sources: p.sources, destination: p.destination });
+        },
+        [OP.CHMOD]: async (p) => {
+            if (!p?.path || p?.mode === undefined) throw new Error("Invalid path or mode");
+            await sftp.chmod(p.path, p.mode);
+            sendAck(ws, OP.CHMOD);
+            logAudit(AUDIT_ACTIONS.FILE_CHMOD, RESOURCE_TYPES.FILE, { filePath: p.path, mode: p.mode.toString(8) });
+        },
+        [OP.STAT]: async (p) => {
+            requirePath(p);
+            sendResult(ws, OP.STAT, await sftp.stat(p.path));
+        },
+        [OP.CHECKSUM]: async (p) => {
+            if (!p?.path || !p?.algorithm) throw new Error("Invalid path or algorithm");
+            requireShell(capabilities);
+            const algo = p.algorithm.toLowerCase();
+            const cmd = CHECKSUM_COMMANDS[algo];
+            if (!cmd) throw new Error("Unsupported algorithm");
+            const bg = await getBg();
+            const result = await bg.exec(`${cmd} ${escapePath(p.path)}`);
+            if (result.exitCode !== 0) throw new Error(result.stderr.trim() || "Checksum failed");
+            sendResult(ws, OP.CHECKSUM, { hash: result.stdout.split(/\s+/)[0], algorithm: algo });
+        },
+        [OP.FOLDER_SIZE]: async (p) => {
+            requirePath(p);
+            requireShell(capabilities);
+            const bg = await getBg();
+            const result = await bg.exec(`du -sb ${escapePath(p.path)} 2>/dev/null | cut -f1`);
+            if (result.exitCode !== 0) throw new Error(result.stderr.trim() || "Failed to calculate size");
+            sendResult(ws, OP.FOLDER_SIZE, { size: Number.parseInt(result.stdout.trim(), 10) || 0 });
+        },
+        [OP.TRANSFER_START]: (payload) => transferHandlers.start(payload),
+        [OP.TRANSFER_CANCEL]: (payload) => transferHandlers.cancel(payload),
+        [OP.TRANSFER_RESOLVE]: (payload) => transferHandlers.resolve(payload),
+    };
+};
 
 const resolveSftpClient = async (sessionId, entryId, userId) => {
     let conn = SessionManager.getConnection(sessionId);
@@ -212,8 +229,28 @@ module.exports = async (ws, req) => {
             createAuditLog({ accountId: user.id, organizationId: entry.organizationId, action, resource, details, ipAddress, userAgent });
         };
         const transfers = new Map();
+        const authDeps = {
+            getSession: SessionManager.get,
+            getConnection: SessionManager.getConnection,
+            findEntry: (id) => Entry.findByPk(id),
+            resolveEntryScope, validateEntryAccess, hasResourcePermission,
+        };
+        const transferDeps = {
+            send: (op, data) => sendResult(ws, op, data),
+            registry,
+            getConnection: SessionManager.getConnection,
+            authorizeSource: (req) => authorizeSource(authDeps, req),
+            authorizeDestination: (req) => authorizeDestination(authDeps, req),
+            findEntry: (id) => Entry.findByPk(id),
+            getCrossClient: getSFTPCrossTransferClient,
+            releaseCrossClient: releaseSFTPCrossTransferClient,
+            createAdapter: createEngineSftpAdapter,
+            getCapabilities,
+            createTransfer: (opts) => new FileTransfer(opts),
+            createAuditLog,
+        };
         const handlers = buildOperationHandlers(sftpClient, getBg, ws, logAudit, capabilities, {
-            user, sessionId, serverSession, entry, ipAddress, userAgent, transfers,
+            user, sessionId, serverSession, entry, ipAddress, userAgent, transfers, deps: transferDeps,
         });
 
         const messageHandler = async (msg) => {
