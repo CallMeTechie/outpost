@@ -54,3 +54,29 @@ test("an error frame during the data phase rejects writeFile with the server mes
 
     await assert.rejects(promise, /disk quota exceeded/);
 });
+
+// A rejected data phase leaves writeFile through its catch. Whatever it attached to the caller's
+// stream has to come off there as well: the REST upload hands in the raw request, so a surviving
+// "data" listener would pump the whole body at a request id the engine has already dropped, and a
+// pending "drain" would leave that request paused forever.
+test("a rejected data phase detaches every listener from the source stream", async () => {
+    const client = createClient();
+    const sent = [];
+    client._sendWriteData = (_rid, chunk) => { sent.push(chunk.toString()); };
+
+    const source = new PassThrough();
+    const { promise, rid } = await startDataPhase(client, source);
+
+    source.write(Buffer.from("before"));
+    client._pending.get(rid).reject(new Error("disk quota exceeded"));
+    await assert.rejects(promise, /disk quota exceeded/);
+
+    source.write(Buffer.from("after"));
+    await new Promise((r) => setImmediate(r));
+
+    assert.deepStrictEqual(sent, ["before"], "nothing may be sent at a request id that is already gone");
+    assert.strictEqual(source.listenerCount("data"), 0);
+    assert.strictEqual(source.listenerCount("end"), 0);
+    assert.strictEqual(source.listenerCount("error"), 0);
+    assert.strictEqual(client._socket.listenerCount("drain"), 0);
+});
