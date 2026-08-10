@@ -97,6 +97,8 @@ class FileTransfer {
         if (this.cancelled) return this._result(true);
         await this._ensureDirs(destination, plan.dirs);
 
+        const transferred = [];
+
         for (const file of plan.files) {
             if (this.cancelled) return this._result(true);
             const destPath = join(destination, file.relPath);
@@ -113,10 +115,17 @@ class FileTransfer {
                 continue;
             }
 
-            await this._copyFile(file, destPath);
+            const copied = await this._copyFile(file, destPath);
             // Cancellation during _copyFile itself only surfaces here: the loop has no further
             // iteration to catch it at the top when the cancelled file was the last one.
             if (this.cancelled) return this._result(true);
+            // _copyFile returns false for a skipped (vanished) source file — those must not be
+            // deleted from the source later, so they never enter `transferred`.
+            if (copied) transferred.push({ srcPath: file.srcPath, destPath, size: file.size });
+        }
+
+        if (this.action === "move") {
+            await this._finishMove(transferred, plan);
         }
 
         return this._result(false);
@@ -129,6 +138,52 @@ class FileTransfer {
             cancelled,
             leftovers: this.leftovers,
         };
+    }
+
+    async _finishMove(transferred, plan) {
+        if (this.sourceIncomplete) {
+            throw new Error("Verification incomplete: a source file vanished during the transfer, nothing was deleted");
+        }
+        await this._verifyAll(transferred);
+
+        // Deliberately not cancellable from here on: verification is done, and a half-finished
+        // cleanup produces exactly the inconsistent state this method exists to avoid.
+        const failed = [];
+        for (const item of transferred) {
+            try { await this.source.unlink(item.srcPath); } catch { failed.push(item.srcPath); }
+        }
+        // rmdir(path, true) would recursively delete everything below the source folder — also the
+        // skipped entries and anything created since the walk. Only what was verified may go, so
+        // directories are removed empty and from the inside out. One that stays has content left.
+        for (const dir of [...plan.dirs].reverse()) {
+            try { await this.source.rmdir(dir.srcPath, false); } catch { this.leftovers.push(dir.srcPath); }
+        }
+
+        if (failed.length > 0) {
+            // Every file is verified at the destination — this is not data loss but an incompletely
+            // cleaned up source. The message has to say so distinguishably.
+            const err = new Error(`Transfer complete, but the source was not fully removed: ${failed.join(", ")}`);
+            err.dataIsSafe = true;
+            throw err;
+        }
+    }
+
+    async _verifyAll(items) {
+        const useChecksum = Boolean(this.source.supportsChecksum && this.dest.supportsChecksum);
+
+        for (const item of items) {
+            const target = await this.dest.stat(item.destPath).catch(() => null);
+            if (!target || target.size !== item.size) {
+                throw new Error(`Verification failed: ${item.destPath}`);
+            }
+            if (useChecksum) {
+                const [srcHash, destHash] = await Promise.all([
+                    this.source.checksum(item.srcPath, "sha256"),
+                    this.dest.checksum(item.destPath, "sha256"),
+                ]);
+                if (srcHash !== destHash) throw new Error(`Verification failed: ${item.destPath}`);
+            }
+        }
     }
 
     // mkdirRecursive creates every parent segment of the path it is given, so a directory that
