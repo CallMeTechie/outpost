@@ -7,7 +7,7 @@ const { buildTransferHandlers } = require("../fileTransfer/transferHandlers");
 
 const OP = { TRANSFER_ERROR: 0x16, TRANSFER_DONE: 0x15, TRANSFER_PROGRESS: 0x14, TRANSFER_CONFLICT: 0x18 };
 
-const setup = (over = {}) => {
+const setup = (over = {}, ctxOver = {}) => {
     const sent = [];
     const released = [];
     const transfers = new Map();
@@ -32,8 +32,43 @@ const setup = (over = {}) => {
         ...over,
     };
     const ctx = { user: { id: "u" }, sessionId: "dst", serverSession: { entryId: "e-dst" },
-        entry: { id: "e-dst" }, ipAddress: "1.1.1.1", userAgent: "t", transfers, deps };
+        entry: { id: "e-dst" }, ipAddress: "1.1.1.1", userAgent: "t", transfers, deps, ...ctxOver };
     return { handlers: buildTransferHandlers(OP, ctx), sent, released, transfers, registry, fakeTransfer };
+};
+
+// A miniature of ConnectionService: the auxiliary client is cached ON THE CONNECTION it was opened
+// for, under the key the handler passes in, and a release closes exactly that entry. Two
+// destination sessions reaching for the same source is what makes that key's namespace matter.
+const fakeConnectionService = () => {
+    const conns = new Map();
+    const connFor = (sessionId) => {
+        if (!conns.has(sessionId)) {
+            conns.set(sessionId, { sessionId, sftpClient: { stat: async () => ({ isDir: false }) },
+                crossTransferClients: new Map() });
+        }
+        return conns.get(sessionId);
+    };
+    return {
+        conns,
+        connFor,
+        deps: {
+            getConnection: connFor,
+            getCrossClient: async (sessionId, entry, accountId, connectionKey) => {
+                const cache = connFor(sessionId).crossTransferClients;
+                if (!cache.has(connectionKey)) {
+                    cache.set(connectionKey, { sessionId, entry, accountId, connectionKey, closed: false });
+                }
+                return cache.get(connectionKey);
+            },
+            releaseCrossClient: (conn, connectionKey) => {
+                const client = conn?.crossTransferClients?.get(connectionKey);
+                if (!client) return;
+                client.closed = true;
+                conn.crossTransferClients.delete(connectionKey);
+            },
+            createAdapter: (client) => client,
+        },
+    };
 };
 
 const start = (over = {}) => ({ transferId: "t1", sourceSessionId: "src", paths: ["/a"],
@@ -78,7 +113,7 @@ test("a failure while building the transfer releases the slot", async () => {
     await s.handlers.start(start());
     assert.strictEqual(s.registry.reserved.length, 0, "slot leaked");
     assert.strictEqual(s.transfers.size, 0);
-    assert.deepStrictEqual(s.released, ["t1", "t1"], "both aux clients must be released");
+    assert.deepStrictEqual(s.released, ["dst:t1", "dst:t1"], "both aux clients must be released");
 });
 
 test("a full register is reported and reserves nothing", async () => {
@@ -115,7 +150,7 @@ test("a second start with a running id costs the first no cleanup", async () => 
     await s.handlers.start(start());
     endRun({ files: 1 });
     await new Promise((r) => setImmediate(r));
-    assert.deepStrictEqual(s.released, ["t1", "t1"], "the source aux client was never released");
+    assert.deepStrictEqual(s.released, ["dst:t1", "dst:t1"], "the source aux client was never released");
     assert.strictEqual(s.registry.reserved.length, 0, "slot leaked");
 });
 
@@ -160,9 +195,46 @@ test("both aux clients are opened for the caller and for their own side", async 
     const s = setup({ getCrossClient: async (...args) => { calls.push(args); return {}; } });
     await s.handlers.start(start());
     assert.deepStrictEqual(calls, [
-        ["src", { id: "e-src" }, "u", "t1"],
-        ["dst", { id: "e-dst", organizationId: "o" }, "u", "t1"],
+        ["src", { id: "e-src" }, "u", "dst:t1"],
+        ["dst", { id: "e-dst", organizationId: "o" }, "u", "dst:t1"],
     ]);
+});
+
+// The register lets two destination sessions run the same client-chosen id against one source:
+// reserve("dstA:t1") and reserve("dstB:t1") both succeed, and the source is only at its limit of
+// two afterwards. So the id alone must never name the auxiliary connection on the source.
+test("two destinations with the same transfer id do not share a source connection", async () => {
+    const svc = fakeConnectionService();
+    const deps = { ...svc.deps,
+        createTransfer: () => ({ run: () => new Promise(() => {}), cancel() {} }) };
+    const a = setup(deps, { sessionId: "dstA", user: { id: "u-a" } });
+    const b = setup(deps, { sessionId: "dstB", user: { id: "u-b" } });
+    await a.handlers.start(start());
+    await b.handlers.start(start());
+
+    const onSource = [...svc.connFor("src").crossTransferClients.values()];
+    assert.strictEqual(onSource.length, 2, "the second destination was handed the first one's connection");
+    assert.deepStrictEqual(onSource.map((c) => c.accountId), ["u-a", "u-b"],
+        "a connection opened under one account must never be served to another");
+});
+
+test("releasing one destination's transfer leaves the other one's connection open", async () => {
+    const svc = fakeConnectionService();
+    const ends = [];
+    const deps = { ...svc.deps,
+        createTransfer: () => ({ run: () => new Promise((r) => ends.push(r)), cancel() {} }) };
+    const a = setup(deps, { sessionId: "dstA", user: { id: "u-a" } });
+    const b = setup(deps, { sessionId: "dstB", user: { id: "u-b" } });
+    await a.handlers.start(start());
+    await b.handlers.start(start());
+    const sourceOfB = [...svc.connFor("src").crossTransferClients.values()].find((c) => c.accountId === "u-b");
+    assert.ok(sourceOfB, "the second destination never got its own source connection");
+
+    ends[0]({ files: 0 });
+    await new Promise((r) => setImmediate(r));
+
+    assert.strictEqual(sourceOfB.closed, false, "the first transfer's cleanup closed the other one's connection");
+    assert.strictEqual(svc.connFor("src").crossTransferClients.size, 1, "exactly the finished one must be gone");
 });
 
 // Everything that hangs off the source session must read the same from outside.
@@ -229,7 +301,7 @@ test("a finished run reports, frees the entry and releases both aux clients", as
     assert.ok(progress.every((m) => m.data.transferId === "t1"));
     assert.strictEqual(s.transfers.size, 0);
     assert.strictEqual(s.registry.reserved.length, 0);
-    assert.deepStrictEqual(s.released, ["t1", "t1"]);
+    assert.deepStrictEqual(s.released, ["dst:t1", "dst:t1"]);
 });
 
 test("a failing run is reported with its leftovers and cleans up just the same", async () => {
@@ -247,7 +319,7 @@ test("a failing run is reported with its leftovers and cleans up just the same",
         { transferId: "t1", message: "engine gave up", leftovers: ["/d/x"], sourceLeftovers: ["/a/y"] });
     assert.strictEqual(s.transfers.size, 0);
     assert.strictEqual(s.registry.reserved.length, 0);
-    assert.deepStrictEqual(s.released, ["t1", "t1"]);
+    assert.deepStrictEqual(s.released, ["dst:t1", "dst:t1"]);
 });
 
 // A run can end for reasons the client never answered for; the open question is a plain in-memory

@@ -16,7 +16,7 @@ const buildTransferHandlers = (OP, ctx) => {
         transfers.delete(transferId);
         try { deps.registry.release(key); } catch {}
         for (const sessionId of [entry?.sourceSessionId, ctx.sessionId].filter(Boolean)) {
-            try { deps.releaseCrossClient(deps.getConnection(sessionId), transferId); } catch {}
+            try { deps.releaseCrossClient(deps.getConnection(sessionId), key); } catch {}
         }
     };
 
@@ -73,8 +73,13 @@ const buildTransferHandlers = (OP, ctx) => {
 
                 // user.id, never session.accountId: it decides in resolveIdentity which credentials
                 // may be used, so the session owner's identity must not be borrowed here.
-                const sourceClient = await deps.getCrossClient(sourceSessionId, sourceEntry, ctx.user.id, transferId);
-                const destClient = await deps.getCrossClient(ctx.sessionId, destEntry, ctx.user.id, transferId);
+                // And `key`, never the bare transferId: the client picks that id, and the register
+                // lets two destination sessions run the same one against a single source. On that
+                // source the aux client is cached under this name, so the bare id would serve the
+                // second caller the first one's connection — opened under a foreign account, past
+                // the identity check — and the first to finish would close the other's.
+                const sourceClient = await deps.getCrossClient(sourceSessionId, sourceEntry, ctx.user.id, key);
+                const destClient = await deps.getCrossClient(ctx.sessionId, destEntry, ctx.user.id, key);
 
                 const broker = createConflictBroker({
                     send: (info) => send(OP.TRANSFER_CONFLICT, { transferId, ...info }),
@@ -131,7 +136,7 @@ const buildTransferHandlers = (OP, ctx) => {
                 if (reserved && key) {
                     try { deps.registry.release(key); } catch {}
                     for (const sessionId of [sourceSessionId, ctx.sessionId].filter(Boolean)) {
-                        try { deps.releaseCrossClient(deps.getConnection(sessionId), transferId); } catch {}
+                        try { deps.releaseCrossClient(deps.getConnection(sessionId), key); } catch {}
                     }
                 }
                 // A refused attempt is exactly what an audit trail is for. Logged on the
