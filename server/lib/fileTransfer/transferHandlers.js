@@ -14,8 +14,16 @@ const buildTransferHandlers = (OP, ctx) => {
         // for the rest of the session.
         const entry = transfers.get(transferId);
         transfers.delete(transferId);
+        // Nothing here can actually throw, and that is on purpose rather than unexamined: registry
+        // release() is pure work on two Maps (see registry.js). Kept as defense because this is the
+        // one place that hands the slot back, and since fix round 3 that slot IS the cap on
+        // auxiliary connections — a throw slipping in later must not cost the cap.
         try { deps.registry.release(key); } catch {}
         for (const sessionId of [entry?.sourceSessionId, ctx.sessionId].filter(Boolean)) {
+            // Same again, and just as deliberate: getConnection is a Map lookup, and
+            // releaseSFTPCrossTransferClient already wraps its own risky calls (client.close and
+            // the control-plane close) — everything left in it is property deletes and Map work.
+            // Kept so one side failing could never cost the other side its release.
             try { deps.releaseCrossClient(deps.getConnection(sessionId), key); } catch {}
         }
     };
@@ -177,8 +185,13 @@ const buildTransferHandlers = (OP, ctx) => {
                 // that aux connection open, and its cancel would stop reaching it.
                 if (ownEntry && transfers.get(transferId) === ownEntry) transfers.delete(transferId);
                 if (reserved && key) {
+                    // Unreachable for the same reasons as in finish() above — release() is Map work
+                    // — and kept for the same reason: this is the only path that gives back what a
+                    // failed or aborted setup took.
                     try { deps.registry.release(key); } catch {}
                     for (const sessionId of [sourceSessionId, ctx.sessionId].filter(Boolean)) {
+                        // Likewise: releaseSFTPCrossTransferClient catches its own risky calls, so
+                        // nothing that reaches here can throw. One side must not cost the other.
                         try { deps.releaseCrossClient(deps.getConnection(sessionId), key); } catch {}
                     }
                 }
@@ -191,6 +204,13 @@ const buildTransferHandlers = (OP, ctx) => {
                 // scope is often not resolved yet, and paths are logged as a count so a refusal
                 // never writes attacker-chosen strings into the trail. Wrapped because a failing
                 // audit must not replace the refusal the client is waiting for.
+                //
+                // As with the two above, nothing in here can currently throw: createAuditLog is
+                // async and has its own try/catch around its entire body (controllers/audit.js), so
+                // it swallows everything and never even rejects, and buildTransferAuditEntries only
+                // builds plain objects — auditPaths is an array by then, validateTransferStart
+                // having already checked it. The guard stands against a future audit writer that
+                // validates its arguments up front, which would throw synchronously right here.
                 if (auditPaths) {
                     try {
                         for (const entry of buildTransferAuditEntries({
