@@ -58,7 +58,7 @@ const release = (key) => {
 // second guarantee — it has holes, and they were misdescribed here before fix round 4. It only
 // runs when the session has a masterConnection at all, only for CONTROL_PLANE_TYPES connections,
 // and it only closes the ending session's own auxiliary sessions, never the peer's. Nor is the id
-// registered "before the connection attempt": ConnectionService.js's registerAuxSession runs after
+// registered "before the connection attempt": ConnectionService.js registers it only after
 // two awaited lookups (credentials and jump hosts), so a resolution that hangs leaves no id for
 // any sweep to find. Useful as a backstop, not something to lean on.
 //

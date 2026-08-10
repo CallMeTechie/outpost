@@ -59,7 +59,7 @@ test("cross transfer clients are closed when session ends", async () => {
 
 // Fix round 3, Finding 3: this loop can be deleted without any prior test noticing (none of them
 // populate conn.auxSessionIds). It is the backstop registry.js's releaseSession comment describes:
-// an auxiliary engine session registered by ConnectionService.js's registerAuxSession is force
+// an auxiliary engine session registered by ConnectionService.js's connect path is force
 // closed here when the session ends, which also lets a connection attempt still waiting on it
 // settle. Corrected in fix round 4: a backstop, not a guarantee — it only runs for a session that
 // has a master connection of a control-plane type, it closes only the ending session's own

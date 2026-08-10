@@ -178,6 +178,29 @@ test("a late arrival leaves a newer, legitimate connection under the same key un
     }
 });
 
+// Fix round 5, Finding 3: dropping the id from conn.auxSessionIds after a close that did NOT get
+// through turns a temporary orphan into a permanent one — the session-end sweep is the last thing
+// that could still reach this engine session, and it can only close ids it can still find.
+test("a late arrival whose control-plane close fails keeps its id for the session-end sweep", async () => {
+    const conn = { auxSessionIds: new Set(["s-unreachable"]) };
+    let resolveAttempt;
+    const done = opened({ engineSessionId: "s-unreachable" });
+    const attempt = new Promise((resolve) => { resolveAttempt = resolve; });
+
+    const original = controlPlane.closeSession;
+    controlPlane.closeSession = () => { throw new Error("control plane gone"); };
+    try {
+        await assert.rejects(() => connectWithDeadline(conn, "clientKey", "connectingKey", attempt, SHORT_MS, "cross-transfer"));
+        resolveAttempt(done);
+        await new Promise((r) => setTimeout(r, 5));
+
+        assert.strictEqual(conn.auxSessionIds.has("s-unreachable"), true,
+            "an id forgotten after a failed close can never be swept at session end either");
+    } finally {
+        controlPlane.closeSession = original;
+    }
+});
+
 test("a late arrival with a close() that throws still reaches the control plane", async () => {
     const conn = {};
     let resolveAttempt;

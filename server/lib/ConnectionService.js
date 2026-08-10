@@ -251,35 +251,15 @@ const createSFTPConnectionForSession = async (sessionId, entry, accountId) => {
     return session._connecting;
 };
 
-// Split out of getAuxiliarySFTPClient and exported as a test helper: the whole point of the
-// connectingKey line is that a second caller arriving mid-connect joins the attempt that is
-// already running instead of opening a second engine session for the same key, and that is only
-// observable from outside as "the same promise comes back".
-const existingAuxClient = (conn, clientKey, connectingKey) => {
-    if (conn[clientKey] && !conn[clientKey]._closed) return conn[clientKey];
-    if (conn[connectingKey]) return conn[connectingKey];
-    return null;
-};
-
-// Split out of getAuxiliarySFTPClient and exported as a test helper. Registering the id on the
-// connection is what lets SessionManager's cleanupConnection force-close this engine session when
-// the session ends; releaseSFTPCrossTransferClient and evictLateConnection take it back out again.
-const registerAuxSession = (conn, sessionId, suffix, onEngineSession) => {
-    conn._auxGeneration = (conn._auxGeneration || 0) + 1;
-    const engineSessionId = `${sessionId}-${suffix}-${conn._auxGeneration}`;
-    onEngineSession?.(engineSessionId);
-    if (!conn.auxSessionIds) conn.auxSessionIds = new Set();
-    conn.auxSessionIds.add(engineSessionId);
-    return engineSessionId;
-};
-
 const getAuxiliarySFTPClient = async (sessionId, entry, accountId, opts) => {
     const { suffix, clientKey, connectingKey, label, onEngineSession, timeoutMs } = opts;
     const session = requireSession(sessionId);
     const conn = SessionManager.getConnection(sessionId);
     if (!conn) throw new Error("No active SFTP session");
-    const existing = existingAuxClient(conn, clientKey, connectingKey);
-    if (existing) return existing;
+    if (conn[clientKey] && !conn[clientKey]._closed) return conn[clientKey];
+    // A second caller arriving mid-connect joins the attempt already running instead of opening a
+    // second engine session against the same host under the same key — the cap accounts for one.
+    if (conn[connectingKey]) return conn[connectingKey];
 
     const attempt = (async () => {
         requireEngine();
@@ -287,7 +267,14 @@ const getAuxiliarySFTPClient = async (sessionId, entry, accountId, opts) => {
         const { host, port, params } = await resolveFileTransferContext(entry, identityId, directIdentity, accountId);
         const jumpHosts = await resolveJumpHosts(entry);
 
-        const engineSessionId = registerAuxSession(conn, sessionId, suffix, onEngineSession);
+        conn._auxGeneration = (conn._auxGeneration || 0) + 1;
+        const engineSessionId = `${sessionId}-${suffix}-${conn._auxGeneration}`;
+        onEngineSession?.(engineSessionId);
+        // Registering the id here is what lets SessionManager's cleanupConnection force-close this
+        // engine session when the session ends; releaseSFTPCrossTransferClient and
+        // evictLateConnection take it back out again once it is closed for good.
+        if (!conn.auxSessionIds) conn.auxSessionIds = new Set();
+        conn.auxSessionIds.add(engineSessionId);
 
         const dataSocket = await openEngineSession(
             engineSessionId, SessionType.SFTP, host, port, params, jumpHosts, entry.config?.engineId
@@ -323,8 +310,14 @@ const getAuxiliarySFTPClient = async (sessionId, entry, accountId, opts) => {
 const evictLateConnection = (conn, client, engineSessionId) => {
     try { client?.close(); } catch {}
     if (!engineSessionId) return;
-    try { controlPlane.closeSession(engineSessionId); } catch {}
-    conn.auxSessionIds?.delete(engineSessionId);
+    try {
+        controlPlane.closeSession(engineSessionId);
+        // Only once that actually got through: forgetting the id after a failed close would turn a
+        // temporary orphan into a permanent one, because the session-end sweep over auxSessionIds
+        // is then the last thing that could still reach this engine session — and it can only
+        // close ids it can still find.
+        conn.auxSessionIds?.delete(engineSessionId);
+    } catch {}
 };
 
 // Split out of getAuxiliarySFTPClient and exported as a test helper: it only ever touches the
@@ -399,21 +392,30 @@ const getSFTPCrossTransferClient = async (sessionId, entry, accountId, transferI
 };
 
 const releaseSFTPCrossTransferClient = (conn, transferId) => {
-    const entry = conn?.crossTransferClients?.get(transferId);
+    if (!conn) return;
+    // Before the bail-out below, not after it: getAuxiliarySFTPClient parks a per-transfer
+    // connectingKey on the connection and only nulls it in its finally, and a connect that failed
+    // or ran out its deadline never gets as far as a crossTransferClients entry. Releasing only
+    // when there is an entry would leave that dead property behind for the life of the session,
+    // once per failed transfer.
+    delete conn[crossTransferKeys(transferId).connectingKey];
+
+    const entry = conn.crossTransferClients?.get(transferId);
     if (!entry) return;
 
     try { entry.client?.close(); } catch {}
     // close() only destroys the socket; the control plane has to be told separately — otherwise
     // the engine session survives until the master session ends.
     if (entry.engineSessionId) {
-        try { controlPlane.closeSession(entry.engineSessionId); } catch {}
-        conn.auxSessionIds?.delete(entry.engineSessionId);
+        try {
+            controlPlane.closeSession(entry.engineSessionId);
+            // Same reasoning as in evictLateConnection: an id dropped from the connection after a
+            // failed close can never be swept at session end either.
+            conn.auxSessionIds?.delete(entry.engineSessionId);
+        } catch {}
     }
     // detach() only sets conn[clientKey] = null, so without delete a dead property piles up.
-    // getAuxiliarySFTPClient parks a per-transfer connectingKey on the same connection and nulls
-    // it in its finally — exactly the same kind of dead property, one line further along.
     delete conn[entry.clientKey];
-    delete conn[crossTransferKeys(transferId).connectingKey];
     conn.crossTransferClients.delete(transferId);
 };
 
@@ -736,8 +738,4 @@ module.exports = {
     // can be pinned with millisecond-scale fake attempts instead of any real connection.
     withTimeout,
     connectWithDeadline,
-    // Test helpers (fix round 4): the two steps of getAuxiliarySFTPClient that carry a guarantee of
-    // their own — joining a concurrent attempt, and registering the engine session for cleanup.
-    existingAuxClient,
-    registerAuxSession,
 };

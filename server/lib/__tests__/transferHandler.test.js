@@ -3,7 +3,7 @@ const assert = require("node:assert");
 
 // The handler factory takes its heavy dependencies through ctx.deps, which makes it testable
 // without module mocking. The production path fills ctx.deps at the call site.
-const { buildTransferHandlers } = require("../fileTransfer/transferHandlers");
+const { buildTransferHandlers, CONFLICT_TIMEOUT } = require("../fileTransfer/transferHandlers");
 const { cancelAllTransfers } = require("../../routes/sftpWS");
 
 const OP = { TRANSFER_ERROR: 0x16, TRANSFER_DONE: 0x15, TRANSFER_PROGRESS: 0x14, TRANSFER_CONFLICT: 0x18 };
@@ -522,4 +522,53 @@ test("resolve is forwarded to the broker of its own transfer", async () => {
     s.transfers.get("t1").broker = { resolve: (r) => seen.push(r), cancel: () => {} };
     s.handlers.resolve({ transferId: "t1", file: "a.txt", choice: "overwrite" });
     assert.deepStrictEqual(seen, [{ transferId: "t1", file: "a.txt", choice: "overwrite" }]);
+});
+
+// Fix round 5, Finding 2: broker.cancel() sits in the run's finally, immediately before finish() —
+// the only place that hands the registry slot back, and since fix round 3 that slot IS the cap on
+// auxiliary connections, not just bookkeeping. A throw there would hold it for good.
+//
+// Testable without any module mocking, contrary to what fix round 4 claimed: createConflictBroker
+// binds its clearTimeout as a DEFAULT PARAMETER, evaluated when transferHandlers calls it — so
+// swapping the global for the duration of start() reaches the very broker the production code
+// builds for itself. Only the handle this broker armed (recognised by its distinctive
+// CONFLICT_TIMEOUT delay) is made to throw; every other timer in the process keeps the real
+// clearTimeout, and the armed one is cleared for real at the end so nothing outlives the test.
+test("a broker that throws while being cancelled still releases the registry slot", async () => {
+    const realSetTimeout = global.setTimeout;
+    const realClearTimeout = global.clearTimeout;
+    const armed = new Set();
+    global.setTimeout = (fn, ms, ...rest) => {
+        const handle = realSetTimeout(fn, ms, ...rest);
+        if (ms === CONFLICT_TIMEOUT) armed.add(handle);
+        return handle;
+    };
+    global.clearTimeout = (handle) => {
+        if (armed.has(handle)) throw new Error("clearTimeout blew up");
+        return realClearTimeout(handle);
+    };
+
+    try {
+        const s = setup({
+            // Asks a conflict question and then finishes without waiting for the answer: the run's
+            // finally then reaches broker.cancel() with a question still open, which is the one
+            // state in which cancel() touches that timer at all.
+            createTransfer: ({ onConflict }) => ({
+                run: () => { onConflict({ file: "/a" }).catch(() => {}); return Promise.resolve({ copied: 1 }); },
+                cancel() {},
+            }),
+        });
+
+        await s.handlers.start(start());
+        await new Promise((r) => realSetTimeout(r, 5));
+
+        assert.deepStrictEqual(s.registry.reserved, [],
+            "the slot must come back even when cancelling the broker throws");
+        assert.strictEqual(s.transfers.size, 0, "and the transfer must not stay registered");
+        assert.deepStrictEqual(s.released, ["dst:t1", "dst:t1"], "both aux clients still have to be released");
+    } finally {
+        for (const handle of armed) realClearTimeout(handle);
+        global.setTimeout = realSetTimeout;
+        global.clearTimeout = realClearTimeout;
+    }
 });
