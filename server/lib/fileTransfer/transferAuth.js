@@ -92,9 +92,14 @@ const CONFLICT_MODES = new Set(["ask", "overwrite", "skip"]);
 // Restrictive on purpose: the id is used as part of a connection key. Verify this literal with a
 // short `node -e` run against "a:b", "" and a 65-character string before trusting it.
 const TRANSFER_ID = /^[A-Za-z0-9_-]{1,64}$/;
-// The character class alone lets "__proto__" and "constructor" through — harmless today, because
-// the register uses Maps and the connection keys are prefixed, but both would be sharp the moment
-// anyone indexes a plain object by transfer id.
+// The character class alone lets "__proto__", "constructor" and "prototype" through — harmless
+// today, because the register uses Maps and the connection keys are prefixed, but all three would
+// be sharp the moment anyone indexes a plain object by transfer id: they reach across the
+// prototype chain into shared state. "toString", "valueOf" and "hasOwnProperty" are deliberately
+// NOT on this list: a plain-object lookup keyed by one of them shadows an inherited method with a
+// value on that one object, which breaks that object's own calls but reaches no other object and
+// pollutes nothing shared — a robustness concern, not the pollution primitive this list exists to
+// block.
 const RESERVED_IDS = new Set(["__proto__", "constructor", "prototype"]);
 const MAX_TRANSFER_PATHS = 256;
 const MAX_PATH_LENGTH = 4096;
@@ -136,8 +141,10 @@ const buildTransferAuditEntries = ({ user, sourceScope, destScope, sourceEntryId
             details: { refused: true, sourceSessionId, paths: paths.length } }];
     }
     return [
+        // paths is copied: it is a security trail, and must not change if the caller mutates the
+        // array it passed in after this entry was built.
         { ...common, organizationId: sourceScope.organizationId, action: AUDIT_ACTIONS.FILE_DOWNLOAD,
-            details: { sourceSessionId, paths, action, destEntryId } },
+            details: { sourceSessionId, paths: [...paths], action, destEntryId } },
         { ...common, organizationId: destScope.organizationId, action: AUDIT_ACTIONS.FILE_UPLOAD,
             details: { sourceEntryId, destination, action } },
     ];

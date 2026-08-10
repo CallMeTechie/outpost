@@ -64,3 +64,35 @@ test("a non-string or overlong path is refused", () => {
     assert.throws(() => validateTransferStart({ ...ok, paths: [7] }, DST), /invalid/i);
     assert.throws(() => validateTransferStart({ ...ok, paths: ["x".repeat(4097)] }, DST), /invalid/i);
 });
+
+test("an empty path within paths is refused", () => {
+    assert.throws(() => validateTransferStart({ ...ok, paths: [""] }, DST), /invalid/i);
+});
+
+test("a non-array paths value is refused", () => {
+    assert.throws(() => validateTransferStart({ ...ok, paths: "/a" }, DST), /invalid/i);
+});
+
+test("an empty sourceSessionId is refused", () => {
+    assert.throws(() => validateTransferStart({ ...ok, sourceSessionId: "" }, DST), /invalid/i);
+});
+
+test("an empty destination is refused", () => {
+    assert.throws(() => validateTransferStart({ ...ok, destination: "" }, DST), /invalid/i);
+});
+
+test("a destination longer than the path length limit is refused", () => {
+    assert.throws(() => validateTransferStart({ ...ok, destination: "/" + "x".repeat(4096) }, DST), /invalid/i);
+});
+
+// The four passed-through fields feed the register key, the auxiliary connections and the run
+// itself in the next task — a swap here would not crash, it would move the wrong files.
+test("transferId, sourceSessionId, destination and paths pass through unchanged and unswapped", () => {
+    const payload = { transferId: "tx-1", sourceSessionId: "sess-2", paths: ["/path-3", "/path-4"],
+        destination: "/dest-5", action: "copy" };
+    const result = validateTransferStart(payload, "unrelated-dst");
+    assert.strictEqual(result.transferId, "tx-1");
+    assert.strictEqual(result.sourceSessionId, "sess-2");
+    assert.strictEqual(result.destination, "/dest-5");
+    assert.deepStrictEqual(result.paths, ["/path-3", "/path-4"]);
+});

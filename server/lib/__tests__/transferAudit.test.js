@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert");
 const { buildTransferAuditEntries } = require("../fileTransfer/transferAuth");
-const { AUDIT_ACTIONS } = require("../../controllers/audit");
+const { AUDIT_ACTIONS, RESOURCE_TYPES } = require("../../controllers/audit");
 
 const base = {
     user: { id: "u1" },
@@ -43,4 +43,38 @@ test("a refused attempt is marked and needs no source scope", () => {
     const [entry] = buildTransferAuditEntries({ ...base, sourceScope: null, refused: true });
     assert.strictEqual(entry.details.refused, true);
     assert.strictEqual(entry.organizationId, "org-dst");
+});
+
+test("both entries are logged under the file resource type", () => {
+    for (const entry of buildTransferAuditEntries(base)) {
+        assert.strictEqual(entry.resource, RESOURCE_TYPES.FILE);
+    }
+});
+
+// The refused entry is meant to record how many paths were probed, not which ones — the full
+// list would leak the attempt's target into a log the destination org, which never authorized
+// the source side, can already read.
+test("a refused attempt logs how many paths were requested, not which ones", () => {
+    const [entry] = buildTransferAuditEntries({ ...base, sourceScope: null, refused: true });
+    assert.strictEqual(entry.details.paths, base.paths.length);
+});
+
+test("the source entry carries the session id and the full path list", () => {
+    const [src] = buildTransferAuditEntries(base);
+    assert.strictEqual(src.details.sourceSessionId, "s1");
+    assert.deepStrictEqual(src.details.paths, ["/a", "/b"]);
+});
+
+test("the destination entry carries the destination path", () => {
+    const [, dst] = buildTransferAuditEntries(base);
+    assert.strictEqual(dst.details.destination, "/d");
+});
+
+// The audit entry is a security trail: once built, it must not change under the caller's feet
+// if the caller goes on to mutate the paths array it passed in.
+test("the source entry keeps its own copy of paths, unaffected by later mutation of the caller's array", () => {
+    const paths = ["/a", "/b"];
+    const [src] = buildTransferAuditEntries({ ...base, paths });
+    paths.push("/c");
+    assert.deepStrictEqual(src.details.paths, ["/a", "/b"]);
 });
