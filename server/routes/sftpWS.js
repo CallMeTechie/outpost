@@ -19,6 +19,9 @@ const OP = {
     DELETE_FOLDER: 0x7, RENAME_FILE: 0x8, ERROR: 0x9, SEARCH_DIRECTORIES: 0xA,
     RESOLVE_SYMLINK: 0xB, MOVE_FILES: 0xC, COPY_FILES: 0xD, CHMOD: 0xE,
     STAT: 0xF, CHECKSUM: 0x10, FOLDER_SIZE: 0x11, PATH_SYNC: 0x12,
+    TRANSFER_START: 0x13, TRANSFER_PROGRESS: 0x14, TRANSFER_DONE: 0x15,
+    TRANSFER_ERROR: 0x16, TRANSFER_CANCEL: 0x17, TRANSFER_CONFLICT: 0x18,
+    TRANSFER_RESOLVE: 0x19,
 };
 
 const MUTATING_OPS = new Set([
@@ -43,7 +46,10 @@ const requireShell = (capabilities) => {
     if (!capabilities.shell) throw new Error("This operation is not supported over FTP");
 };
 
-const buildOperationHandlers = (sftp, getBg, ws, logAudit, capabilities) => ({
+// ctx carries per-connection state (user, session, and the transfer register) for the
+// transfer opcode handlers landing in a later task; no handler here reads it yet.
+// eslint-disable-next-line no-unused-vars
+const buildOperationHandlers = (sftp, getBg, ws, logAudit, capabilities, ctx) => ({
     [OP.LIST_FILES]: async (p) => {
         requirePath(p);
         sendResult(ws, OP.LIST_FILES, { files: await sftp.listDir(p.path) });
@@ -205,7 +211,10 @@ module.exports = async (ws, req) => {
         const logAudit = (action, resource, details) => {
             createAuditLog({ accountId: user.id, organizationId: entry.organizationId, action, resource, details, ipAddress, userAgent });
         };
-        const handlers = buildOperationHandlers(sftpClient, getBg, ws, logAudit, capabilities);
+        const transfers = new Map();
+        const handlers = buildOperationHandlers(sftpClient, getBg, ws, logAudit, capabilities, {
+            user, sessionId, serverSession, entry, ipAddress, userAgent, transfers,
+        });
 
         const messageHandler = async (msg) => {
             const opCode = msg[0];
@@ -252,3 +261,5 @@ module.exports = async (ws, req) => {
         try { ws.close(4005); } catch {}
     }
 };
+
+module.exports.OP = OP;
