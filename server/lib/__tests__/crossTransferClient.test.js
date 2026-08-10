@@ -1,6 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert");
 const { PassThrough } = require("node:stream");
+const flatbuffers = require("flatbuffers");
+const { SftpMsgType, SftpMessage } = require("../generated/sftp_protocol_generated");
 const {
     crossTransferKeys,
     getSFTPCrossTransferClient,
@@ -251,6 +253,37 @@ const withFakeEngine = async (openSession, body, waitForDataConnection = () => n
 const withSilentEngine = (body) =>
     withFakeEngine(async () => ({ success: true }), body, async () => new PassThrough());
 
+// The single frame that makes EngineSftpClient#waitForReady resolve. Built the same way every
+// other engine-protocol test in this suite builds its frames, so a real client on a real stream
+// completes a real connect — no part of ConnectionService is stubbed out.
+const framed = (payload) => {
+    const header = Buffer.alloc(4);
+    header.writeUInt32BE(payload.length, 0);
+    return Buffer.concat([header, Buffer.from(payload)]);
+};
+
+const readyFrame = () => {
+    const b = new flatbuffers.Builder(64);
+    SftpMessage.startSftpMessage(b);
+    SftpMessage.addMsgType(b, SftpMsgType.Ready);
+    SftpMessage.finishSftpMessageBuffer(b, SftpMessage.endSftpMessage(b));
+    return framed(b.asUint8Array());
+};
+
+// A host that answers properly. The frame is written before anything reads from the stream;
+// PassThrough holds it until EngineSftpClient attaches its own "data" listener, so the ready
+// signal cannot be missed by arriving too early.
+const withConnectedEngine = (body) =>
+    withFakeEngine(async () => ({ success: true }), body, async () => {
+        const socket = new PassThrough();
+        socket.write(readyFrame());
+        return socket;
+    });
+
+// Captured before any test shortens the deadline, so a bounded race can still be timed with a real
+// timer while global.setTimeout is swapped.
+const REAL_SET_TIMEOUT = global.setTimeout;
+
 // Runs `body` with the cross-transfer connect deadline shortened to a few milliseconds. Only timers
 // armed with exactly CROSS_TRANSFER_CONNECT_TIMEOUT_MS are touched — that value is the deadline's
 // own signature, so this reaches the production path's timer and nothing else in the process.
@@ -264,6 +297,15 @@ const withShortenedCrossTransferDeadline = async (body) => {
         global.setTimeout = realSetTimeout;
     }
 };
+
+// Reports how a cross-transfer connect ended, and always reports something: an unbounded connect
+// would otherwise hang this file rather than fail it, and a hanging test proves nothing about a
+// deadline that is no longer there.
+const connectOutcome = (sessionId, transferId, budgetMs = 300) => Promise.race([
+    getSFTPCrossTransferClient(sessionId, SFTP_ENTRY, "acc-1", transferId)
+        .then(() => "connected", (err) => err.message),
+    new Promise((r) => REAL_SET_TIMEOUT(() => r("still connecting"), budgetMs)),
+]);
 
 test("the connect path itself registers its engine session on the connection", async () => {
     const { sessionId, conn } = connectedSession();
@@ -352,19 +394,86 @@ test("a source that never reports ready has its engine session closed when the d
 
     const spy = spyOnCloseSession();
     try {
-        await withShortenedCrossTransferDeadline(async () => {
-            await withSilentEngine(async () => {
-                await assert.rejects(
-                    () => getSFTPCrossTransferClient(sessionId, SFTP_ENTRY, "acc-1", "t-silent"),
-                    /Timed out opening cross-transfer connection/
-                );
-            });
-        });
+        const outcome = await withShortenedCrossTransferDeadline(() =>
+            withSilentEngine(() => connectOutcome(sessionId, "t-silent")));
+        assert.strictEqual(outcome, "Timed out opening cross-transfer connection");
 
         assert.deepStrictEqual(spy.calls, [[`${sessionId}-cxfer-1`]],
             "an attempt that never settles is only ever reachable from the deadline itself");
         assert.strictEqual(conn.auxSessionIds.size, 0);
     } finally {
         spy.restore();
+    }
+});
+
+// Fix round 6, Finding B: the deadline was only ever pinned at connectWithDeadline and at
+// crossTransferKeys — never at the line that brings the two together. Both halves of that line
+// survived mutation: handing over an undefined timeoutMs (connectWithDeadline reads that as "no
+// deadline at all"), and replacing the call with the inline publish it was extracted from. Either
+// one puts every cross-transfer connect back to waiting forever, and neither showed up anywhere.
+// This drives the real getSFTPCrossTransferClient against a host that never answers.
+test("the cross-transfer connect path is actually bounded, not merely capable of being bounded", async () => {
+    const { sessionId } = connectedSession();
+
+    const outcome = await withShortenedCrossTransferDeadline(() =>
+        withSilentEngine(() => connectOutcome(sessionId, "t-bounded")));
+
+    assert.strictEqual(outcome, "Timed out opening cross-transfer connection",
+        "a connect that no deadline reaches leaves the caller, and its registry slot, waiting for good");
+});
+
+// Fix round 6, Finding B: without a connect that actually succeeds, nothing proved that the
+// production path records what it opened. Deleting the crossTransferClients.set leaves the release
+// with nothing to find — every transfer would then leak its client and its engine session — and
+// dropping the onEngineSession callback leaves the recorded id empty, which makes the release skip
+// the control plane and leak the engine session just the same. Both are invisible to a test that
+// pre-populates that bookkeeping itself, which is all this file used to have.
+test("a cross-transfer connect that succeeds records the engine session it opened", async () => {
+    const { sessionId, conn } = connectedSession();
+
+    await withConnectedEngine(async () => {
+        const client = await getSFTPCrossTransferClient(sessionId, SFTP_ENTRY, "acc-1", "t-live");
+        assert.ok(client, "the connect must really have produced a client");
+    });
+
+    assert.strictEqual(conn.crossTransferClients.get("t-live")?.engineSessionId, `${sessionId}-cxfer-1`,
+        "an unrecorded engine session is one the release can never close");
+
+    const spy = spyOnCloseSession();
+    try {
+        releaseSFTPCrossTransferClient(conn, "t-live");
+        assert.deepStrictEqual(spy.calls, [[`${sessionId}-cxfer-1`]]);
+        assert.strictEqual(conn.auxSessionIds.size, 0);
+        assert.strictEqual("crossTransferClient:t-live" in conn, false);
+    } finally {
+        spy.restore();
+    }
+});
+
+// Fix round 6, Finding B: pinning the generation counter needs two connects on ONE connection. Fix
+// it at a constant and both transfers share an engine session id — releasing the first would then
+// close the second's engine session out from under a running transfer.
+test("two transfers on one session never share an engine session id", async () => {
+    const { sessionId, conn } = connectedSession();
+
+    await withConnectedEngine(async () => {
+        await getSFTPCrossTransferClient(sessionId, SFTP_ENTRY, "acc-1", "t-one");
+        await getSFTPCrossTransferClient(sessionId, SFTP_ENTRY, "acc-1", "t-two");
+    });
+
+    assert.deepStrictEqual(
+        ["t-one", "t-two"].map((id) => conn.crossTransferClients.get(id)?.engineSessionId),
+        [`${sessionId}-cxfer-1`, `${sessionId}-cxfer-2`]);
+    assert.strictEqual(conn.auxSessionIds.size, 2, "two connections, two engine sessions");
+
+    const spy = spyOnCloseSession();
+    try {
+        releaseSFTPCrossTransferClient(conn, "t-one");
+        assert.deepStrictEqual(spy.calls, [[`${sessionId}-cxfer-1`]],
+            "releasing one transfer must never close another one's engine session");
+        assert.strictEqual(conn.auxSessionIds.has(`${sessionId}-cxfer-2`), true);
+    } finally {
+        spy.restore();
+        releaseSFTPCrossTransferClient(conn, "t-two");
     }
 });
