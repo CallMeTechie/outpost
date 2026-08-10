@@ -79,7 +79,18 @@ class FileTransfer {
     }
 
     async _run(paths, destination) {
-        const plan = await walk(this.source, paths, { isCancelled: () => this.cancelled });
+        let plan;
+        try {
+            plan = await walk(this.source, paths, { isCancelled: () => this.cancelled });
+        } catch (err) {
+            // walk() throws "Transfer cancelled" through the exact same isCancelled() guard that
+            // set this.cancelled in the first place — a genuine walk error (unsafe name, tree too
+            // deep, too many entries) can never coincide with this.cancelled being true, because
+            // the guard checks cancellation first and would have short-circuited before reaching
+            // those checks. So this flag alone tells cancellation and real failure apart.
+            if (this.cancelled) return this._result(true);
+            throw err;
+        }
         this.bytesTotal = plan.totalBytes;
         this.filesTotal = plan.files.length;
         this.filesSkipped = plan.skipped.length;
@@ -153,6 +164,11 @@ class FileTransfer {
         let timer = null;
         let watchdogError = null;
         let onCancel = null;
+        // Narrower than this.cancelled: only set by our own onCancel hook, so the catch block
+        // below can tell "the cancel hook actually fired" apart from "cancelled happens to be
+        // true for some unrelated reason" — a future bug (e.g. a TDZ ReferenceError) must still
+        // surface as a thrown error instead of being reported as a clean cancellation.
+        let cancelledMidCopy = false;
 
         try {
             const opened = this.source.readFile(file.srcPath);
@@ -182,7 +198,10 @@ class FileTransfer {
 
             // Must come after fail(): onCancel calls it, and the synchronous self-call below would
             // otherwise hit the temporal dead zone.
-            onCancel = () => fail("Transfer cancelled");
+            onCancel = () => {
+                cancelledMidCopy = true;
+                fail("Transfer cancelled");
+            };
             this._cancelHooks.add(onCancel);
             if (this.cancelled) onCancel();
 
@@ -224,7 +243,9 @@ class FileTransfer {
         } catch (err) {
             if (writeAttempted) await this._removePartial(destPath);
             // Cancelling is not an error: run() returns cancelled: true instead of throwing.
-            if (this.cancelled) return false;
+            // Scoped to our own hook firing, not just this.cancelled — otherwise an unrelated bug
+            // that happens to throw while a cancel is pending would be silently swallowed here.
+            if (cancelledMidCopy) return false;
             if (isNotFound(err)) {
                 // A source file that vanished between walk and read counts as skipped, not fatal,
                 // and a move must not delete anything after this. Pull it out of the totals too,
