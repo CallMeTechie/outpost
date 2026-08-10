@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const { reserve, release, releaseSession, countFor, MAX_CROSS_TRANSFERS } = require("../fileTransfer/registry");
+const { reserve, release, releaseSession, countFor, MAX_CROSS_TRANSFERS, _getInternalState } = require("../fileTransfer/registry");
 
 test("a transfer counts for both of its sessions", () => {
     assert.strictEqual(reserve("t1", ["src", "dst"]), true);
@@ -38,4 +38,33 @@ test("releasing a session drops all of its transfers", () => {
 test("releasing an unknown key is a no-op", () => {
     assert.doesNotThrow(() => release("nope"));
     assert.doesNotThrow(() => releaseSession("nope"));
+});
+
+test("reusing a key is rejected and does not corrupt state", () => {
+    assert.strictEqual(reserve("reused", ["a", "b"]), true);
+    assert.strictEqual(countFor("a"), 1);
+    assert.strictEqual(countFor("b"), 1);
+    // Try to reuse the same key with different sessions
+    assert.strictEqual(reserve("reused", ["c", "d"]), false);
+    // The original sessions should still be counted
+    assert.strictEqual(countFor("a"), 1);
+    assert.strictEqual(countFor("b"), 1);
+    assert.strictEqual(countFor("c"), 0);
+    assert.strictEqual(countFor("d"), 0);
+    // After release, both original sessions should be back to 0
+    release("reused");
+    assert.strictEqual(countFor("a"), 0);
+    assert.strictEqual(countFor("b"), 0);
+});
+
+test("releasing all transfers leaves no orphaned session entries", () => {
+    assert.strictEqual(reserve("orphan1", ["sess1", "sess2"]), true);
+    assert.strictEqual(reserve("orphan2", ["sess3", "sess4"]), true);
+    const stateBefore = _getInternalState();
+    assert.strictEqual(stateBefore.sessionCount, 4, "4 sessions registered");
+    release("orphan1");
+    release("orphan2");
+    const stateAfter = _getInternalState();
+    assert.strictEqual(stateAfter.sessionCount, 0, "no orphaned entries after release");
+    assert.strictEqual(stateAfter.keyCount, 0, "no orphaned keys");
 });

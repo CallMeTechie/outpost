@@ -10,6 +10,10 @@ const byKey = new Map();       // key -> sessionId[]
 const countFor = (sessionId) => bySession.get(sessionId)?.size ?? 0;
 
 const reserve = (key, sessionIds) => {
+    // Reject if this key is already registered: a key must be unique.
+    // This prevents double-reservation from orphaning sessions in bySession.
+    if (byKey.has(key)) return false;
+
     const unique = [...new Set(sessionIds)];
     if (unique.some((id) => countFor(id) >= MAX_CROSS_TRANSFERS)) return false;
     for (const id of unique) {
@@ -35,4 +39,10 @@ const releaseSession = (sessionId) => {
     bySession.delete(sessionId);
 };
 
-module.exports = { reserve, release, releaseSession, countFor, MAX_CROSS_TRANSFERS };
+// Test helper: expose internal map sizes to verify cleanup.
+const _getInternalState = () => ({
+    sessionCount: bySession.size,
+    keyCount: byKey.size,
+});
+
+module.exports = { reserve, release, releaseSession, countFor, MAX_CROSS_TRANSFERS, _getInternalState };
