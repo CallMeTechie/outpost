@@ -23,6 +23,10 @@ const authorizeSource = async (deps, { user, sourceSessionId, action }) => {
     const { getSession, getConnection, findEntry, resolveEntryScope, validateEntryAccess,
         hasResourcePermission } = deps;
 
+    // A caller without a resolved identity (link-share sockets carry user: null) gets the same
+    // uniform refusal as everyone else instead of crashing with a TypeError below.
+    if (!user?.id) refuse();
+
     // 1. The source session exists and still has a live connection.
     const session = getSession(sourceSessionId);
     if (!session) refuse();
@@ -33,7 +37,9 @@ const authorizeSource = async (deps, { user, sourceSessionId, action }) => {
     //    non-owner whose tab is gone is no longer a participant. That is intended.
     if (session.accountId !== user.id) {
         const participant = [...(session.participants?.values() ?? [])]
-            .find((p) => p.accountId === user.id);
+            // A participant with no accountId (link share) must never match, no matter what
+            // user.id is — comparing two falsy values would otherwise let it through.
+            .find((p) => p.accountId != null && p.accountId === user.id);
         // A read-only viewer may watch, not siphon. Link shares have no accountId at all.
         if (!participant || !participant.writable) refuse();
     }

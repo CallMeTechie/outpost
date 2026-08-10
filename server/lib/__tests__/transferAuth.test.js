@@ -60,8 +60,34 @@ test("a link share participant without an account is refused", async () => {
     await assert.rejects(() => authorizeSource(d, srcReq()), TransferNotPermittedError);
 });
 
+// A link-share socket has no resolved user at all. It must be refused like any other caller,
+// not crash with a TypeError from reading `.id` off null — a distinguishable failure mode is
+// exactly the kind of leak the uniform error exists to prevent.
+test("a null user is refused instead of throwing", async () => {
+    await assert.rejects(() => authorizeSource(deps(), srcReq({ user: null })), TransferNotPermittedError);
+});
+
+// If user.id were ever falsy (e.g. { id: null }), comparing it directly against a participant's
+// accountId would let a link-share participant (also accountId: null) match by accident. The
+// participant must never match on a falsy accountId, regardless of what user.id happens to be.
+test("a link share participant with a null accountId never matches a userless caller", async () => {
+    const participants = new Map([[{}, { accountId: null, writable: true }]]);
+    const d = deps({ getSession: () => ({ accountId: "owner", entryId: "src-entry", participants }) });
+    await assert.rejects(() => authorizeSource(d, srcReq({ user: { id: null } })), TransferNotPermittedError);
+});
+
 test("a source entry the user may not access is refused", async () => {
     const d = deps({ validateEntryAccess: async () => ({ code: 403, message: "nope" }) });
+    await assert.rejects(() => authorizeSource(d, srcReq()), TransferNotPermittedError);
+});
+
+test("a missing source entry is refused", async () => {
+    const d = deps({ findEntry: async () => null });
+    await assert.rejects(() => authorizeSource(d, srcReq()), TransferNotPermittedError);
+});
+
+test("missing FILES_VIEW on the source is refused", async () => {
+    const d = deps({ hasResourcePermission: async (_a, _o, p) => p !== Permission.FILES_VIEW });
     await assert.rejects(() => authorizeSource(d, srcReq()), TransferNotPermittedError);
 });
 
@@ -82,6 +108,14 @@ test("a scope with an undefined organization is refused", async () => {
     const d = deps({ resolveEntryScope: async () => ({ organizationId: undefined, ownerAccountId: undefined }) });
     await assert.rejects(() => authorizeSource(d, srcReq()), TransferNotPermittedError);
     await assert.rejects(() => authorizeDestination(d, dstReq()), TransferNotPermittedError);
+});
+
+// null is a valid, truly personal scope and must NOT be refused — only undefined (a reduced
+// attribute set) is. A falsy check (`!scope.organizationId`) would wrongly reject this too.
+test("a scope with a null organization (a truly personal entry) is allowed", async () => {
+    const d = deps({ resolveEntryScope: async () => ({ organizationId: null, ownerAccountId: "me" }) });
+    await assert.doesNotReject(() => authorizeSource(d, srcReq()));
+    await assert.doesNotReject(() => authorizeDestination(d, dstReq()));
 });
 
 test("missing FILES_UPLOAD on the destination is refused", async () => {
