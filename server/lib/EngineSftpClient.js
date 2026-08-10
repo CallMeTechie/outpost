@@ -265,25 +265,42 @@ class EngineSftpClient extends EventEmitter {
 
         await this._waitResponse(rid);
 
-        if (Buffer.isBuffer(source)) {
-            for (let off = 0; off < source.length; off += WRITE_CHUNK_SIZE) {
-                this._sendWriteData(rid, source.subarray(off, Math.min(off + WRITE_CHUNK_SIZE, source.length)));
-            }
-        } else {
-            await new Promise((resolve, reject) => {
-                source.on("data", (chunk) => {
-                    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-                    this._sendWriteData(rid, buf);
-                    if (this._socket.writableLength > WRITE_CHUNK_SIZE * 4) {
-                        source.pause();
-                        this._socket.once("drain", () => source.resume());
+        // Without this placeholder _handleMessage silently drops every error frame of the data
+        // phase, and a server error only surfaces after WRITE_END_TIMEOUT with no message.
+        let rejectDataPhase;
+        const dataPhaseFailed = new Promise((_, reject) => { rejectDataPhase = reject; });
+        dataPhaseFailed.catch(() => {});
+        this._pending.set(rid, { reject: rejectDataPhase });
+
+        try {
+            if (Buffer.isBuffer(source)) {
+                const sendAll = (async () => {
+                    for (let off = 0; off < source.length; off += WRITE_CHUNK_SIZE) {
+                        this._sendWriteData(rid, source.subarray(off, Math.min(off + WRITE_CHUNK_SIZE, source.length)));
                     }
+                })();
+                await Promise.race([sendAll, dataPhaseFailed]);
+            } else {
+                const streamDone = new Promise((resolve, reject) => {
+                    source.on("data", (chunk) => {
+                        const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+                        this._sendWriteData(rid, buf);
+                        if (this._socket.writableLength > WRITE_CHUNK_SIZE * 4) {
+                            source.pause();
+                            this._socket.once("drain", () => source.resume());
+                        }
+                    });
+                    source.on("end", resolve);
+                    source.on("error", reject);
                 });
-                source.on("end", resolve);
-                source.on("error", reject);
-            });
+                await Promise.race([streamDone, dataPhaseFailed]);
+            }
+        } catch (err) {
+            this._pending.delete(rid);
+            throw err;
         }
 
+        this._pending.delete(rid);
         this._buildAndSend(rid, SftpMsgType.WriteEnd, () => ({}));
         return this._waitResponse(rid, WRITE_END_TIMEOUT);
     }
