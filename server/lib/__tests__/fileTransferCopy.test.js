@@ -497,6 +497,33 @@ test("aborts when no data frame arrives within READ_STALL_TIMEOUT", async () => 
     await assert.rejects(promise, /stalled/i);
 });
 
+// The hole that backpressure would otherwise open. Before readFile could be throttled, a wedged
+// destination was caught by MAX_BUFFER: the source kept pushing and the buffer ran into the limit
+// within a second. Now the read pauses instead, the buffer stays at about one frame and no limit is
+// ever reached — so a destination that stops taking data has to be caught by the stall watchdog, or
+// the transfer would wait forever. Data IS buffered on the source side here, which is exactly the
+// case the old condition excluded.
+test("aborts when the destination stops consuming, even though the buffer stays small", async () => {
+    const clock = fakeClock();
+    const stream = new PassThrough();
+    // Well under MAX_BUFFER — the emergency brake must not be what saves this.
+    stream.write(Buffer.alloc(64 * 1024));
+    const dest = fakeDest();
+    dest.writeFile = () => new Promise(() => {});
+
+    const transfer = new FileTransfer({ source: stalledSource(stream), dest, ...clock });
+    const promise = transfer.run(["/srv/big.bin"], "/target");
+
+    await new Promise((r) => setImmediate(r));
+    clock.advance(READ_STALL_TIMEOUT + 1);
+    clock.tick();
+
+    const err = await promise.then((r) => new Error(`resolved with ${JSON.stringify(r)}`), (e) => e);
+    assert.match(err.message, /^Destination stalled, transfer aborted$/,
+        "a wedged destination must not be reported as a stalled read");
+    assert.strictEqual(transfer.filesSkipped, 0, "an abort is not a vanished source file");
+});
+
 // The WriteEnd flush can take up to 120 s with no data flowing — that is not a stalled read.
 test("the stall watchdog is disarmed once the source stream ended", async () => {
     const clock = fakeClock();

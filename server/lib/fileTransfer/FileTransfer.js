@@ -1,10 +1,18 @@
 const { Transform } = require("node:stream");
 const { walk, join, WalkCancelledError } = require("./walk");
 
-// Upper bound for the buffer of one in-flight file. readFile has no backpressure (the engine keeps
-// pushing even when the PassThrough is full), so the transfer aborts in a controlled way instead
-// of letting the process grow without bound.
-const MAX_BUFFER = 32 * 1024 * 1024;
+// Emergency brake for the buffer of one in-flight file — nothing more. The engine adapter opens
+// readFile with backpressure, so a consumer that lags behind pauses the control-plane socket and
+// the engine blocks in its own write() instead of this process growing. What stays in the pipeline
+// is then structural rather than rate dependent: the FileData frames that were already in flight
+// when the pause took effect (FP_CHUNK_SIZE, 1 MiB each) plus the high water marks of the
+// PassThrough and the counting Transform.
+// Calibrated by bisection with .superpowers/sdd/2026-08-10-cross-pane-transfer-kern/calibrate.js,
+// --mode=drain: at 3 MB the limit still fires on some rate pairs, at 4 MB every pair from 80->80
+// down to 84->0.5 MB/s runs through, and the value it settles at does not depend on the rate
+// difference. 8 MB is twice that floor. Raising the engine's FP_CHUNK_SIZE would move the floor
+// with it, so this value has to be recalibrated if that constant ever changes.
+const MAX_BUFFER = 8 * 1024 * 1024;
 
 // No data frame within this window counts as a stalled read. readFile has no timeout of its own —
 // REQUEST_TIMEOUT and WRITE_END_TIMEOUT do not apply there.
@@ -357,14 +365,24 @@ class FileTransfer {
                 // readableLength alone is not enough: the PassThrough caps it at its highWaterMark
                 // (16 KB) and piles the rest up on the writable side. The counting Transform in
                 // between holds real bytes in two buffers of its own, so they count as well.
-                const sourceBuffered = stream.readableLength + stream.writableLength;
-                if (sourceBuffered + counted.readableLength + counted.writableLength > MAX_BUFFER) {
+                const buffered = stream.readableLength + stream.writableLength
+                    + counted.readableLength + counted.writableLength;
+                if (buffered > MAX_BUFFER) {
                     fail("Destination too slow, transfer aborted");
-                } else if (!sourceEnded && sourceBuffered === 0 && this.now() - lastDataAt > READ_STALL_TIMEOUT) {
-                    // Bytes still queued on the source side mean the source did deliver and the
-                    // hold-up is downstream — that is a slow destination, not a stalled read, and
-                    // the buffer check above is the one that has to decide about it.
-                    fail("Read stalled, transfer aborted");
+                } else if (!sourceEnded && this.now() - lastDataAt > READ_STALL_TIMEOUT) {
+                    // Not a byte has moved through the pipeline for a whole window, and the origin
+                    // follows from whether there is anything in it: an empty pipeline means the
+                    // source stopped delivering, bytes waiting in it mean the destination stopped
+                    // taking them. Which of the two buffers holds them says nothing — pipe() moves
+                    // whatever the source writes straight on into the counting Transform, so a
+                    // wedged destination usually leaves the source stream empty.
+                    // A merely slow destination never gets here: it keeps pulling, and every pull
+                    // moves lastDataAt. Only one that stops entirely does, and since readFile got
+                    // backpressure that is the ONLY check left for it — the buffer used to run into
+                    // MAX_BUFFER within a second, but a throttled read keeps it at about one frame.
+                    fail(buffered === 0
+                        ? "Read stalled, transfer aborted"
+                        : "Destination stalled, transfer aborted");
                 }
             }, WATCHDOG_INTERVAL);
 
