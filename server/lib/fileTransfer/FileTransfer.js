@@ -116,6 +116,9 @@ class FileTransfer {
 
         if (this.cancelled) return this._result(true);
         await this._ensureDirs(destination, plan.dirs);
+        // _ensureDirs returns early on a cancel; without this the run would fall through to
+        // _finishMove with an empty file list instead of reporting the cancellation.
+        if (this.cancelled) return this._result(true);
 
         const transferred = [];
 
@@ -218,6 +221,9 @@ class FileTransfer {
         const dirPaths = dirs.map((dir) => join(destination, dir.relPath));
 
         for (const path of dirPaths) {
+            // A deep tree costs one stat (plus one mkdirRecursive) per directory, so a cancel would
+            // otherwise keep creating directories at the destination until the whole plan is done.
+            if (this.cancelled) return;
             // The spec makes a file/folder type conflict an error with the path, independent of
             // onConflict. mkdirRecursive would only pass the raw engine text through.
             const existing = await this.dest.stat(path).catch(() => null);

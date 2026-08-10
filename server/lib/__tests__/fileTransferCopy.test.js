@@ -564,6 +564,30 @@ test("a file finished just before the cancel still counts as transferred", async
     assert.deepStrictEqual(dest.removed, [], "a completed file must not be deleted again");
 });
 
+// Finding 9: a deep tree costs one round trip per directory, so a cancel has to take effect inside
+// the loop — otherwise the destination keeps growing directories long after the user stopped it.
+test("a cancel during directory creation stops creating more directories", async () => {
+    const source = fakeSource(
+        {
+            "/srv/data": [
+                { name: "a", type: "folder", size: 0, mtime: 1, isSymlink: false, mode: 16877 },
+                { name: "b", type: "folder", size: 0, mtime: 1, isSymlink: false, mode: 16877 },
+            ],
+            "/srv/data/a": [],
+            "/srv/data/b": [],
+        },
+        { "/srv/data": { size: 0, type: "folder", mtime: 1 } },
+    );
+    const dest = fakeDest();
+    const transfer = new FileTransfer({ source, dest });
+    dest.mkdirRecursive = async (path) => { dest.created.push(path); transfer.cancel(); };
+
+    const result = await transfer.run(["/srv/data"], "/target");
+
+    assert.deepStrictEqual(dest.created, ["/target/data/a"], "the second directory must never be requested");
+    assert.strictEqual(result.cancelled, true);
+});
+
 // A failing stat must never be read as "free rein".
 test("a target that cannot be inspected aborts instead of overwriting", async () => {
     const dest = fakeDest();
