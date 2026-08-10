@@ -281,19 +281,37 @@ class EngineSftpClient extends EventEmitter {
                 })();
                 await Promise.race([sendAll, dataPhaseFailed]);
             } else {
+                // Leaving the data phase early — dataPhaseFailed rejecting before the source ends —
+                // must not leave these listeners behind: they would keep pumping the rest of the
+                // stream at a request id the engine has already given up on (a multi-gigabyte
+                // upload to a full destination would be sent in full, for nothing), and a pending
+                // "drain" would leave the caller's stream paused for good.
+                let detachSource = () => {};
                 const streamDone = new Promise((resolve, reject) => {
-                    source.on("data", (chunk) => {
+                    const onDrain = () => source.resume();
+                    const onData = (chunk) => {
                         const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
                         this._sendWriteData(rid, buf);
                         if (this._socket.writableLength > WRITE_CHUNK_SIZE * 4) {
                             source.pause();
-                            this._socket.once("drain", () => source.resume());
+                            this._socket.once("drain", onDrain);
                         }
-                    });
+                    };
+                    detachSource = () => {
+                        source.off("data", onData);
+                        source.off("end", resolve);
+                        source.off("error", reject);
+                        this._socket.off("drain", onDrain);
+                    };
+                    source.on("data", onData);
                     source.on("end", resolve);
                     source.on("error", reject);
                 });
-                await Promise.race([streamDone, dataPhaseFailed]);
+                try {
+                    await Promise.race([streamDone, dataPhaseFailed]);
+                } finally {
+                    detachSource();
+                }
             }
         } catch (err) {
             this._pending.delete(rid);
