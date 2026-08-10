@@ -20,12 +20,15 @@ const NOT_FOUND = /no such file|no such path|not found|does not exist|ENOENT/i;
 const isNotFound = (err) => err?.code === "ENOENT" || NOT_FOUND.test(String(err?.message || ""));
 
 class FileTransfer {
-    constructor({ source, dest, destCleanup, onProgress, onConflict }) {
+    constructor({ source, dest, destCleanup, onProgress, onConflict, now, setIntervalFn, clearIntervalFn }) {
         this.source = source;
         this.dest = dest;
         this.destCleanup = destCleanup || dest;
         this.onProgress = onProgress || (() => {});
         this.onConflict = onConflict || (async () => "overwrite");
+        this.now = now || Date.now;
+        this.setIntervalFn = setIntervalFn || setInterval;
+        this.clearIntervalFn = clearIntervalFn || clearInterval;
 
         this.action = "copy";
         this.conflictMode = "ask";
@@ -112,29 +115,81 @@ class FileTransfer {
     }
 
     async _copyFile(file, destPath) {
-        // Only a write attempt that actually reached the destination can have left a partial
-        // file behind. readFile() can fail before that point (e.g. the source vanished) — in
-        // that case there is nothing at destPath to clean up, and reporting it as a leftover
-        // would be a false claim to the user.
+        // Only a write attempt that actually reached the destination can have left a partial file
+        // behind. readFile() can fail before that point — reporting that as a leftover would be a
+        // false claim to the user.
         let writeAttempted = false;
+        let stream = null;
+        let timer = null;
+        let watchdogError = null;
+
         try {
-            const { stream, done } = this.source.readFile(file.srcPath);
+            const opened = this.source.readFile(file.srcPath);
+            stream = opened.stream;
+            const done = opened.done;
+
+            // fail() below calls stream.destroy(err), which emits "error". Without a listener that
+            // terminates the whole process with an uncaught exception — the failure is reported
+            // through watchdogFailed instead. EngineSftpClient.readFile attaches the same guard,
+            // but the interface does not require it, so FileTransfer must not rely on it.
+            stream.on("error", () => {});
+
+            let lastDataAt = this.now();
+            let sourceEnded = false;
+            let bytesThisFile = 0;
+
+            let rejectWatchdog;
+            const watchdogFailed = new Promise((_, reject) => { rejectWatchdog = reject; });
+            watchdogFailed.catch(() => {});
+
+            const fail = (message) => {
+                if (watchdogError) return;
+                watchdogError = new Error(message);
+                stream.destroy(watchdogError);
+                rejectWatchdog(watchdogError);
+            };
 
             stream.on("data", (chunk) => {
+                lastDataAt = this.now();
+                bytesThisFile += chunk.length;
+                if (bytesThisFile > file.size + MAX_SIZE_OVERRUN) {
+                    fail("Source delivered more data than announced, transfer aborted");
+                    return;
+                }
                 this.bytesDone += chunk.length;
                 this._report(file.relPath);
             });
+            // After "end" a standstill is no longer a stalled read but the destination's WriteEnd
+            // flush, which may take up to WRITE_END_TIMEOUT (120 s).
+            stream.on("end", () => { sourceEnded = true; });
 
+            timer = this.setIntervalFn(() => {
+                // readableLength alone is not enough: the PassThrough caps it at its highWaterMark
+                // (16 KB) and piles the rest up on the writable side.
+                if (stream.readableLength + stream.writableLength > MAX_BUFFER) {
+                    fail("Destination too slow, transfer aborted");
+                } else if (!sourceEnded && this.now() - lastDataAt > READ_STALL_TIMEOUT) {
+                    fail("Read stalled, transfer aborted");
+                }
+            }, WATCHDOG_INTERVAL);
+
+            // Both promises need a handler before Promise.race drops one of them: fail() destroys
+            // the source stream, writeFile rejects in turn, and without a handler Node terminates
+            // the process with unhandledRejection.
             writeAttempted = true;
-            await this.dest.writeFile(destPath, stream);
-            await done;
+            const writePromise = this.dest.writeFile(destPath, stream);
+            writePromise.catch(() => {});
+            const donePromise = Promise.resolve(done);
+            donePromise.catch(() => {});
+
+            await Promise.race([writePromise, watchdogFailed]);
+            await Promise.race([donePromise, watchdogFailed]);
         } catch (err) {
             if (writeAttempted) await this._removePartial(destPath);
             if (isNotFound(err)) {
-                // The spec wants a source file that vanished between walk and read counted as
-                // skipped, not fatal, and a move must not delete anything after this. Pull it
-                // out of the totals too, exactly like a conflict skip in _run — otherwise the
-                // final progress frame stays under 100% even though the transfer succeeded.
+                // A source file that vanished between walk and read counts as skipped, not fatal,
+                // and a move must not delete anything after this. Pull it out of the totals too,
+                // exactly like a conflict skip in _run.
                 this.filesSkipped += 1;
                 this.sourceIncomplete = true;
                 this.bytesTotal -= file.size;
@@ -142,7 +197,13 @@ class FileTransfer {
                 this._report(file.relPath);
                 return false;
             }
-            throw err;
+            throw watchdogError || err;
+        } finally {
+            if (timer !== null) this.clearIntervalFn(timer);
+            // There is no read abort in the protocol: the pending entry lives until FileEnd and
+            // onFileData keeps writing unconditionally. Without destroy() the buffer grows on
+            // unmeasured after an error — the watchdog is already stopped here.
+            if (stream && !stream.destroyed) stream.destroy();
         }
 
         this.filesDone += 1;

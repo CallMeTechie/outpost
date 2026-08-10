@@ -201,3 +201,150 @@ test("a vanished-source skip keeps bytesDone/filesDone in sync with the totals",
     assert.strictEqual(last.bytesDone, last.bytesTotal);
     assert.strictEqual(last.filesDone, last.filesTotal);
 });
+
+const { MAX_BUFFER, READ_STALL_TIMEOUT } = require("../fileTransfer/FileTransfer");
+
+const fakeClock = () => {
+    let current = 0;
+    const ticks = [];
+    return {
+        now: () => current,
+        setIntervalFn: (fn) => { ticks.push(fn); return ticks.length - 1; },
+        clearIntervalFn: () => {},
+        advance: (ms) => { current += ms; },
+        tick: () => ticks.forEach((fn) => fn()),
+    };
+};
+
+const stalledSource = (stream) => ({
+    listDir: async () => [],
+    stat: async () => ({ size: 100, type: "file", mtime: 1 }),
+    readFile: () => ({ stream, done: new Promise(() => {}) }),
+});
+
+test("aborts when the buffered data exceeds MAX_BUFFER", async () => {
+    const clock = fakeClock();
+    const stream = new PassThrough();
+    Object.defineProperty(stream, "writableLength", { get: () => MAX_BUFFER + 1 });
+    const dest = fakeDest();
+    dest.writeFile = () => new Promise(() => {});
+
+    const transfer = new FileTransfer({ source: stalledSource(stream), dest, ...clock });
+    const promise = transfer.run(["/srv/big.bin"], "/target");
+
+    await new Promise((r) => setImmediate(r));
+    clock.tick();
+
+    await assert.rejects(promise, /too slow/i);
+    assert.deepStrictEqual(dest.removed, ["/target/big.bin"]);
+});
+
+// The readable side must count too — otherwise an implementation that only reads
+// writableLength would pass this suite.
+test("the readable side counts towards MAX_BUFFER as well", async () => {
+    const clock = fakeClock();
+    const stream = new PassThrough();
+    Object.defineProperty(stream, "readableLength", { get: () => MAX_BUFFER + 1 });
+    const dest = fakeDest();
+    dest.writeFile = () => new Promise(() => {});
+
+    const transfer = new FileTransfer({ source: stalledSource(stream), dest, ...clock });
+    const promise = transfer.run(["/srv/big.bin"], "/target");
+
+    await new Promise((r) => setImmediate(r));
+    clock.tick();
+
+    await assert.rejects(promise, /too slow/i);
+});
+
+test("aborts when no data frame arrives within READ_STALL_TIMEOUT", async () => {
+    const clock = fakeClock();
+    const dest = fakeDest();
+    dest.writeFile = () => new Promise(() => {});
+
+    const transfer = new FileTransfer({ source: stalledSource(new PassThrough()), dest, ...clock });
+    const promise = transfer.run(["/srv/stalled.bin"], "/target");
+
+    await new Promise((r) => setImmediate(r));
+    clock.advance(READ_STALL_TIMEOUT + 1);
+    clock.tick();
+
+    await assert.rejects(promise, /stalled/i);
+});
+
+// The WriteEnd flush can take up to 120 s with no data flowing — that is not a stalled read.
+test("the stall watchdog is disarmed once the source stream ended", async () => {
+    const clock = fakeClock();
+    const stream = new PassThrough();
+    const source = {
+        listDir: async () => [],
+        stat: async () => ({ size: 0, type: "file", mtime: 1 }),
+        readFile: () => { setImmediate(() => stream.end()); return { stream, done: Promise.resolve() }; },
+    };
+    const dest = fakeDest();
+    let finishWrite;
+    dest.writeFile = (path, src) => new Promise((resolve) => {
+        src.resume();
+        finishWrite = () => { dest.written[path] = ""; resolve(); };
+    });
+
+    const transfer = new FileTransfer({ source, dest, ...clock });
+    const promise = transfer.run(["/srv/empty.bin"], "/target");
+
+    // Two macrotask ticks are needed here: walk/_ensureDirs/_resolveConflict each hop through a
+    // microtask before _copyFile ever calls readFile(), so the mock's own setImmediate(() =>
+    // stream.end()) is scheduled strictly after this test's first tick and only fires on the
+    // second one. A single tick would observe sourceEnded still false and assert nothing useful.
+    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setImmediate(r));
+    clock.advance(READ_STALL_TIMEOUT + 1);
+    clock.tick();
+    finishWrite();
+
+    const result = await promise;
+    assert.strictEqual(result.filesTransferred, 1);
+    assert.deepStrictEqual(dest.removed, [], "a fully written file must not be deleted");
+});
+
+test("aborts when the source delivers far more than it announced", async () => {
+    const { MAX_SIZE_OVERRUN } = require("../fileTransfer/FileTransfer");
+    const clock = fakeClock();
+    const stream = new PassThrough();
+    const source = {
+        listDir: async () => [],
+        stat: async () => ({ size: 10, type: "file", mtime: 1 }),
+        readFile: () => {
+            setImmediate(() => stream.write(Buffer.alloc(MAX_SIZE_OVERRUN + 1024)));
+            return { stream, done: new Promise(() => {}) };
+        },
+    };
+    const dest = fakeDest();
+    dest.writeFile = (path, src) => new Promise(() => { src.resume(); });
+
+    const transfer = new FileTransfer({ source, dest, ...clock });
+    await assert.rejects(transfer.run(["/srv/liar.bin"], "/target"), /more data than announced/i);
+});
+
+test("a write failure destroys the source stream", async () => {
+    const stream = new PassThrough();
+    const source = {
+        listDir: async () => [],
+        stat: async () => ({ size: 5, type: "file", mtime: 1 }),
+        readFile: () => ({ stream, done: new Promise(() => {}) }),
+    };
+    const dest = fakeDest();
+    dest.writeFile = async () => { throw new Error("disk full"); };
+
+    await assert.rejects(() => new FileTransfer({ source, dest }).run(["/srv/a.txt"], "/target"), /disk full/);
+    assert.strictEqual(stream.destroyed, true, "no reader left, the engine keeps pushing");
+});
+
+test("a healthy transfer stops its watchdog", async () => {
+    const clock = fakeClock();
+    let cleared = 0;
+    clock.clearIntervalFn = () => { cleared += 1; };
+
+    await new FileTransfer({ source: oneFile(), dest: fakeDest(), ...clock }).run(["/srv/a.txt"], "/target");
+
+    assert.strictEqual(cleared, 1, "the watchdog must be stopped in a finally block");
+});
