@@ -2,19 +2,33 @@ import test from "node:test";
 import assert from "node:assert";
 import { transferPercent } from "../transferProgress.js";
 
-test("file counts drive the bar once a total is known", () => {
+test("file counts drive the bar once no byte total is known", () => {
     assert.strictEqual(transferPercent({ filesDone: 1, filesTotal: 4 }), 25);
     assert.strictEqual(transferPercent({ filesDone: 4, filesTotal: 4 }), 100);
 });
 
-// Bytes only until the first file count arrives — a single large file in flight otherwise sits at
-// zero for its whole run.
 test("bytes drive the bar while no file total is known", () => {
     assert.strictEqual(transferPercent({ filesTotal: 0, bytesDone: 3, bytesTotal: 4 }), 75);
 });
 
-test("file counts win over bytes when both are there", () => {
-    assert.strictEqual(transferPercent({ filesDone: 1, filesTotal: 2, bytesDone: 1, bytesTotal: 100 }), 50);
+test("bytes win over file counts when both are there", () => {
+    assert.strictEqual(transferPercent({ filesDone: 1, filesTotal: 2, bytesDone: 1, bytesTotal: 100 }), 1);
+});
+
+// A single file in flight has filesTotal stuck at 1 and filesDone at 0 for its whole run — the
+// bug this suite guards against. Bytes must carry the bar instead.
+test("a single large file in flight is read from its bytes, not its file count", () => {
+    assert.strictEqual(transferPercent({ filesDone: 0, filesTotal: 1, bytesDone: 2_000_000_000, bytesTotal: 4_000_000_000 }), 50);
+});
+
+test("many files in flight are also read from their combined bytes", () => {
+    assert.strictEqual(transferPercent({ filesDone: 3, filesTotal: 10, bytesDone: 50, bytesTotal: 100 }), 50);
+});
+
+// No byte total yet — mid directory-walk, or a transfer made up entirely of empty files — falls
+// back to the file count instead of freezing at zero.
+test("file counts are the fallback once there is no byte total to read", () => {
+    assert.strictEqual(transferPercent({ filesDone: 2, filesTotal: 4, bytesDone: 0, bytesTotal: 0 }), 50);
 });
 
 test("a transfer that has told nothing yet sits at zero", () => {
