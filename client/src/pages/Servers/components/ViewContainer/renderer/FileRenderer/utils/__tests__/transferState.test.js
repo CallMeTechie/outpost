@@ -82,6 +82,14 @@ test("resolving one file does not clear another conflict queued for the very sam
     assert.strictEqual(s.conflicts[0].file, "/dst/b.txt");
 });
 
+test("resolving a conflict that is already gone returns the very same state", () => {
+    const before = run([started("t1"),
+        { type: "conflict", payload: { transferId: "t1", file: "/dst/a.txt" } },
+        { type: "resolved", id: "t1", file: "/dst/a.txt" }]);
+    const after = transferReducer(before, { type: "resolved", id: "t1", file: "/dst/a.txt" });
+    assert.strictEqual(after, before);
+});
+
 test("finishing a transfer drops any conflict still queued for it", () => {
     const s = run([started(), { type: "conflict", payload: { transferId: "t1", file: "/dst/a.txt" } },
         { type: "done", payload: { transferId: "t1", cancelled: true } }]);
@@ -106,6 +114,14 @@ test("a finished transfer can be dismissed, a running one cannot", () => {
     assert.strictEqual(running.transfers.length, 1);
 });
 
+test("dismissing a running or unknown transfer returns the very same state", () => {
+    const before = run([started("t1")]);
+    const runningIgnored = transferReducer(before, { type: "dismiss", id: "t1" });
+    assert.strictEqual(runningIgnored, before);
+    const unknownIgnored = transferReducer(before, { type: "dismiss", id: "ghost" });
+    assert.strictEqual(unknownIgnored, before);
+});
+
 test("losing the connection ends every unfinished transfer instead of leaving it spinning", () => {
     const s = run([started("t1"), started("t2"), { type: "cancelling", id: "t2" },
         { type: "done", payload: { transferId: "t1", cancelled: false } },
@@ -115,6 +131,12 @@ test("losing the connection ends every unfinished transfer instead of leaving it
     assert.strictEqual(s.transfers.find((t) => t.id === "t1").status, "done");
     assert.strictEqual(s.transfers.find((t) => t.id === "t2").status, "error");
     assert.strictEqual(s.conflicts.length, 0);
+});
+
+test("losing the connection when everything is already finished returns the very same state", () => {
+    const before = run([started("t1"), { type: "done", payload: { transferId: "t1", cancelled: false } }]);
+    const after = transferReducer(before, { type: "connectionLost" });
+    assert.strictEqual(after, before);
 });
 
 test("an unknown event leaves the state untouched and identical", () => {

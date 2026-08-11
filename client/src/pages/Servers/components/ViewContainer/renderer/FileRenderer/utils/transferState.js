@@ -50,19 +50,27 @@ export const transferReducer = (state, event) => {
             if (!state.transfers.some((t) => t.id === payload.transferId)) return state;
             return { ...state, conflicts: [...state.conflicts, payload] };
         }
-        case "resolved":
+        case "resolved": {
+            if (!state.conflicts.some((c) => c.transferId === event.id && c.file === event.file)) return state;
             return { ...state, conflicts: state.conflicts.filter(
                 (c) => !(c.transferId === event.id && c.file === event.file)) };
+        }
         case "cancelling":
             return patch(state, event.id, { status: "cancelling" });
         // Without this a dropped socket leaves rows spinning forever: no DONE or ERROR can arrive
         // anymore, and dismiss only removes finished rows.
-        case "connectionLost":
+        case "connectionLost": {
+            if (state.conflicts.length === 0 && state.transfers.every((t) => FINISHED.includes(t.status))) return state;
             return { ...state, conflicts: [], transfers: state.transfers.map((t) =>
                 FINISHED.includes(t.status) ? t : { ...t, status: "error", message: "connectionLost" }) };
-        case "dismiss":
-            return { ...state, transfers: state.transfers.filter(
-                (t) => !(t.id === event.id && FINISHED.includes(t.status))) };
+        }
+        case "dismiss": {
+            // ids are unique per transfer, so once the guard confirms the target is finished,
+            // removing it by id alone is exact — repeating the status check here would be dead code.
+            const target = state.transfers.find((t) => t.id === event.id);
+            if (!target || !FINISHED.includes(target.status)) return state;
+            return { ...state, transfers: state.transfers.filter((t) => t.id !== event.id) };
+        }
         default:
             return state;
     }
