@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  TAG: tmux
+  TAG: xfer
 
 jobs:
   components:
@@ -52,7 +52,7 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/nexterm-${{ matrix.slug }}:${{ env.TAG }}
           build-args: |
-            VERSION=1.2.2-BETA-tmux
+            VERSION=1.2.2-BETA-xfer
           cache-from: type=gha,scope=fork-${{ matrix.slug }}
           cache-to: type=gha,mode=max,scope=fork-${{ matrix.slug }}
 
