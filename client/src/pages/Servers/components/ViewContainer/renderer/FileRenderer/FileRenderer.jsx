@@ -12,13 +12,7 @@ import { mdiCloudUpload } from "@mdi/js";
 import { getWebSocketUrl, getBaseUrl } from "@/common/utils/ConnectionUtil.js";
 import { uploadFile as uploadFileRequest, tauriDownload } from "@/common/utils/RequestUtil.js";
 import { isTauri } from "@/common/utils/TauriUtil.js";
-
-const OPERATIONS = {
-    READY: 0x0, LIST_FILES: 0x1, CREATE_FILE: 0x4, CREATE_FOLDER: 0x5, DELETE_FILE: 0x6,
-    DELETE_FOLDER: 0x7, RENAME_FILE: 0x8, ERROR: 0x9, SEARCH_DIRECTORIES: 0xA,
-    RESOLVE_SYMLINK: 0xB, MOVE_FILES: 0xC, COPY_FILES: 0xD, CHMOD: 0xE,
-    STAT: 0xF, CHECKSUM: 0x10, FOLDER_SIZE: 0x11, PATH_SYNC: 0x12,
-};
+import { OPERATIONS } from "./utils/operations.js";
 
 const REFRESH_DEBOUNCE = 150;
 
