@@ -55,8 +55,15 @@ export const transferReducer = (state, event) => {
             return { ...state, conflicts: state.conflicts.filter(
                 (c) => !(c.transferId === event.id && c.file === event.file)) };
         }
-        case "cancelling":
+        case "cancelling": {
+            // A click landing while the closing message is already being processed would otherwise
+            // push a finished row back into an active state — and nothing can ever get it out of
+            // there again: cancelling blocks both the cancel button and dismiss, and the server has
+            // nothing left to send about a transfer that has already ended.
+            const target = state.transfers.find((t) => t.id === event.id);
+            if (!target || FINISHED.includes(target.status)) return state;
             return patch(state, event.id, { status: "cancelling" });
+        }
         // Without this a dropped socket leaves rows spinning forever: no DONE or ERROR can arrive
         // anymore, and dismiss only removes finished rows.
         case "connectionLost": {

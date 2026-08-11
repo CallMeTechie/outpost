@@ -107,6 +107,32 @@ test("a cancel request is visible before the server confirms", () => {
     assert.strictEqual(s.transfers[0].status, "cancelling");
 });
 
+// The cancel button and the closing message race for the same row: one click while DONE is being
+// processed used to turn a finished row back into an active one, and nothing could get it out of
+// there again — dismiss refuses anything unfinished, and the server has nothing left to send.
+test("a cancel arriving after the transfer ended leaves the result alone", () => {
+    for (const ended of [
+        { type: "done", payload: { transferId: "t1", cancelled: false, filesTransferred: 2 } },
+        { type: "done", payload: { transferId: "t1", cancelled: true } },
+        { type: "error", payload: { transferId: "t1", message: "boom" } },
+    ]) {
+        const before = run([started(), ended]);
+        const after = transferReducer(before, { type: "cancelling", id: "t1" });
+        assert.strictEqual(after, before, `a ${before.transfers[0].status} row was reopened`);
+    }
+});
+
+test("a cancel for an unknown transfer returns the very same state", () => {
+    const before = run([started("t1")]);
+    assert.strictEqual(transferReducer(before, { type: "cancelling", id: "ghost" }), before);
+});
+
+test("a row cancelled after it ended can still be dismissed", () => {
+    const s = run([started(), { type: "done", payload: { transferId: "t1", cancelled: false } },
+        { type: "cancelling", id: "t1" }, { type: "dismiss", id: "t1" }]);
+    assert.strictEqual(s.transfers.length, 0);
+});
+
 test("a finished transfer can be dismissed, a running one cannot", () => {
     const done = run([started(), { type: "done", payload: { transferId: "t1", cancelled: false } }, { type: "dismiss", id: "t1" }]);
     assert.strictEqual(done.transfers.length, 0);
