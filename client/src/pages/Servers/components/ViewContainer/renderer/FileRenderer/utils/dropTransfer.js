@@ -47,3 +47,17 @@ export const resolveDropTarget = ({ data, sessionId, destination, excludeName, c
 
     return { kind: "local", paths: data.paths, destination };
 };
+
+// What a drop site does next. "ask" leaves the choice to the user and must not touch anything;
+// "done" is the only outcome that may clear the selection; "failed" keeps it for the second
+// attempt. Kept out of the hook so the three cases are reachable by a test at all — inside it they
+// were three string literals nothing could see. run is called for a decided action only, and never
+// more than once.
+export const DROP_ASK = "ask";
+export const DROP_DONE = "done";
+export const DROP_FAILED = "failed";
+
+export const resolveDropOutcome = (action, run) => {
+    if (action !== "move" && action !== "copy") return DROP_ASK;
+    return run() ? DROP_DONE : DROP_FAILED;
+};

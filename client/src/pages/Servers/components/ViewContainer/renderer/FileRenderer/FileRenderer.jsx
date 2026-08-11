@@ -16,13 +16,9 @@ import { uploadFile as uploadFileRequest, tauriDownload } from "@/common/utils/R
 import { isTauri } from "@/common/utils/TauriUtil.js";
 import { OPERATIONS } from "./utils/operations.js";
 import { initialTransferState, transferReducer } from "./utils/transferState.js";
+import { MAX_TRANSFER_PATHS, exceedsTransferPathLimit } from "./utils/transferLimits.js";
 
 const REFRESH_DEBOUNCE = 150;
-
-// Mirrors MAX_TRANSFER_PATHS in server/lib/fileTransfer/transferAuth.js. The server refuses a
-// longer list before it has read a transfer id, so its refusal names no transfer and no row could
-// ever carry it — stopping here is what turns that into something the user is told about.
-const MAX_TRANSFER_PATHS = 256;
 
 const joinPath = (...parts) => parts.join("/").replace(/\/+/g, "/");
 
@@ -383,7 +379,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
 
     // The destination pane's socket drives the transfer, so this is always our own socket.
     const startTransfer = useCallback(({ paths, destination, sourceSessionId, action }) => {
-        if (paths.length > MAX_TRANSFER_PATHS) {
+        if (exceedsTransferPathLimit(paths)) {
             sendToast(t("common.error"), t("servers.fileManager.toast.transferTooManyFiles", { count: MAX_TRANSFER_PATHS }));
             return null;
         }

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert";
-import { resolveDropTarget, DRAG_PROVIDER } from "../dropTransfer.js";
+import { resolveDropTarget, resolveDropOutcome, DRAG_PROVIDER, DROP_ASK, DROP_DONE, DROP_FAILED }
+    from "../dropTransfer.js";
 
 const drag = (over = {}) => ({
     paths: ["/src/a.txt"], items: [{ name: "a.txt" }], sessionId: "s-src", provider: DRAG_PROVIDER, ...over,
@@ -146,4 +147,40 @@ test("no malicious payload ever throws, and every result is one of the three kno
             }
         }
     }
+});
+
+// The three outcomes a drop site acts on. Inside the hook they were string literals no test could
+// reach, so the difference between "nothing happened" and "it worked" cost nothing to lose.
+test("a preference that asks the user does not carry the drop out", () => {
+    let calls = 0;
+    const outcome = resolveDropOutcome("ask", () => { calls += 1; return true; });
+    assert.strictEqual(outcome, DROP_ASK);
+    assert.strictEqual(calls, 0, "the menu has not been answered yet - nothing may move");
+});
+
+test("an action nobody chose asks rather than guessing", () => {
+    assert.strictEqual(resolveDropOutcome(undefined, () => true), DROP_ASK);
+    assert.strictEqual(resolveDropOutcome("", () => true), DROP_ASK);
+});
+
+test("a handed-over drop is done, and the handler runs exactly once", () => {
+    for (const action of ["move", "copy"]) {
+        let calls = 0;
+        const outcome = resolveDropOutcome(action, () => { calls += 1; return "transfer-id"; });
+        assert.strictEqual(outcome, DROP_DONE);
+        assert.strictEqual(calls, 1);
+    }
+});
+
+// The case the caller must tell apart from "ask": nothing went out, so the selection stays and no
+// menu opens.
+test("a drop the handler refused is failed, not done and not a question", () => {
+    for (const refusal of [false, null, undefined, 0, ""]) {
+        assert.strictEqual(resolveDropOutcome("move", () => refusal), DROP_FAILED);
+        assert.strictEqual(resolveDropOutcome("copy", () => refusal), DROP_FAILED);
+    }
+});
+
+test("the three outcomes stay distinguishable from one another", () => {
+    assert.strictEqual(new Set([DROP_ASK, DROP_DONE, DROP_FAILED]).size, 3);
 });

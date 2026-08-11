@@ -167,4 +167,4 @@ const buildTransferAuditEntries = ({ user, sourceScope, destScope, sourceEntryId
 };
 
 module.exports = { authorizeSource, authorizeDestination, TransferNotPermittedError,
-    validateTransferStart, buildTransferAuditEntries };
+    validateTransferStart, buildTransferAuditEntries, MAX_TRANSFER_PATHS };

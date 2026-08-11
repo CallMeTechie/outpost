@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from "react";
-import { resolveDropTarget, DRAG_PROVIDER } from "../../../utils/dropTransfer.js";
+import { resolveDropTarget, resolveDropOutcome, DRAG_PROVIDER, DROP_ASK, DROP_DONE }
+    from "../../../utils/dropTransfer.js";
 
 export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, moveFiles, copyFiles, startTransfer, dragDropAction, updatePath }) => {
     const [draggedItems, setDraggedItems] = useState([]);
@@ -71,23 +72,20 @@ export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, mo
         }
     }, []);
 
-    // "ask" when the preference leaves the choice to the user, otherwise whether the drop was
-    // really handed over. All three handlers say so: startTransfer returns null when it refused or
-    // could not send, moveFiles and copyFiles pass on whether their message left the socket. A drop
-    // that never went out must neither clear the selection the user still needs for the second
-    // attempt nor be mistaken for an open question.
-    const executeDrop = useCallback((decision, action) => {
-        if (action !== "move" && action !== "copy") return "ask";
-        const handled = decision.kind === "transfer"
+    // All three handlers report whether the drop really went out: startTransfer returns null when
+    // it refused or could not send, moveFiles and copyFiles pass on whether their message left the
+    // socket. A drop that never went out must neither clear the selection the user still needs for
+    // the second attempt nor be mistaken for an open question.
+    const executeDrop = useCallback((decision, action) => resolveDropOutcome(action, () => (
+        decision.kind === "transfer"
             ? startTransfer?.({
                 paths: decision.paths, destination: decision.destination,
                 sourceSessionId: decision.sourceSessionId, action,
             })
             : action === "move"
                 ? moveFiles?.(decision.paths, decision.destination)
-                : copyFiles?.(decision.paths, decision.destination);
-        return handled ? "done" : "failed";
-    }, [moveFiles, copyFiles, startTransfer]);
+                : copyFiles?.(decision.paths, decision.destination)
+    )), [moveFiles, copyFiles, startTransfer]);
 
     const handleDrop = useCallback((event, item, onClearSelection, openDropMenu) => {
         event.preventDefault();
@@ -102,10 +100,10 @@ export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, mo
             const decision = resolveDropTarget({ data, sessionId, destination, excludeName: item.name });
             if (decision.kind === "reject") return;
             const outcome = executeDrop(decision, dragDropAction);
-            if (outcome === "ask") {
+            if (outcome === DROP_ASK) {
                 setPendingDrop(decision);
                 openDropMenu(event);
-            } else if (outcome === "done") {
+            } else if (outcome === DROP_DONE) {
                 onClearSelection();
             }
         } catch {}
@@ -120,10 +118,10 @@ export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, mo
             const decision = resolveDropTarget({ data, sessionId, destination: path, currentPath: path });
             if (decision.kind === "reject") return;
             const outcome = executeDrop(decision, dragDropAction);
-            if (outcome === "ask") {
+            if (outcome === DROP_ASK) {
                 setPendingDrop(decision);
                 openDropMenu(event);
-            } else if (outcome === "done") {
+            } else if (outcome === DROP_DONE) {
                 onClearSelection();
             }
         } catch {}
@@ -131,7 +129,7 @@ export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, mo
 
     const handleDropAction = useCallback((action, onClearSelection, closeDropMenu) => {
         if (pendingDrop) {
-            if (executeDrop(pendingDrop, action) === "done") onClearSelection();
+            if (executeDrop(pendingDrop, action) === DROP_DONE) onClearSelection();
             setPendingDrop(null);
         }
         closeDropMenu();

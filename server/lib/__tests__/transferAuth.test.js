@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const { authorizeSource, authorizeDestination, TransferNotPermittedError } =
+const { authorizeSource, authorizeDestination, TransferNotPermittedError, MAX_TRANSFER_PATHS } =
     require("../fileTransfer/transferAuth");
 const { Permission } = require("../../permissions/registry");
 
@@ -220,4 +220,19 @@ test("every refusal carries the same generic message", async () => {
         messages.add(err.message);
     }
     assert.strictEqual(messages.size, 1, "the message must not reveal which check failed");
+});
+
+// Two caps, one number: the client stops above it before it sends anything, the server refuses
+// above it in validateTransferStart. Nothing else held them together — a server-side change would
+// have shown up only as a refusal the client never warned about, and one naming no transfer id at
+// that. The client module is plain ESM without a single dependency, so it imports here as it does
+// in the browser.
+test("the client stops at the same number of paths the server refuses above", async () => {
+    const clientLimits = await import(
+        "../../../client/src/pages/Servers/components/ViewContainer/renderer/FileRenderer/utils/transferLimits.js");
+    assert.strictEqual(clientLimits.MAX_TRANSFER_PATHS, MAX_TRANSFER_PATHS);
+    assert.strictEqual(clientLimits.exceedsTransferPathLimit(new Array(MAX_TRANSFER_PATHS).fill("/a")), false,
+        "the client must not stop a list the server would still accept");
+    assert.strictEqual(clientLimits.exceedsTransferPathLimit(new Array(MAX_TRANSFER_PATHS + 1).fill("/a")), true,
+        "the client must stop a list the server would refuse");
 });
