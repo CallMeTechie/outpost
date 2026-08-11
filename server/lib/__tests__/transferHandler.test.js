@@ -474,10 +474,9 @@ test("cancel reaches both the transfer and the conflict broker", async () => {
     assert.strictEqual(brokerCancelled, true, "a waiting conflict question must be released too");
 });
 
-// A cancel arriving while the entry is still being built is dropped on purpose. The guard has to
-// be on the transfer, not merely on the entry: the placeholder has no transfer, and reaching into
-// it would throw a TypeError out into the dispatcher instead of a TRANSFER_ERROR.
-test("a cancel during construction is dropped, not thrown", async () => {
+// A cancel during construction reaches a placeholder that has neither transfer nor broker; reading
+// through either must stay a no-op rather than throwing a TypeError out into the dispatcher.
+test("a cancel during construction is not thrown out of the handler", async () => {
     let release = null;
     let calls = 0;
     const s = setup({ getCrossClient: async () => {
@@ -493,7 +492,63 @@ test("a cancel during construction is dropped, not thrown", async () => {
 
     release();
     await started;
-    assert.ok(s.transfers.get("t1")?.transfer, "the run starts regardless — the cancel was dropped");
+});
+
+// Final review, Finding B: everything between TRANSFER_START and the finished entry — two database
+// lookups, a stat round trip on a foreign host and two connects, up to the 30 s cross-transfer
+// deadline — is spent on a bare placeholder. A cancel used to be dropped there for want of a
+// `transfer` to call, while the client had already marked its row "cancelling" and disabled the
+// button, and the run then went through in full. "move" on purpose: that is the case where the
+// source files are deleted afterwards, for a user who cancelled long before.
+test("a cancel while a transfer is still connecting stops the run from ever starting", async () => {
+    let unblock = null;
+    let calls = 0;
+    let runs = 0;
+    const s = setup({
+        getCrossClient: async () => {
+            if (++calls === 1) await new Promise((r) => { unblock = r; });
+            return {};
+        },
+        createTransfer: () => ({ run: () => { runs += 1; return new Promise(() => {}); }, cancel() {} }),
+    });
+
+    const started = s.handlers.start(start({ action: "move" }));
+    await new Promise((r) => setImmediate(r));
+    assert.strictEqual(s.transfers.get("t1")?.transfer, undefined, "still under construction");
+    assert.strictEqual(s.registry.reserved.length, 1, "the slot is taken before the connects start");
+
+    s.handlers.cancel({ transferId: "t1" });
+    unblock();
+    await started;
+
+    assert.strictEqual(runs, 0, "the run started for a transfer the user had already cancelled");
+    assert.strictEqual(s.transfers.size, 0, "an aborted setup must not register itself after the fact");
+    assert.deepStrictEqual(s.registry.reserved, [], "the registry slot leaked");
+    assert.deepStrictEqual(s.released, ["dst:t1", "dst:t1"], "both aux clients must be released");
+});
+
+// The other half: this socket is still open and its row is stuck at "cancelling" until something
+// arrives — the cancel button is disabled there and dismiss refuses anything unfinished.
+test("a cancelled setup answers the client that is still waiting for it", async () => {
+    let unblock = null;
+    let calls = 0;
+    const s = setup({ getCrossClient: async () => {
+        if (++calls === 1) await new Promise((r) => { unblock = r; });
+        return {};
+    } });
+
+    const started = s.handlers.start(start());
+    await new Promise((r) => setImmediate(r));
+    s.handlers.cancel({ transferId: "t1" });
+    unblock();
+    await started;
+
+    const done = s.sent.find((m) => m.op === OP.TRANSFER_DONE);
+    assert.ok(done, "the client is never told, and its row stays at cancelling forever");
+    assert.strictEqual(done.data.transferId, "t1");
+    assert.strictEqual(done.data.cancelled, true);
+    assert.strictEqual(done.data.filesTransferred, 0);
+    assert.ok(!s.sent.some((m) => m.op === OP.TRANSFER_ERROR), "an answered cancel is not a refusal");
 });
 
 // Fix round 6, Finding A: the socket can close at any point while start() is still building — two

@@ -195,10 +195,21 @@ const buildTransferHandlers = (OP, ctx) => {
                         try { deps.releaseCrossClient(deps.getConnection(sessionId), key); } catch {}
                     }
                 }
-                // An aborted setup is not a refusal: nothing was decided about this request, and
-                // there is nobody left to tell either — the socket that asked for it has closed.
-                // Returning here keeps both out of the picture, after the release above has run.
-                if (aborted) return;
+                // An aborted setup is not a refusal: nothing was decided about this request.
+                // Returning here keeps it out of the audit trail and out of the refusal below,
+                // after the release above has run.
+                if (aborted) {
+                    // A socket that closed has nobody left to tell; a client that cancelled itself
+                    // is still waiting, and without an answer its row sits at "cancelling" for
+                    // good — the cancel button is disabled there and dismiss refuses anything
+                    // unfinished. Reported exactly as a run cancelled a moment later would be:
+                    // nothing had started moving yet, so nothing was transferred.
+                    if (ownEntry?.clientCancelled) {
+                        send(OP.TRANSFER_DONE,
+                            { transferId, cancelled: true, filesTransferred: 0, filesSkipped: 0 });
+                    }
+                    return;
+                }
                 // A refused attempt is exactly what an audit trail is for. Logged on the
                 // destination side, the one organization known to be the caller's; the source
                 // scope is often not resolved yet, and paths are logged as a count so a refusal
@@ -232,12 +243,25 @@ const buildTransferHandlers = (OP, ctx) => {
 
         cancel(payload) {
             const entry = transfers.get(payload?.transferId);
-            if (!entry?.transfer) return;
+            if (!entry) return;
+            // Between the start and the finished entry the map holds a bare placeholder with no
+            // transfer to cancel — two database lookups, an existence check on a foreign host and
+            // two connects, bounded only by the 30 s cross-transfer deadline. The same mark
+            // sftpWS.js#cancelAllTransfers leaves when the socket closes is what start() reads back
+            // before it begins the run, so setting it here is what makes a cancel in that window
+            // land at all; without it the run goes through in full and an `action: "move"` deletes
+            // the source files of a user who asked for none of it.
+            entry.cancelled = true;
+            // Unlike a socket that has closed, this caller is still there and waiting for an
+            // answer — start() reports an aborted setup back only when this mark says there is
+            // somebody left to tell. On an entry whose run is already going it is never read: that
+            // run reports its own cancellation when it settles.
+            entry.clientCancelled = true;
             // The broker first: a waiting conflict question is a plain in-memory promise that
             // closing the clients cannot reach, so without this a cancel would wait out the
             // whole 120 s window.
             entry.broker?.cancel();
-            entry.transfer.cancel();
+            entry.transfer?.cancel();
         },
 
         resolve(payload) {
