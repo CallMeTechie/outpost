@@ -199,15 +199,23 @@ const buildTransferHandlers = (OP, ctx) => {
                 // Returning here keeps it out of the audit trail and out of the refusal below,
                 // after the release above has run.
                 //
-                // ownEntry.cancelled is read again, not just the `aborted` flag: a cancel can land
-                // in the setup window and the setup can then fail on its own before the check above
-                // is ever reached — a destination that refuses, a connect that dies. The client
-                // would be told "Transfer not permitted" for a stop it asked for itself, and a
-                // refusal would be audited for a request nobody is answerable for. Whoever asked
-                // first wins, and the user asked. Safe to read here: past the point where ownEntry
-                // becomes the running entry there is no further await, so a cancel can only reach
-                // that object after start() has returned.
-                if (aborted || ownEntry?.cancelled) {
+                // Two halves, and each carries a case the other does not:
+                //   `aborted` is the setup that stopped itself at the check above — the socket
+                //   closing gets here through this half and no other, because cancelAllTransfers
+                //   leaves `cancelled` alone and never sets `clientCancelled`.
+                //   `clientCancelled` is the express cancel by a client that is still there. It has
+                //   to be read again because that cancel can land in the setup window while the
+                //   setup then fails on its own before the check above is ever reached — a
+                //   destination that refuses, a connect that dies. The user would be told "Transfer
+                //   not permitted" for a stop he asked for himself, and a refusal would be audited
+                //   for a request nobody is answerable for. Whoever asked first wins, and he asked.
+                // Deliberately NOT `cancelled` here: that mark is also what a closing socket
+                // leaves, so reading it would swallow the refusal audit of a setup that a closed
+                // socket left behind and that was then genuinely refused — a trail the audit exists
+                // to keep. Safe to read here: past the point where ownEntry becomes the running
+                // entry there is no further await, so a cancel can only reach that object after
+                // start() has returned.
+                if (aborted || ownEntry?.clientCancelled) {
                     // A socket that closed has nobody left to tell; a client that cancelled itself
                     // is still waiting, and without an answer its row sits at "cancelling" for
                     // good — the cancel button is disabled there and dismiss refuses anything

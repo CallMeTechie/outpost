@@ -586,6 +586,39 @@ test("a setup that fails after the client cancelled reports the cancel, not a re
     assert.deepStrictEqual(s.released, ["dst:t1", "dst:t1"], "both aux clients must be released");
 });
 
+// The other side of that coin, follow-up round 2, Finding 1: the mark a closing socket leaves is
+// the same `cancelled` an express cancel sets, but it means something else entirely — nobody asked
+// for anything, the caller simply went away. A setup that is then genuinely refused is a refused
+// access attempt like any other, and the trail must keep it. Reading `cancelled` in the abort
+// branch would erase exactly that line, from the client side, on demand.
+test("a socket that closed does not swallow the audit trail of a refusal that follows", async () => {
+    let unblock = null;
+    let calls = 0;
+    const audited = [];
+    const s = setup({
+        getCrossClient: async () => {
+            if (++calls === 1) return new Promise((r) => { unblock = () => r({}); });
+            throw new Error("connect failed");
+        },
+        createAuditLog: (entry) => audited.push(entry),
+    });
+
+    const started = s.handlers.start(start());
+    await new Promise((r) => setImmediate(r));
+
+    cancelAllTransfers(s.transfers);
+    unblock();
+    await started;
+
+    assert.strictEqual(audited.length, 1, "a refused attempt must stay in the trail");
+    assert.strictEqual(audited[0].details.refused, true);
+    const error = s.sent.find((m) => m.op === OP.TRANSFER_ERROR);
+    assert.ok(error, "the refusal is reported as it always was");
+    assert.strictEqual(error.data.message, "Transfer not permitted");
+    assert.ok(!s.sent.some((m) => m.op === OP.TRANSFER_DONE),
+        "nobody cancelled anything - there is no cancel to acknowledge");
+});
+
 // Fix round 6, Finding A: the socket can close at any point while start() is still building — two
 // database lookups, a stat round trip on a foreign host and two connects bounded only by the 30 s
 // cross-transfer deadline. cancelAllTransfers has nothing to cancel on a placeholder and drops it
