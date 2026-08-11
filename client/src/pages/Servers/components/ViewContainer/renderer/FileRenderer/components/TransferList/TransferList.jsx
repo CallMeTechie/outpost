@@ -2,24 +2,7 @@ import { useTranslation } from "react-i18next";
 import Icon from "@mdi/react";
 import { mdiClose } from "@mdi/js";
 import { transferPercent } from "../../utils/transferProgress.js";
-
-const renderDetail = (transfer, t) => {
-    switch (transfer.status) {
-        case "error":
-            return transfer.connectionLost
-                ? t("servers.fileManager.transfers.connectionLost")
-                : t("servers.fileManager.transfers.failed", { message: transfer.message });
-        case "cancelled":
-            return t("servers.fileManager.transfers.cancelled");
-        case "done":
-            return t("servers.fileManager.transfers.done", { count: transfer.filesTransferred ?? 0 });
-        case "cancelling":
-            return t("servers.fileManager.transfers.cancelling");
-        default:
-            return transfer.file ?? t("servers.fileManager.transfers.progress",
-                { filesDone: transfer.filesDone ?? 0, filesTotal: transfer.filesTotal ?? 0 });
-    }
-};
+import { transferDetailText } from "../../utils/transferDetail.js";
 
 export const TransferList = ({ transfers = [], onCancel, onDismiss }) => {
     const { t } = useTranslation();
@@ -36,7 +19,7 @@ export const TransferList = ({ transfers = [], onCancel, onDismiss }) => {
                             {t(`servers.fileManager.transfers.${transfer.action === "move" ? "moving" : "copying"}`,
                                 { destination: transfer.destination })}
                         </div>
-                        <div className="transfer-detail">{renderDetail(transfer, t)}</div>
+                        <div className="transfer-detail">{transferDetailText(transfer, t)}</div>
                         {transfer.status === "done" && transfer.filesSkipped > 0 && (
                             <div className="transfer-detail">
                                 {t("servers.fileManager.transfers.skipped", { count: transfer.filesSkipped })}

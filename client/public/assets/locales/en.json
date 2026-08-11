@@ -1987,6 +1987,7 @@
         "copying": "Copying to {{destination}}",
         "moving": "Moving to {{destination}}",
         "progress": "{{filesDone}} of {{filesTotal}}",
+        "progressPercent": "{{label}} · {{percent}} %",
         "done": "{{count}} transferred",
         "skipped": "{{count}} skipped",
         "cancelled": "Cancelled",
