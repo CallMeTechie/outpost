@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState, useRef, useCallback } from "react";
+import { useContext, useEffect, useState, useRef, useCallback, useReducer } from "react";
 import { useTranslation } from "react-i18next";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { usePreferences } from "@/common/contexts/PreferencesContext.jsx";
@@ -13,6 +13,7 @@ import { getWebSocketUrl, getBaseUrl } from "@/common/utils/ConnectionUtil.js";
 import { uploadFile as uploadFileRequest, tauriDownload } from "@/common/utils/RequestUtil.js";
 import { isTauri } from "@/common/utils/TauriUtil.js";
 import { OPERATIONS } from "./utils/operations.js";
+import { initialTransferState, transferReducer } from "./utils/transferState.js";
 
 const REFRESH_DEBOUNCE = 150;
 
@@ -86,6 +87,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     const [searchOpen, setSearchOpen] = useState(false);
     const [searchResultCount, setSearchResultCount] = useState(0);
     const [capabilities, setCapabilities] = useState({ shell: true, terminal: true });
+    const [transferState, dispatchTransfer] = useReducer(transferReducer, initialTransferState);
 
     const directoryRef = useRef(directory);
     const skipNextPathSync = useRef(false);
@@ -297,6 +299,20 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                 case OPERATIONS.FOLDER_SIZE:
                     propertiesHandlerRef.current?.({ operation, payload });
                     break;
+                case OPERATIONS.TRANSFER_PROGRESS:
+                    dispatchTransfer({ type: "progress", payload });
+                    break;
+                case OPERATIONS.TRANSFER_CONFLICT:
+                    dispatchTransfer({ type: "conflict", payload });
+                    break;
+                case OPERATIONS.TRANSFER_DONE:
+                    dispatchTransfer({ type: "done", payload });
+                    refreshAfterTransfer(payload?.transferId);
+                    break;
+                case OPERATIONS.TRANSFER_ERROR:
+                    dispatchTransfer({ type: "error", payload });
+                    refreshAfterTransfer(payload?.transferId);
+                    break;
             }
         } catch (err) { console.error("Error processing SFTP message:", err); }
     };
@@ -309,6 +325,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
 
     const handleWsClose = useCallback((event) => {
         setIsReady(false);
+        dispatchTransfer({ type: "connectionLost" });
         if (event.code === 4001 || event.code === 4002) {
             sendToast(t("common.error"), t("servers.fileManager.toast.connectionLost"));
             disconnectFromServer(session.id);
@@ -348,6 +365,48 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     };
     const moveFiles = useCallback((sources, destination) => sendOperation(OPERATIONS.MOVE_FILES, { sources, destination }), [sendOperation]);
     const copyFiles = useCallback((sources, destination) => sendOperation(OPERATIONS.COPY_FILES, { sources, destination }), [sendOperation]);
+
+    // The destination pane's socket drives the transfer, so this is always our own socket.
+    // Not called from anywhere yet - Task 5 wires it into the drag-and-drop handlers.
+    // eslint-disable-next-line no-unused-vars
+    const startTransfer = useCallback(({ paths, destination, sourceSessionId, action }) => {
+        const transferId = crypto.randomUUID();
+        const sent = sendOperation(OPERATIONS.TRANSFER_START, {
+            transferId, sourceSessionId, paths, destination, action, onConflict: "ask",
+        });
+        if (!sent) return null;
+        dispatchTransfer({ type: "start", id: transferId, action, destination, filesTotal: paths.length });
+        return transferId;
+    }, [sendOperation]);
+
+    // Only mark it once the message is actually out: sendOperation returns false when the socket
+    // is not ready, and a row marked "cancelling" that nobody was told about never resolves.
+    // Not called from anywhere yet - Task 7 wires it into the transfer list's cancel button.
+    // eslint-disable-next-line no-unused-vars
+    const cancelTransfer = useCallback((transferId) => {
+        if (sendOperation(OPERATIONS.TRANSFER_CANCEL, { transferId })) {
+            dispatchTransfer({ type: "cancelling", id: transferId });
+        }
+    }, [sendOperation]);
+
+    // Not called from anywhere yet - Task 8 wires it into the conflict dialog.
+    // eslint-disable-next-line no-unused-vars
+    const resolveConflict = useCallback(({ transferId, file, choice, applyToAll }) => {
+        if (sendOperation(OPERATIONS.TRANSFER_RESOLVE, { transferId, file, choice, applyToAll })) {
+            dispatchTransfer({ type: "resolved", id: transferId, file });
+        }
+    }, [sendOperation]);
+
+    // Not called from anywhere yet - Task 7 wires it into the transfer list's dismiss button.
+    // eslint-disable-next-line no-unused-vars
+    const dismissTransfer = useCallback((transferId) => dispatchTransfer({ type: "dismiss", id: transferId }), []);
+
+    // listFiles always asks for the directory currently shown. Refreshing blindly would reload the
+    // wrong folder when the user has navigated away mid-transfer - and leave the destination stale.
+    const refreshAfterTransfer = (transferId) => {
+        const transfer = transferState.transfers.find((t) => t.id === transferId);
+        if (transfer && transfer.destination === directory) listFiles(true);
+    };
 
     const changeDirectory = (newDirectory) => {
         if (newDirectory === directory) return;
