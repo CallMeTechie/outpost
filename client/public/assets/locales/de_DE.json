@@ -1957,6 +1957,17 @@
         "leftovers": "Zurückgeblieben: {{files}}",
         "dismiss": "Ausblenden"
       },
+      "transferConflict": {
+        "title": "Datei existiert bereits",
+        "question": "{{file}} existiert am Ziel bereits.",
+        "source": "Quelle: {{size}}",
+        "destination": "Ziel: {{size}}",
+        "more": "{{count}} weitere Rückfrage(n) offen",
+        "applyToAll": "Auf alle weiteren Dateien anwenden",
+        "overwrite": "Überschreiben",
+        "skip": "Überspringen",
+        "abort": "Transfer abbrechen"
+      },
       "item": {
         "link": "Link"
       },

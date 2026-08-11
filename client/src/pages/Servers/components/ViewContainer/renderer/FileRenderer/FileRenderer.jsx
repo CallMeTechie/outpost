@@ -7,6 +7,7 @@ import useWebSocket from "react-use-websocket";
 import ActionBar from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/components/ActionBar";
 import FileList from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/components/FileList";
 import TransferList from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/components/TransferList";
+import ConflictDialog from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/components/ConflictDialog";
 import "./styles.sass";
 import Icon from "@mdi/react";
 import { mdiCloudUpload } from "@mdi/js";
@@ -386,8 +387,6 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
         }
     }, [sendOperation]);
 
-    // Not called from anywhere yet - Task 8 wires it into the conflict dialog.
-    // eslint-disable-next-line no-unused-vars
     const resolveConflict = useCallback(({ transferId, file, choice, applyToAll }) => {
         if (sendOperation(OPERATIONS.TRANSFER_RESOLVE, { transferId, file, choice, applyToAll })) {
             dispatchTransfer({ type: "resolved", id: transferId, file });
@@ -502,6 +501,8 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                     onOpenTerminal={onOpenTerminal} onPropertiesMessage={(handler) => { propertiesHandlerRef.current = handler; }} />
             </div>
             <TransferList transfers={transferState.transfers} onCancel={cancelTransfer} onDismiss={dismissTransfer} />
+            <ConflictDialog conflict={transferState.conflicts[0]} onResolve={resolveConflict}
+                pendingCount={Math.max(0, transferState.conflicts.length - 1)} />
             {isUploading && <div className="upload-progress" style={{ width: `${uploadProgress}%` }} />}
         </div>
     );

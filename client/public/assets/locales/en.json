@@ -1997,6 +1997,17 @@
         "leftovers": "Left behind: {{files}}",
         "dismiss": "Dismiss"
       },
+      "transferConflict": {
+        "title": "File already exists",
+        "question": "{{file}} already exists at the destination.",
+        "source": "Source: {{size}}",
+        "destination": "Destination: {{size}}",
+        "more": "{{count}} more conflict(s) waiting",
+        "applyToAll": "Apply to all remaining files",
+        "overwrite": "Overwrite",
+        "skip": "Skip",
+        "abort": "Abort transfer"
+      },
       "item": {
         "link": "link"
       },
