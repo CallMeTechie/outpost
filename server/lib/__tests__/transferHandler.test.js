@@ -551,6 +551,41 @@ test("a cancelled setup answers the client that is still waiting for it", async 
     assert.ok(!s.sent.some((m) => m.op === OP.TRANSFER_ERROR), "an answered cancel is not a refusal");
 });
 
+// Follow-up, point 1: the cancel lands in the setup window, and the setup then fails on its own
+// before the abort check is reached — the second connect dies here. The abort branch used to hang
+// on a flag that only that check sets, so the client got "Transfer not permitted" for a stop it had
+// asked for itself, and a refusal went into the audit trail for a request nobody is answerable for.
+test("a setup that fails after the client cancelled reports the cancel, not a refusal", async () => {
+    let unblock = null;
+    let calls = 0;
+    const audited = [];
+    const s = setup({
+        getCrossClient: async () => {
+            if (++calls === 1) return new Promise((r) => { unblock = () => r({}); });
+            throw new Error("connect failed");
+        },
+        createAuditLog: (entry) => audited.push(entry),
+    });
+
+    const started = s.handlers.start(start({ action: "move" }));
+    await new Promise((r) => setImmediate(r));
+    assert.strictEqual(s.registry.reserved.length, 1, "the slot is taken before the connects start");
+
+    s.handlers.cancel({ transferId: "t1" });
+    unblock();
+    await started;
+
+    assert.ok(!s.sent.some((m) => m.op === OP.TRANSFER_ERROR),
+        "the user cancelled — nothing here is a refusal to report");
+    const done = s.sent.find((m) => m.op === OP.TRANSFER_DONE);
+    assert.ok(done, "the client is still waiting, and its row stays at cancelling forever");
+    assert.strictEqual(done.data.cancelled, true);
+    assert.deepStrictEqual(audited, [], "a cancelled request must not be audited as refused");
+    assert.strictEqual(s.transfers.size, 0, "the entry leaked");
+    assert.deepStrictEqual(s.registry.reserved, [], "the registry slot leaked");
+    assert.deepStrictEqual(s.released, ["dst:t1", "dst:t1"], "both aux clients must be released");
+});
+
 // Fix round 6, Finding A: the socket can close at any point while start() is still building — two
 // database lookups, a stat round trip on a foreign host and two connects bounded only by the 30 s
 // cross-transfer deadline. cancelAllTransfers has nothing to cancel on a placeholder and drops it

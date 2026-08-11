@@ -198,7 +198,16 @@ const buildTransferHandlers = (OP, ctx) => {
                 // An aborted setup is not a refusal: nothing was decided about this request.
                 // Returning here keeps it out of the audit trail and out of the refusal below,
                 // after the release above has run.
-                if (aborted) {
+                //
+                // ownEntry.cancelled is read again, not just the `aborted` flag: a cancel can land
+                // in the setup window and the setup can then fail on its own before the check above
+                // is ever reached — a destination that refuses, a connect that dies. The client
+                // would be told "Transfer not permitted" for a stop it asked for itself, and a
+                // refusal would be audited for a request nobody is answerable for. Whoever asked
+                // first wins, and the user asked. Safe to read here: past the point where ownEntry
+                // becomes the running entry there is no further await, so a cancel can only reach
+                // that object after start() has returned.
+                if (aborted || ownEntry?.cancelled) {
                     // A socket that closed has nobody left to tell; a client that cancelled itself
                     // is still waiting, and without an answer its row sits at "cancelling" for
                     // good — the cancel button is disabled there and dismiss refuses anything
