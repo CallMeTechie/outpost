@@ -6,6 +6,7 @@ import { useToast } from "@/common/contexts/ToastContext.jsx";
 import useWebSocket from "react-use-websocket";
 import ActionBar from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/components/ActionBar";
 import FileList from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/components/FileList";
+import TransferList from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/components/TransferList";
 import "./styles.sass";
 import Icon from "@mdi/react";
 import { mdiCloudUpload } from "@mdi/js";
@@ -379,8 +380,6 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
 
     // Only mark it once the message is actually out: sendOperation returns false when the socket
     // is not ready, and a row marked "cancelling" that nobody was told about never resolves.
-    // Not called from anywhere yet - Task 7 wires it into the transfer list's cancel button.
-    // eslint-disable-next-line no-unused-vars
     const cancelTransfer = useCallback((transferId) => {
         if (sendOperation(OPERATIONS.TRANSFER_CANCEL, { transferId })) {
             dispatchTransfer({ type: "cancelling", id: transferId });
@@ -395,8 +394,6 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
         }
     }, [sendOperation]);
 
-    // Not called from anywhere yet - Task 7 wires it into the transfer list's dismiss button.
-    // eslint-disable-next-line no-unused-vars
     const dismissTransfer = useCallback((transferId) => dispatchTransfer({ type: "dismiss", id: transferId }), []);
 
     // listFiles always asks for the directory currently shown. Refreshing blindly would reload the
@@ -504,6 +501,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                     searchQuery={searchQuery} onSearchResults={setSearchResultCount}
                     onOpenTerminal={onOpenTerminal} onPropertiesMessage={(handler) => { propertiesHandlerRef.current = handler; }} />
             </div>
+            <TransferList transfers={transferState.transfers} onCancel={cancelTransfer} onDismiss={dismissTransfer} />
             {isUploading && <div className="upload-progress" style={{ width: `${uploadProgress}%` }} />}
         </div>
     );

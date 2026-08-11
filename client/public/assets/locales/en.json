@@ -1983,6 +1983,20 @@
         "closeSearch": "Close search",
         "refresh": "Refresh"
       },
+      "transfers": {
+        "copying": "Copying to {{destination}}",
+        "moving": "Moving to {{destination}}",
+        "progress": "{{filesDone}} of {{filesTotal}}",
+        "done": "{{count}} transferred",
+        "skipped": "{{count}} skipped",
+        "cancelled": "Cancelled",
+        "failed": "Failed: {{message}}",
+        "cancel": "Cancel",
+        "cancelling": "Cancelling…",
+        "connectionLost": "Connection lost",
+        "leftovers": "Left behind: {{files}}",
+        "dismiss": "Dismiss"
+      },
       "item": {
         "link": "link"
       },

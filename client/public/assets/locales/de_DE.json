@@ -1943,6 +1943,20 @@
         "closeSearch": "Suchfeld schließen",
         "refresh": "Aktualisieren"
       },
+      "transfers": {
+        "copying": "Kopieren nach {{destination}}",
+        "moving": "Verschieben nach {{destination}}",
+        "progress": "{{filesDone}} von {{filesTotal}}",
+        "done": "{{count}} übertragen",
+        "skipped": "{{count}} übersprungen",
+        "cancelled": "Abgebrochen",
+        "failed": "Fehlgeschlagen: {{message}}",
+        "cancel": "Abbrechen",
+        "cancelling": "Wird abgebrochen…",
+        "connectionLost": "Verbindung verloren",
+        "leftovers": "Zurückgeblieben: {{files}}",
+        "dismiss": "Ausblenden"
+      },
       "item": {
         "link": "Link"
       },

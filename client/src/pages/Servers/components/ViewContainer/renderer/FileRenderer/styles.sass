@@ -66,3 +66,58 @@
     background-color: colors.$primary
     transition: width 0.3s ease
     z-index: 101
+
+  .transfer-list
+    position: absolute
+    bottom: 0.5rem
+    right: 0.5rem
+    z-index: 102
+    display: flex
+    flex-direction: column
+    gap: 0.35rem
+    max-width: 22rem
+
+    .transfer-row
+      position: relative
+      overflow: hidden
+      padding: 0.5rem 2rem 0.5rem 0.65rem
+      border-radius: 0.4rem
+      background-color: colors.$gray-full
+      box-shadow: colors.$shadow-sm
+      font-size: 0.8rem
+
+      .transfer-title
+        font-weight: 600
+        white-space: nowrap
+        overflow: hidden
+        text-overflow: ellipsis
+
+      .transfer-detail
+        opacity: 0.75
+        white-space: nowrap
+        overflow: hidden
+        text-overflow: ellipsis
+
+      .transfer-bar
+        position: absolute
+        bottom: 0
+        left: 0
+        height: 0.15rem
+        background-color: colors.$primary
+        transition: width 0.3s ease
+
+      .transfer-action
+        position: absolute
+        top: 0.35rem
+        right: 0.35rem
+        background: none
+        border: none
+        cursor: pointer
+        color: inherit
+
+        &:disabled
+          opacity: 0.4
+          cursor: default
+
+    .transfer-error .transfer-detail
+      color: colors.$error
