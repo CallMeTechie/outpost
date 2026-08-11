@@ -3,7 +3,8 @@ import assert from "node:assert";
 import { initialTransferState, transferReducer } from "../transferState.js";
 
 const run = (events, state = initialTransferState) => events.reduce(transferReducer, state);
-const started = (id = "t1") => ({ type: "start", id, action: "copy", destination: "/dst", filesTotal: 2 });
+const started = (id = "t1") => ({ type: "start", id, action: "copy", destination: "/dst",
+    sourceSessionId: "src1", paths: ["/src/a.txt"], filesTotal: 2 });
 
 test("a started transfer shows up as running", () => {
     const s = run([started()]);
@@ -11,6 +12,8 @@ test("a started transfer shows up as running", () => {
     assert.strictEqual(s.transfers[0].id, "t1");
     assert.strictEqual(s.transfers[0].status, "running");
     assert.strictEqual(s.transfers[0].destination, "/dst");
+    assert.strictEqual(s.transfers[0].sourceSessionId, "src1");
+    assert.deepStrictEqual(s.transfers[0].paths, ["/src/a.txt"]);
 });
 
 test("progress updates only the transfer it names", () => {

@@ -22,6 +22,10 @@ export const transferReducer = (state, event) => {
         case "start":
             return { ...state, transfers: [...state.transfers, {
                 id: event.id, action: event.action, destination: event.destination,
+                // Kept on the row itself, not read back off the server: TRANSFER_DONE only ever
+                // echoes the transferId, so the source session and paths a completed move must
+                // report to moveNotifier have nowhere else to come from later.
+                sourceSessionId: event.sourceSessionId, paths: event.paths,
                 status: "running", file: undefined, bytesDone: 0, bytesTotal: 0,
                 filesDone: 0, filesTotal: event.filesTotal ?? 0,
             }] };

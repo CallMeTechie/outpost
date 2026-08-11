@@ -17,6 +17,7 @@ import { isTauri } from "@/common/utils/TauriUtil.js";
 import { OPERATIONS } from "./utils/operations.js";
 import { initialTransferState, transferReducer } from "./utils/transferState.js";
 import { MAX_TRANSFER_PATHS, exceedsTransferPathLimit } from "./utils/transferLimits.js";
+import { publishMoveCompleted, subscribeToMoveCompleted, paneAffectedByMove } from "./utils/moveNotifier.js";
 
 const REFRESH_DEBOUNCE = 150;
 
@@ -308,10 +309,24 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                 case OPERATIONS.TRANSFER_CONFLICT:
                     dispatchTransfer({ type: "conflict", payload });
                     break;
-                case OPERATIONS.TRANSFER_DONE:
+                case OPERATIONS.TRANSFER_DONE: {
+                    // TRANSFER_DONE only ever echoes the transferId back, so the source session and
+                    // paths a completed move must report to the source pane come off the transfer's
+                    // own row - the one "start" put them on - not off this payload.
+                    const transfer = transferState.transfers.find((t) => t.id === payload?.transferId);
                     dispatchTransfer({ type: "done", payload });
                     refreshAfterTransfer(payload?.transferId);
+                    // Only a move changes the source directory; a copy leaves it untouched, and a
+                    // cancelled move may not have moved anything, so neither is worth telling the
+                    // source pane about. The source pane is never this pane: sourceSessionId is the
+                    // *other* session's id by construction (dropTransfer.js only ever calls
+                    // startTransfer across two different sessions), so this can't make the
+                    // destination pane, which already refreshed itself above, refresh a second time.
+                    if (transfer?.action === "move" && !payload?.cancelled) {
+                        publishMoveCompleted({ sourceSessionId: transfer.sourceSessionId, paths: transfer.paths });
+                    }
                     break;
+                }
                 case OPERATIONS.TRANSFER_ERROR:
                     // A refusal that names no transfer - the server answers a payload it rejected
                     // before reading an id with transferId: null — has no row to land on, and the
@@ -393,7 +408,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
             sendToast(t("common.error"), t("servers.fileManager.toast.connectionLost"));
             return null;
         }
-        dispatchTransfer({ type: "start", id: transferId, action, destination, filesTotal: paths.length });
+        dispatchTransfer({ type: "start", id: transferId, action, destination, sourceSessionId, paths, filesTotal: paths.length });
         return transferId;
     }, [sendOperation, sendToast, t]);
 
@@ -490,6 +505,13 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
             listFiles();
         }
     }, [directory, isReady]);
+
+    // A move completed in another pane on this same session can empty out or repopulate the
+    // directory this pane happens to be showing - unsubscribe on unmount/re-subscribe is required,
+    // or listeners pile up for the lifetime of the app as panes open and close.
+    useEffect(() => subscribeToMoveCompleted(({ sourceSessionId, paths }) => {
+        if (paneAffectedByMove({ sessionId: session.id, directory, sourceSessionId, paths })) listFiles(true);
+    }), [session.id, directory, listFiles]);
 
     return (
         <div className="file-renderer" ref={dropZoneRef} onDragOver={handleDrag} onDragLeave={handleDrag} onDrop={handleDrag}>
