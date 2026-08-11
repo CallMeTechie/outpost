@@ -26,6 +26,7 @@ import "./styles/xterm.sass";
 const PASSWORD_PROMPT_REGEX = /^[^$#%>]*(password|passphrase)[^:\r\n]*:\s?$/i;
 const ANSI_ESCAPE_REGEX = /\x1b(?:\[[0-9;?]*[a-zA-Z]|\][^\x07\x1b]*(?:\x07|\x1b\\)?|[()][0-9A-B]|[a-zA-Z=><])/g;
 const CONTROL_CHAR_REGEX = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g;
+const MODIFIER_KEYS = ["Shift", "Control", "Alt", "Meta", "AltGraph", "CapsLock"];
 
 const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getSessionError, registerTerminalRef, broadcastMode, terminalRefs, updateProgress, layoutMode, onBroadcastToggle, onFullscreenToggle, isShared = false, onOpenSftp }) => {
     const ref = useRef(null);
@@ -38,6 +39,10 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
     const onFullscreenToggleRef = useRef(onFullscreenToggle);
     const connectionLoaderRef = useRef(null);
     const smartCopyPasteRef = useRef(false);
+    // Apps that request mouse tracking (Claude Code, htop, ...) make xterm.js drop the
+    // selection on the first mouse report after mouseup, so getSelection() is already
+    // empty by the time a copy is triggered. Keep the last non-empty selection around.
+    const lastSelectionRef = useRef("");
 
     const userContext = useContext(UserContext);
     const sessionToken = userContext?.sessionToken;
@@ -304,9 +309,14 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
         });
     };
 
+    const readSelection = () => termRef.current?.getSelection() || lastSelectionRef.current;
+
     const handleCopy = () => {
-        const selection = termRef.current?.getSelection();
-        if (selection) copyToClipboard(selection);
+        const selection = readSelection();
+        if (selection) {
+            copyToClipboard(selection);
+            lastSelectionRef.current = "";
+        }
         contextMenu.close();
         termRef.current?.focus();
     };
@@ -404,6 +414,13 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
         term.loadAddon(fitAddon);
         term.open(ref.current);
 
+        // Only remember non-empty selections: the clearing event fires with an empty
+        // selection and must not overwrite what the user just highlighted.
+        const selectionDisposable = term.onSelectionChange(() => {
+            const selection = term.getSelection();
+            if (selection) lastSelectionRef.current = selection;
+        });
+
         const computePasswordHintPosition = () => {
             const cell = term._core?._renderService?.dimensions?.css?.cell;
             const cellWidth = cell?.width || (ref.current?.clientWidth || 0) / (term.cols || 1);
@@ -448,6 +465,15 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
             }
         };
         ref.current?.addEventListener('paste', handleNativePaste);
+
+        // A new left click starts a new interaction, so the remembered selection is stale.
+        // Right click is excluded, otherwise opening the context menu would discard the
+        // very selection its copy entry acts on. Capture phase, because xterm.js stops
+        // propagation of mousedown while mouse tracking is active.
+        const handleSelectionReset = (e) => {
+            if (e.button === 0) lastSelectionRef.current = "";
+        };
+        ref.current?.addEventListener('mousedown', handleSelectionReset, true);
 
         let ws;
 
@@ -632,23 +658,25 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
 
                 const copyKeybind = getParsedKeybind("copy");
                 if (copyKeybind && matchesKeybind(event, copyKeybind)) {
-                    const selection = term.getSelection();
+                    const selection = readSelection();
                     if (selection) {
                         event.preventDefault();
                         event.stopPropagation();
                         copyToClipboard(selection);
+                        lastSelectionRef.current = "";
                         return false;
                     }
                 }
 
                 if (smartCopyPasteRef.current && !isMac() && event.key.toLowerCase() === "c"
                     && event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
-                    const selection = term.getSelection();
+                    const selection = readSelection();
                     if (selection) {
                         event.preventDefault();
                         event.stopPropagation();
                         copyToClipboard(selection);
                         term.clearSelection();
+                        lastSelectionRef.current = "";
                         return false;
                     }
                 }
@@ -715,6 +743,11 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
                         return false;
                     }
                 }
+
+                // Any keystroke that reaches the shell means the user moved on, so a
+                // remembered selection must not keep Ctrl+C from sending SIGINT. Modifiers
+                // are excluded because they arrive just before the copy keybind itself.
+                if (!MODIFIER_KEYS.includes(event.key)) lastSelectionRef.current = "";
             }
             return true;
         });
@@ -729,12 +762,15 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
             }
             window.removeEventListener("resize", handleResize);
             ref.current?.removeEventListener('paste', handleNativePaste);
+            ref.current?.removeEventListener('mousedown', handleSelectionReset, true);
+            lastSelectionRef.current = "";
             if (ws) {
                 ws.onclose = null;
                 ws.onerror = null;
                 ws.close();
             }
             cursorSyncDisposable.dispose();
+            selectionDisposable.dispose();
             term.dispose();
             clearInterval(interval);
             termRef.current = null;
@@ -791,7 +827,7 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
                         icon={mdiContentCopy}
                         label={t('servers.fileManager.contextMenu.copy')}
                         onClick={handleCopy}
-                        disabled={!termRef.current?.getSelection()}
+                        disabled={!readSelection()}
                     />
                     <ContextMenuItem
                         icon={mdiContentPaste}
