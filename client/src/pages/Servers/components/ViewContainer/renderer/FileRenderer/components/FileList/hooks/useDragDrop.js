@@ -71,18 +71,20 @@ export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, mo
         }
     }, []);
 
+    // "ask" when the preference leaves the choice to the user, otherwise whether the drop was
+    // really handed over. startTransfer returns null when it refused or could not send, and that
+    // must neither clear the selection the user still needs nor be mistaken for an open question.
     const executeDrop = useCallback((decision, action) => {
-        if (action !== "move" && action !== "copy") return false;
+        if (action !== "move" && action !== "copy") return "ask";
         if (decision.kind === "transfer") {
-            startTransfer?.({
+            return startTransfer?.({
                 paths: decision.paths, destination: decision.destination,
                 sourceSessionId: decision.sourceSessionId, action,
-            });
-            return true;
+            }) ? "done" : "failed";
         }
         if (action === "move") moveFiles?.(decision.paths, decision.destination);
         else copyFiles?.(decision.paths, decision.destination);
-        return true;
+        return "done";
     }, [moveFiles, copyFiles, startTransfer]);
 
     const handleDrop = useCallback((event, item, onClearSelection, openDropMenu) => {
@@ -97,10 +99,11 @@ export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, mo
             const destination = `${path.endsWith("/") ? path : path + "/"}${item.name}`;
             const decision = resolveDropTarget({ data, sessionId, destination, excludeName: item.name });
             if (decision.kind === "reject") return;
-            if (!executeDrop(decision, dragDropAction)) {
+            const outcome = executeDrop(decision, dragDropAction);
+            if (outcome === "ask") {
                 setPendingDrop(decision);
                 openDropMenu(event);
-            } else {
+            } else if (outcome === "done") {
                 onClearSelection();
             }
         } catch {}
@@ -114,10 +117,11 @@ export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, mo
             const data = JSON.parse(event.dataTransfer.getData("application/x-sftp-files"));
             const decision = resolveDropTarget({ data, sessionId, destination: path, currentPath: path });
             if (decision.kind === "reject") return;
-            if (!executeDrop(decision, dragDropAction)) {
+            const outcome = executeDrop(decision, dragDropAction);
+            if (outcome === "ask") {
                 setPendingDrop(decision);
                 openDropMenu(event);
-            } else {
+            } else if (outcome === "done") {
                 onClearSelection();
             }
         } catch {}
@@ -125,8 +129,7 @@ export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, mo
 
     const handleDropAction = useCallback((action, onClearSelection, closeDropMenu) => {
         if (pendingDrop) {
-            executeDrop(pendingDrop, action);
-            onClearSelection();
+            if (executeDrop(pendingDrop, action) === "done") onClearSelection();
             setPendingDrop(null);
         }
         closeDropMenu();
