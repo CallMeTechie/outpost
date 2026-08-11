@@ -19,7 +19,7 @@ import { isPreviewable, getFullPath, OPERATIONS } from "./utils/fileUtils";
 export const FileList = forwardRef(({
     items, updatePath, path, sendOperation, downloadFile, downloadMultipleFiles,
     setCurrentFile, setPreviewFile, loading, viewMode = "list", error,
-    resolveSymlink, session, createFile, createFolder, moveFiles, copyFiles, isActive,
+    resolveSymlink, session, createFile, createFolder, moveFiles, copyFiles, startTransfer, isActive,
     onOpenTerminal, onPropertiesMessage, searchQuery = "", onSearchResults,
     capabilities = { shell: true, terminal: true },
 }, ref) => {
@@ -118,7 +118,7 @@ export const FileList = forwardRef(({
         handleDrop, handleContainerDrop, handleDropAction, setPendingDrop,
     } = useDragDrop({
         path, sessionId: session.id, selectedItems, isItemSelected,
-        moveFiles, copyFiles, dragDropAction, updatePath,
+        moveFiles, copyFiles, startTransfer, dragDropAction, updatePath,
     });
 
     const handleItemClick = useCallback((event, item) => {

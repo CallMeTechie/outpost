@@ -367,8 +367,6 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     const copyFiles = useCallback((sources, destination) => sendOperation(OPERATIONS.COPY_FILES, { sources, destination }), [sendOperation]);
 
     // The destination pane's socket drives the transfer, so this is always our own socket.
-    // Not called from anywhere yet - Task 5 wires it into the drag-and-drop handlers.
-    // eslint-disable-next-line no-unused-vars
     const startTransfer = useCallback(({ paths, destination, sourceSessionId, action }) => {
         const transferId = crypto.randomUUID();
         const sent = sendOperation(OPERATIONS.TRANSFER_START, {
@@ -500,7 +498,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                 <FileList ref={fileListRef} items={items} path={directory} updatePath={changeDirectory} sendOperation={sendOperation}
                     downloadFile={downloadFile} downloadMultipleFiles={downloadMultipleFiles} setCurrentFile={handleOpenFile} setPreviewFile={handleOpenPreview}
                     loading={loading} viewMode={viewMode} error={error || connectionError} resolveSymlink={resolveSymlink} session={session}
-                    createFile={createFile} createFolder={createFolder} moveFiles={moveFiles} copyFiles={copyFiles} isActive={isActive}
+                    createFile={createFile} createFolder={createFolder} moveFiles={moveFiles} copyFiles={copyFiles} startTransfer={startTransfer} isActive={isActive}
                     capabilities={capabilities}
                     searchQuery={searchQuery} onSearchResults={setSearchResultCount}
                     onOpenTerminal={onOpenTerminal} onPropertiesMessage={(handler) => { propertiesHandlerRef.current = handler; }} />

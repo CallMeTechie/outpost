@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from "react";
+import { resolveDropTarget, DRAG_PROVIDER } from "../../../utils/dropTransfer.js";
 
-export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, moveFiles, copyFiles, dragDropAction, updatePath }) => {
+export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, moveFiles, copyFiles, startTransfer, dragDropAction, updatePath }) => {
     const [draggedItems, setDraggedItems] = useState([]);
     const [dropTarget, setDropTarget] = useState(null);
     const [pendingDrop, setPendingDrop] = useState(null);
@@ -11,7 +12,7 @@ export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, mo
         const itemsToDrag = isItemSelected(item) ? selectedItems : [item];
         setDraggedItems(itemsToDrag);
         const paths = itemsToDrag.map(i => `${path}/${i.name}`);
-        const dragData = { paths, items: itemsToDrag, sessionId };
+        const dragData = { paths, items: itemsToDrag, sessionId, provider: DRAG_PROVIDER };
         event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
         event.dataTransfer.setData("application/x-sftp-files", JSON.stringify(dragData));
         event.dataTransfer.effectAllowed = "copyMove";
@@ -70,12 +71,19 @@ export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, mo
         }
     }, []);
 
-    const executeDrop = useCallback((paths, destination, action) => {
-        if (action === "move") moveFiles?.(paths, destination);
-        else if (action === "copy") copyFiles?.(paths, destination);
-        else return false;
+    const executeDrop = useCallback((decision, action) => {
+        if (action !== "move" && action !== "copy") return false;
+        if (decision.kind === "transfer") {
+            startTransfer?.({
+                paths: decision.paths, destination: decision.destination,
+                sourceSessionId: decision.sourceSessionId, action,
+            });
+            return true;
+        }
+        if (action === "move") moveFiles?.(decision.paths, decision.destination);
+        else copyFiles?.(decision.paths, decision.destination);
         return true;
-    }, [moveFiles, copyFiles]);
+    }, [moveFiles, copyFiles, startTransfer]);
 
     const handleDrop = useCallback((event, item, onClearSelection, openDropMenu) => {
         event.preventDefault();
@@ -86,10 +94,11 @@ export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, mo
         if (item.type !== "folder") return;
         try {
             const data = JSON.parse(event.dataTransfer.getData("application/x-sftp-files"));
-            if (!data?.paths?.length || data.sessionId !== sessionId || data.items?.some(d => d.name === item.name)) return;
             const destination = `${path.endsWith("/") ? path : path + "/"}${item.name}`;
-            if (!executeDrop(data.paths, destination, dragDropAction)) {
-                setPendingDrop({ paths: data.paths, destination });
+            const decision = resolveDropTarget({ data, sessionId, destination, excludeName: item.name });
+            if (decision.kind === "reject") return;
+            if (!executeDrop(decision, dragDropAction)) {
+                setPendingDrop(decision);
                 openDropMenu(event);
             } else {
                 onClearSelection();
@@ -103,11 +112,10 @@ export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, mo
         setDraggedItems([]);
         try {
             const data = JSON.parse(event.dataTransfer.getData("application/x-sftp-files"));
-            if (!data?.paths?.length || data.sessionId !== sessionId) return;
-            const currentDir = path.endsWith("/") ? path.slice(0, -1) : path;
-            if (data.paths.every(p => { const parent = p.substring(0, p.lastIndexOf("/")) || "/"; return parent === currentDir || parent === path; })) return;
-            if (!executeDrop(data.paths, path, dragDropAction)) {
-                setPendingDrop({ paths: data.paths, destination: path });
+            const decision = resolveDropTarget({ data, sessionId, destination: path, currentPath: path });
+            if (decision.kind === "reject") return;
+            if (!executeDrop(decision, dragDropAction)) {
+                setPendingDrop(decision);
                 openDropMenu(event);
             } else {
                 onClearSelection();
@@ -117,12 +125,12 @@ export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, mo
 
     const handleDropAction = useCallback((action, onClearSelection, closeDropMenu) => {
         if (pendingDrop) {
-            action === "move" ? moveFiles?.(pendingDrop.paths, pendingDrop.destination) : copyFiles?.(pendingDrop.paths, pendingDrop.destination);
+            executeDrop(pendingDrop, action);
             onClearSelection();
             setPendingDrop(null);
         }
         closeDropMenu();
-    }, [pendingDrop, moveFiles, copyFiles]);
+    }, [pendingDrop, executeDrop]);
 
     return {
         draggedItems,
