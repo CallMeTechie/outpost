@@ -148,6 +148,7 @@ export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, mo
         handleDrop,
         handleContainerDrop,
         handleDropAction,
+        pendingDrop,
         setPendingDrop,
     };
 };

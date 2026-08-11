@@ -115,7 +115,7 @@ export const FileList = forwardRef(({
     const {
         draggedItems, dropTarget, dragImageRef,
         handleDragStart, handleDragEnd, handleDragOver, handleDragLeave,
-        handleDrop, handleContainerDrop, handleDropAction, setPendingDrop,
+        handleDrop, handleContainerDrop, handleDropAction, pendingDrop, setPendingDrop,
     } = useDragDrop({
         path, sessionId: session.id, selectedItems, isItemSelected,
         moveFiles, copyFiles, startTransfer, dragDropAction, updatePath,
@@ -315,7 +315,10 @@ export const FileList = forwardRef(({
 
             <ContextMenu isOpen={dropMenu.isOpen} position={dropMenu.position} onClose={() => { dropMenu.close(); setPendingDrop(null); }}>
                 <ContextMenuItem icon={mdiFileMove} label={t("servers.fileManager.contextMenu.moveHere")} onClick={() => handleDropAction("move", clearSelection, dropMenu.close)} />
-                {capabilities.shell && <ContextMenuItem icon={mdiContentCopy} label={t("servers.fileManager.contextMenu.copyHere")} onClick={() => handleDropAction("copy", clearSelection, dropMenu.close)} />}
+                {/* A copy within the session shells out to `cp -r` and needs one; a copy across
+                    pane boundaries streams over SFTP and does not. Without the second half the same
+                    drop offered copying or not depending on the drag-and-drop preference alone. */}
+                {(capabilities.shell || pendingDrop?.kind === "transfer") && <ContextMenuItem icon={mdiContentCopy} label={t("servers.fileManager.contextMenu.copyHere")} onClick={() => handleDropAction("copy", clearSelection, dropMenu.close)} />}
             </ContextMenu>
 
             <div className="drag-preview" ref={dragImageRef}>
