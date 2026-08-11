@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { resolveDropTarget, resolveDropOutcome, DRAG_PROVIDER, DROP_ASK, DROP_DONE }
+import { resolveDropTarget, resolveDropOutcome, runDrop, DRAG_PROVIDER, DROP_ASK, DROP_DONE }
     from "../../../utils/dropTransfer.js";
 
 export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, moveFiles, copyFiles, startTransfer, dragDropAction, updatePath }) => {
@@ -72,20 +72,12 @@ export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, mo
         }
     }, []);
 
-    // All three handlers report whether the drop really went out: startTransfer returns null when
-    // it refused or could not send, moveFiles and copyFiles pass on whether their message left the
-    // socket. A drop that never went out must neither clear the selection the user still needs for
-    // the second attempt nor be mistaken for an open question.
-    const executeDrop = useCallback((decision, action) => resolveDropOutcome(action, () => (
-        decision.kind === "transfer"
-            ? startTransfer?.({
-                paths: decision.paths, destination: decision.destination,
-                sourceSessionId: decision.sourceSessionId, action,
-            })
-            : action === "move"
-                ? moveFiles?.(decision.paths, decision.destination)
-                : copyFiles?.(decision.paths, decision.destination)
-    )), [moveFiles, copyFiles, startTransfer]);
+    // A drop that never went out must neither clear the selection the user still needs for the
+    // second attempt nor be mistaken for an open question — which of the three that is, and whose
+    // answer decides it, is settled in dropTransfer.js.
+    const executeDrop = useCallback((decision, action) => resolveDropOutcome(action,
+        () => runDrop(decision, action, { startTransfer, moveFiles, copyFiles })),
+    [moveFiles, copyFiles, startTransfer]);
 
     const handleDrop = useCallback((event, item, onClearSelection, openDropMenu) => {
         event.preventDefault();

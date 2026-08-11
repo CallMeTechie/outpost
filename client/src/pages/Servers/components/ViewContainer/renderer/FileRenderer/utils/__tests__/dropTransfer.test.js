@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert";
-import { resolveDropTarget, resolveDropOutcome, DRAG_PROVIDER, DROP_ASK, DROP_DONE, DROP_FAILED }
+import { resolveDropTarget, resolveDropOutcome, runDrop, DRAG_PROVIDER, DROP_ASK, DROP_DONE, DROP_FAILED }
     from "../dropTransfer.js";
 
 const drag = (over = {}) => ({
@@ -183,4 +183,69 @@ test("a drop the handler refused is failed, not done and not a question", () => 
 
 test("the three outcomes stay distinguishable from one another", () => {
     assert.strictEqual(new Set([DROP_ASK, DROP_DONE, DROP_FAILED]).size, 3);
+});
+
+// Which handler a decided drop reaches, and whether its answer survives the trip back. The
+// session-internal branch used to report success no matter what its handler said, and a move at a
+// dead socket vanished without a trace.
+// `in`, not ??: null is a value under test here — it is what startTransfer answers with when it
+// refused.
+const handlers = (over = {}) => {
+    const calls = [];
+    const answers = { startTransfer: "t-1", moveFiles: true, copyFiles: true, ...over };
+    const record = (name) => (...args) => { calls.push({ name, args }); return answers[name]; };
+    return {
+        calls,
+        deps: { startTransfer: record("startTransfer"), moveFiles: record("moveFiles"),
+            copyFiles: record("copyFiles") },
+    };
+};
+
+const localDrop = { kind: "local", paths: ["/src/a.txt"], destination: "/dst" };
+const transferDrop = { kind: "transfer", paths: ["/src/a.txt"], destination: "/dst", sourceSessionId: "s-src" };
+
+test("a move within the session goes to moveFiles and nowhere else", () => {
+    const h = handlers();
+    assert.strictEqual(runDrop(localDrop, "move", h.deps), true);
+    assert.deepStrictEqual(h.calls, [{ name: "moveFiles", args: [["/src/a.txt"], "/dst"] }]);
+});
+
+test("a copy within the session goes to copyFiles and nowhere else", () => {
+    const h = handlers();
+    assert.strictEqual(runDrop(localDrop, "copy", h.deps), true);
+    assert.deepStrictEqual(h.calls, [{ name: "copyFiles", args: [["/src/a.txt"], "/dst"] }]);
+});
+
+// The finding itself: a socket that cannot send says so, and that answer must reach the caller —
+// it is the only thing standing between a lost move and a cleared selection.
+test("a refused move within the session is reported as refused, not as done", () => {
+    const h = handlers({ moveFiles: false });
+    assert.strictEqual(runDrop(localDrop, "move", h.deps), false);
+    assert.strictEqual(resolveDropOutcome("move", () => runDrop(localDrop, "move", h.deps)), DROP_FAILED);
+});
+
+test("a refused copy within the session is reported as refused, not as done", () => {
+    const h = handlers({ copyFiles: false });
+    assert.strictEqual(runDrop(localDrop, "copy", h.deps), false);
+    assert.strictEqual(resolveDropOutcome("copy", () => runDrop(localDrop, "copy", h.deps)), DROP_FAILED);
+});
+
+test("a drop across panes goes to startTransfer with the source session and the action", () => {
+    const h = handlers();
+    assert.strictEqual(runDrop(transferDrop, "move", h.deps), "t-1");
+    assert.deepStrictEqual(h.calls, [{ name: "startTransfer", args: [{
+        paths: ["/src/a.txt"], destination: "/dst", sourceSessionId: "s-src", action: "move" }] }]);
+});
+
+test("a transfer that never started is reported as refused", () => {
+    const h = handlers({ startTransfer: null });
+    assert.strictEqual(runDrop(transferDrop, "copy", h.deps), null);
+    assert.strictEqual(resolveDropOutcome("copy", () => runDrop(transferDrop, "copy", h.deps)), DROP_FAILED);
+});
+
+// A drop site that was handed no handler at all did nothing, and must not be able to claim it did.
+test("a missing handler is not a drop that worked", () => {
+    assert.strictEqual(runDrop(localDrop, "move", {}), undefined);
+    assert.strictEqual(runDrop(transferDrop, "move"), undefined);
+    assert.strictEqual(resolveDropOutcome("move", () => runDrop(localDrop, "move", {})), DROP_FAILED);
 });

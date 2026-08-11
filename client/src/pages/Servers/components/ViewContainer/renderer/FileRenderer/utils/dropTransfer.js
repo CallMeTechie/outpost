@@ -61,3 +61,20 @@ export const resolveDropOutcome = (action, run) => {
     if (action !== "move" && action !== "copy") return DROP_ASK;
     return run() ? DROP_DONE : DROP_FAILED;
 };
+
+// Which handler a decided drop goes to, and — just as much the point — that its answer is handed
+// straight back: startTransfer returns null when it refused or could not send, moveFiles and
+// copyFiles pass on whether their message left the socket. Out here for the same reason as the
+// two above: inside the hook, a branch that swallowed that answer and always reported success
+// broke nothing a test could see.
+export const runDrop = (decision, action, { startTransfer, moveFiles, copyFiles } = {}) => {
+    if (decision.kind === "transfer") {
+        return startTransfer?.({
+            paths: decision.paths, destination: decision.destination,
+            sourceSessionId: decision.sourceSessionId, action,
+        });
+    }
+    return action === "move"
+        ? moveFiles?.(decision.paths, decision.destination)
+        : copyFiles?.(decision.paths, decision.destination);
+};
