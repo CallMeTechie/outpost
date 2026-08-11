@@ -72,19 +72,21 @@ export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, mo
     }, []);
 
     // "ask" when the preference leaves the choice to the user, otherwise whether the drop was
-    // really handed over. startTransfer returns null when it refused or could not send, and that
-    // must neither clear the selection the user still needs nor be mistaken for an open question.
+    // really handed over. All three handlers say so: startTransfer returns null when it refused or
+    // could not send, moveFiles and copyFiles pass on whether their message left the socket. A drop
+    // that never went out must neither clear the selection the user still needs for the second
+    // attempt nor be mistaken for an open question.
     const executeDrop = useCallback((decision, action) => {
         if (action !== "move" && action !== "copy") return "ask";
-        if (decision.kind === "transfer") {
-            return startTransfer?.({
+        const handled = decision.kind === "transfer"
+            ? startTransfer?.({
                 paths: decision.paths, destination: decision.destination,
                 sourceSessionId: decision.sourceSessionId, action,
-            }) ? "done" : "failed";
-        }
-        if (action === "move") moveFiles?.(decision.paths, decision.destination);
-        else copyFiles?.(decision.paths, decision.destination);
-        return "done";
+            })
+            : action === "move"
+                ? moveFiles?.(decision.paths, decision.destination)
+                : copyFiles?.(decision.paths, decision.destination);
+        return handled ? "done" : "failed";
     }, [moveFiles, copyFiles, startTransfer]);
 
     const handleDrop = useCallback((event, item, onClearSelection, openDropMenu) => {
