@@ -66,10 +66,14 @@ export const transferReducer = (state, event) => {
         }
         // Without this a dropped socket leaves rows spinning forever: no DONE or ERROR can arrive
         // anymore, and dismiss only removes finished rows.
+        //
+        // connectionLost is a flag of its own rather than a magic message text: message otherwise
+        // carries whatever the server wrote, so a server one day sending exactly that word would
+        // have the row claim the socket died.
         case "connectionLost": {
             if (state.conflicts.length === 0 && state.transfers.every((t) => FINISHED.includes(t.status))) return state;
             return { ...state, conflicts: [], transfers: state.transfers.map((t) =>
-                FINISHED.includes(t.status) ? t : { ...t, status: "error", message: "connectionLost" }) };
+                FINISHED.includes(t.status) ? t : { ...t, status: "error", connectionLost: true }) };
         }
         case "dismiss": {
             // ids are unique per transfer, so once the guard confirms the target is finished,

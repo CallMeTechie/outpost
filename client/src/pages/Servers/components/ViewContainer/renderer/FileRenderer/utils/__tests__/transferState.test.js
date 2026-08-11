@@ -156,7 +156,18 @@ test("losing the connection ends every unfinished transfer instead of leaving it
     // t1 was already done and keeps its result; t2 was still in flight and must not stay stuck.
     assert.strictEqual(s.transfers.find((t) => t.id === "t1").status, "done");
     assert.strictEqual(s.transfers.find((t) => t.id === "t2").status, "error");
+    // The mark the row is rendered from: a flag of its own, so the message field stays what it
+    // always was — server text.
+    assert.strictEqual(s.transfers.find((t) => t.id === "t2").connectionLost, true);
+    assert.strictEqual(s.transfers.find((t) => t.id === "t1").connectionLost, undefined);
     assert.strictEqual(s.conflicts.length, 0);
+});
+
+test("a server error whose text happens to read connectionLost is not one", () => {
+    const s = run([started("t1"),
+        { type: "error", payload: { transferId: "t1", message: "connectionLost" } }]);
+    assert.strictEqual(s.transfers[0].status, "error");
+    assert.strictEqual(s.transfers[0].connectionLost, undefined);
 });
 
 test("losing the connection when everything is already finished returns the very same state", () => {
