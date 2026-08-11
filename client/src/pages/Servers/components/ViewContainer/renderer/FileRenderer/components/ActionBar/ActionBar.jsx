@@ -20,6 +20,7 @@ import { Fragment, useState, useRef, useEffect, useCallback } from "react";
 import { ContextMenu, ContextMenuItem, useContextMenu } from "@/common/components/ContextMenu";
 import { useTranslation } from "react-i18next";
 import { usePreferences } from "@/common/contexts/PreferencesContext.jsx";
+import { resolveDropTarget } from "../../utils/dropTransfer.js";
 
 export const ActionBar = ({
                               path,
@@ -40,6 +41,7 @@ export const ActionBar = ({
                               setDirectorySuggestions,
                               moveFiles,
                               copyFiles,
+                              startTransfer,
                               sessionId,
                               searchQuery,
                               setSearchQuery,
@@ -251,6 +253,19 @@ export const ActionBar = ({
         }
     }, []);
 
+    const applyDrop = useCallback((decision, action) => {
+        if (decision.kind === "transfer") {
+            startTransfer?.({
+                paths: decision.paths, destination: decision.destination,
+                sourceSessionId: decision.sourceSessionId, action,
+            });
+        } else if (action === "move") {
+            moveFiles?.(decision.paths, decision.destination);
+        } else {
+            copyFiles?.(decision.paths, decision.destination);
+        }
+    }, [moveFiles, copyFiles, startTransfer]);
+
     const handlePathDrop = useCallback((event, targetPath) => {
         event.preventDefault();
         event.stopPropagation();
@@ -261,26 +276,24 @@ export const ActionBar = ({
         setDropTarget(null);
         try {
             const data = JSON.parse(event.dataTransfer.getData("application/x-sftp-files"));
-            if (!data?.paths?.length) return;
-            if (!data.sessionId || data.sessionId !== sessionId) return;
-            if (dragDropAction === "move") {
-                moveFiles?.(data.paths, targetPath);
-            } else if (dragDropAction === "copy") {
-                copyFiles?.(data.paths, targetPath);
+            const decision = resolveDropTarget({ data, sessionId, destination: targetPath });
+            if (decision.kind === "reject") return;
+            if (dragDropAction === "move" || dragDropAction === "copy") {
+                applyDrop(decision, dragDropAction);
             } else {
-                setPendingDrop({ paths: data.paths, destination: targetPath });
+                setPendingDrop(decision);
                 dropMenu.open(event, { x: event.clientX, y: event.clientY });
             }
         } catch {}
-    }, [sessionId, dropMenu, dragDropAction, moveFiles, copyFiles]);
+    }, [sessionId, dropMenu, dragDropAction, applyDrop]);
 
     const handleDropAction = useCallback((action) => {
         if (pendingDrop) {
-            action === "move" ? moveFiles?.(pendingDrop.paths, pendingDrop.destination) : copyFiles?.(pendingDrop.paths, pendingDrop.destination);
+            applyDrop(pendingDrop, action);
             setPendingDrop(null);
         }
         dropMenu.close();
-    }, [pendingDrop, moveFiles, copyFiles, dropMenu]);
+    }, [pendingDrop, applyDrop, dropMenu]);
 
     const renderBreadcrumbs = () => {
         const { parts, showEllipsis, ellipsisIndex, originalLength } = getTruncatedPathArray();
