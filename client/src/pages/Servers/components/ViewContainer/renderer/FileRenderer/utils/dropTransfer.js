@@ -15,9 +15,17 @@ const REJECT = { kind: "reject" };
 // used to decide slightly differently and that is exactly where silent holes appear.
 export const resolveDropTarget = ({ data, sessionId, destination, excludeName, currentPath }) => {
     if (!data || typeof data !== "object" || Array.isArray(data)) return REJECT;
+
+    // This payload came out of dataTransfer, i.e. entirely from the browser side and shapeable
+    // by anything there. Every field the checks below touch gets its type validated here, up
+    // front, so nothing past this point can throw on a hostile or merely malformed payload —
+    // a throw would surface to the caller's empty catch as a drop that silently does nothing.
     if (!Array.isArray(data.paths) || data.paths.length === 0) return REJECT;
+    if (!data.paths.every((p) => typeof p === "string" && p.length > 0)) return REJECT;
+    if (data.items !== undefined && !Array.isArray(data.items)) return REJECT;
+    if (typeof data.sessionId !== "string" || data.sessionId.length === 0) return REJECT;
+
     if (data.provider !== DRAG_PROVIDER) return REJECT;
-    if (!data.sessionId) return REJECT;
 
     // Dropping a folder onto itself. Checked before the session split because it is nonsense
     // either way.

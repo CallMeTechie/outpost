@@ -76,3 +76,74 @@ test("a malformed payload is refused instead of throwing", () => {
         assert.strictEqual(resolveDropTarget({ data, sessionId: "s-dst", destination: "/dst" }).kind, "reject");
     }
 });
+
+// Finding 1: a non-string entry in `paths` used to reach `parentOf`, which calls `.substring`/
+// `.lastIndexOf` on it and throws for anything that is not a string.
+test("a null entry in paths is refused during the redundancy check, not thrown at", () => {
+    const r = call({ data: { sessionId: "s-dst", paths: ["/dst/a.txt", null] }, destination: "/dst", currentPath: "/dst" });
+    assert.strictEqual(r.kind, "reject");
+});
+
+test("a numeric entry in paths is refused during the redundancy check, not thrown at", () => {
+    const r = call({ data: { sessionId: "s-dst", paths: ["/dst/a.txt", 42] }, destination: "/dst", currentPath: "/dst" });
+    assert.strictEqual(r.kind, "reject");
+});
+
+// Finding 2: `data.items?.some(...)` only guards against null/undefined `items`, not against a
+// wrong type such as a string or plain object, which do not have `.some` and throw.
+test("an items value that is neither absent nor an array is refused, not thrown at", () => {
+    const r = call({ data: { items: "not-an-array" }, excludeName: "target" });
+    assert.strictEqual(r.kind, "reject");
+});
+
+// Finding 3: a cross-session drop skipped the redundancy check entirely, so malformed path
+// entries were waved through as a "transfer" instead of being caught before the server sees them.
+test("a cross-session drop with malformed path entries is refused, not sent on to the server", () => {
+    const r = call({ data: { paths: ["/src/a.txt", null, 42] } });
+    assert.strictEqual(r.kind, "reject");
+});
+
+// Finding 4: `!data.sessionId` only rejects falsy values; a number or other truthy non-string
+// slipped through as a session id.
+test("a session id that is not a string is refused", () => {
+    const r = call({ data: { sessionId: 123 } });
+    assert.strictEqual(r.kind, "reject");
+});
+
+test("no malicious payload ever throws, and every result is one of the three known kinds", () => {
+    const malformedOverrides = [
+        { paths: ["/dst/a.txt", null] },
+        { paths: ["/dst/a.txt", 42] },
+        { paths: [""] },
+        { paths: [null] },
+        { items: "nope" },
+        { items: 7 },
+        { items: true },
+        { items: {} },
+        { sessionId: 123 },
+        { sessionId: {} },
+        { sessionId: true },
+        { sessionId: "" },
+    ];
+    const KNOWN_KINDS = ["reject", "local", "transfer"];
+
+    for (const data of malformedOverrides) {
+        // Same-session drops exercise the redundancy check (which calls parentOf on every path);
+        // cross-session drops exercise the transfer branch instead. A malformed payload has to
+        // survive both. Skip the axis when the override pins its own sessionId - that IS the
+        // case under test then.
+        const sessionIdVariants = "sessionId" in data ? [data.sessionId] : ["s-src", "s-dst"];
+
+        for (const sid of sessionIdVariants) {
+            for (const excludeName of [undefined, "target"]) {
+                for (const currentPath of [undefined, "/dst"]) {
+                    let result;
+                    assert.doesNotThrow(() => {
+                        result = call({ data: { ...data, sessionId: sid }, excludeName, currentPath });
+                    });
+                    assert.ok(KNOWN_KINDS.includes(result.kind), `unexpected kind: ${result.kind}`);
+                }
+            }
+        }
+    }
+});
