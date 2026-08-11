@@ -16,18 +16,21 @@ export const TransferList = ({ transfers = [], onCancel, onDismiss }) => {
                 return (
                     <div className={`transfer-row transfer-${transfer.status}`} key={transfer.id}>
                         <div className="transfer-title">
+                            {/* The destination is a filesystem path - i18next's default HTML-escaping would
+                                turn every "/" into "&#x2F;" in the rendered text, which React does not need
+                                since it escapes on its own. */}
                             {t(`servers.fileManager.transfers.${transfer.action === "move" ? "moving" : "copying"}`,
-                                { destination: transfer.destination })}
+                                { destination: transfer.destination, interpolation: { escapeValue: false } })}
                         </div>
                         <div className="transfer-detail">{transferDetailText(transfer, t)}</div>
                         {transfer.status === "done" && transfer.filesSkipped > 0 && (
                             <div className="transfer-detail">
-                                {t("servers.fileManager.transfers.skipped", { count: transfer.filesSkipped })}
+                                {t("servers.fileManager.transfers.skipped", { count: transfer.filesSkipped, interpolation: { escapeValue: false } })}
                             </div>
                         )}
                         {transfer.leftovers?.length > 0 && (
                             <div className="transfer-detail">
-                                {t("servers.fileManager.transfers.leftovers", { files: transfer.leftovers.join(", ") })}
+                                {t("servers.fileManager.transfers.leftovers", { files: transfer.leftovers.join(", "), interpolation: { escapeValue: false } })}
                             </div>
                         )}
                         {active && <div className="transfer-bar" style={{ width: `${transferPercent(transfer)}%` }} />}

@@ -33,14 +33,18 @@ export const ConflictDialog = ({ conflict, onResolve, pendingCount = 0 }) => {
         <DialogProvider open={!!conflict} disableClosing>
             {conflict && <div className="conflict-dialog">
                 <h3>{t("servers.fileManager.transferConflict.title")}</h3>
-                <p>{t("servers.fileManager.transferConflict.question", { file: conflict.file })}</p>
+                {/* conflict.file is a filename off the wire - i18next's default HTML-escaping is
+                    redundant with React's own and, for a name with an apostrophe or slash, wrong
+                    to show the user. The size and count values get the same option for consistency,
+                    not because they can carry special characters today. */}
+                <p>{t("servers.fileManager.transferConflict.question", { file: conflict.file, interpolation: { escapeValue: false } })}</p>
                 <p className="conflict-detail">
-                    {t("servers.fileManager.transferConflict.source", { size: convertUnits(conflict.srcSize ?? 0) })}
+                    {t("servers.fileManager.transferConflict.source", { size: convertUnits(conflict.srcSize ?? 0), interpolation: { escapeValue: false } })}
                     {" · "}
-                    {t("servers.fileManager.transferConflict.destination", { size: convertUnits(conflict.destSize ?? 0) })}
+                    {t("servers.fileManager.transferConflict.destination", { size: convertUnits(conflict.destSize ?? 0), interpolation: { escapeValue: false } })}
                 </p>
                 {pendingCount > 0 && <p className="conflict-detail">
-                    {t("servers.fileManager.transferConflict.more", { count: pendingCount })}
+                    {t("servers.fileManager.transferConflict.more", { count: pendingCount, interpolation: { escapeValue: false } })}
                 </p>}
                 <label className="conflict-apply-all">
                     <input type="checkbox" checked={applyToAll} onChange={(e) => setApplyToAll(e.target.checked)} />

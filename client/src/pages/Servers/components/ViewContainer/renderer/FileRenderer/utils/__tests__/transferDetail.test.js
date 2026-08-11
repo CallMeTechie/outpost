@@ -13,7 +13,24 @@ const templates = {
     "servers.fileManager.transfers.progress": "{{filesDone}} of {{filesTotal}}",
     "servers.fileManager.transfers.progressPercent": "{{label}} · {{percent}} %",
 };
-const t = (key, params = {}) => templates[key].replace(/{{(\w+)}}/g, (_, name) => params[name]);
+// i18next HTML-escapes interpolated values by default, which is what turned a path like
+// "/root/xfer-ziel" into "&#x2F;root&#x2F;xfer-ziel" on screen - redundant with React's own
+// escaping, and wrong for text that is not markup. Mirroring that default here, and only
+// skipping it when a call opts out with interpolation.escapeValue: false exactly like the
+// real library, lets a test catch a call site that forgets the opt-out.
+const escapeForHtml = (value) => String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/\//g, "&#x2F;");
+
+const t = (key, params = {}) => {
+    const { interpolation, ...values } = params;
+    const escape = interpolation?.escapeValue === false ? String : escapeForHtml;
+    return templates[key].replace(/{{(\w+)}}/g, (_, name) => escape(values[name]));
+};
 
 test("a running transfer with a filename shows the name and its percent", () => {
     assert.strictEqual(
@@ -47,5 +64,12 @@ test("the fixed-text branches (done, cancelled, error) are untouched by the perc
     assert.strictEqual(
         transferDetailText({ status: "error", message: "disk full" }, t),
         "Failed: disk full",
+    );
+});
+
+test("a failure message that quotes a path keeps its slashes literal, not HTML-escaped", () => {
+    assert.strictEqual(
+        transferDetailText({ status: "error", message: "no such file: /root/xfer-ziel" }, t),
+        "Failed: no such file: /root/xfer-ziel",
     );
 });

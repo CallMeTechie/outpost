@@ -6,8 +6,9 @@ import { transferPercent } from "./transferProgress.js";
 // or the file count — is what makes that answer legible without a wider bar.
 const runningDetail = (transfer, t) => {
     const label = transfer.file ?? t("servers.fileManager.transfers.progress",
-        { filesDone: transfer.filesDone ?? 0, filesTotal: transfer.filesTotal ?? 0 });
-    return t("servers.fileManager.transfers.progressPercent", { label, percent: transferPercent(transfer) });
+        { filesDone: transfer.filesDone ?? 0, filesTotal: transfer.filesTotal ?? 0, interpolation: { escapeValue: false } });
+    return t("servers.fileManager.transfers.progressPercent",
+        { label, percent: transferPercent(transfer), interpolation: { escapeValue: false } });
 };
 
 // What the detail line under the transfer title says, keyed off status. Pulled out of the
@@ -17,11 +18,15 @@ export const transferDetailText = (transfer, t) => {
         case "error":
             return transfer.connectionLost
                 ? t("servers.fileManager.transfers.connectionLost")
-                : t("servers.fileManager.transfers.failed", { message: transfer.message });
+                // React already escapes rendered text, so i18next's own HTML-escaping of the
+                // interpolated value only mangles it - visibly so for a server message that
+                // quotes a path.
+                : t("servers.fileManager.transfers.failed", { message: transfer.message, interpolation: { escapeValue: false } });
         case "cancelled":
             return t("servers.fileManager.transfers.cancelled");
         case "done":
-            return t("servers.fileManager.transfers.done", { count: transfer.filesTransferred ?? 0 });
+            return t("servers.fileManager.transfers.done",
+                { count: transfer.filesTransferred ?? 0, interpolation: { escapeValue: false } });
         case "cancelling":
             return t("servers.fileManager.transfers.cancelling");
         default:
