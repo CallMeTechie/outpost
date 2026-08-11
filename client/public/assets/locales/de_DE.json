@@ -1991,6 +1991,7 @@
         "uploadedItems": "{{count}} -Dateien hochgeladen",
         "uploadFailed": "Upload fehlgeschlagen: {{message}}",
         "uploadFailedItems": "{{count}} Dateien konnten nicht hochgeladen werden: {{message}}",
+        "transferTooManyFiles": "Zu viele Dateien für eine Übertragung: höchstens {{count}} auf einmal",
         "connectionLost": "SFTP-Verbindung verloren. Bitte stelle die Verbindung wieder her.",
         "error": "Ein Fehler ist aufgetreten"
       }

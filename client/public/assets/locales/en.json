@@ -2031,6 +2031,7 @@
         "uploadedItems": "Uploaded {{count}} files",
         "uploadFailed": "Upload failed: {{message}}",
         "uploadFailedItems": "{{count}} files failed to upload: {{message}}",
+        "transferTooManyFiles": "Too many files for one transfer: at most {{count}} at a time",
         "connectionLost": "SFTP connection lost. Please reconnect.",
         "error": "An error occurred"
       }

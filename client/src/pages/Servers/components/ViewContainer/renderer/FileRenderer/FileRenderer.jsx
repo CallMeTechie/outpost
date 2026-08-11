@@ -19,6 +19,11 @@ import { initialTransferState, transferReducer } from "./utils/transferState.js"
 
 const REFRESH_DEBOUNCE = 150;
 
+// Mirrors MAX_TRANSFER_PATHS in server/lib/fileTransfer/transferAuth.js. The server refuses a
+// longer list before it has read a transfer id, so its refusal names no transfer and no row could
+// ever carry it — stopping here is what turns that into something the user is told about.
+const MAX_TRANSFER_PATHS = 256;
+
 const joinPath = (...parts) => parts.join("/").replace(/\/+/g, "/");
 
 const createUploadStats = () => ({ uploaded: 0, failed: 0, sentBytes: 0, totalBytes: 0, firstError: null, lastName: "" });
@@ -312,6 +317,14 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                     refreshAfterTransfer(payload?.transferId);
                     break;
                 case OPERATIONS.TRANSFER_ERROR:
+                    // A refusal that names no transfer - the server answers a payload it rejected
+                    // before reading an id with transferId: null — has no row to land on, and the
+                    // reducer would drop it without a trace. Reported the same way every other
+                    // server-side error is. The dispatch below stays: it is a no-op for an unknown
+                    // id, and it still catches the row if this render's state is a beat behind.
+                    if (!transferState.transfers.some((transfer) => transfer.id === payload?.transferId)) {
+                        sendToast(t("common.error"), payload?.message || t("servers.fileManager.toast.error"));
+                    }
                     dispatchTransfer({ type: "error", payload });
                     refreshAfterTransfer(payload?.transferId);
                     break;
@@ -370,14 +383,23 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
 
     // The destination pane's socket drives the transfer, so this is always our own socket.
     const startTransfer = useCallback(({ paths, destination, sourceSessionId, action }) => {
+        if (paths.length > MAX_TRANSFER_PATHS) {
+            sendToast(t("common.error"), t("servers.fileManager.toast.transferTooManyFiles", { count: MAX_TRANSFER_PATHS }));
+            return null;
+        }
         const transferId = crypto.randomUUID();
         const sent = sendOperation(OPERATIONS.TRANSFER_START, {
             transferId, sourceSessionId, paths, destination, action, onConflict: "ask",
         });
-        if (!sent) return null;
+        // No row is created for a request that never left, so nothing on screen would ever show
+        // this — and the drop looked to the user exactly like one that worked.
+        if (!sent) {
+            sendToast(t("common.error"), t("servers.fileManager.toast.connectionLost"));
+            return null;
+        }
         dispatchTransfer({ type: "start", id: transferId, action, destination, filesTotal: paths.length });
         return transferId;
-    }, [sendOperation]);
+    }, [sendOperation, sendToast, t]);
 
     // Only mark it once the message is actually out: sendOperation returns false when the socket
     // is not ready, and a row marked "cancelling" that nobody was told about never resolves.
