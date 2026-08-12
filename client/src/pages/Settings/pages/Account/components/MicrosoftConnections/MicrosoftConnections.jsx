@@ -31,11 +31,6 @@ export const MicrosoftConnections = () => {
         }
     }, []);
 
-    // Mount-time fetch; same fetch-on-mount shape already used throughout this
-    // codebase (e.g. Account.jsx's loadPasskeys/loadApiKeys effect), which the
-    // "set-state-in-effect" rule flags pervasively without being treated as a
-    // real defect here. Suppressed to keep this task's lint count from growing.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { load(); }, [load]);
 
     useEffect(() => {
