@@ -102,19 +102,26 @@ export const Microsoft = () => {
 
                     <div className="form-group">
                         <label htmlFor="ms-client-id">{t("settings.microsoft.clientId")}</label>
-                        <IconInput id="ms-client-id" icon={mdiIdentifier} value={clientId} setValue={setClientId} />
+                        {/* A text field directly above a password field is what browsers read as a
+                            login form, and they fill it with the saved Nexterm credentials. Same
+                            treatment as DirectConnectDialog: its own name, and "new-password" on the
+                            secret below — "off" is ignored on password-type inputs. */}
+                        <IconInput id="ms-client-id" name="ms-client-id" autoComplete="off"
+                                   icon={mdiIdentifier} value={clientId} setValue={setClientId} />
                     </div>
 
                     <div className="form-group">
                         <label htmlFor="ms-client-secret">{t("settings.microsoft.clientSecret")}</label>
-                        <IconInput id="ms-client-secret" icon={mdiKeyVariant} type="password"
+                        <IconInput id="ms-client-secret" name="ms-client-secret" autoComplete="new-password"
+                                   icon={mdiKeyVariant} type="password"
                                    value={clientSecret} setValue={setClientSecret} />
                         <small>{t("settings.microsoft.clientSecretKeep")}</small>
                     </div>
 
                     <div className="form-group">
                         <label htmlFor="ms-redirect-uri">{t("settings.microsoft.redirectUri")}</label>
-                        <IconInput id="ms-redirect-uri" icon={mdiLinkVariant}
+                        <IconInput id="ms-redirect-uri" name="ms-redirect-uri" autoComplete="off"
+                                   icon={mdiLinkVariant}
                                    value={redirectUri} setValue={setRedirectUri} />
                         <small>{t("settings.microsoft.redirectUriHint")}</small>
                     </div>
