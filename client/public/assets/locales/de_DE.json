@@ -727,6 +727,35 @@
         "neverUsed": "Noch nie benutzt",
         "expires": "Läuft ab {{date}}",
         "delete": "Löschen"
+      },
+      "microsoft": {
+        "sectionTitle": "Verbundene Konten",
+        "sectionDescription": "Verbinde ein Microsoft-Konto, damit Nexterm in deinem Namen auf dessen OneDrive zugreifen kann.",
+        "connectButton": "Verbinden",
+        "allFilesLabel": "Auch geteilte Ordner und SharePoint-Bibliotheken",
+        "allFilesHint": "Erfordert in Firmenkonten oft die Zustimmung eines Administrators.",
+        "scopeNote": "Diese Wahl gilt ab dem Verbinden. Um sie später zu ändern, verbinde das Konto erneut.",
+        "statusConnected": "Verbunden",
+        "statusDisconnected": "Getrennt — bitte neu verbinden",
+        "allFilesGranted": "Geteilte Ordner eingeschlossen",
+        "lastRefresh": "Zuletzt erneuert {{date}}",
+        "neverRefreshed": "Noch nicht erneuert",
+        "noConnections": "Noch kein Microsoft-Konto verbunden.",
+        "rename": "Umbenennen",
+        "disconnect": "Trennen",
+        "confirmDisconnect": "Dieses Microsoft-Konto trennen? Nexterm verliert damit den Zugriff auf dessen OneDrive.",
+        "connected": "Microsoft-Konto verbunden.",
+        "disabled": "Die Microsoft-Anbindung ist nicht eingerichtet. Bitte wende dich an einen Administrator.",
+        "popupBlocked": "Der Browser hat das Anmeldefenster blockiert. Erlaube Pop-ups für Nexterm und versuche es erneut.",
+        "errors": {
+          "state_invalid": "Die Anmeldung hat zu lange gedauert oder wurde bereits verwendet. Bitte erneut versuchen.",
+          "consent_required": "Deine Organisation verlangt die Freigabe durch einen Administrator. Wende dich an deinen Administrator oder verbinde ohne geteilte Ordner.",
+          "access_denied": "Die Anmeldung wurde abgebrochen.",
+          "authorize_failed": "Microsoft hat die Anmeldung abgelehnt.",
+          "app_disabled": "Die Microsoft-Anbindung ist derzeit deaktiviert.",
+          "exchange_failed": "Nexterm konnte die Anmeldung bei Microsoft nicht abschließen.",
+          "no_refresh_token": "Microsoft hat keinen dauerhaften Zugriff erteilt. Bitte erneut versuchen."
+        }
       }
     },
     "passwordChange": {

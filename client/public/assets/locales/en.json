@@ -727,6 +727,35 @@
         "neverUsed": "Never used",
         "expires": "Expires {{date}}",
         "delete": "Delete"
+      },
+      "microsoft": {
+        "sectionTitle": "Connected accounts",
+        "sectionDescription": "Connect a Microsoft account so Nexterm can access its OneDrive on your behalf.",
+        "connectButton": "Connect",
+        "allFilesLabel": "Also shared folders and SharePoint libraries",
+        "allFilesHint": "Often requires an administrator's approval in company accounts.",
+        "scopeNote": "This choice applies from the moment you connect. To change it later, connect the account again.",
+        "statusConnected": "Connected",
+        "statusDisconnected": "Disconnected — connect again",
+        "allFilesGranted": "Shared folders included",
+        "lastRefresh": "Last renewed {{date}}",
+        "neverRefreshed": "Not yet renewed",
+        "noConnections": "No Microsoft account connected yet.",
+        "rename": "Rename",
+        "disconnect": "Disconnect",
+        "confirmDisconnect": "Disconnect this Microsoft account? Nexterm will lose access to its OneDrive.",
+        "connected": "Microsoft account connected.",
+        "disabled": "The Microsoft integration is not set up. Ask an administrator to configure it.",
+        "popupBlocked": "Your browser blocked the sign-in window. Allow pop-ups for Nexterm and try again.",
+        "errors": {
+          "state_invalid": "The sign-in took too long or was already used. Please try again.",
+          "consent_required": "Your organisation requires an administrator to approve this access. Ask your administrator, or connect without shared folders.",
+          "access_denied": "The sign-in was cancelled.",
+          "authorize_failed": "Microsoft refused the sign-in.",
+          "app_disabled": "The Microsoft integration is currently disabled.",
+          "exchange_failed": "Nexterm could not complete the sign-in with Microsoft.",
+          "no_refresh_token": "Microsoft did not grant lasting access. Please try again."
+        }
       }
     },
     "passwordChange": {

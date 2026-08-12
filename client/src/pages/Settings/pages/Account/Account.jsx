@@ -13,6 +13,7 @@ import TwoFactorAuthentication from "@/pages/Settings/pages/Account/dialogs/TwoF
 import PasswordChange from "@/pages/Settings/pages/Account/dialogs/PasswordChange";
 import AddPasskeyDialog from "@/pages/Settings/pages/Account/dialogs/AddPasskeyDialog";
 import AddApiKeyDialog from "@/pages/Settings/pages/Account/dialogs/AddApiKeyDialog";
+import MicrosoftConnections from "@/pages/Settings/pages/Account/components/MicrosoftConnections";
 import ActionConfirmDialog from "@/common/components/ActionConfirmDialog";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { startRegistration } from "@simplewebauthn/browser";
@@ -470,6 +471,8 @@ export const Account = () => {
                     )}
                 </div>
             </div>
+
+            <MicrosoftConnections />
 
         </div>
     );
