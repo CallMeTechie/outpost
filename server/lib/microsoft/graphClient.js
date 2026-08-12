@@ -109,4 +109,4 @@ const graph = createGraphClient({
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 });
 
-module.exports = { GRAPH_BASE, MAX_ATTEMPTS, MAX_WAIT_MS, createGraphClient, graph };
+module.exports = { GRAPH_BASE, MAX_ATTEMPTS, MAX_WAIT_MS, backoffDelay, createGraphClient, graph };

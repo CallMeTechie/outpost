@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const { createGraphClient, GRAPH_BASE, MAX_ATTEMPTS, MAX_WAIT_MS } = require("../microsoft/graphClient");
+const { createGraphClient, backoffDelay, GRAPH_BASE, MAX_ATTEMPTS, MAX_WAIT_MS } = require("../microsoft/graphClient");
 
 const reply = (status, body = null, headers = {}) => ({
     ok: status >= 200 && status < 300,
@@ -87,6 +87,16 @@ test("without Retry-After the wait grows and stays under the ceiling", async () 
         assert.ok(calls.slept[i] > calls.slept[i - 1], "each wait must be longer than the last");
     }
     for (const waited of calls.slept) assert.ok(waited <= MAX_WAIT_MS, `${waited} exceeds the ceiling`);
+});
+
+// At MAX_ATTEMPTS = 5 the largest computed wait is about ten seconds, so no request-level test can
+// ever reach the ceiling. Asserted directly instead: raising the attempt count or the base later
+// must not be able to remove the cap while the whole suite stays green.
+test("the computed wait is capped however far the exponent runs", () => {
+    assert.strictEqual(backoffDelay(30, () => 0.5), MAX_WAIT_MS);
+    assert.ok(backoffDelay(30, () => 1) <= MAX_WAIT_MS, "positive jitter must not lift it over the ceiling");
+    assert.ok(backoffDelay(30, () => 0) <= MAX_WAIT_MS);
+    assert.ok(backoffDelay(1, () => 0.5) < MAX_WAIT_MS, "an early attempt must still wait a short time");
 });
 
 test("the attempts are bounded and the last failure is reported", async () => {
