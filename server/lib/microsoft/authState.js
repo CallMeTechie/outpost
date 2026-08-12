@@ -20,7 +20,7 @@ const enforceAccountCap = (accountId) => {
     for (const [key, value] of states.entries()) {
         if (value.accountId === accountId) mine.push(key);
     }
-    for (let i = 0; i <= mine.length - MAX_PENDING_PER_ACCOUNT; i += 1) states.delete(mine[i]);
+    for (let i = 0; i < mine.length - MAX_PENDING_PER_ACCOUNT; i += 1) states.delete(mine[i]);
 };
 
 const createState = ({ accountId, codeVerifier, nonce, scope }, now = Date.now()) => {
@@ -34,7 +34,10 @@ const createState = ({ accountId, codeVerifier, nonce, scope }, now = Date.now()
     return state;
 };
 
-// Deliberately two parameters. The account this connection belongs to is read from the stored
+// Deliberately two declared parameters, with `now` defaulted in the body rather than in the
+// signature: a parameter with a default does not count towards Function.length, so `now = Date.now()`
+// would make the arity read as 1 and the guarding test meaningless.
+// The account this connection belongs to is read from the stored
 // entry and can never be supplied by the caller — the callback request carries no session, and a
 // caller-supplied account would let an attacker attach their Microsoft account to a foreign user.
 const consumeState = (state, now) => {

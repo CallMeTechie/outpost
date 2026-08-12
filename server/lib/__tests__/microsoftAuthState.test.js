@@ -87,6 +87,27 @@ test("consumeState takes no account argument that could override the binding", (
     assert.strictEqual(redeemed.accountId, 5);
 });
 
+// The loop that enforces the cap is an off-by-one trap: exactly cap-many attempts must all survive.
+test("exactly the cap many attempts all survive", () => {
+    const base = 6_000_000;
+    const states = [];
+    for (let i = 0; i < MAX_PENDING_PER_ACCOUNT; i += 1) states.push(createState(entry(2000), base + i));
+
+    for (const state of states) {
+        assert.ok(consumeState(state, base + 100), "an attempt within the cap must not be evicted");
+    }
+});
+
+// The arity check above is not enough on its own: a third parameter carrying a default value does
+// not count towards Function.length, so the binding is asserted behaviourally as well.
+test("a third argument cannot override the stored account", () => {
+    const state = createState(entry(5));
+
+    const redeemed = consumeState(state, 7_000_000, 999);
+
+    assert.strictEqual(redeemed.accountId, 5, "the account must come from the entry, never from the caller");
+});
+
 test("the returned entry is a copy, so a caller cannot poison the store", () => {
     const state = createState(entry(42));
     const redeemed = consumeState(state);
