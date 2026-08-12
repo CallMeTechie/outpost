@@ -41,6 +41,7 @@ export const Microsoft = () => {
     useEffect(() => { load(); }, []);
 
     const save = async (nextEnabled = enabled) => {
+        const previousEnabled = enabled;
         try {
             const app = await putRequest("microsoft/app", {
                 clientId: clientId.trim(),
@@ -54,6 +55,11 @@ export const Microsoft = () => {
             setClientSecret(app.clientSecret || "");
             sendToast(t("common.success"), t("settings.microsoft.saved"));
         } catch (error) {
+            // The toggle switch sets `enabled` optimistically before the request resolves. If the
+            // save is refused (e.g. no usable secret yet), the toggle must fall back to what is
+            // actually persisted — a registration that looks enabled but was never saved is worse
+            // than one that clearly is not.
+            setEnabled(previousEnabled);
             sendToast(t("common.error"), error.message);
         }
     };
