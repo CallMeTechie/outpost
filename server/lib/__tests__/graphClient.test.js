@@ -77,6 +77,32 @@ test("a Retry-After beyond the ceiling fails instead of waiting", async () => {
     assert.deepStrictEqual(calls.slept, [], "nothing may be waited out beyond the ceiling");
 });
 
+// The default ceiling is not the only clock in the system. A caller sitting under FileTransfer's
+// 60 s read-stall window would have a perfectly legitimate 90 s Retry-After honoured here and be
+// aborted from above as a stalled read, so it gets to name a shorter budget of its own.
+test("a Retry-After above the caller's own ceiling fails without sleeping", async () => {
+    const { client, calls } = harness([reply(429, null, { "retry-after": "90" }), reply(200, {})]);
+
+    await assert.rejects(client.request(1, { url: "/root/content", maxWaitMs: 45_000 }), /throttl/i);
+    assert.deepStrictEqual(calls.slept, [], "nothing may be waited out beyond the caller's ceiling");
+    assert.strictEqual(calls.fetches.length, 1);
+});
+
+// One budget is not enough: four waits each inside the single-wait ceiling add up to the same
+// wedged transfer as one wait beyond it.
+test("waits that add up past the total budget stop rather than continue", async () => {
+    const { client, calls } = harness([
+        reply(429, null, { "retry-after": "20" }),
+        reply(429, null, { "retry-after": "20" }),
+        reply(429, null, { "retry-after": "20" }),
+        reply(200, {}),
+    ]);
+
+    await assert.rejects(client.request(1, { url: "/root/content", maxTotalWaitMs: 45_000 }), /throttl/i);
+    assert.deepStrictEqual(calls.slept, [20_000, 20_000], "the third wait would break the total budget");
+    assert.strictEqual(calls.fetches.length, 3, "and the request must not be sent a fourth time");
+});
+
 test("without Retry-After the wait grows and stays under the ceiling", async () => {
     const { client, calls } = harness([reply(500), reply(500), reply(500), reply(200, {})]);
 

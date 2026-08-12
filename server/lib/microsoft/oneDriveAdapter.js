@@ -119,10 +119,20 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
         });
 
         // Graph answers with a redirect to pre-authenticated storage and fetch follows it, so the
-        // body is a web ReadableStream while everything above expects a Node stream. The throttled
-        // part is the request itself, which is over before a single byte flows — that is why the
-        // backoff rule of the upload path has no counterpart here.
-        graph.request(connectionId, { url: `${itemUrl(path)}/content`, parse: "raw", signal: controller.signal })
+        // body is a web ReadableStream while everything above expects a Node stream.
+        //
+        // The read side gets a tighter wait budget than the write side, and precisely because the
+        // request is over before a single byte flows: that is exactly what makes FileTransfer's
+        // pipeline read as EMPTY for the whole backoff, and an empty pipeline gets READ_STALL_TIMEOUT
+        // (60 s) where a full one gets DEST_STALL_TIMEOUT (600 s). A Retry-After of 90 s is inside
+        // the client's own 120 s ceiling and would be honoured correctly — and killed from above as
+        // "Read stalled, transfer aborted". 45 s leaves room for the watchdog to be wrong about us.
+        graph.request(connectionId, {
+            url: `${itemUrl(path)}/content`,
+            parse: "raw",
+            signal: controller.signal,
+            maxTotalWaitMs: 45_000,
+        })
             .then((response) => {
                 // An empty file comes back without a body. Handing null to Readable.fromWeb throws
                 // a TypeError, and a zero byte file is a perfectly ordinary thing to transfer.

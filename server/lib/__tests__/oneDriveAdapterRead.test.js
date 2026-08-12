@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert");
 const { createOneDriveAdapter, MAX_PAGES, PAGE_SIZE } = require("../microsoft/oneDriveAdapter");
+const { READ_STALL_TIMEOUT } = require("../fileTransfer/FileTransfer");
 
 const folder = (name, extra = {}) => ({ name, folder: {}, size: 0, lastModifiedDateTime: "2026-08-12T18:00:00Z", ...extra });
 const file = (name, size = 10) => ({ name, file: {}, size, lastModifiedDateTime: "2026-08-12T18:00:00Z" });
@@ -158,6 +159,21 @@ test("readFile asks for the content, not for the item", async () => {
 
     assert.strictEqual(graph.calls[0].url, "/root:/a/b.txt:/content");
     assert.strictEqual(graph.calls[0].parse, "raw");
+});
+
+// The content request is over before a byte flows, which is exactly what keeps FileTransfer's
+// pipeline EMPTY for the whole backoff — and an empty pipeline gets READ_STALL_TIMEOUT, not the ten
+// times longer window a full one gets. A backoff longer than that window is aborted from above as
+// "Read stalled" however correctly the client was waiting, so the read side names a tighter budget.
+test("readFile gives the content request a wait budget under the read-stall window", async () => {
+    const { graph, adapter } = adapterOn(() => ({ body: new ReadableStream({ start: (c) => c.close() }) }));
+
+    adapter.readFile("/a/b.txt");
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.ok(Number.isInteger(graph.calls[0].maxTotalWaitMs), "the read must cap its own waiting at all");
+    assert.ok(graph.calls[0].maxTotalWaitMs < READ_STALL_TIMEOUT,
+        `${graph.calls[0].maxTotalWaitMs} does not fit inside the ${READ_STALL_TIMEOUT} ms read-stall window`);
 });
 
 test("an empty file ends the stream instead of throwing", async () => {
