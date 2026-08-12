@@ -90,8 +90,11 @@ export const Microsoft = () => {
                             {t("settings.microsoft.title")}</h2>
                         <p>{t("settings.microsoft.description")}</p>
                     </div>
-                    <ToggleSwitch id="ms-enabled" checked={enabled}
-                                  onChange={(value) => { setEnabled(value); save(value); }} />
+                    <div className="ms-enabled-toggle">
+                        <label htmlFor="ms-enabled">{t("settings.microsoft.enabled")}</label>
+                        <ToggleSwitch id="ms-enabled" checked={enabled}
+                                      onChange={(value) => { setEnabled(value); save(value); }} />
+                    </div>
                 </div>
 
                 <div className="section-inner ms-form">

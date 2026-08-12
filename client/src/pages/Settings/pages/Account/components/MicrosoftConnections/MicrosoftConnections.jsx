@@ -196,7 +196,15 @@ export const MicrosoftConnections = () => {
                                 <Icon path={mdiAlertCircleOutline} size={0.8} className="ms-dead-icon" />}
                             <button className="action-btn edit-btn"
                                     title={t("settings.account.microsoft.rename")}
-                                    onClick={() => { setEditingId(connection.id); setEditingName(connection.displayName); }}>
+                                    onClick={() => {
+                                        setEditingId(connection.id);
+                                        setEditingName(connection.displayName);
+                                        // An Escape that was never followed by a blur would leave
+                                        // the flag set and silently swallow this rename instead.
+                                        // Clearing it where an edit begins removes the dependency
+                                        // on a blur firing at all.
+                                        cancelledRenameRef.current = false;
+                                    }}>
                                 <Icon path={mdiPencil} size={0.8} />
                             </button>
                             <button className="action-btn delete-btn"
