@@ -86,7 +86,14 @@ const upsertConnection = async ({ accountId, microsoftAccountId, microsoftEmail,
     return created.id;
 };
 
-const handleCallback = async (query = {}) => {
+// The post-exchange half is injectable so the account binding below can be tested at the seam where
+// it is actually spent, not only inside authState. The defaults are the production wiring, so
+// nothing about the behaviour of a real callback changes.
+const handleCallback = async (query = {}, {
+    loadConfiguration = getConfiguration,
+    exchange = client.authorizationCodeGrant,
+    upsert = upsertConnection,
+} = {}) => {
     if (query.error) return { status: "error", reason: mapAuthorizeError(query) };
 
     // The account this connection belongs to comes from the stored entry alone. The callback
@@ -98,7 +105,7 @@ const handleCallback = async (query = {}) => {
     let configuration;
     let redirectUri;
     try {
-        ({ configuration, redirectUri } = await getConfiguration());
+        ({ configuration, redirectUri } = await loadConfiguration());
     } catch (error) {
         logger.warn("Microsoft callback arrived while the integration was unavailable", { error: error.message });
         return { status: "error", reason: "app_disabled" };
@@ -107,7 +114,7 @@ const handleCallback = async (query = {}) => {
     try {
         const currentUrl = new URL(`${redirectUri}?${new URLSearchParams(query).toString()}`);
 
-        const tokens = await client.authorizationCodeGrant(configuration, currentUrl, {
+        const tokens = await exchange(configuration, currentUrl, {
             expectedState: query.state,
             expectedNonce: entry.nonce,
             pkceCodeVerifier: entry.codeVerifier,
@@ -122,7 +129,7 @@ const handleCallback = async (query = {}) => {
         const microsoftAccountId = claims.oid || claims.sub;
         if (!microsoftAccountId) return { status: "error", reason: "exchange_failed" };
 
-        await upsertConnection({
+        await upsert({
             accountId: entry.accountId,
             microsoftAccountId: String(microsoftAccountId),
             microsoftEmail: claims.email || claims.preferred_username || null,
