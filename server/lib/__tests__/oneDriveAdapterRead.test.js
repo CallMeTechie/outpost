@@ -226,6 +226,52 @@ test("a cancelled read settles done rather than leaving it pending", async () =>
     await assert.rejects(done, /cancel/i);
 });
 
+// pipe() forwards no error from its source. A body that drops mid-file therefore emits "error" on
+// a Readable nobody listens to, and an uncaught exception is not a failed transfer here — index.js
+// hands it to errorHandling.js, which calls process.exit(1) and takes every SSH session on the box
+// with it. Removing the listener in the adapter makes both of these fail rather than pass.
+test("a body that drops mid-file rejects done instead of escaping as an uncaught exception", async () => {
+    const { adapter } = adapterOn(() => ({
+        body: new ReadableStream({
+            start(controller) {
+                controller.enqueue(new Uint8Array([104, 97]));
+                controller.enqueue(new Uint8Array([108, 108, 111]));
+                controller.error(new Error("network dropped"));
+            },
+        }),
+    }));
+
+    const { stream, done } = adapter.readFile("/gross.bin");
+    stream.resume();
+
+    await assert.rejects(done, /network dropped/);
+});
+
+// The same shape one step later: the reader is already gone when the body gives up — which is what
+// this branch's own cancel path produces, because destroying the stream aborts the fetch and an
+// aborted body errors. There is nothing left to report it to, so it must simply not escape.
+test("a body that drops after the read was cancelled settles rather than escaping", async () => {
+    let body = null;
+    const { adapter } = adapterOn(() => ({
+        body: new ReadableStream({
+            start(controller) {
+                body = controller;
+                controller.enqueue(new Uint8Array([104, 97, 108]));
+            },
+        }),
+    }));
+
+    const { stream, done } = adapter.readFile("/gross.bin");
+    await new Promise((resolve) => setImmediate(resolve));
+
+    stream.destroy();
+    body.error(new Error("network dropped"));
+
+    await assert.rejects(done, /cancel/i);
+    // The body's error lands after the destroy. Nothing may come out of the process from there.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+});
+
 test("a failed read rejects done rather than hanging", async () => {
     const { adapter } = adapterOn(() => { throw new Error("Microsoft said no"); });
 

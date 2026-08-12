@@ -131,7 +131,12 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
                     return;
                 }
 
-                Readable.fromWeb(response.body).pipe(stream);
+                const node = Readable.fromWeb(response.body);
+                // pipe() attaches no error handler to its source. An aborted or dropped body would
+                // otherwise emit 'error' with nobody listening, and an uncaught exception takes the
+                // whole server down through errorHandling.js.
+                node.on("error", (error) => stream.destroy(error));
+                node.pipe(stream);
             })
             .catch((error) => { stream.destroy(error); });
 
