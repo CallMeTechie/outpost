@@ -60,6 +60,27 @@ test("a rate limit with an OAuth body is still a rate limit", () => {
     assert.strictEqual(verdict.retryAfter, 7);
 });
 
+// The ordering rule, checked against the one error that has a branch of its own further down.
+test("a rate limit that carries invalid_client is still a rate limit", () => {
+    const verdict = classifyTokenError(bodyError("invalid_client", 429, new Map([["retry-after", "3"]])));
+
+    assert.strictEqual(verdict.reason, "rate_limited");
+    assert.strictEqual(verdict.retryAfter, 3);
+});
+
+// oauth4webapi raises this before parsing any OAuth body; it carries no `error` field, so without a
+// branch of its own it would fall through to "network_error" and the admin log would never fire.
+test("a WWW-Authenticate challenge is reported as invalid_client, not as a network error", () => {
+    const challenge = Object.assign(new Error("server responded with a challenge"), {
+        code: "OAUTH_WWW_AUTHENTICATE_CHALLENGE", status: 401, response: { headers: new Map() },
+    });
+
+    const verdict = classifyTokenError(challenge);
+
+    assert.strictEqual(verdict.kind, "transient");
+    assert.strictEqual(verdict.reason, "invalid_client");
+});
+
 test("an unparsable Retry-After becomes null instead of NaN", () => {
     for (const value of ["Wed, 21 Oct 2026 07:28:00 GMT", "", "soon"]) {
         const verdict = classifyTokenError(processingError(429, new Map([["retry-after", value]])));

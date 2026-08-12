@@ -15,6 +15,10 @@ class MicrosoftTemporaryError extends Error {
     }
 }
 
+// oauth4webapi's error code for a WWW-Authenticate challenge, copied rather than imported: the
+// classifier stays free of library imports so it can be exercised without one.
+const WWW_AUTHENTICATE_CHALLENGE = "OAUTH_WWW_AUTHENTICATE_CHALLENGE";
+
 const readRetryAfter = (carrier) => {
     const raw = carrier?.headers?.get?.("retry-after");
     if (!raw) return null;
@@ -36,6 +40,12 @@ const classifyTokenError = (error) => {
     if (oauthError === "invalid_grant") return { kind: "final", reason: "invalid_grant", status, retryAfter: null };
     if (status === 429) return { kind: "transient", reason: "rate_limited", status, retryAfter };
     if (oauthError === "invalid_client") return { kind: "transient", reason: "invalid_client", status, retryAfter };
+    // oauth4webapi raises WWWAuthenticateChallengeError before it ever tries to parse an OAuth error
+    // body, and that error carries no `error` field at all — only a status and the response. At a
+    // token endpoint a challenge means the client's own authentication was refused, which is exactly
+    // what invalid_client says. Reported under that name so the administrator still gets the loud log
+    // instead of a verdict that reads "network_error".
+    if (error?.code === WWW_AUTHENTICATE_CHALLENGE) return { kind: "transient", reason: "invalid_client", status, retryAfter };
     if (status !== null && status >= 500) return { kind: "transient", reason: "server_error", status, retryAfter };
     if (oauthError) return { kind: "transient", reason: oauthError, status, retryAfter };
 
