@@ -12,6 +12,7 @@ export const Permission = Object.freeze({
     SETTINGS_MONITORING: "settings.monitoring",
     SETTINGS_BACKUP: "settings.backup",
     SETTINGS_AI: "settings.ai",
+    SETTINGS_MICROSOFT: "settings.microsoft",
 
     RESOURCES_MANAGE: "resources.manage",
     IDENTITIES_MANAGE: "identities.manage",
