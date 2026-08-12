@@ -19,6 +19,7 @@ const Permission = Object.freeze({
     SETTINGS_MONITORING: "settings.monitoring",
     SETTINGS_BACKUP: "settings.backup",
     SETTINGS_AI: "settings.ai",
+    SETTINGS_MICROSOFT: "settings.microsoft",
 
     RESOURCES_MANAGE: "resources.manage",
     IDENTITIES_MANAGE: "identities.manage",
@@ -78,6 +79,7 @@ const PERMISSIONS = [
     { id: P.SETTINGS_MONITORING, scopes: [SYSTEM], category: "settings", label: "Monitoring", description: "Configure global monitoring settings." },
     { id: P.SETTINGS_BACKUP, scopes: [SYSTEM], category: "settings", label: "Backups", description: "Create, restore, export and import backups.", dangerous: true },
     { id: P.SETTINGS_AI, scopes: [SYSTEM], category: "settings", label: "AI Settings", description: "Configure the AI assistant integration." },
+    { id: P.SETTINGS_MICROSOFT, scopes: [SYSTEM], category: "settings", label: "Microsoft Integration", description: "Configure the Azure app registration used for OneDrive access." },
 
     { id: P.RESOURCES_MANAGE, scopes: BOTH, category: "resources", default: true, label: "Manage Resources", description: "Create, edit and delete servers and folders." },
     { id: P.IDENTITIES_MANAGE, scopes: BOTH, category: "resources", default: true, label: "Manage Identities", description: "Create, edit and delete identities." },

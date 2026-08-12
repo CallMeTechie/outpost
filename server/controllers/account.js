@@ -10,6 +10,8 @@ const OrganizationMemberPermission = require("../models/OrganizationMemberPermis
 const PermissionGroup = require("../models/PermissionGroup");
 const GroupMember = require("../models/GroupMember");
 const AccountPermission = require("../models/AccountPermission");
+const MicrosoftConnection = require("../models/MicrosoftConnection");
+const { forget } = require("../lib/microsoft/tokenStore");
 const { isAccountAdmin, countAdmins } = require("../utils/permission");
 const { saveAvatar, deleteAvatar, isWebP } = require("../utils/avatarService");
 const { ACCOUNT_VIEW_ATTRIBUTES } = require("../utils/accountView");
@@ -78,6 +80,11 @@ module.exports.deleteAccount = async (id) => {
     await OrganizationMemberPermission.destroy({ where: { accountId: id } });
 
     deleteAvatar(id);
+
+    // Before the destroy: the connection rows go away by cascade, but the cached access tokens do
+    // not, and a cache hit never re-checks the database — so they would stay servable for an hour.
+    const microsoftConnections = await MicrosoftConnection.findAll({ where: { accountId: id }, attributes: ["id"] });
+    for (const connection of microsoftConnections) forget(connection.id);
 
     await Account.destroy({ where: { id } });
 

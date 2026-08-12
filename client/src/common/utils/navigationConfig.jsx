@@ -1,4 +1,4 @@
-import { mdiServerOutline, mdiCodeBraces, mdiChartBoxOutline, mdiShieldCheckOutline, mdiAccountCircleOutline, mdiAccountGroup, mdiClockStarFourPointsOutline, mdiShieldAccountOutline, mdiDomain, mdiCreationOutline, mdiKeyVariant, mdiConsole, mdiKeyboardOutline, mdiCloudDownloadOutline, mdiChartLine, mdiHarddisk, mdiFolderOutline, mdiEngine, mdiPalette, mdiShieldKeyOutline } from "@mdi/js";
+import { mdiServerOutline, mdiCodeBraces, mdiChartBoxOutline, mdiShieldCheckOutline, mdiAccountCircleOutline, mdiAccountGroup, mdiClockStarFourPointsOutline, mdiShieldAccountOutline, mdiDomain, mdiCreationOutline, mdiKeyVariant, mdiConsole, mdiKeyboardOutline, mdiCloudDownloadOutline, mdiChartLine, mdiHarddisk, mdiFolderOutline, mdiEngine, mdiPalette, mdiShieldKeyOutline, mdiMicrosoft } from "@mdi/js";
 import Account from "@/pages/Settings/pages/Account";
 import Appearance from "@/pages/Settings/pages/Appearance";
 import Terminal from "@/pages/Settings/pages/Terminal";
@@ -9,6 +9,7 @@ import Sessions from "@/pages/Settings/pages/Sessions";
 import Organizations from "@/pages/Settings/pages/Organizations";
 import Users from "@/pages/Settings/pages/Users";
 import Authentication from "@/pages/Settings/pages/Authentication";
+import Microsoft from "@/pages/Settings/pages/Microsoft";
 import Sources from "@/pages/Settings/pages/Sources";
 import Monitoring from "@/pages/Settings/pages/Monitoring";
 import Backup from "@/pages/Settings/pages/Backup";
@@ -39,6 +40,7 @@ export const getSettingsAdminPages = t => [
     { title: t("settings.pages.users"), key: "users", icon: mdiAccountGroup, permission: Permission.USERS_VIEW, content: <Users /> },
     { title: t("settings.pages.permissions"), key: "permissions", icon: mdiShieldKeyOutline, permission: Permission.PERMISSIONS_MANAGE, content: <Permissions /> },
     { title: t("settings.pages.authentication"), key: "authentication", icon: mdiShieldAccountOutline, permission: Permission.SETTINGS_AUTH_PROVIDERS, content: <Authentication /> },
+    { title: t("settings.pages.microsoft"), key: "microsoft", icon: mdiMicrosoft, permission: Permission.SETTINGS_MICROSOFT, content: <Microsoft /> },
     { title: t("settings.pages.sources"), key: "sources", icon: mdiCloudDownloadOutline, permission: Permission.SETTINGS_SOURCES, content: <Sources /> },
     { title: t("settings.pages.monitoring"), key: "monitoring", icon: mdiChartLine, permission: Permission.SETTINGS_MONITORING, content: <Monitoring /> },
     { title: t("settings.pages.engines"), key: "engines", icon: mdiEngine, permission: Permission.SETTINGS_ENGINES, content: <Engines /> },
