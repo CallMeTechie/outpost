@@ -9,11 +9,16 @@ const GRAPH_BASE = `${GRAPH_ORIGIN}/v1.0/me/drive`;
 const MAX_ATTEMPTS = 5;
 const BACKOFF_BASE_MS = 1_000;
 
-// The default ceiling, and it holds for both kinds of wait: the one Microsoft asks for and the one
-// we compute. FileTransfer's own stall watchdog gives a full pipeline 600 s, so staying well under
-// that is what keeps a legitimate backoff from being mistaken for a wedged destination. A caller
-// that sits under a shorter window passes its own maxWaitMs / maxTotalWaitMs to request().
+// The ceiling on a single wait. FileTransfer's own stall watchdog gives a full pipeline 600 s, so
+// staying well under that is what keeps a legitimate backoff from being read as a wedged
+// destination.
 const MAX_WAIT_MS = 120_000;
+
+// The ceiling on all waits of one request added together — a different question from how long any
+// one of them may be, and it must not collapse into it: four Retry-Afters of 110 s are each legal
+// and their sum is still inside what the 600 s watchdog tolerates. readFile passes a far smaller
+// budget of its own, because an empty pipeline gets only 60 s.
+const MAX_TOTAL_WAIT_MS = 480_000;
 
 const readBody = async (response) => {
     try {
@@ -44,7 +49,7 @@ const originOf = (url) => {
 const createGraphClient = ({ getAccessToken: loadToken, forgetToken, fetchImpl, sleep, random = Math.random }) => {
     const request = async (connectionId, {
         url, method = "GET", headers = {}, body = undefined, signal = undefined, parse = "json",
-        anonymous = false, maxWaitMs = MAX_WAIT_MS, maxTotalWaitMs = MAX_WAIT_MS,
+        anonymous = false, maxWaitMs = MAX_WAIT_MS, maxTotalWaitMs = MAX_TOTAL_WAIT_MS,
     }) => {
         const target = url.startsWith("https://") ? url : `${GRAPH_BASE}${url}`;
 
@@ -163,4 +168,7 @@ const graph = createGraphClient({
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 });
 
-module.exports = { GRAPH_BASE, GRAPH_ORIGIN, MAX_ATTEMPTS, MAX_WAIT_MS, backoffDelay, createGraphClient, graph };
+module.exports = {
+    GRAPH_BASE, GRAPH_ORIGIN, MAX_ATTEMPTS, MAX_WAIT_MS, MAX_TOTAL_WAIT_MS,
+    backoffDelay, createGraphClient, graph,
+};

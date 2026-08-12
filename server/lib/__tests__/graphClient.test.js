@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert");
 const {
-    createGraphClient, backoffDelay, GRAPH_BASE, GRAPH_ORIGIN, MAX_ATTEMPTS, MAX_WAIT_MS,
+    createGraphClient, backoffDelay, GRAPH_BASE, GRAPH_ORIGIN, MAX_ATTEMPTS, MAX_WAIT_MS, MAX_TOTAL_WAIT_MS,
 } = require("../microsoft/graphClient");
 
 const reply = (status, body = null, headers = {}) => ({
@@ -106,6 +106,25 @@ test("a Retry-After beyond the ceiling fails instead of waiting", async () => {
 
     await assert.rejects(client.request(1, { url: "/root" }), /throttl/i);
     assert.deepStrictEqual(calls.slept, [], "nothing may be waited out beyond the ceiling");
+});
+
+// The two ceilings are two numbers and must stay two numbers. Collapsing the total onto the
+// single-wait ceiling would let exactly one maximum-length wait ever happen: this pair is legal
+// twice over — each wait is inside MAX_WAIT_MS and their sum is well inside what FileTransfer's
+// 600 s window for a full pipeline tolerates — and it is precisely what retrying exists for.
+test("two waits that are each legal are both waited out even though their sum is not one wait", async () => {
+    const { client, calls } = harness([
+        reply(429, null, { "retry-after": "100" }),
+        reply(429, null, { "retry-after": "30" }),
+        reply(200, { value: [] }),
+    ]);
+
+    const result = await client.request(1, { url: "/root" });
+
+    assert.deepStrictEqual(result.body, { value: [] }, "the request must survive a backoff this long");
+    assert.deepStrictEqual(calls.slept, [100_000, 30_000]);
+    assert.ok(calls.slept[0] + calls.slept[1] > MAX_WAIT_MS, "the point of the case is that the sum exceeds one wait");
+    assert.ok(calls.slept[0] + calls.slept[1] <= MAX_TOTAL_WAIT_MS);
 });
 
 // The default ceiling is not the only clock in the system. A caller sitting under FileTransfer's
