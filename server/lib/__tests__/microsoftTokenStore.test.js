@@ -248,6 +248,94 @@ test("a cached token is served without consulting the configuration", async () =
     assert.strictEqual(configCalls, 1, "a cache hit must not cost a configuration lookup");
 });
 
+// A grant that parks until it is released, so a renewal can be observed while it is in flight.
+const gatedHarness = () => {
+    const releases = [];
+    const state = { grants: 0 };
+
+    const { store, calls } = harness({
+        grant: async () => {
+            state.grants += 1;
+            const attempt = state.grants;
+            await new Promise(resolve => releases.push(resolve));
+            return { access_token: `access-${attempt}`, refresh_token: `refresh-${attempt + 1}`, expires_in: 3600 };
+        },
+    });
+
+    return { store, calls, releases, state };
+};
+
+const tick = () => new Promise(resolve => setImmediate(resolve));
+
+// forget() used to drop the cached token only. A renewal that was already running then finished,
+// found nothing in its way, and filled the cache back in — so a connection that had just been
+// deleted kept handing out access tokens.
+test("a connection forgotten while a renewal is running does not get its token back", async () => {
+    const { store, calls, releases, state } = gatedHarness();
+
+    const running = store.getAccessToken(1);
+    await tick();
+
+    store.forget(1);
+
+    releases[0]();
+    assert.strictEqual(await running, "access-1", "the caller that started the renewal still gets its token");
+    assert.deepStrictEqual(calls.persist, [{ id: 1, token: "refresh-2" }],
+        "the rotated refresh token must still be persisted — Microsoft has already spent the old one");
+
+    const next = store.getAccessToken(1);
+    await tick();
+
+    assert.strictEqual(state.grants, 2, "the forgotten renewal must not have left a usable token in the cache");
+
+    releases[1]();
+    assert.strictEqual(await next, "access-2");
+});
+
+// The identity check in renew: only the renewal that is still the current in-flight one may write
+// the cache. Without it, a renewal that was forgotten mid-flight finishes late and overwrites the
+// token that the reconnect stored in the meantime with one whose refresh token is already spent.
+test("a late renewal does not overwrite the token of the renewal that replaced it", async () => {
+    const { store, releases, state } = gatedHarness();
+
+    const abandoned = store.getAccessToken(1);
+    await tick();
+
+    // What a reconnect does: upsertConnection stores a fresh refresh token and calls forget.
+    store.forget(1);
+
+    const replacement = store.getAccessToken(1);
+    await tick();
+
+    assert.strictEqual(state.grants, 2, "forget must release the in-flight slot, not only the cache slot");
+
+    releases[1]();
+    assert.strictEqual(await replacement, "access-2");
+
+    releases[0]();
+    assert.strictEqual(await abandoned, "access-1");
+
+    assert.strictEqual(await store.getAccessToken(1), "access-2",
+        "the abandoned renewal must not put its stale token back over the current one");
+});
+
+// Disabling the registration clears the configuration cache — which getAccessToken never reaches on
+// a cache hit. Without forgetAll the disabled integration would keep serving tokens for an hour.
+test("forgetAll drops every cached token", async () => {
+    const { store, calls } = harness();
+
+    await store.getAccessToken(1);
+    await store.getAccessToken(2);
+    assert.strictEqual(calls.grant, 2);
+
+    store.forgetAll();
+
+    await store.getAccessToken(1);
+    await store.getAccessToken(2);
+
+    assert.strictEqual(calls.grant, 4, "every connection must renew again after the registration changed");
+});
+
 test("two connections do not share a cache slot", async () => {
     const { store, calls } = harness();
 

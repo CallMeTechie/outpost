@@ -6,7 +6,7 @@ const { buildScopes, hasAllFilesAccess } = require("../lib/microsoft/scopes");
 const { createState, consumeState } = require("../lib/microsoft/authState");
 const { sealRefreshToken, sealClientSecret, openClientSecret, MASKED_SECRET } = require("../lib/microsoft/tokenCrypto");
 const { getConfiguration, resetConfiguration } = require("../lib/microsoft/configuration");
-const { forget } = require("../lib/microsoft/tokenStore");
+const { forget, forgetAll } = require("../lib/microsoft/tokenStore");
 
 const TENANT_CONSENT_CODES = ["AADSTS65001", "AADSTS90094"];
 
@@ -195,8 +195,11 @@ const saveApp = async ({ clientId, clientSecret, redirectUri, enabled }) => {
     }
 
     // The configuration is cached in memory; without this the change would only take effect after
-    // a restart, and disabling the integration would not reach running connections at all.
+    // a restart. resetConfiguration alone does not reach running connections: the token store keeps
+    // its own cache of access tokens and serves it before the configuration is ever consulted, so
+    // disabling the integration has to drop those tokens as well.
     resetConfiguration();
+    forgetAll();
 
     logger.system("Microsoft app registration saved", { clientId, enabled: Boolean(enabled) });
     return await getApp();
@@ -204,7 +207,11 @@ const saveApp = async ({ clientId, clientSecret, redirectUri, enabled }) => {
 
 const deleteApp = async () => {
     await MicrosoftApp.destroy({ where: {} });
+
+    // As in saveApp: the configuration cache and the access token cache are two different caches,
+    // and only clearing both stops handing out Graph tokens for a registration that is now gone.
     resetConfiguration();
+    forgetAll();
 
     logger.system("Microsoft app registration removed");
     return { success: true };

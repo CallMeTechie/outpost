@@ -17,7 +17,7 @@ const createTokenStore = ({
     const cache = new Map();
     const inflight = new Map();
 
-    const renew = async (connectionId) => {
+    const renew = async (connectionId, entry) => {
         const connection = await loadConnection(connectionId);
         if (!connection) throw new MicrosoftDisconnectedError("This Microsoft connection no longer exists");
         if (connection.status !== "connected") throw new MicrosoftDisconnectedError("This Microsoft connection is disconnected");
@@ -55,8 +55,14 @@ const createTokenStore = ({
         // good. Deriving the expiry and filling the cache happens after the write, not before.
         await persistRefresh(connectionId, tokens.refresh_token || refreshToken);
 
+        // The cache write is conditional, the persist above is not. A renewal that was forgotten
+        // while it was in flight — the connection deleted, the account gone, a reconnect that
+        // stored a fresh token — must not put its result back into the cache, or a deleted
+        // connection hands out tokens again and a reconnect is overwritten by the stale renewal.
         const lifetime = Number(tokens.expires_in) > 0 ? Number(tokens.expires_in) : DEFAULT_LIFETIME_S;
-        cache.set(connectionId, { accessToken: tokens.access_token, expiresAt: now() + lifetime * 1000 });
+        if (inflight.get(connectionId) === entry.promise) {
+            cache.set(connectionId, { accessToken: tokens.access_token, expiresAt: now() + lifetime * 1000 });
+        }
 
         return tokens.access_token;
     };
@@ -71,17 +77,35 @@ const createTokenStore = ({
         // Microsoft swaps the refresh token on every renewal. A second renewal running in parallel
         // would present a token that is already spent and come back as invalid_grant — which would
         // disconnect a perfectly healthy connection.
-        const pending = renew(connectionId).finally(() => {
+        // The entry is handed to renew so it can recognise its own promise later; it is filled in
+        // right after, which is soon enough because renew only reads it past its first await.
+        const entry = {};
+        const pending = renew(connectionId, entry).finally(() => {
             if (inflight.get(connectionId) === pending) inflight.delete(connectionId);
         });
+        entry.promise = pending;
 
         inflight.set(connectionId, pending);
         return pending;
     };
 
-    const forget = (connectionId) => { cache.delete(connectionId); };
+    // Dropping the in-flight entry too, not only the cached token: a renewal that is still running
+    // would otherwise finish and repopulate the cache for a connection that has just been deleted
+    // or reconnected. renew checks whether its own promise is still the current one before it
+    // writes, so the forgotten renewal discards its result instead of resurrecting it.
+    const forget = (connectionId) => {
+        cache.delete(connectionId);
+        inflight.delete(connectionId);
+    };
 
-    return { getAccessToken, forget };
+    // The configuration cache and the token cache are separate. Clearing only the configuration
+    // would let an administrator disable the integration and still have valid access tokens handed
+    // out for the rest of their hour-long lifetime.
+    const forgetAll = () => {
+        for (const connectionId of [...cache.keys()]) forget(connectionId);
+    };
+
+    return { getAccessToken, forget, forgetAll };
 };
 
 const store = createTokenStore({
@@ -100,4 +124,5 @@ module.exports = {
     createTokenStore,
     getAccessToken: store.getAccessToken,
     forget: store.forget,
+    forgetAll: store.forgetAll,
 };
