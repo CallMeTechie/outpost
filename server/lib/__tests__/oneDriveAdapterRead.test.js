@@ -60,9 +60,18 @@ test("a traversal segment is refused rather than sent", async () => {
 test("a segment that would break path addressing is refused", async () => {
     const { adapter } = adapterOn(() => ({ body: { value: [] } }));
 
-    for (const path of ["/a:b", "/a\\b", "/ab"]) {
+    for (const path of ["/a:b", "/a\\b", "/a\x01b", "/a\x7fb"]) {
         await assert.rejects(adapter.listDir(path), /invalid/i, `accepted ${path}`);
     }
+});
+
+test("a path that is not a string is refused rather than coerced into the root", async () => {
+    const { graph, adapter } = adapterOn(() => ({ body: { value: [] } }));
+
+    for (const path of [null, undefined, 42, {}, ["a"]]) {
+        await assert.rejects(adapter.listDir(path), /invalid/i, `accepted ${JSON.stringify(path)}`);
+    }
+    assert.strictEqual(graph.calls.length, 0, "nothing may reach Graph");
 });
 
 test("listDir maps Graph's shape onto the one the transfer expects", async () => {
@@ -180,6 +189,31 @@ test("destroying the read stream reaches the running request", async () => {
 
     assert.ok(captured, "the request must be given a signal at all");
     assert.ok(captured.aborted, "and that signal must be aborted when the reader goes away");
+});
+
+// Without the readableEnded guard the close handler would abort after a perfectly normal end. That
+// mutation is invisible through `done` — it is already resolved by then, and a late reject is a
+// silent no-op — so the signal itself is what has to be asserted.
+test("a stream that ended on its own is not treated as a cancel", async () => {
+    let captured = null;
+    const { adapter } = adapterOn((options) => {
+        captured = options.signal;
+        return {
+            body: new ReadableStream({
+                start(controller) {
+                    controller.enqueue(new Uint8Array([1, 2, 3]));
+                    controller.close();
+                },
+            }),
+        };
+    });
+
+    const { stream, done } = adapter.readFile("/klein.txt");
+    for await (const chunk of stream) void chunk;
+    await done;
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.strictEqual(captured.aborted, false, "a read that finished must not abort its own request");
 });
 
 test("a cancelled read settles done rather than leaving it pending", async () => {
