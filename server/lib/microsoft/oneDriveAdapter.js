@@ -1,5 +1,6 @@
 const { PassThrough, Readable } = require("node:stream");
 const { GraphError } = require("./graphErrors");
+const { uploadLarge, SIMPLE_UPLOAD_LIMIT } = require("./oneDriveUpload");
 
 const PAGE_SIZE = 200;
 
@@ -131,6 +132,122 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
         return { stream, done };
     };
 
+    // Bounded on purpose: the size is a promise from the caller, and a source that delivers more
+    // than it promised must not be able to grow this buffer without end.
+    const collect = async (source, size) => {
+        const pieces = [];
+        let total = 0;
+
+        for await (const piece of source) {
+            total += piece.length;
+            // Bounded against what the caller promised, not against the 4 MiB ceiling: a source
+            // that delivers a different amount than it announced would otherwise upload a file of
+            // the wrong length with no complaint from this layer at all.
+            if (total > size) throw new GraphError(`OneDrive expected ${size} bytes but the source delivered more`);
+            pieces.push(piece);
+        }
+
+        if (total !== size) {
+            throw new GraphError(`OneDrive expected ${size} bytes but the source delivered ${total}`);
+        }
+
+        return Buffer.concat(pieces, total);
+    };
+
+    const writeFile = async (path, source, options = {}) => {
+        const size = Buffer.isBuffer(source) ? source.length : options.size;
+
+        // Graph wants the total length in every chunk's Content-Range. Finding it out by buffering
+        // the whole stream is exactly what the hint exists to avoid, so a missing hint is refused.
+        if (!Number.isInteger(size) || size < 0) {
+            throw new GraphError("OneDrive needs to know the file size before it can accept an upload");
+        }
+
+        const target = itemUrl(path);
+
+        // The same idea as in readFile: FileTransfer cancels by destroying the source stream, and
+        // that has to reach the request in flight — otherwise a cancelled upload keeps pushing
+        // chunks at Microsoft until the file is complete. A source that ended on its own is not a
+        // cancel, which is what readableEnded tells apart.
+        const controller = new AbortController();
+        if (typeof source?.on === "function") {
+            source.on("error", () => controller.abort());
+            source.on("close", () => { if (!source.readableEnded) controller.abort(); });
+        }
+
+        if (size <= SIMPLE_UPLOAD_LIMIT) {
+            const payload = Buffer.isBuffer(source) ? source : await collect(source, size);
+
+            await graph.request(connectionId, {
+                url: `${target}/content`,
+                method: "PUT",
+                headers: { "Content-Type": "application/octet-stream" },
+                body: payload,
+                signal: controller.signal,
+            });
+
+            return;
+        }
+
+        await uploadLarge({ graph, connectionId, itemPath: target, source, size, signal: controller.signal });
+    };
+
+    const mkdirRecursive = async (path) => {
+        const segments = splitPath(path);
+
+        for (let level = 0; level < segments.length; level += 1) {
+            try {
+                await graph.request(connectionId, {
+                    url: childrenUrl(segments.slice(0, level).join("/")),
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: segments[level],
+                        folder: {},
+                        "@microsoft.graph.conflictBehavior": "fail",
+                    }),
+                });
+            } catch (error) {
+                // Graph has no "create if missing". A name already taken is the normal case when
+                // several files share a parent — but only that one conflict counts as success.
+                // A 409 proves the name is taken, not that it names a folder. Verifying the type
+                // would cost one extra request per already-existing level, on every transfer into
+                // an existing tree. It is not worth it: FileTransfer stats every directory of the
+                // plan itself and refuses a type conflict with the path in the message
+                // (FileTransfer.js:286-289). Only levels created implicitly in between are exposed,
+                // and there the next call fails with Graph's own error naming the same path.
+                const alreadyThere = error?.status === 409
+                    && (error.code === null || error.code === undefined || error.code === "nameAlreadyExists");
+
+                if (!alreadyThere) throw error;
+            }
+        }
+    };
+
+    const unlink = async (path) => {
+        try {
+            await graph.request(connectionId, { url: itemUrl(path), method: "DELETE" });
+        } catch (error) {
+            // Already gone is the outcome the caller wanted.
+            if (error?.status !== 404) throw error;
+        }
+    };
+
+    const rmdir = async (path, recursive) => {
+        if (!recursive) {
+            // Graph always deletes a folder with its contents; there is no "only if empty". The
+            // move cleanup path asks for this form precisely to be told that something is left.
+            const remaining = await listDir(path);
+            if (remaining.length > 0) throw new GraphError("This OneDrive folder is not empty");
+        }
+
+        await unlink(path);
+    };
+
+    const checksum = async () => {
+        throw new GraphError("OneDrive does not provide a checksum this transfer can compare");
+    };
+
     return {
         // No checksum: Microsoft reports SHA-256 for personal accounts and its own quickXorHash for
         // business ones, and the SSH side can only compute the former. A guarantee that holds for
@@ -141,6 +258,11 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
         listDir,
         stat,
         readFile,
+        writeFile,
+        mkdirRecursive,
+        unlink,
+        rmdir,
+        checksum,
     };
 };
 
