@@ -1573,7 +1573,7 @@
       "openSFTP": "SFTP öffnen",
       "forwardPort": "Port weiterleiten",
       "runScript": "Skript ausführen",
-      "openNotes": "Offene Noten",
+      "openNotes": "Notizen",
       "addNotes": "Anmerkungen hinzufügen",
       "editServer": "Server bearbeiten",
       "editIntegration": "Integration bearbeiten",
@@ -1598,14 +1598,14 @@
     "tabs": {
       "contextMenu": {
         "popOut": "In eigenem Fenster öffnen",
-        "startSharing": "Teilen beginnen",
+        "startSharing": "Teilen",
         "readOnly": "Read-only",
         "readWrite": "Read & Write",
         "copyShareLink": "Link zum Teilen kopieren",
         "changePermissions": "Berechtigungen ändern",
         "stopSharing": "Teilen beenden",
         "duplicate": "Duplizieren",
-        "openNotes": "Offene Noten",
+        "openNotes": "Notizen",
         "hibernateSession": "Ruhezustand aktivieren",
         "closeSession": "Trennen"
       }
