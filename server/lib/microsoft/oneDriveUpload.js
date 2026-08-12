@@ -30,6 +30,8 @@ const discardSession = async (graph, connectionId, uploadUrl) => {
     }
 };
 
+// Expects size > SIMPLE_UPLOAD_LIMIT — writeFile picks the path, and a zero-byte input here would
+// open a session, upload nothing and resolve as if it had worked.
 const uploadLarge = async ({ graph, connectionId, itemPath, source, size, signal }) => {
     const uploadUrl = await openSession(graph, connectionId, itemPath, signal);
 
@@ -72,10 +74,9 @@ const uploadLarge = async ({ graph, connectionId, itemPath, source, size, signal
             // to be left off, and a token sent to an address that arrived in a response body would
             // be a token one tampered response away from leaving the house.
             anonymous: true,
-            headers: {
-                "Content-Length": String(chunk.length),
-                "Content-Range": `bytes ${offset}-${last}/${size}`,
-            },
+            // No Content-Length: undici computes it from the Buffer body, and setting it by hand
+            // only made it read as load-bearing.
+            headers: { "Content-Range": `bytes ${offset}-${last}/${size}` },
             body: chunk,
             signal,
         });

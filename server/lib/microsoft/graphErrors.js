@@ -25,10 +25,13 @@ const readRetryAfter = (headers) => {
 
 // Microsoft's own message is not shown to the user: it is English prose written for developers and
 // sometimes several sentences long. What the user needs is one short sentence naming what is wrong.
-const describeGraphFailure = (status, body) => {
-    const code = readGraphCode(body);
+// The one place that decides a failure will not become true by waiting. Both sides of the client
+// have to agree on it: describing a failure as "your OneDrive is full" while retrying it five times
+// first is exactly the split this exists to close — Microsoft may carry quotaLimitReached on a 500.
+const isPermanentFailure = (status, body) => status === 507 || readGraphCode(body) === "quotaLimitReached";
 
-    if (status === 507 || code === "quotaLimitReached") return "Your OneDrive is full";
+const describeGraphFailure = (status, body) => {
+    if (isPermanentFailure(status, body)) return "Your OneDrive is full";
     if (status === 403) return "OneDrive refused access to this item";
     // "does not exist" is not a wording choice: FileTransfer decides what counts as not-found by
     // matching this very message against its NOT_FOUND pattern (FileTransfer.js:45). "no longer
@@ -42,4 +45,4 @@ const describeGraphFailure = (status, body) => {
     return `OneDrive request failed (${status})`;
 };
 
-module.exports = { GraphError, describeGraphFailure, readGraphCode, readRetryAfter };
+module.exports = { GraphError, describeGraphFailure, isPermanentFailure, readGraphCode, readRetryAfter };

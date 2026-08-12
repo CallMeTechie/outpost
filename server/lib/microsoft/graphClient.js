@@ -1,5 +1,7 @@
 const { getAccessToken, forget } = require("./tokenStore");
-const { GraphError, describeGraphFailure, readGraphCode, readRetryAfter } = require("./graphErrors");
+const {
+    GraphError, describeGraphFailure, isPermanentFailure, readGraphCode, readRetryAfter,
+} = require("./graphErrors");
 
 const GRAPH_ORIGIN = "https://graph.microsoft.com";
 const GRAPH_BASE = `${GRAPH_ORIGIN}/v1.0/me/drive`;
@@ -109,10 +111,13 @@ const createGraphClient = ({ getAccessToken: loadToken, forgetToken, fetchImpl, 
                 return { status: response.status, headers: response.headers, body: await readBody(response) };
             }
 
-            // Once, and only once. The store hands out a cached token, so a token that expired
-            // mid-transfer is worth one repeat; a second refusal means the grant itself is gone and
-            // repeating would only hammer Microsoft.
-            if (response.status === 401 && !anonymous && !droppedToken) {
+            // Once, and only once, and never on the last attempt. The store hands out a cached
+            // token, so a token that expired mid-transfer is worth one repeat; a second refusal
+            // means the grant itself is gone and repeating would only hammer Microsoft. The attempt
+            // guard is what keeps a 401 from falling out of the loop and being reported as
+            // "OneDrive is temporarily unavailable" with no status and no code — an auth failure
+            // described as an outage, and no way for a caller to tell.
+            if (response.status === 401 && !anonymous && !droppedToken && attempt < MAX_ATTEMPTS) {
                 droppedToken = true;
                 forgetToken(connectionId);
                 continue;
@@ -124,9 +129,12 @@ const createGraphClient = ({ getAccessToken: loadToken, forgetToken, fetchImpl, 
                 status: response.status, code: readGraphCode(payload), retryAfter,
             });
 
-            // 507 is excluded even though it is a 5xx: describeGraphFailure already treats it as the
-            // permanent "drive is full" condition, and no amount of waiting frees up quota.
-            const worthRepeating = response.status === 429 || (response.status >= 500 && response.status !== 507);
+            // A permanent failure is excluded even when its status looks retryable: no amount of
+            // waiting frees up quota. The rule lives in graphErrors so that this decision and the
+            // sentence the user reads can never drift apart — a 500 carrying quotaLimitReached used
+            // to be retried five times and then reported as a full drive.
+            const worthRepeating = (response.status === 429 || response.status >= 500)
+                && !isPermanentFailure(response.status, payload);
             if (!worthRepeating || attempt === MAX_ATTEMPTS) throw fail();
 
             // A wait longer than the budget is not a wait, it is a refusal with extra steps — and
@@ -138,6 +146,10 @@ const createGraphClient = ({ getAccessToken: loadToken, forgetToken, fetchImpl, 
             await sleep(wait);
         }
 
+        // Not reachable today: every path out of the loop either returns or throws its own
+        // translated failure. It stays as the backstop for a future `continue` that forgets to, and
+        // it must never again be the way an ordinary status leaves this function — a caller that
+        // gets this error has no status and no code to branch on.
         throw new GraphError("OneDrive is temporarily unavailable");
     };
 

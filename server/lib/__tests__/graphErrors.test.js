@@ -1,6 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const { GraphError, describeGraphFailure, readGraphCode, readRetryAfter } = require("../microsoft/graphErrors");
+const {
+    GraphError, describeGraphFailure, isPermanentFailure, readGraphCode, readRetryAfter,
+} = require("../microsoft/graphErrors");
 
 const body = (code) => ({ error: { code, message: "whatever Microsoft says" } });
 
@@ -14,6 +16,18 @@ test("a full drive is named as such, not as a generic failure", () => {
 // Microsoft does not always use 507 for a full drive; the body's own code decides too.
 test("a quota code counts as full whatever the status says", () => {
     assert.match(describeGraphFailure(400, body("quotaLimitReached")), /full/i);
+});
+
+// The retry decision and the sentence the user reads have to come from one rule. While they were
+// two, a 500 carrying quotaLimitReached was retried five times and then reported as a full drive.
+test("a permanent failure is named the same way whatever status carries it", () => {
+    assert.strictEqual(isPermanentFailure(507, null), true);
+    assert.strictEqual(isPermanentFailure(500, body("quotaLimitReached")), true);
+    assert.strictEqual(isPermanentFailure(429, body("quotaLimitReached")), true);
+
+    assert.strictEqual(isPermanentFailure(500, null), false);
+    assert.strictEqual(isPermanentFailure(429, body("activityLimitReached")), false);
+    assert.strictEqual(isPermanentFailure(500, { error: { code: 7 } }), false);
 });
 
 test("the everyday failures each get their own words", () => {

@@ -304,4 +304,7 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
     };
 };
 
+// splitPath, itemUrl and childrenUrl have no importer yet on purpose: the move and copy handlers of
+// the next project address items by the same path syntax and will take them from here rather than
+// build a second one.
 module.exports = { PAGE_SIZE, MAX_PAGES, createOneDriveAdapter, splitPath, itemUrl, childrenUrl };

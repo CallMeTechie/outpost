@@ -177,6 +177,32 @@ test("a full drive is not retried either", async () => {
     assert.strictEqual(calls.fetches.length, 1);
 });
 
+// Microsoft may carry the quota code on a status that otherwise looks retryable. Waiting five times
+// over does not free up quota, and the answer at the end says the drive is full either way.
+test("a full drive carried on a 500 is not retried either", async () => {
+    const { client, calls } = harness([reply(500, { error: { code: "quotaLimitReached" } })]);
+
+    await assert.rejects(client.request(1, { url: "/root" }), /full/i);
+    assert.strictEqual(calls.fetches.length, 1, "a permanent failure must not be repeated");
+    assert.deepStrictEqual(calls.slept, []);
+});
+
+// Falling out of the loop threw a bare "temporarily unavailable" with no status and no code:
+// an auth failure described as an outage, and nothing for the caller to branch on.
+test("an unauthorized answer on the last attempt is reported as itself, not as an outage", async () => {
+    const { client } = harness([
+        reply(500), reply(500), reply(500), reply(500),
+        reply(401, { error: { code: "InvalidAuthenticationToken" } }),
+    ]);
+
+    await assert.rejects(client.request(1, { url: "/root" }), (error) => {
+        assert.strictEqual(error.status, 401);
+        assert.strictEqual(error.code, "InvalidAuthenticationToken");
+        assert.doesNotMatch(error.message, /temporarily/i, "a rejected token is not an outage");
+        return true;
+    });
+});
+
 test("the thrown error carries status and code for the caller to branch on", async () => {
     const { client } = harness([reply(409, { error: { code: "nameAlreadyExists" } })]);
 
