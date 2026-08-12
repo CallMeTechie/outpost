@@ -30,7 +30,11 @@ const describeGraphFailure = (status, body) => {
 
     if (status === 507 || code === "quotaLimitReached") return "Your OneDrive is full";
     if (status === 403) return "OneDrive refused access to this item";
-    if (status === 404) return "This item no longer exists in OneDrive";
+    // "does not exist" is not a wording choice: FileTransfer decides what counts as not-found by
+    // matching this very message against its NOT_FOUND pattern (FileTransfer.js:45). "no longer
+    // exists" misses it, and a destination stat of a fresh target is always a 404 — so the whole
+    // transfer would die before moving a byte. oneDriveTransferSeam.test.js holds that seam shut.
+    if (status === 404) return "This item does not exist in OneDrive";
     if (status === 409) return "An item with this name already exists in OneDrive";
     if (status === 429) return "Microsoft is throttling this account, please try again later";
     if (Number.isInteger(status) && status >= 500) return "OneDrive is temporarily unavailable";
