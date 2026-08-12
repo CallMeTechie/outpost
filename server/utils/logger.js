@@ -20,7 +20,9 @@ const cleanOldLogs = () => {
     } catch {}
 };
 
-setInterval(cleanOldLogs, 24 * 60 * 60 * 1000);
+// unref: this timer must not keep an otherwise-idle process (e.g. the test runner) alive.
+// The long-running server process has other refed handles (its HTTP listener) regardless.
+setInterval(cleanOldLogs, 24 * 60 * 60 * 1000).unref();
 cleanOldLogs();
 
 winston.addColors({
