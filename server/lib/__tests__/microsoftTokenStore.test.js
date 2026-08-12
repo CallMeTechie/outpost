@@ -267,9 +267,32 @@ const gatedHarness = () => {
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
-// forget() used to drop the cached token only. A renewal that was already running then finished,
-// found nothing in its way, and filled the cache back in — so a connection that had just been
-// deleted kept handing out access tokens.
+// The load-bearing invariant. forget() must not empty the in-flight slot: the entry *is* the
+// single-flight lock, and a caller arriving right after a forget would otherwise start a second
+// renewal presenting the same, not-yet-rotated refresh token — the double submit that Microsoft
+// answers with invalid_grant and that then disconnects a healthy connection.
+test("a forget during a renewal does not let a second renewal start", async () => {
+    const { store, releases, state } = gatedHarness();
+
+    const first = store.getAccessToken(1);
+    await tick();
+
+    store.forget(1);
+
+    const second = store.getAccessToken(1);
+    await tick();
+
+    assert.strictEqual(state.grants, 1, "forget must keep the single-flight lock, not release it");
+
+    releases[0]();
+    assert.strictEqual(await first, "access-1");
+    assert.strictEqual(await second, "access-1", "the later caller has to join the renewal that is already running");
+    assert.strictEqual(state.grants, 1, "the refresh token may only ever be submitted once");
+});
+
+// forget() drops the cached token. A renewal that was already running must not fill it back in —
+// otherwise a connection that has just been deleted, or an app registration that has just been
+// disabled, keeps handing out access tokens for the rest of the hour.
 test("a connection forgotten while a renewal is running does not get its token back", async () => {
     const { store, calls, releases, state } = gatedHarness();
 
@@ -286,17 +309,27 @@ test("a connection forgotten while a renewal is running does not get its token b
     const next = store.getAccessToken(1);
     await tick();
 
-    assert.strictEqual(state.grants, 2, "the forgotten renewal must not have left a usable token in the cache");
+    assert.strictEqual(state.grants, 2, "the abandoned renewal must not have left a usable token in the cache");
 
     releases[1]();
     assert.strictEqual(await next, "access-2");
 });
 
-// The identity check in renew: only the renewal that is still the current in-flight one may write
-// the cache. Without it, a renewal that was forgotten mid-flight finishes late and overwrites the
-// token that the reconnect stored in the meantime with one whose refresh token is already spent.
-test("a late renewal does not overwrite the token of the renewal that replaced it", async () => {
-    const { store, releases, state } = gatedHarness();
+// An abandoned renewal may be holding a refresh token that a reconnect has already replaced, so its
+// invalid_grant says nothing about the connection. Acting on it destroyed the fresh token and
+// flipped a connection that had just been renewed to disconnected.
+test("an abandoned renewal rejected as invalid_grant does not disconnect the connection", async () => {
+    const releases = [];
+    const state = { grants: 0 };
+    const { store, calls, currentRow } = harness({
+        grant: async () => {
+            state.grants += 1;
+            const attempt = state.grants;
+            await new Promise(resolve => releases.push(resolve));
+            if (attempt === 1) throw bodyError("invalid_grant");
+            return { access_token: `access-${attempt}`, refresh_token: `refresh-${attempt + 1}`, expires_in: 3600 };
+        },
+    });
 
     const abandoned = store.getAccessToken(1);
     await tick();
@@ -304,19 +337,21 @@ test("a late renewal does not overwrite the token of the renewal that replaced i
     // What a reconnect does: upsertConnection stores a fresh refresh token and calls forget.
     store.forget(1);
 
-    const replacement = store.getAccessToken(1);
-    await tick();
-
-    assert.strictEqual(state.grants, 2, "forget must release the in-flight slot, not only the cache slot");
-
-    releases[1]();
-    assert.strictEqual(await replacement, "access-2");
-
     releases[0]();
-    assert.strictEqual(await abandoned, "access-1");
+    await assert.rejects(abandoned, (error) => error.kind === "disconnected",
+        "the caller that asked for a token still learns that it did not get one");
 
+    assert.deepStrictEqual(calls.disconnected, [],
+        "an abandoned renewal's invalid_grant must not disconnect the reconnected connection");
+    assert.strictEqual(currentRow().status, "connected");
+
+    const next = store.getAccessToken(1);
+    await tick();
+    releases[1]();
+    assert.strictEqual(await next, "access-2");
     assert.strictEqual(await store.getAccessToken(1), "access-2",
-        "the abandoned renewal must not put its stale token back over the current one");
+        "and it must not have cleared the cache entry the successful renewal wrote");
+    assert.strictEqual(state.grants, 2);
 });
 
 // Disabling the registration clears the configuration cache — which getAccessToken never reaches on
@@ -334,6 +369,28 @@ test("forgetAll drops every cached token", async () => {
     await store.getAccessToken(2);
 
     assert.strictEqual(calls.grant, 4, "every connection must renew again after the registration changed");
+});
+
+// A connection whose first renewal is still running has nothing in the cache yet, so iterating the
+// cache alone would let it survive the registration change for one full renewal.
+test("forgetAll also reaches a connection that is only mid-renewal", async () => {
+    const { store, releases, state } = gatedHarness();
+
+    const running = store.getAccessToken(1);
+    await tick();
+
+    store.forgetAll();
+
+    releases[0]();
+    assert.strictEqual(await running, "access-1");
+
+    const next = store.getAccessToken(1);
+    await tick();
+
+    assert.strictEqual(state.grants, 2, "the renewal that was in flight must not have filled the cache");
+
+    releases[1]();
+    assert.strictEqual(await next, "access-2");
 });
 
 test("two connections do not share a cache slot", async () => {

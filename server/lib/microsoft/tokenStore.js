@@ -34,8 +34,15 @@ const createTokenStore = ({
             const verdict = classifyTokenError(error);
 
             if (verdict.kind === "final") {
-                cache.delete(connectionId);
-                await markDisconnected(connectionId);
+                // Same ownership test as the success path below. An abandoned renewal may still be
+                // holding a refresh token that a newer renewal has already rotated away, so its
+                // invalid_grant says nothing about the connection — acting on it would delete the
+                // fresh token and disconnect a connection that has just been renewed successfully.
+                // The caller of *this* call still gets the error: it asked for a token and got none.
+                if (inflight.get(connectionId) === entry && !entry.abandoned) {
+                    cache.delete(connectionId);
+                    await markDisconnected(connectionId);
+                }
                 throw new MicrosoftDisconnectedError("Microsoft rejected the stored refresh token");
             }
 
@@ -60,7 +67,7 @@ const createTokenStore = ({
         // stored a fresh token — must not put its result back into the cache, or a deleted
         // connection hands out tokens again and a reconnect is overwritten by the stale renewal.
         const lifetime = Number(tokens.expires_in) > 0 ? Number(tokens.expires_in) : DEFAULT_LIFETIME_S;
-        if (inflight.get(connectionId) === entry.promise) {
+        if (inflight.get(connectionId) === entry && !entry.abandoned) {
             cache.set(connectionId, { accessToken: tokens.access_token, expiresAt: now() + lifetime * 1000 });
         }
 
@@ -72,37 +79,40 @@ const createTokenStore = ({
         if (cached && cached.expiresAt - now() > REFRESH_BUFFER_MS) return cached.accessToken;
 
         const running = inflight.get(connectionId);
-        if (running) return running;
+        if (running) return running.promise;
 
         // Microsoft swaps the refresh token on every renewal. A second renewal running in parallel
         // would present a token that is already spent and come back as invalid_grant — which would
         // disconnect a perfectly healthy connection.
-        // The entry is handed to renew so it can recognise its own promise later; it is filled in
+        // The entry is handed to renew so it can recognise itself later; its promise is filled in
         // right after, which is soon enough because renew only reads it past its first await.
-        const entry = {};
-        const pending = renew(connectionId, entry).finally(() => {
-            if (inflight.get(connectionId) === pending) inflight.delete(connectionId);
+        const entry = { abandoned: false };
+        entry.promise = renew(connectionId, entry).finally(() => {
+            if (inflight.get(connectionId) === entry) inflight.delete(connectionId);
         });
-        entry.promise = pending;
 
-        inflight.set(connectionId, pending);
-        return pending;
+        inflight.set(connectionId, entry);
+        return entry.promise;
     };
 
-    // Dropping the in-flight entry too, not only the cached token: a renewal that is still running
-    // would otherwise finish and repopulate the cache for a connection that has just been deleted
-    // or reconnected. renew checks whether its own promise is still the current one before it
-    // writes, so the forgotten renewal discards its result instead of resurrecting it.
     const forget = (connectionId) => {
         cache.delete(connectionId);
-        inflight.delete(connectionId);
+
+        // The in-flight entry deliberately stays in the map. It is the single-flight lock, and
+        // removing it would let a second renewal start against the same, not-yet-rotated refresh
+        // token — the double submit Microsoft answers with invalid_grant, which would disconnect a
+        // healthy connection. Marking it makes the running renewal discard its own result instead.
+        const running = inflight.get(connectionId);
+        if (running) running.abandoned = true;
     };
 
     // The configuration cache and the token cache are separate. Clearing only the configuration
     // would let an administrator disable the integration and still have valid access tokens handed
     // out for the rest of their hour-long lifetime.
+    // The union, not only the cached ones: a connection whose first renewal is still in flight has
+    // nothing in the cache yet, and would otherwise survive the registration change for one renewal.
     const forgetAll = () => {
-        for (const connectionId of [...cache.keys()]) forget(connectionId);
+        for (const connectionId of new Set([...cache.keys(), ...inflight.keys()])) forget(connectionId);
     };
 
     return { getAccessToken, forget, forgetAll };
