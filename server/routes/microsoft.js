@@ -12,6 +12,12 @@ const logger = require("../utils/logger");
 
 const app = Router();
 
+// Deliberately stricter than parseInt: parseInt("1abc") is 1, parseInt(" 1") is 1, parseInt("1e2")
+// is 1 and parseInt("0x10") is 16, so a malformed id would reach the controller and come back as a
+// plain 404 instead of the 400 that would surface the caller's bug. The length bound keeps a
+// 300-digit string from arriving as Infinity.
+const parseConnectionId = (value) => (/^\d{1,15}$/.test(value) ? Number(value) : null);
+
 /**
  * POST /microsoft/connections/start
  * @summary Start connecting a Microsoft account
@@ -77,8 +83,8 @@ app.get("/connections", authenticate, async (req, res) => {
  * @return {object} 200 - The updated connection
  */
 app.patch("/connections/:id", authenticate, async (req, res) => {
-    const id = parseInt(req.params.id, 10);
-    if (Number.isNaN(id)) return res.status(400).json({ message: "Invalid connection ID" });
+    const id = parseConnectionId(req.params.id);
+    if (id === null) return res.status(400).json({ message: "Invalid connection ID" });
     if (validateSchema(res, microsoftRenameValidation, req.body ?? {})) return;
 
     const result = await microsoft.renameConnection(req.user.id, id, req.body.displayName);
@@ -97,8 +103,8 @@ app.patch("/connections/:id", authenticate, async (req, res) => {
  * @return {object} 200 - Deletion confirmation
  */
 app.delete("/connections/:id", authenticate, async (req, res) => {
-    const id = parseInt(req.params.id, 10);
-    if (Number.isNaN(id)) return res.status(400).json({ message: "Invalid connection ID" });
+    const id = parseConnectionId(req.params.id);
+    if (id === null) return res.status(400).json({ message: "Invalid connection ID" });
 
     const result = await microsoft.deleteConnection(req.user.id, id);
     if (result?.code) return res.status(result.code).json({ message: result.message });
