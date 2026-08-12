@@ -171,7 +171,7 @@ export const MicrosoftConnections = () => {
                                            }} />
                                 ) : <h3>{connection.displayName}</h3>}
 
-                                <p className="item-meta">
+                                <p className="item-meta ms-connection-meta">
                                     <span>{connection.microsoftEmail}</span>
                                     <span className={connection.status === "connected" ? "ms-ok" : "ms-dead"}>
                                         {connection.status === "connected"

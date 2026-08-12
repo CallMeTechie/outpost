@@ -24,6 +24,14 @@
   color: inherit
   font: inherit
 
+// .item-meta on its own is a plain block, so the spans run together into one word. Same treatment
+// as .api-key-meta in the account page's own stylesheet.
+.ms-connection-meta
+  display: flex
+  flex-wrap: wrap
+  gap: 0.75rem
+  align-items: center
+
 .ms-ok
   color: var(--success, #4caf50)
 
