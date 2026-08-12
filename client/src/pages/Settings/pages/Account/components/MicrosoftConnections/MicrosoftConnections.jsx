@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Icon from "@mdi/react";
 import { mdiMicrosoft, mdiPencil, mdiTrashCan, mdiAlertCircleOutline } from "@mdi/js";
@@ -23,6 +23,17 @@ export const MicrosoftConnections = () => {
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [toDelete, setToDelete] = useState(null);
 
+    const popupWatchRef = useRef(null);
+    const cancelledRenameRef = useRef(false);
+
+    const stopWatchingPopup = useCallback(() => {
+        if (popupWatchRef.current === null) return;
+        clearInterval(popupWatchRef.current);
+        popupWatchRef.current = null;
+    }, []);
+
+    useEffect(() => stopWatchingPopup, [stopWatchingPopup]);
+
     const load = useCallback(async () => {
         try {
             setConnections(await getRequest("microsoft/connections"));
@@ -39,6 +50,7 @@ export const MicrosoftConnections = () => {
             if (event.origin !== window.location.origin) return;
             if (event.data?.type !== MESSAGE_TYPE) return;
 
+            stopWatchingPopup();
             setConnecting(false);
 
             if (event.data.status === "connected") {
@@ -53,7 +65,7 @@ export const MicrosoftConnections = () => {
 
         window.addEventListener("message", onMessage);
         return () => window.removeEventListener("message", onMessage);
-    }, [load, sendToast, t]);
+    }, [load, sendToast, stopWatchingPopup, t]);
 
     const connect = async () => {
         setConnecting(true);
@@ -64,7 +76,18 @@ export const MicrosoftConnections = () => {
             if (!popup) {
                 setConnecting(false);
                 sendToast(t("common.error"), t("settings.account.microsoft.popupBlocked"));
+                return;
             }
+
+            // The pop-up reports back by posting a message. A user who simply closes the window sends
+            // nothing at all — without this watch the button would stay disabled until the page is
+            // reloaded. `closed` is readable across origins; nothing else about the window is.
+            stopWatchingPopup();
+            popupWatchRef.current = setInterval(() => {
+                if (!popup.closed) return;
+                stopWatchingPopup();
+                setConnecting(false);
+            }, 500);
         } catch (error) {
             setConnecting(false);
             sendToast(t("common.error"), error.message || t("settings.account.microsoft.disabled"));
@@ -72,6 +95,13 @@ export const MicrosoftConnections = () => {
     };
 
     const saveName = async () => {
+        // Escape sets this. Whether removing the focused input fires a blur is browser-dependent, so
+        // the cancellation is recorded in a ref rather than left to depend on that.
+        if (cancelledRenameRef.current) {
+            cancelledRenameRef.current = false;
+            return;
+        }
+
         const name = editingName.trim();
         if (!name) return setEditingId(null);
 
@@ -137,7 +167,7 @@ export const MicrosoftConnections = () => {
                                            onBlur={saveName}
                                            onKeyDown={(e) => {
                                                if (e.key === "Enter") saveName();
-                                               if (e.key === "Escape") setEditingId(null);
+                                               if (e.key === "Escape") { cancelledRenameRef.current = true; setEditingId(null); }
                                            }} />
                                 ) : <h3>{connection.displayName}</h3>}
 
