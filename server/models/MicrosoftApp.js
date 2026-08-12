@@ -6,7 +6,10 @@ const db = require("../utils/database");
 module.exports = db.define("microsoft_apps", {
     id: { type: Sequelize.INTEGER, autoIncrement: true, allowNull: false, primaryKey: true },
     clientId: { type: Sequelize.STRING, allowNull: false },
-    clientSecret: { type: Sequelize.STRING, allowNull: true },
+    // TEXT for the same reason as the refresh token in MicrosoftConnection: hex-encoded ciphertext
+    // doubles the length, so VARCHAR(255) would cap the secret at 127 bytes. IV and auth tag are
+    // fixed-length hex and stay STRING.
+    clientSecret: { type: Sequelize.TEXT, allowNull: true },
     clientSecretIV: { type: Sequelize.STRING, allowNull: true },
     clientSecretAuthTag: { type: Sequelize.STRING, allowNull: true },
     redirectUri: { type: Sequelize.STRING, allowNull: false },
