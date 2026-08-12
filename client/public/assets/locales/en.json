@@ -583,6 +583,7 @@
       "organizations": "Organizations",
       "users": "Users",
       "authentication": "Authentication",
+      "microsoft": "Microsoft",
       "sources": "Sources",
       "ai": "AI",
       "monitoring": "Monitoring",
@@ -1142,6 +1143,24 @@
           "testFailed": "Connection test failed"
         }
       }
+    },
+    "microsoft": {
+      "title": "Microsoft integration",
+      "description": "Register the Azure application Nexterm uses to reach OneDrive on behalf of your users. One registration serves everyone.",
+      "clientId": "Application (client) ID",
+      "clientSecret": "Client secret",
+      "clientSecretKeep": "Leave unchanged to keep the stored secret",
+      "redirectUri": "Redirect URI",
+      "redirectUriHint": "Must be entered in Azure exactly as it appears here, under platform Web.",
+      "enabled": "Enabled",
+      "enabledHint": "While disabled, nobody can connect an account and existing connections stop renewing.",
+      "save": "Save",
+      "delete": "Remove registration",
+      "confirmDelete": "Remove the registration? Existing connections stay but stop working until a new registration is stored.",
+      "saved": "Registration saved.",
+      "removed": "Registration removed.",
+      "accountTypesHint": "In Azure, choose the account type \"Accounts in any organizational directory and personal Microsoft accounts\".",
+      "permissionsHint": "Delegated permissions: Files.ReadWrite, offline_access, openid, email, profile. Add Files.ReadWrite.All only if users should be able to include shared folders."
     },
     "ai": {
       "title": "AI Assistant Configuration",

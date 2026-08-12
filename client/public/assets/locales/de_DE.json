@@ -583,6 +583,7 @@
       "organizations": "Organisationen",
       "users": "Benutzer",
       "authentication": "Authentifizierung",
+      "microsoft": "Microsoft",
       "sources": "Quellen",
       "ai": "AI",
       "monitoring": "Überwachung",
@@ -1142,6 +1143,24 @@
           "testFailed": "Verbindungstest fehlgeschlagen"
         }
       }
+    },
+    "microsoft": {
+      "title": "Microsoft-Anbindung",
+      "description": "Hinterlege die Azure-Anwendung, mit der Nexterm im Namen deiner Nutzer auf OneDrive zugreift. Eine Registrierung gilt für alle.",
+      "clientId": "Anwendungskennung (Client-ID)",
+      "clientSecret": "Client-Geheimnis",
+      "clientSecretKeep": "Leer lassen, um das gespeicherte Geheimnis zu behalten",
+      "redirectUri": "Rücksprungadresse",
+      "redirectUriHint": "Muss in Azure unter der Plattform „Web“ genau so eingetragen sein.",
+      "enabled": "Aktiv",
+      "enabledHint": "Solange die Anbindung aus ist, kann niemand ein Konto verbinden, und bestehende Verbindungen werden nicht mehr erneuert.",
+      "save": "Speichern",
+      "delete": "Registrierung entfernen",
+      "confirmDelete": "Registrierung entfernen? Bestehende Verbindungen bleiben erhalten, funktionieren aber erst wieder mit einer neuen Registrierung.",
+      "saved": "Registrierung gespeichert.",
+      "removed": "Registrierung entfernt.",
+      "accountTypesHint": "Wähle in Azure den Kontotyp „Konten in einem beliebigen Organisationsverzeichnis und persönliche Microsoft-Konten“.",
+      "permissionsHint": "Delegierte Berechtigungen: Files.ReadWrite, offline_access, openid, email, profile. Files.ReadWrite.All nur ergänzen, wenn Nutzer geteilte Ordner einschließen können sollen."
     },
     "ai": {
       "title": "KI-Assistent Konfiguration",
