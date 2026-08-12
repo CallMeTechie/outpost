@@ -114,6 +114,23 @@ test("no bearer token is sent to the pre-authenticated session url", async () =>
     }
 });
 
+// The DELETE goes to the same pre-authenticated address as the chunks, so it must be just as
+// tokenless — and a security property that no test can fail is not a property.
+test("the session is discarded without a token either", async () => {
+    const seen = [];
+    const graph = fakeGraph({ onPut: () => { throw new Error("Microsoft said no"); } });
+    const inner = graph.request;
+    graph.request = async (connectionId, options) => { seen.push(options); return inner(connectionId, options); };
+
+    await assert.rejects(uploadLarge({
+        graph, connectionId: 1, itemPath: "/root:/x:", source: source(CHUNK_SIZE + 1, 4096), size: CHUNK_SIZE + 1,
+    }));
+
+    const discard = seen.find((options) => options.method === "DELETE");
+    assert.ok(discard, "the session must be discarded at all");
+    assert.strictEqual(discard.anonymous, true, "and without carrying the token");
+});
+
 test("a size that does not match what the source delivered is refused", async () => {
     const graph = fakeGraph();
 
