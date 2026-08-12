@@ -418,7 +418,11 @@ class FileTransfer {
             writeAttempted = true;
             // The async wrapper also catches a synchronous throw from writeFile, so every failure
             // of the destination — and only those — carries the DestinationError tag.
-            const writePromise = (async () => this.dest.writeFile(destPath, counted))()
+            // The third argument is a hint, not a contract: the SFTP adapter takes two parameters
+            // and ignores it. A OneDrive destination cannot do without it — Graph wants the total
+            // length in every chunk's Content-Range, and this is the only place that knows it
+            // before the first byte moves, because the walk already stat()ed the source.
+            const writePromise = (async () => this.dest.writeFile(destPath, counted, { size: file.size }))()
                 .catch((err) => { throw new DestinationError(err); });
             writePromise.catch(() => {});
             const donePromise = Promise.resolve(done).catch((err) => { throw fromSource(err); });
