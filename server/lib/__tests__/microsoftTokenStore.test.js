@@ -204,6 +204,50 @@ test("forget drops the cached token so the next call renews", async () => {
     assert.strictEqual(calls.grant, 2);
 });
 
+// The cache must never hold a token whose rotated refresh token failed to reach the database: the
+// old one is already spent at Microsoft, so a cached access token would paper over a dead connection.
+test("a failed persist is not papered over by the cache", async () => {
+    const calls = { grant: 0 };
+    const store = createTokenStore({
+        loadConnection: async () => ({ id: 1, status: "connected", ...sealRefreshToken("refresh-1") }),
+        persistRefresh: async () => { throw new Error("database gone"); },
+        markDisconnected: async () => { throw new Error("must not disconnect"); },
+        getConfiguration: async () => ({ configuration: { fake: true } }),
+        refreshTokenGrant: async () => {
+            calls.grant += 1;
+            return { access_token: "access-1", refresh_token: "refresh-2", expires_in: 3600 };
+        },
+        now: () => 1_000_000,
+        log: () => {},
+    });
+
+    await assert.rejects(store.getAccessToken(1));
+    await assert.rejects(store.getAccessToken(1));
+
+    assert.strictEqual(calls.grant, 2, "a token that was never persisted must not be served from the cache");
+});
+
+// Deliberate, and pinned so it cannot drift: a cached token is served without consulting the
+// configuration at all. Disabling the integration stops *renewals* — it does not reach back and
+// revoke a token that is already in hand and still valid.
+test("a cached token is served without consulting the configuration", async () => {
+    let configCalls = 0;
+    const store = createTokenStore({
+        loadConnection: async () => ({ id: 1, status: "connected", ...sealRefreshToken("refresh-1") }),
+        persistRefresh: async () => {},
+        markDisconnected: async () => {},
+        getConfiguration: async () => { configCalls += 1; return { configuration: { fake: true } }; },
+        refreshTokenGrant: async () => ({ access_token: "access-1", refresh_token: "refresh-2", expires_in: 3600 }),
+        now: () => 1_000_000,
+        log: () => {},
+    });
+
+    await store.getAccessToken(1);
+    await store.getAccessToken(1);
+
+    assert.strictEqual(configCalls, 1, "a cache hit must not cost a configuration lookup");
+});
+
 test("two connections do not share a cache slot", async () => {
     const { store, calls } = harness();
 
