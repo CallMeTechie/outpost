@@ -73,7 +73,13 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
         for (let page = 1; page <= MAX_PAGES; page += 1) {
             const { body } = await graph.request(connectionId, { url });
 
-            for (const item of body?.value ?? []) entries.push(mapItem(item));
+            // A missing `value` means the answer was not a readable listing — graphClient turns any
+            // body it cannot parse into null. Treating that as "empty" would let rmdir(path, false)
+            // delete a folder it never actually looked into, and that runs on the SOURCE side of a
+            // move: "I could not read the answer" would become "delete the user's original".
+            if (!Array.isArray(body?.value)) throw new GraphError("OneDrive returned an unreadable folder listing");
+
+            for (const item of body.value) entries.push(mapItem(item));
 
             const next = body?.["@odata.nextLink"];
             if (typeof next !== "string") return entries;
@@ -189,7 +195,13 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
             return;
         }
 
-        await uploadLarge({ graph, connectionId, itemPath: target, source, size, signal: controller.signal });
+        await uploadLarge({
+            graph, connectionId, itemPath: target, size, signal: controller.signal,
+            // A Buffer is iterable byte by byte, so uploadLarge's `for await` would see numbers
+            // instead of chunks and upload nothing at all. Wrapping keeps both kinds of source
+            // honest on the large path.
+            source: Buffer.isBuffer(source) ? Readable.from([source]) : source,
+        });
     };
 
     const mkdirRecursive = async (path) => {
@@ -234,7 +246,9 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
     };
 
     const rmdir = async (path, recursive) => {
-        if (!recursive) {
+        // Strictly true, not merely truthy: anything else takes the branch that looks first, so a
+        // caller passing "false" or an object fails closed rather than deleting a folder whole.
+        if (recursive !== true) {
             // Graph always deletes a folder with its contents; there is no "only if empty". The
             // move cleanup path asks for this form precisely to be told that something is left.
             const remaining = await listDir(path);

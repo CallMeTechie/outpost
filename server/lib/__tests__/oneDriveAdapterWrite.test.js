@@ -118,6 +118,46 @@ test("destroying the source reaches the running upload and discards the session"
     assert.ok(seen.some((o) => o.method === "DELETE"), "and the session must not be left behind");
 });
 
+// The guard is invisible through the result: on the happy path the source's close fires before the
+// PUT is issued, so without it the signal is already aborted and graphClient refuses before the
+// first attempt — every upload would fail. The signal itself is what has to be asserted.
+test("a write that finished does not abort its own request", async () => {
+    let captured = null;
+    const { adapter } = adapterOn((options) => { captured = options.signal; return { body: {} }; });
+
+    await adapter.writeFile("/klein.bin", streamOf(Buffer.alloc(16, 1)), { size: 16 });
+
+    assert.strictEqual(captured.aborted, false, "a source that ended on its own is not a cancel");
+});
+
+test("a Buffer larger than the simple limit still uploads its bytes", async () => {
+    const size = SIMPLE_UPLOAD_LIMIT + 1024;
+    const seen = [];
+    const graph = {
+        request: async (connectionId, options) => {
+            seen.push(options);
+            if (options.method === "POST") return { body: { uploadUrl: "https://upload.example/s" } };
+            return { status: 202, body: {} };
+        },
+    };
+    const adapter = createOneDriveAdapter({ graph, connectionId: 1 });
+
+    await adapter.writeFile("/gross.bin", Buffer.alloc(size, 4));
+
+    const puts = seen.filter((options) => options.method === "PUT");
+    assert.ok(puts.length >= 1, "a Buffer must reach the upload session as chunks");
+    assert.strictEqual(puts.reduce((sum, options) => sum + options.body.length, 0), size);
+});
+
+// The over-delivery fixture below the ceiling is what pins "bounded against the declared size"
+// rather than against the 4 MiB constant.
+test("a small upload that over-delivers while staying under the limit is stopped", async () => {
+    const { adapter } = adapterOn(() => ({ body: {} }));
+    const lying = Readable.from([Buffer.alloc(2048, 1), Buffer.alloc(2048, 1)]);
+
+    await assert.rejects(adapter.writeFile("/lie.bin", lying, { size: 1024 }), /more/i);
+});
+
 test("mkdirRecursive creates every level in order", async () => {
     const { calls, adapter } = adapterOn(() => ({ body: {} }));
 
@@ -191,6 +231,14 @@ test("a non-recursive rmdir deletes an empty folder", async () => {
     await adapter.rmdir("/leer", false);
 
     assert.ok(calls.some((c) => c.method === "DELETE"));
+});
+
+// "I could not read the answer" must never become "the folder is empty, delete it".
+test("an unreadable folder listing is not mistaken for an empty folder", async () => {
+    const { calls, adapter } = adapterOn(() => ({ body: null }));
+
+    await assert.rejects(adapter.rmdir("/ordner", false), /unreadable/i);
+    assert.ok(!calls.some((c) => c.method === "DELETE"), "nothing may be deleted on an unreadable answer");
 });
 
 test("a recursive rmdir does not bother looking first", async () => {
