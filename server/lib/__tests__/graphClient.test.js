@@ -1,6 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const { createGraphClient, backoffDelay, GRAPH_BASE, MAX_ATTEMPTS, MAX_WAIT_MS } = require("../microsoft/graphClient");
+const {
+    createGraphClient, backoffDelay, GRAPH_BASE, GRAPH_ORIGIN, MAX_ATTEMPTS, MAX_WAIT_MS,
+} = require("../microsoft/graphClient");
 
 const reply = (status, body = null, headers = {}) => ({
     ok: status >= 200 && status < 300,
@@ -47,9 +49,38 @@ test("a plain request returns the parsed body and carries the token", async () =
 test("an absolute url is used as given, not appended to the base", async () => {
     const { client, calls } = harness([reply(200, {})]);
 
-    await client.request(1, { url: "https://upload.example/session/42", method: "PUT" });
+    const next = `${GRAPH_ORIGIN}/v1.0/me/drive/root/children?$skiptoken=abc`;
+    await client.request(1, { url: next });
+
+    assert.strictEqual(calls.fetches[0].url, next);
+});
+
+// Every absolute URL this client sees arrived inside a response body: an upload session URL, an
+// @odata.nextLink. `anonymous` says "pre-authenticated, send no token"; without it a tampered body
+// naming any host at all would be handed the bearer token.
+test("a token is never sent to an absolute url outside graph.microsoft.com", async () => {
+    const { client, calls } = harness([reply(200, {})]);
+
+    for (const url of [
+        "https://upload.example/session/42",
+        "https://graph.microsoft.com.evil.example/v1.0/me/drive/root",
+        "https://evil.example/?x=https://graph.microsoft.com",
+        "https://",
+    ]) {
+        await assert.rejects(client.request(1, { url }), /token/i, `accepted ${url}`);
+    }
+
+    assert.strictEqual(calls.fetches.length, 0, "nothing may reach the network");
+    assert.strictEqual(calls.tokens, 0, "and no token may even be fetched for it");
+});
+
+test("the same url is allowed once it is marked pre-authenticated and carries no token", async () => {
+    const { client, calls } = harness([reply(200, {})]);
+
+    await client.request(1, { url: "https://upload.example/session/42", method: "PUT", anonymous: true });
 
     assert.strictEqual(calls.fetches[0].url, "https://upload.example/session/42");
+    assert.strictEqual(calls.tokens, 0);
 });
 
 // A multi-gigabyte upload outlives an access token. Hoisting it once would kill the transfer an

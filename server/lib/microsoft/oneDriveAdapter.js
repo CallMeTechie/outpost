@@ -92,7 +92,16 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
 
     const stat = async (path) => {
         const { body } = await graph.request(connectionId, { url: `${itemUrl(path)}?$select=${SELECT}` });
-        const mapped = mapItem(body ?? {});
+
+        // The same rule listDir follows, and for the same reason: graphClient turns a body it cannot
+        // parse into null, and mapItem({}) answers with a zero-byte file. That answer is not
+        // harmless — _verifyAll compares it against the plan and would pass a file nobody could
+        // read, and a folder would come back as "target exists with a different type".
+        if (body === null || typeof body !== "object" || Array.isArray(body)) {
+            throw new GraphError("OneDrive returned an unreadable answer for this item");
+        }
+
+        const mapped = mapItem(body);
 
         return { size: mapped.size, type: mapped.type, mtime: mapped.mtime, isSymlink: false };
     };

@@ -1,7 +1,8 @@
 const { getAccessToken, forget } = require("./tokenStore");
 const { GraphError, describeGraphFailure, readGraphCode, readRetryAfter } = require("./graphErrors");
 
-const GRAPH_BASE = "https://graph.microsoft.com/v1.0/me/drive";
+const GRAPH_ORIGIN = "https://graph.microsoft.com";
+const GRAPH_BASE = `${GRAPH_ORIGIN}/v1.0/me/drive`;
 
 const MAX_ATTEMPTS = 5;
 const BACKOFF_BASE_MS = 1_000;
@@ -28,12 +29,34 @@ const backoffDelay = (attempt, random) => {
 
 const cancelled = () => new GraphError("The OneDrive request was cancelled", { code: "cancelled" });
 
+// An unparsable URL counts as foreign: this is the check that decides where a bearer token may go,
+// so anything it cannot read has to fail closed.
+const originOf = (url) => {
+    try {
+        return new URL(url).origin;
+    } catch {
+        return null;
+    }
+};
+
 const createGraphClient = ({ getAccessToken: loadToken, forgetToken, fetchImpl, sleep, random = Math.random }) => {
     const request = async (connectionId, {
         url, method = "GET", headers = {}, body = undefined, signal = undefined, parse = "json",
         anonymous = false, maxWaitMs = MAX_WAIT_MS, maxTotalWaitMs = MAX_WAIT_MS,
     }) => {
         const target = url.startsWith("https://") ? url : `${GRAPH_BASE}${url}`;
+
+        // The invariant below, enforced instead of merely written down. Every absolute URL this
+        // client is handed came out of a response body — an upload session URL, an @odata.nextLink
+        // — and listDir follows the latter straight back in here. `anonymous` is the flag that says
+        // "this address is pre-authenticated, send no token"; without it the token would go
+        // wherever the body said, which is the whole exfiltration channel the invariant exists to
+        // close. A relative URL is built on GRAPH_BASE and needs no check.
+        if (!anonymous && url.startsWith("https://") && originOf(url) !== GRAPH_ORIGIN) {
+            throw new GraphError(`OneDrive will not send its access token to ${originOf(url) ?? "an unreadable address"}`,
+                { code: "foreignHost" });
+        }
+
         let droppedToken = false;
         let totalWaited = 0;
 
@@ -128,4 +151,4 @@ const graph = createGraphClient({
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 });
 
-module.exports = { GRAPH_BASE, MAX_ATTEMPTS, MAX_WAIT_MS, backoffDelay, createGraphClient, graph };
+module.exports = { GRAPH_BASE, GRAPH_ORIGIN, MAX_ATTEMPTS, MAX_WAIT_MS, backoffDelay, createGraphClient, graph };

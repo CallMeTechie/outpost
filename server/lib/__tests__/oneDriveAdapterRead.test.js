@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert");
 const { createOneDriveAdapter, MAX_PAGES, PAGE_SIZE } = require("../microsoft/oneDriveAdapter");
 const { READ_STALL_TIMEOUT } = require("../fileTransfer/FileTransfer");
+const { createGraphClient, GRAPH_ORIGIN } = require("../microsoft/graphClient");
 
 const folder = (name, extra = {}) => ({ name, folder: {}, size: 0, lastModifiedDateTime: "2026-08-12T18:00:00Z", ...extra });
 const file = (name, size = 10) => ({ name, file: {}, size, lastModifiedDateTime: "2026-08-12T18:00:00Z" });
@@ -99,21 +100,49 @@ test("the modification time arrives as epoch seconds, and a broken one as zero",
     assert.strictEqual(entries[1].mtime, 0);
 });
 
+const NEXT_PAGE = `${GRAPH_ORIGIN}/v1.0/me/drive/root/children?$skiptoken=page2`;
+
 test("listDir follows the pages Graph hands out", async () => {
     const { graph, adapter } = adapterOn((options, n) => (n === 1
-        ? { body: { value: [file("one")], "@odata.nextLink": "https://graph.example/page2" } }
+        ? { body: { value: [file("one")], "@odata.nextLink": NEXT_PAGE } }
         : { body: { value: [file("two")] } }));
 
     const entries = await adapter.listDir("/");
 
     assert.deepStrictEqual(entries.map((e) => e.name), ["one", "two"]);
-    assert.strictEqual(graph.calls[1].url, "https://graph.example/page2");
+    assert.strictEqual(graph.calls[1].url, NEXT_PAGE);
+});
+
+// The nextLink is a URL out of a response body that goes straight back into an authenticated
+// request. The refusal lives in graphClient, so this test runs the real one underneath the adapter:
+// a fake graph here would only prove that the adapter forwards what it is given.
+test("a nextLink pointing at another host is refused rather than followed", async () => {
+    const fetches = [];
+    const graph = createGraphClient({
+        getAccessToken: async () => "tok",
+        forgetToken: () => {},
+        fetchImpl: async (url) => {
+            fetches.push(url);
+            return {
+                ok: true,
+                status: 200,
+                headers: new Map(),
+                json: async () => ({ value: [file("one")], "@odata.nextLink": "https://evil.example/page2" }),
+            };
+        },
+        sleep: async () => {},
+    });
+
+    const adapter = createOneDriveAdapter({ graph, connectionId: 1 });
+
+    await assert.rejects(adapter.listDir("/"), /token/i);
+    assert.strictEqual(fetches.length, 1, "the foreign page must never be requested");
 });
 
 // Truncating would be the dangerous answer: a folder walk that never saw the rest would move the
 // files it did see and then delete the source folder.
 test("a folder beyond the page ceiling fails instead of returning a part of itself", async () => {
-    const { adapter } = adapterOn(() => ({ body: { value: [file("x")], "@odata.nextLink": "https://graph.example/next" } }));
+    const { adapter } = adapterOn(() => ({ body: { value: [file("x")], "@odata.nextLink": NEXT_PAGE } }));
 
     await assert.rejects(adapter.listDir("/"), new RegExp(String(MAX_PAGES * PAGE_SIZE)));
 });
@@ -130,6 +159,17 @@ test("stat calls a folder a folder", async () => {
     const { adapter } = adapterOn(() => ({ body: folder("Bilder") }));
 
     assert.strictEqual((await adapter.stat("/Bilder")).type, "folder");
+});
+
+// listDir already refuses a body it cannot read; stat used to answer with mapItem({}) instead — a
+// zero-byte file invented out of an unparsable 200. _verifyAll compares that against the plan and a
+// folder would be reported as a type conflict, both decided from an answer nobody could read.
+test("stat refuses an unreadable answer instead of inventing a zero-byte file", async () => {
+    for (const body of [null, undefined, "", 42, ["a"], true]) {
+        const { adapter } = adapterOn(() => ({ body }));
+
+        await assert.rejects(adapter.stat("/brief.txt"), /unreadable/i, `accepted ${JSON.stringify(body)}`);
+    }
 });
 
 test("readFile delivers the bytes and settles done when the stream ends", async () => {
