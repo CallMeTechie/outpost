@@ -30,14 +30,17 @@ test("the endpoint descriptor names the drive the server expects", () => {
     assert.deepStrictEqual(paneEndpoint(sftp), { kind: "sftp", sessionId: "sess-1" });
 });
 
-// Ohne diese vier Fälle baut ein halb gefülltes Sitzungsobjekt eine Adresse, die der Server
-// ablehnt — und das Pane zeigt "Verbindung verloren" statt der Ursache.
+// A malformed session (missing or invalid required fields) must yield null instead of
+// building an address the server rejects. The pane receives null and shows a read-only message
+// instead of "connection lost" — task 4 relies on that behavior.
 test("a OneDrive session without a usable connection id yields nothing", () => {
     for (const broken of [
         { id: "onedrive-x", type: "onedrive" },
         { id: "onedrive-x", type: "onedrive", oneDrive: {} },
         { id: "onedrive-x", type: "onedrive", oneDrive: { connectionId: "7" } },
         { id: "onedrive-x", type: "onedrive", oneDrive: { connectionId: 0 } },
+        { id: "onedrive-x", type: "onedrive", oneDrive: { connectionId: -1 } },
+        { id: "onedrive-x", type: "onedrive", oneDrive: { connectionId: 7.5 } },
     ]) {
         assert.strictEqual(paneSocket(broken, "tok"), null, JSON.stringify(broken));
         assert.strictEqual(paneEndpoint(broken), null, JSON.stringify(broken));
@@ -47,4 +50,12 @@ test("a OneDrive session without a usable connection id yields nothing", () => {
 test("an SFTP session without an id yields nothing", () => {
     assert.strictEqual(paneSocket({ type: "sftp" }, "tok"), null);
     assert.strictEqual(paneEndpoint({ type: "sftp" }), null);
+    // Empty string id is not usable; it must fail the length guard.
+    assert.strictEqual(paneSocket({ type: "sftp", id: "" }, "tok"), null);
+    assert.strictEqual(paneEndpoint({ type: "sftp", id: "" }), null);
+});
+
+test("undefined session is handled safely (no throw during render)", () => {
+    assert.strictEqual(paneSocket(undefined, "tok"), null);
+    assert.strictEqual(paneEndpoint(undefined), null);
 });
