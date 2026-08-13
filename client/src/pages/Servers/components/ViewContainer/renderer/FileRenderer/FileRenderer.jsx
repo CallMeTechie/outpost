@@ -20,6 +20,7 @@ import { MAX_TRANSFER_PATHS, exceedsTransferPathLimit } from "./utils/transferLi
 import { publishMoveCompleted, subscribeToMoveCompleted, paneAffectedByMove } from "./utils/moveNotifier.js";
 import { paneSocket, paneEndpoint, paneProvider, paneContentUrl } from "./utils/paneEndpoint.js";
 import { DEFAULT_CAPABILITIES } from "./utils/paneCapabilities.js";
+import { readErrorMessage, fileNameFromDisposition } from "./utils/downloadResponse.js";
 import {
     listFilesRequest, createFolderRequest, createFolderRecursiveRequest, moveFilesRequest, copyFilesRequest,
 } from "./utils/paneRequests.js";
@@ -30,6 +31,19 @@ const REFRESH_DEBOUNCE = 150;
 const joinPath = (...parts) => parts.join("/").replace(/\/+/g, "/");
 
 const createUploadStats = () => ({ uploaded: 0, failed: 0, sentBytes: 0, totalBytes: 0, firstError: null, lastName: "" });
+
+// The DOM half of a blob download, shared by the single-file and multi-file paths below: a
+// throwaway object URL and an anchor nobody but this function ever sees.
+const saveBlobAs = (blob, fileName) => {
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(objectUrl);
+};
 
 const readAllEntries = (reader) => new Promise((resolve, reject) => {
     const all = [];
@@ -143,12 +157,25 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
             }
             return;
         }
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+
+        // Fetched and saved as a blob, not linked to directly: a plain <a download> handed a URL
+        // that answers with an error has no way to see that — the browser just saves Microsoft's
+        // or sftp.js's JSON error body under the file's own name (the exact trap FileList.jsx's own
+        // comment names). downloadMultipleFiles made this trade-off already for the ZIP case (Task
+        // 7): the whole file sits in browser memory instead of streaming to disk through the
+        // browser's own download manager, in exchange for a failed download actually surfacing as
+        // one. Same trade, applied here so a single file behaves the same way as everything else
+        // instead of being the one download a dropped connection can still turn into a corrupt save.
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(await readErrorMessage(response, t("servers.fileManager.toast.error")));
+            const savedName = fileNameFromDisposition(response, fileName);
+            const blob = await response.blob();
+            saveBlobAs(blob, savedName);
+            sendToast(t("common.success"), t("servers.fileManager.toast.downloaded", { name: savedName }));
+        } catch (e) {
+            sendToast(t("common.error"), t("servers.fileManager.toast.downloadFailed", { message: e.message }));
+        }
     };
 
     const downloadMultipleFiles = async (paths) => {
@@ -184,24 +211,10 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body: new URLSearchParams({ paths: JSON.stringify(paths) }).toString(),
             });
-            if (!response.ok) {
-                const body = await response.json().catch(() => null);
-                throw new Error(body?.error || t("servers.fileManager.toast.error"));
-            }
-            // The server names the archive itself (routes/sftp.js and routes/oneDriveContent.js
-            // both timestamp it); defaultFileName is a Tauri-only fallback, so match its browser
-            // behavior here rather than inventing a different name for the same download.
-            const disposition = response.headers.get("content-disposition") || "";
-            const fileName = disposition.match(/filename="?([^"]+)"?/)?.[1] || defaultFileName;
+            if (!response.ok) throw new Error(await readErrorMessage(response, t("servers.fileManager.toast.error")));
+            const fileName = fileNameFromDisposition(response, defaultFileName);
             const blob = await response.blob();
-            const objectUrl = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = objectUrl;
-            link.download = fileName;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(objectUrl);
+            saveBlobAs(blob, fileName);
             sendToast(t("common.success"), t("servers.fileManager.toast.downloadingItems", { count: paths.length }));
         } catch (e) {
             sendToast(t("common.error"), t("servers.fileManager.toast.downloadFailed", { message: e.message }));
