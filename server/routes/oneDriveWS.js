@@ -4,6 +4,7 @@ const MicrosoftConnection = require("../models/MicrosoftConnection");
 const { requireOwnConnection, resolveSource, resolveDestination } = require("../lib/fileTransfer/endpoints");
 const { graph } = require("../lib/microsoft/graphClient");
 const { createOneDriveAdapter } = require("../lib/microsoft/oneDriveAdapter");
+const { MicrosoftDisconnectedError } = require("../lib/microsoft/errors");
 const { buildTransferHandlers } = require("../lib/fileTransfer/transferHandlers");
 const { authorizeSource, authorizeDestination } = require("../lib/fileTransfer/transferAuth");
 const { createEngineSftpAdapter } = require("../lib/fileTransfer/engineSftpAdapter");
@@ -102,6 +103,15 @@ const createSend = (ws) => (opCode, data) => {
     } catch { /* the socket went away between the check and the write */ }
 };
 
+// Guarded for the same reason createSend is: it runs inside the async message listener.
+const createClose = (ws) => (code, reason) => {
+    if (ws.readyState !== 1) return;
+
+    try {
+        ws.close(code, reason);
+    } catch { /* the socket went away between the check and the close */ }
+};
+
 // Extracted so the socket's two security properties — a strict id and the ownership question —
 // can be tested without a WebSocket, and so the ownership check itself is the SAME one
 // `resolveSource`/`resolveDestination` use in endpoints.js, not a second copy that can drift from
@@ -188,7 +198,7 @@ const buildOneDriveHandlers = (op, { adapter, send }) => ({
 //
 // The payload is parsed before the opcode decision, not after the table lookup: the three transfer
 // branches need it too, and an unknown opcode leaving without a parse would have to duplicate it.
-const createMessageDispatch = ({ handlers, transferHandlers, send }) => async (msg) => {
+const createMessageDispatch = ({ handlers, transferHandlers, send, close }) => async (msg) => {
     let payload;
     try { payload = JSON.parse(msg.slice(1).toString()); } catch { payload = undefined; }
 
@@ -202,6 +212,15 @@ const createMessageDispatch = ({ handlers, transferHandlers, send }) => async (m
 
         await handler(payload);
     } catch (error) {
+        // Consent withdrawn is not an operation that failed — the socket cannot serve anything any
+        // more, and every further request would fail the same way with an untranslated English
+        // toast. 4403 is the one close code the pane turns into the message that names the account
+        // page, and it is the same code a fresh connection attempt would be refused with: both
+        // routes to a disconnected account say the same thing, which is what the pane promises.
+        if (error instanceof MicrosoftDisconnectedError) {
+            close(4403, "This Microsoft connection is not available");
+            return;
+        }
         send(OP.ERROR, { message: error.message || "Operation failed" });
     }
 };
@@ -281,7 +300,7 @@ module.exports = async (ws, req) => {
 
     send(OP.READY, { path: "/", capabilities: ONEDRIVE_CAPABILITIES });
 
-    ws.on("message", createMessageDispatch({ handlers, transferHandlers, send }));
+    ws.on("message", createMessageDispatch({ handlers, transferHandlers, send, close: createClose(ws) }));
 
     ws.on("close", createCloseHandler(transfers));
 };
@@ -291,5 +310,6 @@ module.exports.ONEDRIVE_OPS = ONEDRIVE_OPS;
 module.exports.ONEDRIVE_CAPABILITIES = ONEDRIVE_CAPABILITIES;
 module.exports.resolveSocketConnection = resolveSocketConnection;
 module.exports.createSend = createSend;
+module.exports.createClose = createClose;
 module.exports.createMessageDispatch = createMessageDispatch;
 module.exports.createCloseHandler = createCloseHandler;

@@ -5,7 +5,8 @@ const { buildTransferHandlers } = require("../fileTransfer/transferHandlers");
 // that name to the four-opcode stub the transfer handlers are built against, and a second `const OP`
 // in this module scope is a SyntaxError.
 const { OP: WIRE_OP, cancelAllTransfers } = require("../../routes/sftpWS");
-const { createMessageDispatch, createCloseHandler } = require("../../routes/oneDriveWS");
+const { createMessageDispatch, createCloseHandler, createClose } = require("../../routes/oneDriveWS");
+const { MicrosoftDisconnectedError } = require("../microsoft/errors");
 
 const OP = { TRANSFER_ERROR: 0x16, TRANSFER_DONE: 0x15, TRANSFER_PROGRESS: 0x14, TRANSFER_CONFLICT: 0x18 };
 
@@ -74,7 +75,7 @@ test("closing the socket cancels what is still running", async () => {
 });
 
 // The three tests above build the transfer handlers directly and never pass through oneDriveWS.js.
-// These three guard the route's own wiring — the two places that silently stop working if anyone
+// The ones below guard the route's own wiring — the places that silently stop working if anyone
 // drops them.
 const frame = (opCode, payload) => Buffer.concat([Buffer.from([opCode]), Buffer.from(JSON.stringify(payload))]);
 
@@ -110,6 +111,43 @@ test("a throw from a transfer handler reaches the client as an error", async () 
     await dispatch(frame(WIRE_OP.TRANSFER_START, { transferId: "t1" }));
 
     assert.deepStrictEqual(sent, [{ op: WIRE_OP.ERROR, data: { message: "nope" } }]);
+});
+
+// Acceptance point 11 leaves the pane open while consent is withdrawn. The pane's message about
+// the account page hangs off close code 4403 alone, and nothing closes this socket on its own — so
+// an OP.ERROR here would show Microsoft's English developer prose as a toast instead, on the very
+// path the spec requires to say the same thing as a fresh connection attempt.
+test("a disconnected account closes the socket with 4403 instead of answering with an error", async () => {
+    const sent = [];
+    const closed = [];
+    const dispatch = createMessageDispatch({
+        handlers: { [WIRE_OP.LIST_FILES]: async () => { throw new MicrosoftDisconnectedError("Microsoft rejected the stored refresh token"); } },
+        transferHandlers: { start: async () => { throw new MicrosoftDisconnectedError("gone"); }, cancel: async () => {}, resolve: async () => {} },
+        send: (op, data) => sent.push({ op, data }),
+        close: (code, reason) => closed.push([code, reason]),
+    });
+
+    await dispatch(frame(WIRE_OP.LIST_FILES, { path: "/" }));
+    await dispatch(frame(WIRE_OP.TRANSFER_START, { transferId: "t1" }));
+
+    assert.deepStrictEqual(sent, [], "nothing may be sent on a socket that is being closed");
+    assert.deepStrictEqual(closed, [
+        [4403, "This Microsoft connection is not available"],
+        [4403, "This Microsoft connection is not available"],
+    ]);
+});
+
+test("nothing is closed on a socket that is no longer open", () => {
+    let closes = 0;
+    createClose({ readyState: 3, close: () => { closes += 1; } })(4403, "gone");
+
+    assert.strictEqual(closes, 0);
+});
+
+test("a socket that throws on close does not take the process down", () => {
+    const close = createClose({ readyState: 1, close: () => { throw new Error("socket gone"); } });
+
+    assert.doesNotThrow(() => close(4403, "gone"));
 });
 
 test("closing the socket cancels every transfer still running", () => {
