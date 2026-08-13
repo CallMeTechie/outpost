@@ -2083,6 +2083,11 @@
         "transferTooManyFiles": "Too many files for one transfer: at most {{count}} at a time",
         "connectionLost": "SFTP connection lost. Please reconnect.",
         "error": "An error occurred"
+      },
+      "error": {
+        "unusableSession": "This pane has no usable connection.",
+        "oneDriveDisconnected": "This Microsoft account is disconnected. Reconnect it under Settings → Account.",
+        "contentUnavailable": "File contents are not available for this account yet."
       }
     },
     "remoteDesktop": {
@@ -2182,6 +2187,11 @@
     "liveSessions": {
       "activeOn": "Live sessions: {{users}}",
       "unknownUser": "Unknown user"
+    },
+    "oneDrive": {
+      "sectionTitle": "Connected accounts",
+      "disconnected": "Disconnected",
+      "reconnectHint": "Reconnect this account under Settings → Account."
     }
   },
   "support": {

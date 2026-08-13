@@ -8,6 +8,7 @@ import {
     getExtension, getIconByFileEnding, getIconColor, convertUnits, isThumbnailSupported,
     formatPermissionsString, formatOctal,
 } from "../../utils/fileUtils";
+import { DEFAULT_CAPABILITIES } from "../../../../utils/paneCapabilities.js";
 
 export const FileItem = memo(({
                                   item,
@@ -35,6 +36,7 @@ export const FileItem = memo(({
                                   onDragLeave,
                                   onDrop,
                                   itemRef,
+                                  capabilities = DEFAULT_CAPABILITIES,
                               }) => {
     const { t } = useTranslation();
     const { sessionToken } = useContext(UserContext);
@@ -121,10 +123,12 @@ export const FileItem = memo(({
             {viewMode === "list" && (
                 <>
                     <p className="file-size">{item.type === "file" && convertUnits(item.size)}</p>
-                    <p className="file-permissions"
-                       title={`${formatOctal(item.mode)} - ${formatPermissionsString(item.mode)}`}>
-                        <span className="perms-text">{formatPermissionsString(item.mode)}</span>
-                    </p>
+                    {capabilities.nativeFs && (
+                        <p className="file-permissions"
+                           title={`${formatOctal(item.mode)} - ${formatPermissionsString(item.mode)}`}>
+                            <span className="perms-text">{formatPermissionsString(item.mode)}</span>
+                        </p>
+                    )}
                     <p className="file-date">{new Date(item.last_modified * 1000).toLocaleDateString()}</p>
                 </>
             )}

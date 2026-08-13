@@ -25,7 +25,7 @@ export const SelectionActionBar = ({ selectedItems, onClearSelection, onDownload
         <div className="selection-action-bar">
             <Button icon={mdiClose} onClick={onClearSelection} />
             <span className="selection-count">{label}</span>
-            <Button icon={mdiDownload} text={t("servers.fileManager.selection.download")} onClick={onDownload} />
+            {onDownload && <Button icon={mdiDownload} text={t("servers.fileManager.selection.download")} onClick={onDownload} />}
             <Button icon={mdiTrashCan} text={t("servers.fileManager.selection.delete")} type="danger" onClick={onDelete} />
         </div>,
         portalTarget

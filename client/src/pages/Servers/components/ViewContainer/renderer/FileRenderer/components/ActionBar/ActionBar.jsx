@@ -21,6 +21,7 @@ import { ContextMenu, ContextMenuItem, useContextMenu } from "@/common/component
 import { useTranslation } from "react-i18next";
 import { usePreferences } from "@/common/contexts/PreferencesContext.jsx";
 import { resolveDropTarget } from "../../utils/dropTransfer.js";
+import { DEFAULT_CAPABILITIES } from "../../utils/paneCapabilities.js";
 
 export const ActionBar = ({
                               path,
@@ -49,7 +50,7 @@ export const ActionBar = ({
                               setSearchOpen,
                               closeSearch,
                               searchResultCount,
-                              capabilities = { shell: true },
+                              capabilities = DEFAULT_CAPABILITIES,
                           }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editPath, setEditPath] = useState(path);
@@ -257,7 +258,7 @@ export const ActionBar = ({
         if (decision.kind === "transfer") {
             startTransfer?.({
                 paths: decision.paths, destination: decision.destination,
-                sourceSessionId: decision.sourceSessionId, action,
+                sourceSessionId: decision.sourceSessionId, source: decision.source, action,
             });
         } else if (action === "move") {
             moveFiles?.(decision.paths, decision.destination);
@@ -355,7 +356,7 @@ export const ActionBar = ({
                                onChange={(e) => setEditPath(e.target.value)} onKeyDown={handleInputKeyDown}
                                onBlur={handleInputBlur} placeholder={t("servers.fileManager.actionBar.enterDirectory")} autoComplete="off"
                                spellCheck="false" />
-                        {showSuggestions && directorySuggestions.length > 0 && (
+                        {capabilities.nativeFs && showSuggestions && directorySuggestions.length > 0 && (
                             <div className="suggestions-dropdown" ref={suggestionsRef}>
                                 {directorySuggestions.map((s, i) => (
                                     <div className={`suggestion-item ${i === selectedSuggestion ? "selected" : ""}`}
@@ -399,18 +400,22 @@ export const ActionBar = ({
                       onClick={() => setViewMode(viewMode === "list" ? "grid" : "list")}
                       title={viewMode === "list" ? t("servers.fileManager.actionBar.switchToGrid") : t("servers.fileManager.actionBar.switchToList")} />
                 <Icon path={mdiRefresh} onClick={refreshFiles} title={t("servers.fileManager.actionBar.refresh")} />
-                <Icon path={mdiFileUpload} onClick={uploadFile} title={t("servers.fileManager.actionBar.uploadFile")} />
-                <Icon path={mdiFolderUpload} onClick={uploadFolder} title={t("servers.fileManager.actionBar.uploadFolder")} />
-                <Icon path={mdiFilePlus} onClick={createFile} />
+                {capabilities.content && <>
+                    <Icon path={mdiFileUpload} onClick={uploadFile} title={t("servers.fileManager.actionBar.uploadFile")} />
+                    <Icon path={mdiFolderUpload} onClick={uploadFolder} title={t("servers.fileManager.actionBar.uploadFolder")} />
+                </>}
+                {capabilities.nativeFs && <Icon path={mdiFilePlus} onClick={createFile} />}
                 <Icon path={mdiFolderPlus} onClick={createFolder} />
             </div>
 
             <ContextMenu isOpen={dropMenu.isOpen} position={dropMenu.position} onClose={() => { dropMenu.close(); setPendingDrop(null); }}>
                 <ContextMenuItem icon={mdiFileMove} label={t("servers.fileManager.contextMenu.moveHere")} onClick={() => handleDropAction("move")} />
-                {/* A copy within the session shells out to `cp -r` and needs one; a copy across
-                    pane boundaries streams over SFTP and does not. Without the second half the same
-                    drop offered copying or not depending on the drag-and-drop preference alone. */}
-                {(capabilities.shell || pendingDrop?.kind === "transfer") && <ContextMenuItem icon={mdiContentCopy} label={t("servers.fileManager.contextMenu.copyHere")} onClick={() => handleDropAction("copy")} />}
+                {/* A copy within the session shells out to `cp -r` on a server and needs one, but
+                    OneDrive does it with a Graph call — hence `copy` rather than `shell`. A copy
+                    across pane boundaries streams over the transfer seam and needs neither.
+                    Without the second half the same drop offered copying or not depending on the
+                    drag-and-drop preference alone. */}
+                {(capabilities.copy || pendingDrop?.kind === "transfer") && <ContextMenuItem icon={mdiContentCopy} label={t("servers.fileManager.contextMenu.copyHere")} onClick={() => handleDropAction("copy")} />}
             </ContextMenu>
         </div>
     );

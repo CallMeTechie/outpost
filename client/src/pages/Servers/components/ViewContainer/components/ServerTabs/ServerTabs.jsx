@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback, useContext } from "react";
 import { useTranslation } from "react-i18next";
 import Icon from "@mdi/react";
-import { mdiClose, mdiViewSplitVertical, mdiChevronLeft, mdiChevronRight, mdiSleep, mdiOpenInNew, mdiShareVariant, mdiLinkVariant, mdiPencil, mdiEye, mdiCloseCircle, mdiContentDuplicate, mdiNoteEditOutline } from "@mdi/js";
+import { mdiClose, mdiViewSplitVertical, mdiChevronLeft, mdiChevronRight, mdiSleep, mdiOpenInNew, mdiShareVariant, mdiLinkVariant, mdiPencil, mdiEye, mdiCloseCircle, mdiContentDuplicate, mdiNoteEditOutline, mdiMicrosoft } from "@mdi/js";
 import { useDrag, useDrop } from "react-dnd";
 import TerminalActionsMenu from "../TerminalActionsMenu";
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator, useContextMenu } from "@/common/components/ContextMenu";
@@ -37,12 +37,16 @@ const DraggableTab = ({
         .filter(participant => participant.accountId !== user?.id);
 
     const isNotes = session.type === "notes";
+    const isOneDrive = session.type === "onedrive";
+    // Both live in this browser only, so everything that needs a session the server knows about
+    // is off for both.
+    const isLocal = isNotes || isOneDrive;
     const isJoined = !!session.isJoined;
-    const canPopOut = !session.scriptId && session.type !== "sftp" && !isNotes && !isJoined;
+    const canPopOut = !session.scriptId && session.type !== "sftp" && !isLocal && !isJoined;
     const canShare = canPopOut;
-    const canHibernate = !isNotes && !isJoined;
-    const canDuplicate = !isNotes && !isJoined;
-    const canOpenNotes = !isNotes && !isJoined && !!server?.id && !session.scriptId;
+    const canHibernate = !isLocal && !isJoined;
+    const canDuplicate = !isLocal && !isJoined;
+    const canOpenNotes = !isLocal && !isJoined && !!server?.id && !session.scriptId;
     const isSharing = !!session.shareId;
 
     const handleShare = useCallback(async (writable) => {
@@ -133,9 +137,9 @@ const DraggableTab = ({
                             />
                         </svg>
                     )}
-                    <Icon path={isNotes ? mdiNoteEditOutline : getIconPath(server.icon)} className="progress-icon" />
+                    <Icon path={isNotes ? mdiNoteEditOutline : isOneDrive ? mdiMicrosoft : getIconPath(server.icon)} className="progress-icon" />
                 </div>
-                <h2>{server?.name} {session.type === "sftp" ? " (SFTP)" : ""}{isNotes ? ` (${t("servers.notesPanel.title")})` : ""}</h2>
+                <h2>{server?.name || session.oneDrive?.displayName} {session.type === "sftp" ? " (SFTP)" : ""}{isNotes ? ` (${t("servers.notesPanel.title")})` : ""}</h2>
                 <AvatarStack className="tab-participants" users={otherParticipants} max={2}
                              getKey={participant => participant.viewerId} />
                 <div className="tab-actions">

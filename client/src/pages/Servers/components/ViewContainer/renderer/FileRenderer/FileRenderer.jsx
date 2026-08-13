@@ -18,6 +18,12 @@ import { OPERATIONS } from "./utils/operations.js";
 import { initialTransferState, transferReducer } from "./utils/transferState.js";
 import { MAX_TRANSFER_PATHS, exceedsTransferPathLimit } from "./utils/transferLimits.js";
 import { publishMoveCompleted, subscribeToMoveCompleted, paneAffectedByMove } from "./utils/moveNotifier.js";
+import { paneSocket, paneEndpoint, paneProvider } from "./utils/paneEndpoint.js";
+import { DEFAULT_CAPABILITIES } from "./utils/paneCapabilities.js";
+import {
+    listFilesRequest, createFolderRequest, createFolderRecursiveRequest, moveFilesRequest, copyFilesRequest,
+} from "./utils/paneRequests.js";
+import { createErrorRefreshGate } from "./utils/errorRefresh.js";
 
 const REFRESH_DEBOUNCE = 150;
 
@@ -90,7 +96,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     const [searchQuery, setSearchQuery] = useState("");
     const [searchOpen, setSearchOpen] = useState(false);
     const [searchResultCount, setSearchResultCount] = useState(0);
-    const [capabilities, setCapabilities] = useState({ shell: true, terminal: true });
+    const [capabilities, setCapabilities] = useState(DEFAULT_CAPABILITIES);
     const [transferState, dispatchTransfer] = useReducer(transferReducer, initialTransferState);
 
     const directoryRef = useRef(directory);
@@ -103,8 +109,21 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     const propertiesHandlerRef = useRef(null);
     const uploadStatsRef = useRef(createUploadStats());
     const refreshTimerRef = useRef(null);
+    const errorRefreshRef = useRef(createErrorRefreshGate());
 
-    const wsUrl = getWebSocketUrl("/api/ws/sftp", { sessionToken, sessionId: session.id });
+    const provider = paneProvider(session);
+    const source = paneEndpoint(session);
+
+    // Which socket this pane opens is the one thing it needs to know about its provider, and
+    // paneEndpoint is where that knowledge lives. A null means the session object is unusable —
+    // better a message in this pane than a request the server will refuse.
+    const socket = paneSocket(session, sessionToken);
+    const wsUrl = socket ? getWebSocketUrl(socket.path, socket.params) : null;
+
+    // wsUrl is derived straight from session on every render, so an unusable session is known
+    // synchronously - no effect is needed to discover it, and none of the "connection lost" causes
+    // that do need setConnectionError (ws error/close) ever race with this.
+    const unusableSessionError = wsUrl === null ? t("servers.fileManager.error.unusableSession") : null;
 
     const downloadFile = async (path) => {
         const baseUrl = getBaseUrl();
@@ -254,7 +273,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                 case OPERATIONS.READY:
                     setIsReady(true);
                     setConnectionError(null);
-                    setCapabilities(payload?.capabilities ?? { shell: true, terminal: true });
+                    setCapabilities(payload?.capabilities ?? DEFAULT_CAPABILITIES);
                     reconnectAttemptsRef.current = 0;
                     if (payload?.path && payload.path !== directoryRef.current) {
                         skipNextPathSync.current = true;
@@ -266,8 +285,11 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                     }
                     break;
                 case OPERATIONS.LIST_FILES:
-                    if (payload?.files) { setItems(payload.files); setError(null); } 
-                    else { setError("Failed to load directory contents"); setItems([]); }
+                    if (payload?.files) {
+                        setItems(payload.files);
+                        setError(null);
+                        errorRefreshRef.current.listingSucceeded();
+                    } else { setError("Failed to load directory contents"); setItems([]); }
                     setLoading(false);
                     break;
                 case OPERATIONS.CREATE_FILE:
@@ -280,10 +302,21 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                 case OPERATIONS.CHMOD:
                     scheduleRefresh();
                     break;
-                case OPERATIONS.ERROR:
-                    sendToast(t("common.error"), payload?.message || t("servers.fileManager.toast.error"));
+                case OPERATIONS.ERROR: {
+                    const message = payload?.message || t("servers.fileManager.toast.error");
+                    sendToast(t("common.error"), message);
                     setLoading(false);
+                    // A pane that never got a listing has nothing to show but this error. Leaving
+                    // the empty item list standing would read as an empty folder — for an account
+                    // whose tenant has no SharePoint licence, that is an invitation to drag
+                    // something into a drive that does not exist.
+                    if (!errorRefreshRef.current.hasListed()) setError(message);
+                    // The brake sits here, at the call site — not inside scheduleRefresh(), which
+                    // the eight successful mutations also use. Putting it there would let one
+                    // earlier error swallow the reload after a later successful rename.
+                    if (errorRefreshRef.current.errorArrived()) scheduleRefresh();
                     break;
+                }
                 case OPERATIONS.SEARCH_DIRECTORIES:
                     if (payload?.directories) setDirectorySuggestions(payload.directories);
                     break;
@@ -352,11 +385,18 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     const handleWsClose = useCallback((event) => {
         setIsReady(false);
         dispatchTransfer({ type: "connectionLost" });
+        // 4403 is not a network hiccup: the connection is gone until the user renews it, so
+        // reconnecting would only produce the same close again. Saying "connection lost" here
+        // would send them off to wait for something that never comes back on its own.
+        if (event.code === 4403) {
+            setConnectionError(t("servers.fileManager.error.oneDriveDisconnected"));
+            return;
+        }
         if (event.code === 4001 || event.code === 4002) {
             sendToast(t("common.error"), t("servers.fileManager.toast.connectionLost"));
             disconnectFromServer(session.id);
         }
-    }, [disconnectFromServer, session.id]);
+    }, [disconnectFromServer, session.id, t]);
 
     const handleWsOpen = useCallback(() => { reconnectAttemptsRef.current = 0; setConnectionError(null); }, []);
 
@@ -365,10 +405,13 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
         onMessage: processMessage,
         onClose: handleWsClose,
         onOpen: handleWsOpen,
-        shouldReconnect: (e) => e.code !== 1000 && e.code !== 4001 && e.code !== 4002 && ++reconnectAttemptsRef.current <= 10,
+        // 4008 means the connection id this pane was built with is malformed, so every retry sends
+        // the same one and is refused the same way. paneEndpoint already refuses to build such a
+        // URL, but that is a second, independent check — it covering this one is a coincidence.
+        shouldReconnect: (e) => e.code !== 1000 && e.code !== 4001 && e.code !== 4002 && e.code !== 4008 && e.code !== 4403 && ++reconnectAttemptsRef.current <= 10,
         reconnectAttempts: 10,
         reconnectInterval: 1500,
-    });
+    }, wsUrl !== null);
 
     const sendOperation = useCallback((operation, payload = {}) => {
         if (readyState !== 1) return false;
@@ -383,24 +426,24 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     }, [sendMessage, readyState]);
 
     const createFile = (fileName) => sendOperation(OPERATIONS.CREATE_FILE, { path: `${directory}/${fileName}` });
-    const createFolder = (folderName) => sendOperation(OPERATIONS.CREATE_FOLDER, { path: `${directory}/${folderName}` });
-    const listFiles = useCallback((silent = false) => { if (!silent) setLoading(true); setError(null); sendOperation(OPERATIONS.LIST_FILES, { path: directory }); }, [directory, sendOperation]);
+    const createFolder = (folderName) => sendOperation(OPERATIONS.CREATE_FOLDER, createFolderRequest(`${directory}/${folderName}`));
+    const listFiles = useCallback((silent = false) => { if (!silent) setLoading(true); setError(null); sendOperation(OPERATIONS.LIST_FILES, listFilesRequest(directory)); }, [directory, sendOperation]);
     const scheduleRefresh = () => {
         clearTimeout(refreshTimerRef.current);
         refreshTimerRef.current = setTimeout(() => listFiles(true), REFRESH_DEBOUNCE);
     };
-    const moveFiles = useCallback((sources, destination) => sendOperation(OPERATIONS.MOVE_FILES, { sources, destination }), [sendOperation]);
-    const copyFiles = useCallback((sources, destination) => sendOperation(OPERATIONS.COPY_FILES, { sources, destination }), [sendOperation]);
+    const moveFiles = useCallback((sources, destination) => sendOperation(OPERATIONS.MOVE_FILES, moveFilesRequest(sources, destination)), [sendOperation]);
+    const copyFiles = useCallback((sources, destination) => sendOperation(OPERATIONS.COPY_FILES, copyFilesRequest(sources, destination)), [sendOperation]);
 
     // The destination pane's socket drives the transfer, so this is always our own socket.
-    const startTransfer = useCallback(({ paths, destination, sourceSessionId, action }) => {
+    const startTransfer = useCallback(({ paths, destination, sourceSessionId, source, action }) => {
         if (exceedsTransferPathLimit(paths)) {
             sendToast(t("common.error"), t("servers.fileManager.toast.transferTooManyFiles", { count: MAX_TRANSFER_PATHS }));
             return null;
         }
         const transferId = crypto.randomUUID();
         const sent = sendOperation(OPERATIONS.TRANSFER_START, {
-            transferId, sourceSessionId, paths, destination, action, onConflict: "ask",
+            transferId, source, paths, destination, action, onConflict: "ask",
         });
         // No row is created for a request that never left, so nothing on screen would ever show
         // this — and the drop looked to the user exactly like one that worked.
@@ -453,7 +496,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
         }
 
         const { files: collected, emptyDirs } = await collectDroppedEntries(entries, targetDir);
-        for (const path of emptyDirs) sendOperation(OPERATIONS.CREATE_FOLDER, { path, recursive: true });
+        for (const path of emptyDirs) sendOperation(OPERATIONS.CREATE_FOLDER, createFolderRecursiveRequest(path));
         queueUploads(collected);
     };
 
@@ -461,6 +504,10 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
         if (e.dataTransfer.types.includes("application/x-sftp-files")) return;
         e.preventDefault();
         e.stopPropagation();
+        // A drop onto a provider that cannot take an upload is swallowed rather than ignored: the
+        // preventDefault above has to happen either way, or the browser navigates the whole
+        // application to the dropped file.
+        if (!capabilities.content) return;
         if (e.type === "dragover") setDragging(true);
         else if (e.type === "dragleave" && !dropZoneRef.current.contains(e.relatedTarget)) setDragging(false);
         else if (e.type === "drop") {
@@ -471,8 +518,17 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
         }
     };
 
-    const searchDirectories = (searchPath) => sendOperation(OPERATIONS.SEARCH_DIRECTORIES, { searchPath });
-    const resolveSymlink = (path, callback) => { symlinkCallbacks.current.push(callback); sendOperation(OPERATIONS.RESOLVE_SYMLINK, { path }); };
+    const searchDirectories = (searchPath) =>
+        capabilities.nativeFs && sendOperation(OPERATIONS.SEARCH_DIRECTORIES, { searchPath });
+    // Without the guard the callback is pushed onto a queue nothing will ever drain: a provider
+    // without a file system underneath has no symlinks, so the answer this waits for never
+    // arrives. `nativeFs` rather than `shell`: the server asks for no shell here, and an FTP pane
+    // resolving nothing while saying nothing is the worst state the spec names.
+    const resolveSymlink = (path, callback) => {
+        if (!capabilities.nativeFs) return;
+        symlinkCallbacks.current.push(callback);
+        sendOperation(OPERATIONS.RESOLVE_SYMLINK, { path });
+    };
 
     const handleOpenFile = (filePath) => setOpenFileEditors(prev => [...prev, { id: `${session.id}-${filePath}-${Date.now()}`, file: filePath, session, type: 'editor' }]);
     const handleOpenPreview = (filePath) => setOpenFileEditors(prev => [...prev, { id: `${session.id}-${filePath}-${Date.now()}`, file: filePath, session, type: 'preview' }]);
@@ -534,9 +590,9 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                     setSearchOpen={setSearchOpen} closeSearch={closeSearch} searchResultCount={searchResultCount} />
                 <FileList ref={fileListRef} items={items} path={directory} updatePath={changeDirectory} sendOperation={sendOperation}
                     downloadFile={downloadFile} downloadMultipleFiles={downloadMultipleFiles} setCurrentFile={handleOpenFile} setPreviewFile={handleOpenPreview}
-                    loading={loading} viewMode={viewMode} error={error || connectionError} resolveSymlink={resolveSymlink} session={session}
+                    loading={loading && wsUrl !== null} viewMode={viewMode} error={unusableSessionError || error || connectionError} resolveSymlink={resolveSymlink} session={session}
                     createFile={createFile} createFolder={createFolder} moveFiles={moveFiles} copyFiles={copyFiles} startTransfer={startTransfer} isActive={isActive}
-                    capabilities={capabilities}
+                    capabilities={capabilities} provider={provider} source={source}
                     searchQuery={searchQuery} onSearchResults={setSearchResultCount}
                     onOpenTerminal={onOpenTerminal} onPropertiesMessage={(handler) => { propertiesHandlerRef.current = handler; }} />
             </div>

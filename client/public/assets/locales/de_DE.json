@@ -2043,6 +2043,11 @@
         "transferTooManyFiles": "Zu viele Dateien für eine Übertragung: höchstens {{count}} auf einmal",
         "connectionLost": "SFTP-Verbindung verloren. Bitte stelle die Verbindung wieder her.",
         "error": "Ein Fehler ist aufgetreten"
+      },
+      "error": {
+        "unusableSession": "Dieses Pane hat keine brauchbare Verbindung.",
+        "oneDriveDisconnected": "Dieses Microsoft-Konto ist getrennt. Unter Einstellungen → Konto neu verbinden.",
+        "contentUnavailable": "Dateiinhalte stehen für dieses Konto noch nicht zur Verfügung."
       }
     },
     "remoteDesktop": {
@@ -2182,7 +2187,12 @@
       }
     },
     "connectionFailed": "Verbindung fehlgeschlagen: {{message}}",
-    "unknownError": "Unbekannter Fehler"
+    "unknownError": "Unbekannter Fehler",
+    "oneDrive": {
+      "sectionTitle": "Verbundene Konten",
+      "disconnected": "Getrennt",
+      "reconnectHint": "Dieses Konto unter Einstellungen → Konto neu verbinden."
+    }
   },
   "support": {
     "title": "Unterstützung erhalten",

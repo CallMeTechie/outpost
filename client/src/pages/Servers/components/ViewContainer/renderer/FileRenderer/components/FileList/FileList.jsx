@@ -10,21 +10,26 @@ import { ContextMenu, ContextMenuItem, ContextMenuSeparator, useContextMenu } fr
 import { ActionConfirmDialog } from "@/common/components/ActionConfirmDialog/ActionConfirmDialog.jsx";
 import { useTranslation } from "react-i18next";
 import { usePreferences } from "@/common/contexts/PreferencesContext.jsx";
+import { useToast } from "@/common/contexts/ToastContext.jsx";
 import SelectionActionBar from "../SelectionActionBar";
 import FileItem from "./components/FileItem";
 import PropertiesDialog from "./components/PropertiesDialog";
 import { useBoxSelection, useDragDrop, useKeyboardNavigation, useClipboard } from "./hooks";
 import { isPreviewable, getFullPath, OPERATIONS } from "./utils/fileUtils";
+import { deleteFileRequest, deleteFolderRequest, renameRequest } from "../../utils/paneRequests.js";
+import { DEFAULT_CAPABILITIES } from "../../utils/paneCapabilities.js";
 
 export const FileList = forwardRef(({
     items, updatePath, path, sendOperation, downloadFile, downloadMultipleFiles,
     setCurrentFile, setPreviewFile, loading, viewMode = "list", error,
     resolveSymlink, session, createFile, createFolder, moveFiles, copyFiles, startTransfer, isActive,
     onOpenTerminal, onPropertiesMessage, searchQuery = "", onSearchResults,
-    capabilities = { shell: true, terminal: true },
+    capabilities = DEFAULT_CAPABILITIES,
+    provider, source,
 }, ref) => {
     const { t } = useTranslation();
     const { showThumbnails, showHiddenFiles, confirmBeforeDelete, dragDropAction } = usePreferences();
+    const { sendToast } = useToast();
     
     const [selectedItem, setSelectedItem] = useState(null);
     const [renamingItem, setRenamingItem] = useState(null);
@@ -87,6 +92,12 @@ export const FileList = forwardRef(({
             });
         } else if (item.type === "folder") {
             updatePath(fullPath);
+        } else if (!capabilities.content) {
+            // Preview, the editor and download all reach into the /api/entries/sftp* routes, which
+            // are bound to an SFTP session a OneDrive pane doesn't have. Routing into them anyway
+            // would still "work" — a broken image, a document that looks empty, a JSON error body
+            // saved under the file's name — three silent failures instead of one message.
+            sendToast(t("common.error"), t("servers.fileManager.error.contentUnavailable"));
         } else if (isPreviewable(item.name)) {
             setPreviewFile?.(fullPath);
         } else if (item.size < 1024 * 1024) {
@@ -94,7 +105,7 @@ export const FileList = forwardRef(({
         } else {
             downloadFile(fullPath);
         }
-    }, [path, resolveSymlink, updatePath, setPreviewFile, setCurrentFile, downloadFile]);
+    }, [path, resolveSymlink, updatePath, setPreviewFile, setCurrentFile, downloadFile, capabilities.content, sendToast, t]);
 
     const { handleCopy, handleCut, handlePaste, isItemCut } = useClipboard({
         selectedItems, selectedItem, path, copyFiles, moveFiles,
@@ -117,7 +128,7 @@ export const FileList = forwardRef(({
         handleDragStart, handleDragEnd, handleDragOver, handleDragLeave,
         handleDrop, handleContainerDrop, handleDropAction, pendingDrop, setPendingDrop,
     } = useDragDrop({
-        path, sessionId: session.id, selectedItems, isItemSelected,
+        path, sessionId: session.id, provider, source, selectedItems, isItemSelected,
         moveFiles, copyFiles, startTransfer, dragDropAction, updatePath,
     });
 
@@ -141,7 +152,8 @@ export const FileList = forwardRef(({
 
     const executeMassDelete = useCallback(() => {
         selectedItems.forEach(item => {
-            sendOperation(item.type === "folder" ? OPERATIONS.DELETE_FOLDER : OPERATIONS.DELETE_FILE, { path: `${path}/${item.name}` });
+            sendOperation(item.type === "folder" ? OPERATIONS.DELETE_FOLDER : OPERATIONS.DELETE_FILE,
+                item.type === "folder" ? deleteFolderRequest(`${path}/${item.name}`) : deleteFileRequest(`${path}/${item.name}`));
         });
         setSelectedItems([]);
     }, [selectedItems, path, sendOperation]);
@@ -160,9 +172,10 @@ export const FileList = forwardRef(({
         contextMenu.open(event, fromDots ? undefined : { x: event.pageX, y: event.pageY });
     };
 
-    const handleDelete = () => sendOperation(selectedItem.type === "folder" ? OPERATIONS.DELETE_FOLDER : OPERATIONS.DELETE_FILE, { path: `${path}/${selectedItem?.name}` });
+    const handleDelete = () => sendOperation(selectedItem.type === "folder" ? OPERATIONS.DELETE_FOLDER : OPERATIONS.DELETE_FILE,
+        selectedItem.type === "folder" ? deleteFolderRequest(`${path}/${selectedItem?.name}`) : deleteFileRequest(`${path}/${selectedItem?.name}`));
     const handleDeleteClick = () => confirmBeforeDelete ? setDeleteDialogOpen(true) : handleDelete();
-    const handleRename = (item, newName) => { if (newName && newName !== item.name) sendOperation(OPERATIONS.RENAME_FILE, { path: `${path}/${item.name}`, newPath: `${path}/${newName}` }); setRenamingItem(null); };
+    const handleRename = (item, newName) => { if (newName && newName !== item.name) sendOperation(OPERATIONS.RENAME_FILE, renameRequest(`${path}/${item.name}`, `${path}/${newName}`)); setRenamingItem(null); };
     const startRename = (item) => { setRenamingItem(item); setRenameValue(item.name); };
     const handleRenameKeyDown = (e, item) => e.key === 'Enter' ? (e.preventDefault(), handleRename(item, renameValue)) : e.key === 'Escape' && setRenamingItem(null);
     const handleCreateFolder = () => { if (newFolderName.trim()) createFolder(newFolderName.trim()); setCreatingFolder(false); };
@@ -180,7 +193,7 @@ export const FileList = forwardRef(({
                 <div className="file-list-header">
                     <div className="header-name">{t("servers.fileManager.header.name")}</div>
                     <div className="header-size">{t("servers.fileManager.header.size")}</div>
-                    <div className="header-permissions">{t("servers.fileManager.header.permissions")}</div>
+                    {capabilities.nativeFs && <div className="header-permissions">{t("servers.fileManager.header.permissions")}</div>}
                     <div className="header-date">{t("servers.fileManager.header.modified")}</div>
                     <div className="header-actions"></div>
                 </div>
@@ -252,6 +265,7 @@ export const FileList = forwardRef(({
                             isDropTarget={dropTarget === item.name}
                             isCut={isItemCut(`${path}/${item.name}`)}
                             showThumbnails={showThumbnails}
+                            capabilities={capabilities}
                             highlight={query}
                             renameValue={renameValue}
                             onRenameChange={(e) => setRenameValue(e.target.value)}
@@ -271,7 +285,7 @@ export const FileList = forwardRef(({
                 </div>
             )}
 
-            <SelectionActionBar selectedItems={selectedItems} onClearSelection={clearSelection} onDownload={handleMassDownload} onDelete={handleMassDelete} containerRef={containerRef} />
+            <SelectionActionBar selectedItems={selectedItems} onClearSelection={clearSelection} onDownload={capabilities.content ? handleMassDownload : null} onDelete={handleMassDelete} containerRef={containerRef} />
 
             <ActionConfirmDialog open={bigFileDialogOpen} setOpen={setBigFileDialogOpen} onConfirm={() => setCurrentFile(`${path}/${selectedItem?.name}`)} text={t("servers.fileManager.contextMenu.bigFileConfirm", { size: Math.round(selectedItem?.size / 1024 / 1024) })} />
             <ActionConfirmDialog open={deleteDialogOpen} setOpen={setDeleteDialogOpen} onConfirm={handleDelete} text={t("servers.fileManager.contextMenu.deleteConfirm", { name: selectedItem?.name })} />
@@ -290,13 +304,13 @@ export const FileList = forwardRef(({
 
             <ContextMenu isOpen={contextMenu.isOpen} position={contextMenu.position} onClose={contextMenu.close} trigger={contextMenu.triggerRef}>
                 <ContextMenuItem icon={mdiFormTextbox} label={t("servers.fileManager.contextMenu.rename")} onClick={() => startRename(selectedItem)} />
-                {selectedItem?.type === "file" && (
+                {selectedItem?.type === "file" && capabilities.content && (
                     <>
                         {isPreviewable(selectedItem.name) && <ContextMenuItem icon={mdiEye} label={t("servers.fileManager.contextMenu.preview")} onClick={() => setPreviewFile?.(`${path}/${selectedItem.name}`)} />}
                         <ContextMenuItem icon={mdiTextBoxEdit} label={t("servers.fileManager.contextMenu.edit")} onClick={openFile} />
                     </>
                 )}
-                <ContextMenuItem icon={mdiFileDownload} label={t("servers.fileManager.contextMenu.download")} onClick={() => downloadFile(`${path}/${selectedItem?.name}`)} />
+                {capabilities.content && <ContextMenuItem icon={mdiFileDownload} label={t("servers.fileManager.contextMenu.download")} onClick={() => downloadFile(`${path}/${selectedItem?.name}`)} />}
                 <ContextMenuItem icon={mdiInformationOutline} label={t("servers.fileManager.contextMenu.properties")} onClick={() => handlePropertiesClick(selectedItem)} />
                 {selectedItem?.type === "folder" && capabilities.terminal && (
                     <ContextMenuItem icon={mdiConsole} label={t("servers.fileManager.contextMenu.openTerminal")} onClick={() => handleOpenTerminal(`${path}/${selectedItem.name}`)} />
@@ -305,20 +319,22 @@ export const FileList = forwardRef(({
             </ContextMenu>
 
             <ContextMenu isOpen={emptyContextMenu.isOpen} position={emptyContextMenu.position} onClose={emptyContextMenu.close} trigger={emptyContextMenu.triggerRef}>
-                <ContextMenuItem icon={mdiFilePlus} label={t("servers.fileManager.contextMenu.newFile")} onClick={startCreateFile} />
+                {capabilities.nativeFs && <ContextMenuItem icon={mdiFilePlus} label={t("servers.fileManager.contextMenu.newFile")} onClick={startCreateFile} />}
                 <ContextMenuItem icon={mdiFolderPlus} label={t("servers.fileManager.contextMenu.newFolder")} onClick={startCreateFolder} />
                 <ContextMenuSeparator />
-                <ContextMenuItem icon={mdiFileDownload} label={t("servers.fileManager.contextMenu.downloadFolder")} onClick={() => downloadFile(path)} />
+                {capabilities.content && <ContextMenuItem icon={mdiFileDownload} label={t("servers.fileManager.contextMenu.downloadFolder")} onClick={() => downloadFile(path)} />}
                 <ContextMenuItem icon={mdiInformationOutline} label={t("servers.fileManager.contextMenu.properties")} onClick={() => handlePropertiesClick(null)} />
                 {capabilities.terminal && <ContextMenuItem icon={mdiConsole} label={t("servers.fileManager.contextMenu.openTerminal")} onClick={() => handleOpenTerminal()} />}
             </ContextMenu>
 
             <ContextMenu isOpen={dropMenu.isOpen} position={dropMenu.position} onClose={() => { dropMenu.close(); setPendingDrop(null); }}>
                 <ContextMenuItem icon={mdiFileMove} label={t("servers.fileManager.contextMenu.moveHere")} onClick={() => handleDropAction("move", clearSelection, dropMenu.close)} />
-                {/* A copy within the session shells out to `cp -r` and needs one; a copy across
-                    pane boundaries streams over SFTP and does not. Without the second half the same
-                    drop offered copying or not depending on the drag-and-drop preference alone. */}
-                {(capabilities.shell || pendingDrop?.kind === "transfer") && <ContextMenuItem icon={mdiContentCopy} label={t("servers.fileManager.contextMenu.copyHere")} onClick={() => handleDropAction("copy", clearSelection, dropMenu.close)} />}
+                {/* A copy within the session shells out to `cp -r` on a server and needs one, but
+                    OneDrive does it with a Graph call — hence `copy` rather than `shell`. A copy
+                    across pane boundaries streams over the transfer seam and needs neither.
+                    Without the second half the same drop offered copying or not depending on the
+                    drag-and-drop preference alone. */}
+                {(capabilities.copy || pendingDrop?.kind === "transfer") && <ContextMenuItem icon={mdiContentCopy} label={t("servers.fileManager.contextMenu.copyHere")} onClick={() => handleDropAction("copy", clearSelection, dropMenu.close)} />}
             </ContextMenu>
 
             <div className="drag-preview" ref={dragImageRef}>
