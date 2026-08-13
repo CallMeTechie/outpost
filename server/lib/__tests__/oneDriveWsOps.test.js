@@ -43,6 +43,21 @@ test("listing a folder answers with its entries", async () => {
     assert.strictEqual(sent[0].data.files[0].name, "in /Dokumente");
 });
 
+// The pane and the transfer seam read an entry differently, and the adapter speaks the transfer
+// seam's shape. Every field FileItem.jsx and FileList.jsx read off an entry has to be here under
+// the name they read it by — the date arrived as `mtime` and rendered as "Invalid Date".
+test("a listing answers in the entry vocabulary the pane reads", async () => {
+    const { handlers, sent } = harness({
+        listDir: async () => [{ name: "a.txt", type: "file", size: 12, mtime: 1755000000, isSymlink: false }],
+    });
+
+    await handlers[OP.LIST_FILES]({ path: "/" });
+
+    assert.deepStrictEqual(sent[0].data.files, [
+        { name: "a.txt", type: "file", size: 12, isSymlink: false, last_modified: 1755000000 },
+    ]);
+});
+
 test("a listing without a path is refused rather than defaulted", async () => {
     const { handlers } = harness();
 

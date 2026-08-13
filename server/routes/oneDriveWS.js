@@ -61,6 +61,22 @@ const requireDestination = (payload) => {
     return destination;
 };
 
+// The two seams below this socket read a directory entry differently. The transfer seam names the
+// date `mtime` — that is what oneDriveAdapter and engineSftpAdapter both report, and it is in
+// production, so it stays. The pane reads `last_modified`, the name EngineSftpClient hands it.
+// Translating here rather than in the adapter keeps the transfer seam untouched; without it every
+// row in the pane rendered "Invalid Date".
+//
+// `mode` is absent on purpose: OneDrive has no POSIX permissions, and the pane hides the column
+// for a provider without a native file system rather than inventing one.
+const toPaneEntry = (entry) => ({
+    name: entry.name,
+    type: entry.type,
+    size: entry.size,
+    isSymlink: entry.isSymlink,
+    last_modified: entry.mtime,
+});
+
 const requireName = (name) => {
     if (typeof name !== "string" || name === "" || name.includes("/") || name === "." || name === "..") {
         throw new Error("A name is required and must not contain a separator");
@@ -121,7 +137,7 @@ const resolveSocketConnection = async (rawConnectionId, user, deps = {}) => {
 const buildOneDriveHandlers = (op, { adapter, send }) => ({
     [op.LIST_FILES]: async (payload) => {
         const path = requirePath(payload);
-        send(op.LIST_FILES, { path, files: await adapter.listDir(path) });
+        send(op.LIST_FILES, { path, files: (await adapter.listDir(path)).map(toPaneEntry) });
     },
     [op.STAT]: async (payload) => {
         const path = requirePath(payload);
