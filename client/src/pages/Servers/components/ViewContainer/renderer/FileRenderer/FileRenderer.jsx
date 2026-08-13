@@ -554,7 +554,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                     setSearchOpen={setSearchOpen} closeSearch={closeSearch} searchResultCount={searchResultCount} />
                 <FileList ref={fileListRef} items={items} path={directory} updatePath={changeDirectory} sendOperation={sendOperation}
                     downloadFile={downloadFile} downloadMultipleFiles={downloadMultipleFiles} setCurrentFile={handleOpenFile} setPreviewFile={handleOpenPreview}
-                    loading={loading} viewMode={viewMode} error={unusableSessionError || error || connectionError} resolveSymlink={resolveSymlink} session={session}
+                    loading={loading && wsUrl !== null} viewMode={viewMode} error={unusableSessionError || error || connectionError} resolveSymlink={resolveSymlink} session={session}
                     createFile={createFile} createFolder={createFolder} moveFiles={moveFiles} copyFiles={copyFiles} startTransfer={startTransfer} isActive={isActive}
                     capabilities={capabilities} provider={provider} source={source}
                     searchQuery={searchQuery} onSearchResults={setSearchResultCount}
