@@ -1,10 +1,24 @@
-const { OP } = require("./sftpWS");
+const { OP, cancelAllTransfers } = require("./sftpWS");
 const { authenticateToken } = require("../middlewares/wsAuth");
 const MicrosoftConnection = require("../models/MicrosoftConnection");
-const { requireOwnConnection } = require("../lib/fileTransfer/endpoints");
+const { requireOwnConnection, resolveSource, resolveDestination } = require("../lib/fileTransfer/endpoints");
 const { graph } = require("../lib/microsoft/graphClient");
 const { createOneDriveAdapter } = require("../lib/microsoft/oneDriveAdapter");
-const logger = require("../utils/logger");
+const { buildTransferHandlers } = require("../lib/fileTransfer/transferHandlers");
+const { authorizeSource, authorizeDestination } = require("../lib/fileTransfer/transferAuth");
+const { createEngineSftpAdapter } = require("../lib/fileTransfer/engineSftpAdapter");
+const { FileTransfer } = require("../lib/fileTransfer/FileTransfer");
+const registry = require("../lib/fileTransfer/registry");
+const SessionManager = require("../lib/SessionManager");
+const {
+    getSFTPCrossTransferClient,
+    releaseSFTPCrossTransferClient,
+} = require("../lib/ConnectionService");
+const Entry = require("../models/Entry");
+const { resolveEntryScope, validateEntryAccess } = require("../controllers/entry");
+const { hasResourcePermission } = require("../utils/permission");
+const { getCapabilities } = require("../lib/fileCapabilities");
+const { createAuditLog } = require("../controllers/audit");
 
 // Everything a drive without a shell and without POSIX permissions can answer. The pane hides what
 // is missing; offering a handler that cannot work would be worse than offering none.
@@ -142,25 +156,77 @@ module.exports = async (ws, req) => {
     const adapter = createOneDriveAdapter({ graph, connectionId });
     const send = createSend(ws);
 
+    // This socket's own endpoint — the side a transfer arriving here writes into.
+    const endpoint = { kind: "onedrive", connectionId, driveId: "me" };
+    const transfers = new Map();
+
+    const authDeps = {
+        getSession: SessionManager.get,
+        getConnection: SessionManager.getConnection,
+        findEntry: (id) => Entry.findByPk(id),
+        resolveEntryScope, validateEntryAccess, hasResourcePermission,
+    };
+    // A OneDrive socket has no session and no entry, so the sftp half of endpointDeps is never
+    // reached from here — but a transfer whose SOURCE is a server does reach it, which is why the
+    // whole set is wired rather than only the OneDrive half.
+    const endpointDeps = {
+        authorizeSource: (request) => authorizeSource(authDeps, request),
+        authorizeDestination: (request) => authorizeDestination(authDeps, request),
+        getConnection: SessionManager.getConnection,
+        findEntry: (id) => Entry.findByPk(id),
+        getCrossClient: getSFTPCrossTransferClient,
+        releaseCrossClient: releaseSFTPCrossTransferClient,
+        createSftpAdapter: createEngineSftpAdapter,
+        getCapabilities,
+        loadConnection: (id) => MicrosoftConnection.findOne({ where: { id } }),
+        createOneDriveAdapter: ({ connectionId: id }) => createOneDriveAdapter({ graph, connectionId: id }),
+    };
+
+    const transferHandlers = buildTransferHandlers(OP, {
+        user: auth.user, endpoint, transfers,
+        ipAddress: req.ip, userAgent: req.headers?.["user-agent"],
+        deps: {
+            send,
+            registry,
+            findEntry: (id) => Entry.findByPk(id),
+            resolveSource: (request) => resolveSource(endpointDeps, request),
+            resolveDestination: (request) => resolveDestination(endpointDeps, request),
+            createTransfer: (opts) => new FileTransfer(opts),
+            createAuditLog,
+        },
+    });
+
     const handlers = buildOneDriveHandlers(OP, { adapter, send, connectionId });
 
     send(OP.READY, { path: "/", capabilities: { shell: false, checksum: false } });
 
     ws.on("message", async (msg) => {
-        const handler = handlers[msg[0]];
-        if (!handler) return;
-
         let payload;
         try { payload = JSON.parse(msg.slice(1).toString()); } catch { payload = undefined; }
 
         try {
+            // The three transfer opcodes are deliberately NOT part of the handler table:
+            // buildTransferHandlers answers with { start, cancel, resolve } rather than an
+            // opcode-indexed map, and ONEDRIVE_OPS names exactly what that table offers. They hang
+            // in the dispatch itself, the way sftpWS.js does it.
+            if (msg[0] === OP.TRANSFER_START) return void await transferHandlers.start(payload);
+            if (msg[0] === OP.TRANSFER_CANCEL) return void await transferHandlers.cancel(payload);
+            if (msg[0] === OP.TRANSFER_RESOLVE) return void await transferHandlers.resolve(payload);
+
+            const handler = handlers[msg[0]];
+            if (!handler) return;
+
             await handler(payload);
         } catch (error) {
             send(OP.ERROR, { message: error.message || "Operation failed" });
         }
     });
 
-    ws.on("close", () => logger.debug?.("OneDrive websocket closed", { connectionId }));
+    ws.on("close", () => {
+        // A socket that goes away must not leave a transfer running against a destination nobody
+        // is watching any more.
+        cancelAllTransfers(transfers);
+    });
 };
 
 module.exports.buildOneDriveHandlers = buildOneDriveHandlers;
