@@ -62,7 +62,10 @@ const setup = (over = {}, ctxOver = {}) => {
     // Derived from whatever sessionId this ctx ended up with: several tests run two sockets against
     // one source, and each has to carry its own endpoint.
     ctx.endpoint = ctxOver.endpoint ?? { kind: "sftp", sessionId: ctx.sessionId };
-    return { handlers: buildTransferHandlers(OP, ctx), sent, released, transfers, registry, fakeTransfer };
+    // deps comes back out so a test can assert what the handler was NOT given: blanking a default
+    // out through `over` is the only way to model production's bare dependency set, and a harness
+    // that quietly stopped honouring that would make the test guarding it vacuous.
+    return { handlers: buildTransferHandlers(OP, ctx), sent, released, transfers, registry, fakeTransfer, deps };
 };
 
 // A miniature of ConnectionService: the auxiliary client is cached ON THE CONNECTION it was opened
@@ -922,5 +925,46 @@ test("both sides are handed back when the transfer finishes", async () => {
     // end of it, as every other completion test in this file already accounts for.
     await new Promise((r) => setImmediate(r));
 
+    // Asserted first, and the reason this test is about finish() at all: the catch branch releases
+    // both sides too, so a setup that merely failed would satisfy the release assertion below on
+    // its own. Only a run that actually finished reports TRANSFER_DONE.
+    assert.deepStrictEqual(s.sent.find((m) => m.op === OP.TRANSFER_DONE)?.data,
+        { transferId: "t1", filesTransferred: 1, bytesTransferred: 1, skipped: [] });
+    assert.ok(!s.sent.some((m) => m.op === OP.TRANSFER_ERROR), "nothing here is a refusal");
     assert.deepStrictEqual(handed, [["source", "dst:t1"], ["dest", "dst:t1"]]);
+});
+
+// The production transferDeps (see sftpWS.js) carries neither getConnection nor releaseCrossClient
+// any more. Releasing through them would throw a TypeError inside the catch's own try/catch, no-op
+// silently, and cost the setup its registry slot for good — the slot that IS the cap on how many
+// auxiliary connections one host can be made to open. Every other release test in this file
+// observes `released` through exactly those two fakes, so none of them can see that: the harness
+// has to be as bare as production for the fix to be pinned at all.
+test("a cancelled setup releases both sides without the old session deps", async () => {
+    const released = [];
+    const s = setup({
+        getConnection: undefined,
+        releaseCrossClient: undefined,
+        resolveSource: async () => ({
+            scope: { organizationId: "o" }, entry: { id: "e-src" }, probe: async () => ({ type: "file" }),
+            acquire: async () => ({}), cleanup: async () => null, release: (key) => released.push(["source", key]),
+        }),
+        resolveDestination: async () => ({
+            scope: { organizationId: "o" }, entry: { id: "e-dst" }, probe: async () => ({ type: "file" }),
+            acquire: async () => { throw new Error("connect failed"); },
+            cleanup: async () => null, release: (key) => released.push(["dest", key]),
+        }),
+    });
+
+    // Asserted before anything runs: blanking a default out through `over` is the only way this
+    // harness can model production's bare dependency set, and a setup() that stopped honouring
+    // that — by filtering undefined out of `over`, say — would leave this whole test passing for
+    // the wrong reason. It has to fail loudly there instead.
+    assert.strictEqual(s.deps.getConnection, undefined, "the harness must be as bare as production");
+    assert.strictEqual(s.deps.releaseCrossClient, undefined);
+
+    await s.handlers.start({ transferId: "t1", sourceSessionId: "src", destination: "/ziel", paths: ["/a.txt"] });
+
+    assert.deepStrictEqual(released, [["source", "dst:t1"], ["dest", "dst:t1"]]);
+    assert.strictEqual(s.registry.reserved.length, 0, "the slot must go back");
 });
