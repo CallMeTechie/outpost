@@ -208,6 +208,37 @@ test("GET / with an existing file: 200, both filename forms, matching Content-Le
     assert.strictEqual(body, "hello world");
 });
 
+// The editor's baseline for its later conditional save (Task 8) — proven here against the real
+// route rather than just the adapter (oneDriveContentSeam.test.js already pins stat's own cTag
+// field; this is the one hop further that turns it into a response header a browser can read back).
+test("GET / with a cTag on the item: 200, ETag header carries it verbatim", async () => {
+    const content = Buffer.from("hello world");
+    const { sessionToken, connectionId } = registerConnection({
+        stat: async () => ({ type: "file", size: content.length, cTag: "c:down1" }),
+        readFile: () => ({ stream: Readable.from(content) }),
+    });
+
+    const res = await fetch(contentUrl(sessionToken, connectionId, "/remote/report.txt"));
+    await res.text();
+
+    assert.strictEqual(res.headers.get("etag"), "c:down1");
+});
+
+// No cTag from the adapter — an item Graph never reported one for — must not turn into a literal
+// "null" or "undefined" ETag header; it must be as if the header was never considered at all.
+test("GET / with no cTag on the item: 200, no ETag header at all", async () => {
+    const content = Buffer.from("hello world");
+    const { sessionToken, connectionId } = registerConnection({
+        stat: async () => ({ type: "file", size: content.length }),
+        readFile: () => ({ stream: Readable.from(content) }),
+    });
+
+    const res = await fetch(contentUrl(sessionToken, connectionId, "/remote/report.txt"));
+    await res.text();
+
+    assert.strictEqual(res.headers.get("etag"), null);
+});
+
 test("GET / with preview=true: 200, Content-Disposition is inline", async () => {
     const content = Buffer.from("preview me");
     const { sessionToken, connectionId } = registerConnection({
@@ -389,6 +420,82 @@ test("POST /upload when Graph rejects the write: the adapter's status and messag
 
     assert.strictEqual(res.status, 507);
     assert.deepStrictEqual(json, { error: "Your OneDrive is full" });
+});
+
+// A stale tag must reach the CLIENT as a 412, not the 500 a generic Error would fall back to —
+// mirrors oneDriveContentSeam.test.js's proof that writeFile itself throws a 412-carrying
+// GraphError; this is the one hop further that checks the route forwards it undisguised.
+test("POST /upload against a stale If-Match: 412 (not 500) reaches the client with Graph's own message", async () => {
+    const { sessionToken, connectionId } = registerConnection({
+        writeFile: async () => { throw new GraphError("The resource has changed since the eTag was retrieved.", { status: 412 }); },
+    });
+
+    const url = `${baseUrl}/upload?sessionToken=${sessionToken}&connectionId=${connectionId}` +
+        `&path=${encodeURIComponent("/remote/uploads/file.txt")}`;
+    const res = await fetch(url, { method: "POST", headers: { "If-Match": "c:old" }, body: "data" });
+    const json = await res.json();
+
+    assert.strictEqual(res.status, 412);
+    assert.match(json.error, /resource has changed/);
+});
+
+// --- POST /upload: If-Match passthrough and the X-Return-Etag guard (Task 8) -------------------
+//
+// X-Return-Etag, not If-Match, is what the route re-stats on: the editor's "overwrite with my
+// version" deliberately sends no If-Match and still needs the fresh tag back, so If-Match's
+// presence cannot be what gates the extra round trip. These three tests pin that guard directly —
+// without them, an ordinary drag-and-drop upload silently paying for a stat nobody reads would
+// pass every other test in this file unnoticed.
+
+test("POST /upload with If-Match: reaches writeFile as ifMatch, unrelated to X-Return-Etag", async () => {
+    let writtenOptions = null;
+    const { sessionToken, connectionId } = registerConnection({
+        writeFile: async (path, source, options) => { writtenOptions = options; source.resume(); },
+    });
+
+    const url = `${baseUrl}/upload?sessionToken=${sessionToken}&connectionId=${connectionId}` +
+        `&path=${encodeURIComponent("/remote/uploads/file.txt")}`;
+    const res = await fetch(url, { method: "POST", headers: { "If-Match": "c:old" }, body: "data" });
+    const json = await res.json();
+
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(writtenOptions.ifMatch, "c:old");
+    assert.strictEqual(json.etag, undefined, "no X-Return-Etag means no etag field, even with If-Match present");
+});
+
+test("POST /upload with X-Return-Etag: the fresh tag comes back in the JSON body, one extra stat", async () => {
+    let statCalls = 0;
+    const { sessionToken, connectionId } = registerConnection({
+        writeFile: async (path, source) => { source.resume(); },
+        stat: async () => { statCalls += 1; return { cTag: "c:fresh" }; },
+    });
+
+    const url = `${baseUrl}/upload?sessionToken=${sessionToken}&connectionId=${connectionId}` +
+        `&path=${encodeURIComponent("/remote/uploads/file.txt")}`;
+    const res = await fetch(url, { method: "POST", headers: { "X-Return-Etag": "true" }, body: "data" });
+    const json = await res.json();
+
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(json.etag, "c:fresh");
+    assert.strictEqual(statCalls, 1);
+});
+
+test("POST /upload WITHOUT X-Return-Etag: no etag in the response, and stat is never called at all", async () => {
+    let statCalls = 0;
+    const { sessionToken, connectionId } = registerConnection({
+        writeFile: async (path, source) => { source.resume(); },
+        stat: async () => { statCalls += 1; return { cTag: "c:unused" }; },
+    });
+
+    const url = `${baseUrl}/upload?sessionToken=${sessionToken}&connectionId=${connectionId}` +
+        `&path=${encodeURIComponent("/remote/uploads/file.txt")}`;
+    const res = await fetch(url, { method: "POST", body: "data" });
+    const json = await res.json();
+
+    assert.strictEqual(res.status, 200);
+    assert.deepStrictEqual(json, { success: true, path: "/remote/uploads/file.txt", size: 4 });
+    assert.strictEqual(statCalls, 0,
+        "an ordinary upload (the drag-and-drop case) must not pay for a stat call it never reads the result of");
 });
 
 // --- POST /multi ---------------------------------------------------------------------------

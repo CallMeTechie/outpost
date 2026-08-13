@@ -119,17 +119,25 @@ app.post("/upload", async (req, res) => {
 
         const response = { success: true, path: remotePath, size };
 
-        // The tag this write just produced, not the one the request walked in with — the old one
-        // is spent the moment the write lands. Handed back in the JSON body rather than a header:
-        // this response was always structured, unlike a download's raw bytes, so there is room for
-        // it right where the rest of the answer already lives. A failure to re-read it does not
-        // undo a write that already succeeded, so it is logged and the save is still reported as
-        // the success it was — the editor simply keeps whatever tag it already had a moment longer.
-        try {
-            const stats = await ctx.adapter.stat(remotePath);
-            if (typeof stats.cTag === "string") response.etag = stats.cTag;
-        } catch (statErr) {
-            logger.warn("OneDrive upload succeeded but re-reading its tag failed", { error: statErr.message, path: remotePath });
+        // Whether to spend a second round trip re-reading the tag cannot be decided from If-Match:
+        // the editor's own "overwrite with my version" deliberately sends no condition and still
+        // needs the fresh tag, so an unconditional write is not proof nobody wants one back. This
+        // is its own signal, set only by the editor's save — never by an ordinary upload, which
+        // never reads the field this produces and must not pay for a stat it never asked for.
+        if (req.headers["x-return-etag"] === "true") {
+            // The tag this write just produced, not the one the request walked in with — the old
+            // one is spent the moment the write lands. Handed back in the JSON body rather than a
+            // header: this response was always structured, unlike a download's raw bytes, so there
+            // is room for it right where the rest of the answer already lives. A failure to re-read
+            // it does not undo a write that already succeeded, so it is logged and the save is
+            // still reported as the success it was — the editor simply keeps its old tag a moment
+            // longer, which costs at most one falsely-reported conflict on the very next save.
+            try {
+                const stats = await ctx.adapter.stat(remotePath);
+                if (typeof stats.cTag === "string") response.etag = stats.cTag;
+            } catch (statErr) {
+                logger.warn("OneDrive upload succeeded but re-reading its tag failed", { error: statErr.message, path: remotePath });
+            }
         }
 
         res.json(response);

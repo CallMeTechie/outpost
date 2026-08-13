@@ -151,7 +151,14 @@ export const FileEditorWindow = ({ file, session, onClose }) => {
             if (url === null) throw new Error(t("servers.fileManager.error.unusableSession"));
 
             const blob = new Blob([fileContent], { type: "application/octet-stream" });
-            const headers = !force && etagRef.current ? { "If-Match": etagRef.current } : {};
+            const headers = {};
+            // A tag ever having been read is what marks this as a session worth guarding at all —
+            // true for OneDrive, forever false for a server, whether or not THIS particular save
+            // happens to carry a condition. X-Return-Etag is what asks the route to spend its extra
+            // stat; leaving it off is what keeps an ordinary drag-and-drop upload (which never sets
+            // it) from paying for a round trip nobody there would ever read.
+            if (etagRef.current) headers["X-Return-Etag"] = "true";
+            if (!force && etagRef.current) headers["If-Match"] = etagRef.current;
 
             const result = await uploadFile(url, blob, { headers });
             // The tag this save just produced. Skipping this is the trap the brief warns about:
