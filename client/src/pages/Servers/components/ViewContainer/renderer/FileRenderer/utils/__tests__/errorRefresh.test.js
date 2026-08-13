@@ -24,10 +24,10 @@ test("a successful listing arms the gate again", () => {
     assert.strictEqual(gate.errorArrived(), true);
 });
 
-// Der Lizenzfall: das allererste Auflisten scheitert. Genau eine Anfrage, genau ein Hinweis.
+// The license case: the very first listing fails. Exactly one request, exactly one message.
 test("an account whose very first listing fails asks exactly once", () => {
     const gate = createErrorRefreshGate();
-    let requests = 1;                       // die Auflistung, die READY ausgelöst hat
+    let requests = 1;                       // the listing that triggered READY
     for (let i = 0; i < 5; i++) if (gate.errorArrived()) requests++;
     assert.strictEqual(requests, 1);
 });
@@ -40,7 +40,7 @@ test("repeated successes without errors change nothing", () => {
     assert.strictEqual(gate.errorArrived(), false);
 });
 
-// Wovon abhängt, ob ein Fehler als leerer Ordner oder als Fehler aussieht.
+// What determines whether an error looks like an empty folder or an error.
 test("hasListed reports whether this pane ever saw a listing", () => {
     const gate = createErrorRefreshGate();
     assert.strictEqual(gate.hasListed(), false);
