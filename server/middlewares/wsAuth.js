@@ -9,18 +9,33 @@ const { resolveIdentity } = require("../utils/identityResolver");
 
 const SHARED_ENTRY_ATTRIBUTES = ["id", "type", "config", "integrationId"];
 
-const authenticateToken = async (ws, sessionToken) => {
-    if (!sessionToken) return ws.close(4001, "You need to provide the token in the 'sessionToken' parameter"), null;
+// The part of "authenticate this token" that has nothing to do with a socket: a lookup and a
+// pass/fail answer. Split out so an HTTP route (oneDriveContent.js) can ask the identical question
+// authenticateToken asks a WebSocket, instead of a second copy of this lookup growing beside it and
+// drifting the day one of the two gains a check the other doesn't. The close code travels with the
+// failure so authenticateToken below can still close exactly as it did before this was split out;
+// an HTTP caller has no equivalent and is expected to ignore it.
+const resolveSessionToken = async (sessionToken) => {
+    if (!sessionToken) {
+        return { ok: false, code: 4001, reason: "You need to provide the token in the 'sessionToken' parameter" };
+    }
 
     const session = await Session.findOne({ where: { token: sessionToken } });
-    if (!session) return ws.close(4003, "The token is not valid"), null;
+    if (!session) return { ok: false, code: 4003, reason: "The token is not valid" };
 
     await Session.update({ lastActivity: new Date() }, { where: { id: session.id } });
 
     const user = await Account.findByPk(session.accountId);
-    if (!user) return ws.close(4004, "The token is not valid"), null;
+    if (!user) return { ok: false, code: 4004, reason: "The token is not valid" };
 
-    return { session, user };
+    return { ok: true, session, user };
+};
+
+const authenticateToken = async (ws, sessionToken) => {
+    const result = await resolveSessionToken(sessionToken);
+    if (!result.ok) return ws.close(result.code, result.reason), null;
+
+    return { session: result.session, user: result.user };
 };
 
 const buildSharedContext = (query, serverSession, entry, overrides) => ({
@@ -180,3 +195,4 @@ module.exports = async (ws, req) => {
 
 module.exports.authenticateWebSocket = authenticateWebSocket;
 module.exports.authenticateToken = authenticateToken;
+module.exports.resolveSessionToken = resolveSessionToken;
