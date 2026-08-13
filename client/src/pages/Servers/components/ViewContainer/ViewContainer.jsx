@@ -220,7 +220,7 @@ export const ViewContainer = ({
         } else {
             const activeSession = activeSessions.find(s => s.id === activeSessionId);
 
-            if (activeSession?.server.renderer === "terminal") {
+            if (activeSession?.server?.renderer === "terminal") {
                 const activeTerminal = terminalRefs.current[activeSessionId];
                 if (activeTerminal && activeTerminal.ws && activeTerminal.ws.readyState === WebSocket.OPEN) {
                     activeTerminal.ws.send(commandWithNewline);
@@ -228,7 +228,7 @@ export const ViewContainer = ({
                         activeTerminal.term.focus();
                     }
                 }
-            } else if (activeSession?.server.renderer === "guac") {
+            } else if (activeSession?.server?.renderer === "guac") {
                 const activeGuacamole = guacamoleRefs.current[activeSessionId];
                 if (activeGuacamole && activeGuacamole.client) {
                     for (let i = 0; i < command.length; i++) {
