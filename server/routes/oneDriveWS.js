@@ -176,6 +176,12 @@ const createMessageDispatch = ({ handlers, transferHandlers, send }) => async (m
 // inline is invisible to every test, and this one silently stops working if it is ever dropped.
 const createCloseHandler = (transfers) => () => cancelAllTransfers(transfers);
 
+// Same vocabulary as fileCapabilities.getCapabilities — pinned by a test, because the previous
+// version of this line answered with `checksum` (which nothing reads) and omitted `terminal`
+// (which several menus do). OneDrive has no shell and no terminal, but COPY_FILES is a Graph
+// call and belongs to ONEDRIVE_OPS, so `copy` is true.
+const ONEDRIVE_CAPABILITIES = { shell: false, terminal: false, copy: true };
+
 module.exports = async (ws, req) => {
     const auth = await authenticateToken(ws, req.query?.sessionToken);
     if (!auth) return;
@@ -233,7 +239,7 @@ module.exports = async (ws, req) => {
 
     const handlers = buildOneDriveHandlers(OP, { adapter, send });
 
-    send(OP.READY, { path: "/", capabilities: { shell: false, checksum: false } });
+    send(OP.READY, { path: "/", capabilities: ONEDRIVE_CAPABILITIES });
 
     ws.on("message", createMessageDispatch({ handlers, transferHandlers, send }));
 
@@ -242,6 +248,7 @@ module.exports = async (ws, req) => {
 
 module.exports.buildOneDriveHandlers = buildOneDriveHandlers;
 module.exports.ONEDRIVE_OPS = ONEDRIVE_OPS;
+module.exports.ONEDRIVE_CAPABILITIES = ONEDRIVE_CAPABILITIES;
 module.exports.resolveSocketConnection = resolveSocketConnection;
 module.exports.createSend = createSend;
 module.exports.createMessageDispatch = createMessageDispatch;

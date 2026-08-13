@@ -12,9 +12,14 @@ const escapePath = (p) => `'${String(p).replaceAll("'", String.raw`'\''`)}'`;
 
 const getCapabilities = (entry) => {
     const protocol = entry.type === "server" ? entry.config?.protocol : entry.type;
+    const shell = !SHELL_LESS_PROTOCOLS.has(protocol);
     return {
-        shell: !SHELL_LESS_PROTOCOLS.has(protocol),
+        shell,
         terminal: !TERMINAL_LESS_PROTOCOLS.has(protocol),
+        // Copying inside one session shells out to `cp -r`, so for a server this is exactly
+        // `shell`. It is a word of its own because a provider can copy without one: OneDrive
+        // does it with a Graph call.
+        copy: shell,
     };
 };
 
