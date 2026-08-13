@@ -28,6 +28,16 @@ const requireName = (payload) => {
 
 const joinPath = (parent, name) => `${parent.replace(/\/+$/, "")}/${name}`;
 
+// Exported so the guard itself can be tested: an unguarded throw here escapes the async message
+// listener as an unhandled rejection, and this codebase turns that into process.exit(1).
+const createSend = (ws) => (opCode, data) => {
+    if (ws.readyState !== 1) return;
+
+    try {
+        ws.send(Buffer.concat([Buffer.from([opCode]), Buffer.from(JSON.stringify(data))]));
+    } catch { /* the socket went away between the check and the write */ }
+};
+
 // Extracted so the socket's two security properties — a strict id and the ownership question —
 // can be tested without a WebSocket, and so the ownership check itself is the SAME one
 // `resolveSource`/`resolveDestination` use in endpoints.js, not a second copy that can drift from
@@ -107,14 +117,7 @@ module.exports = async (ws, req) => {
     const { connectionId } = resolved;
 
     const adapter = createOneDriveAdapter({ graph, connectionId });
-    const send = (opCode, data) => {
-        if (ws.readyState !== 1) return;
-        // Guarded like sftpWS's safeSend: a throw here would escape the message listener as an
-        // unhandled rejection, and this codebase turns that into process.exit(1).
-        try {
-            ws.send(Buffer.concat([Buffer.from([opCode]), Buffer.from(JSON.stringify(data))]));
-        } catch { /* the socket went away between the check and the write */ }
-    };
+    const send = createSend(ws);
 
     const handlers = buildOneDriveHandlers(OP, { adapter, send, connectionId });
 
@@ -140,3 +143,4 @@ module.exports = async (ws, req) => {
 module.exports.buildOneDriveHandlers = buildOneDriveHandlers;
 module.exports.ONEDRIVE_OPS = ONEDRIVE_OPS;
 module.exports.resolveSocketConnection = resolveSocketConnection;
+module.exports.createSend = createSend;

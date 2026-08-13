@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert");
 const { OP } = require("../../routes/sftpWS");
-const { buildOneDriveHandlers, ONEDRIVE_OPS, resolveSocketConnection } = require("../../routes/oneDriveWS");
+const { buildOneDriveHandlers, ONEDRIVE_OPS, resolveSocketConnection, createSend } = require("../../routes/oneDriveWS");
 
 const harness = (adapter = {}) => {
     const sent = [];
@@ -124,4 +124,19 @@ test("a database failure is refused, not propagated", async () => {
     const result = await resolveSocketConnection("7", { id: 5 }, deps);
 
     assert.deepStrictEqual(result, { ok: false, code: 4403, reason: "This Microsoft connection is not available" });
+});
+
+test("a socket that throws on send does not take the process down", () => {
+    const send = createSend({ readyState: 1, send: () => { throw new Error("socket gone"); } });
+
+    assert.doesNotThrow(() => send(OP.ERROR, { message: "anything" }));
+});
+
+test("nothing is written to a socket that is no longer open", () => {
+    let wrote = 0;
+    const send = createSend({ readyState: 3, send: () => { wrote += 1; } });
+
+    send(OP.ERROR, { message: "anything" });
+
+    assert.strictEqual(wrote, 0);
 });
