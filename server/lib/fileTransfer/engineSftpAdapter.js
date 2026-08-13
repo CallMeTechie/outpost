@@ -51,8 +51,10 @@ const createEngineSftpAdapter = (client, capabilities) => {
             //    Not reachable today — nothing wires this adapter up yet, and same-session
             //    transfers take another path — but a later plan will, so FileTransfer's constructor
             //    rejects it outright via `transport` above rather than letting it time out.
-            const { stream, done } = client.readFile(path, { backpressure: true });
-            return { stream, done };
+            const { stream, done, totalSizePromise } = client.readFile(path, { backpressure: true });
+            // totalSizePromise travels for the ZIP walk, which appends to the archive only once the
+            // engine has reported the size. FileTransfer ignores it.
+            return { stream, done, totalSizePromise };
         },
 
         writeFile(path, source) {

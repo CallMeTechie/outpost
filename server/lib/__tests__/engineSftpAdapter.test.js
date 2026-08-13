@@ -36,9 +36,11 @@ test("stat reports files as type file", async () => {
     assert.strictEqual((await adapter.stat("/srv/a.txt")).type, "file");
 });
 
-test("readFile drops totalSizePromise", () => {
+// The ZIP walk (server/lib/fileContent/archive.js) awaits totalSizePromise before it appends to
+// the archive; FileTransfer, the other caller, ignores the extra field.
+test("readFile passes totalSizePromise through", () => {
     const adapter = createEngineSftpAdapter(fakeClient(), { shell: true });
-    assert.deepStrictEqual(Object.keys(adapter.readFile("/srv/a.txt")).sort(), ["done", "stream"]);
+    assert.deepStrictEqual(Object.keys(adapter.readFile("/srv/a.txt")).sort(), ["done", "stream", "totalSizePromise"]);
 });
 
 // FileTransfer can only refuse a source and a destination that share one connection if the adapter
