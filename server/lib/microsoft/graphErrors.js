@@ -11,6 +11,20 @@ class GraphError extends Error {
 // Graph reports its own machine-readable code in the body: { error: { code, message } }.
 const readGraphCode = (body) => (typeof body?.error?.code === "string" ? body.error.code : null);
 
+// Microsoft's own message is written for developers, but for a failure we have no wording of our
+// own it is the only thing that says what actually happened — "Tenant does not have a SPO license"
+// beats "request failed (400)" by a mile. Trimmed and bounded: it is prose from another system and
+// ends up in front of a person.
+const readGraphMessage = (body) => {
+    const message = body?.error?.message;
+    if (typeof message !== "string") return null;
+
+    const trimmed = message.trim();
+    if (trimmed === "") return null;
+
+    return trimmed.length > 200 ? `${trimmed.slice(0, 199)}…` : trimmed;
+};
+
 // The header side of the same job, and it lives here rather than in the client for the same reason
 // readGraphCode does: pulling one fact out of a Graph answer is pure work and deserves its own test.
 // Only a plain count of seconds counts — an HTTP-date is legal here and parseInt would silently turn
@@ -42,7 +56,10 @@ const describeGraphFailure = (status, body) => {
     if (status === 429) return "Microsoft is throttling this account, please try again later";
     if (Number.isInteger(status) && status >= 500) return "OneDrive is temporarily unavailable";
 
-    return `OneDrive request failed (${status})`;
+    const detail = readGraphMessage(body);
+    return detail ? `OneDrive refused the request: ${detail}` : `OneDrive request failed (${status})`;
 };
 
-module.exports = { GraphError, describeGraphFailure, isPermanentFailure, readGraphCode, readRetryAfter };
+module.exports = {
+    GraphError, describeGraphFailure, isPermanentFailure, readGraphCode, readGraphMessage, readRetryAfter,
+};

@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert");
 const {
-    GraphError, describeGraphFailure, isPermanentFailure, readGraphCode, readRetryAfter,
+    GraphError, describeGraphFailure, isPermanentFailure, readGraphCode, readGraphMessage, readRetryAfter,
 } = require("../microsoft/graphErrors");
 
 const body = (code) => ({ error: { code, message: "whatever Microsoft says" } });
@@ -76,6 +76,40 @@ test("readGraphCode only trusts a string", () => {
     assert.strictEqual(readGraphCode(body("itemNotFound")), "itemNotFound");
     assert.strictEqual(readGraphCode({ error: { code: 7 } }), null);
     assert.strictEqual(readGraphCode(null), null);
+});
+
+// Found against a real tenant: an organisation with no SharePoint licence has no OneDrive at all,
+// and Microsoft says so plainly. Discarding that left the user with a bare number.
+test("a failure we have no words for passes Microsoft's own message on", () => {
+    const message = describeGraphFailure(400, { error: { code: "BadRequest", message: "Tenant does not have a SPO license." } });
+
+    assert.match(message, /SPO license/);
+});
+
+test("a failure with no message still names its status", () => {
+    assert.match(describeGraphFailure(400, null), /400/);
+    assert.match(describeGraphFailure(418, { error: { code: "Teapot" } }), /418/);
+});
+
+test("an absurdly long message is bounded", () => {
+    const message = describeGraphFailure(400, { error: { message: "x".repeat(5000) } });
+
+    assert.ok(message.length < 260, `message was ${message.length} characters`);
+});
+
+test("readGraphMessage only trusts a non-empty string", () => {
+    assert.strictEqual(readGraphMessage({ error: { message: "  spaced  " } }), "spaced");
+    assert.strictEqual(readGraphMessage({ error: { message: "   " } }), null);
+    assert.strictEqual(readGraphMessage({ error: { message: 42 } }), null);
+    assert.strictEqual(readGraphMessage(null), null);
+});
+
+// The 404 wording is matched by FileTransfer's NOT_FOUND regex; changing it would stop every
+// OneDrive transfer from completing.
+test("the wordings we do have are untouched", () => {
+    assert.match(describeGraphFailure(404, { error: { message: "Item not found in this drive" } }), /does not exist/);
+    assert.match(describeGraphFailure(507, { error: { message: "whatever" } }), /full/i);
+    assert.match(describeGraphFailure(429, { error: { message: "whatever" } }), /throttl/i);
 });
 
 test("GraphError is a real Error and carries what the caller has to branch on", () => {
