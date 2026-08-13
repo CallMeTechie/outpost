@@ -3,7 +3,7 @@ const assert = require("node:assert");
 const { Readable } = require("node:stream");
 const { archiveFolder, archiveItems } = require("../archive");
 
-// Ein Archiv, das nur mitschreibt, was es bekommen hätte.
+// An archive that only records what it would have received.
 const fakeArchive = () => {
     const appended = [];
     return { appended, append: (source, opts) => appended.push({ source, name: opts.name }) };
@@ -11,16 +11,13 @@ const fakeArchive = () => {
 
 const fileStream = (text) => Readable.from([Buffer.from(text)]);
 
-// tree: { "/a": [entries], … } wie listDir sie liefert; files: { "/a/x.txt": "inhalt" }
-const fakeAdapter = ({ tree = {}, files = {}, sizePromise = false } = {}) => ({
+// tree: { "/a": [entries], … } as listDir would report them; files: { "/a/x.txt": "content" }
+const fakeAdapter = ({ tree = {}, files = {} } = {}) => ({
     listDir: async (path) => tree[path] ?? [],
     stat: async (path) => (tree[path]
         ? { type: "folder", size: 0 }
         : { type: "file", size: (files[path] ?? "").length }),
-    readFile: (path) => {
-        const base = { stream: fileStream(files[path] ?? ""), done: Promise.resolve() };
-        return sizePromise ? { ...base, totalSizePromise: Promise.resolve((files[path] ?? "").length) } : base;
-    },
+    readFile: (path) => ({ stream: fileStream(files[path] ?? ""), done: Promise.resolve() }),
 });
 
 test("a flat folder appends every file under its base path", async () => {
@@ -46,7 +43,7 @@ test("nested folders keep their structure", async () => {
     assert.deepStrictEqual(archive.appended.map((e) => e.name), ["src/deep/c.txt"]);
 });
 
-// Ohne diesen Zweig verschwindet ein leerer Ordner spurlos aus dem Archiv.
+// Without this branch, an empty folder vanishes from the archive without a trace.
 test("an empty folder is appended as a directory entry", async () => {
     const adapter = fakeAdapter({ tree: { "/empty": [] } });
     const archive = fakeArchive();
@@ -74,8 +71,8 @@ test("a path at the root does not gain a double slash", async () => {
     assert.deepStrictEqual(archive.appended.map((e) => e.name), ["top.txt"]);
 });
 
-// Der Grund, warum engineSftpAdapter das Feld künftig durchreicht: ohne das Warten hat die
-// Engine die Größe noch nicht, und das Archiv bekäme einen Strom, der noch nichts weiß.
+// The reason engineSftpAdapter now passes the field through: without the wait, the engine
+// doesn't have the size yet, and the archive would get a stream that doesn't know it either.
 test("totalSizePromise is awaited when the adapter offers one, and not required when it does not", async () => {
     const order = [];
     const adapter = fakeAdapter({ tree: { "/src": [{ name: "a.txt", type: "file" }] }, files: { "/src/a.txt": "A" } });
@@ -91,7 +88,7 @@ test("totalSizePromise is awaited when the adapter offers one, and not required 
     await archiveFolder(withSize, archive, "/src", "src");
     assert.deepStrictEqual(order, ["size", "append"]);
 
-    // Und ohne das Feld läuft es trotzdem durch.
+    // And without the field, it still goes through.
     const plain = fakeArchive();
     await archiveFolder(adapter, plain, "/src", "src");
     assert.strictEqual(plain.appended.length, 1);
@@ -107,7 +104,7 @@ test("archiveItems handles a mixed selection of files and folders", async () => 
     assert.deepStrictEqual(archive.appended.map((e) => e.name), ["loose.txt", "dir/x.txt"]);
 });
 
-// Ohne diesen Fang bricht ein einziger unlesbarer Eintrag das ganze Archiv ab.
+// Without this catch, a single unreadable entry would abort the whole archive.
 test("an entry that cannot be read is skipped, the rest still lands", async () => {
     const adapter = fakeAdapter({ files: { "/ok.txt": "O" } });
     const failing = {
@@ -122,10 +119,9 @@ test("an entry that cannot be read is skipped, the rest still lands", async () =
     assert.deepStrictEqual(archive.appended.map((e) => e.name), ["ok.txt"]);
 });
 
-// Ein Eintrag, den man gar nicht öffnen kann, wird übersprungen — das Archiv bleibt brauchbar.
-// Ein Strom, der mittendrin abbricht, hat dagegen schon Bytes geschrieben: Das Archiv ist ab da
-// unbrauchbar, und der Aufrufer muss davon erfahren, statt auf ein finalize() zu warten, das
-// nie kommt.
+// An entry that cannot be opened at all is skipped — the archive stays usable. A stream that
+// fails partway through has already written bytes, though: the archive is unusable from that
+// point on, and the caller must find out instead of waiting on a finalize() that never comes.
 test("a stream that fails after it started propagates instead of being swallowed", async () => {
     const adapter = {
         listDir: async () => [{ name: "a.txt", type: "file" }],
@@ -137,6 +133,24 @@ test("a stream that fails after it started propagates instead of being swallowed
     };
     await assert.rejects(
         () => archiveFolder(adapter, { append: () => {} }, "/src", "src"),
+        /stream died mid-flight/,
+    );
+});
+
+// The same escape hatch reached through archiveItems: a mid-selection stream failure must not be
+// caught by the per-path try/catch that exists for entries which never opened. If it were, the
+// multi-select download would hang the same way the single-folder one did before this fix.
+test("a stream that fails mid-archive inside a multi-selection propagates out of archiveItems", async () => {
+    const adapter = {
+        listDir: async () => [],
+        stat: async () => ({ type: "file", size: 1 }),
+        readFile: () => ({
+            stream: Readable.from([Buffer.from("A")]),
+            done: Promise.reject(new Error("stream died mid-flight")),
+        }),
+    };
+    await assert.rejects(
+        () => archiveItems(adapter, { append: () => {} }, ["/broken.txt"]),
         /stream died mid-flight/,
     );
 });
