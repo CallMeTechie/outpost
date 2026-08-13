@@ -1,6 +1,7 @@
 const { Permission } = require("../../permissions/registry");
 const { AUDIT_ACTIONS, RESOURCE_TYPES } = require("../../controllers/audit");
 const { TransferNotPermittedError } = require("./transferErrors");
+const { parseEndpoint, endpointKey } = require("./endpoints");
 
 const refuse = () => { throw new TransferNotPermittedError(); };
 
@@ -114,14 +115,25 @@ const MAX_PATH_LENGTH = 4096;
 
 const invalid = () => { throw new Error("Invalid transfer request"); };
 
-const validateTransferStart = (payload, destSessionId) => {
+const validateTransferStart = (payload, destEndpoint) => {
     const p = payload ?? {};
     if (typeof p.transferId !== "string" || !TRANSFER_ID.test(p.transferId)) invalid();
     if (RESERVED_IDS.has(p.transferId)) invalid();
-    if (typeof p.sourceSessionId !== "string" || p.sourceSessionId === "") invalid();
-    // Source and destination on one session resolve to the same auxiliary client, which deadlocks
+
+    // The deployed client sends sourceSessionId and must keep working. Two fields meaning the same
+    // thing is a caller that does not know what it wants, so exactly one of them is required.
+    const hasLegacy = p.sourceSessionId !== undefined;
+    const hasEndpoint = p.source !== undefined;
+    if (hasLegacy === hasEndpoint) invalid();
+
+    const source = hasEndpoint
+        ? parseEndpoint(p.source)
+        : parseEndpoint({ kind: "sftp", sessionId: p.sourceSessionId });
+
+    // Source and destination on one endpoint resolve to the same client, which deadlocks
     // FileTransfer — and the throw would land behind the reservation, leaking a slot for good.
-    if (p.sourceSessionId === destSessionId) invalid();
+    if (endpointKey(source) === endpointKey(destEndpoint)) invalid();
+
     if (typeof p.destination !== "string" || p.destination === "" || p.destination.length > MAX_PATH_LENGTH) invalid();
     if (!Array.isArray(p.paths) || p.paths.length === 0 || p.paths.length > MAX_TRANSFER_PATHS) invalid();
     if (p.paths.some((x) => typeof x !== "string" || x === "" || x.length > MAX_PATH_LENGTH)) invalid();
@@ -134,7 +146,7 @@ const validateTransferStart = (payload, destSessionId) => {
     const onConflict = p.onConflict ?? "ask";
     if (!CONFLICT_MODES.has(onConflict)) throw new Error("Invalid conflict mode");
 
-    return { transferId: p.transferId, sourceSessionId: p.sourceSessionId,
+    return { transferId: p.transferId, source,
         destination: p.destination, paths: p.paths, action, onConflict };
 };
 
