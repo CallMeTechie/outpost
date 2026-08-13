@@ -2083,6 +2083,10 @@
         "transferTooManyFiles": "Too many files for one transfer: at most {{count}} at a time",
         "connectionLost": "SFTP connection lost. Please reconnect.",
         "error": "An error occurred"
+      },
+      "error": {
+        "unusableSession": "This pane has no usable connection.",
+        "oneDriveDisconnected": "This Microsoft account is disconnected. Reconnect it under Settings → Account."
       }
     },
     "remoteDesktop": {

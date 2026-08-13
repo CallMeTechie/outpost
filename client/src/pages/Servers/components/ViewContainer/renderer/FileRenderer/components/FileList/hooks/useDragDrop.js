@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef } from "react";
-import { resolveDropTarget, resolveDropOutcome, runDrop, DRAG_PROVIDER, DROP_ASK, DROP_DONE }
+import { resolveDropTarget, resolveDropOutcome, runDrop, DROP_ASK, DROP_DONE }
     from "../../../utils/dropTransfer.js";
 
-export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, moveFiles, copyFiles, startTransfer, dragDropAction, updatePath }) => {
+export const useDragDrop = ({ path, sessionId, provider, source, selectedItems, isItemSelected, moveFiles, copyFiles, startTransfer, dragDropAction, updatePath }) => {
     const [draggedItems, setDraggedItems] = useState([]);
     const [dropTarget, setDropTarget] = useState(null);
     const [pendingDrop, setPendingDrop] = useState(null);
@@ -13,7 +13,7 @@ export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, mo
         const itemsToDrag = isItemSelected(item) ? selectedItems : [item];
         setDraggedItems(itemsToDrag);
         const paths = itemsToDrag.map(i => `${path}/${i.name}`);
-        const dragData = { paths, items: itemsToDrag, sessionId, provider: DRAG_PROVIDER };
+        const dragData = { paths, items: itemsToDrag, sessionId, provider, source };
         event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
         event.dataTransfer.setData("application/x-sftp-files", JSON.stringify(dragData));
         event.dataTransfer.effectAllowed = "copyMove";
@@ -37,7 +37,7 @@ export const useDragDrop = ({ path, sessionId, selectedItems, isItemSelected, mo
                 event.dataTransfer.setDragImage(preview, -5, -5);
             }
         }
-    }, [selectedItems, isItemSelected, path, sessionId]);
+    }, [selectedItems, isItemSelected, path, sessionId, provider, source]);
 
     const handleDragEnd = useCallback(() => {
         setDraggedItems([]);

@@ -257,7 +257,7 @@ export const ActionBar = ({
         if (decision.kind === "transfer") {
             startTransfer?.({
                 paths: decision.paths, destination: decision.destination,
-                sourceSessionId: decision.sourceSessionId, action,
+                sourceSessionId: decision.sourceSessionId, source: decision.source, action,
             });
         } else if (action === "move") {
             moveFiles?.(decision.paths, decision.destination);
