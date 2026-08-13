@@ -150,21 +150,24 @@ const validateTransferStart = (payload, destEndpoint) => {
         destination: p.destination, paths: p.paths, action, onConflict };
 };
 
+// `source` is the source ENDPOINT descriptor, not a session id: a transfer can come from a session
+// or from a personal OneDrive connection, and the trail has to say which without the reader having
+// to guess what kind of id a bare string was.
 const buildTransferAuditEntries = ({ user, sourceScope, destScope, sourceEntryId, destEntryId,
-    sourceSessionId, paths, destination, action, ipAddress, userAgent, refused = false }) => {
+    source, paths, destination, action, ipAddress, userAgent, refused = false }) => {
     const common = { accountId: user.id, resource: RESOURCE_TYPES.FILE, ipAddress, userAgent };
     // A refusal happens before the source scope is known — it is logged on the destination side,
     // which is where the request arrived.
     if (refused) {
         return [{ ...common, organizationId: destScope?.organizationId ?? null,
             action: AUDIT_ACTIONS.FILE_DOWNLOAD,
-            details: { refused: true, sourceSessionId, paths: paths.length } }];
+            details: { refused: true, source, paths: paths.length } }];
     }
     return [
         // paths is copied: it is a security trail, and must not change if the caller mutates the
         // array it passed in after this entry was built.
         { ...common, organizationId: sourceScope.organizationId, action: AUDIT_ACTIONS.FILE_DOWNLOAD,
-            details: { sourceSessionId, paths: [...paths], action, destEntryId } },
+            details: { source, paths: [...paths], action, destEntryId } },
         { ...common, organizationId: destScope.organizationId, action: AUDIT_ACTIONS.FILE_UPLOAD,
             details: { sourceEntryId, destination, action } },
     ];

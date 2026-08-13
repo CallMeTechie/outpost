@@ -1,4 +1,5 @@
 const { validateTransferStart, buildTransferAuditEntries } = require("./transferAuth");
+const { endpointKey, describeEndpoint } = require("./endpoints");
 const { createConflictBroker, createProgressThrottle } = require("./transferSession");
 
 const CONFLICT_TIMEOUT = 120_000;
@@ -9,9 +10,9 @@ const buildTransferHandlers = (OP, ctx) => {
     const send = deps.send;
 
     const finish = (transferId, key) => {
-        // Read the entry BEFORE deleting it: it carries the source session, and without it only
-        // the destination client would be released — the source aux connection would stay open
-        // for the rest of the session.
+        // Read the entry BEFORE deleting it: it carries the release functions of both sides, and
+        // without them only the destination would be handed back — the source side's auxiliary
+        // connection would stay open for the rest of the session.
         const entry = transfers.get(transferId);
         transfers.delete(transferId);
         // Nothing here can actually throw, and that is on purpose rather than unexamined: registry
@@ -19,12 +20,12 @@ const buildTransferHandlers = (OP, ctx) => {
         // one place that hands the slot back, and since fix round 3 that slot IS the cap on
         // auxiliary connections — a throw slipping in later must not cost the cap.
         try { deps.registry.release(key); } catch {}
-        for (const sessionId of [entry?.sourceSessionId, ctx.sessionId].filter(Boolean)) {
-            // Same again, and just as deliberate: getConnection is a Map lookup, and
-            // releaseSFTPCrossTransferClient already wraps its own risky calls (client.close and
-            // the control-plane close) — everything left in it is property deletes and Map work.
-            // Kept so one side failing could never cost the other side its release.
-            try { deps.releaseCrossClient(deps.getConnection(sessionId), key); } catch {}
+        for (const releaseSide of [entry?.releaseSource, entry?.releaseDest].filter(Boolean)) {
+            // Kept individually guarded so one side failing could never cost the other its release.
+            // The endpoint layer already swallows what its own release can throw (see endpoints.js),
+            // so nothing that reaches here should throw at all — this stands against the day one of
+            // the two sides grows a release that does.
+            try { releaseSide(key); } catch {}
         }
     };
 
@@ -34,14 +35,20 @@ const buildTransferHandlers = (OP, ctx) => {
             let key = null;
             let reserved = false;
             let ownEntry = null;
-            let sourceSessionId = null;
+            let sourceEndpoint = null;
             let auditPaths = null;
             let destScopeForAudit = null;
             let aborted = false;
+            // Declared out here, not in the try: the catch below is the only path that hands back
+            // what a failed or aborted setup took, and it can only reach the two sides' release
+            // functions through the resolved endpoints themselves.
+            let source = null;
+            let dest = null;
             try {
-                const request = validateTransferStart(payload, ctx.sessionId);
+                const request = validateTransferStart(payload, ctx.endpoint);
                 auditPaths = request.paths;
-                ({ transferId, sourceSessionId } = request);
+                ({ transferId } = request);
+                sourceEndpoint = request.source;
 
                 // Taken synchronously, before the first await: ws does not wait for the listener's
                 // promise, so two messages with the same id would otherwise both pass this check.
@@ -49,62 +56,72 @@ const buildTransferHandlers = (OP, ctx) => {
                 ownEntry = { pending: true };
                 transfers.set(transferId, ownEntry);
 
-                const { sourceEntry, sourceScope } = await deps.authorizeSource(
-                    { user: ctx.user, sourceSessionId, action: request.action });
+                source = await deps.resolveSource(
+                    { user: ctx.user, endpoint: sourceEndpoint, action: request.action });
 
-                // Only now: a stat is a real round trip on a foreign connection, and its error text
+                // Only now: a stat is a real round trip on a foreign endpoint, and its error text
                 // distinguishes "no such file" from "permission denied". Before the chain it would
-                // turn sourceSessionId into an existence oracle over foreign hosts.
-                const sourceConn = deps.getConnection(sourceSessionId);
+                // turn the endpoint into an existence oracle over foreign hosts and accounts.
                 let sourceIsFolder = false;
                 for (const p of request.paths) {
-                    let info = null;
-                    try { info = await sourceConn?.sftpClient?.stat(p); } catch { info = null; }
+                    const info = await source.probe(p);
                     if (!info) throw new Error("Transfer not permitted");
-                    if (info.isDir) sourceIsFolder = true;
+                    if (info.type === "folder") sourceIsFolder = true;
                 }
 
                 // Never ctx.entry: on a shared socket it carries a reduced attribute set without
                 // organizationId, and the permission check would silently fall back to system-wide
-                // rights. authorizeDestination refuses an undefined scope, but load it properly.
-                const destEntry = await deps.findEntry(ctx.serverSession?.entryId ?? ctx.entry.id);
-                if (!destEntry) throw new Error("Transfer not permitted");
+                // rights. For a OneDrive socket there is no entry at all, and resolveDestination
+                // never looks at one.
+                const destEntry = ctx.endpoint.kind === "sftp"
+                    ? await deps.findEntry(ctx.serverSession?.entryId ?? ctx.entry.id)
+                    : null;
+                if (ctx.endpoint.kind === "sftp" && !destEntry) throw new Error("Transfer not permitted");
 
-                // destSessionId is this socket's own session — the one being written into — so the
+                // ctx.endpoint is this socket's own endpoint — the one being written into — so the
                 // destination side can make the same write-access demand of a shared session that
                 // the source side already makes.
-                const { destScope } = await deps.authorizeDestination({
-                    user: ctx.user, destSessionId: ctx.sessionId, destEntry,
-                    onConflict: request.onConflict, sourceIsFolder });
-                destScopeForAudit = destScope;
+                dest = await deps.resolveDestination({
+                    user: ctx.user, endpoint: ctx.endpoint, destEntry,
+                    onConflict: request.onConflict, sourceIsFolder,
+                });
+                destScopeForAudit = dest.scope;
 
-                key = `${ctx.sessionId}:${transferId}`;
-                if (!deps.registry.reserve(key, [sourceSessionId, ctx.sessionId])) {
+                key = `${endpointKey(ctx.endpoint)}:${transferId}`;
+                if (!deps.registry.reserve(key, [endpointKey(sourceEndpoint), endpointKey(ctx.endpoint)])) {
                     // A refusal here has two unrelated causes registry.reserve does not tell
                     // apart: this key string is already taken (most likely a zombie transfer whose
                     // source session vanished mid-run, see SessionManager.js — release() only
-                    // arrives when that run actually ends), or one of the two sessions is genuinely
-                    // at its own limit. On a session shared across two sockets the first can fire
-                    // long before either side is anywhere near MAX_CROSS_TRANSFERS — "too many
-                    // transfers" would then blame the wrong thing and hide that simply retrying
-                    // with a different id works immediately. Neither message names a session: the
-                    // collision case has nothing session-specific to say, and the quota case only
-                    // ever reports on the two sessions this very request already carries.
-                    const ownQuotaFull = deps.registry.countFor(sourceSessionId) >= deps.registry.MAX_CROSS_TRANSFERS
-                        || deps.registry.countFor(ctx.sessionId) >= deps.registry.MAX_CROSS_TRANSFERS;
+                    // arrives when that run actually ends), or one of the two endpoints is
+                    // genuinely at its own limit. On a session shared across two sockets the first
+                    // can fire long before either side is anywhere near MAX_CROSS_TRANSFERS — "too
+                    // many transfers" would then blame the wrong thing and hide that simply
+                    // retrying with a different id works immediately. Neither message names an
+                    // endpoint: the collision case has nothing endpoint-specific to say, and the
+                    // quota case only ever reports on the two endpoints this very request already
+                    // carries.
+                    const ownQuotaFull = deps.registry.countFor(endpointKey(sourceEndpoint)) >= deps.registry.MAX_CROSS_TRANSFERS
+                        || deps.registry.countFor(endpointKey(ctx.endpoint)) >= deps.registry.MAX_CROSS_TRANSFERS;
                     throw new Error(ownQuotaFull ? "Too many concurrent transfers" : "Transfer id already in use");
                 }
                 reserved = true;
 
-                // user.id, never session.accountId: it decides in resolveIdentity which credentials
-                // may be used, so the session owner's identity must not be borrowed here.
-                // And `key`, never the bare transferId: the client picks that id, and the register
-                // lets two destination sessions run the same one against a single source. On that
-                // source the aux client is cached under this name, so the bare id would serve the
+                // `key`, never the bare transferId: the client picks that id, and the register lets
+                // two destination sessions run the same one against a single source. On that source
+                // the auxiliary client is cached under this name, so the bare id would serve the
                 // second caller the first one's connection — opened under a foreign account, past
-                // the identity check — and the first to finish would close the other's.
-                const sourceClient = await deps.getCrossClient(sourceSessionId, sourceEntry, ctx.user.id, key);
-                const destClient = await deps.getCrossClient(ctx.sessionId, destEntry, ctx.user.id, key);
+                // the identity check — and the first to finish would close the other's. Which
+                // identity that is has moved into the endpoint layer, which binds the caller's own
+                // user (never the session owner's) before handing the acquire back here.
+                const sourceAdapter = await source.acquire(key);
+                const destAdapter = await dest.acquire(key);
+
+                // Kept separate on purpose — see the comment on sftpSide.cleanup in endpoints.js.
+                // FileTransfer._removePartial runs after a write over the auxiliary client failed,
+                // which is exactly when that client may be the thing that broke; cleaning up over it
+                // would defeat the fallback. A null answer means "use the destination itself", which
+                // is what a OneDrive endpoint gives and what FileTransfer already does.
+                const destCleanup = (await dest.cleanup?.()) ?? destAdapter;
 
                 // The last look before anything starts moving files, and the last point at which a
                 // look is still possible: from here to transfer.run() there is no further await, so
@@ -115,7 +132,7 @@ const buildTransferHandlers = (OP, ctx) => {
                 // placeholder being dropped from the map. Reading our own object, never the map:
                 // the map no longer holds it, and whatever else may be under this id belongs to
                 // somebody else. Thrown rather than returned so the catch below hands back exactly
-                // what this call took — its registry slot and its two auxiliary clients.
+                // what this call took — its registry slot and both sides' auxiliary clients.
                 if (ownEntry.cancelled) {
                     aborted = true;
                     throw new Error("Transfer aborted");
@@ -132,20 +149,20 @@ const buildTransferHandlers = (OP, ctx) => {
                 });
 
                 const transfer = deps.createTransfer({
-                    source: deps.createAdapter(sourceClient, deps.getCapabilities(sourceEntry)),
-                    dest: deps.createAdapter(destClient, deps.getCapabilities(destEntry)),
-                    destCleanup: deps.createAdapter(
-                        deps.getConnection(ctx.sessionId)?.sftpClient, deps.getCapabilities(destEntry)),
+                    source: sourceAdapter,
+                    dest: destAdapter,
+                    destCleanup,
                     onProgress: (p) => { lastProgress = p; throttle.report(p); },
                     onConflict: (info) => broker.ask(info),
                 });
 
-                ownEntry = { transfer, broker, key, sourceSessionId };
+                ownEntry = { transfer, broker, key, releaseSource: source.release, releaseDest: dest.release };
                 transfers.set(transferId, ownEntry);
 
                 for (const entry of buildTransferAuditEntries({
-                    user: ctx.user, sourceScope, destScope, sourceEntryId: sourceEntry.id,
-                    destEntryId: destEntry.id, sourceSessionId, paths: request.paths,
+                    user: ctx.user, sourceScope: source.scope, destScope: dest.scope,
+                    sourceEntryId: source.entry?.id ?? null, destEntryId: dest.entry?.id ?? null,
+                    source: describeEndpoint(sourceEndpoint), paths: request.paths,
                     destination: request.destination, action: request.action,
                     ipAddress: ctx.ipAddress, userAgent: ctx.userAgent,
                 })) deps.createAuditLog(entry);
@@ -181,18 +198,21 @@ const buildTransferHandlers = (OP, ctx) => {
             } catch (err) {
                 // Only ever this call's own entry, compared by identity: a second start for an id
                 // that is already running lands here too, and a plain delete would disown the
-                // RUNNING transfer — its cleanup would no longer find the source session, leaving
-                // that aux connection open, and its cancel would stop reaching it.
+                // RUNNING transfer — its cleanup would no longer find the two release functions,
+                // leaving that source-side connection open, and its cancel would stop reaching it.
                 if (ownEntry && transfers.get(transferId) === ownEntry) transfers.delete(transferId);
                 if (reserved && key) {
                     // Unreachable for the same reasons as in finish() above — release() is Map work
                     // — and kept for the same reason: this is the only path that gives back what a
                     // failed or aborted setup took.
                     try { deps.registry.release(key); } catch {}
-                    for (const sessionId of [sourceSessionId, ctx.sessionId].filter(Boolean)) {
-                        // Likewise: releaseSFTPCrossTransferClient catches its own risky calls, so
-                        // nothing that reaches here can throw. One side must not cost the other.
-                        try { deps.releaseCrossClient(deps.getConnection(sessionId), key); } catch {}
+                    for (const release of [source?.release, dest?.release].filter(Boolean)) {
+                        // Individually guarded so one side failing cannot cost the other its
+                        // release. Released through the resolved endpoints themselves, because the
+                        // handler no longer knows what is behind either of them — and a release
+                        // that silently does nothing here would cost this setup its registry slot
+                        // for good, which is the cap on auxiliary connections per host.
+                        try { release(key); } catch {}
                     }
                 }
                 // An aborted setup is not a refusal: nothing was decided about this request.
@@ -242,16 +262,18 @@ const buildTransferHandlers = (OP, ctx) => {
                 if (auditPaths) {
                     try {
                         for (const entry of buildTransferAuditEntries({
-                            user: ctx.user, destScope: destScopeForAudit, sourceSessionId,
+                            user: ctx.user, destScope: destScopeForAudit,
+                            source: describeEndpoint(sourceEndpoint),
                             paths: auditPaths, ipAddress: ctx.ipAddress, userAgent: ctx.userAgent,
                             refused: true,
                         })) deps.createAuditLog(entry);
                     } catch {}
                 }
 
-                // Everything that depends on sourceSessionId must look the same from outside; only
-                // the client's own quota, a malformed payload, and an own-id collision may carry
-                // their own text — none of the three says anything a foreign session could leak.
+                // Everything that depends on the source endpoint must look the same from outside;
+                // only the client's own quota, a malformed payload, and an own-id collision may
+                // carry their own text — none of the three says anything a foreign endpoint could
+                // leak.
                 const own = /^Invalid |^Too many |^Transfer id already in use$/.test(err.message);
                 send(OP.TRANSFER_ERROR, { transferId: transferId ?? null,
                     message: own ? err.message : "Transfer not permitted" });

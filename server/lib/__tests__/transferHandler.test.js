@@ -4,6 +4,7 @@ const assert = require("node:assert");
 // The handler factory takes its heavy dependencies through ctx.deps, which makes it testable
 // without module mocking. The production path fills ctx.deps at the call site.
 const { buildTransferHandlers, CONFLICT_TIMEOUT } = require("../fileTransfer/transferHandlers");
+const { resolveSource, resolveDestination } = require("../fileTransfer/endpoints");
 const { cancelAllTransfers } = require("../../routes/sftpWS");
 
 const OP = { TRANSFER_ERROR: 0x16, TRANSFER_DONE: 0x15, TRANSFER_PROGRESS: 0x14, TRANSFER_CONFLICT: 0x18 };
@@ -33,9 +34,34 @@ const setup = (over = {}, ctxOver = {}) => {
         createAuditLog: () => {},
         ...over,
     };
+
+    // The handler asks for a resolved endpoint now, but everything BEHIND that seam is still the
+    // real endpoints.js driven by the same low-level fakes this file has always used — so a test
+    // that swaps getCrossClient, the stat behind getConnection, or authorizeSource still says
+    // exactly what it said before. A test that wants to stand in for a whole side passes
+    // resolveSource/resolveDestination through `over` instead, and those win.
+    const endpointDeps = {
+        authorizeSource: (request) => deps.authorizeSource(request),
+        authorizeDestination: (request) => deps.authorizeDestination(request),
+        getConnection: (id) => deps.getConnection(id),
+        findEntry: (id) => deps.findEntry(id),
+        getCrossClient: (...args) => deps.getCrossClient(...args),
+        releaseCrossClient: (...args) => deps.releaseCrossClient(...args),
+        createSftpAdapter: (...args) => deps.createAdapter(...args),
+        getCapabilities: (...args) => deps.getCapabilities(...args),
+        loadConnection: async (id) => ({ id, accountId: "u", status: "connected" }),
+        createOneDriveAdapter: ({ connectionId }) =>
+            ({ marker: "onedrive", connectionId, stat: async () => ({ type: "file" }) }),
+    };
+    if (!over.resolveSource) deps.resolveSource = (request) => resolveSource(endpointDeps, request);
+    if (!over.resolveDestination) deps.resolveDestination = (request) => resolveDestination(endpointDeps, request);
+
     // The two entries differ on purpose: ctx.entry is the reduced one a shared socket carries.
     const ctx = { user: { id: "u" }, sessionId: "dst", serverSession: { entryId: "e-dst" },
         entry: { id: "e-shared" }, ipAddress: "1.1.1.1", userAgent: "t", transfers, deps, ...ctxOver };
+    // Derived from whatever sessionId this ctx ended up with: several tests run two sockets against
+    // one source, and each has to carry its own endpoint.
+    ctx.endpoint = ctxOver.endpoint ?? { kind: "sftp", sessionId: ctx.sessionId };
     return { handlers: buildTransferHandlers(OP, ctx), sent, released, transfers, registry, fakeTransfer };
 };
 
@@ -800,4 +826,101 @@ test("a broker that throws while being cancelled still releases the registry slo
         global.setTimeout = realSetTimeout;
         global.clearTimeout = realClearTimeout;
     }
+});
+
+// _removePartial runs after a write failed, which is exactly when the auxiliary client may be the
+// thing that broke. Cleaning up over that same client would defeat the fallback.
+test("an sftp destination cleans up over the session's own client, not the transfer's", async () => {
+    const seen = {};
+    const s = setup({
+        createTransfer: (opts) => { seen.opts = opts; return { run: () => new Promise(() => {}), cancel() {} }; },
+        resolveDestination: async () => ({
+            scope: { organizationId: "o" }, entry: { id: "e-dst" }, probe: async () => ({ type: "file" }),
+            acquire: async () => ({ marker: "aux" }), cleanup: async () => ({ marker: "session" }),
+            release: () => {},
+        }),
+    });
+
+    await s.handlers.start({ transferId: "t1", sourceSessionId: "src", destination: "/ziel", paths: ["/a.txt"] });
+
+    assert.strictEqual(seen.opts.dest.marker, "aux");
+    assert.strictEqual(seen.opts.destCleanup.marker, "session");
+});
+
+test("a onedrive destination cleans up over itself, because there is no second connection", async () => {
+    const seen = {};
+    const s = setup({
+        createTransfer: (opts) => { seen.opts = opts; return { run: () => new Promise(() => {}), cancel() {} }; },
+        resolveDestination: async () => ({
+            scope: { organizationId: null }, entry: null, probe: async () => ({ type: "file" }),
+            acquire: async () => ({ marker: "onedrive" }), cleanup: async () => null, release: () => {},
+        }),
+    });
+
+    await s.handlers.start({ transferId: "t1", sourceSessionId: "src", destination: "/ziel", paths: ["/a.txt"] });
+
+    assert.strictEqual(seen.opts.destCleanup.marker, "onedrive");
+});
+
+// The whole point of the seam: the handler hands the descriptor on and never learns what is behind
+// it. A OneDrive source has no session and nothing to open — the destination of this very transfer
+// is still an ordinary SFTP session, so what is asserted is that exactly one auxiliary client is
+// opened and that it is the destination's.
+test("a onedrive source is passed through as a descriptor and opens no auxiliary client", async () => {
+    const seen = [];
+    const opened = [];
+    const s = setup({
+        resolveSource: async (request) => {
+            seen.push(request.endpoint);
+            return { scope: { organizationId: null }, entry: null, probe: async () => ({ type: "file" }),
+                acquire: async () => ({}), release: () => {} };
+        },
+        getCrossClient: async (sessionId) => { opened.push(sessionId); return {}; },
+    });
+
+    await s.handlers.start({ transferId: "t1", source: { kind: "onedrive", connectionId: 7 },
+        destination: "/ziel", paths: ["/a.txt"] });
+
+    assert.deepStrictEqual(seen[0], { kind: "onedrive", connectionId: 7, driveId: "me" });
+    assert.deepStrictEqual(opened, ["dst"], "a OneDrive endpoint has no connection to open");
+});
+
+// The cap on concurrent transfers is what bounds how many auxiliary connections one host can be
+// made to open. A OneDrive endpoint counts under its prefixed key so it cannot collide with a uuid.
+test("the register counts a onedrive endpoint under its prefixed key", async () => {
+    const reserved = [];
+    const s = setup({
+        registry: {
+            reserve(key, ids) { reserved.push(ids); return true; },
+            release() {}, countFor() { return 0; }, MAX_CROSS_TRANSFERS: 2,
+        },
+        resolveSource: async () => ({ scope: { organizationId: null }, entry: null,
+            probe: async () => ({ type: "file" }), acquire: async () => ({}), release: () => {} }),
+    });
+
+    await s.handlers.start({ transferId: "t1", source: { kind: "onedrive", connectionId: 7 },
+        destination: "/ziel", paths: ["/a.txt"] });
+
+    assert.deepStrictEqual(reserved[0], ["onedrive:7", "dst"]);
+});
+
+// finish() reads the entry before deleting it precisely so both release functions survive.
+test("both sides are handed back when the transfer finishes", async () => {
+    const handed = [];
+    const s = setup({
+        createTransfer: () => ({ run: async () => ({ filesTransferred: 1, bytesTransferred: 1, skipped: [] }), cancel() {} }),
+        resolveSource: async () => ({ scope: { organizationId: "o" }, entry: { id: "e-src" },
+            probe: async () => ({ type: "file" }), acquire: async () => ({}),
+            release: (key) => handed.push(["source", key]) }),
+        resolveDestination: async () => ({ scope: { organizationId: "o" }, entry: { id: "e-dst" },
+            probe: async () => ({ type: "file" }), acquire: async () => ({}),
+            release: (key) => handed.push(["dest", key]) }),
+    });
+
+    await s.handlers.start({ transferId: "t1", sourceSessionId: "src", destination: "/ziel", paths: ["/a.txt"] });
+    // The run's own promise chain settles in microtasks after start() returns; finish() sits at the
+    // end of it, as every other completion test in this file already accounts for.
+    await new Promise((r) => setImmediate(r));
+
+    assert.deepStrictEqual(handed, [["source", "dst:t1"], ["dest", "dst:t1"]]);
 });
