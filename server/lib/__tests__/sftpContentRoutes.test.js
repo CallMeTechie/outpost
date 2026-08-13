@@ -316,7 +316,11 @@ test("POST /multi success: 200, zip Content-Disposition with nexterm-download- p
     assert.match(res.headers.get("content-disposition"), /^attachment; filename="nexterm-download-.*\.zip"$/);
 });
 
-test("GET / for a folder whose file stream errors mid-archive: headers are already sent (status unchanged), but the body hangs", async () => {
+// Deliberate departure from what Task 1 characterized: this used to pin the response hanging
+// forever on a mid-archive stream failure. The plan's Global Constraints (constraint 8) name that
+// hang as a real bug and carve out this one exception — sftp.js now aborts the archive and destroys
+// the response once the headers are already staged, instead of leaving the connection open forever.
+test("GET / for a folder whose file stream errors mid-archive: the connection ends instead of hanging", async () => {
     // Modeled on EngineSftpClient.readFile's real error contract (server/lib/EngineSftpClient.js):
     // the stream gets a no-op "error" listener of its own, is destroyed with the error, and the
     // `done` promise REJECTS — it does not resolve quietly.
@@ -342,30 +346,24 @@ test("GET / for a folder whose file stream errors mid-archive: headers are alrea
     };
     const { sessionToken, sessionId } = registerSession(sftpClient);
 
-    // Surprise (see task-1-report.md): `await done` rejects inside archiveFolder's loop, which
-    // throws past `archive.finalize()` in the route handler straight to its catch block. There,
-    // handleError() sees `res.headersSent` is already true (Content-Disposition/Content-Type went
-    // out before archiveFolder started) and returns without ever calling res.end(). Separately,
-    // archiver's own queue never reaches "idle" once its source stream is destroyed instead of
-    // ending normally, so archive.finalize() would not have unstuck it even if it were reached.
-    // Net effect: the connection is left open indefinitely instead of truncating the download —
-    // this is the opposite of "the response ends" and looks like a genuine hang bug in sftp.js.
-    const controller = new AbortController();
-    const res = await fetch(downloadUrl(sessionToken, sessionId, "/remote/broken-folder"), { signal: controller.signal });
-
-    assert.strictEqual(res.status, 200, "the status was already committed before the stream error");
-    assert.strictEqual(res.headers.get("content-type"), "application/zip");
-
+    // `await done` rejects inside archiveFolder's loop as an ArchiveStreamError, which throws past
+    // `archive.finalize()` in the route handler straight to its catch block. There, res.headersSent
+    // is already true (Content-Disposition/Content-Type were staged before archiveFolder started),
+    // so the route calls archive.abort() and res.destroy() instead of falling through to
+    // handleError's silent no-op.
+    //
+    // Read off the running code rather than assumed: res.destroy() fires in the same microtask
+    // turn as the staged header write, before Node has flushed that write to the socket, so
+    // Socket#destroy discards it — the client never receives a byte, not even a status line, and
+    // sees a hard connection reset rather than a clean response with a truncated body. Either way
+    // the connection ends promptly instead of hanging, which is the one behaviour Task 1 pinned
+    // as broken; a future change that makes this resolve into a normal response is also fine, a
+    // regression to the old hang is not.
     const outcome = await Promise.race([
-        res.arrayBuffer().then(() => "completed"),
+        fetch(downloadUrl(sessionToken, sessionId, "/remote/broken-folder"))
+            .then(() => "completed", (err) => `errored: ${err.message}`),
         new Promise((resolve) => setTimeout(() => resolve("timed-out"), 400)),
     ]);
-    assert.strictEqual(outcome, "timed-out",
-        "expected the body to hang rather than complete — if this starts completing, sftp.js's " +
-        "archive-error handling changed and this test (and the report's observation) is stale");
-
-    // res.on("close") in sftp.js calls archive.abort() specifically to unstick a case like this
-    // one; aborting the client request here exercises that cleanup path instead of leaking the
-    // still-open connection past the end of the test.
-    controller.abort();
+    assert.notStrictEqual(outcome, "timed-out",
+        "the connection must end — successfully or as a reset — rather than hang forever");
 });
