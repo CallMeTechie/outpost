@@ -19,6 +19,7 @@ import { initialTransferState, transferReducer } from "./utils/transferState.js"
 import { MAX_TRANSFER_PATHS, exceedsTransferPathLimit } from "./utils/transferLimits.js";
 import { publishMoveCompleted, subscribeToMoveCompleted, paneAffectedByMove } from "./utils/moveNotifier.js";
 import { paneSocket, paneEndpoint, paneProvider } from "./utils/paneEndpoint.js";
+import { createErrorRefreshGate } from "./utils/errorRefresh.js";
 
 const REFRESH_DEBOUNCE = 150;
 
@@ -104,6 +105,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     const propertiesHandlerRef = useRef(null);
     const uploadStatsRef = useRef(createUploadStats());
     const refreshTimerRef = useRef(null);
+    const errorRefreshRef = useRef(createErrorRefreshGate());
 
     const provider = paneProvider(session);
     const source = paneEndpoint(session);
@@ -279,8 +281,11 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                     }
                     break;
                 case OPERATIONS.LIST_FILES:
-                    if (payload?.files) { setItems(payload.files); setError(null); } 
-                    else { setError("Failed to load directory contents"); setItems([]); }
+                    if (payload?.files) {
+                        setItems(payload.files);
+                        setError(null);
+                        errorRefreshRef.current.listingSucceeded();
+                    } else { setError("Failed to load directory contents"); setItems([]); }
                     setLoading(false);
                     break;
                 case OPERATIONS.CREATE_FILE:
@@ -293,10 +298,21 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                 case OPERATIONS.CHMOD:
                     scheduleRefresh();
                     break;
-                case OPERATIONS.ERROR:
-                    sendToast(t("common.error"), payload?.message || t("servers.fileManager.toast.error"));
+                case OPERATIONS.ERROR: {
+                    const message = payload?.message || t("servers.fileManager.toast.error");
+                    sendToast(t("common.error"), message);
                     setLoading(false);
+                    // A pane that never got a listing has nothing to show but this error. Leaving
+                    // the empty item list standing would read as an empty folder — for an account
+                    // whose tenant has no SharePoint licence, that is an invitation to drag
+                    // something into a drive that does not exist.
+                    if (!errorRefreshRef.current.hasListed()) setError(message);
+                    // The brake sits here, at the call site — not inside scheduleRefresh(), which
+                    // the eight successful mutations also use. Putting it there would let one
+                    // earlier error swallow the reload after a later successful rename.
+                    if (errorRefreshRef.current.errorArrived()) scheduleRefresh();
                     break;
+                }
                 case OPERATIONS.SEARCH_DIRECTORIES:
                     if (payload?.directories) setDirectorySuggestions(payload.directories);
                     break;
