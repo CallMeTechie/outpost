@@ -69,6 +69,13 @@ const createEngineSftpAdapter = (client, capabilities, { backpressure = true } =
             return client.writeFile(path, source);
         },
 
+        // sftp.js keeps calling ctx.sftpClient.thumbnail directly and does not route through here —
+        // this exists so the OneDrive content route can ask for a thumbnail through the same seam
+        // it uses for everything else, without sftp.js having to change for no benefit of its own.
+        thumbnail(path, size) {
+            return client.thumbnail(path, size);
+        },
+
         mkdirRecursive(path) {
             return client.mkdirRecursive(path);
         },

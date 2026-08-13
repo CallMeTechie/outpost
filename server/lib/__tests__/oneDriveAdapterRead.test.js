@@ -4,8 +4,12 @@ const { createOneDriveAdapter, MAX_PAGES, PAGE_SIZE } = require("../microsoft/on
 const { READ_STALL_TIMEOUT } = require("../fileTransfer/FileTransfer");
 const { createGraphClient, GRAPH_ORIGIN } = require("../microsoft/graphClient");
 
-const folder = (name, extra = {}) => ({ name, folder: {}, size: 0, lastModifiedDateTime: "2026-08-12T18:00:00Z", ...extra });
-const file = (name, size = 10) => ({ name, file: {}, size, lastModifiedDateTime: "2026-08-12T18:00:00Z" });
+const folder = (name, extra = {}) => ({
+    name, folder: {}, size: 0, lastModifiedDateTime: "2026-08-12T18:00:00Z", cTag: `ctag:${name}`, ...extra,
+});
+const file = (name, size = 10) => ({
+    name, file: {}, size, lastModifiedDateTime: "2026-08-12T18:00:00Z", cTag: `ctag:${name}`,
+});
 
 const fakeGraph = (handler) => {
     const calls = [];
@@ -82,10 +86,10 @@ test("listDir maps Graph's shape onto the one the transfer expects", async () =>
     const entries = await adapter.listDir("/");
 
     assert.deepStrictEqual(entries[0], {
-        name: "Bilder", type: "folder", size: 0, mtime: 1786557600, isSymlink: false,
+        name: "Bilder", type: "folder", size: 0, mtime: 1786557600, isSymlink: false, cTag: "ctag:Bilder",
     });
     assert.deepStrictEqual(entries[1], {
-        name: "brief.txt", type: "file", size: 42, mtime: 1786557600, isSymlink: false,
+        name: "brief.txt", type: "file", size: 42, mtime: 1786557600, isSymlink: false, cTag: "ctag:brief.txt",
     });
 });
 
@@ -147,11 +151,11 @@ test("a folder beyond the page ceiling fails instead of returning a part of itse
     await assert.rejects(adapter.listDir("/"), new RegExp(String(MAX_PAGES * PAGE_SIZE)));
 });
 
-test("stat reports the four fields the transfer reads", async () => {
+test("stat reports the five fields the transfer and the content tag both read", async () => {
     const { adapter } = adapterOn(() => ({ body: file("brief.txt", 4096) }));
 
     assert.deepStrictEqual(await adapter.stat("/brief.txt"), {
-        size: 4096, type: "file", mtime: 1786557600, isSymlink: false,
+        size: 4096, type: "file", mtime: 1786557600, isSymlink: false, cTag: "ctag:brief.txt",
     });
 });
 
