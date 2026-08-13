@@ -26,6 +26,12 @@ const getCapabilities = (entry) => {
         // connection — ftp and ftps included, which is the whole point of the word. It was
         // `shell` that answered these questions before, and `shell` is false for ftp and ftps.
         nativeFs: true,
+        // "This pane can read and write file content": download, upload, preview and the editor
+        // all go through the REST routes in routes/sftp.js, which are keyed by an SFTP session.
+        // True for every protocol that has one — which is every one getCapabilities is asked
+        // about. A provider without a session answers false and its four controls stay hidden
+        // until it has a route of its own.
+        content: true,
     };
 };
 

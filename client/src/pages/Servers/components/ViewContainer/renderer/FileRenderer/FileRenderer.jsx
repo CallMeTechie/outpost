@@ -501,6 +501,10 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
         if (e.dataTransfer.types.includes("application/x-sftp-files")) return;
         e.preventDefault();
         e.stopPropagation();
+        // A drop onto a provider that cannot take an upload is swallowed rather than ignored: the
+        // preventDefault above has to happen either way, or the browser navigates the whole
+        // application to the dropped file.
+        if (!capabilities.content) return;
         if (e.type === "dragover") setDragging(true);
         else if (e.type === "dragleave" && !dropZoneRef.current.contains(e.relatedTarget)) setDragging(false);
         else if (e.type === "drop") {

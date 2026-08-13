@@ -7,4 +7,4 @@
 // at a time, and a fallback that misses the newest one silently inverts its meaning.
 // server/lib/fileCapabilities.js is where the real answer comes from; a test pins these keys
 // against it.
-export const DEFAULT_CAPABILITIES = { shell: true, terminal: true, copy: true, nativeFs: true };
+export const DEFAULT_CAPABILITIES = { shell: true, terminal: true, copy: true, nativeFs: true, content: true };
