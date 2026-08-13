@@ -148,4 +148,7 @@ const resolveDestination = async (deps, { user, endpoint, destEntry, onConflict,
     return { scope: destScope, entry: destEntry, ...side, acquire: (key) => side.acquire(key, user) };
 };
 
-module.exports = { ENDPOINT_KINDS, parseEndpoint, endpointKey, describeEndpoint, resolveSource, resolveDestination };
+module.exports = {
+    ENDPOINT_KINDS, parseEndpoint, endpointKey, describeEndpoint, resolveSource, resolveDestination,
+    requireOwnConnection,
+};

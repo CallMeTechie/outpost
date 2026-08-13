@@ -1,6 +1,7 @@
 const { OP } = require("./sftpWS");
 const { authenticateToken } = require("../middlewares/wsAuth");
 const MicrosoftConnection = require("../models/MicrosoftConnection");
+const { requireOwnConnection } = require("../lib/fileTransfer/endpoints");
 const { graph } = require("../lib/microsoft/graphClient");
 const { createOneDriveAdapter } = require("../lib/microsoft/oneDriveAdapter");
 const logger = require("../utils/logger");
@@ -26,6 +27,36 @@ const requireName = (payload) => {
 };
 
 const joinPath = (parent, name) => `${parent.replace(/\/+$/, "")}/${name}`;
+
+// Extracted so the socket's two security properties — a strict id and the ownership question —
+// can be tested without a WebSocket, and so the ownership check itself is the SAME one
+// `resolveSource`/`resolveDestination` use in endpoints.js, not a second copy that can drift from
+// it (the earlier version reimplemented it inline and lost the try/catch around a database error,
+// which would otherwise reject out of the route and take the process down with it).
+//
+// The two failure shapes stay distinguishable on purpose: a malformed id is a client bug (4008),
+// while "not owned" must stay byte-identical whether the connection is missing, foreign,
+// disconnected, or the database itself failed (4403) — that uniformity is what stops the id from
+// becoming a probe for someone else's account.
+const resolveSocketConnection = async (rawConnectionId, user, deps = {}) => {
+    const loadConnection = deps.loadConnection ?? ((id) => MicrosoftConnection.findOne({ where: { id } }));
+
+    // As strict as parseEndpoint, and for the same reason: parseInt would accept "7abc" and " 7 "
+    // and silently mean 7. The same conceptual field must not have two validation boundaries.
+    if (!/^[1-9]\d*$/.test(rawConnectionId ?? "")) {
+        return { ok: false, code: 4008, reason: "Invalid connection ID" };
+    }
+
+    const connectionId = Number(rawConnectionId);
+
+    try {
+        await requireOwnConnection({ loadConnection }, user, connectionId);
+    } catch {
+        return { ok: false, code: 4403, reason: "This Microsoft connection is not available" };
+    }
+
+    return { ok: true, connectionId };
+};
 
 const buildOneDriveHandlers = (op, { adapter, send }) => ({
     [op.LIST_FILES]: async (payload) => {
@@ -66,27 +97,23 @@ module.exports = async (ws, req) => {
     const auth = await authenticateToken(ws, req.query?.sessionToken);
     if (!auth) return;
 
-    // As strict as parseEndpoint, and for the same reason: parseInt would accept "7abc" and " 7 "
-    // and silently mean 7. The same conceptual field must not have two validation boundaries.
-    const raw = req.query?.connectionId ?? "";
-    const connectionId = /^[1-9]\d*$/.test(raw) ? Number(raw) : NaN;
-    if (!Number.isInteger(connectionId) || connectionId <= 0) {
-        ws.close(4008, "Invalid connection ID");
-        return;
-    }
-
     // The one question a OneDrive endpoint asks — and it is answered before anything else happens,
     // so a foreign id learns nothing beyond that it was refused.
-    const connection = await MicrosoftConnection.findOne({ where: { id: connectionId } });
-    if (!connection || connection.accountId !== auth.user.id || connection.status !== "connected") {
-        ws.close(4403, "This Microsoft connection is not available");
+    const resolved = await resolveSocketConnection(req.query?.connectionId, auth.user);
+    if (!resolved.ok) {
+        ws.close(resolved.code, resolved.reason);
         return;
     }
+    const { connectionId } = resolved;
 
     const adapter = createOneDriveAdapter({ graph, connectionId });
     const send = (opCode, data) => {
         if (ws.readyState !== 1) return;
-        ws.send(Buffer.concat([Buffer.from([opCode]), Buffer.from(JSON.stringify(data))]));
+        // Guarded like sftpWS's safeSend: a throw here would escape the message listener as an
+        // unhandled rejection, and this codebase turns that into process.exit(1).
+        try {
+            ws.send(Buffer.concat([Buffer.from([opCode]), Buffer.from(JSON.stringify(data))]));
+        } catch { /* the socket went away between the check and the write */ }
     };
 
     const handlers = buildOneDriveHandlers(OP, { adapter, send, connectionId });
@@ -112,3 +139,4 @@ module.exports = async (ws, req) => {
 
 module.exports.buildOneDriveHandlers = buildOneDriveHandlers;
 module.exports.ONEDRIVE_OPS = ONEDRIVE_OPS;
+module.exports.resolveSocketConnection = resolveSocketConnection;

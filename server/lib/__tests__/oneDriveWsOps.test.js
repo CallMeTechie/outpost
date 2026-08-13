@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert");
 const { OP } = require("../../routes/sftpWS");
-const { buildOneDriveHandlers, ONEDRIVE_OPS } = require("../../routes/oneDriveWS");
+const { buildOneDriveHandlers, ONEDRIVE_OPS, resolveSocketConnection } = require("../../routes/oneDriveWS");
 
 const harness = (adapter = {}) => {
     const sent = [];
@@ -93,4 +93,35 @@ test("ONEDRIVE_OPS names exactly the offered opcodes", () => {
     const { handlers } = harness();
 
     assert.deepStrictEqual([...ONEDRIVE_OPS].sort(), Object.keys(handlers).map(Number).sort());
+});
+
+// resolveSocketConnection returns { ok:false, code, reason } rather than a bare null, so the route
+// (and this test) can tell a malformed id (4008 — a client bug) apart from a refused one (4403 —
+// missing, foreign, disconnected or a database failure, all made to look identical on purpose).
+test("a connection id is parsed as strictly as an endpoint descriptor", async () => {
+    const owned = { id: 7, accountId: 5, status: "connected" };
+    const deps = { loadConnection: async () => owned };
+
+    assert.deepStrictEqual(await resolveSocketConnection("7", { id: 5 }, deps), { ok: true, connectionId: 7 });
+
+    for (const raw of ["7abc", " 7 ", "07", "0", "-1", "+7", "7.0", "1e3", "", undefined, "0x7"]) {
+        const result = await resolveSocketConnection(raw, { id: 5 }, deps);
+        assert.strictEqual(result.ok, false, `accepted ${JSON.stringify(raw)}`);
+        assert.strictEqual(result.code, 4008, `wrong close code for ${JSON.stringify(raw)}`);
+    }
+});
+
+test("a foreign, missing or disconnected connection is refused alike", async () => {
+    for (const connection of [null, { id: 7, accountId: 6, status: "connected" }, { id: 7, accountId: 5, status: "disconnected" }]) {
+        const result = await resolveSocketConnection("7", { id: 5 }, { loadConnection: async () => connection });
+        assert.deepStrictEqual(result, { ok: false, code: 4403, reason: "This Microsoft connection is not available" });
+    }
+});
+
+test("a database failure is refused, not propagated", async () => {
+    const deps = { loadConnection: async () => { throw new Error("SELECT * FROM microsoft_connections WHERE ..."); } };
+
+    const result = await resolveSocketConnection("7", { id: 5 }, deps);
+
+    assert.deepStrictEqual(result, { ok: false, code: 4403, reason: "This Microsoft connection is not available" });
 });
