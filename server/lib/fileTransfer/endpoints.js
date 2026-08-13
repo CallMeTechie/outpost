@@ -44,7 +44,16 @@ const refuse = () => { throw new TransferNotPermittedError(); };
 const requireOwnConnection = async (deps, user, connectionId) => {
     if (!user?.id) refuse();
 
-    const connection = await deps.loadConnection(connectionId);
+    // Anything but a positive whole number is a caller that skipped parseEndpoint, and a database
+    // error must not travel out with its SQL attached — both become the same uniform refusal.
+    if (!Number.isInteger(connectionId) || connectionId <= 0) refuse();
+
+    let connection;
+    try {
+        connection = await deps.loadConnection(connectionId);
+    } catch {
+        refuse();
+    }
     if (!connection) refuse();
     if (connection.accountId !== user.id) refuse();
     if (connection.status !== "connected") refuse();
@@ -54,7 +63,9 @@ const requireOwnConnection = async (deps, user, connectionId) => {
 
 // A OneDrive drive belongs to a person, not to an organization. The audit trail accepts null, and
 // `undefined` would be read as "reduced attribute set" by the permission layer — a different thing.
-const PERSONAL_SCOPE = { organizationId: null };
+// Built fresh per call: a single shared object would be handed to every transfer at once, and one
+// caller mutating it would silently change what the next one sees.
+const personalScope = () => ({ organizationId: null });
 
 const sftpSide = (deps, endpoint, entry) => ({
     // The session's own, always-open client — deliberately NOT the auxiliary one used for the
@@ -104,8 +115,12 @@ const oneDriveSide = (deps, endpoint) => ({
 const resolveSource = async (deps, { user, endpoint, action }) => {
     if (endpoint.kind === "onedrive") {
         await requireOwnConnection(deps, user, endpoint.connectionId);
-        return { scope: PERSONAL_SCOPE, entry: null, ...oneDriveSide(deps, endpoint) };
+        return { scope: personalScope(), entry: null, ...oneDriveSide(deps, endpoint) };
     }
+
+    // Resolution never assumes validation ran: an unknown kind would otherwise fall into the SFTP
+    // branch and be contained only by the chain refusing an undefined session id.
+    if (endpoint.kind !== "sftp") refuse();
 
     const { sourceEntry, sourceScope } = await deps.authorizeSource({
         user, sourceSessionId: endpoint.sessionId, action,
@@ -118,8 +133,12 @@ const resolveSource = async (deps, { user, endpoint, action }) => {
 const resolveDestination = async (deps, { user, endpoint, destEntry, onConflict, sourceIsFolder }) => {
     if (endpoint.kind === "onedrive") {
         await requireOwnConnection(deps, user, endpoint.connectionId);
-        return { scope: PERSONAL_SCOPE, entry: null, ...oneDriveSide(deps, endpoint) };
+        return { scope: personalScope(), entry: null, ...oneDriveSide(deps, endpoint) };
     }
+
+    // Resolution never assumes validation ran: an unknown kind would otherwise fall into the SFTP
+    // branch and be contained only by the chain refusing an undefined session id.
+    if (endpoint.kind !== "sftp") refuse();
 
     const { destScope } = await deps.authorizeDestination({
         user, destSessionId: endpoint.sessionId, destEntry, onConflict, sourceIsFolder,

@@ -149,6 +149,46 @@ test("an sftp destination goes through the existing chain untouched", async () =
     assert.strictEqual(resolved.scope.organizationId, 4);
 });
 
+// _removePartial runs after a write failed over the auxiliary client, so cleaning up over that same
+// client would defeat the fallback. The session's own, always-open client is a different thing.
+test("an sftp side cleans up over the session's own client, not the auxiliary one", async () => {
+    const resolved = await resolveSource(deps({
+        getConnection: () => ({ sftpClient: { marker: "session" } }),
+        getCrossClient: async () => ({ marker: "aux" }),
+        createSftpAdapter: (client) => ({ wraps: client.marker }),
+    }), { user, endpoint: { kind: "sftp", sessionId: "s1" }, action: "copy" });
+
+    assert.deepStrictEqual(await resolved.acquire("key-1"), { wraps: "aux" });
+    assert.deepStrictEqual(await resolved.cleanup(), { wraps: "session" });
+});
+
+// There is no second connection that could be the broken one, so FileTransfer falling back to the
+// destination itself is the right answer — and null is how it is told to.
+test("a onedrive side has no separate cleanup client", async () => {
+    const resolved = await resolveSource(deps(), { user, endpoint: { kind: "onedrive", connectionId: 7 }, action: "copy" });
+
+    assert.strictEqual(await resolved.cleanup(), null);
+});
+
+// A database error must not travel out with its SQL attached: the refusal is the only thing a
+// caller ever sees, the same as a foreign or missing connection.
+test("a loadConnection failure is refused the same way as a foreign connection", async () => {
+    await assert.rejects(
+        resolveSource(deps({ loadConnection: async () => { throw new Error("SequelizeDatabaseError: relation does not exist"); } }),
+            { user, endpoint: { kind: "onedrive", connectionId: 7 }, action: "copy" }),
+        TransferNotPermittedError);
+});
+
+// A caller that skipped parseEndpoint must not reach the database at all with a non-integer id.
+test("a non-integer connection id is refused before loadConnection is called", async () => {
+    let called = false;
+    await assert.rejects(
+        resolveSource(deps({ loadConnection: async () => { called = true; return null; } }),
+            { user, endpoint: { kind: "onedrive", connectionId: "7" }, action: "copy" }),
+        TransferNotPermittedError);
+    assert.strictEqual(called, false);
+});
+
 test("a onedrive destination asks the same single question as a onedrive source", async () => {
     const resolved = await resolveDestination(deps(), { user, endpoint: { kind: "onedrive", connectionId: 7 }, onConflict: "ask", sourceIsFolder: false });
 
