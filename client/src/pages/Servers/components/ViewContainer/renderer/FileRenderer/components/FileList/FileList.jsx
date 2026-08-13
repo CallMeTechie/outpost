@@ -10,6 +10,7 @@ import { ContextMenu, ContextMenuItem, ContextMenuSeparator, useContextMenu } fr
 import { ActionConfirmDialog } from "@/common/components/ActionConfirmDialog/ActionConfirmDialog.jsx";
 import { useTranslation } from "react-i18next";
 import { usePreferences } from "@/common/contexts/PreferencesContext.jsx";
+import { useToast } from "@/common/contexts/ToastContext.jsx";
 import SelectionActionBar from "../SelectionActionBar";
 import FileItem from "./components/FileItem";
 import PropertiesDialog from "./components/PropertiesDialog";
@@ -28,6 +29,7 @@ export const FileList = forwardRef(({
 }, ref) => {
     const { t } = useTranslation();
     const { showThumbnails, showHiddenFiles, confirmBeforeDelete, dragDropAction } = usePreferences();
+    const { sendToast } = useToast();
     
     const [selectedItem, setSelectedItem] = useState(null);
     const [renamingItem, setRenamingItem] = useState(null);
@@ -90,6 +92,12 @@ export const FileList = forwardRef(({
             });
         } else if (item.type === "folder") {
             updatePath(fullPath);
+        } else if (!capabilities.content) {
+            // Preview, the editor and download all reach into the /api/entries/sftp* routes, which
+            // are bound to an SFTP session a OneDrive pane doesn't have. Routing into them anyway
+            // would still "work" — a broken image, a document that looks empty, a JSON error body
+            // saved under the file's name — three silent failures instead of one message.
+            sendToast(t("common.error"), t("servers.fileManager.error.contentUnavailable"));
         } else if (isPreviewable(item.name)) {
             setPreviewFile?.(fullPath);
         } else if (item.size < 1024 * 1024) {
@@ -97,7 +105,7 @@ export const FileList = forwardRef(({
         } else {
             downloadFile(fullPath);
         }
-    }, [path, resolveSymlink, updatePath, setPreviewFile, setCurrentFile, downloadFile]);
+    }, [path, resolveSymlink, updatePath, setPreviewFile, setCurrentFile, downloadFile, capabilities.content, sendToast, t]);
 
     const { handleCopy, handleCut, handlePaste, isItemCut } = useClipboard({
         selectedItems, selectedItem, path, copyFiles, moveFiles,

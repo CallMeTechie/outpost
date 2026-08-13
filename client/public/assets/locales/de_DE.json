@@ -2046,7 +2046,8 @@
       },
       "error": {
         "unusableSession": "Dieses Pane hat keine brauchbare Verbindung.",
-        "oneDriveDisconnected": "Dieses Microsoft-Konto ist getrennt. Unter Einstellungen → Konto neu verbinden."
+        "oneDriveDisconnected": "Dieses Microsoft-Konto ist getrennt. Unter Einstellungen → Konto neu verbinden.",
+        "contentUnavailable": "Dateiinhalte stehen für dieses Konto noch nicht zur Verfügung."
       }
     },
     "remoteDesktop": {

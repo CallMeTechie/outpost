@@ -2086,7 +2086,8 @@
       },
       "error": {
         "unusableSession": "This pane has no usable connection.",
-        "oneDriveDisconnected": "This Microsoft account is disconnected. Reconnect it under Settings → Account."
+        "oneDriveDisconnected": "This Microsoft account is disconnected. Reconnect it under Settings → Account.",
+        "contentUnavailable": "File contents are not available for this account yet."
       }
     },
     "remoteDesktop": {
