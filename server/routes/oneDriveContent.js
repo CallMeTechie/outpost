@@ -113,6 +113,16 @@ app.post("/upload", async (req, res) => {
         const ifMatch = req.headers["if-match"];
         const writeOptions = typeof ifMatch === "string" && ifMatch !== "" ? { size, ifMatch } : { size };
 
+        // Graph's path-addressed PUT does not create missing intermediate folders the way a real
+        // file system's write does — it answers a nested path with 404 itemNotFound. sftp.js's own
+        // upload creates the parent first for the same reason; this mirrors it, minus the two things
+        // that make OneDrive different: no FILES_MODIFY check to gate it on and nothing to audit,
+        // because a personal drive is not an organization-scoped resource (see oneDriveWS.js's own
+        // note on why COPY_FILES etc. go unaudited here). A root-level upload has no parent path at
+        // all, so it must not call mkdirRecursive("") — that would address the drive root itself.
+        const parentPath = remotePath.substring(0, remotePath.lastIndexOf("/"));
+        if (parentPath) await ctx.adapter.mkdirRecursive(parentPath);
+
         await ctx.adapter.writeFile(remotePath, req, writeOptions);
         // A GraphError with a 412 status is already the shape handleGraphError forwards as-is —
         // nothing more to do here for the conflict itself, see that function below.

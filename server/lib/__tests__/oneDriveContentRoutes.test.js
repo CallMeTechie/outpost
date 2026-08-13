@@ -361,6 +361,7 @@ test("POST /upload success: 200, success/path/size, size and stream both reach w
     let writtenTo = null;
     let writtenOptions = null;
     const { sessionToken, connectionId } = registerConnection({
+        mkdirRecursive: async () => {},
         writeFile: async (path, source, options) => { writtenTo = path; writtenOptions = options; source.resume(); },
     });
     const payload = "the-uploaded-bytes";
@@ -408,8 +409,44 @@ test("POST /upload without a Content-Length header: 411, its own message, writeF
     assert.strictEqual(called, false, "writeFile must not be attempted without a size to give it");
 });
 
+// Graph has no "create missing parents" on its path-addressed write — a nested upload below the
+// top level 404s unless the route creates the parent first, the way sftp.js's own upload does.
+// Both directions matter: a root-level upload has no parent at all and must not call
+// mkdirRecursive("") — that would address the drive root itself, not "nothing to create".
+test("POST /upload to a nested path: creates the parent folder before writing, in that order", async () => {
+    const calls = [];
+    const { sessionToken, connectionId } = registerConnection({
+        mkdirRecursive: async (path) => { calls.push(`mkdir:${path}`); },
+        writeFile: async (path, source) => { calls.push(`write:${path}`); source.resume(); },
+    });
+
+    const url = `${baseUrl}/upload?sessionToken=${sessionToken}&connectionId=${connectionId}` +
+        `&path=${encodeURIComponent("/a/b/c.txt")}`;
+    const res = await fetch(url, { method: "POST", body: "data" });
+
+    assert.strictEqual(res.status, 200);
+    assert.deepStrictEqual(calls, ["mkdir:/a/b", "write:/a/b/c.txt"],
+        "the parent must be created before the write, and named without the file itself");
+});
+
+test("POST /upload to a root-level path: mkdirRecursive is never called", async () => {
+    let mkdirCalled = false;
+    const { sessionToken, connectionId } = registerConnection({
+        mkdirRecursive: async () => { mkdirCalled = true; },
+        writeFile: async (path, source) => { source.resume(); },
+    });
+
+    const url = `${baseUrl}/upload?sessionToken=${sessionToken}&connectionId=${connectionId}` +
+        `&path=${encodeURIComponent("/file.txt")}`;
+    const res = await fetch(url, { method: "POST", body: "data" });
+
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(mkdirCalled, false, "a root-level upload has no parent to create");
+});
+
 test("POST /upload when Graph rejects the write: the adapter's status and message reach the client", async () => {
     const { sessionToken, connectionId } = registerConnection({
+        mkdirRecursive: async () => {},
         writeFile: async () => { throw new GraphError("Your OneDrive is full", { status: 507 }); },
     });
 
@@ -427,6 +464,7 @@ test("POST /upload when Graph rejects the write: the adapter's status and messag
 // GraphError; this is the one hop further that checks the route forwards it undisguised.
 test("POST /upload against a stale If-Match: 412 (not 500) reaches the client with Graph's own message", async () => {
     const { sessionToken, connectionId } = registerConnection({
+        mkdirRecursive: async () => {},
         writeFile: async () => { throw new GraphError("The resource has changed since the eTag was retrieved.", { status: 412 }); },
     });
 
@@ -450,6 +488,7 @@ test("POST /upload against a stale If-Match: 412 (not 500) reaches the client wi
 test("POST /upload with If-Match: reaches writeFile as ifMatch, unrelated to X-Return-Etag", async () => {
     let writtenOptions = null;
     const { sessionToken, connectionId } = registerConnection({
+        mkdirRecursive: async () => {},
         writeFile: async (path, source, options) => { writtenOptions = options; source.resume(); },
     });
 
@@ -466,6 +505,7 @@ test("POST /upload with If-Match: reaches writeFile as ifMatch, unrelated to X-R
 test("POST /upload with X-Return-Etag: the fresh tag comes back in the JSON body, one extra stat", async () => {
     let statCalls = 0;
     const { sessionToken, connectionId } = registerConnection({
+        mkdirRecursive: async () => {},
         writeFile: async (path, source) => { source.resume(); },
         stat: async () => { statCalls += 1; return { cTag: "c:fresh" }; },
     });
@@ -483,6 +523,7 @@ test("POST /upload with X-Return-Etag: the fresh tag comes back in the JSON body
 test("POST /upload WITHOUT X-Return-Etag: no etag in the response, and stat is never called at all", async () => {
     let statCalls = 0;
     const { sessionToken, connectionId } = registerConnection({
+        mkdirRecursive: async () => {},
         writeFile: async (path, source) => { source.resume(); },
         stat: async () => { statCalls += 1; return { cTag: "c:unused" }; },
     });
