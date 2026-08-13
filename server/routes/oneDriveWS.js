@@ -10,7 +10,20 @@ const logger = require("../utils/logger");
 // is missing; offering a handler that cannot work would be worse than offering none.
 const ONEDRIVE_OPS = new Set([
     OP.LIST_FILES, OP.STAT, OP.CREATE_FOLDER, OP.DELETE_FILE, OP.DELETE_FOLDER, OP.RENAME_FILE,
+    OP.MOVE_FILES, OP.COPY_FILES,
 ]);
+
+// A move or copy from the pane names a batch of source paths and a single destination folder.
+const MAX_PANE_PATHS = 256;
+
+const requirePathList = (payload) => {
+    const paths = payload?.paths;
+    if (!Array.isArray(paths) || paths.length === 0 || paths.length > MAX_PANE_PATHS) {
+        throw new Error("A list of paths is required");
+    }
+    if (paths.some((p) => typeof p !== "string" || p === "")) throw new Error("A list of paths is required");
+    return paths;
+};
 
 const requirePath = (payload) => {
     const path = payload?.path;
@@ -100,6 +113,16 @@ const buildOneDriveHandlers = (op, { adapter, send }) => ({
         const name = requireName(payload);
         await adapter.rename(path, name);
         send(op.RENAME_FILE, { path, name });
+    },
+    [op.MOVE_FILES]: async (payload) => {
+        const target = requirePath(payload);
+        for (const path of requirePathList(payload)) await adapter.move(path, target);
+        send(op.MOVE_FILES, { path: target });
+    },
+    [op.COPY_FILES]: async (payload) => {
+        const target = requirePath(payload);
+        for (const path of requirePathList(payload)) await adapter.copy(path, target);
+        send(op.COPY_FILES, { path: target });
     },
 });
 

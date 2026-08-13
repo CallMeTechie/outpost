@@ -301,6 +301,53 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
         });
     };
 
+    // Graph addresses a parent folder by its own path syntax, and the root is the empty case again.
+    const parentReference = (folder) => {
+        const segments = splitPath(folder);
+        return { path: segments.length === 0 ? "/drive/root:" : `/drive/root:/${encodeSegments(segments)}` };
+    };
+
+    // Microsoft moves the item itself: one PATCH, and not a byte through Nexterm.
+    const move = async (path, targetFolder) => {
+        await graph.request(connectionId, {
+            url: itemUrl(path),
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ parentReference: parentReference(targetFolder) }),
+        });
+    };
+
+    const MAX_COPY_POLLS = 60;
+
+    // A copy is asynchronous: Graph answers 202 with a monitor url and finishes in its own time.
+    // The url is pre-authenticated like an upload session, so it carries no token.
+    const copy = async (path, targetFolder, { pollDelayMs = 1000 } = {}) => {
+        const started = await graph.request(connectionId, {
+            url: `${itemUrl(path)}/copy`,
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ parentReference: parentReference(targetFolder) }),
+        });
+
+        const monitor = started?.headers?.get?.("location");
+        if (typeof monitor !== "string" || monitor === "") {
+            throw new GraphError("OneDrive did not provide a monitor URL for this copy");
+        }
+
+        for (let poll = 0; poll < MAX_COPY_POLLS; poll += 1) {
+            const { body } = await graph.request(connectionId, { url: monitor, anonymous: true });
+
+            if (body?.status === "completed") return;
+            if (body?.status === "failed") {
+                throw new GraphError(`OneDrive could not copy the item: ${body?.error?.message ?? "no reason given"}`);
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, pollDelayMs));
+        }
+
+        throw new GraphError("The OneDrive copy did not finish in time");
+    };
+
     return {
         // No checksum: Microsoft reports SHA-256 for personal accounts and its own quickXorHash for
         // business ones, and the SSH side can only compute the former. A guarantee that holds for
@@ -317,6 +364,8 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
         rmdir,
         checksum,
         rename,
+        move,
+        copy,
     };
 };
 

@@ -12,6 +12,9 @@ const harness = (adapter = {}) => {
             mkdirRecursive: async () => {},
             unlink: async () => {},
             rmdir: async () => {},
+            rename: async () => {},
+            move: async () => {},
+            copy: async () => {},
             ...adapter,
         },
         send: (op, data) => sent.push({ op, data }),
@@ -87,6 +90,30 @@ test("renaming asks Graph to change the name and answers when it did", async () 
 
     assert.deepStrictEqual(seen, [["/alt.txt", "neu.txt"]]);
     assert.strictEqual(sent[0].op, OP.RENAME_FILE);
+});
+
+test("moving and copying are offered and pass every path on", async () => {
+    const moved = [];
+    const copied = [];
+    const { handlers } = harness({
+        move: async (path, target) => moved.push([path, target]),
+        copy: async (path, target) => copied.push([path, target]),
+    });
+
+    await handlers[OP.MOVE_FILES]({ path: "/Ziel", paths: ["/a.txt", "/b.txt"] });
+    await handlers[OP.COPY_FILES]({ path: "/Ziel", paths: ["/c.txt"] });
+
+    assert.deepStrictEqual(moved, [["/a.txt", "/Ziel"], ["/b.txt", "/Ziel"]]);
+    assert.deepStrictEqual(copied, [["/c.txt", "/Ziel"]]);
+});
+
+test("a list that is empty, absent or absurdly long is refused", async () => {
+    const { handlers } = harness({ move: async () => { throw new Error("must not be called"); } });
+
+    for (const paths of [undefined, [], "a", [""], [42], Array.from({ length: 257 }, () => "/a.txt")]) {
+        await assert.rejects(handlers[OP.MOVE_FILES]({ path: "/Ziel", paths }), /paths/i,
+            `accepted ${JSON.stringify(Array.isArray(paths) ? paths.length : paths)}`);
+    }
 });
 
 test("ONEDRIVE_OPS names exactly the offered opcodes", () => {
