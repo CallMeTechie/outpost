@@ -1,14 +1,6 @@
 const { Permission } = require("../../permissions/registry");
 const { AUDIT_ACTIONS, RESOURCE_TYPES } = require("../../controllers/audit");
-
-class TransferNotPermittedError extends Error {
-    constructor() {
-        // Deliberately uniform: the caller must not be able to tell a missing session from a
-        // missing permission, or the source session id becomes a probe for foreign servers.
-        super("Transfer not permitted");
-        this.name = "TransferNotPermittedError";
-    }
-}
+const { TransferNotPermittedError } = require("./transferErrors");
 
 const refuse = () => { throw new TransferNotPermittedError(); };
 
