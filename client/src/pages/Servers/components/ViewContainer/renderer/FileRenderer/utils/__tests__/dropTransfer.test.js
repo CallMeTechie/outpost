@@ -1,10 +1,11 @@
 import test from "node:test";
 import assert from "node:assert";
-import { resolveDropTarget, resolveDropOutcome, runDrop, DRAG_PROVIDER, DROP_ASK, DROP_DONE, DROP_FAILED }
+import { resolveDropTarget, resolveDropOutcome, runDrop, DRAG_PROVIDERS, DROP_ASK, DROP_DONE, DROP_FAILED }
     from "../dropTransfer.js";
 
 const drag = (over = {}) => ({
-    paths: ["/src/a.txt"], items: [{ name: "a.txt" }], sessionId: "s-src", provider: DRAG_PROVIDER, ...over,
+    paths: ["/src/a.txt"], items: [{ name: "a.txt" }], sessionId: "s-src",
+    provider: "sftp", source: { kind: "sftp", sessionId: "s-src" }, ...over,
 });
 // `data` wird zuletzt gesetzt, damit ein Teil-Payload den zusammengebauten nicht ersetzt.
 const call = ({ data, ...rest } = {}) => resolveDropTarget({
@@ -15,7 +16,8 @@ test("a drop from another session becomes a transfer", () => {
     const r = call();
     assert.strictEqual(r.kind, "transfer");
     assert.strictEqual(r.sourceSessionId, "s-src");
-    assert.strictEqual(r.provider, DRAG_PROVIDER);
+    assert.strictEqual(r.provider, "sftp");
+    assert.deepStrictEqual(r.source, { kind: "sftp", sessionId: "s-src" });
     assert.deepStrictEqual(r.paths, ["/src/a.txt"]);
     assert.strictEqual(r.destination, "/dst");
 });
@@ -26,12 +28,36 @@ test("a drop from the same session stays on the existing path", () => {
     assert.strictEqual(r.sourceSessionId, undefined);
 });
 
-test("an unknown provider is refused", () => {
-    assert.strictEqual(call({ data: { provider: "onedrive" } }).kind, "reject");
+test("both providers are allowed, nothing else is", () => {
+    assert.deepStrictEqual([...DRAG_PROVIDERS].sort(), ["onedrive", "sftp"]);
+    for (const provider of ["", "http", "SFTP", null, undefined, 7, {}]) {
+        assert.strictEqual(call({ data: { provider } }).kind, "reject", String(provider));
+    }
 });
 
 test("a payload without a provider is refused, so an older pane cannot half-understand it", () => {
     assert.strictEqual(call({ data: { provider: undefined } }).kind, "reject");
+});
+
+test("a drag out of a OneDrive pane is a transfer like any other", () => {
+    const decision = call({
+        data: {
+            sessionId: "onedrive-7", provider: "onedrive",
+            source: { kind: "onedrive", connectionId: 7, driveId: "me" },
+        },
+    });
+    assert.strictEqual(decision.kind, "transfer");
+    assert.deepStrictEqual(decision.source, { kind: "onedrive", connectionId: 7, driveId: "me" });
+    assert.strictEqual(decision.sourceSessionId, "onedrive-7");
+});
+
+// Ohne diese Prüfung reicht ein Drop mit fehlender oder unbrauchbarer Quelle bis zum Server
+// durch, der ihn dann als "Transfer not permitted" abweist — der Nutzer sieht eine Ablehnung,
+// deren Ursache im Browser liegt.
+test("a payload without a usable source endpoint is refused", () => {
+    for (const source of [undefined, null, "sftp", 7, [], {}, { kind: "" }, { kind: 7 }]) {
+        assert.strictEqual(call({ data: { source } }).kind, "reject", JSON.stringify(source));
+    }
 });
 
 test("a payload without paths is refused", () => {
@@ -202,7 +228,7 @@ const handlers = (over = {}) => {
 };
 
 const localDrop = { kind: "local", paths: ["/src/a.txt"], destination: "/dst" };
-const transferDrop = { kind: "transfer", paths: ["/src/a.txt"], destination: "/dst", sourceSessionId: "s-src" };
+const transferDrop = { kind: "transfer", paths: ["/src/a.txt"], destination: "/dst", sourceSessionId: "s-src", source: { kind: "sftp", sessionId: "s-src" } };
 
 test("a move within the session goes to moveFiles and nowhere else", () => {
     const h = handlers();
@@ -234,7 +260,7 @@ test("a drop across panes goes to startTransfer with the source session and the 
     const h = handlers();
     assert.strictEqual(runDrop(transferDrop, "move", h.deps), "t-1");
     assert.deepStrictEqual(h.calls, [{ name: "startTransfer", args: [{
-        paths: ["/src/a.txt"], destination: "/dst", sourceSessionId: "s-src", action: "move" }] }]);
+        paths: ["/src/a.txt"], destination: "/dst", sourceSessionId: "s-src", source: { kind: "sftp", sessionId: "s-src" }, action: "move" }] }]);
 });
 
 test("a transfer that never started is reported as refused", () => {
@@ -248,4 +274,17 @@ test("a missing handler is not a drop that worked", () => {
     assert.strictEqual(runDrop(localDrop, "move", {}), undefined);
     assert.strictEqual(runDrop(transferDrop, "move"), undefined);
     assert.strictEqual(resolveDropOutcome("move", () => runDrop(localDrop, "move", {})), DROP_FAILED);
+});
+
+test("runDrop hands the endpoint to startTransfer, not the pane id alone", () => {
+    const seen = [];
+    const decision = {
+        kind: "transfer", paths: ["/a"], destination: "/dst",
+        sourceSessionId: "onedrive-7", source: { kind: "onedrive", connectionId: 7, driveId: "me" },
+    };
+    runDrop(decision, "copy", { startTransfer: (arg) => { seen.push(arg); return true; } });
+    assert.strictEqual(seen.length, 1);
+    assert.deepStrictEqual(seen[0].source, { kind: "onedrive", connectionId: 7, driveId: "me" });
+    assert.strictEqual(seen[0].sourceSessionId, "onedrive-7");
+    assert.strictEqual(seen[0].action, "copy");
 });

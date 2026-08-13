@@ -1,10 +1,17 @@
-// Every drag payload carries this. A receiver that does not recognize the value refuses the drop,
-// so a pane from a newer build cannot hand a half-understood payload to an older one.
+// Every drag payload carries a provider. A receiver that does not recognize the value refuses the
+// drop, so a pane from a newer build cannot hand a half-understood payload to an older one.
 //
-// This is an interop guard, NOT a security boundary: provider never reaches the server, and the
-// five-stage check in server/lib/fileTransfer/transferAuth.js is what actually decides. Anyone
-// wiring up a second provider must harden the server, not lean on this.
-export const DRAG_PROVIDER = "sftp";
+// This is an interop guard, NOT a security boundary: neither provider nor source reaches a
+// decision on the server, and the five-stage check in server/lib/fileTransfer/transferAuth.js is
+// what actually decides. Anyone wiring up a third provider must harden the server, not lean on
+// this.
+export const DRAG_PROVIDERS = new Set(["sftp", "onedrive"]);
+
+// The server is told where a transfer reads from as an endpoint descriptor. Its shape is
+// server/lib/fileTransfer/endpoints.js — all this side needs to know is that it is an object
+// naming a kind.
+const isEndpoint = (e) =>
+    !!e && typeof e === "object" && !Array.isArray(e) && typeof e.kind === "string" && e.kind.length > 0;
 
 const parentOf = (p) => p.substring(0, p.lastIndexOf("/")) || "/";
 const withoutTrailingSlash = (p) => (p.length > 1 && p.endsWith("/") ? p.slice(0, -1) : p);
@@ -24,8 +31,8 @@ export const resolveDropTarget = ({ data, sessionId, destination, excludeName, c
     if (!data.paths.every((p) => typeof p === "string" && p.length > 0)) return REJECT;
     if (data.items !== undefined && !Array.isArray(data.items)) return REJECT;
     if (typeof data.sessionId !== "string" || data.sessionId.length === 0) return REJECT;
-
-    if (data.provider !== DRAG_PROVIDER) return REJECT;
+    if (typeof data.provider !== "string" || !DRAG_PROVIDERS.has(data.provider)) return REJECT;
+    if (!isEndpoint(data.source)) return REJECT;
 
     // Dropping a folder onto itself. Checked before the session split because it is nonsense
     // either way.
@@ -34,7 +41,9 @@ export const resolveDropTarget = ({ data, sessionId, destination, excludeName, c
     if (data.sessionId !== sessionId) {
         return {
             kind: "transfer", paths: data.paths, destination,
-            sourceSessionId: data.sessionId, provider: data.provider,
+            // sourceSessionId is this browser's pane identity and stays; source is what the
+            // server is told. They are not interchangeable — see the plan's table.
+            sourceSessionId: data.sessionId, source: data.source, provider: data.provider,
         };
     }
 
@@ -71,7 +80,7 @@ export const runDrop = (decision, action, { startTransfer, moveFiles, copyFiles 
     if (decision.kind === "transfer") {
         return startTransfer?.({
             paths: decision.paths, destination: decision.destination,
-            sourceSessionId: decision.sourceSessionId, action,
+            sourceSessionId: decision.sourceSessionId, source: decision.source, action,
         });
     }
     return action === "move"
