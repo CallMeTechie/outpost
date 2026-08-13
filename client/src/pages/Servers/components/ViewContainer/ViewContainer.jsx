@@ -432,6 +432,7 @@ export const ViewContainer = ({
                                       layoutMode={layoutMode} onBroadcastToggle={toggleBroadcastMode}
                                       onFullscreenToggle={toggleFullscreenMode} />;
             case "sftp":
+            case "onedrive":
                 return <FileRenderer session={session} disconnectFromServer={disconnectFromServer}
                                      setOpenFileEditors={setOpenFileEditors} isActive={session.id === activeSessionId}
                                      onOpenTerminal={(path) => openTerminalFromFileManager?.(session.id, path)} />;
@@ -518,7 +519,9 @@ export const ViewContainer = ({
     };
 
     const renderAllSessions = () => activeSessions.map(session => {
-        if (!session?.server) return null;
+        // A OneDrive session has no `server` — its identity is the Microsoft connection id — so the
+        // guard that used to mean "not ready yet" would otherwise hide it from the layout forever.
+        if (!session?.server && session?.type !== "onedrive") return null;
         const isVisible = layoutMode === "single" ? session.id === activeSessionId : gridSessions.includes(session.id);
         return (
             <div key={session.id} ref={el => sessionRefs.current[session.id] = el}

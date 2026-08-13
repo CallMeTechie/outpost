@@ -23,6 +23,11 @@ import { isTauri } from "@/common/utils/TauriUtil.js";
 import { getTabId, getBrowserId, requiresIdentity, canConnectWithoutPrompt } from "@/common/utils/ConnectionUtil.js";
 import { postRequest, deleteRequest } from "@/common/utils/RequestUtil";
 
+// A session the server does not know about: it lives in this browser only. The poll below
+// replaces the session list with what the server reports, so anything matching this has to be
+// carried over by hand — otherwise it vanishes without anyone closing it.
+const isLocalSession = (session) => session?.type === "notes" || session?.type === "onedrive";
+
 export const Servers = () => {
 
     const [serverDialogOpen, setServerDialogOpen] = useState(false);
@@ -114,14 +119,14 @@ export const Servers = () => {
 
         setActiveSessions(prev => {
             const prevMap = new Map(prev.map(s => [s.id, s]));
-            const localOnly = prev.filter(s => s.type === "notes" || s.isJoined);
+            const localOnly = prev.filter(s => isLocalSession(s) || s.isJoined);
             const merged = activeMapped.map(newSession => {
                 const existing = prevMap.get(newSession.id);
                 return existing ? { ...newSession, scriptId: existing.scriptId || newSession.scriptId, scriptName: existing.scriptName, osName: newSession.osName || existing.osName } : newSession;
             });
             const mergedIds = new Set(merged.map(s => s.id));
             const erroredPinned = prev.filter(s =>
-                erroredSessionsRef.current.has(s.id) && !mergedIds.has(s.id) && s.type !== "notes"
+                erroredSessionsRef.current.has(s.id) && !mergedIds.has(s.id) && !isLocalSession(s)
             );
             mergedSessions = [...merged, ...erroredPinned, ...localOnly];
             return mergedSessions;
@@ -392,7 +397,7 @@ export const Servers = () => {
 
     const closeSession = (sessionId) => {
         const session = activeSessions.find(s => s.id === sessionId);
-        if (session?.type !== "notes" && !session?.isJoined) {
+        if (!isLocalSession(session) && !session?.isJoined) {
             closingSessionsRef.current.add(sessionId);
             deleteRequest(`/connections/${sessionId}`).catch(error => {
                 console.debug("Session deletion request failed:", error);
@@ -425,6 +430,30 @@ export const Servers = () => {
 
         setActiveSessions(prev => [...prev, sessionData]);
         setActiveSessionId(notesId);
+    };
+
+    // No POST /connections and no session on the server: the connection id IS the identity. That
+    // is also why opening the same account twice lands on the tab that is already open, the same
+    // way two clicks on one server are not meant to produce two sessions.
+    const openOneDrive = (connection) => {
+        if (!connection || connection.status !== "connected") return;
+
+        const sessionId = `onedrive-${connection.id}`;
+        if (activeSessions.some(s => s.id === sessionId)) {
+            setActiveSessionId(sessionId);
+            return;
+        }
+
+        setActiveSessions(prev => [...prev, {
+            id: sessionId,
+            type: "onedrive",
+            oneDrive: {
+                connectionId: connection.id,
+                displayName: connection.displayName,
+                microsoftEmail: connection.microsoftEmail,
+            },
+        }]);
+        setActiveSessionId(sessionId);
     };
 
     const hibernateSession = async (sessionId) => {
@@ -616,7 +645,7 @@ export const Servers = () => {
                             hibernatedSessions={hibernatedSessions} resumeSession={resumeConnection}
                             joinLiveSession={joinLiveSession}
                             openDirectConnect={openDirectConnect} runScript={runScript}
-                            openNotes={openNotes}
+                            openNotes={openNotes} openOneDrive={openOneDrive}
                             openPortForward={isTauri() ? openPortForward : undefined}
                             mobileOpen={mobileServerListOpen} setMobileOpen={setMobileServerListOpen} />,
                 leftPaneSlot
