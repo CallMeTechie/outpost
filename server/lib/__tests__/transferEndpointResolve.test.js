@@ -189,6 +189,32 @@ test("a non-integer connection id is refused before loadConnection is called", a
     assert.strictEqual(called, false);
 });
 
+// One shared scope object would be handed to every transfer at once, and a caller mutating what it
+// received would silently change what the next one sees.
+test("each resolve hands out its own scope object", async () => {
+    const first = await resolveSource(deps(), { user, endpoint: { kind: "onedrive", connectionId: 7 }, action: "copy" });
+    first.scope.organizationId = 999;
+
+    const second = await resolveSource(deps(), { user, endpoint: { kind: "onedrive", connectionId: 7 }, action: "copy" });
+
+    assert.deepStrictEqual(second.scope, { organizationId: null });
+    assert.notStrictEqual(second.scope, first.scope);
+});
+
+// Resolution must not assume parseEndpoint ran: an unknown kind would otherwise fall into the SFTP
+// branch and be contained only by the chain happening to refuse an undefined session id.
+test("an endpoint of an unknown kind is refused before the chain is reached", async () => {
+    let chainCalls = 0;
+    const d = deps({ authorizeSource: async () => { chainCalls += 1; return {}; } });
+
+    for (const kind of ["ftp", "OneDrive", "", undefined]) {
+        await assert.rejects(resolveSource(d, { user, endpoint: { kind, sessionId: "s1" }, action: "copy" }),
+            TransferNotPermittedError, `accepted ${JSON.stringify(kind)}`);
+    }
+
+    assert.strictEqual(chainCalls, 0, "nothing may reach the sftp chain");
+});
+
 test("a onedrive destination asks the same single question as a onedrive source", async () => {
     const resolved = await resolveDestination(deps(), { user, endpoint: { kind: "onedrive", connectionId: 7 }, onConflict: "ask", sourceIsFolder: false });
 
