@@ -81,18 +81,10 @@ const fakeStream = () => {
     };
 };
 
-const fakeAdapter = (stream, size = 3) => ({
-    stat: async () => ({ size }),
-    readFile: () => ({ stream }),
-});
-
-test("sendFile applies the content headers to the response in order", async () => {
-    const res = fakeRes();
-    await sendFile(fakeAdapter(fakeStream(), 12), res, "/a/report.pdf", { preview: false });
-    assert.deepStrictEqual(Object.keys(res.headers), ["Content-Disposition", "Content-Length", "Content-Type"]);
-    assert.strictEqual(res.headers["Content-Length"], 12);
-    assert.strictEqual(res.headers["Content-Type"], MIME_TYPES.pdf);
-});
+// sendFile takes no stat of its own — the caller already has stats and builds headers from them
+// with contentHeaders. These tests exercise only the stream/response wiring: an adapter that
+// hands back a stream is all sendFile needs.
+const fakeAdapter = (stream) => ({ readFile: () => ({ stream }) });
 
 // Task 2 found that a destroyed stream left in archiver's queue hangs a ZIP forever. The
 // single-file path has its own version of that risk: without this guard, a stream error leaves
@@ -100,7 +92,7 @@ test("sendFile applies the content headers to the response in order", async () =
 test("a stream error before any bytes flowed ends the response instead of leaving it open", async () => {
     const stream = fakeStream();
     const res = fakeRes();
-    await sendFile(fakeAdapter(stream), res, "/a/b.txt", { preview: false });
+    await sendFile(fakeAdapter(stream), res, "/a/b.txt");
     stream.fail(new Error("disk error"));
     assert.strictEqual(res.ended, true);
 });
@@ -110,7 +102,7 @@ test("a stream error before any bytes flowed ends the response instead of leavin
 test("the response closing destroys the stream instead of leaking it", async () => {
     const stream = fakeStream();
     const res = fakeRes();
-    await sendFile(fakeAdapter(stream), res, "/a/b.txt", { preview: false });
+    await sendFile(fakeAdapter(stream), res, "/a/b.txt");
     res.close();
     assert.strictEqual(stream.destroyed, true);
 });
@@ -120,7 +112,7 @@ test("the response closing destroys the stream instead of leaking it", async () 
 test("a stream error after headers were already sent does not attempt to set a status", async () => {
     const stream = fakeStream();
     const res = fakeRes();
-    await sendFile(fakeAdapter(stream), res, "/a/b.txt", { preview: false });
+    await sendFile(fakeAdapter(stream), res, "/a/b.txt");
     res.end();
     stream.fail(new Error("disk error"));
     assert.strictEqual(res.statusCalls, 0);

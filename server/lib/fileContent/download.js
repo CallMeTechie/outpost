@@ -30,11 +30,12 @@ const contentHeaders = ({ fileName, size, ext, preview }) => {
     return headers;
 };
 
-const sendFile = async (adapter, res, path, { preview } = {}) => {
-    const stats = await adapter.stat(path);
-    const headers = contentHeaders({ fileName: getFileName(path), size: stats.size, ext: getExt(path), preview });
-    for (const [name, value] of Object.entries(headers)) res.header(name, value);
-
+// The caller already has stats by the time it gets here — sftp.js's download branch stats once
+// and reuses it for the folder check, the thumbnail size gate and the headers. Statting again
+// here would cost the Graph adapter a second round trip, and open a window for the file to
+// change between the two calls. So sendFile takes no stat of its own and sets no headers — it is
+// pure streaming; the caller builds the headers from the stats it already has.
+const sendFile = async (adapter, res, path) => {
     const { stream } = adapter.readFile(path);
     // A stream error after headers are already on the wire cannot change the status code — the
     // best this can do is stop the response from staying open and stop the stream from leaking.
