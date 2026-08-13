@@ -507,8 +507,15 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
         }
     };
 
-    const searchDirectories = (searchPath) => sendOperation(OPERATIONS.SEARCH_DIRECTORIES, { searchPath });
-    const resolveSymlink = (path, callback) => { symlinkCallbacks.current.push(callback); sendOperation(OPERATIONS.RESOLVE_SYMLINK, { path }); };
+    const searchDirectories = (searchPath) =>
+        capabilities.shell && sendOperation(OPERATIONS.SEARCH_DIRECTORIES, { searchPath });
+    // Without the guard the callback is pushed onto a queue nothing will ever drain: OneDrive has
+    // no symlinks, so the answer this waits for never arrives.
+    const resolveSymlink = (path, callback) => {
+        if (!capabilities.shell) return;
+        symlinkCallbacks.current.push(callback);
+        sendOperation(OPERATIONS.RESOLVE_SYMLINK, { path });
+    };
 
     const handleOpenFile = (filePath) => setOpenFileEditors(prev => [...prev, { id: `${session.id}-${filePath}-${Date.now()}`, file: filePath, session, type: 'editor' }]);
     const handleOpenPreview = (filePath) => setOpenFileEditors(prev => [...prev, { id: `${session.id}-${filePath}-${Date.now()}`, file: filePath, session, type: 'preview' }]);

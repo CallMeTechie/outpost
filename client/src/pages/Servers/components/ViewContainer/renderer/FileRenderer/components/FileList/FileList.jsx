@@ -21,7 +21,7 @@ export const FileList = forwardRef(({
     setCurrentFile, setPreviewFile, loading, viewMode = "list", error,
     resolveSymlink, session, createFile, createFolder, moveFiles, copyFiles, startTransfer, isActive,
     onOpenTerminal, onPropertiesMessage, searchQuery = "", onSearchResults,
-    capabilities = { shell: true, terminal: true },
+    capabilities = { shell: true, terminal: true, copy: true },
     provider, source,
 }, ref) => {
     const { t } = useTranslation();
@@ -181,7 +181,7 @@ export const FileList = forwardRef(({
                 <div className="file-list-header">
                     <div className="header-name">{t("servers.fileManager.header.name")}</div>
                     <div className="header-size">{t("servers.fileManager.header.size")}</div>
-                    <div className="header-permissions">{t("servers.fileManager.header.permissions")}</div>
+                    {capabilities.shell && <div className="header-permissions">{t("servers.fileManager.header.permissions")}</div>}
                     <div className="header-date">{t("servers.fileManager.header.modified")}</div>
                     <div className="header-actions"></div>
                 </div>
@@ -253,6 +253,7 @@ export const FileList = forwardRef(({
                             isDropTarget={dropTarget === item.name}
                             isCut={isItemCut(`${path}/${item.name}`)}
                             showThumbnails={showThumbnails}
+                            capabilities={capabilities}
                             highlight={query}
                             renameValue={renameValue}
                             onRenameChange={(e) => setRenameValue(e.target.value)}
@@ -306,7 +307,7 @@ export const FileList = forwardRef(({
             </ContextMenu>
 
             <ContextMenu isOpen={emptyContextMenu.isOpen} position={emptyContextMenu.position} onClose={emptyContextMenu.close} trigger={emptyContextMenu.triggerRef}>
-                <ContextMenuItem icon={mdiFilePlus} label={t("servers.fileManager.contextMenu.newFile")} onClick={startCreateFile} />
+                {capabilities.shell && <ContextMenuItem icon={mdiFilePlus} label={t("servers.fileManager.contextMenu.newFile")} onClick={startCreateFile} />}
                 <ContextMenuItem icon={mdiFolderPlus} label={t("servers.fileManager.contextMenu.newFolder")} onClick={startCreateFolder} />
                 <ContextMenuSeparator />
                 <ContextMenuItem icon={mdiFileDownload} label={t("servers.fileManager.contextMenu.downloadFolder")} onClick={() => downloadFile(path)} />
@@ -316,10 +317,12 @@ export const FileList = forwardRef(({
 
             <ContextMenu isOpen={dropMenu.isOpen} position={dropMenu.position} onClose={() => { dropMenu.close(); setPendingDrop(null); }}>
                 <ContextMenuItem icon={mdiFileMove} label={t("servers.fileManager.contextMenu.moveHere")} onClick={() => handleDropAction("move", clearSelection, dropMenu.close)} />
-                {/* A copy within the session shells out to `cp -r` and needs one; a copy across
-                    pane boundaries streams over SFTP and does not. Without the second half the same
-                    drop offered copying or not depending on the drag-and-drop preference alone. */}
-                {(capabilities.shell || pendingDrop?.kind === "transfer") && <ContextMenuItem icon={mdiContentCopy} label={t("servers.fileManager.contextMenu.copyHere")} onClick={() => handleDropAction("copy", clearSelection, dropMenu.close)} />}
+                {/* A copy within the session shells out to `cp -r` on a server and needs one, but
+                    OneDrive does it with a Graph call — hence `copy` rather than `shell`. A copy
+                    across pane boundaries streams over the transfer seam and needs neither.
+                    Without the second half the same drop offered copying or not depending on the
+                    drag-and-drop preference alone. */}
+                {(capabilities.copy || pendingDrop?.kind === "transfer") && <ContextMenuItem icon={mdiContentCopy} label={t("servers.fileManager.contextMenu.copyHere")} onClick={() => handleDropAction("copy", clearSelection, dropMenu.close)} />}
             </ContextMenu>
 
             <div className="drag-preview" ref={dragImageRef}>

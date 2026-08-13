@@ -35,6 +35,7 @@ export const FileItem = memo(({
                                   onDragLeave,
                                   onDrop,
                                   itemRef,
+                                  capabilities = { shell: true },
                               }) => {
     const { t } = useTranslation();
     const { sessionToken } = useContext(UserContext);
@@ -121,10 +122,12 @@ export const FileItem = memo(({
             {viewMode === "list" && (
                 <>
                     <p className="file-size">{item.type === "file" && convertUnits(item.size)}</p>
-                    <p className="file-permissions"
-                       title={`${formatOctal(item.mode)} - ${formatPermissionsString(item.mode)}`}>
-                        <span className="perms-text">{formatPermissionsString(item.mode)}</span>
-                    </p>
+                    {capabilities.shell && (
+                        <p className="file-permissions"
+                           title={`${formatOctal(item.mode)} - ${formatPermissionsString(item.mode)}`}>
+                            <span className="perms-text">{formatPermissionsString(item.mode)}</span>
+                        </p>
+                    )}
                     <p className="file-date">{new Date(item.last_modified * 1000).toLocaleDateString()}</p>
                 </>
             )}

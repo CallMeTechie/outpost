@@ -49,7 +49,7 @@ export const ActionBar = ({
                               setSearchOpen,
                               closeSearch,
                               searchResultCount,
-                              capabilities = { shell: true },
+                              capabilities = { shell: true, copy: true },
                           }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editPath, setEditPath] = useState(path);
@@ -355,7 +355,7 @@ export const ActionBar = ({
                                onChange={(e) => setEditPath(e.target.value)} onKeyDown={handleInputKeyDown}
                                onBlur={handleInputBlur} placeholder={t("servers.fileManager.actionBar.enterDirectory")} autoComplete="off"
                                spellCheck="false" />
-                        {showSuggestions && directorySuggestions.length > 0 && (
+                        {capabilities.shell && showSuggestions && directorySuggestions.length > 0 && (
                             <div className="suggestions-dropdown" ref={suggestionsRef}>
                                 {directorySuggestions.map((s, i) => (
                                     <div className={`suggestion-item ${i === selectedSuggestion ? "selected" : ""}`}
@@ -401,16 +401,18 @@ export const ActionBar = ({
                 <Icon path={mdiRefresh} onClick={refreshFiles} title={t("servers.fileManager.actionBar.refresh")} />
                 <Icon path={mdiFileUpload} onClick={uploadFile} title={t("servers.fileManager.actionBar.uploadFile")} />
                 <Icon path={mdiFolderUpload} onClick={uploadFolder} title={t("servers.fileManager.actionBar.uploadFolder")} />
-                <Icon path={mdiFilePlus} onClick={createFile} />
+                {capabilities.shell && <Icon path={mdiFilePlus} onClick={createFile} />}
                 <Icon path={mdiFolderPlus} onClick={createFolder} />
             </div>
 
             <ContextMenu isOpen={dropMenu.isOpen} position={dropMenu.position} onClose={() => { dropMenu.close(); setPendingDrop(null); }}>
                 <ContextMenuItem icon={mdiFileMove} label={t("servers.fileManager.contextMenu.moveHere")} onClick={() => handleDropAction("move")} />
-                {/* A copy within the session shells out to `cp -r` and needs one; a copy across
-                    pane boundaries streams over SFTP and does not. Without the second half the same
-                    drop offered copying or not depending on the drag-and-drop preference alone. */}
-                {(capabilities.shell || pendingDrop?.kind === "transfer") && <ContextMenuItem icon={mdiContentCopy} label={t("servers.fileManager.contextMenu.copyHere")} onClick={() => handleDropAction("copy")} />}
+                {/* A copy within the session shells out to `cp -r` on a server and needs one, but
+                    OneDrive does it with a Graph call — hence `copy` rather than `shell`. A copy
+                    across pane boundaries streams over the transfer seam and needs neither.
+                    Without the second half the same drop offered copying or not depending on the
+                    drag-and-drop preference alone. */}
+                {(capabilities.copy || pendingDrop?.kind === "transfer") && <ContextMenuItem icon={mdiContentCopy} label={t("servers.fileManager.contextMenu.copyHere")} onClick={() => handleDropAction("copy")} />}
             </ContextMenu>
         </div>
     );

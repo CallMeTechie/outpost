@@ -501,6 +501,7 @@ export const Servers = () => {
                 console.error("Original session not found");
                 return;
             }
+            if (!originalSession.server) return; // OneDrive sessions have no server to open a terminal on.
 
             const payload = {
                 entryId: originalSession.server.id,
