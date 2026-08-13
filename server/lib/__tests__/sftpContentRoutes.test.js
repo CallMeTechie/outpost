@@ -138,9 +138,10 @@ const downloadUrl = (sessionToken, sessionId, path, extra = "") =>
 
 test("GET / with an existing file: 200, both filename forms, matching Content-Length and MIME type", async () => {
     const content = Buffer.from("hello world");
+    let readFileOptions = null;
     const sftpClient = {
         stat: async () => ({ isDir: false, size: content.length }),
-        readFile: () => ({ stream: Readable.from(content) }),
+        readFile: (path, options) => { readFileOptions = options; return { stream: Readable.from(content) }; },
     };
     const { sessionToken, sessionId } = registerSession(sftpClient);
 
@@ -155,6 +156,13 @@ test("GET / with an existing file: 200, both filename forms, matching Content-Le
     assert.match(disposition, /filename="report\.txt"/);
     assert.match(disposition, /filename\*=UTF-8''report\.txt/);
     assert.strictEqual(body, "hello world");
+    // Guards the Task 4 Critical fix: sftp.js must build its adapter with { backpressure: false },
+    // or a slow HTTP client pauses the whole multiplexed SFTP socket and freezes every other
+    // request sharing it (see engineSftpAdapter.js's readFile and sftp.js's validateSession).
+    // Without this assertion, deleting that option from sftp.js:73 left every test in this file
+    // green — the option only changes what readFile is called WITH, not what it returns.
+    assert.strictEqual(readFileOptions?.backpressure, false,
+        "sftp.js must construct its adapter with backpressure disabled");
 });
 
 test("GET / with preview=true: 200, Content-Disposition is inline", async () => {
