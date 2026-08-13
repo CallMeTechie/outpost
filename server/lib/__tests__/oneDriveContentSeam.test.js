@@ -3,6 +3,7 @@ const assert = require("node:assert");
 const { Readable } = require("node:stream");
 const { createOneDriveAdapter, pickThumbnailStep } = require("../microsoft/oneDriveAdapter");
 const { createGraphClient } = require("../microsoft/graphClient");
+const { SIMPLE_UPLOAD_LIMIT } = require("../microsoft/oneDriveUpload");
 
 const adapterOn = (handler) => {
     const calls = [];
@@ -75,6 +76,32 @@ test("writeFile against a 412 throws with the message readGraphMessage produced"
         adapter.writeFile("/a.txt", Buffer.alloc(4, 1), { ifMatch: "c:old" }),
         /resource has changed since the eTag was retrieved/,
     );
+});
+
+// The chunked path has no conditional header of its own today — see the comment at the guard's
+// call site in oneDriveAdapter.js. A caller asking for one on a file this size must be refused
+// loudly rather than getting a passthrough nobody has verified actually guards anything.
+test("writeFile with an ifMatch option refuses a file above the simple-upload limit", async () => {
+    const size = SIMPLE_UPLOAD_LIMIT + 1;
+    const { calls, adapter } = adapterOn(() => ({ body: { uploadUrl: "https://upload.example/s" } }));
+
+    await assert.rejects(
+        adapter.writeFile("/gross.bin", streamOf(Buffer.alloc(size, 1)), { size, ifMatch: "c:old" }),
+        /conditional/i,
+    );
+    assert.strictEqual(calls.length, 0, "a condition that cannot be enforced must not reach Graph at all");
+});
+
+test("writeFile without ifMatch still runs a large file through the chunked path", async () => {
+    const size = SIMPLE_UPLOAD_LIMIT + 1;
+    const { calls, adapter } = adapterOn((options) => (options.method === "POST"
+        ? { body: { uploadUrl: "https://upload.example/s" } }
+        : { status: 202, body: {} }));
+
+    await adapter.writeFile("/gross.bin", streamOf(Buffer.alloc(size, 1)), { size });
+
+    assert.strictEqual(calls[0].method, "POST");
+    assert.match(calls[0].url, /createUploadSession$/);
 });
 
 // --- thumbnail: size -> step, fetch the URL, return bytes --------------------------------------

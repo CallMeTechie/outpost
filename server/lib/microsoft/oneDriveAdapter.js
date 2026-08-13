@@ -255,11 +255,21 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
             return;
         }
 
-        // Large uploads (> 4 MiB) go through an upload session and carry no conditional header
-        // today — the editor this guard exists for saves text files, which stay well under the
-        // simple-upload limit. Extending the guard to the session path is future work, not a
-        // silent gap in this one: a caller that passes `ifMatch` for a large file gets an
-        // unconditional write, same as before this task.
+        // Graph's upload session CAN carry a condition of its own (an If-Match on session
+        // creation), and that would be the better long-term answer for a large conditional write.
+        // But nothing reachable from here can prove that header actually guards a real account —
+        // the identical gap Step 1 named for cTag itself — and a condition that is silently
+        // ignored is worse than no condition at all: it looks like protection and is not one. So a
+        // caller asking for one on a file this size is told plainly, loudly, before a single byte
+        // moves, rather than getting a passthrough nobody has verified. The editor this guard
+        // exists for never reaches this branch — it only ever opens files under 1 MB, well inside
+        // SIMPLE_UPLOAD_LIMIT — so this is a stated boundary, not a live limitation on anyone today.
+        if (typeof options.ifMatch === "string" && options.ifMatch !== "") {
+            throw new GraphError(
+                `OneDrive cannot make a conditional write for a ${size} byte file — If-Match is `
+                + "only supported at or under the simple-upload limit",
+            );
+        }
 
         await uploadLarge({
             graph, connectionId, itemPath: target, size, signal: controller.signal,
