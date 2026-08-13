@@ -214,8 +214,9 @@ const createCloseHandler = (transfers) => () => cancelAllTransfers(transfers);
 // Same vocabulary as fileCapabilities.getCapabilities — pinned by a test, because the previous
 // version of this line answered with `checksum` (which nothing reads) and omitted `terminal`
 // (which several menus do). OneDrive has no shell and no terminal, but COPY_FILES is a Graph
-// call and belongs to ONEDRIVE_OPS, so `copy` is true.
-const ONEDRIVE_CAPABILITIES = { shell: false, terminal: false, copy: true };
+// call and belongs to ONEDRIVE_OPS, so `copy` is true. `nativeFs` is false: no empty files, no
+// directory completion, no symbolic links, no POSIX permissions behind a drive.
+const ONEDRIVE_CAPABILITIES = { shell: false, terminal: false, copy: true, nativeFs: false };
 
 module.exports = async (ws, req) => {
     const auth = await authenticateToken(ws, req.query?.sessionToken);

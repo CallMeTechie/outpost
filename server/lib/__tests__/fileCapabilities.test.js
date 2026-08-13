@@ -6,17 +6,17 @@ const { ONEDRIVE_CAPABILITIES } = require("../../routes/oneDriveWS");
 // Note: sftp has a shell but no terminal — TERMINAL_LESS_PROTOCOLS contains "sftp".
 test("sftp entries have a shell but no terminal", () => {
     const caps = getCapabilities({ type: "server", config: { protocol: "sftp" } });
-    assert.deepStrictEqual(caps, { shell: true, terminal: false, copy: true });
+    assert.deepStrictEqual(caps, { shell: true, terminal: false, copy: true, nativeFs: true });
 });
 
 test("ssh entries have both", () => {
     const caps = getCapabilities({ type: "server", config: { protocol: "ssh" } });
-    assert.deepStrictEqual(caps, { shell: true, terminal: true, copy: true });
+    assert.deepStrictEqual(caps, { shell: true, terminal: true, copy: true, nativeFs: true });
 });
 
 test("ftp entries have neither", () => {
     assert.deepStrictEqual(getCapabilities({ type: "server", config: { protocol: "ftp" } }),
-        { shell: false, terminal: false, copy: false });
+        { shell: false, terminal: false, copy: false, nativeFs: true });
 });
 
 test("ftps entries have no shell", () => {
@@ -50,10 +50,30 @@ test("copy follows shell for every protocol that exists today", () => {
     }
 });
 
+// The word this replaces was `shell`, which is false for ftp and ftps — two protocols on the same
+// engine client, in production, that do have empty files, directory completion, symbolic links and
+// permissions. Pinned per protocol so that "is this OneDrive?" cannot be smuggled onto it again.
+test("every server protocol that exists today has a native file system behind it", () => {
+    for (const protocol of ["ssh", "sftp", "ftp", "ftps"]) {
+        assert.strictEqual(getCapabilities(server(protocol)).nativeFs, true, protocol);
+    }
+    assert.strictEqual(ONEDRIVE_CAPABILITIES.nativeFs, false);
+});
+
+// The pane falls back to this before READY arrives. A fallback that misses the newest word inverts
+// its meaning, which is the exact failure the words themselves are meant to prevent.
+test("the pane's fallback speaks the same vocabulary and grants everything", async () => {
+    const { DEFAULT_CAPABILITIES } = await import(
+        "../../../client/src/pages/Servers/components/ViewContainer/renderer/FileRenderer/utils/paneCapabilities.js");
+
+    assert.deepStrictEqual(Object.keys(DEFAULT_CAPABILITIES).sort(), Object.keys(getCapabilities(server("ssh"))).sort());
+    assert.ok(Object.values(DEFAULT_CAPABILITIES).every((value) => value === true));
+});
+
 test("ssh keeps all three, ftp keeps none of the two that need a shell", () => {
-    assert.deepStrictEqual(getCapabilities(server("ssh")), { shell: true, terminal: true, copy: true });
-    assert.deepStrictEqual(getCapabilities(server("ftp")), { shell: false, terminal: false, copy: false });
-    assert.deepStrictEqual(getCapabilities(server("sftp")), { shell: true, terminal: false, copy: true });
+    assert.deepStrictEqual(getCapabilities(server("ssh")), { shell: true, terminal: true, copy: true, nativeFs: true });
+    assert.deepStrictEqual(getCapabilities(server("ftp")), { shell: false, terminal: false, copy: false, nativeFs: true });
+    assert.deepStrictEqual(getCapabilities(server("sftp")), { shell: true, terminal: false, copy: true, nativeFs: true });
 });
 
 // The OneDrive socket used to answer with a word nobody reads (`checksum`) and to omit one the
@@ -67,5 +87,5 @@ test("the OneDrive socket answers in the same vocabulary the rest of the app spe
 });
 
 test("OneDrive has no shell and no terminal, but can copy", () => {
-    assert.deepStrictEqual(ONEDRIVE_CAPABILITIES, { shell: false, terminal: false, copy: true });
+    assert.deepStrictEqual(ONEDRIVE_CAPABILITIES, { shell: false, terminal: false, copy: true, nativeFs: false });
 });

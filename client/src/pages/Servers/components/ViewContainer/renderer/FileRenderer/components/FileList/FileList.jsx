@@ -16,13 +16,14 @@ import PropertiesDialog from "./components/PropertiesDialog";
 import { useBoxSelection, useDragDrop, useKeyboardNavigation, useClipboard } from "./hooks";
 import { isPreviewable, getFullPath, OPERATIONS } from "./utils/fileUtils";
 import { deleteFileRequest, deleteFolderRequest, renameRequest } from "../../utils/paneRequests.js";
+import { DEFAULT_CAPABILITIES } from "../../utils/paneCapabilities.js";
 
 export const FileList = forwardRef(({
     items, updatePath, path, sendOperation, downloadFile, downloadMultipleFiles,
     setCurrentFile, setPreviewFile, loading, viewMode = "list", error,
     resolveSymlink, session, createFile, createFolder, moveFiles, copyFiles, startTransfer, isActive,
     onOpenTerminal, onPropertiesMessage, searchQuery = "", onSearchResults,
-    capabilities = { shell: true, terminal: true, copy: true },
+    capabilities = DEFAULT_CAPABILITIES,
     provider, source,
 }, ref) => {
     const { t } = useTranslation();
@@ -184,7 +185,7 @@ export const FileList = forwardRef(({
                 <div className="file-list-header">
                     <div className="header-name">{t("servers.fileManager.header.name")}</div>
                     <div className="header-size">{t("servers.fileManager.header.size")}</div>
-                    {capabilities.shell && <div className="header-permissions">{t("servers.fileManager.header.permissions")}</div>}
+                    {capabilities.nativeFs && <div className="header-permissions">{t("servers.fileManager.header.permissions")}</div>}
                     <div className="header-date">{t("servers.fileManager.header.modified")}</div>
                     <div className="header-actions"></div>
                 </div>
@@ -310,7 +311,7 @@ export const FileList = forwardRef(({
             </ContextMenu>
 
             <ContextMenu isOpen={emptyContextMenu.isOpen} position={emptyContextMenu.position} onClose={emptyContextMenu.close} trigger={emptyContextMenu.triggerRef}>
-                {capabilities.shell && <ContextMenuItem icon={mdiFilePlus} label={t("servers.fileManager.contextMenu.newFile")} onClick={startCreateFile} />}
+                {capabilities.nativeFs && <ContextMenuItem icon={mdiFilePlus} label={t("servers.fileManager.contextMenu.newFile")} onClick={startCreateFile} />}
                 <ContextMenuItem icon={mdiFolderPlus} label={t("servers.fileManager.contextMenu.newFolder")} onClick={startCreateFolder} />
                 <ContextMenuSeparator />
                 <ContextMenuItem icon={mdiFileDownload} label={t("servers.fileManager.contextMenu.downloadFolder")} onClick={() => downloadFile(path)} />

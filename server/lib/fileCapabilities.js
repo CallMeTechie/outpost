@@ -20,6 +20,12 @@ const getCapabilities = (entry) => {
         // `shell`. It is a word of its own because a provider can copy without one: OneDrive
         // does it with a Graph call.
         copy: shell,
+        // "Behind this pane is a real file system reached through the engine": empty files,
+        // directory completion, symbolic links and POSIX permissions all exist. Constant for
+        // everything getCapabilities is asked about, because every one of those IS such a
+        // connection — ftp and ftps included, which is the whole point of the word. It was
+        // `shell` that answered these questions before, and `shell` is false for ftp and ftps.
+        nativeFs: true,
     };
 };
 

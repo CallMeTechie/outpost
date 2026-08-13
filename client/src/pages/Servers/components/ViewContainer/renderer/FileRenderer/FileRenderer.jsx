@@ -19,6 +19,7 @@ import { initialTransferState, transferReducer } from "./utils/transferState.js"
 import { MAX_TRANSFER_PATHS, exceedsTransferPathLimit } from "./utils/transferLimits.js";
 import { publishMoveCompleted, subscribeToMoveCompleted, paneAffectedByMove } from "./utils/moveNotifier.js";
 import { paneSocket, paneEndpoint, paneProvider } from "./utils/paneEndpoint.js";
+import { DEFAULT_CAPABILITIES } from "./utils/paneCapabilities.js";
 import {
     listFilesRequest, createFolderRequest, createFolderRecursiveRequest, moveFilesRequest, copyFilesRequest,
 } from "./utils/paneRequests.js";
@@ -95,7 +96,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     const [searchQuery, setSearchQuery] = useState("");
     const [searchOpen, setSearchOpen] = useState(false);
     const [searchResultCount, setSearchResultCount] = useState(0);
-    const [capabilities, setCapabilities] = useState({ shell: true, terminal: true, copy: true });
+    const [capabilities, setCapabilities] = useState(DEFAULT_CAPABILITIES);
     const [transferState, dispatchTransfer] = useReducer(transferReducer, initialTransferState);
 
     const directoryRef = useRef(directory);
@@ -272,7 +273,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                 case OPERATIONS.READY:
                     setIsReady(true);
                     setConnectionError(null);
-                    setCapabilities(payload?.capabilities ?? { shell: true, terminal: true, copy: true });
+                    setCapabilities(payload?.capabilities ?? DEFAULT_CAPABILITIES);
                     reconnectAttemptsRef.current = 0;
                     if (payload?.path && payload.path !== directoryRef.current) {
                         skipNextPathSync.current = true;
@@ -511,11 +512,13 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     };
 
     const searchDirectories = (searchPath) =>
-        capabilities.shell && sendOperation(OPERATIONS.SEARCH_DIRECTORIES, { searchPath });
-    // Without the guard the callback is pushed onto a queue nothing will ever drain: OneDrive has
-    // no symlinks, so the answer this waits for never arrives.
+        capabilities.nativeFs && sendOperation(OPERATIONS.SEARCH_DIRECTORIES, { searchPath });
+    // Without the guard the callback is pushed onto a queue nothing will ever drain: a provider
+    // without a file system underneath has no symlinks, so the answer this waits for never
+    // arrives. `nativeFs` rather than `shell`: the server asks for no shell here, and an FTP pane
+    // resolving nothing while saying nothing is the worst state the spec names.
     const resolveSymlink = (path, callback) => {
-        if (!capabilities.shell) return;
+        if (!capabilities.nativeFs) return;
         symlinkCallbacks.current.push(callback);
         sendOperation(OPERATIONS.RESOLVE_SYMLINK, { path });
     };

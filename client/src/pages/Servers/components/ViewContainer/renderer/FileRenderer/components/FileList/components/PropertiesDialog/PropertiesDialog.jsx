@@ -7,12 +7,13 @@ import Button from "@/common/components/Button";
 import TabSwitcher from "@/common/components/TabSwitcher";
 import { parsePermissions, permissionsToMode, formatOctal } from "../../utils/fileUtils";
 import { statRequest } from "../../../../utils/paneRequests.js";
+import { DEFAULT_CAPABILITIES } from "../../../../utils/paneCapabilities.js";
 import { GeneralTab } from "./tabs/GeneralTab.jsx";
 import { PermissionsTab } from "./tabs/PermissionsTab.jsx";
 import { ChecksumTab } from "./tabs/ChecksumTab.jsx";
 import "./styles.sass";
 
-export const PropertiesDialog = ({ open, onClose, item, path, sendOperation, OPERATIONS, onRegisterHandler, capabilities = { shell: true } }) => {
+export const PropertiesDialog = ({ open, onClose, item, path, sendOperation, OPERATIONS, onRegisterHandler, capabilities = DEFAULT_CAPABILITIES }) => {
     const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState("general");
     const [stats, setStats] = useState(null);

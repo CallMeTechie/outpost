@@ -21,6 +21,7 @@ import { ContextMenu, ContextMenuItem, useContextMenu } from "@/common/component
 import { useTranslation } from "react-i18next";
 import { usePreferences } from "@/common/contexts/PreferencesContext.jsx";
 import { resolveDropTarget } from "../../utils/dropTransfer.js";
+import { DEFAULT_CAPABILITIES } from "../../utils/paneCapabilities.js";
 
 export const ActionBar = ({
                               path,
@@ -49,7 +50,7 @@ export const ActionBar = ({
                               setSearchOpen,
                               closeSearch,
                               searchResultCount,
-                              capabilities = { shell: true, copy: true },
+                              capabilities = DEFAULT_CAPABILITIES,
                           }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editPath, setEditPath] = useState(path);
@@ -355,7 +356,7 @@ export const ActionBar = ({
                                onChange={(e) => setEditPath(e.target.value)} onKeyDown={handleInputKeyDown}
                                onBlur={handleInputBlur} placeholder={t("servers.fileManager.actionBar.enterDirectory")} autoComplete="off"
                                spellCheck="false" />
-                        {capabilities.shell && showSuggestions && directorySuggestions.length > 0 && (
+                        {capabilities.nativeFs && showSuggestions && directorySuggestions.length > 0 && (
                             <div className="suggestions-dropdown" ref={suggestionsRef}>
                                 {directorySuggestions.map((s, i) => (
                                     <div className={`suggestion-item ${i === selectedSuggestion ? "selected" : ""}`}
@@ -401,7 +402,7 @@ export const ActionBar = ({
                 <Icon path={mdiRefresh} onClick={refreshFiles} title={t("servers.fileManager.actionBar.refresh")} />
                 <Icon path={mdiFileUpload} onClick={uploadFile} title={t("servers.fileManager.actionBar.uploadFile")} />
                 <Icon path={mdiFolderUpload} onClick={uploadFolder} title={t("servers.fileManager.actionBar.uploadFolder")} />
-                {capabilities.shell && <Icon path={mdiFilePlus} onClick={createFile} />}
+                {capabilities.nativeFs && <Icon path={mdiFilePlus} onClick={createFile} />}
                 <Icon path={mdiFolderPlus} onClick={createFolder} />
             </div>
 
