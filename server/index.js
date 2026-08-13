@@ -78,6 +78,7 @@ app.ws("/api/ws/tunnel", require("./routes/tunnel"));
 app.ws("/api/ws/state", require("./routes/state"));
 
 app.use("/api/entries/sftp", require("./routes/sftp"));
+app.use("/api/entries/onedrive", require("./routes/oneDriveContent"));
 
 app.use("/api/users", authenticate, requirePermission(Permission.USERS_VIEW), require("./routes/users"));
 app.use("/api/permissions", authenticate, requirePermission(Permission.PERMISSIONS_MANAGE), require("./routes/permissions"));

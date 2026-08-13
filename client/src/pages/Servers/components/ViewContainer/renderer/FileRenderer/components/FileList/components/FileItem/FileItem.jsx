@@ -9,6 +9,7 @@ import {
     formatPermissionsString, formatOctal,
 } from "../../utils/fileUtils";
 import { DEFAULT_CAPABILITIES } from "../../../../utils/paneCapabilities.js";
+import { paneContentUrl } from "../../../../utils/paneEndpoint.js";
 
 export const FileItem = memo(({
                                   item,
@@ -42,7 +43,7 @@ export const FileItem = memo(({
     const { sessionToken } = useContext(UserContext);
     const [thumbnailError, setThumbnailError] = useState(false);
 
-    const canShowThumbnail = viewMode === "grid" && showThumbnails && item.type === "file"
+    const showThumbnailCandidate = viewMode === "grid" && showThumbnails && item.type === "file"
         && isThumbnailSupported(item.name) && !thumbnailError;
 
     const renderName = () => {
@@ -57,10 +58,15 @@ export const FileItem = memo(({
         );
     };
 
-    const getThumbnailUrl = () => {
-        const fullPath = `${path.endsWith("/") ? path : path + "/"}${item.name}`;
-        return `${getBaseUrl()}/api/entries/sftp?sessionId=${session.id}&path=${encodeURIComponent(fullPath)}&sessionToken=${sessionToken}&thumbnail=true&size=100`;
-    };
+    // null when the session is unusable (paneContentUrl's contract, same as paneSocket). Folded
+    // into canShowThumbnail below so an unusable pane falls back to the plain icon exactly like a
+    // thumbnail that failed to load, instead of an <img> with no src.
+    const fullPath = `${path.endsWith("/") ? path : path + "/"}${item.name}`;
+    const thumbnailContentUrl = showThumbnailCandidate
+        ? paneContentUrl(session, sessionToken, { path: encodeURIComponent(fullPath), thumbnail: true, size: 100 })
+        : null;
+    const canShowThumbnail = thumbnailContentUrl !== null;
+    const thumbnailUrl = canShowThumbnail ? `${getBaseUrl()}${thumbnailContentUrl}` : null;
 
     const classNames = [
         "file-item",
@@ -92,7 +98,7 @@ export const FileItem = memo(({
             <div className="file-name">
                 {canShowThumbnail ? (
                     <img
-                        src={getThumbnailUrl()}
+                        src={thumbnailUrl}
                         alt={item.name}
                         className="file-thumbnail"
                         loading="lazy"

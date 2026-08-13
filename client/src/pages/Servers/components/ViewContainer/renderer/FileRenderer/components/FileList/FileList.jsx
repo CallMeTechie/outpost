@@ -93,10 +93,11 @@ export const FileList = forwardRef(({
         } else if (item.type === "folder") {
             updatePath(fullPath);
         } else if (!capabilities.content) {
-            // Preview, the editor and download all reach into the /api/entries/sftp* routes, which
-            // are bound to an SFTP session a OneDrive pane doesn't have. Routing into them anyway
-            // would still "work" — a broken image, a document that looks empty, a JSON error body
-            // saved under the file's name — three silent failures instead of one message.
+            // Preview, the editor and download all reach into paneContentUrl's two routes, each
+            // keyed to a live session (an SFTP session id or a Microsoft connection id). A provider
+            // that answers content: false has neither, and routing into these controls anyway would
+            // still "work" — a broken image, a document that looks empty, a JSON error body saved
+            // under the file's name — three silent failures instead of one message.
             sendToast(t("common.error"), t("servers.fileManager.error.contentUnavailable"));
         } else if (isPreviewable(item.name)) {
             setPreviewFile?.(fullPath);

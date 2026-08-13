@@ -8,6 +8,8 @@ import { tauriDownload } from "@/common/utils/RequestUtil.js";
 import Icon from "@mdi/react";
 import { mdiImage, mdiFileDownload } from "@mdi/js";
 import FloatingWindow, { FloatingWindowAction } from "@/common/components/FloatingWindow";
+import { paneContentUrl } from
+    "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/utils/paneEndpoint.js";
 import "./styles.sass";
 
 export const FilePreviewWindow = ({ file, session, onClose }) => {
@@ -24,11 +26,18 @@ export const FilePreviewWindow = ({ file, session, onClose }) => {
             return;
         }
 
-        const extension = file.split(".").pop()?.toLowerCase();
-        const baseUrl = getBaseUrl();
-        const url = `${baseUrl}/api/entries/sftp?sessionId=${session.id}&path=${file}&sessionToken=${sessionToken}&preview=true`;
+        const contentUrl = paneContentUrl(session, sessionToken, { path: file, preview: true });
+        if (contentUrl === null) {
+            // Same shape as the file manager's own unusable-session message: better a toast here
+            // than an <img>/<video>/<iframe> pointed at no address at all.
+            setFileUrl(null);
+            setFileType(null);
+            sendToast(t("common.error"), t("servers.fileManager.error.unusableSession"));
+            return;
+        }
 
-        setFileUrl(url);
+        const extension = file.split(".").pop()?.toLowerCase();
+        setFileUrl(`${getBaseUrl()}${contentUrl}`);
 
         const typeMap = {
             image: ["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg"],
@@ -37,9 +46,13 @@ export const FilePreviewWindow = ({ file, session, onClose }) => {
             pdf: ["pdf"],
         };
         setFileType(Object.entries(typeMap).find(([, exts]) => exts.includes(extension))?.[0] || "unknown");
-    }, [file, session.id, sessionToken]);
+    }, [file, session, sessionToken, sendToast, t]);
 
     const downloadFile = async () => {
+        if (fileUrl === null) {
+            sendToast(t("common.error"), t("servers.fileManager.error.unusableSession"));
+            return;
+        }
         const fileName = file.split("/").pop();
         if (isTauri()) {
             try {

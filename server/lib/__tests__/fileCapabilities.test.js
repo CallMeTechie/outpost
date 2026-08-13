@@ -60,14 +60,16 @@ test("every server protocol that exists today has a native file system behind it
     assert.strictEqual(ONEDRIVE_CAPABILITIES.nativeFs, false);
 });
 
-// Download, upload, preview and the editor all go through routes keyed by an SFTP session. The
-// worst of them submitted a form into the main window and navigated the whole application onto a
-// 404 when a OneDrive pane answered it.
-test("every server protocol can serve file content and a drive cannot yet", () => {
+// Download, upload, preview and the editor all go through routes keyed by an SFTP session — and,
+// since routes/oneDriveContent.js added the same three routes keyed by a connection id instead, a
+// OneDrive drive too. The worst of the old gap submitted a form into the main window and navigated
+// the whole application onto a 404 when a OneDrive pane answered it; content: true is what un-hides
+// those controls now that the routes exist.
+test("every provider, server and drive alike, can serve file content", () => {
     for (const protocol of ["ssh", "sftp", "ftp", "ftps"]) {
         assert.strictEqual(getCapabilities(server(protocol)).content, true, protocol);
     }
-    assert.strictEqual(ONEDRIVE_CAPABILITIES.content, false);
+    assert.strictEqual(ONEDRIVE_CAPABILITIES.content, true);
 });
 
 // The pane falls back to this before READY arrives. A fallback that misses the newest word inverts
@@ -96,6 +98,6 @@ test("the OneDrive socket answers in the same vocabulary the rest of the app spe
     );
 });
 
-test("OneDrive has no shell and no terminal, but can copy", () => {
-    assert.deepStrictEqual(ONEDRIVE_CAPABILITIES, { shell: false, terminal: false, copy: true, nativeFs: false, content: false });
+test("OneDrive has no shell, no terminal and no native file system, but can copy and serve content", () => {
+    assert.deepStrictEqual(ONEDRIVE_CAPABILITIES, { shell: false, terminal: false, copy: true, nativeFs: false, content: true });
 });

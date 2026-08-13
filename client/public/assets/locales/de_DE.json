@@ -1898,7 +1898,11 @@
         "saveSuccess": "Datei erfolgreich gespeichert",
         "saveFailed": "Datei kann nicht gespeichert werden",
         "loadFailed": "Datei konnte nicht geladen werden",
-        "unsavedChanges": "Du hast ungespeicherte Änderungen. Bist du sicher, dass du diese Datei schließen möchtest?"
+        "unsavedChanges": "Du hast ungespeicherte Änderungen. Bist du sicher, dass du diese Datei schließen möchtest?",
+        "conflictTitle": "Die Datei wurde zwischenzeitlich geändert",
+        "conflictBody": "Jemand hat diese Datei geändert, nachdem du sie geöffnet hast. Speichern würde diese Änderung überschreiben.",
+        "conflictOverwrite": "Meine Fassung überschreiben",
+        "conflictReload": "Verwerfen und neu laden"
       },
       "contextMenu": {
         "open": "Öffnen",
@@ -2036,6 +2040,7 @@
       "toast": {
         "downloaded": "{{name}} heruntergeladen",
         "downloadingItems": "Herunterladen von {{count}} item(s)...",
+        "downloadFailed": "Download fehlgeschlagen: {{message}}",
         "uploaded": "{{name}} hochgeladen",
         "uploadedItems": "{{count}} -Dateien hochgeladen",
         "uploadFailed": "Upload fehlgeschlagen: {{message}}",

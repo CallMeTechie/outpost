@@ -74,7 +74,11 @@ export const uploadFile = async (url, file, { onProgress, timeout = 300000, head
                 const text = await response.text();
                 let error = `Upload failed (${response.status})`;
                 try { error = JSON.parse(text).error || error; } catch {}
-                throw new Error(error);
+                const err = new Error(error);
+                // Carried alongside the message so a caller can branch on the status itself (a 412
+                // conflict, say) instead of pattern-matching Microsoft's own wording.
+                err.status = response.status;
+                throw err;
             }
 
             const text = await response.text();
@@ -100,7 +104,9 @@ export const uploadFile = async (url, file, { onProgress, timeout = 300000, head
             } else {
                 let errorMsg = `Upload failed (${xhr.status})`;
                 try { errorMsg = JSON.parse(xhr.responseText).error || errorMsg; } catch {}
-                reject(new Error(errorMsg));
+                const err = new Error(errorMsg);
+                err.status = xhr.status;
+                reject(err);
             }
         };
         xhr.onerror = () => reject(new Error("Network error"));
@@ -139,10 +145,14 @@ export const request = async (url, method, body, headers) => {
     return data;
 }
 
-export const downloadRequest = async (url) => {
+// `onHeaders` is the one new caller's way in: the file editor needs the response's ETag to guard
+// its later save, and every other caller today wants nothing but the blob. A second return value
+// would change that return for all of them; a sibling callback changes it for none of them. Fired
+// only on success — a failed download has no header worth reading, and the blob itself is thrown.
+export const downloadRequest = async (url, { onHeaders } = {}) => {
     const baseUrl = getBaseUrl();
     const fullUrl = baseUrl ? `${baseUrl}${url}` : url;
-    
+
     const response = await tauriFetch(fullUrl, {
         method: "GET",
         headers: {"Content-Type": "application/json"},
@@ -153,6 +163,8 @@ export const downloadRequest = async (url) => {
     const blob = await response.blob();
 
     if (!response.ok) throw blob;
+
+    onHeaders?.(response.headers);
 
     return blob;
 }

@@ -1,6 +1,12 @@
 const { CHECKSUM_COMMANDS, escapePath } = require("../fileCapabilities");
 
-const createEngineSftpAdapter = (client, capabilities) => {
+// `backpressure` defaults to true because that is FileTransfer's existing, load-bearing contract:
+// every caller before this option existed ran with it on, over a client dedicated to one transfer.
+// A caller wiring this adapter onto a client it does NOT own exclusively — sftp.js's content
+// routes, which read over the per-session transfer client (or its shared metadata-client fallback)
+// — must pass `{ backpressure: false }` explicitly, or a slow HTTP client pauses that client's
+// whole multiplexed socket and freezes every other request sharing it (see readFile below).
+const createEngineSftpAdapter = (client, capabilities, { backpressure = true } = {}) => {
     const supportsChecksum = Boolean(capabilities?.shell);
 
     return {
@@ -38,25 +44,36 @@ const createEngineSftpAdapter = (client, capabilities) => {
         },
 
         readFile(path) {
-            // Backpressure pauses the whole client, so whoever wires this adapter up owes it two
-            // things — neither of which this function can check on its own:
+            // When backpressure IS on, whoever wired this adapter up owes it two things — neither
+            // of which this function can check on its own:
             //
             // 1. This client serves ONE reader. getSFTPCrossTransferClient hands out one client per
             //    transfer and a transfer reads one file at a time, so the pause throttles this
-            //    transfer's own source and nothing else. On a shared client (the REST download's
-            //    metadata-client fallback) it would freeze directory browsing instead.
+            //    transfer's own source and nothing else. A caller on a shared client (sftp.js's
+            //    content routes) must instead construct this adapter with `{ backpressure: false }`,
+            //    or a slow HTTP client freezes directory browsing and every other request sharing
+            //    that socket.
             // 2. Source and destination are DIFFERENT clients. Reading and writing over one
             //    connection deadlocks: the read pause holds up the write's WriteBegin
             //    acknowledgement, and the transfer dies in a request timeout having moved nothing.
-            //    Not reachable today — nothing wires this adapter up yet, and same-session
-            //    transfers take another path — but a later plan will, so FileTransfer's constructor
-            //    rejects it outright via `transport` above rather than letting it time out.
-            const { stream, done } = client.readFile(path, { backpressure: true });
-            return { stream, done };
+            //    Not reachable today — same-session transfers take another path — but a later plan
+            //    will, so FileTransfer's constructor rejects it outright via `transport` above
+            //    rather than letting it time out.
+            const { stream, done, totalSizePromise } = client.readFile(path, { backpressure });
+            // totalSizePromise travels for the ZIP walk, which appends to the archive only once the
+            // engine has reported the size. FileTransfer ignores it.
+            return { stream, done, totalSizePromise };
         },
 
         writeFile(path, source) {
             return client.writeFile(path, source);
+        },
+
+        // sftp.js keeps calling ctx.sftpClient.thumbnail directly and does not route through here —
+        // this exists so the OneDrive content route can ask for a thumbnail through the same seam
+        // it uses for everything else, without sftp.js having to change for no benefit of its own.
+        thumbnail(path, size) {
+            return client.thumbnail(path, size);
         },
 
         mkdirRecursive(path) {

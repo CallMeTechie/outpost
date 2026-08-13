@@ -9,7 +9,28 @@ const PAGE_SIZE = 200;
 // a source folder it never fully read.
 const MAX_PAGES = 50;
 
-const SELECT = "name,size,lastModifiedDateTime,folder,file";
+const SELECT = "name,size,lastModifiedDateTime,folder,file,cTag";
+
+// Graph names its thumbnail sizes rather than accepting an arbitrary pixel count. Widths are the
+// documented resolutions for the "longest edge" presets (small/medium/large) — the only three that
+// are guaranteed to exist without Graph having to render a custom size on demand. Ordered ascending
+// so pickThumbnailStep can stop at the first one wide enough.
+const THUMBNAIL_STEPS = [
+    ["small", 96],
+    ["medium", 176],
+    ["large", 800],
+];
+
+// The smallest step at least as wide as what was asked, never a smaller one: a browser can shrink
+// a thumbnail that came back larger than requested, but it cannot invent detail an upscaled small
+// one never had. A request wider than every step still gets an answer — the largest one available —
+// rather than an error, since "the biggest OneDrive offers" is a reasonable thing to show.
+const pickThumbnailStep = (size) => {
+    for (const [name, width] of THUMBNAIL_STEPS) {
+        if (size <= width) return name;
+    }
+    return THUMBNAIL_STEPS[THUMBNAIL_STEPS.length - 1][0];
+};
 
 // ":" and "\" break Graph's path addressing itself, control characters have no business in a name,
 // and "." / ".." never name a real OneDrive item — forwarding them would hand path traversal to
@@ -63,6 +84,11 @@ const mapItem = (item) => ({
     // OneDrive has no symbolic links. The field is reported so that the walk can read the same
     // shape from either adapter.
     isSymlink: false,
+    // Graph's change tag: it moves only when the item's CONTENT changes, unlike eTag, which also
+    // moves on a rename, a move or a new share. This is the one place that decides which of
+    // Graph's two tags the seam calls "cTag" — a future switch to eTag is a one-line change here
+    // (and in SELECT above), not a hunt through every caller.
+    cTag: typeof item.cTag === "string" ? item.cTag : null,
 });
 
 const createOneDriveAdapter = ({ graph, connectionId }) => {
@@ -103,7 +129,9 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
 
         const mapped = mapItem(body);
 
-        return { size: mapped.size, type: mapped.type, mtime: mapped.mtime, isSymlink: false };
+        return {
+            size: mapped.size, type: mapped.type, mtime: mapped.mtime, isSymlink: false, cTag: mapped.cTag,
+        };
     };
 
     const readFile = (path) => {
@@ -208,15 +236,39 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
         if (size <= SIMPLE_UPLOAD_LIMIT) {
             const payload = Buffer.isBuffer(source) ? source : await collect(source, size);
 
+            // The one place an `ifMatch` option becomes the actual HTTP condition. Nothing above
+            // this decides cTag vs eTag — that choice was already made where the tag was read (see
+            // mapItem) — this line only forwards whatever the caller supplied, or sends no
+            // condition at all when it did not. A stale tag makes Graph answer 412, which
+            // graph.request turns into a GraphError carrying Microsoft's own message.
+            const headers = { "Content-Type": "application/octet-stream" };
+            if (typeof options.ifMatch === "string" && options.ifMatch !== "") headers["If-Match"] = options.ifMatch;
+
             await graph.request(connectionId, {
                 url: `${target}/content`,
                 method: "PUT",
-                headers: { "Content-Type": "application/octet-stream" },
+                headers,
                 body: payload,
                 signal: controller.signal,
             });
 
             return;
+        }
+
+        // Graph's upload session CAN carry a condition of its own (an If-Match on session
+        // creation), and that would be the better long-term answer for a large conditional write.
+        // But nothing reachable from here can prove that header actually guards a real account —
+        // the identical gap Step 1 named for cTag itself — and a condition that is silently
+        // ignored is worse than no condition at all: it looks like protection and is not one. So a
+        // caller asking for one on a file this size is told plainly, loudly, before a single byte
+        // moves, rather than getting a passthrough nobody has verified. The editor this guard
+        // exists for never reaches this branch — it only ever opens files under 1 MB, well inside
+        // SIMPLE_UPLOAD_LIMIT — so this is a stated boundary, not a live limitation on anyone today.
+        if (typeof options.ifMatch === "string" && options.ifMatch !== "") {
+            throw new GraphError(
+                `OneDrive cannot make a conditional write for a ${size} byte file — If-Match is `
+                + "only supported at or under the simple-upload limit",
+            );
         }
 
         await uploadLarge({
@@ -226,6 +278,33 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
             // honest on the large path.
             source: Buffer.isBuffer(source) ? Readable.from([source]) : source,
         });
+    };
+
+    // Graph names one thumbnail image "0" by convention — a custom uploaded thumbnail also takes
+    // that index, and every item this route ever asks about has at most the one Graph generated.
+    const THUMBNAIL_ID = "0";
+
+    const thumbnail = async (path, size) => {
+        const step = pickThumbnailStep(size);
+        const { body } = await graph.request(connectionId, { url: `${itemUrl(path)}/thumbnails/${THUMBNAIL_ID}/${step}` });
+
+        // A file with no bitmap representation — not an image, or a type Graph cannot preview —
+        // answers this request with a body that carries no url just as often as it answers 404.
+        // Both mean the same thing here, and both must reach the caller as a thrown error: the
+        // route turns it into a 404 and the grid falls back to the file icon, the same as it does
+        // for the SFTP side's thumbnail failures.
+        if (body === null || typeof body !== "object" || typeof body.url !== "string") {
+            throw new GraphError("OneDrive has no thumbnail for this item");
+        }
+
+        // The metadata call above answers with a URL into pre-authenticated storage, not the image
+        // itself — fetched here and returned as bytes so a working, unauthenticated Microsoft
+        // address never has to reach the client and sit in its browser history.
+        const response = await graph.request(connectionId, { url: body.url, anonymous: true, parse: "raw" });
+        const data = Buffer.from(await response.arrayBuffer());
+        const contentType = response.headers?.get?.("content-type") || "application/octet-stream";
+
+        return { data, contentType };
     };
 
     const mkdirRecursive = async (path) => {
@@ -359,6 +438,7 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
         stat,
         readFile,
         writeFile,
+        thumbnail,
         mkdirRecursive,
         unlink,
         rmdir,
@@ -372,4 +452,6 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
 // splitPath, itemUrl and childrenUrl have no importer yet on purpose: the move and copy handlers of
 // the next project address items by the same path syntax and will take them from here rather than
 // build a second one.
-module.exports = { PAGE_SIZE, MAX_PAGES, createOneDriveAdapter, splitPath, itemUrl, childrenUrl };
+module.exports = {
+    PAGE_SIZE, MAX_PAGES, createOneDriveAdapter, splitPath, itemUrl, childrenUrl, pickThumbnailStep,
+};

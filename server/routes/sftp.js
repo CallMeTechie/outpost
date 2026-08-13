@@ -10,20 +10,14 @@ const { hasResourcePermission } = require("../utils/permission");
 const { Permission } = require("../permissions/registry");
 const logger = require("../utils/logger");
 const { ZipArchive } = require("archiver");
+const { createEngineSftpAdapter } = require("../lib/fileTransfer/engineSftpAdapter");
+const { archiveFolder, archiveItems } = require("../lib/fileContent/archive");
+const {
+    THUMB_EXTS, MAX_THUMB_SIZE,
+    getExt, getFileName, sanitizeFileName, clampThumbSize, contentHeaders, sendFile,
+} = require("../lib/fileContent/download");
 
 const app = Router();
-const THUMB_EXTS = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp"]);
-const MAX_THUMB_SIZE = 10 * 1024 * 1024;
-const MIME_TYPES = {
-    pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
-    gif: "image/gif", webp: "image/webp", svg: "image/svg+xml", mp4: "video/mp4",
-    webm: "video/webm", mp3: "audio/mpeg", txt: "text/plain", json: "application/json",
-    html: "text/html", css: "text/css", js: "application/javascript",
-};
-
-const getExt = (p) => p.split(".").pop()?.toLowerCase();
-const getFileName = (p) => p.split("/").pop();
-const sanitizeFileName = (name) => name.replaceAll(/[^\w\s.-]/g, "_").substring(0, 255);
 
 const handleError = (res, err) => {
     if (res.headersSent) return;
@@ -42,48 +36,6 @@ const audit = (ctx, req, action, resource, details) => {
         action, resource, details, ipAddress: req.ip, userAgent: req.headers["user-agent"],
     });
 };
-
-const archiveFolder = async (sftpClient, archive, dirPath, basePath) => {
-    const entries = await sftpClient.listDir(dirPath);
-    if (entries.length === 0) {
-        archive.append("", { name: basePath + "/" });
-        return;
-    }
-    for (const entry of entries) {
-        if (entry.isSymlink) continue;
-        const fullPath = dirPath === "/" ? `/${entry.name}` : `${dirPath}/${entry.name}`;
-        const archivePath = basePath ? `${basePath}/${entry.name}` : entry.name;
-        if (entry.type === "folder") {
-            await archiveFolder(sftpClient, archive, fullPath, archivePath);
-        } else {
-            const { stream, totalSizePromise, done } = sftpClient.readFile(fullPath);
-            stream.on("error", (err) => logger.warn("Archive stream error", { error: err.message, path: fullPath }));
-            await totalSizePromise;
-            archive.append(stream, { name: archivePath });
-            await done;
-        }
-    }
-}
-
-const archiveItems = async (sftpClient, archive, paths) => {
-    for (const remotePath of paths) {
-        try {
-            const stats = await sftpClient.stat(remotePath);
-            const name = getFileName(remotePath);
-            if (stats.isDir) {
-                await archiveFolder(sftpClient, archive, remotePath, name);
-            } else {
-                const { stream, totalSizePromise, done } = sftpClient.readFile(remotePath);
-                stream.on("error", (err) => logger.warn("Archive stream error", { error: err.message, path: remotePath }));
-                await totalSizePromise;
-                archive.append(stream, { name });
-                await done;
-            }
-        } catch (err) {
-            logger.warn("Failed to add file to archive", { path: remotePath, error: err.message });
-        }
-    }
-}
 
 const validateSession = async (sessionToken, sessionId) => {
     const session = await Session.findOne({ where: { token: sessionToken } });
@@ -111,7 +63,15 @@ const validateSession = async (sessionToken, sessionId) => {
         logger.warn("Falling back to metadata SFTP client for transfer", { sessionId, error: err.message });
     }
 
-    return { session, user, serverSession, entry, sftpClient };
+    // This client is not exclusive to this request: it is cached per session (getSFTPTransferClient)
+    // and, on that call failing, falls back to the connection's own shared metadata client. Either
+    // one may be serving a concurrent download or the file browser's directory listing at the same
+    // moment, so the adapter must not pause the whole client while a slow HTTP peer is behind on
+    // this response — see engineSftpAdapter.js's readFile for what backpressure:true would do here.
+    return {
+        session, user, serverSession, entry, sftpClient,
+        adapter: createEngineSftpAdapter(sftpClient, undefined, { backpressure: false }),
+    };
 };
 
 const validateRequest = (query) => {
@@ -195,6 +155,9 @@ app.get("/", async (req, res) => {
 
     const { sessionToken, sessionId, path: remotePath, preview, thumbnail, size } = req.query;
 
+    // Declared outside the try so the catch below can reach it: the ZIP branch's own `archive`
+    // would otherwise be scoped to the try block and invisible where the abort actually happens.
+    let archive;
     try {
         const ctx = await validateSession(sessionToken, sessionId);
         if (ctx.error) return res.status(ctx.status).json({ error: ctx.error });
@@ -210,21 +173,21 @@ app.get("/", async (req, res) => {
         if (stats.isDir) {
             res.header("Content-Disposition", `attachment; filename="${safeFileName}.zip"`);
             res.header("Content-Type", "application/zip");
-            const archive = new ZipArchive({ zlib: { level: 1 } });
+            archive = new ZipArchive({ zlib: { level: 1 } });
             archive.on("error", (err) => {
                 logger.warn("Archive error", { error: err.message, path: remotePath });
                 archive.abort();
             });
             res.on("close", () => archive.abort());
             archive.pipe(res);
-            await archiveFolder(sftpClient, archive, remotePath, safeFileName);
+            await archiveFolder(ctx.adapter, archive, remotePath, safeFileName);
             archive.finalize();
             audit(ctx, req, AUDIT_ACTIONS.FOLDER_DOWNLOAD, RESOURCE_TYPES.FOLDER, { folderPath: remotePath });
             return;
         }
 
         if (thumbnail === "true" && THUMB_EXTS.has(getExt(remotePath)) && stats.size <= MAX_THUMB_SIZE) {
-            const thumbSize = Math.min(Math.max(Number.parseInt(size) || 100, 50), 300);
+            const thumbSize = clampThumbSize(size);
             const { data } = await sftpClient.thumbnail(remotePath, thumbSize);
             res.header("Content-Type", "image/jpeg");
             res.header("Cache-Control", "public, max-age=3600");
@@ -232,18 +195,28 @@ app.get("/", async (req, res) => {
             return;
         }
 
-        const disposition = preview === "true" ? "inline" : "attachment";
-        res.header("Content-Disposition", `${disposition}; filename="${safeFileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
-        res.header("Content-Length", stats.size);
         const ext = getExt(remotePath);
-        if (MIME_TYPES[ext]) res.header("Content-Type", MIME_TYPES[ext]);
+        const headers = contentHeaders({ fileName, size: stats.size, ext, preview: preview === "true" });
+        for (const [name, value] of Object.entries(headers)) res.header(name, value);
 
-        const { stream } = sftpClient.readFile(remotePath);
-        stream.on("error", (err) => { logger.warn("Download stream error", { error: err.message, path: remotePath }); if (!res.headersSent) res.status(500).end(); });
-        res.on("close", () => stream.destroy());
-        stream.pipe(res);
+        // Awaited so a throw from adapter.readFile lands in this function's own catch, the same as
+        // every other synchronous throw here. Without it, sendFile's `async` turns that throw into
+        // a rejection nothing here observes — and this process has no unhandledRejection handler,
+        // only uncaughtException, so Node would tear down the whole server over one bad path.
+        await sendFile(ctx.adapter, res, remotePath);
         audit(ctx, req, AUDIT_ACTIONS.FILE_DOWNLOAD, RESOURCE_TYPES.FILE, { filePath: remotePath, fileSize: stats.size });
     } catch (err) {
+        // Once the headers are out there is no status code left to send, and archiver will never
+        // idle after a source stream was destroyed — finalize() simply never returns. res.destroy()
+        // is deliberate here and not res.end(): for a chunked response, end() would write the
+        // terminating zero-length chunk and tell the browser the download finished — saving a ZIP
+        // with no central directory as if it had succeeded. destroy() cuts the socket instead, so
+        // the client sees the failure — either a reset with no status line at all if this fires
+        // before anything was flushed, or a connection dropped mid-body if some already went out —
+        // rather than a silently corrupt "complete" file or (the old behaviour) a spinner that never
+        // ends. Deliberate behaviour change, see the plan's Global Constraints, the "response never
+        // ends on a mid-archive failure" exception.
+        if (res.headersSent) { archive?.abort(); res.destroy(); return; }
         handleError(res, err);
     }
 });
@@ -278,6 +251,8 @@ app.post("/multi", express.urlencoded({ extended: true }), async (req, res) => {
     if (!Array.isArray(paths) || paths.length === 0) return res.status(400).json({ error: "No paths provided" });
     if (paths.some((p) => p.includes(".."))) return res.status(400).json({ error: "Invalid path" });
 
+    // See the GET / handler for why this lives outside the try.
+    let archive;
     try {
         const ctx = await validateSession(sessionToken, sessionId);
         if (ctx.error) return res.status(ctx.status).json({ error: ctx.error });
@@ -289,7 +264,7 @@ app.post("/multi", express.urlencoded({ extended: true }), async (req, res) => {
         res.header("Content-Disposition", `attachment; filename="nexterm-download-${timestamp}.zip"`);
         res.header("Content-Type", "application/zip");
 
-        const archive = new ZipArchive({ zlib: { level: 5 } });
+        archive = new ZipArchive({ zlib: { level: 5 } });
         archive.on("error", (err) => {
             logger.warn("Multi-download archive error", { error: err.message });
             archive.abort();
@@ -297,7 +272,7 @@ app.post("/multi", express.urlencoded({ extended: true }), async (req, res) => {
         res.on("close", () => archive.abort());
         archive.pipe(res);
 
-        await archiveItems(ctx.sftpClient, archive, paths);
+        await archiveItems(ctx.adapter, archive, paths);
         archive.finalize();
 
         audit(ctx, req, AUDIT_ACTIONS.FILE_DOWNLOAD, RESOURCE_TYPES.FILE, {
@@ -306,6 +281,11 @@ app.post("/multi", express.urlencoded({ extended: true }), async (req, res) => {
             connectionReason: ctx.serverSession.connectionReason || null,
         });
     } catch (err) {
+        // Same rationale as GET / — see that handler's catch for why destroy() and not end(). The
+        // archive.abort() here is a second call when `archive.on("error", ...)` already ran one; a
+        // repeat abort on an aborted archiver is a no-op, so paying for the redundancy once here is
+        // simpler than tracking "already aborted" state for this one path.
+        if (res.headersSent) { archive?.abort(); res.destroy(); return; }
         handleError(res, err);
     }
 });

@@ -18,8 +18,9 @@ import { OPERATIONS } from "./utils/operations.js";
 import { initialTransferState, transferReducer } from "./utils/transferState.js";
 import { MAX_TRANSFER_PATHS, exceedsTransferPathLimit } from "./utils/transferLimits.js";
 import { publishMoveCompleted, subscribeToMoveCompleted, paneAffectedByMove } from "./utils/moveNotifier.js";
-import { paneSocket, paneEndpoint, paneProvider } from "./utils/paneEndpoint.js";
+import { paneSocket, paneEndpoint, paneProvider, paneContentUrl } from "./utils/paneEndpoint.js";
 import { DEFAULT_CAPABILITIES } from "./utils/paneCapabilities.js";
+import { readErrorMessage, fileNameFromDisposition } from "./utils/downloadResponse.js";
 import {
     listFilesRequest, createFolderRequest, createFolderRecursiveRequest, moveFilesRequest, copyFilesRequest,
 } from "./utils/paneRequests.js";
@@ -30,6 +31,19 @@ const REFRESH_DEBOUNCE = 150;
 const joinPath = (...parts) => parts.join("/").replace(/\/+/g, "/");
 
 const createUploadStats = () => ({ uploaded: 0, failed: 0, sentBytes: 0, totalBytes: 0, firstError: null, lastName: "" });
+
+// The DOM half of a blob download, shared by the single-file and multi-file paths below: a
+// throwaway object URL and an anchor nobody but this function ever sees.
+const saveBlobAs = (blob, fileName) => {
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(objectUrl);
+};
 
 const readAllEntries = (reader) => new Promise((resolve, reject) => {
     const all = [];
@@ -126,10 +140,14 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     const unusableSessionError = wsUrl === null ? t("servers.fileManager.error.unusableSession") : null;
 
     const downloadFile = async (path) => {
-        const baseUrl = getBaseUrl();
+        const contentUrl = paneContentUrl(session, sessionToken, { path });
+        if (contentUrl === null) {
+            sendToast(t("common.error"), t("servers.fileManager.error.unusableSession"));
+            return;
+        }
         const fileName = path.split("/").pop();
-        const url = `${baseUrl}/api/entries/sftp?sessionId=${session.id}&path=${path}&sessionToken=${sessionToken}`;
-        
+        const url = `${getBaseUrl()}${contentUrl}`;
+
         if (isTauri()) {
             try {
                 await tauriDownload(url, fileName);
@@ -139,20 +157,37 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
             }
             return;
         }
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+
+        // Fetched and saved as a blob, not linked to directly: a plain <a download> handed a URL
+        // that answers with an error has no way to see that — the browser just saves Microsoft's
+        // or sftp.js's JSON error body under the file's own name (the exact trap FileList.jsx's own
+        // comment names). downloadMultipleFiles made this trade-off already for the ZIP case (Task
+        // 7): the whole file sits in browser memory instead of streaming to disk through the
+        // browser's own download manager, in exchange for a failed download actually surfacing as
+        // one. Same trade, applied here so a single file behaves the same way as everything else
+        // instead of being the one download a dropped connection can still turn into a corrupt save.
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(await readErrorMessage(response, t("servers.fileManager.toast.error")));
+            const savedName = fileNameFromDisposition(response, fileName);
+            const blob = await response.blob();
+            saveBlobAs(blob, savedName);
+            sendToast(t("common.success"), t("servers.fileManager.toast.downloaded", { name: savedName }));
+        } catch (e) {
+            sendToast(t("common.error"), t("servers.fileManager.toast.downloadFailed", { message: e.message }));
+        }
     };
 
     const downloadMultipleFiles = async (paths) => {
         if (!paths?.length) return;
-        const baseUrl = getBaseUrl();
-        const url = `${baseUrl}/api/entries/sftp/multi?sessionId=${session.id}&sessionToken=${sessionToken}`;
+        const contentUrl = paneContentUrl(session, sessionToken, { multi: true });
+        if (contentUrl === null) {
+            sendToast(t("common.error"), t("servers.fileManager.error.unusableSession"));
+            return;
+        }
+        const url = `${getBaseUrl()}${contentUrl}`;
         const defaultFileName = paths.length === 1 ? `${paths[0].split("/").pop()}.zip` : "files.zip";
-        
+
         if (isTauri()) {
             try {
                 await tauriDownload(url, defaultFileName, {
@@ -165,18 +200,25 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
             }
             return;
         }
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = url;
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = "paths";
-        input.value = JSON.stringify(paths);
-        form.appendChild(input);
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
-        sendToast(t("common.success"), t("servers.fileManager.toast.downloadingItems", { count: paths.length }));
+
+        // Fetched and saved as a blob, not submitted as a form: a form posted from the main window
+        // navigates the whole application onto any response without a Content-Disposition header —
+        // that is, onto any error, for either provider — and every open tab, browser-only ones
+        // (notes, OneDrive) included, is gone. A blob download fails inside this function instead.
+        try {
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ paths: JSON.stringify(paths) }).toString(),
+            });
+            if (!response.ok) throw new Error(await readErrorMessage(response, t("servers.fileManager.toast.error")));
+            const fileName = fileNameFromDisposition(response, defaultFileName);
+            const blob = await response.blob();
+            saveBlobAs(blob, fileName);
+            sendToast(t("common.success"), t("servers.fileManager.toast.downloadingItems", { count: paths.length }));
+        } catch (e) {
+            sendToast(t("common.error"), t("servers.fileManager.toast.downloadFailed", { message: e.message }));
+        }
     };
 
     const uploadFileHttp = async (file, targetDir) => {
@@ -184,7 +226,8 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
         const stats = uploadStatsRef.current;
 
         try {
-            const url = `/api/entries/sftp/upload?sessionId=${session.id}&path=${encodeURIComponent(filePath)}&sessionToken=${sessionToken}`;
+            const url = paneContentUrl(session, sessionToken, { path: encodeURIComponent(filePath), upload: true });
+            if (url === null) throw new Error(t("servers.fileManager.error.unusableSession"));
             await uploadFileRequest(url, file, {
                 onProgress: (progress) => setUploadProgress(stats.totalBytes
                     ? Math.round(((stats.sentBytes + (progress / 100) * file.size) / stats.totalBytes) * 100)
