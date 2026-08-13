@@ -256,6 +256,27 @@ test("checksum refuses rather than pretending", async () => {
     await assert.rejects(adapter.checksum("/a.txt", "sha256"), /checksum/i);
 });
 
+test("rename patches the item's name and nothing else", async () => {
+    const { calls, adapter } = adapterOn(() => ({ body: {} }));
+
+    await adapter.rename("/a/alt.txt", "neu.txt");
+
+    assert.strictEqual(calls.length, 1);
+    assert.strictEqual(calls[0].method, "PATCH");
+    assert.strictEqual(calls[0].url, "/root:/a/alt.txt:");
+    assert.deepStrictEqual(JSON.parse(calls[0].body), { name: "neu.txt" });
+});
+
+// A name is one segment. A separator in it would silently move the item somewhere else.
+test("a rename to something that is not a single segment is refused", async () => {
+    const { calls, adapter } = adapterOn(() => ({ body: {} }));
+
+    for (const name of ["a/b", "/a", ".", "..", "", null, 42]) {
+        await assert.rejects(adapter.rename("/a.txt", name), /name/i, `accepted ${JSON.stringify(name)}`);
+    }
+    assert.strictEqual(calls.length, 0, "nothing may reach Graph");
+});
+
 test("the adapter offers exactly the seven mandatory methods plus checksum", () => {
     const { adapter } = adapterOn(() => ({ body: {} }));
 

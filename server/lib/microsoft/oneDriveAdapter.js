@@ -286,6 +286,21 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
         throw new GraphError("OneDrive does not provide a checksum this transfer can compare");
     };
 
+    // Not part of the eight method seam — FileTransfer never renames. It exists for the pane, and
+    // it is one PATCH rather than a copy and a delete.
+    const rename = async (path, name) => {
+        if (typeof name !== "string" || name === "" || name.includes("/") || name === "." || name === "..") {
+            throw new GraphError(`Invalid OneDrive name: ${String(name)}`);
+        }
+
+        await graph.request(connectionId, {
+            url: itemUrl(path),
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name }),
+        });
+    };
+
     return {
         // No checksum: Microsoft reports SHA-256 for personal accounts and its own quickXorHash for
         // business ones, and the SSH side can only compute the former. A guarantee that holds for
@@ -301,6 +316,7 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
         unlink,
         rmdir,
         checksum,
+        rename,
     };
 };
 
