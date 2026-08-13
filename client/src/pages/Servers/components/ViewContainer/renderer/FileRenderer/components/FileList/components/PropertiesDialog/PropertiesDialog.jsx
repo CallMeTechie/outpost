@@ -102,9 +102,13 @@ export const PropertiesDialog = ({ open, onClose, item, path, sendOperation, OPE
         }
     }, [permissions, sendOperation, OPERATIONS, fullPath]);
 
+    // The permissions tab hangs off the same word as the list's permissions column: without a file
+    // system underneath there is no mode to show, and CHMOD is not an operation such a socket
+    // offers — "Apply" sat on "Saving…" for half a second and changed nothing at all. Checksum
+    // stays on `shell`, which it genuinely needs.
     const tabs = [
         { key: "general", label: t("servers.fileManager.properties.general") },
-        { key: "permissions", label: t("servers.fileManager.properties.permissions") },
+        ...(capabilities.nativeFs ? [{ key: "permissions", label: t("servers.fileManager.properties.permissions") }] : []),
         ...(!isFolder && capabilities.shell ? [{ key: "checksum", label: t("servers.fileManager.properties.checksum") }] : []),
     ];
 
@@ -138,7 +142,7 @@ export const PropertiesDialog = ({ open, onClose, item, path, sendOperation, OPE
                     />
                 )}
 
-                {activeTab === "permissions" && (
+                {activeTab === "permissions" && capabilities.nativeFs && (
                     <PermissionsTab
                         isFolder={isFolder}
                         permissions={permissions}
@@ -161,7 +165,7 @@ export const PropertiesDialog = ({ open, onClose, item, path, sendOperation, OPE
                 )}
 
                 <div className="dialog-actions">
-                    {activeTab === "permissions" && (
+                    {activeTab === "permissions" && capabilities.nativeFs && (
                         <Button
                             text={permissionsSaving ? t('common.saving') : t('servers.fileManager.permissions.apply')}
                             onClick={handleSavePermissions}

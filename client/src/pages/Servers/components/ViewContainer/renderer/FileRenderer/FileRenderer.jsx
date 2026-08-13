@@ -405,7 +405,10 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
         onMessage: processMessage,
         onClose: handleWsClose,
         onOpen: handleWsOpen,
-        shouldReconnect: (e) => e.code !== 1000 && e.code !== 4001 && e.code !== 4002 && e.code !== 4403 && ++reconnectAttemptsRef.current <= 10,
+        // 4008 means the connection id this pane was built with is malformed, so every retry sends
+        // the same one and is refused the same way. paneEndpoint already refuses to build such a
+        // URL, but that is a second, independent check — it covering this one is a coincidence.
+        shouldReconnect: (e) => e.code !== 1000 && e.code !== 4001 && e.code !== 4002 && e.code !== 4008 && e.code !== 4403 && ++reconnectAttemptsRef.current <= 10,
         reconnectAttempts: 10,
         reconnectInterval: 1500,
     }, wsUrl !== null);
