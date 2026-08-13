@@ -20,10 +20,14 @@ const logger = require("../utils/logger");
 const { getCapabilities, CHECKSUM_COMMANDS, escapePath } = require("../lib/fileCapabilities");
 const { buildTransferHandlers } = require("../lib/fileTransfer/transferHandlers");
 const { authorizeSource, authorizeDestination } = require("../lib/fileTransfer/transferAuth");
+const { resolveSource, resolveDestination } = require("../lib/fileTransfer/endpoints");
 const { resolveEntryScope, validateEntryAccess } = require("../controllers/entry");
 const { createEngineSftpAdapter } = require("../lib/fileTransfer/engineSftpAdapter");
 const { FileTransfer } = require("../lib/fileTransfer/FileTransfer");
 const registry = require("../lib/fileTransfer/registry");
+const MicrosoftConnection = require("../models/MicrosoftConnection");
+const { graph } = require("../lib/microsoft/graphClient");
+const { createOneDriveAdapter } = require("../lib/microsoft/oneDriveAdapter");
 
 const OP = {
     READY: 0x0, LIST_FILES: 0x1, CREATE_FILE: 0x4, CREATE_FOLDER: 0x5, DELETE_FILE: 0x6,
@@ -61,9 +65,9 @@ const requireMultiPaths = (p) => { if (!p?.sources?.length || !p?.destination) t
 // cancel throwing must not stop the rest from being cancelled.
 //
 // A running entry (it has `transfer`) must NOT be deleted here: transferHandlers.js#finish reads
-// `transfers.get(transferId)` to recover `sourceSessionId` before it deletes the entry itself —
-// deleting it here first would make that read come back empty, and the source side's auxiliary
-// connection would never be released for the rest of the session. Cancelling still makes run()
+// `transfers.get(transferId)` to recover both sides' release functions before it deletes the entry
+// itself — deleting it here first would make that read come back empty, and the source side's
+// auxiliary connection would never be released for the rest of the session. Cancelling still makes run()
 // settle as soon as possible; only the entry's own finish() may remove it from the map. A bare
 // placeholder has no such finish() reading it back — nothing else in this closure will ever look
 // for it again once the socket is gone — so removing it here is safe.
@@ -278,22 +282,35 @@ module.exports = async (ws, req) => {
             findEntry: (id) => Entry.findByPk(id),
             resolveEntryScope, validateEntryAccess, hasResourcePermission,
         };
+        // Everything an endpoint may need to become a provider, whatever kind it turns out to be.
+        // The handler never sees any of it: it only ever asks for a resolved source or destination.
+        const endpointDeps = {
+            authorizeSource: (request) => authorizeSource(authDeps, request),
+            authorizeDestination: (request) => authorizeDestination(authDeps, request),
+            getConnection: SessionManager.getConnection,
+            getCrossClient: getSFTPCrossTransferClient,
+            releaseCrossClient: releaseSFTPCrossTransferClient,
+            createSftpAdapter: createEngineSftpAdapter,
+            getCapabilities,
+            loadConnection: (id) => MicrosoftConnection.findOne({ where: { id } }),
+            createOneDriveAdapter: ({ connectionId }) => createOneDriveAdapter({ graph, connectionId }),
+        };
         const transferDeps = {
             send: (op, data) => sendResult(ws, op, data),
             registry,
-            getConnection: SessionManager.getConnection,
-            authorizeSource: (request) => authorizeSource(authDeps, request),
-            authorizeDestination: (request) => authorizeDestination(authDeps, request),
             findEntry: (id) => Entry.findByPk(id),
-            getCrossClient: getSFTPCrossTransferClient,
-            releaseCrossClient: releaseSFTPCrossTransferClient,
-            createAdapter: createEngineSftpAdapter,
-            getCapabilities,
+            resolveSource: (request) => resolveSource(endpointDeps, request),
+            resolveDestination: (request) => resolveDestination(endpointDeps, request),
             createTransfer: (opts) => new FileTransfer(opts),
             createAuditLog,
         };
         const handlers = buildOperationHandlers(sftpClient, getBg, ws, logAudit, capabilities, {
-            user, sessionId, serverSession, entry, ipAddress, userAgent, transfers, deps: transferDeps,
+            user, sessionId, serverSession, entry, ipAddress, userAgent, transfers,
+            // This socket's own endpoint — the side being written into. An SFTP socket is the only
+            // kind that reaches this route; the descriptor is what makes that explicit to the
+            // handler instead of implied by ctx.sessionId.
+            endpoint: { kind: "sftp", sessionId },
+            deps: transferDeps,
         });
 
         const messageHandler = async (msg) => {

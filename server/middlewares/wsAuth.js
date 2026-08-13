@@ -179,3 +179,4 @@ module.exports = async (ws, req) => {
 };
 
 module.exports.authenticateWebSocket = authenticateWebSocket;
+module.exports.authenticateToken = authenticateToken;

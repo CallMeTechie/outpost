@@ -8,7 +8,7 @@ const base = {
     sourceScope: { organizationId: "org-src" },
     destScope: { organizationId: "org-dst" },
     sourceEntryId: "e-src", destEntryId: "e-dst",
-    sourceSessionId: "s1", paths: ["/a", "/b"], destination: "/d", action: "move",
+    source: { kind: "sftp", sessionId: "s1" }, paths: ["/a", "/b"], destination: "/d", action: "move",
     ipAddress: "10.0.0.1", userAgent: "test",
 };
 
@@ -59,9 +59,12 @@ test("a refused attempt logs how many paths were requested, not which ones", () 
     assert.strictEqual(entry.details.paths, base.paths.length);
 });
 
-test("the source entry carries the session id and the full path list", () => {
+// The endpoint descriptor, not a bare id: a transfer can come from a session or from a personal
+// OneDrive connection, and the trail has to say which without the reader guessing what kind of id
+// a bare string was.
+test("the source entry carries the source endpoint and the full path list", () => {
     const [src] = buildTransferAuditEntries(base);
-    assert.strictEqual(src.details.sourceSessionId, "s1");
+    assert.deepStrictEqual(src.details.source, { kind: "sftp", sessionId: "s1" });
     assert.deepStrictEqual(src.details.paths, ["/a", "/b"]);
 });
 

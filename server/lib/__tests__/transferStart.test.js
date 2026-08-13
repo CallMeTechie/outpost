@@ -40,7 +40,8 @@ test("a non-string transferId is refused", () => {
 // Source == destination makes both auxiliary clients resolve to the same connection, which
 // deadlocks the transfer — refuse it before anything is reserved.
 test("a transfer onto its own session is refused", () => {
-    assert.throws(() => validateTransferStart({ ...ok, sourceSessionId: DST }, DST), /invalid/i);
+    assert.throws(() => validateTransferStart({ ...ok, sourceSessionId: DST }, { kind: "sftp", sessionId: DST }),
+        /invalid/i);
 });
 
 test("a transferId with unexpected characters is refused", () => {
@@ -87,12 +88,61 @@ test("a destination longer than the path length limit is refused", () => {
 
 // The four passed-through fields feed the register key, the auxiliary connections and the run
 // itself in the next task — a swap here would not crash, it would move the wrong files.
-test("transferId, sourceSessionId, destination and paths pass through unchanged and unswapped", () => {
+test("transferId, source, destination and paths pass through unchanged and unswapped", () => {
     const payload = { transferId: "tx-1", sourceSessionId: "sess-2", paths: ["/path-3", "/path-4"],
         destination: "/dest-5", action: "copy" };
     const result = validateTransferStart(payload, "unrelated-dst");
     assert.strictEqual(result.transferId, "tx-1");
-    assert.strictEqual(result.sourceSessionId, "sess-2");
+    assert.deepStrictEqual(result.source, { kind: "sftp", sessionId: "sess-2" });
     assert.strictEqual(result.destination, "/dest-5");
     assert.deepStrictEqual(result.paths, ["/path-3", "/path-4"]);
+});
+
+const base = { transferId: "t1", destination: "/ziel", paths: ["/a.txt"] };
+const destination = { kind: "sftp", sessionId: "dest" };
+
+// The deployed client sends sourceSessionId. Breaking it would break the running installation.
+test("a legacy sourceSessionId is read as an sftp endpoint", () => {
+    const request = validateTransferStart({ ...base, sourceSessionId: "src" }, destination);
+
+    assert.deepStrictEqual(request.source, { kind: "sftp", sessionId: "src" });
+});
+
+test("an explicit endpoint is used as given", () => {
+    const request = validateTransferStart({ ...base, source: { kind: "onedrive", connectionId: 7 } }, destination);
+
+    assert.deepStrictEqual(request.source, { kind: "onedrive", connectionId: 7, driveId: "me" });
+});
+
+// Two fields meaning the same thing is a caller that does not know what it wants.
+test("both forms at once are refused", () => {
+    assert.throws(() => validateTransferStart(
+        { ...base, sourceSessionId: "src", source: { kind: "sftp", sessionId: "src" } }, destination), /Invalid/);
+});
+
+test("neither form is refused", () => {
+    assert.throws(() => validateTransferStart(base, destination), /Invalid/);
+});
+
+// Source and destination on one session resolve to the same auxiliary client, which deadlocks.
+test("an sftp source equal to the destination session is refused", () => {
+    assert.throws(() => validateTransferStart({ ...base, sourceSessionId: "dest" }, destination), /Invalid/);
+});
+
+// Two OneDrive sides are fine — they are two independent HTTP clients, not one connection.
+test("a onedrive source against a onedrive destination is allowed", () => {
+    const request = validateTransferStart({ ...base, source: { kind: "onedrive", connectionId: 7 } },
+        { kind: "onedrive", connectionId: 9, driveId: "me" });
+
+    assert.strictEqual(request.source.connectionId, 7);
+});
+
+// The same drive on both sides would have the transfer read and write the same items.
+test("the same onedrive connection on both sides is refused", () => {
+    assert.throws(() => validateTransferStart({ ...base, source: { kind: "onedrive", connectionId: 7 } },
+        { kind: "onedrive", connectionId: 7, driveId: "me" }), /Invalid/);
+});
+
+test("a malformed endpoint is refused by the same validation as everywhere else", () => {
+    assert.throws(() => validateTransferStart({ ...base, source: { kind: "ftp" } }, destination), /Invalid/);
 });
