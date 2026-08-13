@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert");
 const http = require("node:http");
+const net = require("node:net");
 const { PassThrough, Readable } = require("node:stream");
 const express = require("express");
 
@@ -352,18 +353,36 @@ test("GET / for a folder whose file stream errors mid-archive: the connection en
     // so the route calls archive.abort() and res.destroy() instead of falling through to
     // handleError's silent no-op.
     //
-    // Read off the running code rather than assumed: res.destroy() fires in the same microtask
-    // turn as the staged header write, before Node has flushed that write to the socket, so
-    // Socket#destroy discards it — the client never receives a byte, not even a status line, and
-    // sees a hard connection reset rather than a clean response with a truncated body. Either way
-    // the connection ends promptly instead of hanging, which is the one behaviour Task 1 pinned
-    // as broken; a future change that makes this resolve into a normal response is also fine, a
-    // regression to the old hang is not.
-    const outcome = await Promise.race([
-        fetch(downloadUrl(sessionToken, sessionId, "/remote/broken-folder"))
-            .then(() => "completed", (err) => `errored: ${err.message}`),
-        new Promise((resolve) => setTimeout(() => resolve("timed-out"), 400)),
-    ]);
-    assert.notStrictEqual(outcome, "timed-out",
-        "the connection must end — successfully or as a reset — rather than hang forever");
+    // fetch() collapses this into one opaque rejection when the connection resets before it can
+    // parse a status line, hiding whether Content-Disposition/Content-Type were ever committed —
+    // which is the actual point of Task 1's original assertion. A raw socket lets the test tell
+    // the two shapes GC8's exception allows apart: bytes went out and then the connection dropped
+    // (a response line to check), or nothing went out at all before the reset (nothing to check,
+    // but still not a hang). Measured against this exact fixture, on this Node version, it is
+    // reliably the second shape: res.destroy() runs in the same microtask turn as the staged
+    // header write, before Node hands that write to the kernel socket, so Socket#destroy discards
+    // it and zero bytes ever reach the client (confirmed by capturing raw socket bytes across
+    // repeated runs). That is a property of this fixture's timing, not a guarantee of the route —
+    // a slower client or a later stream failure could let some bytes out first — so this test
+    // checks whichever shape actually happened rather than assuming one.
+    const url = new URL(downloadUrl(sessionToken, sessionId, "/remote/broken-folder"));
+    const outcome = await new Promise((resolve) => {
+        const socket = net.connect(Number(url.port), url.hostname, () => {
+            socket.write(`GET ${url.pathname}${url.search} HTTP/1.1\r\nHost: ${url.host}\r\nConnection: close\r\n\r\n`);
+        });
+        let received = Buffer.alloc(0);
+        const timer = setTimeout(() => resolve({ kind: "timed-out", received }), 400);
+        socket.on("data", (chunk) => { received = Buffer.concat([received, chunk]); });
+        socket.on("error", () => {}); // "close" always follows; nothing further to do here
+        socket.on("close", () => { clearTimeout(timer); resolve({ kind: "closed", received }); });
+    });
+
+    assert.strictEqual(outcome.kind, "closed",
+        "the connection must close on its own — with or without a partial response — rather than hang forever");
+
+    if (outcome.received.length > 0) {
+        const head = outcome.received.toString("latin1");
+        assert.match(head, /^HTTP\/1\.1 200/, "if any bytes reached the client, the status must be the one already committed before the stream error");
+        assert.match(head, /content-type: application\/zip/i, "if any bytes reached the client, Content-Type must be the one already committed");
+    }
 });

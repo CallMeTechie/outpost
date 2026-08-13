@@ -63,7 +63,15 @@ const validateSession = async (sessionToken, sessionId) => {
         logger.warn("Falling back to metadata SFTP client for transfer", { sessionId, error: err.message });
     }
 
-    return { session, user, serverSession, entry, sftpClient, adapter: createEngineSftpAdapter(sftpClient) };
+    // This client is not exclusive to this request: it is cached per session (getSFTPTransferClient)
+    // and, on that call failing, falls back to the connection's own shared metadata client. Either
+    // one may be serving a concurrent download or the file browser's directory listing at the same
+    // moment, so the adapter must not pause the whole client while a slow HTTP peer is behind on
+    // this response — see engineSftpAdapter.js's readFile for what backpressure:true would do here.
+    return {
+        session, user, serverSession, entry, sftpClient,
+        adapter: createEngineSftpAdapter(sftpClient, undefined, { backpressure: false }),
+    };
 };
 
 const validateRequest = (query) => {
@@ -191,14 +199,23 @@ app.get("/", async (req, res) => {
         const headers = contentHeaders({ fileName, size: stats.size, ext, preview: preview === "true" });
         for (const [name, value] of Object.entries(headers)) res.header(name, value);
 
-        sendFile(ctx.adapter, res, remotePath);
+        // Awaited so a throw from adapter.readFile lands in this function's own catch, the same as
+        // every other synchronous throw here. Without it, sendFile's `async` turns that throw into
+        // a rejection nothing here observes — and this process has no unhandledRejection handler,
+        // only uncaughtException, so Node would tear down the whole server over one bad path.
+        await sendFile(ctx.adapter, res, remotePath);
         audit(ctx, req, AUDIT_ACTIONS.FILE_DOWNLOAD, RESOURCE_TYPES.FILE, { filePath: remotePath, fileSize: stats.size });
     } catch (err) {
         // Once the headers are out there is no status code left to send, and archiver will never
-        // idle after a source stream was destroyed — finalize() simply never returns. Destroying
-        // the response gives the browser a truncated download instead of an endless spinner, and
-        // frees the stream this side was still holding. Deliberate behaviour change, see the plan's
-        // Global Constraints, the "response never ends on a mid-archive failure" exception.
+        // idle after a source stream was destroyed — finalize() simply never returns. res.destroy()
+        // is deliberate here and not res.end(): for a chunked response, end() would write the
+        // terminating zero-length chunk and tell the browser the download finished — saving a ZIP
+        // with no central directory as if it had succeeded. destroy() cuts the socket instead, so
+        // the client sees the failure — either a reset with no status line at all if this fires
+        // before anything was flushed, or a connection dropped mid-body if some already went out —
+        // rather than a silently corrupt "complete" file or (the old behaviour) a spinner that never
+        // ends. Deliberate behaviour change, see the plan's Global Constraints, the "response never
+        // ends on a mid-archive failure" exception.
         if (res.headersSent) { archive?.abort(); res.destroy(); return; }
         handleError(res, err);
     }
@@ -264,8 +281,10 @@ app.post("/multi", express.urlencoded({ extended: true }), async (req, res) => {
             connectionReason: ctx.serverSession.connectionReason || null,
         });
     } catch (err) {
-        // Same rationale as GET /: past headersSent there is no status left to send, and
-        // destroying the response is what turns a would-be hang into a truncated download.
+        // Same rationale as GET / — see that handler's catch for why destroy() and not end(). The
+        // archive.abort() here is a second call when `archive.on("error", ...)` already ran one; a
+        // repeat abort on an aborted archiver is a no-op, so paying for the redundancy once here is
+        // simpler than tracking "already aborted" state for this one path.
         if (res.headersSent) { archive?.abort(); res.destroy(); return; }
         handleError(res, err);
     }

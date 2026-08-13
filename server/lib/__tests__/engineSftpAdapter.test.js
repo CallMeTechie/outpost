@@ -64,6 +64,35 @@ test("readFile asks the client for backpressure", () => {
     assert.deepStrictEqual(calls, [{ path: "/srv/a.txt", options: { backpressure: true } }]);
 });
 
+// FileTransfer's contract needs backpressure on and must not move — this pins that the option
+// defaults to true when a caller does not pass one at all, not just when it passes `true`.
+test("readFile defaults to backpressure on when no options argument is given", () => {
+    const calls = [];
+    const client = fakeClient({
+        readFile: (path, options) => {
+            calls.push(options);
+            return { stream: new PassThrough(), totalSizePromise: Promise.resolve(0), done: Promise.resolve() };
+        },
+    });
+    createEngineSftpAdapter(client, { shell: true }).readFile("/srv/a.txt");
+    assert.deepStrictEqual(calls, [{ backpressure: true }]);
+});
+
+// A caller on a client it does not own exclusively (sftp.js's content routes, sharing the
+// per-session transfer client or its metadata-client fallback) must be able to turn this off, or a
+// slow HTTP peer pauses the whole multiplexed socket and freezes every other request sharing it.
+test("readFile honours an explicit backpressure:false from the adapter's own construction", () => {
+    const calls = [];
+    const client = fakeClient({
+        readFile: (path, options) => {
+            calls.push(options);
+            return { stream: new PassThrough(), totalSizePromise: Promise.resolve(0), done: Promise.resolve() };
+        },
+    });
+    createEngineSftpAdapter(client, { shell: true }, { backpressure: false }).readFile("/srv/a.txt");
+    assert.deepStrictEqual(calls, [{ backpressure: false }]);
+});
+
 test("checksum runs the algorithm command and returns only the hash", async () => {
     const calls = [];
     const client = fakeClient({
