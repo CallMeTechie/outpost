@@ -8,6 +8,7 @@ import { getSessionOwnerLabel } from "@/common/utils/avatar.js";
 import { IdentityContext } from "@/common/contexts/IdentityContext.jsx";
 import { useScripts } from "@/common/contexts/ScriptContext.jsx";
 import ServerEntries from "./components/ServerEntries.jsx";
+import OneDriveAccounts from "./components/OneDriveAccounts";
 import { isCredentiallessProtocol } from "@/common/utils/ConnectionUtil.js";
 import { useDevFeature } from "@/common/utils/devFeatures.js";
 import { useBodyClass } from "@/common/hooks/useBodyClass.js";
@@ -99,6 +100,7 @@ export const ServerList = ({
     setSSHConfigImportDialogOpen,
     setEditServerId,
     connectToServer,
+    openOneDrive,
     openSFTP,
     setCurrentOrganizationId,
     hibernatedSessions = [],
@@ -598,6 +600,8 @@ export const ServerList = ({
                             <p>{t("servers.addServerNote")}</p>
                         </div>
                     )}
+
+                    <OneDriveAccounts openOneDrive={openOneDrive} />
 
                     <ContextMenu
                         isOpen={contextMenu.isOpen}

@@ -2186,7 +2186,12 @@
       }
     },
     "connectionFailed": "Verbindung fehlgeschlagen: {{message}}",
-    "unknownError": "Unbekannter Fehler"
+    "unknownError": "Unbekannter Fehler",
+    "oneDrive": {
+      "sectionTitle": "Verbundene Konten",
+      "disconnected": "Getrennt",
+      "reconnectHint": "Dieses Konto unter Einstellungen → Konto neu verbinden."
+    }
   },
   "support": {
     "title": "Unterstützung erhalten",

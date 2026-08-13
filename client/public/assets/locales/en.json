@@ -2186,6 +2186,11 @@
     "liveSessions": {
       "activeOn": "Live sessions: {{users}}",
       "unknownUser": "Unknown user"
+    },
+    "oneDrive": {
+      "sectionTitle": "Connected accounts",
+      "disconnected": "Disconnected",
+      "reconnectHint": "Reconnect this account under Settings → Account."
     }
   },
   "support": {
