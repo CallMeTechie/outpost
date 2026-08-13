@@ -140,6 +140,35 @@ const buildOneDriveHandlers = (op, { adapter, send }) => ({
     },
 });
 
+// Exported so the dispatch itself can be tested without a socket. The three transfer opcodes are
+// deliberately NOT in the handler table: buildTransferHandlers returns { start, cancel, resolve },
+// a different shape, and ONEDRIVE_OPS is pinned against the table by a test.
+//
+// The payload is parsed before the opcode decision, not after the table lookup: the three transfer
+// branches need it too, and an unknown opcode leaving without a parse would have to duplicate it.
+const createMessageDispatch = ({ handlers, transferHandlers, send }) => async (msg) => {
+    let payload;
+    try { payload = JSON.parse(msg.slice(1).toString()); } catch { payload = undefined; }
+
+    try {
+        if (msg[0] === OP.TRANSFER_START) return void await transferHandlers.start(payload);
+        if (msg[0] === OP.TRANSFER_CANCEL) return void await transferHandlers.cancel(payload);
+        if (msg[0] === OP.TRANSFER_RESOLVE) return void await transferHandlers.resolve(payload);
+
+        const handler = handlers[msg[0]];
+        if (!handler) return;
+
+        await handler(payload);
+    } catch (error) {
+        send(OP.ERROR, { message: error.message || "Operation failed" });
+    }
+};
+
+// A socket that goes away must not leave a transfer running against a destination nobody is
+// watching any more. Exported for the same reason as the dispatch: a close handler registered
+// inline is invisible to every test, and this one silently stops working if it is ever dropped.
+const createCloseHandler = (transfers) => () => cancelAllTransfers(transfers);
+
 module.exports = async (ws, req) => {
     const auth = await authenticateToken(ws, req.query?.sessionToken);
     if (!auth) return;
@@ -200,36 +229,14 @@ module.exports = async (ws, req) => {
 
     send(OP.READY, { path: "/", capabilities: { shell: false, checksum: false } });
 
-    ws.on("message", async (msg) => {
-        let payload;
-        try { payload = JSON.parse(msg.slice(1).toString()); } catch { payload = undefined; }
+    ws.on("message", createMessageDispatch({ handlers, transferHandlers, send }));
 
-        try {
-            // The three transfer opcodes are deliberately NOT part of the handler table:
-            // buildTransferHandlers answers with { start, cancel, resolve } rather than an
-            // opcode-indexed map, and ONEDRIVE_OPS names exactly what that table offers. They hang
-            // in the dispatch itself, the way sftpWS.js does it.
-            if (msg[0] === OP.TRANSFER_START) return void await transferHandlers.start(payload);
-            if (msg[0] === OP.TRANSFER_CANCEL) return void await transferHandlers.cancel(payload);
-            if (msg[0] === OP.TRANSFER_RESOLVE) return void await transferHandlers.resolve(payload);
-
-            const handler = handlers[msg[0]];
-            if (!handler) return;
-
-            await handler(payload);
-        } catch (error) {
-            send(OP.ERROR, { message: error.message || "Operation failed" });
-        }
-    });
-
-    ws.on("close", () => {
-        // A socket that goes away must not leave a transfer running against a destination nobody
-        // is watching any more.
-        cancelAllTransfers(transfers);
-    });
+    ws.on("close", createCloseHandler(transfers));
 };
 
 module.exports.buildOneDriveHandlers = buildOneDriveHandlers;
 module.exports.ONEDRIVE_OPS = ONEDRIVE_OPS;
 module.exports.resolveSocketConnection = resolveSocketConnection;
 module.exports.createSend = createSend;
+module.exports.createMessageDispatch = createMessageDispatch;
+module.exports.createCloseHandler = createCloseHandler;
