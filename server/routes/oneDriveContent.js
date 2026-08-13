@@ -107,9 +107,32 @@ app.post("/upload", async (req, res) => {
         // fail somewhere in the middle of the stream instead of here.
         if (!Number.isInteger(size)) return res.status(411).json({ error: "A content length is required" });
 
-        await ctx.adapter.writeFile(remotePath, req, { size });
+        // An ordinary drag-and-drop upload sends no If-Match at all — writeFile already treats a
+        // missing ifMatch as "send no condition", the same as it always has. Only the editor, which
+        // read a tag before it started editing, ever puts one on the wire.
+        const ifMatch = req.headers["if-match"];
+        const writeOptions = typeof ifMatch === "string" && ifMatch !== "" ? { size, ifMatch } : { size };
 
-        res.json({ success: true, path: remotePath, size });
+        await ctx.adapter.writeFile(remotePath, req, writeOptions);
+        // A GraphError with a 412 status is already the shape handleGraphError forwards as-is —
+        // nothing more to do here for the conflict itself, see that function below.
+
+        const response = { success: true, path: remotePath, size };
+
+        // The tag this write just produced, not the one the request walked in with — the old one
+        // is spent the moment the write lands. Handed back in the JSON body rather than a header:
+        // this response was always structured, unlike a download's raw bytes, so there is room for
+        // it right where the rest of the answer already lives. A failure to re-read it does not
+        // undo a write that already succeeded, so it is logged and the save is still reported as
+        // the success it was — the editor simply keeps whatever tag it already had a moment longer.
+        try {
+            const stats = await ctx.adapter.stat(remotePath);
+            if (typeof stats.cTag === "string") response.etag = stats.cTag;
+        } catch (statErr) {
+            logger.warn("OneDrive upload succeeded but re-reading its tag failed", { error: statErr.message, path: remotePath });
+        }
+
+        res.json(response);
     } catch (err) {
         logger.error("OneDrive upload error", { error: err.message, path: remotePath });
         handleGraphError(res, err);
@@ -182,6 +205,9 @@ app.get("/", async (req, res) => {
         const ext = getExt(remotePath);
         const headers = contentHeaders({ fileName, size: stats.size, ext, preview: preview === "true" });
         for (const [name, value] of Object.entries(headers)) res.header(name, value);
+        // The editor's baseline for its later conditional save. A folder or a thumbnail never
+        // reaches this line, so only the one download shape the editor actually opens carries it.
+        if (typeof stats.cTag === "string") res.header("ETag", stats.cTag);
 
         // Awaited so a throw from adapter.readFile lands in this function's own catch, the same as
         // every other synchronous throw here — see sftp.js's GET / for why this matters: without

@@ -1938,7 +1938,11 @@
         "saveSuccess": "File saved successfully",
         "saveFailed": "Failed to save file",
         "loadFailed": "Failed to load file",
-        "unsavedChanges": "You have unsaved changes. Are you sure you want to close this file?"
+        "unsavedChanges": "You have unsaved changes. Are you sure you want to close this file?",
+        "conflictTitle": "The file changed elsewhere",
+        "conflictBody": "Someone changed this file after you opened it. Saving now would overwrite their change.",
+        "conflictOverwrite": "Overwrite with my version",
+        "conflictReload": "Discard mine and reload"
       },
       "contextMenu": {
         "open": "Open",
