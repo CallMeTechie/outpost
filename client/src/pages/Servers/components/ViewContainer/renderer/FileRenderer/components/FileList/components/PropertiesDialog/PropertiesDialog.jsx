@@ -6,6 +6,7 @@ import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
 import TabSwitcher from "@/common/components/TabSwitcher";
 import { parsePermissions, permissionsToMode, formatOctal } from "../../utils/fileUtils";
+import { statRequest } from "../../../../utils/paneRequests.js";
 import { GeneralTab } from "./tabs/GeneralTab.jsx";
 import { PermissionsTab } from "./tabs/PermissionsTab.jsx";
 import { ChecksumTab } from "./tabs/ChecksumTab.jsx";
@@ -40,7 +41,7 @@ export const PropertiesDialog = ({ open, onClose, item, path, sendOperation, OPE
             return;
         }
         setLoadingStats(true);
-        sendOperation(OPERATIONS.STAT, { path: fullPath });
+        sendOperation(OPERATIONS.STAT, statRequest(fullPath));
     }, [open, fullPath]);
 
     useEffect(() => {

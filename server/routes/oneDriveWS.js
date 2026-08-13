@@ -35,13 +35,18 @@ const ONEDRIVE_OPS = new Set([
 // A move or copy from the pane names a batch of source paths and a single destination folder.
 const MAX_PANE_PATHS = 256;
 
-const requirePathList = (payload) => {
-    const paths = payload?.paths;
-    if (!Array.isArray(paths) || paths.length === 0 || paths.length > MAX_PANE_PATHS) {
-        throw new Error("A list of paths is required");
+// The fields below are the pane's, not this socket's. The file manager has always spoken the
+// vocabulary sftpWS.js understands, and a pane that sent different fields depending on the provider
+// would be exactly the provider-specific knowledge it is built without — so the server adapts.
+// client/.../FileRenderer/utils/paneRequests.js is the other half of this seam, and
+// oneDrivePaneSeam.test.js drives one into the other.
+const requireSources = (payload) => {
+    const sources = payload?.sources;
+    if (!Array.isArray(sources) || sources.length === 0 || sources.length > MAX_PANE_PATHS) {
+        throw new Error("A list of sources is required");
     }
-    if (paths.some((p) => typeof p !== "string" || p === "")) throw new Error("A list of paths is required");
-    return paths;
+    if (sources.some((p) => typeof p !== "string" || p === "")) throw new Error("A list of sources is required");
+    return sources;
 };
 
 const requirePath = (payload) => {
@@ -50,15 +55,26 @@ const requirePath = (payload) => {
     return path;
 };
 
-const requireName = (payload) => {
-    const name = payload?.name;
+const requireDestination = (payload) => {
+    const destination = payload?.destination;
+    if (typeof destination !== "string" || destination === "") throw new Error("A destination is required");
+    return destination;
+};
+
+const requireName = (name) => {
     if (typeof name !== "string" || name === "" || name.includes("/") || name === "." || name === "..") {
         throw new Error("A name is required and must not contain a separator");
     }
     return name;
 };
 
-const joinPath = (parent, name) => `${parent.replace(/\/+$/, "")}/${name}`;
+// Graph renames by name, the pane renames by target path. The last segment is the new name, and it
+// has to survive the same check a name given directly would: "/a/" or "/a/.." must not reach Graph.
+const requireNewName = (payload) => {
+    const newPath = payload?.newPath;
+    if (typeof newPath !== "string") throw new Error("A new path is required");
+    return requireName(newPath.split("/").pop());
+};
 
 // Exported so the guard itself can be tested: an unguarded throw here escapes the async message
 // listener as an unhandled rejection, and this codebase turns that into process.exit(1).
@@ -112,10 +128,11 @@ const buildOneDriveHandlers = (op, { adapter, send }) => ({
         send(op.STAT, { path, ...(await adapter.stat(path)) });
     },
     [op.CREATE_FOLDER]: async (payload) => {
+        // The pane names the new folder by its full path, so the parent may not exist either — a
+        // drop of an empty folder tree asks for the whole chain at once.
         const path = requirePath(payload);
-        const name = requireName(payload);
-        await adapter.mkdirRecursive(joinPath(path, name));
-        send(op.CREATE_FOLDER, { path: joinPath(path, name) });
+        await adapter.mkdirRecursive(path);
+        send(op.CREATE_FOLDER, { path });
     },
     [op.DELETE_FILE]: async (payload) => {
         const path = requirePath(payload);
@@ -131,19 +148,21 @@ const buildOneDriveHandlers = (op, { adapter, send }) => ({
     },
     [op.RENAME_FILE]: async (payload) => {
         const path = requirePath(payload);
-        const name = requireName(payload);
+        const name = requireNewName(payload);
         await adapter.rename(path, name);
-        send(op.RENAME_FILE, { path, name });
+        send(op.RENAME_FILE, { path, newPath: payload.newPath });
     },
     [op.MOVE_FILES]: async (payload) => {
-        const target = requirePath(payload);
-        for (const path of requirePathList(payload)) await adapter.move(path, target);
-        send(op.MOVE_FILES, { path: target });
+        const destination = requireDestination(payload);
+        const sources = requireSources(payload);
+        for (const source of sources) await adapter.move(source, destination);
+        send(op.MOVE_FILES, { sources, destination });
     },
     [op.COPY_FILES]: async (payload) => {
-        const target = requirePath(payload);
-        for (const path of requirePathList(payload)) await adapter.copy(path, target);
-        send(op.COPY_FILES, { path: target });
+        const destination = requireDestination(payload);
+        const sources = requireSources(payload);
+        for (const source of sources) await adapter.copy(source, destination);
+        send(op.COPY_FILES, { sources, destination });
     },
 });
 

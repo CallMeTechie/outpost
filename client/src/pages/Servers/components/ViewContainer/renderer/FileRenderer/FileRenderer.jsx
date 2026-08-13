@@ -19,6 +19,9 @@ import { initialTransferState, transferReducer } from "./utils/transferState.js"
 import { MAX_TRANSFER_PATHS, exceedsTransferPathLimit } from "./utils/transferLimits.js";
 import { publishMoveCompleted, subscribeToMoveCompleted, paneAffectedByMove } from "./utils/moveNotifier.js";
 import { paneSocket, paneEndpoint, paneProvider } from "./utils/paneEndpoint.js";
+import {
+    listFilesRequest, createFolderRequest, createFolderRecursiveRequest, moveFilesRequest, copyFilesRequest,
+} from "./utils/paneRequests.js";
 import { createErrorRefreshGate } from "./utils/errorRefresh.js";
 
 const REFRESH_DEBOUNCE = 150;
@@ -419,14 +422,14 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     }, [sendMessage, readyState]);
 
     const createFile = (fileName) => sendOperation(OPERATIONS.CREATE_FILE, { path: `${directory}/${fileName}` });
-    const createFolder = (folderName) => sendOperation(OPERATIONS.CREATE_FOLDER, { path: `${directory}/${folderName}` });
-    const listFiles = useCallback((silent = false) => { if (!silent) setLoading(true); setError(null); sendOperation(OPERATIONS.LIST_FILES, { path: directory }); }, [directory, sendOperation]);
+    const createFolder = (folderName) => sendOperation(OPERATIONS.CREATE_FOLDER, createFolderRequest(`${directory}/${folderName}`));
+    const listFiles = useCallback((silent = false) => { if (!silent) setLoading(true); setError(null); sendOperation(OPERATIONS.LIST_FILES, listFilesRequest(directory)); }, [directory, sendOperation]);
     const scheduleRefresh = () => {
         clearTimeout(refreshTimerRef.current);
         refreshTimerRef.current = setTimeout(() => listFiles(true), REFRESH_DEBOUNCE);
     };
-    const moveFiles = useCallback((sources, destination) => sendOperation(OPERATIONS.MOVE_FILES, { sources, destination }), [sendOperation]);
-    const copyFiles = useCallback((sources, destination) => sendOperation(OPERATIONS.COPY_FILES, { sources, destination }), [sendOperation]);
+    const moveFiles = useCallback((sources, destination) => sendOperation(OPERATIONS.MOVE_FILES, moveFilesRequest(sources, destination)), [sendOperation]);
+    const copyFiles = useCallback((sources, destination) => sendOperation(OPERATIONS.COPY_FILES, copyFilesRequest(sources, destination)), [sendOperation]);
 
     // The destination pane's socket drives the transfer, so this is always our own socket.
     const startTransfer = useCallback(({ paths, destination, sourceSessionId, source, action }) => {
@@ -489,7 +492,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
         }
 
         const { files: collected, emptyDirs } = await collectDroppedEntries(entries, targetDir);
-        for (const path of emptyDirs) sendOperation(OPERATIONS.CREATE_FOLDER, { path, recursive: true });
+        for (const path of emptyDirs) sendOperation(OPERATIONS.CREATE_FOLDER, createFolderRecursiveRequest(path));
         queueUploads(collected);
     };
 

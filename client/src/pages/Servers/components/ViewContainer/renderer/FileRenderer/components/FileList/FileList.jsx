@@ -15,6 +15,7 @@ import FileItem from "./components/FileItem";
 import PropertiesDialog from "./components/PropertiesDialog";
 import { useBoxSelection, useDragDrop, useKeyboardNavigation, useClipboard } from "./hooks";
 import { isPreviewable, getFullPath, OPERATIONS } from "./utils/fileUtils";
+import { deleteFileRequest, deleteFolderRequest, renameRequest } from "../../utils/paneRequests.js";
 
 export const FileList = forwardRef(({
     items, updatePath, path, sendOperation, downloadFile, downloadMultipleFiles,
@@ -142,7 +143,8 @@ export const FileList = forwardRef(({
 
     const executeMassDelete = useCallback(() => {
         selectedItems.forEach(item => {
-            sendOperation(item.type === "folder" ? OPERATIONS.DELETE_FOLDER : OPERATIONS.DELETE_FILE, { path: `${path}/${item.name}` });
+            sendOperation(item.type === "folder" ? OPERATIONS.DELETE_FOLDER : OPERATIONS.DELETE_FILE,
+                item.type === "folder" ? deleteFolderRequest(`${path}/${item.name}`) : deleteFileRequest(`${path}/${item.name}`));
         });
         setSelectedItems([]);
     }, [selectedItems, path, sendOperation]);
@@ -161,9 +163,10 @@ export const FileList = forwardRef(({
         contextMenu.open(event, fromDots ? undefined : { x: event.pageX, y: event.pageY });
     };
 
-    const handleDelete = () => sendOperation(selectedItem.type === "folder" ? OPERATIONS.DELETE_FOLDER : OPERATIONS.DELETE_FILE, { path: `${path}/${selectedItem?.name}` });
+    const handleDelete = () => sendOperation(selectedItem.type === "folder" ? OPERATIONS.DELETE_FOLDER : OPERATIONS.DELETE_FILE,
+        selectedItem.type === "folder" ? deleteFolderRequest(`${path}/${selectedItem?.name}`) : deleteFileRequest(`${path}/${selectedItem?.name}`));
     const handleDeleteClick = () => confirmBeforeDelete ? setDeleteDialogOpen(true) : handleDelete();
-    const handleRename = (item, newName) => { if (newName && newName !== item.name) sendOperation(OPERATIONS.RENAME_FILE, { path: `${path}/${item.name}`, newPath: `${path}/${newName}` }); setRenamingItem(null); };
+    const handleRename = (item, newName) => { if (newName && newName !== item.name) sendOperation(OPERATIONS.RENAME_FILE, renameRequest(`${path}/${item.name}`, `${path}/${newName}`)); setRenamingItem(null); };
     const startRename = (item) => { setRenamingItem(item); setRenameValue(item.name); };
     const handleRenameKeyDown = (e, item) => e.key === 'Enter' ? (e.preventDefault(), handleRename(item, renameValue)) : e.key === 'Escape' && setRenamingItem(null);
     const handleCreateFolder = () => { if (newFolderName.trim()) createFolder(newFolderName.trim()); setCreatingFolder(false); };

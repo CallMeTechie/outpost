@@ -51,22 +51,13 @@ test("a listing without a path is refused rather than defaulted", async () => {
     }
 });
 
-test("creating a folder joins the parent and the name", async () => {
+test("creating a folder takes the full path of the new folder", async () => {
     const seen = [];
     const { handlers } = harness({ mkdirRecursive: async (path) => seen.push(path) });
 
-    await handlers[OP.CREATE_FOLDER]({ path: "/Dokumente", name: "Neu" });
+    await handlers[OP.CREATE_FOLDER]({ path: "/Dokumente/Neu" });
 
     assert.deepStrictEqual(seen, ["/Dokumente/Neu"]);
-});
-
-// A name is a single segment. A slash in it would silently create a tree the user did not ask for.
-test("a folder name containing a separator is refused", async () => {
-    const { handlers } = harness();
-
-    for (const name of ["a/b", "/a", "..", ".", ""]) {
-        await assert.rejects(handlers[OP.CREATE_FOLDER]({ path: "/", name }), /name/i, `accepted ${JSON.stringify(name)}`);
-    }
 });
 
 test("deleting a file and deleting a folder use the right call", async () => {
@@ -82,17 +73,28 @@ test("deleting a file and deleting a folder use the right call", async () => {
     assert.deepStrictEqual(calls, [["unlink", "/a.txt"], ["rmdir", "/Ordner", true]]);
 });
 
-test("renaming asks Graph to change the name and answers when it did", async () => {
+test("renaming derives the new name from the last segment of the target path", async () => {
     const seen = [];
     const { handlers, sent } = harness({ rename: async (path, name) => seen.push([path, name]) });
 
-    await handlers[OP.RENAME_FILE]({ path: "/alt.txt", name: "neu.txt" });
+    await handlers[OP.RENAME_FILE]({ path: "/Dokumente/alt.txt", newPath: "/Dokumente/neu.txt" });
 
-    assert.deepStrictEqual(seen, [["/alt.txt", "neu.txt"]]);
+    assert.deepStrictEqual(seen, [["/Dokumente/alt.txt", "neu.txt"]]);
     assert.strictEqual(sent[0].op, OP.RENAME_FILE);
 });
 
-test("moving and copying are offered and pass every path on", async () => {
+// A name is a single segment. Graph renames by name, so a target path whose last segment is empty,
+// "." or ".." names nothing a rename could produce.
+test("a target path without a usable last segment is refused", async () => {
+    const { handlers } = harness({ rename: async () => { throw new Error("must not be called"); } });
+
+    for (const newPath of ["/Dokumente/", "/Dokumente/.", "/Dokumente/..", "", 42, undefined]) {
+        await assert.rejects(handlers[OP.RENAME_FILE]({ path: "/alt.txt", newPath }), /name|path/i,
+            `accepted ${JSON.stringify(newPath)}`);
+    }
+});
+
+test("moving and copying are offered and pass every source on", async () => {
     const moved = [];
     const copied = [];
     const { handlers } = harness({
@@ -100,19 +102,28 @@ test("moving and copying are offered and pass every path on", async () => {
         copy: async (path, target) => copied.push([path, target]),
     });
 
-    await handlers[OP.MOVE_FILES]({ path: "/Ziel", paths: ["/a.txt", "/b.txt"] });
-    await handlers[OP.COPY_FILES]({ path: "/Ziel", paths: ["/c.txt"] });
+    await handlers[OP.MOVE_FILES]({ sources: ["/a.txt", "/b.txt"], destination: "/Ziel" });
+    await handlers[OP.COPY_FILES]({ sources: ["/c.txt"], destination: "/Ziel" });
 
     assert.deepStrictEqual(moved, [["/a.txt", "/Ziel"], ["/b.txt", "/Ziel"]]);
     assert.deepStrictEqual(copied, [["/c.txt", "/Ziel"]]);
 });
 
-test("a list that is empty, absent or absurdly long is refused", async () => {
+test("a source list that is empty, absent or absurdly long is refused", async () => {
     const { handlers } = harness({ move: async () => { throw new Error("must not be called"); } });
 
-    for (const paths of [undefined, [], "a", [""], [42], Array.from({ length: 257 }, () => "/a.txt")]) {
-        await assert.rejects(handlers[OP.MOVE_FILES]({ path: "/Ziel", paths }), /paths/i,
-            `accepted ${JSON.stringify(Array.isArray(paths) ? paths.length : paths)}`);
+    for (const sources of [undefined, [], "a", [""], [42], Array.from({ length: 257 }, () => "/a.txt")]) {
+        await assert.rejects(handlers[OP.MOVE_FILES]({ sources, destination: "/Ziel" }), /sources/i,
+            `accepted ${JSON.stringify(Array.isArray(sources) ? sources.length : sources)}`);
+    }
+});
+
+test("a move without a destination is refused rather than defaulted to the drive root", async () => {
+    const { handlers } = harness({ move: async () => { throw new Error("must not be called"); } });
+
+    for (const destination of [undefined, "", 42]) {
+        await assert.rejects(handlers[OP.MOVE_FILES]({ sources: ["/a.txt"], destination }), /destination/i,
+            `accepted ${JSON.stringify(destination)}`);
     }
 });
 
