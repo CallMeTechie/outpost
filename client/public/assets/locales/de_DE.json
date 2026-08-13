@@ -2036,6 +2036,7 @@
       "toast": {
         "downloaded": "{{name}} heruntergeladen",
         "downloadingItems": "Herunterladen von {{count}} item(s)...",
+        "downloadFailed": "Download fehlgeschlagen: {{message}}",
         "uploaded": "{{name}} hochgeladen",
         "uploadedItems": "{{count}} -Dateien hochgeladen",
         "uploadFailed": "Upload fehlgeschlagen: {{message}}",

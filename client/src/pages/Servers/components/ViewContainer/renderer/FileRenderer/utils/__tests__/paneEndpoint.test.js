@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert";
-import { paneProvider, paneEndpoint, paneSocket, PROVIDER_SFTP, PROVIDER_ONEDRIVE }
+import { paneProvider, paneEndpoint, paneSocket, paneContentUrl, PROVIDER_SFTP, PROVIDER_ONEDRIVE }
     from "../paneEndpoint.js";
 
 const sftp = { id: "sess-1", type: "sftp", server: { name: "web01" } };
@@ -58,4 +58,51 @@ test("an SFTP session without an id yields nothing", () => {
 test("undefined session is handled safely (no throw during render)", () => {
     assert.strictEqual(paneSocket(undefined, "tok"), null);
     assert.strictEqual(paneEndpoint(undefined), null);
+});
+
+// Every one of these five must come out exactly as it did when each call site built its own
+// string by hand — one test per purpose, matching the table in the task brief. A single byte off
+// here (missing param, wrong order, an extra encode) is invisible until someone tries it against a
+// real server.
+test("an SFTP pane's download address is unchanged", () => {
+    assert.strictEqual(paneContentUrl(sftp, "tok", { path: "/foo/bar.txt" }),
+        "/api/entries/sftp?sessionId=sess-1&path=/foo/bar.txt&sessionToken=tok");
+});
+
+test("an SFTP pane's multi-download (ZIP) address is unchanged", () => {
+    assert.strictEqual(paneContentUrl(sftp, "tok", { multi: true }),
+        "/api/entries/sftp/multi?sessionId=sess-1&sessionToken=tok");
+});
+
+test("an SFTP pane's upload address is unchanged", () => {
+    assert.strictEqual(paneContentUrl(sftp, "tok", { path: encodeURIComponent("/foo/bar.txt"), upload: true }),
+        "/api/entries/sftp/upload?sessionId=sess-1&path=%2Ffoo%2Fbar.txt&sessionToken=tok");
+});
+
+test("an SFTP pane's thumbnail address is unchanged", () => {
+    assert.strictEqual(paneContentUrl(sftp, "tok", { path: encodeURIComponent("/foo/bar.txt"), thumbnail: true, size: 100 }),
+        "/api/entries/sftp?sessionId=sess-1&path=%2Ffoo%2Fbar.txt&sessionToken=tok&thumbnail=true&size=100");
+});
+
+test("an SFTP pane's preview address is unchanged", () => {
+    assert.strictEqual(paneContentUrl(sftp, "tok", { path: "/foo/bar.txt", preview: true }),
+        "/api/entries/sftp?sessionId=sess-1&path=/foo/bar.txt&sessionToken=tok&preview=true");
+});
+
+test("a OneDrive pane addresses the onedrive content route by connection id", () => {
+    assert.strictEqual(paneContentUrl(oneDrive, "tok", { path: "/foo/bar.txt" }),
+        "/api/entries/onedrive?connectionId=7&path=/foo/bar.txt&sessionToken=tok");
+});
+
+test("a OneDrive pane's multi-download address carries no sessionId", () => {
+    assert.strictEqual(paneContentUrl(oneDrive, "tok", { multi: true }),
+        "/api/entries/onedrive/multi?connectionId=7&sessionToken=tok");
+});
+
+// Same broken sessions paneSocket/paneEndpoint already refuse - a content URL built from half a
+// session is a request the server rejects, so null here must reach the pane the same way.
+test("an unusable session yields no content URL, not a half-built one", () => {
+    assert.strictEqual(paneContentUrl({ type: "onedrive" }, "tok", { path: "/x" }), null);
+    assert.strictEqual(paneContentUrl({ type: "sftp" }, "tok", { path: "/x" }), null);
+    assert.strictEqual(paneContentUrl(undefined, "tok", { path: "/x" }), null);
 });

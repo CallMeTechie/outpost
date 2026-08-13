@@ -18,7 +18,7 @@ import { OPERATIONS } from "./utils/operations.js";
 import { initialTransferState, transferReducer } from "./utils/transferState.js";
 import { MAX_TRANSFER_PATHS, exceedsTransferPathLimit } from "./utils/transferLimits.js";
 import { publishMoveCompleted, subscribeToMoveCompleted, paneAffectedByMove } from "./utils/moveNotifier.js";
-import { paneSocket, paneEndpoint, paneProvider } from "./utils/paneEndpoint.js";
+import { paneSocket, paneEndpoint, paneProvider, paneContentUrl } from "./utils/paneEndpoint.js";
 import { DEFAULT_CAPABILITIES } from "./utils/paneCapabilities.js";
 import {
     listFilesRequest, createFolderRequest, createFolderRecursiveRequest, moveFilesRequest, copyFilesRequest,
@@ -126,10 +126,14 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     const unusableSessionError = wsUrl === null ? t("servers.fileManager.error.unusableSession") : null;
 
     const downloadFile = async (path) => {
-        const baseUrl = getBaseUrl();
+        const contentUrl = paneContentUrl(session, sessionToken, { path });
+        if (contentUrl === null) {
+            sendToast(t("common.error"), t("servers.fileManager.error.unusableSession"));
+            return;
+        }
         const fileName = path.split("/").pop();
-        const url = `${baseUrl}/api/entries/sftp?sessionId=${session.id}&path=${path}&sessionToken=${sessionToken}`;
-        
+        const url = `${getBaseUrl()}${contentUrl}`;
+
         if (isTauri()) {
             try {
                 await tauriDownload(url, fileName);
@@ -149,10 +153,14 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
 
     const downloadMultipleFiles = async (paths) => {
         if (!paths?.length) return;
-        const baseUrl = getBaseUrl();
-        const url = `${baseUrl}/api/entries/sftp/multi?sessionId=${session.id}&sessionToken=${sessionToken}`;
+        const contentUrl = paneContentUrl(session, sessionToken, { multi: true });
+        if (contentUrl === null) {
+            sendToast(t("common.error"), t("servers.fileManager.error.unusableSession"));
+            return;
+        }
+        const url = `${getBaseUrl()}${contentUrl}`;
         const defaultFileName = paths.length === 1 ? `${paths[0].split("/").pop()}.zip` : "files.zip";
-        
+
         if (isTauri()) {
             try {
                 await tauriDownload(url, defaultFileName, {
@@ -165,18 +173,39 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
             }
             return;
         }
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = url;
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = "paths";
-        input.value = JSON.stringify(paths);
-        form.appendChild(input);
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
-        sendToast(t("common.success"), t("servers.fileManager.toast.downloadingItems", { count: paths.length }));
+
+        // Fetched and saved as a blob, not submitted as a form: a form posted from the main window
+        // navigates the whole application onto any response without a Content-Disposition header —
+        // that is, onto any error, for either provider — and every open tab, browser-only ones
+        // (notes, OneDrive) included, is gone. A blob download fails inside this function instead.
+        try {
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ paths: JSON.stringify(paths) }).toString(),
+            });
+            if (!response.ok) {
+                const body = await response.json().catch(() => null);
+                throw new Error(body?.error || t("servers.fileManager.toast.error"));
+            }
+            // The server names the archive itself (routes/sftp.js and routes/oneDriveContent.js
+            // both timestamp it); defaultFileName is a Tauri-only fallback, so match its browser
+            // behavior here rather than inventing a different name for the same download.
+            const disposition = response.headers.get("content-disposition") || "";
+            const fileName = disposition.match(/filename="?([^"]+)"?/)?.[1] || defaultFileName;
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = objectUrl;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(objectUrl);
+            sendToast(t("common.success"), t("servers.fileManager.toast.downloadingItems", { count: paths.length }));
+        } catch (e) {
+            sendToast(t("common.error"), t("servers.fileManager.toast.downloadFailed", { message: e.message }));
+        }
     };
 
     const uploadFileHttp = async (file, targetDir) => {
@@ -184,7 +213,8 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
         const stats = uploadStatsRef.current;
 
         try {
-            const url = `/api/entries/sftp/upload?sessionId=${session.id}&path=${encodeURIComponent(filePath)}&sessionToken=${sessionToken}`;
+            const url = paneContentUrl(session, sessionToken, { path: encodeURIComponent(filePath), upload: true });
+            if (url === null) throw new Error(t("servers.fileManager.error.unusableSession"));
             await uploadFileRequest(url, file, {
                 onProgress: (progress) => setUploadProgress(stats.totalBytes
                     ? Math.round(((stats.sentBytes + (progress / 100) * file.size) / stats.totalBytes) * 100)

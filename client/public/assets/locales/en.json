@@ -2076,6 +2076,7 @@
       "toast": {
         "downloaded": "Downloaded {{name}}",
         "downloadingItems": "Downloading {{count}} item(s)...",
+        "downloadFailed": "Download failed: {{message}}",
         "uploaded": "Uploaded {{name}}",
         "uploadedItems": "Uploaded {{count}} files",
         "uploadFailed": "Upload failed: {{message}}",

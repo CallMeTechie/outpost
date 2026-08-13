@@ -239,7 +239,7 @@ const createCloseHandler = (transfers) => () => cancelAllTransfers(transfers);
 // `content` is false until a drive has download and upload routes of its own: the ones the pane
 // uses are keyed by an SFTP session, and a drive has none. It is a word rather than a silence
 // because the four controls behind it are built and wired — flipping this to true is all they need.
-const ONEDRIVE_CAPABILITIES = { shell: false, terminal: false, copy: true, nativeFs: false, content: false };
+const ONEDRIVE_CAPABILITIES = { shell: false, terminal: false, copy: true, nativeFs: false, content: true };
 
 module.exports = async (ws, req) => {
     const auth = await authenticateToken(ws, req.query?.sessionToken);

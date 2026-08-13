@@ -34,3 +34,33 @@ export const paneSocket = (session, sessionToken) => {
     const id = sessionId(session);
     return id === null ? null : { path: "/api/ws/sftp", params: { sessionToken, sessionId: id } };
 };
+
+// The HTTP twin of paneSocket: same two providers, same null-instead-of-throw shape, but for the
+// three REST content routes instead of the WebSocket. It deliberately does not call getBaseUrl() —
+// that would tie it to the browser globals ConnectionUtil.js reads, and this stays pure so a
+// node:test can call it directly. Callers that need the origin prepend it themselves; callers that
+// hand the result to a helper which already prepends it (RequestUtil's uploadFile/downloadRequest)
+// pass it straight through.
+//
+// `path` is inserted verbatim, not percent-encoded here: the call sites disagree today about
+// whether the path needs encodeURIComponent (thumbnail and upload do, download and preview don't),
+// and reproducing that per call site — by encoding before calling, not inside this function — is
+// what keeps an SFTP pane's address byte-identical to what it built before this function existed.
+export const paneContentUrl = (session, sessionToken, { path, preview, thumbnail, size, multi, upload } = {}) => {
+    const endpoint = paneEndpoint(session);
+    if (endpoint === null) return null;
+
+    const routeBase = endpoint.kind === PROVIDER_ONEDRIVE ? "/api/entries/onedrive" : "/api/entries/sftp";
+    const suffix = multi ? "/multi" : upload ? "/upload" : "";
+
+    let query = endpoint.kind === PROVIDER_ONEDRIVE
+        ? `connectionId=${endpoint.connectionId}`
+        : `sessionId=${endpoint.sessionId}`;
+    // /multi takes its paths from the POST body, not the query string - every other route needs one.
+    if (!multi) query += `&path=${path}`;
+    query += `&sessionToken=${sessionToken}`;
+    if (thumbnail) query += `&thumbnail=true&size=${size}`;
+    if (preview) query += "&preview=true";
+
+    return `${routeBase}${suffix}?${query}`;
+};
