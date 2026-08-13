@@ -288,7 +288,6 @@ module.exports = async (ws, req) => {
             authorizeSource: (request) => authorizeSource(authDeps, request),
             authorizeDestination: (request) => authorizeDestination(authDeps, request),
             getConnection: SessionManager.getConnection,
-            findEntry: (id) => Entry.findByPk(id),
             getCrossClient: getSFTPCrossTransferClient,
             releaseCrossClient: releaseSFTPCrossTransferClient,
             createSftpAdapter: createEngineSftpAdapter,

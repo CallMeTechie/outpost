@@ -20,8 +20,13 @@ const { hasResourcePermission } = require("../utils/permission");
 const { getCapabilities } = require("../lib/fileCapabilities");
 const { createAuditLog } = require("../controllers/audit");
 
+const loadConnection = (id) => MicrosoftConnection.findOne({ where: { id } });
+
 // Everything a drive without a shell and without POSIX permissions can answer. The pane hides what
 // is missing; offering a handler that cannot work would be worse than offering none.
+//
+// Pinned against the handler table by a test so the two cannot drift. It is a fixture, not a gate:
+// the dispatch decides on the table itself.
 const ONEDRIVE_OPS = new Set([
     OP.LIST_FILES, OP.STAT, OP.CREATE_FOLDER, OP.DELETE_FILE, OP.DELETE_FOLDER, OP.RENAME_FILE,
     OP.MOVE_FILES, OP.COPY_FILES,
@@ -76,8 +81,6 @@ const createSend = (ws) => (opCode, data) => {
 // disconnected, or the database itself failed (4403) — that uniformity is what stops the id from
 // becoming a probe for someone else's account.
 const resolveSocketConnection = async (rawConnectionId, user, deps = {}) => {
-    const loadConnection = deps.loadConnection ?? ((id) => MicrosoftConnection.findOne({ where: { id } }));
-
     // As strict as parseEndpoint, and for the same reason: parseInt would accept "7abc" and " 7 "
     // and silently mean 7. The same conceptual field must not have two validation boundaries.
     if (!/^[1-9]\d*$/.test(rawConnectionId ?? "")) {
@@ -87,7 +90,7 @@ const resolveSocketConnection = async (rawConnectionId, user, deps = {}) => {
     const connectionId = Number(rawConnectionId);
 
     try {
-        await requireOwnConnection({ loadConnection }, user, connectionId);
+        await requireOwnConnection({ loadConnection: deps.loadConnection ?? loadConnection }, user, connectionId);
     } catch {
         return { ok: false, code: 4403, reason: "This Microsoft connection is not available" };
     }
@@ -95,6 +98,10 @@ const resolveSocketConnection = async (rawConnectionId, user, deps = {}) => {
     return { ok: true, connectionId };
 };
 
+// Deliberately unaudited, unlike every mutating operation on the SFTP socket. Nexterm's audit trail
+// records what touches Nexterm's resources: a server is a shared resource, a personal OneDrive is
+// not. That is also why a transfer started from this socket IS audited — it moves data onto or off
+// a server — while a rename inside somebody's own drive is not Nexterm's business to record.
 const buildOneDriveHandlers = (op, { adapter, send }) => ({
     [op.LIST_FILES]: async (payload) => {
         const path = requirePath(payload);
@@ -202,12 +209,11 @@ module.exports = async (ws, req) => {
         authorizeSource: (request) => authorizeSource(authDeps, request),
         authorizeDestination: (request) => authorizeDestination(authDeps, request),
         getConnection: SessionManager.getConnection,
-        findEntry: (id) => Entry.findByPk(id),
         getCrossClient: getSFTPCrossTransferClient,
         releaseCrossClient: releaseSFTPCrossTransferClient,
         createSftpAdapter: createEngineSftpAdapter,
         getCapabilities,
-        loadConnection: (id) => MicrosoftConnection.findOne({ where: { id } }),
+        loadConnection,
         createOneDriveAdapter: ({ connectionId: id }) => createOneDriveAdapter({ graph, connectionId: id }),
     };
 
@@ -225,7 +231,7 @@ module.exports = async (ws, req) => {
         },
     });
 
-    const handlers = buildOneDriveHandlers(OP, { adapter, send, connectionId });
+    const handlers = buildOneDriveHandlers(OP, { adapter, send });
 
     send(OP.READY, { path: "/", capabilities: { shell: false, checksum: false } });
 
