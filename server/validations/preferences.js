@@ -17,7 +17,10 @@ const themeSchema = Joi.object({
 
 const filesSchema = Joi.object({
     showThumbnails: Joi.boolean(),
-    defaultViewMode: Joi.string().valid('list', 'grid'),
+    // "list" is the pre-rename name for the detailed view; it still lives in every existing
+    // user's stored preference and the client never rewrites it, so it stays valid alongside
+    // the three current view names (see viewModes.js on the client for the same fallback).
+    defaultViewMode: Joi.string().valid('list', 'details', 'compact', 'grid'),
     showHiddenFiles: Joi.boolean(),
     confirmBeforeDelete: Joi.boolean(),
     dragDropAction: Joi.string().valid('ask', 'copy', 'move'),
