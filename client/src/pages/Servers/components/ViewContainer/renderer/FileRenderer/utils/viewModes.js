@@ -9,10 +9,9 @@ export const VIEW_GRID = "grid";
 export const VIEW_MODES = [VIEW_DETAILS, VIEW_COMPACT, VIEW_GRID];
 
 // Before there were three views the detailed one was called "list", and that value sits in every
-// user's stored preference. Translating it on read costs one branch; migrating the stored value
-// would have needed a write path nobody would ever exercise again.
+// user's stored preference. The fallback handles it: "list" is not a current mode, so any
+// stored value matching the old name returns details along with unknown values.
 export const normalizeViewMode = (value) => {
-    if (value === "list") return VIEW_DETAILS;
     return VIEW_MODES.includes(value) ? value : VIEW_DETAILS;
 };
 

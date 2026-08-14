@@ -7,8 +7,8 @@ test("the three modes stand in display order", () => {
     assert.deepStrictEqual(VIEW_MODES, [VIEW_DETAILS, VIEW_COMPACT, VIEW_GRID]);
 });
 
-// Der gespeicherte Wert aus der Zeit vor drei Ansichten. Ohne diese Übersetzung stünde jeder,
-// der die Voreinstellung je gesetzt hat, vor einer Ansicht, die es nicht mehr gibt.
+// The stored value from before there were three views. Without this translation, anyone who set
+// their preference would face a view that no longer exists.
 test("a stored list is read as details", () => {
     assert.strictEqual(normalizeViewMode("list"), VIEW_DETAILS);
 });
@@ -17,7 +17,7 @@ test("the three current values pass through unchanged", () => {
     for (const mode of VIEW_MODES) assert.strictEqual(normalizeViewMode(mode), mode);
 });
 
-// Ohne diesen Zweig bliebe die Dateiliste bei einem unbekannten Wert leer, statt etwas zu zeigen.
+// Without this fallback, the file list would remain empty on an unknown value instead of showing something.
 test("anything else falls back to details", () => {
     for (const value of [undefined, null, "", "tiles", 7, {}, []]) {
         assert.strictEqual(normalizeViewMode(value), VIEW_DETAILS, JSON.stringify(value));
