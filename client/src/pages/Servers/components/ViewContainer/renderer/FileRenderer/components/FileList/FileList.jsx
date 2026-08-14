@@ -149,6 +149,7 @@ export const FileList = forwardRef(({
     const handleMassDownload = useCallback(() => {
         if (selectedItems.length === 0) return;
         downloadMultipleFiles?.(selectedItems.map(item => `${path}/${item.name}`));
+        setSelectedItems([]);
     }, [selectedItems, path, downloadMultipleFiles]);
 
     const executeMassDelete = useCallback(() => {
