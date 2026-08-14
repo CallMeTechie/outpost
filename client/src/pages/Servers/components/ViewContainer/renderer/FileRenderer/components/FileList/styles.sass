@@ -436,6 +436,12 @@
 
     .file-item
       display: flex
+      // The base rule's grid-template-columns has no effect while display is flex, but leaving it
+      // inherited means removing that one display line above would silently fall back to the
+      // detailed view's five-column grid instead of a visibly broken layout. "none" wins over the
+      // media-query overrides below too: this selector's specificity (three classes) beats theirs
+      // (two classes) regardless of viewport, so it does not need to be repeated in either block.
+      grid-template-columns: none
       border: none
       border-radius: 0
       padding: 0.375rem 0.75rem
@@ -447,6 +453,18 @@
       // visible even when a row is both selected and the drop target.
       &.drop-target
         box-shadow: inset 0 0 0 2px colors.$primary
+
+        // The gradient shine (:202-209) is inherited as-is; only the rounding needs undoing here,
+        // to match the frameless, square-cornered row this view otherwise uses.
+        &::after
+          border-radius: 0
+
+      // justify-self (a grid property) is a no-op in this flex row, and .file-name has no
+      // flex-grow, so the menu used to land immediately after the name — a different spot on
+      // every row depending on name length. margin-left: auto claims the row's remaining space
+      // for the menu itself, pinning it to the right edge regardless of name length.
+      .dots-menu
+        margin-left: auto
 
 @keyframes spin
   0%
