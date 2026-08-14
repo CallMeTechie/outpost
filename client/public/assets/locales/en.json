@@ -1008,11 +1008,7 @@
       "syncDisabled": "File manager settings will no longer sync",
       "defaultView": {
         "title": "Default View Mode",
-        "description": "Choose the default layout when opening the file manager.",
-        "list": "List View",
-        "listDescription": "Show files in a detailed list with size and date columns",
-        "grid": "Grid View",
-        "gridDescription": "Show files as icons in a grid layout with thumbnails"
+        "description": "Choose the default layout when opening the file manager."
       },
       "thumbnails": {
         "title": "Image Thumbnails",
@@ -2027,13 +2023,16 @@
       "actionBar": {
         "enterDirectory": "Enter directory path...",
         "hiddenDirectories": "{{count}} hidden directories",
-        "switchToGrid": "Switch to grid view",
-        "switchToList": "Switch to list view",
         "uploadFile": "Upload file(s)",
         "uploadFolder": "Upload folder",
         "search": "Search files",
         "closeSearch": "Close search",
         "refresh": "Refresh"
+      },
+      "viewMode": {
+        "details": "Details",
+        "compact": "List",
+        "grid": "Tiles"
       },
       "transfers": {
         "copying": "Copying to {{destination}}",

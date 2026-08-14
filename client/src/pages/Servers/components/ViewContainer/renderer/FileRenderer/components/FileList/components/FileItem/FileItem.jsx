@@ -10,6 +10,7 @@ import {
 } from "../../utils/fileUtils";
 import { DEFAULT_CAPABILITIES } from "../../../../utils/paneCapabilities.js";
 import { paneContentUrl } from "../../../../utils/paneEndpoint.js";
+import { showsColumns, showsThumbnails } from "../../../../utils/viewModes.js";
 
 export const FileItem = memo(({
                                   item,
@@ -43,7 +44,7 @@ export const FileItem = memo(({
     const { sessionToken } = useContext(UserContext);
     const [thumbnailError, setThumbnailError] = useState(false);
 
-    const showThumbnailCandidate = viewMode === "grid" && showThumbnails && item.type === "file"
+    const showThumbnailCandidate = showsThumbnails(viewMode) && showThumbnails && item.type === "file"
         && isThumbnailSupported(item.name) && !thumbnailError;
 
     const renderName = () => {
@@ -126,7 +127,7 @@ export const FileItem = memo(({
                 )}
                 {item.isSymlink && <span className="symlink-badge"><Icon path={mdiLinkVariant} />{t("servers.fileManager.item.link")}</span>}
             </div>
-            {viewMode === "list" && (
+            {showsColumns(viewMode) && (
                 <>
                     <p className="file-size">{item.type === "file" && convertUnits(item.size)}</p>
                     {capabilities.nativeFs && (

@@ -426,6 +426,46 @@
       &:hover .dots-menu
         opacity: 1
 
+  // Compact inherits the whole unscoped base above (border, radius, hover, .selected,
+  // .drop-target, transitions) and only overrides what a frameless, icon-plus-name row needs.
+  &.compact
+    .file-items-container
+      flex-flow: column wrap
+      gap: 0.125rem 1.5rem
+      overflow-x: auto
+
+    .file-item
+      display: flex
+      // The base rule's grid-template-columns has no effect while display is flex, but leaving it
+      // inherited means removing that one display line above would silently fall back to the
+      // detailed view's five-column grid instead of a visibly broken layout. "none" wins over the
+      // media-query overrides below too: this selector's specificity (three classes) beats theirs
+      // (two classes) regardless of viewport, so it does not need to be repeated in either block.
+      grid-template-columns: none
+      border: none
+      border-radius: 0
+      padding: 0.375rem 0.75rem
+      width: 16rem
+
+      // .selected and .drop-target share a background (:186-209) and are told apart only by
+      // border style everywhere else. Compact has no border, so the drop target gets an inner
+      // outline instead — it sits on top of the background rather than replacing it, so it stays
+      // visible even when a row is both selected and the drop target.
+      &.drop-target
+        box-shadow: inset 0 0 0 2px colors.$primary
+
+        // The gradient shine (:202-209) is inherited as-is; only the rounding needs undoing here,
+        // to match the frameless, square-cornered row this view otherwise uses.
+        &::after
+          border-radius: 0
+
+      // justify-self (a grid property) is a no-op in this flex row, and .file-name has no
+      // flex-grow, so the menu used to land immediately after the name — a different spot on
+      // every row depending on name length. margin-left: auto claims the row's remaining space
+      // for the menu itself, pinning it to the right edge regardless of name length.
+      .dots-menu
+        margin-left: auto
+
 @keyframes spin
   0%
     transform: rotate(0deg)
@@ -554,6 +594,15 @@
           h2
             font-size: 0.75rem
 
+    // Narrow viewports drop the column wrap entirely — one frameless column, icon and name only.
+    &.compact
+      .file-items-container
+        flex-flow: column nowrap
+        overflow-x: visible
+
+      .file-item
+        width: auto
+
 @media (max-width: 480px)
   .file-list
     .file-list-header
@@ -586,3 +635,11 @@
 
           h2
             font-size: 0.7rem
+
+    &.compact
+      .file-items-container
+        flex-flow: column nowrap
+        overflow-x: visible
+
+      .file-item
+        width: auto

@@ -3,11 +3,20 @@ import { usePreferences } from "@/common/contexts/PreferencesContext.jsx";
 import { useTranslation } from "react-i18next";
 import { useContext } from "react";
 import Icon from "@mdi/react";
-import { mdiViewGrid, mdiViewList, mdiImage, mdiEyeOff, mdiShieldCheck, mdiCursorMove, mdiFileMove, mdiContentCopy, mdiHelpCircle, mdiCloudSync, mdiCloudOffOutline } from "@mdi/js";
+import { mdiViewGrid, mdiViewList, mdiViewCompact, mdiImage, mdiEyeOff, mdiShieldCheck, mdiCursorMove, mdiFileMove, mdiContentCopy, mdiHelpCircle, mdiCloudSync, mdiCloudOffOutline } from "@mdi/js";
 import ToggleSwitch from "@/common/components/ToggleSwitch";
 import Button from "@/common/components/Button";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
+import { VIEW_DETAILS, VIEW_COMPACT, VIEW_GRID, VIEW_MODES } from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/utils/viewModes.js";
+
+// Same icon-per-mode map the action bar uses, so the two never end up drawing the
+// same view with two different symbols.
+const VIEW_MODE_ICONS = {
+    [VIEW_DETAILS]: mdiViewList,
+    [VIEW_COMPACT]: mdiViewCompact,
+    [VIEW_GRID]: mdiViewGrid,
+};
 
 const SettingItem = ({ icon, title, description, children }) => (
     <div className="setting-item">
@@ -78,19 +87,16 @@ export const FileManager = () => {
                     title={t("settings.fileManager.defaultView.title")} 
                     description={t("settings.fileManager.defaultView.description")}
                 >
-                    <div className="view-options">
-                        <ViewOption 
-                            icon={mdiViewGrid} 
-                            label={t("settings.fileManager.defaultView.grid")} 
-                            selected={defaultViewMode === "grid"}
-                            onClick={() => setDefaultViewMode("grid")}
-                        />
-                        <ViewOption 
-                            icon={mdiViewList} 
-                            label={t("settings.fileManager.defaultView.list")} 
-                            selected={defaultViewMode === "list"}
-                            onClick={() => setDefaultViewMode("list")}
-                        />
+                    <div className="view-options three-options">
+                        {VIEW_MODES.map((mode) => (
+                            <ViewOption
+                                key={mode}
+                                icon={VIEW_MODE_ICONS[mode]}
+                                label={t(`servers.fileManager.viewMode.${mode}`)}
+                                selected={defaultViewMode === mode}
+                                onClick={() => setDefaultViewMode(mode)}
+                            />
+                        ))}
                     </div>
                 </SettingItem>
 
