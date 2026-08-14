@@ -1008,11 +1008,7 @@
       "syncDisabled": "Die Einstellungen des Dateimanagers werden nicht mehr synchronisiert",
       "defaultView": {
         "title": "Standard-Ansichtsmodus",
-        "description": "Wähle das Standardlayout beim Öffnen des Dateimanagers.",
-        "list": "Listenansicht",
-        "listDescription": "Dateien in einer detaillierten Liste mit Spalten für Größe und Datum anzeigen",
-        "grid": "Rasteransicht",
-        "gridDescription": "Dateien als Icons in einem Rasterlayout mit Miniaturansichten anzeigen"
+        "description": "Wähle das Standardlayout beim Öffnen des Dateimanagers."
       },
       "thumbnails": {
         "title": "Bild-Miniaturansichten",
@@ -1987,13 +1983,16 @@
       "actionBar": {
         "enterDirectory": "Verzeichnispfad eingeben...",
         "hiddenDirectories": "{{count}} versteckte Verzeichnisse",
-        "switchToGrid": "Zur Rasteransicht wechseln",
-        "switchToList": "Zur Listenansicht wechseln",
         "uploadFile": "Datei(en) hochladen",
         "uploadFolder": "Upload-Ordner",
         "search": "Durchsuche Dateien",
         "closeSearch": "Suchfeld schließen",
         "refresh": "Aktualisieren"
+      },
+      "viewMode": {
+        "details": "Details",
+        "compact": "Liste",
+        "grid": "Kacheln"
       },
       "transfers": {
         "copying": "Kopieren nach {{destination}}",

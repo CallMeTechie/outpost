@@ -9,6 +9,7 @@ import {
     mdiFilePlus,
     mdiFolderPlus,
     mdiViewList,
+    mdiViewCompact,
     mdiViewGrid,
     mdiFileMove,
     mdiContentCopy,
@@ -22,6 +23,15 @@ import { useTranslation } from "react-i18next";
 import { usePreferences } from "@/common/contexts/PreferencesContext.jsx";
 import { resolveDropTarget } from "../../utils/dropTransfer.js";
 import { DEFAULT_CAPABILITIES } from "../../utils/paneCapabilities.js";
+import { VIEW_DETAILS, VIEW_COMPACT, VIEW_GRID, VIEW_MODES } from "../../utils/viewModes.js";
+
+// Icon per view mode, indexed the same way VIEW_MODES orders the buttons, so a fourth
+// view only needs an entry here rather than another branch of conditional icon logic.
+const VIEW_MODE_ICONS = {
+    [VIEW_DETAILS]: mdiViewList,
+    [VIEW_COMPACT]: mdiViewCompact,
+    [VIEW_GRID]: mdiViewGrid,
+};
 
 export const ActionBar = ({
                               path,
@@ -35,7 +45,7 @@ export const ActionBar = ({
                               goForward,
                               historyIndex,
                               historyLength,
-                              viewMode = "list",
+                              viewMode = VIEW_DETAILS,
                               setViewMode,
                               searchDirectories,
                               directorySuggestions = [],
@@ -396,9 +406,11 @@ export const ActionBar = ({
             <div className="file-actions">
                 <Icon path={mdiMagnify} onClick={() => searchOpen ? closeSearch?.() : setSearchOpen?.(true)}
                       className={searchOpen ? "active" : ""} title={t("servers.fileManager.actionBar.search")} />
-                <Icon path={viewMode === "list" ? mdiViewGrid : mdiViewList}
-                      onClick={() => setViewMode(viewMode === "list" ? "grid" : "list")}
-                      title={viewMode === "list" ? t("servers.fileManager.actionBar.switchToGrid") : t("servers.fileManager.actionBar.switchToList")} />
+                {VIEW_MODES.map((mode) => (
+                    <Icon key={mode} path={VIEW_MODE_ICONS[mode]} onClick={() => setViewMode(mode)}
+                          className={viewMode === mode ? "active" : ""}
+                          title={t(`servers.fileManager.viewMode.${mode}`)} />
+                ))}
                 <Icon path={mdiRefresh} onClick={refreshFiles} title={t("servers.fileManager.actionBar.refresh")} />
                 {capabilities.content && <>
                     <Icon path={mdiFileUpload} onClick={uploadFile} title={t("servers.fileManager.actionBar.uploadFile")} />
