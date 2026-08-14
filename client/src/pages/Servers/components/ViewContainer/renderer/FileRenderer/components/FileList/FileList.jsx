@@ -18,10 +18,11 @@ import { useBoxSelection, useDragDrop, useKeyboardNavigation, useClipboard } fro
 import { isPreviewable, getFullPath, OPERATIONS } from "./utils/fileUtils";
 import { deleteFileRequest, deleteFolderRequest, renameRequest } from "../../utils/paneRequests.js";
 import { DEFAULT_CAPABILITIES } from "../../utils/paneCapabilities.js";
+import { VIEW_DETAILS, showsColumns } from "../../utils/viewModes.js";
 
 export const FileList = forwardRef(({
     items, updatePath, path, sendOperation, downloadFile, downloadMultipleFiles,
-    setCurrentFile, setPreviewFile, loading, viewMode = "list", error,
+    setCurrentFile, setPreviewFile, loading, viewMode = VIEW_DETAILS, error,
     resolveSymlink, session, createFile, createFolder, moveFiles, copyFiles, startTransfer, isActive,
     onOpenTerminal, onPropertiesMessage, searchQuery = "", onSearchResults,
     capabilities = DEFAULT_CAPABILITIES,
@@ -191,7 +192,7 @@ export const FileList = forwardRef(({
 
     return (
         <div className={`file-list ${viewMode}`}>
-            {viewMode === "list" && (
+            {showsColumns(viewMode) && (
                 <div className="file-list-header">
                     <div className="header-name">{t("servers.fileManager.header.name")}</div>
                     <div className="header-size">{t("servers.fileManager.header.size")}</div>
@@ -241,7 +242,7 @@ export const FileList = forwardRef(({
                                 <Icon path={mdiFile} />
                                 <input type="text" className="rename-input" value={newFileName} onChange={(e) => setNewFileName(e.target.value)} onKeyDown={handleCreateFileKeyDown} onBlur={handleCreateFile} placeholder={t("servers.fileManager.createFile.placeholder")} autoFocus />
                             </div>
-                            {viewMode === "list" && <><p className="file-size"></p><p className="file-date"></p></>}
+                            {showsColumns(viewMode) && <><p className="file-size"></p><p className="file-date"></p></>}
                         </div>
                     )}
                     {creatingFolder && (
@@ -250,7 +251,7 @@ export const FileList = forwardRef(({
                                 <Icon path={mdiFolder} />
                                 <input type="text" className="rename-input" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={handleCreateFolderKeyDown} onBlur={handleCreateFolder} placeholder={t("servers.fileManager.createFolder.placeholder")} autoFocus />
                             </div>
-                            {viewMode === "list" && <><p className="file-size"></p><p className="file-date"></p></>}
+                            {showsColumns(viewMode) && <><p className="file-size"></p><p className="file-date"></p></>}
                         </div>
                     )}
                     {filteredItems.map((item, index) => (

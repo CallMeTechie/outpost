@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { patchRequest } from "@/common/utils/RequestUtil.js";
 import i18n from "@/i18n.js";
+import { normalizeViewMode } from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/utils/viewModes.js";
 
 const PreferencesContext = createContext({});
 export const usePreferences = () => useContext(PreferencesContext);
@@ -502,7 +503,7 @@ export const PreferencesProvider = ({ children, user, refreshUser }) => {
     const setPasswordPromptDetection = useCallback((enabled) => set("terminal.passwordPromptDetection", enabled), [set]);
 
     const showThumbnails = get("files.showThumbnails", true);
-    const defaultViewMode = get("files.defaultViewMode", "list");
+    const defaultViewMode = normalizeViewMode(get("files.defaultViewMode", "list"));
     const showHiddenFiles = get("files.showHiddenFiles", false);
     const confirmBeforeDelete = get("files.confirmBeforeDelete", true);
     const dragDropAction = get("files.dragDropAction", "ask");
