@@ -426,6 +426,28 @@
       &:hover .dots-menu
         opacity: 1
 
+  // Compact inherits the whole unscoped base above (border, radius, hover, .selected,
+  // .drop-target, transitions) and only overrides what a frameless, icon-plus-name row needs.
+  &.compact
+    .file-items-container
+      flex-flow: column wrap
+      gap: 0.125rem 1.5rem
+      overflow-x: auto
+
+    .file-item
+      display: flex
+      border: none
+      border-radius: 0
+      padding: 0.375rem 0.75rem
+      width: 16rem
+
+      // .selected and .drop-target share a background (:186-209) and are told apart only by
+      // border style everywhere else. Compact has no border, so the drop target gets an inner
+      // outline instead — it sits on top of the background rather than replacing it, so it stays
+      // visible even when a row is both selected and the drop target.
+      &.drop-target
+        box-shadow: inset 0 0 0 2px colors.$primary
+
 @keyframes spin
   0%
     transform: rotate(0deg)
@@ -554,6 +576,15 @@
           h2
             font-size: 0.75rem
 
+    // Narrow viewports drop the column wrap entirely — one frameless column, icon and name only.
+    &.compact
+      .file-items-container
+        flex-flow: column nowrap
+        overflow-x: visible
+
+      .file-item
+        width: auto
+
 @media (max-width: 480px)
   .file-list
     .file-list-header
@@ -586,3 +617,11 @@
 
           h2
             font-size: 0.7rem
+
+    &.compact
+      .file-items-container
+        flex-flow: column nowrap
+        overflow-x: visible
+
+      .file-item
+        width: auto
