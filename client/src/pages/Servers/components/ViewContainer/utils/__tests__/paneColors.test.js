@@ -26,6 +26,32 @@ const contrast = (a, b) => {
     return (hi + 0.05) / (lo + 0.05);
 };
 
+// The unfocused split-view pane border is drawn as this fraction of the pane colour, mixed with
+// the fully-transparent rest — a snapshot of ViewContainer/styles.sass:118's
+// `color-mix(in srgb, var(--pane-color, transparent) 97%, transparent)`. If that number moves,
+// this one has to move with it; the test below is what stops it moving down without anyone
+// noticing the border quietly stopped clearing 3:1.
+const FAINT_MIX = 0.97;
+
+// Only the terminal grounds: the faint border is drawn on .session-renderer, which paints
+// colors.$terminal underneath it (ViewContainer/styles.sass) — it never sits on --background,
+// unlike the opaque colour above, which the tab underline also draws over --background.
+const TERMINALS = {
+    "dark --terminal": "#13181C",
+    "light --terminal": "#F5F5F5",
+    "oled --terminal": "#000000",
+};
+
+// A colour mixed toward transparent and drawn over an opaque ground composites linearly per
+// channel — the same maths `color-mix(in srgb, colour X%, transparent)` performs in the browser.
+const mixOverBackground = (hex, mix, backgroundHex) => {
+    const channels = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    const [fr, fg, fb] = channels(hex);
+    const [br, bg, bb] = channels(backgroundHex);
+    const toHex = (v) => Math.round(v).toString(16).padStart(2, "0");
+    return `#${toHex(mix * fr + (1 - mix) * br)}${toHex(mix * fg + (1 - mix) * bg)}${toHex(mix * fb + (1 - mix) * bb)}`;
+};
+
 test("there are six colours and none repeats", () => {
     assert.strictEqual(PANE_COLORS.length, 6);
     assert.strictEqual(new Set(PANE_COLORS).size, 6);
@@ -59,6 +85,22 @@ test("every colour holds 3:1 against every theme ground", () => {
         for (const [ground, background] of Object.entries(BACKGROUNDS)) {
             const ratio = contrast(colour, background);
             assert.ok(ratio >= 3, `${colour} on ${ground} (${background}) is only ${ratio.toFixed(2)}:1`);
+        }
+    }
+});
+
+// The unfocused pane border only ever draws the mixed-down colour, never the opaque one above —
+// with four panes open, three of the four are in this state at any time. The palette's own worst
+// case (violet on dark --terminal, 3.24:1 opaque) leaves under six points of mix between "passes
+// 3:1" and "fully opaque", which is why FAINT_MIX sits as high as it does — see the comment next
+// to it, and ViewContainer/styles.sass:118 for why colour alone no longer carries the
+// focused/unfocused distinction.
+test("the faint pane border still holds 3:1 against every terminal ground", () => {
+    for (const colour of PANE_COLORS) {
+        for (const [ground, background] of Object.entries(TERMINALS)) {
+            const faint = mixOverBackground(colour, FAINT_MIX, background);
+            const ratio = contrast(faint, background);
+            assert.ok(ratio >= 3, `${colour} at ${FAINT_MIX * 100}% on ${ground} (${background}) is only ${ratio.toFixed(2)}:1`);
         }
     }
 });

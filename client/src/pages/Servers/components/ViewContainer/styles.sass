@@ -115,7 +115,16 @@
       // --pane-color exists only on a grid-positioned pane (see ViewContainer.jsx), so a pane
       // that briefly has no grid slot still falls through to the transparent fallback here. The
       // faint default marks every pane; .active below brings the active one to full strength.
-      border: 2px solid color-mix(in srgb, var(--pane-color, transparent) 45%, transparent)
+      //
+      // 97%, not the eyeballed 45% this used to be: the palette's own worst case (violet on
+      // dark --terminal) only clears WCAG 3:1 by 3.24:1 at full strength, so any mix below
+      // roughly 94% drops that pairing under the floor the palette itself was held to — see
+      // FAINT_MIX in paneColors.test.js, which is the source of truth this number must track,
+      // and computes the same way that file already computes the opaque palette's contrast.
+      // That only leaves a ~6-point window between "passes 3:1" and "fully opaque", too narrow
+      // to read as a distinct state by colour alone — .active below adds a width step instead,
+      // which is what actually carries the focused/unfocused distinction now.
+      border: 2px solid color-mix(in srgb, var(--pane-color, transparent) 97%, transparent)
 
       // Active session, not :focus-within: a portalled overlay such as ContextMenu mounts to
       // document.body and moves focus to itself on open, which would blank every pane's
@@ -123,6 +132,11 @@
       // give focus back). activeSessionId already tracks the right pane regardless of where
       // the browser's focus happens to be.
       &.active
+        // The colour step above (97% -> 100%) is deliberately small — see the block comment
+        // on border above. A full extra pixel is what makes the focused pane readable as
+        // "this one" rather than "all of them, faintly" — border-box still keeps the grid's
+        // outer geometry untouched at any width, so this costs nothing but content pixels.
+        border-width: 3px
         border-color: var(--pane-color, transparent)
 
     @media (max-width: breakpoints.$mobile)

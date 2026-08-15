@@ -2,12 +2,20 @@
 // index through the same call, so they cannot drift apart — which is the entire point of the
 // feature: telling you which tab belongs to which pane.
 export const PANE_COLORS = [
-    // Six hues far enough apart to be told apart at a glance, and light enough to hold 3:1 against
-    // #F5F5F5 as well as #000000. Red and green are not neighbours, and no two adjacent entries
-    // differ in hue alone — see the test, which enforces the contrast half of that.
-    // Reused from AVATAR_COLORS (common/utils/avatar.js), not invented here: those ten values
-    // already exist as an identity colour in the UI, and six of them turned out to already clear
-    // 3:1 against every ground below once measured — verifying beat guessing a fresh set.
+    // Six hues, each holding 3:1 against every theme ground the test below checks — that is the
+    // one property this file enforces. Distinctness by eye and under a colour-blindness simulator
+    // was reviewed once by hand while building this list; no test re-checks it, so treat that half
+    // as unverified if this list is ever edited.
+    //
+    // Reused from AVATAR_COLORS (common/utils/avatar.js), not invented here: those are ten identity
+    // colours already used elsewhere in this UI. Four were dropped, not six kept by preference:
+    //   #314BD3 and #5B3FD9 fail 3:1 against at least one theme ground (2.62:1 and 2.69:1 on
+    //     dark --terminal) — measured, not judged. #314BD3 is also --accent-color/$primary itself
+    //     (see common/styles/_colors.sass), so it was already excluded before the contrast check.
+    //   #C1364F (red) and #1E9E5A (green) clear 3:1 everywhere but were dropped anyway: this UI
+    //     already gives red and green fixed meanings ($error, $success), and reusing either for
+    //     an unrelated "which pane" signal would recreate the exact ambiguity this feature exists
+    //     to remove.
     "#2A72C9", // blue
     "#A8741A", // amber
     "#8E3FD4", // violet
