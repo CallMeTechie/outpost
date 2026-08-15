@@ -91,7 +91,7 @@ const collectDroppedEntries = async (entries, targetDir) => {
 export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors, isActive, onOpenTerminal }) => {
     const { t } = useTranslation();
     const { sessionToken } = useContext(UserContext);
-    const { defaultViewMode } = usePreferences();
+    const { defaultViewMode, setDefaultViewMode } = usePreferences();
     const { sendToast } = useToast();
 
     const [dragging, setDragging] = useState(false);
@@ -468,6 +468,15 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
         } catch { return false; }
     }, [sendMessage, readyState]);
 
+    // The action bar used to change only this pane's view, so a reload always came back to the
+    // settings-page default. Writing the preference here is what makes the last choice stick and
+    // keeps the settings page in agreement - but only this pane's own state changes right now, so
+    // panes already open elsewhere are untouched until they next read the preference themselves.
+    const changeViewMode = (mode) => {
+        setViewMode(mode);
+        setDefaultViewMode(mode);
+    };
+
     const createFile = (fileName) => sendOperation(OPERATIONS.CREATE_FILE, { path: `${directory}/${fileName}` });
     const createFolder = (folderName) => sendOperation(OPERATIONS.CREATE_FOLDER, createFolderRequest(`${directory}/${folderName}`));
     const listFiles = useCallback((silent = false) => { if (!silent) setLoading(true); setError(null); sendOperation(OPERATIONS.LIST_FILES, listFilesRequest(directory)); }, [directory, sendOperation]);
@@ -624,7 +633,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                 <ActionBar path={directory} updatePath={changeDirectory} createFile={() => fileListRef.current?.startCreateFile()}
                     createFolder={() => fileListRef.current?.startCreateFolder()} uploadFile={uploadFile} uploadFolder={uploadFolder}
                     refreshFiles={() => listFiles(true)} goBack={goBack} goForward={goForward} historyIndex={historyIndex}
-                    historyLength={history.length} viewMode={viewMode} setViewMode={setViewMode} 
+                    historyLength={history.length} viewMode={viewMode} setViewMode={changeViewMode}
                     searchDirectories={searchDirectories} directorySuggestions={directorySuggestions} 
                     setDirectorySuggestions={setDirectorySuggestions} moveFiles={moveFiles} copyFiles={copyFiles}
                     startTransfer={startTransfer}
