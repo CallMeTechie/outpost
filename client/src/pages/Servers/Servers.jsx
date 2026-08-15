@@ -21,7 +21,9 @@ import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import { StateStreamContext, STATE_TYPES } from "@/common/contexts/StateStreamContext.jsx";
 import { isTauri } from "@/common/utils/TauriUtil.js";
 import { getTabId, getBrowserId, requiresIdentity, canConnectWithoutPrompt } from "@/common/utils/ConnectionUtil.js";
-import { postRequest, deleteRequest } from "@/common/utils/RequestUtil";
+import { getRequest, postRequest, deleteRequest } from "@/common/utils/RequestUtil";
+import { toLocalSessionDescriptor, restoreLocalSessions, getStoredLocalSessionDescriptors, setStoredLocalSessionDescriptors }
+    from "@/common/utils/localSessionState.js";
 
 // A session the server does not know about: it lives in this browser only. The poll below
 // replaces the session list with what the server reports, so anything matching this has to be
@@ -59,6 +61,12 @@ export const Servers = () => {
     const [hibernatedSessions, setHibernatedSessions] = useState([]);
     const closingSessionsRef = useRef(new Set());
     const erroredSessionsRef = useRef(new Map());
+
+    // Snapshotted once, before any effect (including the save effect below) can touch
+    // localStorage, so a save that fires on the empty initial render can never wipe out
+    // the descriptors this same mount still needs to restore from.
+    const [initialLocalDescriptors] = useState(() => getStoredLocalSessionDescriptors());
+    const hasRestoredLocalSessionsRef = useRef(false);
 
     const markSessionErrored = useCallback((sessionId, message) => {
         if (erroredSessionsRef.current.has(sessionId)) return;
@@ -142,6 +150,38 @@ export const Servers = () => {
     useEffect(() => {
         if (servers) return registerHandler(STATE_TYPES.CONNECTIONS, handleConnectionsUpdate);
     }, [servers, registerHandler, handleConnectionsUpdate]);
+
+    // Persist whatever local-only tabs (OneDrive, notes) are open right now, on every change.
+    // Writing the descriptor, not the session object, means a rename picked up later never gets
+    // replayed stale - restoreLocalSessions looks the current details up fresh.
+    useEffect(() => {
+        setStoredLocalSessionDescriptors(activeSessions.map(toLocalSessionDescriptor).filter(Boolean));
+    }, [activeSessions]);
+
+    // Runs once, after `servers` is available (getServerById needs it) - the terminal/sftp tabs
+    // themselves arrive separately via handleConnectionsUpdate, which always puts freshly synced
+    // sessions ahead of any local-only ones it finds already in place, so appending here rather
+    // than racing that update is enough to keep server-backed tabs first regardless of which
+    // finishes loading first. Connections are fetched here rather than threaded down from
+    // OneDriveAccounts, since that component doesn't run until the sidebar renders its list.
+    // The setActiveSessions call lives inside the request's .then(), not the effect body itself,
+    // matching how the rest of this file fetches on mount.
+    useEffect(() => {
+        if (!servers || hasRestoredLocalSessionsRef.current) return;
+        if (initialLocalDescriptors.length === 0) {
+            hasRestoredLocalSessionsRef.current = true;
+            return;
+        }
+        hasRestoredLocalSessionsRef.current = true;
+
+        getRequest("microsoft/connections")
+            .then(connections => {
+                const restored = restoreLocalSessions(initialLocalDescriptors, { connections, getServerById });
+                if (restored.length === 0) return;
+                setActiveSessions(prev => [...prev, ...restored.filter(s => !prev.some(p => p.id === s.id))]);
+            })
+            .catch(error => console.error("Failed to restore local sessions", error));
+    }, [servers, initialLocalDescriptors, getServerById, setActiveSessions]);
 
     const findOrganizationForServer = (serverIdNum, entries, currentOrg = null) => {
         for (const entry of entries) {
