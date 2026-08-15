@@ -23,10 +23,11 @@ import { useTranslation } from "react-i18next";
 import { usePreferences } from "@/common/contexts/PreferencesContext.jsx";
 import { resolveDropTarget } from "../../utils/dropTransfer.js";
 import { DEFAULT_CAPABILITIES } from "../../utils/paneCapabilities.js";
-import { VIEW_DETAILS, VIEW_COMPACT, VIEW_GRID, VIEW_MODES } from "../../utils/viewModes.js";
+import { VIEW_DETAILS, VIEW_COMPACT, VIEW_GRID, nextViewMode } from "../../utils/viewModes.js";
 
-// Icon per view mode, indexed the same way VIEW_MODES orders the buttons, so a fourth
-// view only needs an entry here rather than another branch of conditional icon logic.
+// Icon per view mode. The action bar shows one icon at a time - the next mode nextViewMode()
+// points to - so a fourth view only needs an entry here rather than another branch of
+// conditional icon logic.
 const VIEW_MODE_ICONS = {
     [VIEW_DETAILS]: mdiViewList,
     [VIEW_COMPACT]: mdiViewCompact,
@@ -406,11 +407,9 @@ export const ActionBar = ({
             <div className="file-actions">
                 <Icon path={mdiMagnify} onClick={() => searchOpen ? closeSearch?.() : setSearchOpen?.(true)}
                       className={searchOpen ? "active" : ""} title={t("servers.fileManager.actionBar.search")} />
-                {VIEW_MODES.map((mode) => (
-                    <Icon key={mode} path={VIEW_MODE_ICONS[mode]} onClick={() => setViewMode(mode)}
-                          className={viewMode === mode ? "active" : ""}
-                          title={t(`servers.fileManager.viewMode.${mode}`)} />
-                ))}
+                <Icon path={VIEW_MODE_ICONS[nextViewMode(viewMode)]} onClick={() => setViewMode(nextViewMode(viewMode))}
+                      title={t("servers.fileManager.actionBar.switchTo",
+                          { view: t(`servers.fileManager.viewMode.${nextViewMode(viewMode)}`) })} />
                 <Icon path={mdiRefresh} onClick={refreshFiles} title={t("servers.fileManager.actionBar.refresh")} />
                 {capabilities.content && <>
                     <Icon path={mdiFileUpload} onClick={uploadFile} title={t("servers.fileManager.actionBar.uploadFile")} />

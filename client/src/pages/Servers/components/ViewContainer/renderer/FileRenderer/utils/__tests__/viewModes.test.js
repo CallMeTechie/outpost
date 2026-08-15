@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert";
-import { VIEW_MODES, VIEW_DETAILS, VIEW_COMPACT, VIEW_GRID, normalizeViewMode, showsColumns, showsThumbnails }
+import { VIEW_MODES, VIEW_DETAILS, VIEW_COMPACT, VIEW_GRID, normalizeViewMode, showsColumns, showsThumbnails, nextViewMode }
     from "../viewModes.js";
 
 test("the three modes stand in display order", () => {
@@ -34,4 +34,22 @@ test("only grid shows thumbnails", () => {
     assert.strictEqual(showsThumbnails(VIEW_GRID), true);
     assert.strictEqual(showsThumbnails(VIEW_DETAILS), false);
     assert.strictEqual(showsThumbnails(VIEW_COMPACT), false);
+});
+
+test("cycling steps through the display order", () => {
+    assert.strictEqual(nextViewMode(VIEW_DETAILS), VIEW_COMPACT);
+    assert.strictEqual(nextViewMode(VIEW_COMPACT), VIEW_GRID);
+});
+
+// The single action-bar icon wraps back to the start rather than dead-ending on the last view.
+test("cycling wraps from the last mode back to the first", () => {
+    assert.strictEqual(nextViewMode(VIEW_GRID), VIEW_DETAILS);
+});
+
+// An unknown or missing mode is treated the same as normalizeViewMode treats it - as details -
+// before advancing, so the action bar always has an icon to show instead of rendering blank.
+test("an unknown or missing mode normalizes before advancing", () => {
+    for (const value of [undefined, null, "", "tiles", 7, {}, [], "list"]) {
+        assert.strictEqual(nextViewMode(value), VIEW_COMPACT, JSON.stringify(value));
+    }
 });

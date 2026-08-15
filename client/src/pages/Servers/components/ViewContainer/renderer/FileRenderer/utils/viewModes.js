@@ -18,3 +18,11 @@ export const normalizeViewMode = (value) => {
 export const showsColumns = (mode) => mode === VIEW_DETAILS;
 
 export const showsThumbnails = (mode) => mode === VIEW_GRID;
+
+// What the single action-bar icon should switch to: the mode after the current one, wrapping
+// around. Normalizes first so an unknown or missing mode still has a well-defined next step
+// instead of leaving the caller with undefined.
+export const nextViewMode = (mode) => {
+    const index = VIEW_MODES.indexOf(normalizeViewMode(mode));
+    return VIEW_MODES[(index + 1) % VIEW_MODES.length];
+};
