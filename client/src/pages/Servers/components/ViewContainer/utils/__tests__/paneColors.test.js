@@ -27,7 +27,7 @@ const contrast = (a, b) => {
 };
 
 // The unfocused split-view pane border is drawn as this fraction of the pane colour, mixed with
-// the fully-transparent rest — a snapshot of ViewContainer/styles.sass:118's
+// the fully-transparent rest — a snapshot of ViewContainer/styles.sass:127's
 // `color-mix(in srgb, var(--pane-color, transparent) 97%, transparent)`. If that number moves,
 // this one has to move with it; the test below is what stops it moving down without anyone
 // noticing the border quietly stopped clearing 3:1.
@@ -93,7 +93,7 @@ test("every colour holds 3:1 against every theme ground", () => {
 // with four panes open, three of the four are in this state at any time. The palette's own worst
 // case (violet on dark --terminal, 3.24:1 opaque) leaves under six points of mix between "passes
 // 3:1" and "fully opaque", which is why FAINT_MIX sits as high as it does — see the comment next
-// to it, and ViewContainer/styles.sass:118 for why colour alone no longer carries the
+// to it, and ViewContainer/styles.sass:127 for why colour alone no longer carries the
 // focused/unfocused distinction.
 test("the faint pane border still holds 3:1 against every terminal ground", () => {
     for (const colour of PANE_COLORS) {

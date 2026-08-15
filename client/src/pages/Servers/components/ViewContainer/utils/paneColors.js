@@ -3,19 +3,21 @@
 // feature: telling you which tab belongs to which pane.
 export const PANE_COLORS = [
     // Six hues, each holding 3:1 against every theme ground the test below checks — that is the
-    // one property this file enforces. Distinctness by eye and under a colour-blindness simulator
-    // was reviewed once by hand while building this list; no test re-checks it, so treat that half
-    // as unverified if this list is ever edited.
+    // one property this file enforces, and the only one anyone has verified. Whether the six are
+    // actually distinguishable side by side, and whether they survive a colour-blindness
+    // simulator, has NOT been checked: the list was assembled without a screen. Treat that half
+    // as open, both now and if this list is ever edited.
     //
     // Reused from AVATAR_COLORS (common/utils/avatar.js), not invented here: those are ten identity
     // colours already used elsewhere in this UI. Four were dropped, not six kept by preference:
     //   #314BD3 and #5B3FD9 fail 3:1 against at least one theme ground (2.62:1 and 2.69:1 on
     //     dark --terminal) — measured, not judged. #314BD3 is also --accent-color/$primary itself
     //     (see common/styles/_colors.sass), so it was already excluded before the contrast check.
-    //   #C1364F (red) and #1E9E5A (green) clear 3:1 everywhere but were dropped anyway: this UI
-    //     already gives red and green fixed meanings ($error, $success), and reusing either for
-    //     an unrelated "which pane" signal would recreate the exact ambiguity this feature exists
-    //     to remove.
+    //   #C1364F (red) and #1E9E5A (green) clear 3:1 everywhere and were dropped for a reason that
+    //     is inference rather than record: this UI gives red and green fixed meanings ($error,
+    //     $success), so reusing either for an unrelated "which pane" signal looked like it would
+    //     recreate the ambiguity this feature exists to remove. No written decision confirms that
+    //     was the original motive.
     "#2A72C9", // blue
     "#A8741A", // amber
     "#8E3FD4", // violet
