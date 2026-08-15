@@ -2027,7 +2027,8 @@
         "uploadFolder": "Upload folder",
         "search": "Search files",
         "closeSearch": "Close search",
-        "refresh": "Refresh"
+        "refresh": "Refresh",
+        "switchTo": "Switch to {{view}}"
       },
       "viewMode": {
         "details": "Details",

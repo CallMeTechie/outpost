@@ -1987,7 +1987,8 @@
         "uploadFolder": "Upload-Ordner",
         "search": "Durchsuche Dateien",
         "closeSearch": "Suchfeld schließen",
-        "refresh": "Aktualisieren"
+        "refresh": "Aktualisieren",
+        "switchTo": "Zu {{view}} wechseln"
       },
       "viewMode": {
         "details": "Details",
