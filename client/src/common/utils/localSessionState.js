@@ -71,6 +71,21 @@ export const restoreLocalSessions = (descriptors, context = {}) => {
     return sessions;
 };
 
+// Restore goes through three states: not started yet, finished (rebuilt from a full read of
+// both localStorage and the network), or gave up (the network read it needed failed). Only
+// the middle one means "we know the complete picture" - which is exactly the condition under
+// which it's safe to let a save overwrite what's on disk. Kept as an enum rather than a plain
+// boolean so PENDING and FAILED can't be collapsed into "not ready" by accident and read as
+// the same thing they're not: only FAILED is permanent for the rest of this page load.
+export const RESTORE_STATUS = { PENDING: "pending", READY: "ready", FAILED: "failed" };
+
+// Guards the save side. Saving while PENDING would overwrite the stored descriptors with
+// whatever's in memory before restore ever got to read them - the exact bug this exists to
+// prevent. Saving after FAILED would do the same thing for a different reason: restore never
+// got a complete picture (the connections request that OneDrive descriptors need failed), so
+// "what's in memory" is known to be incomplete, not just unconfirmed.
+export const canPersistLocalSessions = (restoreStatus) => restoreStatus === RESTORE_STATUS.READY;
+
 export const getStoredLocalSessionDescriptors = () => {
     try {
         const stored = localStorage.getItem(LOCAL_SESSIONS_KEY);

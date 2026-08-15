@@ -22,8 +22,10 @@ import { StateStreamContext, STATE_TYPES } from "@/common/contexts/StateStreamCo
 import { isTauri } from "@/common/utils/TauriUtil.js";
 import { getTabId, getBrowserId, requiresIdentity, canConnectWithoutPrompt } from "@/common/utils/ConnectionUtil.js";
 import { getRequest, postRequest, deleteRequest } from "@/common/utils/RequestUtil";
-import { toLocalSessionDescriptor, restoreLocalSessions, getStoredLocalSessionDescriptors, setStoredLocalSessionDescriptors }
-    from "@/common/utils/localSessionState.js";
+import {
+    toLocalSessionDescriptor, restoreLocalSessions, getStoredLocalSessionDescriptors, setStoredLocalSessionDescriptors,
+    canPersistLocalSessions, RESTORE_STATUS,
+} from "@/common/utils/localSessionState.js";
 
 // A session the server does not know about: it lives in this browser only. The poll below
 // replaces the session list with what the server reports, so anything matching this has to be
@@ -62,11 +64,17 @@ export const Servers = () => {
     const closingSessionsRef = useRef(new Set());
     const erroredSessionsRef = useRef(new Map());
 
-    // Snapshotted once, before any effect (including the save effect below) can touch
-    // localStorage, so a save that fires on the empty initial render can never wipe out
-    // the descriptors this same mount still needs to restore from.
+    // Read once, during the first render, so restore always works from what was actually on
+    // disk at mount - not from whatever the save effect below might have written by the time
+    // the restore effect gets to run.
     const [initialLocalDescriptors] = useState(() => getStoredLocalSessionDescriptors());
     const hasRestoredLocalSessionsRef = useRef(false);
+    // The save effect is gated on this: it may only overwrite localStorage once restore has
+    // read a complete picture (RESTORE_STATUS.READY). PENDING covers the render(s) before that;
+    // FAILED covers the connections request restore needs failing outright (network, expired
+    // token) - in both cases writing now would mean writing an incomplete list over a complete
+    // one, which is the data-loss bug this state exists to rule out.
+    const [restoreStatus, setRestoreStatus] = useState(RESTORE_STATUS.PENDING);
 
     const markSessionErrored = useCallback((sessionId, message) => {
         if (erroredSessionsRef.current.has(sessionId)) return;
@@ -151,12 +159,17 @@ export const Servers = () => {
         if (servers) return registerHandler(STATE_TYPES.CONNECTIONS, handleConnectionsUpdate);
     }, [servers, registerHandler, handleConnectionsUpdate]);
 
-    // Persist whatever local-only tabs (OneDrive, notes) are open right now, on every change.
-    // Writing the descriptor, not the session object, means a rename picked up later never gets
-    // replayed stale - restoreLocalSessions looks the current details up fresh.
+    // Persist whatever local-only tabs (OneDrive, notes) are open right now, on every change -
+    // but only once restore has read a complete picture (see canPersistLocalSessions). Writing
+    // while PENDING would overwrite the stored descriptors before restore ever gets to read
+    // them; writing after FAILED would overwrite them with a list known to be incomplete,
+    // since the restore that needed the connections request never got to run. Writing the
+    // descriptor, not the session object, means a rename picked up later never gets replayed
+    // stale - restoreLocalSessions looks the current details up fresh.
     useEffect(() => {
+        if (!canPersistLocalSessions(restoreStatus)) return;
         setStoredLocalSessionDescriptors(activeSessions.map(toLocalSessionDescriptor).filter(Boolean));
-    }, [activeSessions]);
+    }, [activeSessions, restoreStatus]);
 
     // Runs once, after `servers` is available (getServerById needs it) - the terminal/sftp tabs
     // themselves arrive separately via handleConnectionsUpdate, which always puts freshly synced
@@ -164,23 +177,31 @@ export const Servers = () => {
     // than racing that update is enough to keep server-backed tabs first regardless of which
     // finishes loading first. Connections are fetched here rather than threaded down from
     // OneDriveAccounts, since that component doesn't run until the sidebar renders its list.
-    // The setActiveSessions call lives inside the request's .then(), not the effect body itself,
-    // matching how the rest of this file fetches on mount.
+    // Every setState call below - including the READY transition when there's nothing to
+    // restore - lives inside a promise callback, not the effect body itself, matching how the
+    // rest of this file fetches on mount; that's what keeps them out of
+    // react-hooks/set-state-in-effect, and it's also what makes each one safe to reorder with
+    // the save effect above.
     useEffect(() => {
         if (!servers || hasRestoredLocalSessionsRef.current) return;
+        hasRestoredLocalSessionsRef.current = true;
+
         if (initialLocalDescriptors.length === 0) {
-            hasRestoredLocalSessionsRef.current = true;
+            Promise.resolve().then(() => setRestoreStatus(RESTORE_STATUS.READY));
             return;
         }
-        hasRestoredLocalSessionsRef.current = true;
 
         getRequest("microsoft/connections")
             .then(connections => {
                 const restored = restoreLocalSessions(initialLocalDescriptors, { connections, getServerById });
+                setRestoreStatus(RESTORE_STATUS.READY);
                 if (restored.length === 0) return;
                 setActiveSessions(prev => [...prev, ...restored.filter(s => !prev.some(p => p.id === s.id))]);
             })
-            .catch(error => console.error("Failed to restore local sessions", error));
+            .catch(error => {
+                console.error("Failed to restore local sessions", error);
+                setRestoreStatus(RESTORE_STATUS.FAILED);
+            });
     }, [servers, initialLocalDescriptors, getServerById, setActiveSessions]);
 
     const findOrganizationForServer = (serverIdNum, entries, currentOrg = null) => {

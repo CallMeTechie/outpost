@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert";
-import { toLocalSessionDescriptor, restoreLocalSessions } from "../localSessionState.js";
+import { toLocalSessionDescriptor, restoreLocalSessions, canPersistLocalSessions, RESTORE_STATUS } from "../localSessionState.js";
 
 const oneDriveSession = { id: "onedrive-7", type: "onedrive", oneDrive: { connectionId: 7, displayName: "Privat", microsoftEmail: "a@b.com" } };
 const notesSession = { id: "notes-42", type: "notes", server: { id: 42, name: "web01" }, organizationId: null, organizationName: null };
@@ -80,6 +80,23 @@ test("garbage in the descriptor list (corrupted localStorage) is skipped without
 test("restoreLocalSessions handles a non-array input safely", () => {
     assert.deepStrictEqual(restoreLocalSessions(null, {}), []);
     assert.deepStrictEqual(restoreLocalSessions(undefined, {}), []);
+});
+
+// The rule the save effect leans on entirely: a save may only proceed once restore has
+// read a complete picture. PENDING (restore hasn't run yet, e.g. right after mount) and
+// FAILED (restore ran but its network read failed) must both refuse - collapsing them into
+// one "not ready" value is exactly the mistake that let the save effect overwrite the still-
+// unread descriptors on the very first render.
+test("a save may only proceed once restore is READY", () => {
+    assert.strictEqual(canPersistLocalSessions(RESTORE_STATUS.READY), true);
+    assert.strictEqual(canPersistLocalSessions(RESTORE_STATUS.PENDING), false);
+    assert.strictEqual(canPersistLocalSessions(RESTORE_STATUS.FAILED), false);
+});
+
+test("an unrecognized or missing restore status refuses to persist too", () => {
+    assert.strictEqual(canPersistLocalSessions(undefined), false);
+    assert.strictEqual(canPersistLocalSessions(null), false);
+    assert.strictEqual(canPersistLocalSessions("done"), false);
 });
 
 test("mixed descriptors: only the rebuildable ones survive, order preserved", () => {
