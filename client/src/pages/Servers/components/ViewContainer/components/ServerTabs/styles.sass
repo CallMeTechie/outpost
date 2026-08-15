@@ -276,14 +276,16 @@
             background-color: colors.$error-opacity
 
     .server-tab-active
-      // Solid instead of the translucent $gray hover fill: the active tab used to be
-      // hard to pick out at a glance, and the wider underline alone doesn't fix that
-      // in single-window mode, where there is no pane colour to lean on.
-      background-color: colors.$gray-full
+      // Twice the alpha of the plain $gray hover fill, not an opaque hex: the active tab used
+      // to be hard to pick out at a glance, and a fixed opaque colour would only read as
+      // stronger against the one background it was tuned for (colors.$background) — here the
+      // tabs also sit on colors.$lighter-background in the title-bar slot (see :291 below), and
+      // a translucent tint stays measurably more distinct than $gray against either one.
+      background-color: colors.$gray-strong
       border-bottom-color: var(--pane-color, colors.$primary)
 
       &:hover
-        background-color: colors.$gray-full
+        background-color: colors.$gray-strong
         border-bottom-color: var(--pane-color, colors.$primary)
 
 .title-bar .server-tabs

@@ -102,6 +102,29 @@
     gap: 0
     background-color: colors.$darker-gray
 
+    .session-renderer
+      // border-box, not the default content-box: top/left/width/height are already fixed by
+      // inline calc() styles (getSessionStyle in ViewContainer.jsx) that reserve half the 3px
+      // grid gap on every shared edge. Adding a border on top of a content-box would grow the
+      // element outward and shove the grid out of alignment; border-box grows it inward into
+      // space the element already occupied, so the outer box — and the grid — stays exactly
+      // where it was. Scoped to split view only: single-window mode never sets --pane-color,
+      // has no grid to protect, and would otherwise lose 2px of every renderer's content box
+      // for a border nobody can see.
+      box-sizing: border-box
+      // --pane-color exists only on a grid-positioned pane (see ViewContainer.jsx), so a pane
+      // that briefly has no grid slot still falls through to the transparent fallback here. The
+      // faint default marks every pane; .active below brings the active one to full strength.
+      border: 2px solid color-mix(in srgb, var(--pane-color, transparent) 45%, transparent)
+
+      // Active session, not :focus-within: a portalled overlay such as ContextMenu mounts to
+      // document.body and moves focus to itself on open, which would blank every pane's
+      // emphasis at once and never restore it on close (Escape or an outside click doesn't
+      // give focus back). activeSessionId already tracks the right pane regardless of where
+      // the browser's focus happens to be.
+      &.active
+        border-color: var(--pane-color, transparent)
+
     @media (max-width: breakpoints.$mobile)
       .session-renderer
         position: absolute !important
@@ -123,21 +146,6 @@
   background-color: colors.$terminal
   overflow: hidden
   -webkit-overflow-scrolling: touch
-  // border-box, not the default content-box: top/left/width/height are already fixed by inline
-  // calc() styles (getSessionStyle in ViewContainer.jsx) that reserve half the 3px grid gap on
-  // every shared edge. Adding a border on top of a content-box would grow the element outward
-  // and shove the grid out of alignment; border-box grows it inward into space the element
-  // already occupied, so the outer box — and the grid — stays exactly where it was.
-  box-sizing: border-box
-  // --pane-color exists only on a grid-positioned pane in split view (see ViewContainer.jsx),
-  // so single-window mode falls through to the transparent fallback and looks unchanged. The
-  // faint default marks every pane; :focus-within below brings the focused one to full strength.
-  border: 2px solid color-mix(in srgb, var(--pane-color, transparent) 45%, transparent)
-
-  // Real DOM focus lands inside whichever pane was last clicked (focusSession moves it there),
-  // so this needs no active/focused class of its own — the browser already tracks it for us.
-  &:focus-within
-    border-color: var(--pane-color, transparent)
 
   .xterm-screen
     padding-left: 3px

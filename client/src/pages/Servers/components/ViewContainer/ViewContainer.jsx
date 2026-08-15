@@ -530,9 +530,14 @@ export const ViewContainer = ({
         if (!session?.server && session?.type !== "onedrive") return null;
         const isVisible = layoutMode === "single" ? session.id === activeSessionId : gridSessions.includes(session.id);
         const paneColor = paneColorFor(paneColorSessions.indexOf(session.id));
+        // Drives the split-view border's strong/faint state in CSS. Deliberately not
+        // :focus-within: a portalled overlay (e.g. ContextMenu, which moves focus to itself on
+        // open) would blank every pane at once and never hand focus back on close. This mirrors
+        // activeSessionId directly instead, the same source ServerTabs already uses.
+        const isActive = session.id === activeSessionId;
         return (
             <div key={session.id} ref={el => sessionRefs.current[session.id] = el}
-                 className={`session-renderer ${isVisible ? "visible" : "hidden"}`}
+                 className={`session-renderer ${isVisible ? "visible" : "hidden"} ${isActive ? "active" : ""}`}
                  onClick={() => session.id !== activeSessionId && focusSession(session.id)}
                  style={{ ...getSessionStyle(session), ...(paneColor && { "--pane-color": paneColor }) }}>
                 {renderRenderer(session)}
