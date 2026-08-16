@@ -156,7 +156,19 @@ export const Servers = () => {
             mergedSessions = [...merged, ...erroredPinned, ...localOnly];
             return mergedSessions;
         });
-        setHibernatedSessions(hibernatedMapped);
+        // scriptName never comes from the server - session.configuration only ever carries
+        // scriptId (server/controllers/serverSession.js), so performConnection is the only place
+        // that ever learns it. The active path above already rescues it from the previous list on
+        // every broadcast; without the same rescue here, hibernating a scripted session drops the
+        // name and it stays dropped after waking, since the woken session is new to activeSessions
+        // and the rescue at :150 has nothing to carry it forward from.
+        setHibernatedSessions(prev => {
+            const prevMap = new Map(prev.map(s => [s.id, s]));
+            return hibernatedMapped.map(newSession => {
+                const existing = prevMap.get(newSession.id);
+                return existing ? { ...newSession, scriptName: existing.scriptName } : newSession;
+            });
+        });
 
         setActiveSessionId(prev => {
             if (prev && (newActiveIds.has(prev) || mergedSessions.some(s => s.id === prev))) return prev;

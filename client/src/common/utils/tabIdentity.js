@@ -54,6 +54,14 @@ export const normalizeTabName = (value) => {
 // an entry can come from hand-edited localStorage, not just this module's own writes.
 export const normalizeTabNumber = (value) => (Number.isInteger(value) && value > 0 ? value : undefined);
 
+// A stored usedAt must be a finite number - selectEvictions subtracts it directly to order
+// eviction candidates, and a missing or non-numeric value would turn that subtraction into NaN,
+// leaving that entry's position in the sort undefined. 0 is the safe fallback: it sorts as
+// "oldest", but an entry whose session is still open is protected from eviction by id regardless
+// of where it lands in that order, so treating an unreadable timestamp as ancient can only ever
+// make a closed entry's turn come sooner, never cost an open one its name or number.
+export const normalizeTabUsedAt = (value) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
+
 export const getStoredTabIdentities = () => {
     try {
         const stored = localStorage.getItem(TAB_IDENTITIES_KEY);
@@ -65,7 +73,12 @@ export const getStoredTabIdentities = () => {
         // store itself is the boundary.
         const normalized = {};
         for (const [id, entry] of Object.entries(entries)) {
-            normalized[id] = { ...entry, name: normalizeTabName(entry?.name), number: normalizeTabNumber(entry?.number) };
+            normalized[id] = {
+                ...entry,
+                name: normalizeTabName(entry?.name),
+                number: normalizeTabNumber(entry?.number),
+                usedAt: normalizeTabUsedAt(entry?.usedAt),
+            };
         }
         return normalized;
     } catch (error) {

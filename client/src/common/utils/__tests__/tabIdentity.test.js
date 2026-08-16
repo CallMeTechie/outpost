@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert";
-import { selectEvictions, normalizeTabName, normalizeTabNumber, TAB_IDENTITY_CAP } from "../tabIdentity.js";
+import { selectEvictions, normalizeTabName, normalizeTabNumber, normalizeTabUsedAt, TAB_IDENTITY_CAP } from "../tabIdentity.js";
 
 const entry = (usedAt) => ({ name: "x", usedAt });
 
@@ -87,4 +87,32 @@ test("a corrupt stored number is dropped, exactly like a corrupt name", () => {
     for (const bad of [NaN, "2", null, undefined, 0, -1, 1.5, {}]) {
         assert.strictEqual(normalizeTabNumber(bad), undefined);
     }
+});
+
+// --- normalizeTabUsedAt ---
+
+test("a finite number is kept as-is", () => {
+    assert.strictEqual(normalizeTabUsedAt(1700000000000), 1700000000000);
+});
+
+// selectEvictions subtracts usedAt directly to order candidates - a missing or non-numeric value
+// would turn that subtraction into NaN and leave the entry's position in the sort undefined. 0 is
+// the safe fallback: it sorts as "oldest", which only ever moves a closed entry's eviction sooner,
+// never costs a still-open (and therefore protected-by-id) entry its name or number.
+test("a missing or invalid usedAt falls back to 0, not NaN", () => {
+    for (const bad of [undefined, null, NaN, "1700000000000", {}]) {
+        assert.strictEqual(normalizeTabUsedAt(bad), 0);
+    }
+});
+
+// The end-to-end case selectEvictions itself would otherwise be exposed to: an entry written by a
+// caller that forgot the timestamp (Task 6's rename path is the one in mind) must not corrupt the
+// ordering of every other candidate the way a raw NaN would.
+test("an entry with a corrupt usedAt sorts as oldest, without corrupting the rest of the order", () => {
+    const entries = {
+        a: { name: "x", usedAt: normalizeTabUsedAt(undefined) },
+        b: { name: "x", usedAt: 2 },
+        c: { name: "x", usedAt: 1 },
+    };
+    assert.deepStrictEqual(selectEvictions(entries, [], 1), ["a", "c"]);
 });
