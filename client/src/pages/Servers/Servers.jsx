@@ -27,7 +27,7 @@ import {
     canPersistLocalSessions, RESTORE_STATUS,
 } from "@/common/utils/localSessionState.js";
 import { getStoredTabIdentities, setStoredTabIdentities, selectEvictions, TAB_IDENTITY_CAP, normalizeTabName } from "@/common/utils/tabIdentity.js";
-import { assignNumbers, diffAssignments } from "@/common/utils/tabLabel.js";
+import { assignNumbers, diffAssignments, tabGroupKey, tabIdentitySignature } from "@/common/utils/tabLabel.js";
 
 // A session the server does not know about: it lives in this browser only. The poll below
 // replaces the session list with what the server reports, so anything matching this has to be
@@ -240,23 +240,17 @@ export const Servers = () => {
         sessionsForNumberingRef.current = [...activeSessions, ...hibernatedSessions];
     }, [activeSessions, hibernatedSessions]);
 
-    // Built only from the fields that decide a tab's automatic text and its number: id, type, the
-    // two discriminators, and the custom name - assignNumbers groups by whichever of the automatic
-    // text or the custom name is in play (tabLabel.js's groupKey), so a rename that merges two
-    // groups has to show up here too, or a tab renamed to collide with another would keep whatever
-    // number it already had instead of being renumbered apart. As a primitive, React compares this
-    // by value, so it stays "the same" across renders where none of these fields moved even though
-    // the session arrays it was built from are new objects on every render. Sorted so that a
-    // session moving between activeSessions and hibernatedSessions - hibernating or waking one,
-    // which changes which array holds it but not the session itself - reorders the concatenation
-    // without changing the signature; every fragment still leads with the session's own id, which
-    // is unique, so sorting can only reorder fragments, never merge two different sessions' data
-    // into one and mask a real change.
+    // Everything that can move a tab's number, as one primitive React can compare by value: it
+    // stays "the same" across renders where none of those fields moved, even though the session
+    // arrays it is built from are new objects every time.
+    //
+    // The composition itself lives in tabLabel.js, next to the grouping rule it has to track. It
+    // used to be spelled out here as a hand-picked field list, and that list drifted from the rule
+    // twice: first it was missing the custom name, then the server name, each time letting a tab
+    // keep a number it should have lost. A list kept in a different file from the rule it mirrors
+    // is a list that will drift again.
     const sessionsForIdentity = [...activeSessions, ...hibernatedSessions];
-    const identitySignature = sessionsForIdentity
-        .map((session) => `${session.id}:${session.type ?? ""}:${session.tmuxSession ?? ""}:${session.scriptName ?? ""}:${tabIdentities[session.id]?.name ?? ""}`)
-        .sort()
-        .join("|");
+    const identitySignature = tabIdentitySignature(sessionsForIdentity, tabIdentities);
 
     // Tab numbers, computed synchronously during render rather than only in the persistence
     // effect below - without this, a freshly opened tab paints one frame with no number before
@@ -299,10 +293,21 @@ export const Servers = () => {
         // instead of writing again.
         if (!diffAssignments(previousNumbers, nextNumbers)) return;
 
+        // The group goes to storage with the number it belongs to, and only ever together with
+        // it. assignNumbers needs it to know which group a number reserves once the session is
+        // gone from the list - by then nothing is left to recompute the group from. Writing it
+        // only here, where the number itself is written, keeps the pair honest: an entry either
+        // has both or neither, and a group left behind by a session whose number was cleared
+        // (a rename) reserves nothing, because a reservation needs a valid number too.
         const updates = {};
         for (const session of sessions) {
             if (previousNumbers[session.id] !== nextNumbers[session.id]) {
-                updates[session.id] = { ...identities[session.id], number: nextNumbers[session.id], usedAt: Date.now() };
+                updates[session.id] = {
+                    ...identities[session.id],
+                    number: nextNumbers[session.id],
+                    group: tabGroupKey(session, identities[session.id]),
+                    usedAt: Date.now(),
+                };
             }
         }
 
@@ -330,14 +335,25 @@ export const Servers = () => {
     // cap at 40, undefined for empty/whitespace-only) - not this function and not the dialog -
     // so clearing the field and saving is what resets a tab to its automatic name.
     //
-    // The stored number is dropped on every rename, unconditionally - not just when the text
-    // actually changes. It is the clean trigger for renumbering into the session's new (or
-    // newly automatic) name group; assignNumbers' second pass, which resolves a same-number
-    // collision by list order, exists as a safety net for cases this can't see (two names
-    // colliding without either being freshly renamed), not as the normal path here.
+    // The stored number is dropped when - and only when - the name actually changes. It is the
+    // clean trigger for renumbering into the session's new (or newly automatic) name group, since
+    // the group key is built from the name; assignNumbers' second pass, which resolves a
+    // same-number collision by list order, exists as a safety net for cases this can't see (two
+    // names colliding without either being freshly renamed), not as the normal path here.
+    //
+    // Dropping it unconditionally looked harmless and was not: confirming the dialog without
+    // editing anything leaves the name, and therefore the identity signature, exactly as it was,
+    // so no renumbering runs to put a number back. The state said "no number" while the tab still
+    // showed the old one from tabNumbers, until the next tab opened or the page reloaded - at
+    // which point the tab silently changed its text with nothing the user did touching it. That is
+    // criterion 3, the load-bearing one.
     const renameSession = useCallback((sessionId, rawValue) => {
         const name = normalizeTabName(rawValue);
-        const entry = { ...tabIdentities[sessionId], name, number: undefined, usedAt: Date.now() };
+        const previous = tabIdentities[sessionId];
+        const nameChanged = previous?.name !== name;
+        const entry = nameChanged
+            ? { ...previous, name, number: undefined, group: undefined, usedAt: Date.now() }
+            : { ...previous, name, usedAt: Date.now() };
 
         setStoredTabIdentities({ [sessionId]: entry });
 
