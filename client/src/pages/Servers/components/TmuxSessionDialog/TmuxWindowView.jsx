@@ -14,8 +14,9 @@ import { sanitizeRemoteText } from "@/common/utils/remoteText.js";
  * make the name render as something it is not.
  *
  * Sanitizing is shared with the rest of the app (remoteText.js) rather than
- * repeated here, and unlike the tooltip that also uses it, no length limit is
- * passed - this view has never truncated window names and shows them in full.
+ * repeated here. This call passes no length limit, because this view has
+ * never truncated window names and shows them in full - other callers of
+ * sanitizeRemoteText may pass one.
  */
 export const displayName = (value) => sanitizeRemoteText(value, Infinity);
 

@@ -18,6 +18,16 @@ test("bidi overrides and markers are removed", () => {
     assert.strictEqual(sanitizeRemoteText("a‏b⁦c⁩d", 80), "abcd");
 });
 
+// U+2028/U+2029 are not control characters and not in "Cf", but depending on surrounding
+// white-space handling they can render as a line break - the same tooltip-line forgery that
+// "\n" is stripped to prevent. Built via fromCodePoint rather than embedded literally: both
+// are invisible whitespace-like characters, so a literal in the source would be indistinguishable
+// from a stray blank in a diff or an editor.
+test("line and paragraph separators are removed", () => {
+    const separators = String.fromCodePoint(0x2028, 0x2029);
+    assert.strictEqual(sanitizeRemoteText(`a${separators}b`, 80), "ab");
+});
+
 test("text is cut to the given length", () => {
     assert.strictEqual(sanitizeRemoteText("x".repeat(100), 80).length, 80);
 });
