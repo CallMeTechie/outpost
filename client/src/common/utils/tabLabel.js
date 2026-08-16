@@ -99,13 +99,28 @@ export const buildTabLabel = (session, identity = {}, t) => {
     return { text, tooltip };
 };
 
+// Which suffix bucket a session's type falls into. Not the literal suffix text - notes needs
+// t() for that (see buildTabLabel) and grouping has no t() to call - just enough to keep types
+// that render with the *same* (empty) suffix in the same bucket. terminal and onedrive both
+// render with no suffix at all, so a terminal session and a OneDrive session with the same base
+// name render identically and must compete for the same number; grouping by raw session.type
+// would keep them apart instead, which is exactly the bug this bucket exists to avoid.
+const suffixBucket = (session) => {
+    if (session.type === "sftp") return "sftp";
+    if (session.type === "notes") return "notes";
+    return "other";
+};
+
 // Used only to decide which sessions compete for the same number - it needs to collide exactly
 // when two sessions would render the same automatic text and stay apart otherwise, but it does
-// not need to look like anything a user would see. Appending the raw type instead of the
-// (locale-dependent, t()-gated) suffix keeps grouping stable without giving assignNumbers a
-// reason to need a translator. Deliberately ignores any stored name: assignNumbers only ever
-// sees raw sessions and previously-issued numbers, never a per-tab identity.
-const groupKey = (session) => `${discriminatedBase(session, discriminatorParts(session))}|${session.type}`;
+// not need to look like anything a user would see. Built from the same inputs buildTabLabel's
+// body uses - a custom name if there is one, else the base and discriminator, plus the suffix
+// bucket - because a custom name is part of what gets rendered too: two sessions renamed to the
+// same text must share a number sequence, or both could end up unnumbered as "Backup".
+const groupKey = (session, identity) => {
+    const base = identity?.name || discriminatedBase(session, discriminatorParts(session));
+    return `${base}|${suffixBucket(session)}`;
+};
 
 // Whether a stored value can be trusted as an already-issued number. Anything else - a missing
 // entry, but just as much a hand-edited `"abc"`, `null`, `0` or a negative number - is treated as
@@ -120,14 +135,20 @@ const isAssignedNumber = (value) => Number.isInteger(value) && value > 0;
 // back in changes nothing, which is what lets this run on every list change - performConnection,
 // duplicateSession, openTerminalFromFileManager and joinLiveSession all create sessions, and a
 // rule that has to be called at each of those spots eventually misses one without it showing.
-export const assignNumbers = (sessions, storedNumbers = {}) => {
-    // The highest number already on file, across every id and every text group, ignoring any
-    // entry that fails isAssignedNumber so a single corrupt one can't poison every group's floor.
-    // A session that this call doesn't see - closed, or simply left out - still keeps its number
-    // reserved: there is no session object left to confirm what text it belonged to, and guessing
-    // wrong would risk handing that number to an unrelated tab. The result is a gap, never a
-    // collision.
-    const reservedFloor = Object.values(storedNumbers)
+//
+// `identities` is keyed by session id, each entry `{ name?, number? }` - the same shape
+// buildTabLabel's `identity` argument has, because the group key needs to know about a custom
+// name too: renaming two sessions to the same text has to be numbered exactly like two sessions
+// that already shared a base name.
+export const assignNumbers = (sessions, identities = {}) => {
+    // The highest number already on file, across every id and every group, ignoring any entry
+    // that fails isAssignedNumber so a single corrupt one can't poison every group's floor. A
+    // session that this call doesn't see - closed, or simply left out - still keeps its number
+    // reserved: there is no session object left to confirm what group it belonged to, and
+    // guessing wrong would risk handing that number to an unrelated tab. The result is a gap,
+    // never a collision.
+    const reservedFloor = Object.values(identities)
+        .map((identity) => identity?.number)
         .filter(isAssignedNumber)
         .reduce((max, n) => Math.max(max, n), 0);
 
@@ -135,25 +156,49 @@ export const assignNumbers = (sessions, storedNumbers = {}) => {
     const result = {};
 
     // First pass: carry forward every number that already exists and passes isAssignedNumber, and
-    // let each one raise the ceiling for its own text group so a fresh session in the same group
+    // let each one raise the ceiling for its own group so a fresh session in the same group
     // starts above it. A stored value that fails the check is treated the same as a missing one -
-    // it falls through to the second pass and gets a fresh number instead of being trusted.
+    // it falls through to the third pass and gets a fresh number instead of being trusted.
     for (const session of sessions) {
-        const existing = storedNumbers[session.id];
+        const existing = identities[session.id]?.number;
         if (!isAssignedNumber(existing)) continue;
 
         result[session.id] = existing;
-        const key = groupKey(session);
+        const key = groupKey(session, identities[session.id]);
         highestByGroup.set(key, Math.max(highestByGroup.get(key) ?? 0, existing));
     }
 
-    // Second pass: hand out the next free number to whatever is left. The gap is deliberate -
-    // closing a tab must never renumber the ones that stay, so a new session always takes the
-    // next free number rather than backfilling one a closed tab left behind.
+    // Second pass: because the group key depends on identity.name, a rename can merge two groups
+    // that were each internally consistent on their own - two tabs that both happened to be
+    // "number 1" in their own, previously separate groups, invisible until now because 1 shows no
+    // suffix. The first pass just carried both numbers forward blindly, so the same number can
+    // now appear twice within one (recomputed) group. Resolve that by list order - the tab strip's
+    // order, which is stable - rather than by any property of the session itself: whichever
+    // session comes first keeps the number, because a tab that was already sitting there should
+    // not move just because a later one changed. The loser is evicted back out of `result` so the
+    // third pass gives it a fresh number.
+    const claimedByGroup = new Map();
+    for (const session of sessions) {
+        if (result[session.id] == null) continue;
+
+        const key = groupKey(session, identities[session.id]);
+        const claimed = claimedByGroup.get(key) ?? new Set();
+        if (claimed.has(result[session.id])) {
+            delete result[session.id];
+        } else {
+            claimed.add(result[session.id]);
+            claimedByGroup.set(key, claimed);
+        }
+    }
+
+    // Third pass: hand out the next free number to whatever is left - anything that never had a
+    // stored number, plus anything the second pass just evicted. The gap is deliberate - closing
+    // a tab must never renumber the ones that stay, so a new session always takes the next free
+    // number rather than backfilling one a closed tab (or a losing rename) left behind.
     for (const session of sessions) {
         if (result[session.id] != null) continue;
 
-        const key = groupKey(session);
+        const key = groupKey(session, identities[session.id]);
         const next = Math.max(highestByGroup.get(key) ?? 0, reservedFloor) + 1;
         result[session.id] = next;
         highestByGroup.set(key, next);

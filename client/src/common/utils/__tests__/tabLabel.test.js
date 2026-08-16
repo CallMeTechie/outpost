@@ -110,6 +110,11 @@ test("fields without a value never appear", () => {
 
 // --- assignNumbers ---
 
+// assignNumbers takes identities keyed by id ({ name?, number? }), the same shape buildTabLabel
+// takes per-session - not the flat { id: number } map its own return value is. This turns a
+// previous result back into valid input for the idempotence check below.
+const toIdentities = (numbers) => Object.fromEntries(Object.entries(numbers).map(([id, number]) => [id, { number }]));
+
 test("the first session of a name gets number one", () => {
     assert.deepStrictEqual(assignNumbers([ssh], {}), { s1: 1 });
 });
@@ -128,16 +133,16 @@ test("different discriminators need no numbering apart", () => {
 test("running it again changes nothing", () => {
     const sessions = [ssh, { ...ssh, id: "s9" }];
     const first = assignNumbers(sessions, {});
-    assert.deepStrictEqual(assignNumbers(sessions, first), first);
+    assert.deepStrictEqual(assignNumbers(sessions, toIdentities(first)), first);
 });
 
 test("a stored number is kept even when its neighbour is gone", () => {
-    assert.deepStrictEqual(assignNumbers([{ ...ssh, id: "s9" }], { s9: 2 }), { s9: 2 });
+    assert.deepStrictEqual(assignNumbers([{ ...ssh, id: "s9" }], { s9: { number: 2 } }), { s9: 2 });
 });
 
 // The gap is deliberate: closing a tab must never renumber the ones that stay.
 test("a new session takes the next free number, leaving gaps", () => {
-    assert.strictEqual(assignNumbers([{ ...ssh, id: "s7" }], { s9: 2 }).s7, 3);
+    assert.strictEqual(assignNumbers([{ ...ssh, id: "s7" }], { s9: { number: 2 } }).s7, 3);
 });
 
 test("two joined sessions, which have no discriminator at all, are separated by number alone", () => {
@@ -149,7 +154,7 @@ test("two joined sessions, which have no discriminator at all, are separated by 
 // session it belongs to is treated as unnumbered and gets a fresh number like any other.
 test("a corrupt stored number does not leak into the result", () => {
     for (const bad of [NaN, "abc", 0, -1]) {
-        const result = assignNumbers([{ ...ssh, id: "s9" }], { s9: bad });
+        const result = assignNumbers([{ ...ssh, id: "s9" }], { s9: { number: bad } });
         assert.notStrictEqual(result.s9, bad);
         assert.ok(Number.isInteger(result.s9) && result.s9 > 0);
     }
@@ -158,8 +163,42 @@ test("a corrupt stored number does not leak into the result", () => {
 // Math.max propagates NaN through every comparison it touches - a single corrupt entry must not
 // turn the numbers every other session receives into NaN as a side effect.
 test("a corrupt stored number does not affect the numbers other sessions receive", () => {
-    const result = assignNumbers([{ ...ssh, id: "s7" }], { s9: NaN });
+    const result = assignNumbers([{ ...ssh, id: "s7" }], { s9: { number: NaN } });
     assert.strictEqual(result.s7, 1);
+});
+
+// A terminal and a OneDrive session render with the same (empty) suffix, so two of them with the
+// same base name render identically and must compete for the same number - grouping by raw
+// session.type instead of the rendered suffix would keep them apart despite that.
+test("a terminal and a OneDrive session with the same base name still number apart", () => {
+    const term = { id: "a1", type: "terminal", server: { name: "Shared" } };
+    const drive = { id: "od-1", type: "onedrive", oneDrive: { displayName: "Shared" } };
+    const result = assignNumbers([term, drive], {});
+    assert.strictEqual(result.a1, 1);
+    assert.strictEqual(result["od-1"], 2);
+});
+
+// The group key has to account for a custom name, not just the automatic base - two sessions
+// renamed to the same text must share a number sequence, or both could render as unnumbered
+// duplicates of "Backup".
+test("two sessions renamed to the same custom name still number apart", () => {
+    const a = { id: "b1", type: "terminal", server: { name: "pve-01" } };
+    const b = { id: "b2", type: "terminal", server: { name: "pve-02" } };
+    const result = assignNumbers([a, b], { b1: { name: "Backup" }, b2: { name: "Backup" } });
+    assert.notStrictEqual(result.b1, result.b2);
+});
+
+// Two sessions can each be an unremarkable "number 1" in their own, separate groups - invisible,
+// since 1 shows no suffix - until a rename merges the groups and the same number collides. List
+// order (the tab strip's own order, which is stable) breaks the tie: the earlier tab keeps its
+// number because it was already sitting there before the later one changed.
+test("a rename that merges two groups resolves a duplicate number by list order", () => {
+    const a = { id: "c1", type: "terminal", server: { name: "pve-01" } };
+    const b = { id: "c2", type: "terminal", server: { name: "pve-02" } };
+    const identities = { c1: { name: "Same Name", number: 1 }, c2: { name: "Same Name", number: 1 } };
+    const result = assignNumbers([a, b], identities);
+    assert.strictEqual(result.c1, 1);
+    assert.notStrictEqual(result.c2, 1);
 });
 
 // --- diffAssignments ---
