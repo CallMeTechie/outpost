@@ -1677,7 +1677,8 @@
         "terminal": "Terminal",
         "sftp": "SFTP",
         "notes": "Notes",
-        "onedrive": "OneDrive"
+        "onedrive": "OneDrive",
+        "remoteDesktop": "Remote desktop"
       }
     },
     "wol": {

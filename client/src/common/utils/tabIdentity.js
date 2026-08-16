@@ -62,6 +62,13 @@ export const normalizeTabNumber = (value) => (Number.isInteger(value) && value >
 // make a closed entry's turn come sooner, never cost an open one its name or number.
 export const normalizeTabUsedAt = (value) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
 
+// The group a stored number was issued in (tabGroupKey in tabLabel.js), kept so that a session
+// which is no longer in the list can still reserve its number inside its own group instead of
+// against every group at once. Only a string can be one: assignNumbers looks it up in a Map keyed
+// by group key, so anything else could only ever form a bucket of its own that no real session
+// matches - dropping it here says that plainly rather than leaving a dead entry in the map.
+export const normalizeTabGroup = (value) => (typeof value === "string" && value !== "" ? value : undefined);
+
 export const getStoredTabIdentities = () => {
     try {
         const stored = localStorage.getItem(TAB_IDENTITIES_KEY);
@@ -77,6 +84,7 @@ export const getStoredTabIdentities = () => {
                 ...entry,
                 name: normalizeTabName(entry?.name),
                 number: normalizeTabNumber(entry?.number),
+                group: normalizeTabGroup(entry?.group),
                 usedAt: normalizeTabUsedAt(entry?.usedAt),
             };
         }

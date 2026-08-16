@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert";
-import { selectEvictions, normalizeTabName, normalizeTabNumber, normalizeTabUsedAt, TAB_IDENTITY_CAP } from "../tabIdentity.js";
+import { selectEvictions, normalizeTabName, normalizeTabNumber, normalizeTabGroup, normalizeTabUsedAt, TAB_IDENTITY_CAP } from "../tabIdentity.js";
 
 const entry = (usedAt) => ({ name: "x", usedAt });
 
@@ -87,6 +87,19 @@ test("a corrupt stored number is dropped, exactly like a corrupt name", () => {
     for (const bad of [NaN, "2", null, undefined, 0, -1, 1.5, {}]) {
         assert.strictEqual(normalizeTabNumber(bad), undefined);
     }
+});
+
+// --- normalizeTabGroup ---
+
+test("a group key is kept as-is", () => {
+    assert.strictEqual(normalizeTabGroup("pve-01|sftp"), "pve-01|sftp");
+});
+
+// assignNumbers looks the group up in a Map keyed by group key, so a non-string could only ever
+// form a bucket of its own that no live session matches - a reservation nothing can ever collide
+// with. Dropping it here says so plainly instead of leaving a dead entry in the map.
+test("a group that is not a non-empty string is dropped", () => {
+    for (const bad of [undefined, null, "", 42, {}, []]) assert.strictEqual(normalizeTabGroup(bad), undefined);
 });
 
 // --- normalizeTabUsedAt ---

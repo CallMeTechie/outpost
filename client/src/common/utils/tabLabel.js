@@ -18,6 +18,20 @@ const TYPE_LABEL_KEY = {
     sftp: "servers.tabLabel.type.sftp",
     notes: "servers.tabLabel.type.notes",
     onedrive: "servers.tabLabel.type.onedrive",
+    remoteDesktop: "servers.tabLabel.type.remoteDesktop",
+};
+
+// Which of those keys a session's type row should show. The subtlety is that the two most common
+// session kinds carry no `type` at all: performConnection sends `type: null` for both a plain SSH
+// tab and an RDP/VNC one, the server stores `type || null`, and Servers.jsx reads it back as
+// `undefined`. A bare `TYPE_LABEL_KEY[session.type]` therefore left the type row off exactly the
+// tabs that make up most of the strip - the tooltip then said nothing the tab itself didn't
+// already say, while `servers.tabLabel.type.terminal` sat unreachable in both locale files.
+// What separates the two typeless kinds is the renderer, the same field ViewContainer.jsx
+// switches on: "guac" means the Guacamole canvas, anything else means the terminal.
+const typeLabelKey = (session) => {
+    if (session.type) return TYPE_LABEL_KEY[session.type];
+    return session.server?.renderer === "guac" ? TYPE_LABEL_KEY.remoteDesktop : TYPE_LABEL_KEY.terminal;
 };
 
 // The one piece of base text every session type but OneDrive carries. OneDrive sessions carry no
@@ -85,7 +99,10 @@ export const buildTabLabel = (session, identity = {}, t) => {
 
     const tooltip = [
         field("servers.tabLabel.tooltip.server", baseName(session)),
-        field("servers.tabLabel.tooltip.type", TYPE_LABEL_KEY[session.type] ? t(TYPE_LABEL_KEY[session.type]) : session.type),
+        // The fallback to the raw `session.type` only ever fires for a type this module has no
+        // key for - a value the repo does not produce today, kept so an unknown one shows up in
+        // the tooltip rather than silently dropping the row again.
+        field("servers.tabLabel.tooltip.type", typeLabelKey(session) ? t(typeLabelKey(session)) : session.type),
         field("servers.tabLabel.tooltip.tmuxSession", parts.tmuxSession),
         // Only the window ID is available here, not a name: the server stores just the ID
         // (controllers/serverSession.js), and resolving it to a name would need an extra
@@ -119,10 +136,31 @@ const suffixBucket = (session) => {
 // body uses - a custom name if there is one, else the base and discriminator, plus the suffix
 // bucket - because a custom name is part of what gets rendered too: two sessions renamed to the
 // same text must share a number sequence, or both could end up unnumbered as "Backup".
-const groupKey = (session, identity) => {
+// Exported because a caller has to be able to store it: assignNumbers below needs to know which
+// group a *closed* session's reserved number belonged to, and by then there is no session object
+// left to recompute it from.
+export const tabGroupKey = (session, identity) => {
     const base = identity?.name || discriminatedBase(session, discriminatorParts(session));
     return `${base}|${suffixBucket(session)}`;
 };
+
+// One primitive string covering every input that can move a tab's number, for a whole session
+// list - a caller compares it against the previous render's to decide whether numbering has to
+// run again. It is built out of tabGroupKey itself rather than out of a hand-picked field list,
+// and that is the point: the field list drifted twice on this branch (first the custom name, then
+// the server name) because it lived in Servers.jsx while the grouping rule lived here, and each
+// review saw only one of the two. Deriving it from the rule means a field can no longer be in one
+// and missing from the other.
+//
+// The id leads every fragment and is unique, so sorting - which lets a session move between the
+// active and hibernated arrays without the signature changing - can only reorder fragments, never
+// merge two sessions' data into one and mask a real change. The separators are C0 controls
+// because they are the one thing sanitizeRemoteText strips out of every name that reaches a group
+// key, so no name can forge one.
+export const tabIdentitySignature = (sessions, identities = {}) => sessions
+    .map((session) => `${session.id}\u0000${tabGroupKey(session, identities[session.id])}`)
+    .sort()
+    .join("\u0001");
 
 // Whether a stored value can be trusted as an already-issued number. Anything else - a missing
 // entry, but just as much a hand-edited `"abc"`, `null`, `0` or a negative number - is treated as
@@ -143,16 +181,28 @@ const isAssignedNumber = (value) => Number.isInteger(value) && value > 0;
 // name too: renaming two sessions to the same text has to be numbered exactly like two sessions
 // that already shared a base name.
 export const assignNumbers = (sessions, identities = {}) => {
-    // The highest number already on file, across every id and every group, ignoring any entry
-    // that fails isAssignedNumber so a single corrupt one can't poison every group's floor. A
-    // session that this call doesn't see - closed, or simply left out - still keeps its number
-    // reserved: there is no session object left to confirm what group it belonged to, and
-    // guessing wrong would risk handing that number to an unrelated tab. The result is a gap,
-    // never a collision.
-    const reservedFloor = Object.values(identities)
-        .map((identity) => identity?.number)
-        .filter(isAssignedNumber)
-        .reduce((max, n) => Math.max(max, n), 0);
+    // The highest number already reserved per group by an entry this call may not see a session
+    // for - a closed tab, or one simply left out of the list. Keeping that reservation is what
+    // makes the spec's own gap example hold: `pve-01` and `pve-01 (2)`, close the first, and the
+    // next tab on that server is `(3)` rather than silently taking the closed tab's number back.
+    //
+    // It is read per group, and that is the whole correction here: this used to be a single
+    // maximum over *all* entries regardless of group, feeding every fresh assignment. Every tab
+    // after the very first one therefore got a number, and each number it handed out raised the
+    // floor for the next - eight connections in a row and the eighth read `host-8 (8)`, where the
+    // spec says a number appears only where two open tabs would otherwise read identically.
+    //
+    // Knowing the group of a session that isn't here requires it to have been stored alongside
+    // the number (see tabGroupKey); an entry without one - written before this field existed, or
+    // hand-edited - reserves nothing. That direction is the safe one: a number gets reused by a
+    // later tab while the tab that held it is closed, which no one can see, rather than a live tab
+    // being pushed off its number. Entries that fail isAssignedNumber are ignored for the same
+    // reason they are everywhere else in this module.
+    const reservedByGroup = new Map();
+    for (const identity of Object.values(identities)) {
+        if (!isAssignedNumber(identity?.number) || typeof identity?.group !== "string") continue;
+        reservedByGroup.set(identity.group, Math.max(reservedByGroup.get(identity.group) ?? 0, identity.number));
+    }
 
     const highestByGroup = new Map();
     const result = {};
@@ -166,7 +216,7 @@ export const assignNumbers = (sessions, identities = {}) => {
         if (!isAssignedNumber(existing)) continue;
 
         result[session.id] = existing;
-        const key = groupKey(session, identities[session.id]);
+        const key = tabGroupKey(session, identities[session.id]);
         highestByGroup.set(key, Math.max(highestByGroup.get(key) ?? 0, existing));
     }
 
@@ -174,16 +224,21 @@ export const assignNumbers = (sessions, identities = {}) => {
     // that were each internally consistent on their own - two tabs that both happened to be
     // "number 1" in their own, previously separate groups, invisible until now because 1 shows no
     // suffix. The first pass just carried both numbers forward blindly, so the same number can
-    // now appear twice within one (recomputed) group. Resolve that by list order - the tab strip's
-    // order, which is stable - rather than by any property of the session itself: whichever
-    // session comes first keeps the number, because a tab that was already sitting there should
-    // not move just because a later one changed. The loser is evicted back out of `result` so the
-    // third pass gives it a fresh number.
+    // now appear twice within one (recomputed) group. Resolve that by the order of the list this
+    // function was handed, rather than by any property of the session itself: whichever session
+    // comes first keeps the number, because a tab that was already sitting there should not move
+    // just because a later one changed. That order is *not* the tab strip's - the strip renders
+    // ServerTabs.jsx's own `tabOrder`, which drag-and-drop rewrites, while the caller passes
+    // `[...activeSessions, ...hibernatedSessions]`. What the tie-break needs is only that the
+    // order be deterministic for a given list, which it is; it does not need to match what the
+    // user sees, because the case it settles - two tabs already carrying the same number in one
+    // group - has no visibly "earlier" tab to defer to either way. The loser is evicted back out
+    // of `result` so the third pass gives it a fresh number.
     const claimedByGroup = new Map();
     for (const session of sessions) {
         if (result[session.id] == null) continue;
 
-        const key = groupKey(session, identities[session.id]);
+        const key = tabGroupKey(session, identities[session.id]);
         const claimed = claimedByGroup.get(key) ?? new Set();
         if (claimed.has(result[session.id])) {
             delete result[session.id];
@@ -200,8 +255,8 @@ export const assignNumbers = (sessions, identities = {}) => {
     for (const session of sessions) {
         if (result[session.id] != null) continue;
 
-        const key = groupKey(session, identities[session.id]);
-        const next = Math.max(highestByGroup.get(key) ?? 0, reservedFloor) + 1;
+        const key = tabGroupKey(session, identities[session.id]);
+        const next = Math.max(highestByGroup.get(key) ?? 0, reservedByGroup.get(key) ?? 0) + 1;
         result[session.id] = next;
         highestByGroup.set(key, next);
     }

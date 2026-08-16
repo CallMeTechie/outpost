@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert";
-import { buildTabLabel, assignNumbers, diffAssignments } from "../tabLabel.js";
+import { buildTabLabel, assignNumbers, diffAssignments, tabGroupKey, tabIdentitySignature } from "../tabLabel.js";
 
 // buildTabLabel only ever calls t() for the notes suffix and the tooltip's type value - both
 // static label keys with no interpolation - so a small stub is enough, in the style
@@ -12,6 +12,7 @@ const t = (key) => ({
     "servers.tabLabel.type.sftp": "SFTP",
     "servers.tabLabel.type.notes": "Notes",
     "servers.tabLabel.type.onedrive": "OneDrive",
+    "servers.tabLabel.type.remoteDesktop": "Remote desktop",
 })[key];
 
 const ssh = { id: "s1", type: "terminal", server: { name: "pve-01" } };
@@ -81,8 +82,20 @@ test("a discriminator that sanitises to nothing leaves no dangling separator", (
 
 // --- tooltip ---
 
-test("the tooltip always carries server and type", () => {
-    assert.ok(buildTabLabel(sftp, {}, t).tooltip.length > 0);
+// A plain terminal session carries no `type` at all - performConnection sends null and it arrives
+// back as undefined - so this is the case a `tooltip.length > 0` assertion used to wave through
+// while the type row was in fact missing from every ordinary terminal tab, leaving the tooltip
+// saying only what the tab already said.
+test("the tooltip carries a type row for a plain terminal session, which has no type field", () => {
+    const { tooltip } = buildTabLabel({ id: "t1", server: { name: "pve-01" } }, {}, t);
+    assert.ok(tooltip.some(field => field.key === "servers.tabLabel.tooltip.server" && field.value === "pve-01"));
+    assert.ok(tooltip.some(field => field.key === "servers.tabLabel.tooltip.type" && field.value === "Terminal"));
+});
+
+// An RDP/VNC session is typeless in exactly the same way; only the renderer tells the two apart.
+test("a Guacamole session gets the remote-desktop type, not the terminal one", () => {
+    const { tooltip } = buildTabLabel({ id: "t2", server: { name: "win-01", renderer: "guac" } }, {}, t);
+    assert.ok(tooltip.some(field => field.key === "servers.tabLabel.tooltip.type" && field.value === "Remote desktop"));
 });
 
 // The type value is the module's own vocabulary, not remote text - unlike the tmux session name,
@@ -159,9 +172,59 @@ test("a stored number is kept even when its neighbour is gone", () => {
     assert.deepStrictEqual(assignNumbers([{ ...ssh, id: "s9" }], { s9: { number: 2 } }), { s9: 2 });
 });
 
-// The gap is deliberate: closing a tab must never renumber the ones that stay.
+// The gap is deliberate: closing a tab must never renumber the ones that stay. A closed session
+// reserves its number through the group stored next to it - without that group there is nothing
+// left to say which group the reservation belongs in.
 test("a new session takes the next free number, leaving gaps", () => {
-    assert.strictEqual(assignNumbers([{ ...ssh, id: "s7" }], { s9: { number: 2 } }).s7, 3);
+    const closed = { s9: { number: 2, group: tabGroupKey(ssh) } };
+    assert.strictEqual(assignNumbers([{ ...ssh, id: "s7" }], closed).s7, 3);
+});
+
+// The regression that made every tab after the first one carry a number: the reservation used to
+// be a single maximum over all entries regardless of group, so a number stored anywhere lifted the
+// floor everywhere.
+test("a number stored in one group does not raise a fresh session in another", () => {
+    const other = { id: "x1", type: "terminal", server: { name: "host-B" } };
+    const closed = { s9: { number: 7, group: tabGroupKey(other) } };
+    assert.strictEqual(assignNumbers([{ ...ssh, id: "s7" }], closed).s7, 1);
+});
+
+// The same fault seen the way a user would: open a tab, then one on a different server, then a
+// tmux tab on the first - each number handed out used to raise the floor for whatever came next,
+// so the second tab read "host-B (2)" and the third "host-A · deploy (3)".
+test("opening tabs on different servers in turn numbers none of them", () => {
+    const a = { id: "a", type: "terminal", server: { name: "host-A" } };
+    const b = { id: "b", type: "terminal", server: { name: "host-B" } };
+    const c = { id: "c", type: "terminal", server: { name: "host-A" }, tmuxSession: "deploy" };
+
+    let identities = {};
+    for (const list of [[a], [a, b], [a, b, c]]) {
+        const numbers = assignNumbers(list, identities);
+        identities = Object.fromEntries(list.map(session => [session.id, {
+            number: numbers[session.id],
+            group: tabGroupKey(session, identities[session.id]),
+        }]));
+    }
+
+    assert.deepStrictEqual(identities.a.number, 1);
+    assert.deepStrictEqual(identities.b.number, 1);
+    assert.deepStrictEqual(identities.c.number, 1);
+});
+
+// The reservation raises the floor for its own group and leaves every other group alone, in the
+// same call: the SFTP tab starts above the closed SFTP tab, the terminal tab still starts at one.
+test("a reservation raises its own group's floor and no other's", () => {
+    const closed = { s9: { number: 4, group: tabGroupKey(sftp) } };
+    const result = assignNumbers([ssh, sftp], closed);
+    assert.strictEqual(result.s1, 1);
+    assert.strictEqual(result.s3, 5);
+});
+
+// Entries written before the group field existed keep a valid number but cannot say where it
+// belongs. Ignoring their reservation is the safe direction - a closed tab's number gets reused,
+// which nobody can see, rather than a live tab being pushed off its own.
+test("a stored number without a group reserves nothing", () => {
+    assert.strictEqual(assignNumbers([{ ...ssh, id: "s7" }], { s9: { number: 2 } }).s7, 1);
 });
 
 test("two joined sessions, which have no discriminator at all, are separated by number alone", () => {
@@ -208,9 +271,9 @@ test("two sessions renamed to the same custom name still number apart", () => {
 });
 
 // Two sessions can each be an unremarkable "number 1" in their own, separate groups - invisible,
-// since 1 shows no suffix - until a rename merges the groups and the same number collides. List
-// order (the tab strip's own order, which is stable) breaks the tie: the earlier tab keeps its
-// number because it was already sitting there before the later one changed.
+// since 1 shows no suffix - until a rename merges the groups and the same number collides. The
+// order of the list handed in breaks the tie (not the tab strip's own order, which drag-and-drop
+// rewrites independently): the earlier session keeps its number.
 test("a rename that merges two groups resolves a duplicate number by list order", () => {
     const a = { id: "c1", type: "terminal", server: { name: "pve-01" } };
     const b = { id: "c2", type: "terminal", server: { name: "pve-02" } };
@@ -218,6 +281,70 @@ test("a rename that merges two groups resolves a duplicate number by list order"
     const result = assignNumbers([a, b], identities);
     assert.strictEqual(result.c1, 1);
     assert.notStrictEqual(result.c2, 1);
+});
+
+// --- tabIdentitySignature ---
+//
+// The signature is what decides whether numbering runs again. Anything groupKey reads has to move
+// it; anything else must leave it alone, or numbering re-runs on every unrelated broadcast.
+
+test("a changed server name moves the signature", () => {
+    const before = tabIdentitySignature([ssh], {});
+    const after = tabIdentitySignature([{ ...ssh, server: { name: "pve-02" } }], {});
+    assert.notStrictEqual(before, after);
+});
+
+// This is the case that could not be seen from the tab strip: renaming the *server list* entry
+// rebuilds every session with the new name, and two tabs that were number 1 in different groups
+// land in the same group without anything renumbering them apart.
+test("a server rename that merges two groups moves the signature", () => {
+    const a = { id: "a", type: "terminal", server: { name: "alpha" } };
+    const b = { id: "b", type: "terminal", server: { name: "beta" } };
+    const before = tabIdentitySignature([a, b], {});
+    const after = tabIdentitySignature([a, { ...b, server: { name: "alpha" } }], {});
+    assert.notStrictEqual(before, after);
+});
+
+test("a changed OneDrive display name moves the signature", () => {
+    const before = tabIdentitySignature([onedrive], {});
+    const after = tabIdentitySignature([{ ...onedrive, oneDrive: { displayName: "Privat-Drive" } }], {});
+    assert.notStrictEqual(before, after);
+});
+
+test("a changed custom name moves the signature", () => {
+    const before = tabIdentitySignature([ssh], {});
+    const after = tabIdentitySignature([ssh], { s1: { name: "Deploy Prod" } });
+    assert.notStrictEqual(before, after);
+});
+
+test("a changed tmux session moves the signature", () => {
+    assert.notStrictEqual(tabIdentitySignature([tmux], {}), tabIdentitySignature([{ ...tmux, tmuxSession: "build" }], {}));
+});
+
+test("a changed script name moves the signature", () => {
+    assert.notStrictEqual(tabIdentitySignature([script], {}), tabIdentitySignature([{ ...script, scriptName: "restore.sh" }], {}));
+});
+
+test("a changed type moves the signature", () => {
+    assert.notStrictEqual(tabIdentitySignature([ssh], {}), tabIdentitySignature([{ ...ssh, type: "sftp" }], {}));
+});
+
+// Hibernating or waking a session swaps which array holds it, and the caller concatenates the two.
+test("reordering the same sessions leaves the signature alone", () => {
+    assert.strictEqual(tabIdentitySignature([ssh, tmux], {}), tabIdentitySignature([tmux, ssh], {}));
+});
+
+// The fields that change several times a second - a lastActivity tick, a live terminal title -
+// must not reach it, or numbering would run on every one of them.
+test("a live title or an activity tick leaves the signature alone", () => {
+    const before = tabIdentitySignature([ssh], {});
+    assert.strictEqual(tabIdentitySignature([{ ...ssh, liveTitle: "~/deploy", lastActivity: 42 }], {}), before);
+});
+
+// The number itself is an output of numbering, not an input - if it moved the signature, writing
+// a number back would retrigger the very computation that produced it.
+test("a stored number leaves the signature alone", () => {
+    assert.strictEqual(tabIdentitySignature([ssh], { s1: { number: 3 } }), tabIdentitySignature([ssh], {}));
 });
 
 // --- diffAssignments ---
