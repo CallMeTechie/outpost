@@ -26,6 +26,8 @@ import {
     toLocalSessionDescriptor, restoreLocalSessions, getStoredLocalSessionDescriptors, setStoredLocalSessionDescriptors,
     canPersistLocalSessions, RESTORE_STATUS,
 } from "@/common/utils/localSessionState.js";
+import { getStoredTabIdentities, setStoredTabIdentities, selectEvictions, TAB_IDENTITY_CAP } from "@/common/utils/tabIdentity.js";
+import { assignNumbers, diffAssignments } from "@/common/utils/tabLabel.js";
 
 // A session the server does not know about: it lives in this browser only. The poll below
 // replaces the session list with what the server reports, so anything matching this has to be
@@ -76,6 +78,11 @@ export const Servers = () => {
     // one, which is the data-loss bug this state exists to rule out.
     const [restoreStatus, setRestoreStatus] = useState(RESTORE_STATUS.PENDING);
 
+    // Read synchronously, same reasoning as initialLocalDescriptors above: the first paint after
+    // a hard reload must already know last session's numbers, or two same-named tabs would flash
+    // unnumbered before the effect further down catches up.
+    const [tabIdentities, setTabIdentities] = useState(() => getStoredTabIdentities());
+
     const markSessionErrored = useCallback((sessionId, message) => {
         if (erroredSessionsRef.current.has(sessionId)) return;
         erroredSessionsRef.current.set(sessionId, message);
@@ -109,6 +116,8 @@ export const Servers = () => {
                 isHibernated: session.isHibernated,
                 lastActivity: session.lastActivity,
                 type: session.configuration.type || undefined,
+                tmuxSession: session.configuration.tmuxSession || undefined,
+                tmuxWindowId: session.configuration.tmuxWindowId || undefined,
                 organizationId: session.organizationId,
                 organizationName: session.organizationName,
                 osName: session.osName || null,
@@ -203,6 +212,77 @@ export const Servers = () => {
                 setRestoreStatus(RESTORE_STATUS.FAILED);
             });
     }, [servers, initialLocalDescriptors, getServerById, setActiveSessions]);
+
+    // Mirrors tabIdentities and the combined active+hibernated session list into refs so the
+    // numbering effect below can read their latest values without listing them as dependencies.
+    // Depending on the arrays themselves would re-run numbering on every unrelated session-list
+    // update - a lastActivity tick, osName arriving late from a snapshot, and - once the live
+    // terminal title lands - a title that can change several times a second.
+    const tabIdentitiesRef = useRef(tabIdentities);
+    useEffect(() => {
+        tabIdentitiesRef.current = tabIdentities;
+    }, [tabIdentities]);
+
+    const sessionsForNumberingRef = useRef([...activeSessions, ...hibernatedSessions]);
+    useEffect(() => {
+        sessionsForNumberingRef.current = [...activeSessions, ...hibernatedSessions];
+    }, [activeSessions, hibernatedSessions]);
+
+    // Built only from the fields that decide a tab's automatic text and its number: id, type, and
+    // the two discriminators. As a primitive, React compares this by value, so it stays "the same"
+    // across renders where none of these fields moved even though the session arrays it was built
+    // from are new objects on every render. Sorted so that a session moving between activeSessions
+    // and hibernatedSessions - hibernating or waking one, which changes which array holds it but
+    // not the session itself - reorders the concatenation without changing the signature.
+    const identitySignature = [...activeSessions, ...hibernatedSessions]
+        .map((session) => `${session.id}:${session.type ?? ""}:${session.tmuxSession ?? ""}:${session.scriptName ?? ""}`)
+        .sort()
+        .join("|");
+
+    // Assigns tab numbers and persists whatever changed. Hibernated sessions are included on
+    // exactly the same footing as active ones here, and again below as protected ids: a session
+    // asleep in the background is still "open" from the identity store's point of view, so it
+    // keeps its slot in its name group and can never be evicted by the cap while it sleeps -
+    // waking it up must not change its name or number.
+    useEffect(() => {
+        const sessions = sessionsForNumberingRef.current;
+        const identities = tabIdentitiesRef.current;
+
+        const nextNumbers = assignNumbers(sessions, identities);
+        const previousNumbers = {};
+        for (const session of sessions) previousNumbers[session.id] = identities[session.id]?.number;
+
+        // The loop brake: assignNumbers is idempotent, so re-running this after the write below
+        // (tabIdentities changing doesn't retrigger this effect, but an unrelated render might
+        // still land here with nothing new) computes the exact same numbers and stops here
+        // instead of writing again.
+        if (!diffAssignments(previousNumbers, nextNumbers)) return;
+
+        const updates = {};
+        for (const session of sessions) {
+            if (previousNumbers[session.id] !== nextNumbers[session.id]) {
+                updates[session.id] = { ...identities[session.id], number: nextNumbers[session.id], usedAt: Date.now() };
+            }
+        }
+
+        const merged = { ...identities, ...updates };
+        const protectedIds = sessions.map((session) => session.id);
+        // Setting an id to undefined here, rather than deleting it, is what actually removes it
+        // from storage: setStoredTabIdentities re-reads and shallow-merges before writing, and
+        // JSON.stringify drops properties whose value is undefined, so this is how an entry
+        // leaves localStorage instead of only being dropped from this component's own state.
+        for (const id of selectEvictions(merged, protectedIds, TAB_IDENTITY_CAP)) {
+            updates[id] = undefined;
+            delete merged[id];
+        }
+
+        // Deferred to a microtask, same as the restore effect above - this is what keeps a
+        // synchronous setState call out of react-hooks/set-state-in-effect.
+        Promise.resolve().then(() => {
+            setStoredTabIdentities(updates);
+            setTabIdentities(merged);
+        });
+    }, [identitySignature]);
 
     const findOrganizationForServer = (serverIdNum, entries, currentOrg = null) => {
         for (const entry of entries) {
@@ -312,6 +392,12 @@ export const Servers = () => {
                 identity: identity?.id,
                 id: session.sessionId,
                 type: type || undefined,
+                // Set here too, not just picked up from the next broadcast: without this a
+                // freshly opened tab would briefly render without its discriminator, which is
+                // visible flicker and can also cause it to jump between number groups once the
+                // broadcast catches up.
+                tmuxSession: tmux?.name || undefined,
+                tmuxWindowId: tmux?.windowId || undefined,
                 organizationId: organizationId,
                 organizationName: organization?.name || null,
                 scriptId: scriptId || undefined,
