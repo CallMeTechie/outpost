@@ -1,14 +1,10 @@
+import { sanitizeRemoteText } from "./remoteText.js";
+
 const TAB_IDENTITIES_KEY = "tab_identities";
 
 // Plenty for anyone who actually names tabs, small enough that the store can't grow unnoticed
 // in a browser session left open for weeks.
 export const TAB_IDENTITY_CAP = 200;
-
-// C0/C1 control characters plus the bidi formatting characters (embeddings, overrides,
-// isolates, marks). A custom name usually arrives pasted rather than typed - out of a ticket,
-// a chat message - so "self-chosen" is no guarantee it is free of characters that could make
-// the visible tab read differently from what it contains.
-const CONTROL_AND_BIDI_CHARS = /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/g;
 
 const MAX_NAME_LENGTH = 40;
 
@@ -33,15 +29,18 @@ export const selectEvictions = (entries, protectedIds, cap) => {
     return candidates.slice(0, excess);
 };
 
-// Trims, strips control/bidi characters and caps the length. Lives here rather than in the
+// Trims, strips control/format characters and caps the length. Lives here rather than in the
 // naming dialog for the same reason selectEvictions does: a named rule belongs under test, not
-// buried in a component. This duplicates what a later shared sanitiser (remoteText.js /
-// tabLabel.js, not built yet) will also need - once that lands, this should call it instead of
-// stripping characters on its own.
+// buried in a component. Stripping is delegated to the shared sanitiser (remoteText.js) so this
+// repo has one answer for "what characters can a name from outside carry", not two. The trim
+// and the 40-character cap stay local: they are specific to a tab name, not to remote text in
+// general.
 export const normalizeTabName = (value) => {
     if (typeof value !== "string") return undefined;
 
-    const cleaned = value.replace(CONTROL_AND_BIDI_CHARS, "").trim();
+    // No length cap here - stripping must run over the full string before the tab-specific
+    // cap below is applied, otherwise the cap could land mid-strip and change the result.
+    const cleaned = sanitizeRemoteText(value, Infinity).trim();
     if (cleaned === "") return undefined;
 
     return cleaned.slice(0, MAX_NAME_LENGTH);

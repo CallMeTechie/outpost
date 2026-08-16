@@ -36,6 +36,14 @@ test("an absent session list evicts nothing", () => {
     assert.deepStrictEqual(selectEvictions(entries, null, 1), []);
 });
 
+// Five entries, cap 2, three protected: only two are candidates, but the cap puts the excess
+// at three. slice(0, excess) must clamp to what candidates actually has rather than assume
+// there are enough unprotected entries to cover the excess.
+test("fewer candidates than the excess evicts only what is available", () => {
+    const entries = { a: entry(1), b: entry(2), c: entry(3), d: entry(4), e: entry(5) };
+    assert.deepStrictEqual(selectEvictions(entries, ["a", "b", "c"], 2).sort(), ["d", "e"]);
+});
+
 test("the cap is a whole number above zero", () => {
     assert.ok(Number.isInteger(TAB_IDENTITY_CAP) && TAB_IDENTITY_CAP > 0);
 });
