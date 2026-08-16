@@ -8,14 +8,16 @@ const DISCRIMINATOR_MAX_LENGTH = 40;
 // remote-sourced fields - gets double the discriminator's budget.
 const LIVE_TITLE_MAX_LENGTH = 80;
 
-// Human-readable type names for the tooltip. Resolved here rather than through i18n: this text
-// is the module's own vocabulary, not something that arrived from a remote host, so it needs
-// none of the raw-text handling the tooltip values below exist to avoid.
-const TYPE_LABEL = {
-    terminal: "Terminal",
-    sftp: "SFTP",
-    notes: "Notes",
-    onedrive: "OneDrive",
+// Translation keys for the tooltip's type value, not the value itself: unlike the tmux session
+// name, the script name or the live title, this is the module's own vocabulary rather than text
+// that arrived from a remote host, so it goes through t() like the notes suffix does - the "don't
+// translate" rule for tooltip values (see the `field` helper below) is about protecting foreign
+// text from i18next's interpolation escaping, and a fixed type name was never that kind of value.
+const TYPE_LABEL_KEY = {
+    terminal: "servers.tabLabel.type.terminal",
+    sftp: "servers.tabLabel.type.sftp",
+    notes: "servers.tabLabel.type.notes",
+    onedrive: "servers.tabLabel.type.onedrive",
 };
 
 // The one piece of base text every session type but OneDrive carries. OneDrive sessions carry no
@@ -61,10 +63,10 @@ const field = (key, value) => (value ? { key, value } : null);
 // stored for this session - `{}` for none - and is read only through `name` and `number`; this
 // module has no idea where those values come from or how they persist.
 //
-// `t` is needed for exactly one piece of text: the notes suffix, which - unlike every other value
-// this module produces - is a static label with no interpolation, so none of the escaping concern
-// above applies to it. This mirrors ServerTabs.jsx's own suffix construction verbatim, SFTP's
-// hardcoded literal included; that literal is a pre-existing choice and not this task's to fix.
+// `t` is needed for two pieces of text, and both are static labels with no interpolation, so
+// neither carries the escaping concern above: the notes suffix, which mirrors ServerTabs.jsx's own
+// suffix construction verbatim (SFTP's hardcoded literal included; that literal is a pre-existing
+// choice and not this task's to fix), and the tooltip's type value.
 export const buildTabLabel = (session, identity = {}, t) => {
     const hasCustomName = Boolean(identity?.name);
     const parts = discriminatorParts(session);
@@ -83,7 +85,7 @@ export const buildTabLabel = (session, identity = {}, t) => {
 
     const tooltip = [
         field("servers.tabLabel.tooltip.server", baseName(session)),
-        field("servers.tabLabel.tooltip.type", TYPE_LABEL[session.type] ?? session.type),
+        field("servers.tabLabel.tooltip.type", TYPE_LABEL_KEY[session.type] ? t(TYPE_LABEL_KEY[session.type]) : session.type),
         field("servers.tabLabel.tooltip.tmuxSession", parts.tmuxSession),
         // Only the window ID is available here, not a name: the server stores just the ID
         // (controllers/serverSession.js), and resolving it to a name would need an extra

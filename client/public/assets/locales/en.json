@@ -1665,6 +1665,12 @@
         "script": "Script",
         "liveTitle": "Live title",
         "automaticName": "Automatic name"
+      },
+      "type": {
+        "terminal": "Terminal",
+        "sftp": "SFTP",
+        "notes": "Notes",
+        "onedrive": "OneDrive"
       }
     },
     "wol": {

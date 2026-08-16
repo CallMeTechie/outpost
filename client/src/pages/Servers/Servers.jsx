@@ -246,21 +246,44 @@ export const Servers = () => {
     // from are new objects on every render. Sorted so that a session moving between activeSessions
     // and hibernatedSessions - hibernating or waking one, which changes which array holds it but
     // not the session itself - reorders the concatenation without changing the signature.
-    const identitySignature = [...activeSessions, ...hibernatedSessions]
+    const sessionsForIdentity = [...activeSessions, ...hibernatedSessions];
+    const identitySignature = sessionsForIdentity
         .map((session) => `${session.id}:${session.type ?? ""}:${session.tmuxSession ?? ""}:${session.scriptName ?? ""}`)
         .sort()
         .join("|");
 
-    // Assigns tab numbers and persists whatever changed. Hibernated sessions are included on
-    // exactly the same footing as active ones here, and again below as protected ids: a session
-    // asleep in the background is still "open" from the identity store's point of view, so it
-    // keeps its slot in its name group and can never be evicted by the cap while it sleeps -
-    // waking it up must not change its name or number.
+    // Tab numbers, computed synchronously during render rather than only in the persistence
+    // effect below - without this, a freshly opened tab paints one frame with no number before
+    // that effect catches up, visible for any tab that collides by name. This follows React's own
+    // "adjust state while rendering" pattern (a state value plus a comparison against the previous
+    // render's signature) instead of useMemo: a useMemo body would need to close over tabIdentities
+    // and sessionsForIdentity without listing them as dependencies to get the same narrowing the
+    // effect's refs give it, and this project's eslint-plugin-react-hooks (react-hooks/refs)
+    // forbids reading a ref during render at all - only an effect may do that, so the ref trick
+    // that works for the persistence effect below has no render-phase equivalent here. Calling
+    // setState mid-render like this makes React discard this render and immediately re-render
+    // with the new state before anything paints, so there is still no visible flash - and it still
+    // only recomputes when identitySignature actually changes, never on an unrelated re-render (a
+    // lastActivity tick, or, once Task 7 lands, a live title update).
+    const [numberedSignature, setNumberedSignature] = useState(identitySignature);
+    const [tabNumbers, setTabNumbers] = useState(() => assignNumbers(sessionsForIdentity, tabIdentities));
+    if (identitySignature !== numberedSignature) {
+        setNumberedSignature(identitySignature);
+        setTabNumbers(assignNumbers(sessionsForIdentity, tabIdentities));
+    }
+
+    // Persists whatever tabNumbers just changed. This no longer computes the numbers itself - it
+    // reads the exact same map the render above already produced, so what a tab shows and what
+    // gets written to storage can never disagree. Hibernated sessions are included on exactly the
+    // same footing as active ones here, and again below as protected ids: a session asleep in the
+    // background is still "open" from the identity store's point of view, so it keeps its slot in
+    // its name group and can never be evicted by the cap while it sleeps - waking it up must not
+    // change its name or number.
     useEffect(() => {
         const sessions = sessionsForNumberingRef.current;
         const identities = tabIdentitiesRef.current;
+        const nextNumbers = tabNumbers;
 
-        const nextNumbers = assignNumbers(sessions, identities);
         const previousNumbers = {};
         for (const session of sessions) previousNumbers[session.id] = identities[session.id]?.number;
 
@@ -294,7 +317,7 @@ export const Servers = () => {
             setStoredTabIdentities(updates);
             setTabIdentities(merged);
         });
-    }, [identitySignature]);
+    }, [tabNumbers]);
 
     const findOrganizationForServer = (serverIdNum, entries, currentOrg = null) => {
         for (const entry of entries) {
@@ -760,6 +783,17 @@ export const Servers = () => {
         }
     }, [servers, location.search]);
 
+    // The map ServerTabs actually renders from: numbers come from tabNumbers (the render-phase
+    // computation above, already current for this paint) rather than straight from tabIdentities,
+    // since the persistence effect only writes fresh numbers into tabIdentities after this render
+    // has already committed - reading tabIdentities directly here would still show the pre-number
+    // frame for a newly opened, name-colliding tab. Names have no such lag (nothing computes them
+    // synchronously the way assignNumbers does), so they still come straight from the store.
+    const displayIdentities = {};
+    for (const id of Object.keys(tabNumbers)) {
+        displayIdentities[id] = { name: tabIdentities[id]?.name, number: tabNumbers[id] };
+    }
+
     return (
         <div className="server-page">
             <ServerDialog open={serverDialogOpen} onClose={closeDialog} currentFolderId={currentFolderId}
@@ -829,7 +863,7 @@ export const Servers = () => {
                                getSessionError={getSessionError}
                                setOpenFileEditors={setOpenFileEditors}
                                openTerminalFromFileManager={openTerminalFromFileManager}
-                               tabIdentities={tabIdentities} />}
+                               tabIdentities={displayIdentities} />}
             {openFileEditors.map((editor) => (
                 editor.type === "preview" ? (
                     <FilePreviewWindow

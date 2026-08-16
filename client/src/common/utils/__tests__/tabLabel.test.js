@@ -2,10 +2,17 @@ import test from "node:test";
 import assert from "node:assert";
 import { buildTabLabel, assignNumbers, diffAssignments } from "../tabLabel.js";
 
-// buildTabLabel only ever calls t() for the notes suffix - a static label key with no
-// interpolation - so a one-entry stub is enough, in the style transferDetail.test.js already
-// uses to check translation-key composition without pulling in react-i18next or the locale files.
-const t = (key) => ({ "servers.notesPanel.title": "Notizen" })[key];
+// buildTabLabel only ever calls t() for the notes suffix and the tooltip's type value - both
+// static label keys with no interpolation - so a small stub is enough, in the style
+// transferDetail.test.js already uses to check translation-key composition without pulling in
+// react-i18next or the locale files.
+const t = (key) => ({
+    "servers.notesPanel.title": "Notizen",
+    "servers.tabLabel.type.terminal": "Terminal",
+    "servers.tabLabel.type.sftp": "SFTP",
+    "servers.tabLabel.type.notes": "Notes",
+    "servers.tabLabel.type.onedrive": "OneDrive",
+})[key];
 
 const ssh = { id: "s1", type: "terminal", server: { name: "pve-01" } };
 const tmux = { id: "s2", type: "terminal", server: { name: "pve-01" }, tmuxSession: "deploy" };
@@ -76,6 +83,18 @@ test("a discriminator that sanitises to nothing leaves no dangling separator", (
 
 test("the tooltip always carries server and type", () => {
     assert.ok(buildTabLabel(sftp, {}, t).tooltip.length > 0);
+});
+
+// The type value is the module's own vocabulary, not remote text - unlike the tmux session name,
+// the script name or the live title, it goes through t() so a German UI doesn't show "Typ: Notes".
+test("the tooltip's type value is translated through t()", () => {
+    const { tooltip } = buildTabLabel(sftp, {}, t);
+    assert.ok(tooltip.some(field => field.key === "servers.tabLabel.tooltip.type" && field.value === "SFTP"));
+});
+
+test("an unrecognised type falls back to the raw type string, untranslated", () => {
+    const { tooltip } = buildTabLabel({ ...ssh, type: "carrier-pigeon" }, {}, t);
+    assert.ok(tooltip.some(field => field.key === "servers.tabLabel.tooltip.type" && field.value === "carrier-pigeon"));
 });
 
 test("the tooltip carries the tmux window, which never reaches the text", () => {
