@@ -245,6 +245,14 @@
         white-space: nowrap
         overflow: hidden
         text-overflow: ellipsis
+        // Without a cap, flex-shrink: 0 on .server-tab (above) lets this grow to fit whatever
+        // text it holds instead of ellipsising it — the nowrap/overflow/ellipsis trio above was
+        // doing nothing outside the mobile query. 200px comfortably fits today's short server
+        // names (e.g. "pve-01") plus a type suffix and a number (e.g. "pve-01 (SFTP) (2)")
+        // without ellipsis, while still leaving room for several tabs side by side; a longer
+        // hostname or a custom name past that point degrades gracefully via the ellipsis, with
+        // the full text still available through the title tooltip below.
+        max-width: 200px
 
         @media (max-width: breakpoints.$tablet)
           font-size: 1.1rem

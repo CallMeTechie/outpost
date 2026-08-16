@@ -13,6 +13,7 @@ import { postRequest, deleteRequest, patchRequest } from "@/common/utils/Request
 import { getBaseUrl } from "@/common/utils/ConnectionUtil.js";
 import { getIconPath } from "@/common/utils/iconUtils.js";
 import { paneColorFor } from "../../utils/paneColors.js";
+import { buildTabLabel } from "@/common/utils/tabLabel.js";
 import "./styles.sass";
 
 const DraggableTab = ({
@@ -28,6 +29,7 @@ const DraggableTab = ({
     moveTab,
     progress = 0,
     paneColorSessions,
+    identity,
 }) => {
     const contextMenu = useContextMenu();
     const { popOutSession } = useActiveSessions();
@@ -53,6 +55,12 @@ const DraggableTab = ({
     // Looked up by session id, not counted by position in the tab strip — the strip and the grid
     // can list sessions in different orders, and a lookup keeps them from disagreeing.
     const paneColor = paneColorFor(paneColorSessions.indexOf(session.id));
+    // buildTabLabel never translates (see tabLabel.js) - each tooltip field's key is resolved
+    // here, one field per line, into the native `title` attribute rather than the Tooltip
+    // component: many tabs sit side by side, and a Tooltip instance per tab would bring its own
+    // hover tracking for content that is plain text and needs none of that.
+    const tabLabel = buildTabLabel(session, identity, t);
+    const tabTooltip = tabLabel.tooltip.map(({ key, value }) => `${t(key)}: ${value}`).join("\n");
 
     const handleShare = useCallback(async (writable) => {
         const result = await postRequest(`connections/${session.id}/share`, { writable });
@@ -144,7 +152,7 @@ const DraggableTab = ({
                     )}
                     <Icon path={isNotes ? mdiNoteEditOutline : isOneDrive ? mdiMicrosoft : getIconPath(server.icon)} className="progress-icon" />
                 </div>
-                <h2>{server?.name || session.oneDrive?.displayName} {session.type === "sftp" ? " (SFTP)" : ""}{isNotes ? ` (${t("servers.notesPanel.title")})` : ""}</h2>
+                <h2 title={tabTooltip}>{tabLabel.text}</h2>
                 <AvatarStack className="tab-participants" users={otherParticipants} max={2}
                              getKey={participant => participant.viewerId} />
                 <div className="tab-actions">
@@ -240,6 +248,7 @@ export const ServerTabs = ({
     sessionProgress = {},
     fullscreenEnabled,
     onFullscreenToggle,
+    tabIdentities = {},
 }) => {
 
     const tabsRef = useRef(null);
@@ -383,7 +392,8 @@ export const ServerTabs = ({
                                 closeSession={closeSession} hibernateSession={hibernateSession} duplicateSession={duplicateSession}
                                 openNotes={openNotes}
                                 progress={sessionProgress[session.id] || 0}
-                                paneColorSessions={paneColorSessions} />
+                                paneColorSessions={paneColorSessions}
+                                identity={tabIdentities[session.id]} />
                         );
                     })}
                 </div>

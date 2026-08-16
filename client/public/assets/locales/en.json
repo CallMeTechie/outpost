@@ -1656,6 +1656,17 @@
         "closeSession": "Disconnect"
       }
     },
+    "tabLabel": {
+      "tooltip": {
+        "server": "Server",
+        "type": "Type",
+        "tmuxSession": "tmux session",
+        "tmuxWindow": "tmux window",
+        "script": "Script",
+        "liveTitle": "Live title",
+        "automaticName": "Automatic name"
+      }
+    },
     "wol": {
       "successDescription": "Magic packet sent to {{name}}",
       "errorDescription": "Failed to send magic packet"

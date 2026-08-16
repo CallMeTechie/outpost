@@ -45,6 +45,7 @@ export const ViewContainer = ({
                                   getSessionError,
                                   setOpenFileEditors,
                                   openTerminalFromFileManager,
+                                  tabIdentities,
                               }) => {
     const [layoutMode, setLayoutMode] = useState("single");
     const [gridSessions, setGridSessions] = useState([]);
@@ -551,6 +552,7 @@ export const ViewContainer = ({
                     closeSession={closeSession}
                     layoutMode={layoutMode} onToggleSplit={toggleSplitMode}
                     paneColorSessions={paneColorSessions}
+                    tabIdentities={tabIdentities}
                     orderRef={tabOrderRef}
                     onTabOrderChange={onTabOrderChange} onBroadcastToggle={toggleBroadcastMode}
                     onSnippetSelected={handleSnippetSelected} broadcastEnabled={broadcastMode}

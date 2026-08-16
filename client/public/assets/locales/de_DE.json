@@ -1654,6 +1654,17 @@
         "closeSession": "Trennen"
       }
     },
+    "tabLabel": {
+      "tooltip": {
+        "server": "Server",
+        "type": "Typ",
+        "tmuxSession": "tmux-Session",
+        "tmuxWindow": "tmux-Fenster",
+        "script": "Skript",
+        "liveTitle": "Live-Titel",
+        "automaticName": "Automatischer Name"
+      }
+    },
     "wol": {
       "successDescription": "Magic-Paket an {{name}} gesendet",
       "errorDescription": "Magic-Paket konnte nicht gesendet werden"
