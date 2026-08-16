@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { getTitleBarHeight } from "@/common/utils/TauriUtil.js";
 import { useTauriWindow } from "@/common/hooks/useTauriWindow.js";
 import { useBodyClass } from "@/common/hooks/useBodyClass.js";
+import { paneColorFor } from "./utils/paneColors.js";
 
 const BTN_SIZE = 44;
 const BTN_STORAGE_KEY = "fullscreen-btn-position";
@@ -518,16 +519,27 @@ export const ViewContainer = ({
         };
     };
 
+    // gridSessions survives a collapse to one session (the effect above refills it in the same
+    // pass that switches layoutMode to "single"), so it alone would colour a pane in single view.
+    // One derivation, asked by both the grid and the tab strip — so they cannot disagree.
+    const paneColorSessions = layoutMode === "single" ? [] : gridSessions;
+
     const renderAllSessions = () => activeSessions.map(session => {
         // A OneDrive session has no `server` — its identity is the Microsoft connection id — so the
         // guard that used to mean "not ready yet" would otherwise hide it from the layout forever.
         if (!session?.server && session?.type !== "onedrive") return null;
         const isVisible = layoutMode === "single" ? session.id === activeSessionId : gridSessions.includes(session.id);
+        const paneColor = paneColorFor(paneColorSessions.indexOf(session.id));
+        // Drives the split-view border's strong/faint state in CSS. Deliberately not
+        // :focus-within: a portalled overlay (e.g. ContextMenu, which moves focus to itself on
+        // open) would blank every pane at once and never hand focus back on close. This mirrors
+        // activeSessionId directly instead, the same source ServerTabs already uses.
+        const isActive = session.id === activeSessionId;
         return (
             <div key={session.id} ref={el => sessionRefs.current[session.id] = el}
-                 className={`session-renderer ${isVisible ? "visible" : "hidden"}`}
+                 className={`session-renderer ${isVisible ? "visible" : "hidden"} ${isActive ? "active" : ""}`}
                  onClick={() => session.id !== activeSessionId && focusSession(session.id)}
-                 style={getSessionStyle(session)}>
+                 style={{ ...getSessionStyle(session), ...(paneColor && { "--pane-color": paneColor }) }}>
                 {renderRenderer(session)}
             </div>
         );
@@ -538,6 +550,7 @@ export const ViewContainer = ({
                     activeSessionId={activeSessionId}
                     closeSession={closeSession}
                     layoutMode={layoutMode} onToggleSplit={toggleSplitMode}
+                    paneColorSessions={paneColorSessions}
                     orderRef={tabOrderRef}
                     onTabOrderChange={onTabOrderChange} onBroadcastToggle={toggleBroadcastMode}
                     onSnippetSelected={handleSnippetSelected} broadcastEnabled={broadcastMode}

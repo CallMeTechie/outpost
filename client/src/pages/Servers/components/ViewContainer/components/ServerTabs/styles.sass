@@ -143,7 +143,9 @@
       padding: 0.25rem 0.5rem
       align-items: center
       border-radius: 0.5rem 0.5rem 0 0
-      border-bottom: 2px solid transparent
+      // Carries the pane's colour when this tab has a grid slot (split view); falls
+      // back to the old plain underline everywhere else, including single-window mode.
+      border-bottom: 3px solid var(--pane-color, transparent)
       cursor: pointer
       user-select: none
       overflow: hidden
@@ -161,7 +163,9 @@
 
       &:hover
         background-color: colors.$gray
-        border-bottom: 2px solid colors.$primary-opacity
+        // Only the colour changes on hover — the pane colour still wins over this
+        // fallback, so hovering never erases which window the tab belongs to.
+        border-bottom-color: var(--pane-color, colors.$primary-opacity)
 
       &.dragging
         cursor: grabbing
@@ -272,12 +276,17 @@
             background-color: colors.$error-opacity
 
     .server-tab-active
-      background-color: colors.$gray
-      border-bottom: 2px solid colors.$primary
+      // Twice the alpha of the plain $gray hover fill, not an opaque hex: the active tab used
+      // to be hard to pick out at a glance, and a fixed opaque colour would only read as
+      // stronger against the one background it was tuned for (colors.$background) — here the
+      // tabs also sit on colors.$lighter-background in the title-bar slot (see :291 below), and
+      // a translucent tint stays measurably more distinct than $gray against either one.
+      background-color: colors.$gray-strong
+      border-bottom-color: var(--pane-color, colors.$primary)
 
       &:hover
-        background-color: colors.$gray
-        border-bottom: 2px solid colors.$primary
+        background-color: colors.$gray-strong
+        border-bottom-color: var(--pane-color, colors.$primary)
 
 .title-bar .server-tabs
   max-width: 100%

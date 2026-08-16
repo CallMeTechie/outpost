@@ -12,6 +12,7 @@ import AvatarStack from "@/common/components/AvatarStack";
 import { postRequest, deleteRequest, patchRequest } from "@/common/utils/RequestUtil";
 import { getBaseUrl } from "@/common/utils/ConnectionUtil.js";
 import { getIconPath } from "@/common/utils/iconUtils.js";
+import { paneColorFor } from "../../utils/paneColors.js";
 import "./styles.sass";
 
 const DraggableTab = ({
@@ -26,6 +27,7 @@ const DraggableTab = ({
     index,
     moveTab,
     progress = 0,
+    paneColorSessions,
 }) => {
     const contextMenu = useContextMenu();
     const { popOutSession } = useActiveSessions();
@@ -48,6 +50,9 @@ const DraggableTab = ({
     const canDuplicate = !isLocal && !isJoined;
     const canOpenNotes = !isLocal && !isJoined && !!server?.id && !session.scriptId;
     const isSharing = !!session.shareId;
+    // Looked up by session id, not counted by position in the tab strip — the strip and the grid
+    // can list sessions in different orders, and a lookup keeps them from disagreeing.
+    const paneColor = paneColorFor(paneColorSessions.indexOf(session.id));
 
     const handleShare = useCallback(async (writable) => {
         const result = await postRequest(`connections/${session.id}/share`, { writable });
@@ -109,7 +114,7 @@ const DraggableTab = ({
                 onContextMenu={handleContextMenu}
                 onAuxClick={handleAuxClick}
                 className={`server-tab ${session.id === activeSessionId ? "server-tab-active" : ""} ${isDragging ? "dragging" : ""} ${isOver ? "drop-target" : ""}`}
-                style={{ opacity: isDragging ? 0.5 : 1 }}>
+                style={{ opacity: isDragging ? 0.5 : 1, ...(paneColor && { "--pane-color": paneColor }) }}>
                 <div className={`progress-circle ${!showProgress ? "no-progress" : ""}`}>
                     {showProgress && (
                         <svg width="24" height="24" viewBox="0 0 24 24">
@@ -224,6 +229,7 @@ export const ServerTabs = ({
     openNotes,
     layoutMode,
     onToggleSplit,
+    paneColorSessions = [],
     orderRef,
     onTabOrderChange,
     onBroadcastToggle,
@@ -376,7 +382,8 @@ export const ServerTabs = ({
                                 activeSessionId={activeSessionId} setActiveSessionId={setActiveSessionId}
                                 closeSession={closeSession} hibernateSession={hibernateSession} duplicateSession={duplicateSession}
                                 openNotes={openNotes}
-                                progress={sessionProgress[session.id] || 0} />
+                                progress={sessionProgress[session.id] || 0}
+                                paneColorSessions={paneColorSessions} />
                         );
                     })}
                 </div>

@@ -10,6 +10,10 @@
   --darker-gray: rgba(34, 36, 42, 0.6)
   --dark-gray: rgba(255, 255, 255, 0.05)
   --gray: rgba(255, 255, 255, 0.1)
+  // Double the alpha of --gray, not a fixed hex: it stays a tint of whatever it sits on, so
+  // it reads as distinct from both --background and --lighter-background instead of only
+  // matching the one it was tuned against (see the active-tab background in ServerTabs).
+  --gray-strong: rgba(255, 255, 255, 0.2)
   --light-gray: #F6F6F6
   --primary: var(--accent-color)
   --primary-opacity: color-mix(in srgb, var(--accent-color) 25%, transparent)
@@ -36,6 +40,7 @@
   --darker-gray: rgba(241, 239, 239, 0.92)
   --dark-gray: rgba(0, 0, 0, 0.05)
   --gray: rgba(0, 0, 0, 0.1)
+  --gray-strong: rgba(0, 0, 0, 0.2)
   --light-gray: #333333
   --primary: var(--accent-color)
   --primary-opacity: color-mix(in srgb, var(--accent-color) 15%, transparent)
@@ -62,6 +67,7 @@
   --darker-gray: rgba(20, 20, 20, 0.8)
   --dark-gray: rgba(255, 255, 255, 0.05)
   --gray: rgba(255, 255, 255, 0.1)
+  --gray-strong: rgba(255, 255, 255, 0.2)
   --light-gray: #F6F6F6
   --primary: var(--accent-color)
   --primary-opacity: color-mix(in srgb, var(--accent-color) 25%, transparent)
@@ -87,6 +93,7 @@ $gray-full: var(--gray-full)
 $darker-gray: var(--darker-gray)
 $dark-gray: var(--dark-gray)
 $gray: var(--gray)
+$gray-strong: var(--gray-strong)
 $light-gray: var(--light-gray)
 $primary: var(--primary)
 $primary-opacity: var(--primary-opacity)
