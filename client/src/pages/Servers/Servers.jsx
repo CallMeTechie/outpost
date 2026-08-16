@@ -240,15 +240,21 @@ export const Servers = () => {
         sessionsForNumberingRef.current = [...activeSessions, ...hibernatedSessions];
     }, [activeSessions, hibernatedSessions]);
 
-    // Built only from the fields that decide a tab's automatic text and its number: id, type, and
-    // the two discriminators. As a primitive, React compares this by value, so it stays "the same"
-    // across renders where none of these fields moved even though the session arrays it was built
-    // from are new objects on every render. Sorted so that a session moving between activeSessions
-    // and hibernatedSessions - hibernating or waking one, which changes which array holds it but
-    // not the session itself - reorders the concatenation without changing the signature.
+    // Built only from the fields that decide a tab's automatic text and its number: id, type, the
+    // two discriminators, and the custom name - assignNumbers groups by whichever of the automatic
+    // text or the custom name is in play (tabLabel.js's groupKey), so a rename that merges two
+    // groups has to show up here too, or a tab renamed to collide with another would keep whatever
+    // number it already had instead of being renumbered apart. As a primitive, React compares this
+    // by value, so it stays "the same" across renders where none of these fields moved even though
+    // the session arrays it was built from are new objects on every render. Sorted so that a
+    // session moving between activeSessions and hibernatedSessions - hibernating or waking one,
+    // which changes which array holds it but not the session itself - reorders the concatenation
+    // without changing the signature; every fragment still leads with the session's own id, which
+    // is unique, so sorting can only reorder fragments, never merge two different sessions' data
+    // into one and mask a real change.
     const sessionsForIdentity = [...activeSessions, ...hibernatedSessions];
     const identitySignature = sessionsForIdentity
-        .map((session) => `${session.id}:${session.type ?? ""}:${session.tmuxSession ?? ""}:${session.scriptName ?? ""}`)
+        .map((session) => `${session.id}:${session.type ?? ""}:${session.tmuxSession ?? ""}:${session.scriptName ?? ""}:${tabIdentities[session.id]?.name ?? ""}`)
         .sort()
         .join("|");
 
