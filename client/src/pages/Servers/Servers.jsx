@@ -26,6 +26,8 @@ import {
     toLocalSessionDescriptor, restoreLocalSessions, getStoredLocalSessionDescriptors, setStoredLocalSessionDescriptors,
     canPersistLocalSessions, RESTORE_STATUS,
 } from "@/common/utils/localSessionState.js";
+import { getStoredTabIdentities, setStoredTabIdentities, selectEvictions, TAB_IDENTITY_CAP, normalizeTabName } from "@/common/utils/tabIdentity.js";
+import { assignNumbers, diffAssignments, tabGroupKey, tabIdentitySignature } from "@/common/utils/tabLabel.js";
 
 // A session the server does not know about: it lives in this browser only. The poll below
 // replaces the session list with what the server reports, so anything matching this has to be
@@ -76,6 +78,11 @@ export const Servers = () => {
     // one, which is the data-loss bug this state exists to rule out.
     const [restoreStatus, setRestoreStatus] = useState(RESTORE_STATUS.PENDING);
 
+    // Read synchronously, same reasoning as initialLocalDescriptors above: the first paint after
+    // a hard reload must already know last session's numbers, or two same-named tabs would flash
+    // unnumbered before the effect further down catches up.
+    const [tabIdentities, setTabIdentities] = useState(() => getStoredTabIdentities());
+
     const markSessionErrored = useCallback((sessionId, message) => {
         if (erroredSessionsRef.current.has(sessionId)) return;
         erroredSessionsRef.current.set(sessionId, message);
@@ -109,6 +116,8 @@ export const Servers = () => {
                 isHibernated: session.isHibernated,
                 lastActivity: session.lastActivity,
                 type: session.configuration.type || undefined,
+                tmuxSession: session.configuration.tmuxSession || undefined,
+                tmuxWindowId: session.configuration.tmuxWindowId || undefined,
                 organizationId: session.organizationId,
                 organizationName: session.organizationName,
                 osName: session.osName || null,
@@ -147,7 +156,19 @@ export const Servers = () => {
             mergedSessions = [...merged, ...erroredPinned, ...localOnly];
             return mergedSessions;
         });
-        setHibernatedSessions(hibernatedMapped);
+        // scriptName never comes from the server - session.configuration only ever carries
+        // scriptId (server/controllers/serverSession.js), so performConnection is the only place
+        // that ever learns it. The active path above already rescues it from the previous list on
+        // every broadcast; without the same rescue here, hibernating a scripted session drops the
+        // name and it stays dropped after waking, since the woken session is new to activeSessions
+        // and the rescue at :150 has nothing to carry it forward from.
+        setHibernatedSessions(prev => {
+            const prevMap = new Map(prev.map(s => [s.id, s]));
+            return hibernatedMapped.map(newSession => {
+                const existing = prevMap.get(newSession.id);
+                return existing ? { ...newSession, scriptName: existing.scriptName } : newSession;
+            });
+        });
 
         setActiveSessionId(prev => {
             if (prev && (newActiveIds.has(prev) || mergedSessions.some(s => s.id === prev))) return prev;
@@ -203,6 +224,158 @@ export const Servers = () => {
                 setRestoreStatus(RESTORE_STATUS.FAILED);
             });
     }, [servers, initialLocalDescriptors, getServerById, setActiveSessions]);
+
+    // Mirrors tabIdentities and the combined active+hibernated session list into refs so the
+    // numbering effect below can read their latest values without listing them as dependencies.
+    // Depending on the arrays themselves would re-run numbering on every unrelated session-list
+    // update - a lastActivity tick, osName arriving late from a snapshot, and - once the live
+    // terminal title lands - a title that can change several times a second.
+    const tabIdentitiesRef = useRef(tabIdentities);
+    useEffect(() => {
+        tabIdentitiesRef.current = tabIdentities;
+    }, [tabIdentities]);
+
+    const sessionsForNumberingRef = useRef([...activeSessions, ...hibernatedSessions]);
+    useEffect(() => {
+        sessionsForNumberingRef.current = [...activeSessions, ...hibernatedSessions];
+    }, [activeSessions, hibernatedSessions]);
+
+    // Everything that can move a tab's number, as one primitive React can compare by value: it
+    // stays "the same" across renders where none of those fields moved, even though the session
+    // arrays it is built from are new objects every time.
+    //
+    // The composition itself lives in tabLabel.js, next to the grouping rule it has to track. It
+    // used to be spelled out here as a hand-picked field list, and that list drifted from the rule
+    // twice: first it was missing the custom name, then the server name, each time letting a tab
+    // keep a number it should have lost. A list kept in a different file from the rule it mirrors
+    // is a list that will drift again.
+    const sessionsForIdentity = [...activeSessions, ...hibernatedSessions];
+    const identitySignature = tabIdentitySignature(sessionsForIdentity, tabIdentities);
+
+    // Tab numbers, computed synchronously during render rather than only in the persistence
+    // effect below - without this, a freshly opened tab paints one frame with no number before
+    // that effect catches up, visible for any tab that collides by name. This follows React's own
+    // "adjust state while rendering" pattern (a state value plus a comparison against the previous
+    // render's signature) instead of useMemo: a useMemo body would need to close over tabIdentities
+    // and sessionsForIdentity without listing them as dependencies to get the same narrowing the
+    // effect's refs give it, and this project's eslint-plugin-react-hooks (react-hooks/refs)
+    // forbids reading a ref during render at all - only an effect may do that, so the ref trick
+    // that works for the persistence effect below has no render-phase equivalent here. Calling
+    // setState mid-render like this makes React discard this render and immediately re-render
+    // with the new state before anything paints, so there is still no visible flash - and it still
+    // only recomputes when identitySignature actually changes, never on an unrelated re-render (a
+    // lastActivity tick, or, once Task 7 lands, a live title update).
+    const [numberedSignature, setNumberedSignature] = useState(identitySignature);
+    const [tabNumbers, setTabNumbers] = useState(() => assignNumbers(sessionsForIdentity, tabIdentities));
+    if (identitySignature !== numberedSignature) {
+        setNumberedSignature(identitySignature);
+        setTabNumbers(assignNumbers(sessionsForIdentity, tabIdentities));
+    }
+
+    // Persists whatever tabNumbers just changed. This no longer computes the numbers itself - it
+    // reads the exact same map the render above already produced, so what a tab shows and what
+    // gets written to storage can never disagree. Hibernated sessions are included on exactly the
+    // same footing as active ones here, and again below as protected ids: a session asleep in the
+    // background is still "open" from the identity store's point of view, so it keeps its slot in
+    // its name group and can never be evicted by the cap while it sleeps - waking it up must not
+    // change its name or number.
+    useEffect(() => {
+        const sessions = sessionsForNumberingRef.current;
+        const identities = tabIdentitiesRef.current;
+        const nextNumbers = tabNumbers;
+
+        const previousNumbers = {};
+        for (const session of sessions) previousNumbers[session.id] = identities[session.id]?.number;
+
+        // The loop brake: assignNumbers is idempotent, so re-running this after the write below
+        // (tabIdentities changing doesn't retrigger this effect, but an unrelated render might
+        // still land here with nothing new) computes the exact same numbers and stops here
+        // instead of writing again.
+        if (!diffAssignments(previousNumbers, nextNumbers)) return;
+
+        // The group goes to storage with the number it belongs to, and only ever together with
+        // it. assignNumbers needs it to know which group a number reserves once the session is
+        // gone from the list - by then nothing is left to recompute the group from. Writing it
+        // only here, where the number itself is written, keeps the pair honest: an entry either
+        // has both or neither, and a group left behind by a session whose number was cleared
+        // (a rename) reserves nothing, because a reservation needs a valid number too.
+        const updates = {};
+        for (const session of sessions) {
+            if (previousNumbers[session.id] !== nextNumbers[session.id]) {
+                updates[session.id] = {
+                    ...identities[session.id],
+                    number: nextNumbers[session.id],
+                    group: tabGroupKey(session, identities[session.id]),
+                    usedAt: Date.now(),
+                };
+            }
+        }
+
+        const merged = { ...identities, ...updates };
+        const protectedIds = sessions.map((session) => session.id);
+        // Setting an id to undefined here, rather than deleting it, is what actually removes it
+        // from storage: setStoredTabIdentities re-reads and shallow-merges before writing, and
+        // JSON.stringify drops properties whose value is undefined, so this is how an entry
+        // leaves localStorage instead of only being dropped from this component's own state.
+        for (const id of selectEvictions(merged, protectedIds, TAB_IDENTITY_CAP)) {
+            updates[id] = undefined;
+            delete merged[id];
+        }
+
+        // Deferred to a microtask, same as the restore effect above - this is what keeps a
+        // synchronous setState call out of react-hooks/set-state-in-effect.
+        Promise.resolve().then(() => {
+            setStoredTabIdentities(updates);
+            setTabIdentities(merged);
+        });
+    }, [tabNumbers]);
+
+    // The write path for a hand-typed tab name - the only one, so ServerTabs never touches
+    // tabIdentities or localStorage directly. normalizeTabName does the validation (trim, strip,
+    // cap at 40, undefined for empty/whitespace-only) - not this function and not the dialog -
+    // so clearing the field and saving is what resets a tab to its automatic name.
+    //
+    // The stored number is dropped when - and only when - the name actually changes. It is the
+    // clean trigger for renumbering into the session's new (or newly automatic) name group, since
+    // the group key is built from the name; assignNumbers' second pass, which resolves a
+    // same-number collision by list order, exists as a safety net for cases this can't see (two
+    // names colliding without either being freshly renamed), not as the normal path here.
+    //
+    // Dropping it unconditionally looked harmless and was not: confirming the dialog without
+    // editing anything leaves the name, and therefore the identity signature, exactly as it was,
+    // so no renumbering runs to put a number back. The state said "no number" while the tab still
+    // showed the old one from tabNumbers, until the next tab opened or the page reloaded - at
+    // which point the tab silently changed its text with nothing the user did touching it. That is
+    // criterion 3, the load-bearing one.
+    const renameSession = useCallback((sessionId, rawValue) => {
+        const name = normalizeTabName(rawValue);
+        const previous = tabIdentities[sessionId];
+        const nameChanged = previous?.name !== name;
+        const entry = nameChanged
+            ? { ...previous, name, number: undefined, group: undefined, usedAt: Date.now() }
+            : { ...previous, name, usedAt: Date.now() };
+
+        setStoredTabIdentities({ [sessionId]: entry });
+
+        // setStoredTabIdentities swallows a failed write (quota exceeded, storage disabled in
+        // private mode) and only logs a warning - reading the entry straight back is the only
+        // way from out here to tell whether it actually landed. Without this check the rename
+        // would still look like it worked for the rest of this session and then silently
+        // revert on the next reload, with nothing to explain why.
+        //
+        // Compared on `usedAt`, not `name`: `name` breaks down for exactly the reset-to-automatic
+        // case, where the intended value is `undefined` - a storage read that failed outright
+        // also reports `undefined` (getStoredTabIdentities' own catch-all returns `{}`), so the
+        // two would be indistinguishable. `usedAt` is a fresh Date.now() set above on every call
+        // and can only read back equal if that exact write actually reached storage, so it stays
+        // a reliable signal for every value `name` can take, reset included.
+        const persisted = getStoredTabIdentities()[sessionId];
+        if (persisted?.usedAt !== entry.usedAt) {
+            sendToast("Error", t("servers.tabs.renameDialog.saveFailed"));
+        }
+
+        setTabIdentities(prev => ({ ...prev, [sessionId]: entry }));
+    }, [tabIdentities, sendToast, t]);
 
     const findOrganizationForServer = (serverIdNum, entries, currentOrg = null) => {
         for (const entry of entries) {
@@ -312,6 +485,12 @@ export const Servers = () => {
                 identity: identity?.id,
                 id: session.sessionId,
                 type: type || undefined,
+                // Set here too, not just picked up from the next broadcast: without this a
+                // freshly opened tab would briefly render without its discriminator, which is
+                // visible flicker and can also cause it to jump between number groups once the
+                // broadcast catches up.
+                tmuxSession: tmux?.name || undefined,
+                tmuxWindowId: tmux?.windowId || undefined,
                 organizationId: organizationId,
                 organizationName: organization?.name || null,
                 scriptId: scriptId || undefined,
@@ -662,6 +841,17 @@ export const Servers = () => {
         }
     }, [servers, location.search]);
 
+    // The map ServerTabs actually renders from: numbers come from tabNumbers (the render-phase
+    // computation above, already current for this paint) rather than straight from tabIdentities,
+    // since the persistence effect only writes fresh numbers into tabIdentities after this render
+    // has already committed - reading tabIdentities directly here would still show the pre-number
+    // frame for a newly opened, name-colliding tab. Names have no such lag (nothing computes them
+    // synchronously the way assignNumbers does), so they still come straight from the store.
+    const displayIdentities = {};
+    for (const id of Object.keys(tabNumbers)) {
+        displayIdentities[id] = { name: tabIdentities[id]?.name, number: tabNumbers[id] };
+    }
+
     return (
         <div className="server-page">
             <ServerDialog open={serverDialogOpen} onClose={closeDialog} currentFolderId={currentFolderId}
@@ -726,11 +916,12 @@ export const Servers = () => {
                                closeSession={closeSession}
                                activeSessionId={activeSessionId} setActiveSessionId={setActiveSessionId}
                                hibernateSession={hibernateSession} duplicateSession={duplicateSession}
-                               openNotes={openNotes}
+                               openNotes={openNotes} renameSession={renameSession}
                                markSessionErrored={markSessionErrored}
                                getSessionError={getSessionError}
                                setOpenFileEditors={setOpenFileEditors}
-                               openTerminalFromFileManager={openTerminalFromFileManager} />}
+                               openTerminalFromFileManager={openTerminalFromFileManager}
+                               tabIdentities={displayIdentities} />}
             {openFileEditors.map((editor) => (
                 editor.type === "preview" ? (
                     <FilePreviewWindow

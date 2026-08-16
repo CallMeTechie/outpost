@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback, useContext } from "react";
 import { useTranslation } from "react-i18next";
 import Icon from "@mdi/react";
-import { mdiClose, mdiViewSplitVertical, mdiChevronLeft, mdiChevronRight, mdiSleep, mdiOpenInNew, mdiShareVariant, mdiLinkVariant, mdiPencil, mdiEye, mdiCloseCircle, mdiContentDuplicate, mdiNoteEditOutline, mdiMicrosoft } from "@mdi/js";
+import { mdiClose, mdiViewSplitVertical, mdiChevronLeft, mdiChevronRight, mdiSleep, mdiOpenInNew, mdiShareVariant, mdiLinkVariant, mdiPencil, mdiEye, mdiCloseCircle, mdiContentDuplicate, mdiNoteEditOutline, mdiMicrosoft, mdiRenameBox } from "@mdi/js";
 import { useDrag, useDrop } from "react-dnd";
 import TerminalActionsMenu from "../TerminalActionsMenu";
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator, useContextMenu } from "@/common/components/ContextMenu";
@@ -13,6 +13,8 @@ import { postRequest, deleteRequest, patchRequest } from "@/common/utils/Request
 import { getBaseUrl } from "@/common/utils/ConnectionUtil.js";
 import { getIconPath } from "@/common/utils/iconUtils.js";
 import { paneColorFor } from "../../utils/paneColors.js";
+import { buildTabLabel } from "@/common/utils/tabLabel.js";
+import RenameTabDialog from "./RenameTabDialog.jsx";
 import "./styles.sass";
 
 const DraggableTab = ({
@@ -24,16 +26,20 @@ const DraggableTab = ({
     hibernateSession,
     duplicateSession,
     openNotes,
+    renameSession,
     index,
     moveTab,
     progress = 0,
     paneColorSessions,
+    identity,
+    liveTitle,
 }) => {
     const contextMenu = useContextMenu();
     const { popOutSession } = useActiveSessions();
     const { getParticipants } = useLiveSessions();
     const { user } = useContext(UserContext);
     const { t } = useTranslation();
+    const [renameDialogOpen, setRenameDialogOpen] = useState(false);
 
     const otherParticipants = getParticipants(session.joinSessionId || session.id)
         .filter(participant => participant.accountId !== user?.id);
@@ -53,6 +59,23 @@ const DraggableTab = ({
     // Looked up by session id, not counted by position in the tab strip — the strip and the grid
     // can list sessions in different orders, and a lookup keeps them from disagreeing.
     const paneColor = paneColorFor(paneColorSessions.indexOf(session.id));
+    // buildTabLabel never translates (see tabLabel.js) - each tooltip field's key is resolved
+    // here, one field per line, into the native `title` attribute rather than the Tooltip
+    // component: many tabs sit side by side, and a Tooltip instance per tab would bring its own
+    // hover tracking for content that is plain text and needs none of that.
+    // liveTitle is mixed in here rather than carried on `session` itself - it lives in
+    // ViewContainer's own state, keyed by session id, precisely so it never becomes part of the
+    // session objects that drive tab numbering (see tabLabel.js and task-7-brief.md).
+    const tabLabel = buildTabLabel({ ...session, liveTitle }, identity, t);
+    const tabTooltip = tabLabel.tooltip.map(({ key, value }) => `${t(key)}: ${value}`).join("\n");
+    // What the rename dialog prefills with, and what it shows as a fallback hint - deliberately
+    // not tabLabel.text: that carries the type suffix and the group number baked in, so
+    // confirming it unedited would store them as if they were part of the name and, for the
+    // type suffix specifically, double it again on the very next render (buildTabLabel always
+    // appends the suffix to a custom name too). Passing {} recomputes the automatic text alone,
+    // the same way buildTabLabel does for a session with no identity at all - no number, no
+    // custom name to fold in.
+    const automaticLabel = buildTabLabel(session, {}, t).text;
 
     const handleShare = useCallback(async (writable) => {
         const result = await postRequest(`connections/${session.id}/share`, { writable });
@@ -74,7 +97,14 @@ const DraggableTab = ({
     const handlePermissionChange = useCallback(async (writable) => {
         await patchRequest(`connections/${session.id}/share`, { writable });
     }, [session.id]);
-    
+
+    const handleRenameSubmit = useCallback((value) => {
+        renameSession(session.id, value);
+        setRenameDialogOpen(false);
+    }, [renameSession, session.id]);
+
+    const handleRenameClose = useCallback(() => setRenameDialogOpen(false), []);
+
     const [{ isDragging }, drag] = useDrag({
         type: "TAB",
         item: { index, sessionId: session.id },
@@ -144,7 +174,7 @@ const DraggableTab = ({
                     )}
                     <Icon path={isNotes ? mdiNoteEditOutline : isOneDrive ? mdiMicrosoft : getIconPath(server.icon)} className="progress-icon" />
                 </div>
-                <h2>{server?.name || session.oneDrive?.displayName} {session.type === "sftp" ? " (SFTP)" : ""}{isNotes ? ` (${t("servers.notesPanel.title")})` : ""}</h2>
+                <h2 title={tabTooltip}>{tabLabel.text}</h2>
                 <AvatarStack className="tab-participants" users={otherParticipants} max={2}
                              getKey={participant => participant.viewerId} />
                 <div className="tab-actions">
@@ -160,6 +190,16 @@ const DraggableTab = ({
                 onClose={contextMenu.close}
                 trigger={contextMenu.triggerRef}
             >
+                {/* Unconditional, unlike every item below it: a name has to find its way back to
+                    every tab kind on reload/rejoin, joined sessions included - copying canDuplicate's
+                    !isLocal && !isJoined guard here would silently take that away from exactly the
+                    sessions (join-<liveSessionId> ids are deterministic) that most need it. */}
+                <ContextMenuItem
+                    icon={mdiRenameBox}
+                    label={t("servers.tabs.contextMenu.rename")}
+                    onClick={() => setRenameDialogOpen(true)}
+                />
+                <ContextMenuSeparator />
                 {canPopOut && (
                     <>
                         <ContextMenuItem
@@ -215,6 +255,13 @@ const DraggableTab = ({
                     danger
                 />
             </ContextMenu>
+            <RenameTabDialog
+                open={renameDialogOpen}
+                initialValue={identity?.name || ""}
+                automaticText={automaticLabel}
+                onSubmit={handleRenameSubmit}
+                onClose={handleRenameClose}
+            />
         </>
     );
 };
@@ -227,6 +274,7 @@ export const ServerTabs = ({
     hibernateSession,
     duplicateSession,
     openNotes,
+    renameSession,
     layoutMode,
     onToggleSplit,
     paneColorSessions = [],
@@ -238,8 +286,10 @@ export const ServerTabs = ({
     onKeyboardShortcut,
     hasGuacamole,
     sessionProgress = {},
+    liveTitles = {},
     fullscreenEnabled,
     onFullscreenToggle,
+    tabIdentities = {},
 }) => {
 
     const tabsRef = useRef(null);
@@ -381,9 +431,11 @@ export const ServerTabs = ({
                             <DraggableTab key={session.id} session={session} server={session.server} index={index} moveTab={moveTab}
                                 activeSessionId={activeSessionId} setActiveSessionId={setActiveSessionId}
                                 closeSession={closeSession} hibernateSession={hibernateSession} duplicateSession={duplicateSession}
-                                openNotes={openNotes}
+                                openNotes={openNotes} renameSession={renameSession}
                                 progress={sessionProgress[session.id] || 0}
-                                paneColorSessions={paneColorSessions} />
+                                paneColorSessions={paneColorSessions}
+                                identity={tabIdentities[session.id]}
+                                liveTitle={liveTitles[session.id]} />
                         );
                     })}
                 </div>

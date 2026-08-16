@@ -1648,10 +1648,35 @@
         "copyShareLink": "Link zum Teilen kopieren",
         "changePermissions": "Berechtigungen ändern",
         "stopSharing": "Teilen beenden",
+        "rename": "Umbenennen",
         "duplicate": "Duplizieren",
         "openNotes": "Notizen",
         "hibernateSession": "Ruhezustand aktivieren",
         "closeSession": "Trennen"
+      },
+      "renameDialog": {
+        "title": "Tab umbenennen",
+        "description": "Gib diesem Tab einen eigenen Namen. Leere das Feld und speichere, um zum automatischen Namen zurückzukehren.",
+        "placeholder": "Tabname",
+        "saveFailed": "Der Tabname konnte nicht gespeichert werden. Er übersteht möglicherweise kein Neuladen."
+      }
+    },
+    "tabLabel": {
+      "tooltip": {
+        "server": "Server",
+        "type": "Typ",
+        "tmuxSession": "tmux-Session",
+        "tmuxWindow": "tmux-Fenster",
+        "script": "Skript",
+        "liveTitle": "Live-Titel",
+        "automaticName": "Automatischer Name"
+      },
+      "type": {
+        "terminal": "Terminal",
+        "sftp": "SFTP",
+        "notes": "Notizen",
+        "onedrive": "OneDrive",
+        "remoteDesktop": "Remotedesktop"
       }
     },
     "wol": {

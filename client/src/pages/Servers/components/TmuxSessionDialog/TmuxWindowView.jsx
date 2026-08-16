@@ -4,14 +4,21 @@ import Icon from "@mdi/react";
 import { mdiArrowLeft, mdiViewSplitVertical, mdiPencil, mdiTrashCan, mdiCheck, mdiClose } from "@mdi/js";
 import { postRequest, deleteRequest, patchRequest } from "@/common/utils/RequestUtil.js";
 import Button from "@/common/components/Button";
+import { sanitizeRemoteText } from "@/common/utils/remoteText.js";
 
 /**
- * A window name may contain any character, including control characters -
- * unlike a session name, which tmux itself restricts. They are not shown as
- * is: a window renamed from outside to a name containing escape sequences
- * must not be able to break the list's layout.
+ * A window name may contain any character, including control and bidi
+ * characters - unlike a session name, which tmux itself restricts. They are
+ * not shown as is: a window renamed from outside to a name containing escape
+ * sequences or bidi overrides must not be able to break the list's layout or
+ * make the name render as something it is not.
+ *
+ * Sanitizing is shared with the rest of the app (remoteText.js) rather than
+ * repeated here. This call passes no length limit, because this view has
+ * never truncated window names and shows them in full - other callers of
+ * sanitizeRemoteText may pass one.
  */
-export const displayName = (value) => String(value ?? "").replace(/[\x00-\x1F\x7F]/g, "");
+export const displayName = (value) => sanitizeRemoteText(value, Infinity);
 
 const WINDOW_NAME_PATTERN = /^[^\x00-\x1F\x7F]{1,64}$/;
 
