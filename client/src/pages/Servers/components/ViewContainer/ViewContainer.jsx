@@ -41,6 +41,7 @@ export const ViewContainer = ({
                                   hibernateSession,
                                   duplicateSession,
                                   openNotes,
+                                  renameSession,
                                   markSessionErrored,
                                   getSessionError,
                                   setOpenFileEditors,
@@ -559,7 +560,7 @@ export const ViewContainer = ({
                     onKeyboardShortcut={handleKeyboardShortcut} hasGuacamole={hasGuacamole}
                     sessionProgress={sessionProgress} fullscreenEnabled={fullscreenMode}
                     onFullscreenToggle={toggleFullscreenMode}
-                    openNotes={openNotes}
+                    openNotes={openNotes} renameSession={renameSession}
                     hibernateSession={hibernateSession} duplicateSession={duplicateSession} />
     );
 

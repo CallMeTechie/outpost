@@ -1,0 +1,48 @@
+@use "@/common/styles/colors"
+
+.rename-tab-dialog
+  display: flex
+  flex-direction: column
+  gap: 0.875rem
+  width: 22rem
+  user-select: none
+
+  .dialog-title
+    display: flex
+    align-items: center
+    gap: 0.625rem
+    padding-bottom: 0.625rem
+    border-bottom: 1px solid colors.$dark-gray
+
+    svg
+      width: 1.25rem
+      height: 1.25rem
+      color: colors.$primary
+
+    h2
+      margin: 0
+      font-size: 1rem
+      font-weight: 600
+      color: colors.$white
+
+  .dialog-content
+    display: flex
+    flex-direction: column
+    gap: 0.875rem
+
+    .dialog-description
+      margin: 0
+      color: colors.$subtext
+      font-size: 0.85rem
+      line-height: 1.5
+      padding: 0.625rem 0.75rem
+      background-color: colors.$dark-gray
+      border-radius: 0.5rem
+      border-left: 2px solid colors.$primary
+
+  .dialog-actions
+    display: flex
+    justify-content: flex-end
+    gap: 0.5rem
+    padding-top: 0.625rem
+    border-top: 1px solid colors.$dark-gray

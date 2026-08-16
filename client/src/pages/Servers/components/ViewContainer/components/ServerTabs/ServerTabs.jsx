@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback, useContext } from "react";
 import { useTranslation } from "react-i18next";
 import Icon from "@mdi/react";
-import { mdiClose, mdiViewSplitVertical, mdiChevronLeft, mdiChevronRight, mdiSleep, mdiOpenInNew, mdiShareVariant, mdiLinkVariant, mdiPencil, mdiEye, mdiCloseCircle, mdiContentDuplicate, mdiNoteEditOutline, mdiMicrosoft } from "@mdi/js";
+import { mdiClose, mdiViewSplitVertical, mdiChevronLeft, mdiChevronRight, mdiSleep, mdiOpenInNew, mdiShareVariant, mdiLinkVariant, mdiPencil, mdiEye, mdiCloseCircle, mdiContentDuplicate, mdiNoteEditOutline, mdiMicrosoft, mdiRenameBox } from "@mdi/js";
 import { useDrag, useDrop } from "react-dnd";
 import TerminalActionsMenu from "../TerminalActionsMenu";
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator, useContextMenu } from "@/common/components/ContextMenu";
@@ -14,6 +14,7 @@ import { getBaseUrl } from "@/common/utils/ConnectionUtil.js";
 import { getIconPath } from "@/common/utils/iconUtils.js";
 import { paneColorFor } from "../../utils/paneColors.js";
 import { buildTabLabel } from "@/common/utils/tabLabel.js";
+import RenameTabDialog from "./RenameTabDialog.jsx";
 import "./styles.sass";
 
 const DraggableTab = ({
@@ -25,6 +26,7 @@ const DraggableTab = ({
     hibernateSession,
     duplicateSession,
     openNotes,
+    renameSession,
     index,
     moveTab,
     progress = 0,
@@ -36,6 +38,7 @@ const DraggableTab = ({
     const { getParticipants } = useLiveSessions();
     const { user } = useContext(UserContext);
     const { t } = useTranslation();
+    const [renameDialogOpen, setRenameDialogOpen] = useState(false);
 
     const otherParticipants = getParticipants(session.joinSessionId || session.id)
         .filter(participant => participant.accountId !== user?.id);
@@ -82,7 +85,14 @@ const DraggableTab = ({
     const handlePermissionChange = useCallback(async (writable) => {
         await patchRequest(`connections/${session.id}/share`, { writable });
     }, [session.id]);
-    
+
+    const handleRenameSubmit = useCallback((value) => {
+        renameSession(session.id, value);
+        setRenameDialogOpen(false);
+    }, [renameSession, session.id]);
+
+    const handleRenameClose = useCallback(() => setRenameDialogOpen(false), []);
+
     const [{ isDragging }, drag] = useDrag({
         type: "TAB",
         item: { index, sessionId: session.id },
@@ -168,6 +178,16 @@ const DraggableTab = ({
                 onClose={contextMenu.close}
                 trigger={contextMenu.triggerRef}
             >
+                {/* Unconditional, unlike every item below it: a name has to find its way back to
+                    every tab kind on reload/rejoin, joined sessions included - copying canDuplicate's
+                    !isLocal && !isJoined guard here would silently take that away from exactly the
+                    sessions (join-<liveSessionId> ids are deterministic) that most need it. */}
+                <ContextMenuItem
+                    icon={mdiRenameBox}
+                    label={t("servers.tabs.contextMenu.rename")}
+                    onClick={() => setRenameDialogOpen(true)}
+                />
+                <ContextMenuSeparator />
                 {canPopOut && (
                     <>
                         <ContextMenuItem
@@ -223,6 +243,12 @@ const DraggableTab = ({
                     danger
                 />
             </ContextMenu>
+            <RenameTabDialog
+                open={renameDialogOpen}
+                initialValue={tabLabel.text}
+                onSubmit={handleRenameSubmit}
+                onClose={handleRenameClose}
+            />
         </>
     );
 };
@@ -235,6 +261,7 @@ export const ServerTabs = ({
     hibernateSession,
     duplicateSession,
     openNotes,
+    renameSession,
     layoutMode,
     onToggleSplit,
     paneColorSessions = [],
@@ -390,7 +417,7 @@ export const ServerTabs = ({
                             <DraggableTab key={session.id} session={session} server={session.server} index={index} moveTab={moveTab}
                                 activeSessionId={activeSessionId} setActiveSessionId={setActiveSessionId}
                                 closeSession={closeSession} hibernateSession={hibernateSession} duplicateSession={duplicateSession}
-                                openNotes={openNotes}
+                                openNotes={openNotes} renameSession={renameSession}
                                 progress={sessionProgress[session.id] || 0}
                                 paneColorSessions={paneColorSessions}
                                 identity={tabIdentities[session.id]} />

@@ -1650,10 +1650,17 @@
         "copyShareLink": "Copy Share Link",
         "changePermissions": "Change Permissions",
         "stopSharing": "Stop Sharing",
+        "rename": "Rename",
         "duplicate": "Duplicate",
         "openNotes": "Open Notes",
         "hibernateSession": "Hibernate",
         "closeSession": "Disconnect"
+      },
+      "renameDialog": {
+        "title": "Rename Tab",
+        "description": "Give this tab a name of your own. Clear the field and save to go back to the automatic name.",
+        "placeholder": "Tab name",
+        "saveFailed": "Could not save the tab name. It may not survive a reload."
       }
     },
     "tabLabel": {

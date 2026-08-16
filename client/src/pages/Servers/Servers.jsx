@@ -26,7 +26,7 @@ import {
     toLocalSessionDescriptor, restoreLocalSessions, getStoredLocalSessionDescriptors, setStoredLocalSessionDescriptors,
     canPersistLocalSessions, RESTORE_STATUS,
 } from "@/common/utils/localSessionState.js";
-import { getStoredTabIdentities, setStoredTabIdentities, selectEvictions, TAB_IDENTITY_CAP } from "@/common/utils/tabIdentity.js";
+import { getStoredTabIdentities, setStoredTabIdentities, selectEvictions, TAB_IDENTITY_CAP, normalizeTabName } from "@/common/utils/tabIdentity.js";
 import { assignNumbers, diffAssignments } from "@/common/utils/tabLabel.js";
 
 // A session the server does not know about: it lives in this browser only. The poll below
@@ -324,6 +324,35 @@ export const Servers = () => {
             setTabIdentities(merged);
         });
     }, [tabNumbers]);
+
+    // The write path for a hand-typed tab name - the only one, so ServerTabs never touches
+    // tabIdentities or localStorage directly. normalizeTabName does the validation (trim, strip,
+    // cap at 40, undefined for empty/whitespace-only) - not this function and not the dialog -
+    // so clearing the field and saving is what resets a tab to its automatic name.
+    //
+    // The stored number is dropped on every rename, unconditionally - not just when the text
+    // actually changes. It is the clean trigger for renumbering into the session's new (or
+    // newly automatic) name group; assignNumbers' second pass, which resolves a same-number
+    // collision by list order, exists as a safety net for cases this can't see (two names
+    // colliding without either being freshly renamed), not as the normal path here.
+    const renameSession = useCallback((sessionId, rawValue) => {
+        const name = normalizeTabName(rawValue);
+        const entry = { ...tabIdentities[sessionId], name, number: undefined, usedAt: Date.now() };
+
+        setStoredTabIdentities({ [sessionId]: entry });
+
+        // setStoredTabIdentities swallows a failed write (quota exceeded, storage disabled in
+        // private mode) and only logs a warning - reading the entry straight back is the only
+        // way from out here to tell whether it actually landed. Without this check the rename
+        // would still look like it worked for the rest of this session and then silently
+        // revert on the next reload, with nothing to explain why.
+        const persistedName = getStoredTabIdentities()[sessionId]?.name;
+        if (persistedName !== name) {
+            sendToast("Error", t("servers.tabs.renameDialog.saveFailed"));
+        }
+
+        setTabIdentities(prev => ({ ...prev, [sessionId]: entry }));
+    }, [tabIdentities, sendToast, t]);
 
     const findOrganizationForServer = (serverIdNum, entries, currentOrg = null) => {
         for (const entry of entries) {
@@ -864,7 +893,7 @@ export const Servers = () => {
                                closeSession={closeSession}
                                activeSessionId={activeSessionId} setActiveSessionId={setActiveSessionId}
                                hibernateSession={hibernateSession} duplicateSession={duplicateSession}
-                               openNotes={openNotes}
+                               openNotes={openNotes} renameSession={renameSession}
                                markSessionErrored={markSessionErrored}
                                getSessionError={getSessionError}
                                setOpenFileEditors={setOpenFileEditors}
