@@ -46,6 +46,14 @@ export const normalizeTabName = (value) => {
     return cleaned.slice(0, MAX_NAME_LENGTH);
 };
 
+// A stored number must be a positive integer - assignNumbers (tabLabel.js) treats anything else
+// as unassigned and hands out a fresh one. That check only ever sees what this function lets
+// through: a corrupt entry that slipped past here (a hand-edited "abc", a null, a 0) would sit in
+// storedNumbers and, through Math.max, turn every number a later assignNumbers call hands out -
+// in every group - into NaN. Re-checked on every read for the same reason normalizeTabName is:
+// an entry can come from hand-edited localStorage, not just this module's own writes.
+export const normalizeTabNumber = (value) => (Number.isInteger(value) && value > 0 ? value : undefined);
+
 export const getStoredTabIdentities = () => {
     try {
         const stored = localStorage.getItem(TAB_IDENTITIES_KEY);
@@ -57,7 +65,7 @@ export const getStoredTabIdentities = () => {
         // store itself is the boundary.
         const normalized = {};
         for (const [id, entry] of Object.entries(entries)) {
-            normalized[id] = { ...entry, name: normalizeTabName(entry?.name) };
+            normalized[id] = { ...entry, name: normalizeTabName(entry?.name), number: normalizeTabNumber(entry?.number) };
         }
         return normalized;
     } catch (error) {

@@ -8,13 +8,6 @@ const DISCRIMINATOR_MAX_LENGTH = 40;
 // remote-sourced fields - gets double the discriminator's budget.
 const LIVE_TITLE_MAX_LENGTH = 80;
 
-// Marks what a tab *is*, independent of any name. Only the types that could be mistaken for a
-// plain terminal get one - an unmarked tab already reads as "terminal" by default.
-const TYPE_SUFFIX = {
-    sftp: " (SFTP)",
-    notes: " (Notizen)",
-};
-
 // Human-readable type names for the tooltip. Resolved here rather than through i18n: this text
 // is the module's own vocabulary, not something that arrived from a remote host, so it needs
 // none of the raw-text handling the tooltip values below exist to avoid.
@@ -31,60 +24,72 @@ const TYPE_LABEL = {
 // throw on every OneDrive tab.
 const baseName = (session) => session.server?.name ?? session.oneDrive?.displayName ?? "";
 
-// Distinguishes same-named sessions on the same server: the attached tmux session if there is
-// one, otherwise the script that started the session. Both are text the remote host or a saved
-// config supplied rather than text the person looking at the tab typed, so both are run through
-// the shared sanitiser before they are allowed anywhere near the label.
-const discriminatorFor = (session) => {
-    const raw = session.tmuxSession || session.scriptName;
-    if (!raw) return "";
-    return sanitizeRemoteText(raw, DISCRIMINATOR_MAX_LENGTH);
+// Sanitizes both possible discriminator sources once per call. The visible text uses whichever
+// one wins (tmux over script); the tooltip lists each independently when present. Computing both
+// here and handing the result to whoever needs it means the same string is never run through
+// sanitizeRemoteText twice for the same session.
+const discriminatorParts = (session) => ({
+    tmuxSession: session.tmuxSession ? sanitizeRemoteText(session.tmuxSession, DISCRIMINATOR_MAX_LENGTH) : "",
+    scriptName: session.scriptName ? sanitizeRemoteText(session.scriptName, DISCRIMINATOR_MAX_LENGTH) : "",
+});
+
+// Joins a base and a discriminator with " · ", but only when both sides actually have something
+// to say. A discriminator that sanitised down to nothing must not leave a trailing " · ", and -
+// the mirror case - a session with no server and no OneDrive name (none exist today, but nothing
+// stops one from turning up) must not leave a leading one either.
+const combineBaseAndDiscriminator = (base, discriminator) => {
+    if (base && discriminator) return `${base} · ${discriminator}`;
+    return base || discriminator;
 };
 
-// The text a session would show with no custom name and no number attached - the "automatic"
-// label. A discriminator that sanitises down to nothing is treated as absent rather than as an
-// empty string, so a name never ends up carrying a dangling " · " for a tmux window that turned
-// out to have nothing displayable in it.
-const automaticText = (session) => {
-    const discriminator = discriminatorFor(session);
-    const withDiscriminator = discriminator ? `${baseName(session)} · ${discriminator}` : baseName(session);
-    return `${withDiscriminator}${TYPE_SUFFIX[session.type] ?? ""}`;
-};
+// The base and discriminator, joined - everything about the automatic text except the type
+// suffix. Split out from the suffix because the suffix is the one part that needs `t()` (see
+// buildTabLabel), and this half doesn't: it's reused by assignNumbers, which has no `t` to call.
+const discriminatedBase = (session, parts) => combineBaseAndDiscriminator(baseName(session), parts.tmuxSession || parts.scriptName);
 
 // Tooltip fields are {key, value} pairs, key being a translation key the caller resolves with
-// t() - this module never calls t() itself. The nearest precedent in the repo, transferDetail.js,
-// takes the opposite path and has the pure function accept t() directly; here that's deliberately
-// avoided because i18next HTML-escapes interpolated values, and raw text from a remote host would
-// need that switched off at every call site. Forgetting it once would be invisible, so the escape
-// decision is pushed to a single place instead of repeated at each caller.
+// t() - this module never calls t() on a tooltip value. The nearest precedent in the repo,
+// transferDetail.js, takes the opposite path and has the pure function accept t() directly; here
+// that's deliberately avoided for these values because i18next HTML-escapes interpolated values,
+// and raw text from a remote host would need that switched off at every call site. Forgetting it
+// once would be invisible, so the escape decision is pushed to a single place instead of repeated
+// at each caller. The type suffix in the visible text is a different case - see buildTabLabel.
 const field = (key, value) => (value ? { key, value } : null);
 
 // Builds the always-visible tab text and the richer tooltip behind it from one shared rule, so
 // the two can never say different things about the same tab. `identity` is whatever a caller has
 // stored for this session - `{}` for none - and is read only through `name` and `number`; this
 // module has no idea where those values come from or how they persist.
-export const buildTabLabel = (session, identity = {}) => {
+//
+// `t` is needed for exactly one piece of text: the notes suffix, which - unlike every other value
+// this module produces - is a static label with no interpolation, so none of the escaping concern
+// above applies to it. This mirrors ServerTabs.jsx's own suffix construction verbatim, SFTP's
+// hardcoded literal included; that literal is a pre-existing choice and not this task's to fix.
+export const buildTabLabel = (session, identity = {}, t) => {
     const hasCustomName = Boolean(identity?.name);
-    const auto = automaticText(session);
+    const parts = discriminatorParts(session);
+    const base = discriminatedBase(session, parts);
+    const typeSuffix = session.type === "sftp" ? " (SFTP)"
+        : session.type === "notes" ? ` (${t("servers.notesPanel.title")})`
+            : "";
+    const auto = `${base}${typeSuffix}`;
     // A custom name replaces the automatic base and its discriminator, but the type suffix still
     // applies: the name says what the person called it, the suffix still says what it is.
-    const body = hasCustomName ? `${identity.name}${TYPE_SUFFIX[session.type] ?? ""}` : auto;
+    const body = hasCustomName ? `${identity.name}${typeSuffix}` : auto;
     // Type first, number last: the type says what the tab is, the number says which of several.
     // Number 1 needs no suffix - it's the common case, and marking it would be noise on every tab
     // that never had a same-named sibling.
     const text = identity?.number > 1 ? `${body} (${identity.number})` : body;
 
     const tooltip = [
-        field("servers.tabLabel.tooltip.server", session.server?.name ?? session.oneDrive?.displayName),
+        field("servers.tabLabel.tooltip.server", baseName(session)),
         field("servers.tabLabel.tooltip.type", TYPE_LABEL[session.type] ?? session.type),
-        field("servers.tabLabel.tooltip.tmuxSession",
-            session.tmuxSession && sanitizeRemoteText(session.tmuxSession, DISCRIMINATOR_MAX_LENGTH)),
+        field("servers.tabLabel.tooltip.tmuxSession", parts.tmuxSession),
         // Only the window ID is available here, not a name: the server stores just the ID
         // (controllers/serverSession.js), and resolving it to a name would need an extra
         // network call per tab. "@3" satisfies "session and window", just less prettily.
         field("servers.tabLabel.tooltip.tmuxWindow", session.tmuxWindowId),
-        field("servers.tabLabel.tooltip.script",
-            session.scriptName && sanitizeRemoteText(session.scriptName, DISCRIMINATOR_MAX_LENGTH)),
+        field("servers.tabLabel.tooltip.script", parts.scriptName),
         field("servers.tabLabel.tooltip.liveTitle",
             session.liveTitle && sanitizeRemoteText(session.liveTitle, LIVE_TITLE_MAX_LENGTH)),
         // Without this, a renamed tab's tooltip loses every hint of what it actually points at.
@@ -94,10 +99,21 @@ export const buildTabLabel = (session, identity = {}) => {
     return { text, tooltip };
 };
 
-// Same text buildTabLabel would compute with no custom name - used only to decide which sessions
-// compete for the same number. Deliberately ignores any stored name: assignNumbers only ever
+// Used only to decide which sessions compete for the same number - it needs to collide exactly
+// when two sessions would render the same automatic text and stay apart otherwise, but it does
+// not need to look like anything a user would see. Appending the raw type instead of the
+// (locale-dependent, t()-gated) suffix keeps grouping stable without giving assignNumbers a
+// reason to need a translator. Deliberately ignores any stored name: assignNumbers only ever
 // sees raw sessions and previously-issued numbers, never a per-tab identity.
-const groupKey = (session) => automaticText(session);
+const groupKey = (session) => `${discriminatedBase(session, discriminatorParts(session))}|${session.type}`;
+
+// Whether a stored value can be trusted as an already-issued number. Anything else - a missing
+// entry, but just as much a hand-edited `"abc"`, `null`, `0` or a negative number - is treated as
+// absent rather than carried forward: `Math.max` propagates a `NaN` through every comparison it
+// touches, so a single corrupt entry would otherwise turn every number this function ever hands
+// out, in every group, into `NaN` - and stay that way forever, since a carried-forward `NaN`
+// would keep passing as "already assigned" on every future call.
+const isAssignedNumber = (value) => Number.isInteger(value) && value > 0;
 
 // Completes a number assignment: numbers already on file are kept untouched, every session still
 // missing one gets the next free number for its text. Passing the same sessions and the result
@@ -105,20 +121,26 @@ const groupKey = (session) => automaticText(session);
 // duplicateSession, openTerminalFromFileManager and joinLiveSession all create sessions, and a
 // rule that has to be called at each of those spots eventually misses one without it showing.
 export const assignNumbers = (sessions, storedNumbers = {}) => {
-    // The highest number already on file, across every id and every text group. A session that
-    // this call doesn't see - closed, or simply left out - still keeps its number reserved:
-    // there is no session object left to confirm what text it belonged to, and guessing wrong
-    // would risk handing that number to an unrelated tab. The result is a gap, never a collision.
-    const reservedFloor = Object.values(storedNumbers).reduce((max, n) => Math.max(max, n), 0);
+    // The highest number already on file, across every id and every text group, ignoring any
+    // entry that fails isAssignedNumber so a single corrupt one can't poison every group's floor.
+    // A session that this call doesn't see - closed, or simply left out - still keeps its number
+    // reserved: there is no session object left to confirm what text it belonged to, and guessing
+    // wrong would risk handing that number to an unrelated tab. The result is a gap, never a
+    // collision.
+    const reservedFloor = Object.values(storedNumbers)
+        .filter(isAssignedNumber)
+        .reduce((max, n) => Math.max(max, n), 0);
 
     const highestByGroup = new Map();
     const result = {};
 
-    // First pass: carry forward every number that already exists, and let each one raise the
-    // ceiling for its own text group so a fresh session in the same group starts above it.
+    // First pass: carry forward every number that already exists and passes isAssignedNumber, and
+    // let each one raise the ceiling for its own text group so a fresh session in the same group
+    // starts above it. A stored value that fails the check is treated the same as a missing one -
+    // it falls through to the second pass and gets a fresh number instead of being trusted.
     for (const session of sessions) {
         const existing = storedNumbers[session.id];
-        if (existing == null) continue;
+        if (!isAssignedNumber(existing)) continue;
 
         result[session.id] = existing;
         const key = groupKey(session);
@@ -143,7 +165,9 @@ export const assignNumbers = (sessions, storedNumbers = {}) => {
 // Whether two assignments differ - the loop brake a caller uses to decide whether an assignment
 // actually needs to be persisted or re-rendered. A shallow key/value comparison is enough because
 // assignNumbers never mutates a number that already exists; anything that did change is either a
-// new key, a missing key, or a number that moved.
+// new key, a missing key, or a number that moved. This relies on assignNumbers never producing a
+// `NaN` (isAssignedNumber above is what guarantees that) - `NaN !== NaN` is always true, which
+// would otherwise report a difference on every single call regardless of whether anything changed.
 export const diffAssignments = (previous, next) => {
     const previousKeys = Object.keys(previous ?? {});
     const nextKeys = Object.keys(next ?? {});

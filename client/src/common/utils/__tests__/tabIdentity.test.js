@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert";
-import { selectEvictions, normalizeTabName, TAB_IDENTITY_CAP } from "../tabIdentity.js";
+import { selectEvictions, normalizeTabName, normalizeTabNumber, TAB_IDENTITY_CAP } from "../tabIdentity.js";
 
 const entry = (usedAt) => ({ name: "x", usedAt });
 
@@ -72,4 +72,19 @@ test("control and bidi characters are removed", () => {
 
 test("anything that is not a string counts as empty", () => {
     for (const value of [undefined, null, 42, {}]) assert.strictEqual(normalizeTabName(value), undefined);
+});
+
+// --- normalizeTabNumber ---
+
+test("a positive integer is kept as-is", () => {
+    assert.strictEqual(normalizeTabNumber(2), 2);
+});
+
+// assignNumbers (tabLabel.js) carries a stored number forward via Math.max, where a single NaN,
+// non-numeric, zero, or negative entry would poison every number handed out afterwards. A hand-
+// edited localStorage entry must not reach that far - it has to be dropped here first.
+test("a corrupt stored number is dropped, exactly like a corrupt name", () => {
+    for (const bad of [NaN, "2", null, undefined, 0, -1, 1.5, {}]) {
+        assert.strictEqual(normalizeTabNumber(bad), undefined);
+    }
 });
