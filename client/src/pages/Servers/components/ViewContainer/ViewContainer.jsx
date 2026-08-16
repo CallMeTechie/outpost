@@ -57,6 +57,11 @@ export const ViewContainer = ({
     const tabOrderRef = useRef([]);
     const [broadcastMode, setBroadcastMode] = useState(false);
     const [sessionProgress, setSessionProgress] = useState({});
+    // Keyed by session id, exactly like sessionProgress above: the tab strip needs the live
+    // terminal title, but it must not join the session objects Servers.jsx builds - those feed
+    // identitySignature, and a value that can change many times a second would drag the tab
+    // numbering recompute along with it (see task-7-brief.md).
+    const [liveTitles, setLiveTitles] = useState({});
     const [fullscreenMode, setFullscreenMode] = useState(false);
     const [titleBarTabsSlot, setTitleBarTabsSlot] = useState(null);
     const appWindow = useTauriWindow();
@@ -126,6 +131,13 @@ export const ViewContainer = ({
         setSessionProgress(prev => ({
             ...prev,
             [sessionId]: progress,
+        }));
+    }, []);
+
+    const updateLiveTitle = useCallback((sessionId, title) => {
+        setLiveTitles(prev => ({
+            ...prev,
+            [sessionId]: title,
         }));
     }, []);
 
@@ -432,6 +444,7 @@ export const ViewContainer = ({
                                       getSessionError={getSessionError}
                                       registerTerminalRef={registerTerminalRef} broadcastMode={broadcastMode}
                                       terminalRefs={terminalRefs} updateProgress={updateSessionProgress}
+                                      updateTitle={updateLiveTitle}
                                       layoutMode={layoutMode} onBroadcastToggle={toggleBroadcastMode}
                                       onFullscreenToggle={toggleFullscreenMode} />;
             case "sftp":
@@ -558,7 +571,7 @@ export const ViewContainer = ({
                     onTabOrderChange={onTabOrderChange} onBroadcastToggle={toggleBroadcastMode}
                     onSnippetSelected={handleSnippetSelected} broadcastEnabled={broadcastMode}
                     onKeyboardShortcut={handleKeyboardShortcut} hasGuacamole={hasGuacamole}
-                    sessionProgress={sessionProgress} fullscreenEnabled={fullscreenMode}
+                    sessionProgress={sessionProgress} liveTitles={liveTitles} fullscreenEnabled={fullscreenMode}
                     onFullscreenToggle={toggleFullscreenMode}
                     openNotes={openNotes} renameSession={renameSession}
                     hibernateSession={hibernateSession} duplicateSession={duplicateSession} />

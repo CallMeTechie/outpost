@@ -28,7 +28,12 @@ const ANSI_ESCAPE_REGEX = /\x1b(?:\[[0-9;?]*[a-zA-Z]|\][^\x07\x1b]*(?:\x07|\x1b\
 const CONTROL_CHAR_REGEX = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g;
 const MODIFIER_KEYS = ["Shift", "Control", "Alt", "Meta", "AltGraph", "CapsLock"];
 
-const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getSessionError, registerTerminalRef, broadcastMode, terminalRefs, updateProgress, layoutMode, onBroadcastToggle, onFullscreenToggle, isShared = false, onOpenSftp }) => {
+// Floor between two title writes: fast enough that the tooltip feels live, slow enough that a
+// remote host flooding OSC 0/2 sequences (e.g. `while true; do printf '\033]0;x\007'; done`)
+// cannot force a React render per escape sequence.
+const TITLE_UPDATE_THROTTLE_MS = 100;
+
+const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getSessionError, registerTerminalRef, broadcastMode, terminalRefs, updateProgress, updateTitle, layoutMode, onBroadcastToggle, onFullscreenToggle, isShared = false, onOpenSftp }) => {
     const ref = useRef(null);
     const termRef = useRef(null);
     const wsRef = useRef(null);
@@ -507,6 +512,34 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
 
         const cursorSyncDisposable = term.onCursorMove(syncCursorAnchor);
 
+        // Leading write immediately, then at most one trailing write per throttle window - never
+        // a write per event. `lastWrittenTitle` also dedupes a title that keeps re-arriving
+        // unchanged (the exact `printf` loop this guards against), independent of the timer.
+        let lastWrittenTitle = null;
+        let pendingTitle = null;
+        let titleThrottleTimer = null;
+
+        const writeTitle = (title) => {
+            lastWrittenTitle = title;
+            updateTitle(session.id, title);
+        };
+
+        const titleDisposable = term.onTitleChange((title) => {
+            if (!updateTitle || title === lastWrittenTitle) return;
+
+            if (titleThrottleTimer) {
+                pendingTitle = title;
+                return;
+            }
+
+            writeTitle(title);
+            titleThrottleTimer = setTimeout(() => {
+                titleThrottleTimer = null;
+                if (pendingTitle !== null && pendingTitle !== lastWrittenTitle) writeTitle(pendingTitle);
+                pendingTitle = null;
+            }, TITLE_UPDATE_THROTTLE_MS);
+        });
+
         const trackPasswordPrompt = (data) => {
             if (isShared || !passwordDetectionRef.current || passwordIdentitiesRef.current.length === 0) return;
 
@@ -770,6 +803,8 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
                 ws.close();
             }
             cursorSyncDisposable.dispose();
+            titleDisposable.dispose();
+            if (titleThrottleTimer) clearTimeout(titleThrottleTimer);
             selectionDisposable.dispose();
             term.dispose();
             clearInterval(interval);

@@ -32,6 +32,7 @@ const DraggableTab = ({
     progress = 0,
     paneColorSessions,
     identity,
+    liveTitle,
 }) => {
     const contextMenu = useContextMenu();
     const { popOutSession } = useActiveSessions();
@@ -62,7 +63,10 @@ const DraggableTab = ({
     // here, one field per line, into the native `title` attribute rather than the Tooltip
     // component: many tabs sit side by side, and a Tooltip instance per tab would bring its own
     // hover tracking for content that is plain text and needs none of that.
-    const tabLabel = buildTabLabel(session, identity, t);
+    // liveTitle is mixed in here rather than carried on `session` itself - it lives in
+    // ViewContainer's own state, keyed by session id, precisely so it never becomes part of the
+    // session objects that drive tab numbering (see tabLabel.js and task-7-brief.md).
+    const tabLabel = buildTabLabel({ ...session, liveTitle }, identity, t);
     const tabTooltip = tabLabel.tooltip.map(({ key, value }) => `${t(key)}: ${value}`).join("\n");
     // What the rename dialog prefills with, and what it shows as a fallback hint - deliberately
     // not tabLabel.text: that carries the type suffix and the group number baked in, so
@@ -282,6 +286,7 @@ export const ServerTabs = ({
     onKeyboardShortcut,
     hasGuacamole,
     sessionProgress = {},
+    liveTitles = {},
     fullscreenEnabled,
     onFullscreenToggle,
     tabIdentities = {},
@@ -429,7 +434,8 @@ export const ServerTabs = ({
                                 openNotes={openNotes} renameSession={renameSession}
                                 progress={sessionProgress[session.id] || 0}
                                 paneColorSessions={paneColorSessions}
-                                identity={tabIdentities[session.id]} />
+                                identity={tabIdentities[session.id]}
+                                liveTitle={liveTitles[session.id]} />
                         );
                     })}
                 </div>
