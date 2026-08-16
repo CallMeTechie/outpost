@@ -18,6 +18,15 @@ import { paneColorFor } from "./utils/paneColors.js";
 const BTN_SIZE = 44;
 const BTN_STORAGE_KEY = "fullscreen-btn-position";
 
+// Mirrors tabLabel.js's own LIVE_TITLE_MAX_LENGTH (kept as a separate constant rather than an
+// import - tabLabel.js is a pure module maintained outside this task). That module sanitizes and
+// truncates for *display*, at render time, but nothing bounds how many raw characters a remote
+// host can push in before that: xterm.js places no cap on an OSC 0/2 title payload, so without a
+// limit here, a host the user doesn't control decides how much memory sits in `liveTitles`
+// (unbounded, one entry per session, never pruned). Truncating here closes that door at the point
+// the value enters state; sanitizing stays solely tabLabel.js's job.
+const LIVE_TITLE_MAX_LENGTH = 80;
+
 const getMinY = () => getTitleBarHeight() + 16;
 const clampPosition = (x, y) => ({
     x: Math.max(0, Math.min(window.innerWidth - BTN_SIZE, x)),
@@ -60,7 +69,10 @@ export const ViewContainer = ({
     // Keyed by session id, exactly like sessionProgress above: the tab strip needs the live
     // terminal title, but it must not join the session objects Servers.jsx builds - those feed
     // identitySignature, and a value that can change many times a second would drag the tab
-    // numbering recompute along with it (see task-7-brief.md).
+    // numbering recompute along with it (see task-7-brief.md). Unlike sessionProgress's bounded
+    // number, each entry here is a string a remote host chose the content of - updateLiveTitle
+    // below caps its length, so an entry that outlives its session (this map is never pruned,
+    // same as sessionProgress) stays a small leak rather than an unbounded one.
     const [liveTitles, setLiveTitles] = useState({});
     const [fullscreenMode, setFullscreenMode] = useState(false);
     const [titleBarTabsSlot, setTitleBarTabsSlot] = useState(null);
@@ -135,9 +147,10 @@ export const ViewContainer = ({
     }, []);
 
     const updateLiveTitle = useCallback((sessionId, title) => {
+        const bounded = title.length > LIVE_TITLE_MAX_LENGTH ? title.slice(0, LIVE_TITLE_MAX_LENGTH) : title;
         setLiveTitles(prev => ({
             ...prev,
-            [sessionId]: title,
+            [sessionId]: bounded,
         }));
     }, []);
 

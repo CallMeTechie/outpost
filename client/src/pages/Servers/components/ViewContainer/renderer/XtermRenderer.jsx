@@ -515,13 +515,30 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
         // Leading write immediately, then at most one trailing write per throttle window - never
         // a write per event. `lastWrittenTitle` also dedupes a title that keeps re-arriving
         // unchanged (the exact `printf` loop this guards against), independent of the timer.
+        //
+        // The cadence is anchored to `lastWriteTime`, not to whether a timer object currently
+        // exists: a trailing write that just fired clears `titleThrottleTimer` back to null, and
+        // if the next differing title happened to land right after, checking "is a timer
+        // pending" alone would misread that as a fresh leading edge - an immediate write plus a
+        // brand new window, instead of picking up where the running cadence left off. Comparing
+        // against the real elapsed time since the last write keeps every window exactly
+        // TITLE_UPDATE_THROTTLE_MS long regardless of when in the window the timer happened to
+        // fire.
         let lastWrittenTitle = null;
+        let lastWriteTime = -Infinity;
         let pendingTitle = null;
         let titleThrottleTimer = null;
 
         const writeTitle = (title) => {
             lastWrittenTitle = title;
+            lastWriteTime = Date.now();
             updateTitle(session.id, title);
+        };
+
+        const flushPendingTitle = () => {
+            titleThrottleTimer = null;
+            if (pendingTitle !== null && pendingTitle !== lastWrittenTitle) writeTitle(pendingTitle);
+            pendingTitle = null;
         };
 
         const titleDisposable = term.onTitleChange((title) => {
@@ -532,12 +549,13 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
                 return;
             }
 
-            writeTitle(title);
-            titleThrottleTimer = setTimeout(() => {
-                titleThrottleTimer = null;
-                if (pendingTitle !== null && pendingTitle !== lastWrittenTitle) writeTitle(pendingTitle);
-                pendingTitle = null;
-            }, TITLE_UPDATE_THROTTLE_MS);
+            const elapsed = Date.now() - lastWriteTime;
+            if (elapsed >= TITLE_UPDATE_THROTTLE_MS) {
+                writeTitle(title);
+            } else {
+                pendingTitle = title;
+                titleThrottleTimer = setTimeout(flushPendingTitle, TITLE_UPDATE_THROTTLE_MS - elapsed);
+            }
         });
 
         const trackPasswordPrompt = (data) => {
