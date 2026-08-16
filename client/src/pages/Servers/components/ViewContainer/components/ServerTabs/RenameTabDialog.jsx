@@ -17,7 +17,13 @@ import "./RenameTabDialog.sass";
 // Validation deliberately stays out of this component: normalizeTabName (tabIdentity.js) already
 // owns trimming, control/bidi stripping and the length cap, under test. Duplicating any of that
 // here would just be a second, untested copy of the same rule.
-const RenameTabDialog = ({ open, initialValue, onSubmit, onClose }) => {
+//
+// `initialValue` is expected to be the bare custom name (or "" when there is none) - never the
+// composed tab text, which carries a type suffix and a group number that would otherwise get
+// stored as if they were part of the name. `automaticText` fills the placeholder instead of a
+// generic hint, so an empty field visibly shows what "automatic" resolves to right now, making
+// the reset rule something the user sees rather than only reads about below.
+const RenameTabDialog = ({ open, initialValue, automaticText, onSubmit, onClose }) => {
     const { t } = useTranslation();
     const [value, setValue] = useState("");
     // Tracks the open/closed state we've already seeded `value` for. Adjusting state during
@@ -54,7 +60,7 @@ const RenameTabDialog = ({ open, initialValue, onSubmit, onClose }) => {
                         icon={mdiRenameBox}
                         value={value}
                         setValue={setValue}
-                        placeholder={t("servers.tabs.renameDialog.placeholder")}
+                        placeholder={automaticText || t("servers.tabs.renameDialog.placeholder")}
                         onKeyDown={handleKeyDown}
                         autoFocus
                     />

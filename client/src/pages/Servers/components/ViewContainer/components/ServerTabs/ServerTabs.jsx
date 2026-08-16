@@ -64,6 +64,14 @@ const DraggableTab = ({
     // hover tracking for content that is plain text and needs none of that.
     const tabLabel = buildTabLabel(session, identity, t);
     const tabTooltip = tabLabel.tooltip.map(({ key, value }) => `${t(key)}: ${value}`).join("\n");
+    // What the rename dialog prefills with, and what it shows as a fallback hint - deliberately
+    // not tabLabel.text: that carries the type suffix and the group number baked in, so
+    // confirming it unedited would store them as if they were part of the name and, for the
+    // type suffix specifically, double it again on the very next render (buildTabLabel always
+    // appends the suffix to a custom name too). Passing {} recomputes the automatic text alone,
+    // the same way buildTabLabel does for a session with no identity at all - no number, no
+    // custom name to fold in.
+    const automaticLabel = buildTabLabel(session, {}, t).text;
 
     const handleShare = useCallback(async (writable) => {
         const result = await postRequest(`connections/${session.id}/share`, { writable });
@@ -245,7 +253,8 @@ const DraggableTab = ({
             </ContextMenu>
             <RenameTabDialog
                 open={renameDialogOpen}
-                initialValue={tabLabel.text}
+                initialValue={identity?.name || ""}
+                automaticText={automaticLabel}
                 onSubmit={handleRenameSubmit}
                 onClose={handleRenameClose}
             />

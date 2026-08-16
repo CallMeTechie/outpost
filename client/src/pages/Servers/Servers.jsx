@@ -346,8 +346,15 @@ export const Servers = () => {
         // way from out here to tell whether it actually landed. Without this check the rename
         // would still look like it worked for the rest of this session and then silently
         // revert on the next reload, with nothing to explain why.
-        const persistedName = getStoredTabIdentities()[sessionId]?.name;
-        if (persistedName !== name) {
+        //
+        // Compared on `usedAt`, not `name`: `name` breaks down for exactly the reset-to-automatic
+        // case, where the intended value is `undefined` - a storage read that failed outright
+        // also reports `undefined` (getStoredTabIdentities' own catch-all returns `{}`), so the
+        // two would be indistinguishable. `usedAt` is a fresh Date.now() set above on every call
+        // and can only read back equal if that exact write actually reached storage, so it stays
+        // a reliable signal for every value `name` can take, reset included.
+        const persisted = getStoredTabIdentities()[sessionId];
+        if (persisted?.usedAt !== entry.usedAt) {
             sendToast("Error", t("servers.tabs.renameDialog.saveFailed"));
         }
 
