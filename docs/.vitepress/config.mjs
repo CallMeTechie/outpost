@@ -40,7 +40,7 @@ export default defineConfig({
         ["meta", { property: "og:image:type", content: "image/png" }],
         ["meta", { property: "twitter:card", content: "summary_large_image" }],
         ["meta", { property: "twitter:image:src", content: "/thumbnail.png" }],
-        ["meta", { property: "og:url", content: "https://docs.outpost.dev" }],
+        ["meta", { property: "og:url", content: "https://docs.nexterm.dev" }],
     ],
     themeConfig: {
 
