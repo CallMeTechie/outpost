@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Icon from "@mdi/react";
 import { mdiArrowLeft, mdiViewSplitVertical, mdiPencil, mdiTrashCan, mdiCheck, mdiClose } from "@mdi/js";
@@ -46,22 +46,8 @@ const TmuxWindowView = ({ session, entryId, identityId, onBack, onConnect,
     const [pendingKill, setPendingKill] = useState(null);   // { id, text, soft }
     const [newName, setNewName] = useState("");
 
-    // The view stays mounted across a session switch when the user opens a
-    // different session in the dialog. Half-typed names and open confirmations
-    // no longer belong to it at that point.
-    useEffect(() => {
-        setRenaming(null);
-        setPendingKill(null);
-        setNewName("");
-    }, [session.name, entryId]);
-
     const query = (param, value) =>
         `?${identityId ? `identityId=${identityId}&` : ""}${param}=${encodeURIComponent(value)}`;
-
-    // Against stale responses after a host switch, the same pattern as in the
-    // picker applies:
-    const entryIdRef = useRef(entryId);
-    useEffect(() => { entryIdRef.current = entryId; }, [entryId]);
 
     /**
      * Two confirmation rules, the first takes precedence: closing the last
@@ -97,10 +83,8 @@ const TmuxWindowView = ({ session, entryId, identityId, onBack, onConnect,
         setPendingKill(null);
         setBusy(win.id);
 
-        const requestEntryId = entryId;
         try {
             const result = await deleteRequest(`/entries/${entryId}/tmux/windows${query("window", win.id)}`);
-            if (entryIdRef.current !== requestEntryId) return;
             // The refresh may have failed, the action still went through.
             // Update the row locally, otherwise the user clicks a second
             // time and hits nothing.
@@ -114,7 +98,6 @@ const TmuxWindowView = ({ session, entryId, identityId, onBack, onConnect,
             if (wasLast && (!refreshed || !(result.sessions || []).some((s) => s.name === session.name)))
                 onLastWindowClosed(session.name);
         } catch (error) {
-            if (entryIdRef.current !== requestEntryId) return;
             onFailure(error);
         } finally {
             setBusy((prev) => (prev === win.id ? null : prev));
@@ -127,15 +110,12 @@ const TmuxWindowView = ({ session, entryId, identityId, onBack, onConnect,
         if (nextName === win.name) { setRenaming(null); return; }
 
         setBusy(win.id);
-        const requestEntryId = entryId;
         try {
             const result = await patchRequest(
                 `/entries/${entryId}/tmux/windows${query("window", win.id)}`, { name: nextName });
-            if (entryIdRef.current !== requestEntryId) return;
             setRenaming(null);
             if (!onResult(result)) onLocalRename(win.id, nextName);
         } catch (error) {
-            if (entryIdRef.current !== requestEntryId) return;
             onFailure(error);
         } finally {
             setBusy((prev) => (prev === win.id ? null : prev));
@@ -148,14 +128,12 @@ const TmuxWindowView = ({ session, entryId, identityId, onBack, onConnect,
         if (wanted.length > 0 && !WINDOW_NAME_PATTERN.test(wanted)) return;
 
         setBusy(CREATE_BUSY);
-        const requestEntryId = entryId;
         try {
             // An empty field means "no name": the server then leaves -n out
             // entirely and tmux assigns its default name.
             const body = wanted.length > 0 ? { name: wanted } : {};
             const result = await postRequest(
                 `/entries/${entryId}/tmux/windows${query("session", session.name)}`, body);
-            if (entryIdRef.current !== requestEntryId) return;
             setNewName("");
             // Unlike kill/rename there is no local follow-up here if the refresh
             // failed: the response carries no id for the new window, so there is
@@ -163,7 +141,6 @@ const TmuxWindowView = ({ session, entryId, identityId, onBack, onConnect,
             // the refreshFailed notice for that case (see applyResult).
             onResult(result);
         } catch (error) {
-            if (entryIdRef.current !== requestEntryId) return;
             onFailure(error);
         } finally {
             setBusy((prev) => (prev === CREATE_BUSY ? null : prev));

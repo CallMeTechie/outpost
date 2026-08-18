@@ -42,6 +42,15 @@ export const Servers = () => {
     const [sshConfigImportDialogOpen, setSSHConfigImportDialogOpen] = useState(false);
     const [connectionReasonDialogOpen, setConnectionReasonDialogOpen] = useState(false);
     const [tmuxDialogOpen, setTmuxDialogOpen] = useState(false);
+    // Bumped on every open so the dialog remounts with fresh state. Without it
+    // the component stays mounted while merely hidden, and a lock or an open
+    // window view survives into the next host - the cause behind three separate
+    // bugs in the window management work.
+    //
+    // This only works as long as openTmuxDialog below stays the ONLY way in.
+    // Nothing enforces that; a future setTmuxDialogOpen(true) elsewhere would
+    // silently reintroduce all three bugs.
+    const [tmuxDialogKey, setTmuxDialogKey] = useState(0);
     const [pendingTmuxConnection, setPendingTmuxConnection] = useState(null);
     const [directConnectDialogOpen, setDirectConnectDialogOpen] = useState(false);
     const [directConnectServer, setDirectConnectServer] = useState(null);
@@ -529,8 +538,7 @@ export const Servers = () => {
         }
 
         if (shouldOfferTmux(options)) {
-            setPendingTmuxConnection({ ...options, connectionReason: null });
-            setTmuxDialogOpen(true);
+            openTmuxDialog({ ...options, connectionReason: null });
             return;
         }
 
@@ -570,10 +578,9 @@ export const Servers = () => {
     const handleConnectionReasonProvided = (reason) => {
         if (pendingConnection) {
             if (shouldOfferTmux(pendingConnection)) {
-                setPendingTmuxConnection({ ...pendingConnection, connectionReason: reason });
+                openTmuxDialog({ ...pendingConnection, connectionReason: reason });
                 setPendingConnection(null);
                 setConnectionReasonDialogOpen(false);
-                setTmuxDialogOpen(true);
                 return;
             }
 
@@ -594,6 +601,16 @@ export const Servers = () => {
     const handleConnectionReasonCanceled = () => {
         setPendingConnection(null);
         setConnectionReasonDialogOpen(false);
+    };
+
+    /**
+     * The only way in. Bumping the key here rather than at each call site means
+     * a future third entry point cannot forget it.
+     */
+    const openTmuxDialog = (pending) => {
+        setPendingTmuxConnection(pending);
+        setTmuxDialogKey((key) => key + 1);
+        setTmuxDialogOpen(true);
     };
 
     const finishTmuxConnection = (tmux) => {
@@ -877,6 +894,7 @@ export const Servers = () => {
                 serverName={pendingConnection?.server?.name || "Unknown Server"}
             />
             <TmuxSessionDialog
+                key={tmuxDialogKey}
                 isOpen={tmuxDialogOpen}
                 onClose={handleTmuxCanceled}
                 onSelect={handleTmuxSelected}
