@@ -4,7 +4,7 @@
 #include "log.h"
 #include "session.h"
 
-extern nexterm_session_manager_t g_session_manager;
+extern outpost_session_manager_t g_session_manager;
 
 #include <errno.h>
 #include <poll.h>
@@ -30,13 +30,13 @@ extern nexterm_session_manager_t g_session_manager;
 #define TELOPT_NAWS   31
 
 typedef struct {
-    nexterm_session_t* session;
-    nexterm_control_plane_t* cp;
+    outpost_session_t* session;
+    outpost_control_plane_t* cp;
 } telnet_thread_args_t;
 
 static int telnet_send_cmd(int fd, uint8_t cmd, uint8_t option) {
     uint8_t buf[3] = { IAC, cmd, option };
-    return nexterm_write_exact(fd, buf, 3);
+    return outpost_write_exact(fd, buf, 3);
 }
 
 static int telnet_send_naws(int fd, uint16_t cols, uint16_t rows) {
@@ -46,7 +46,7 @@ static int telnet_send_naws(int fd, uint16_t cols, uint16_t rows) {
         (rows >> 8) & 0xFF, rows & 0xFF,
         IAC, SE
     };
-    return nexterm_write_exact(fd, buf, 9);
+    return outpost_write_exact(fd, buf, 9);
 }
 
 static int telnet_send_ttype(int fd) {
@@ -55,7 +55,7 @@ static int telnet_send_ttype(int fd) {
     memcpy(buf + 4, term, sizeof(term) - 1);
     buf[4 + sizeof(term) - 1] = IAC;
     buf[5 + sizeof(term) - 1] = SE;
-    return nexterm_write_exact(fd, buf, sizeof(buf));
+    return outpost_write_exact(fd, buf, sizeof(buf));
 }
 
 static void handle_do(int fd, uint8_t opt) {
@@ -127,12 +127,12 @@ static int telnet_process_and_forward(int telnet_fd, int data_fd,
     }
 
     if (out_pos > 0)
-        return nexterm_write_exact(data_fd, out, out_pos);
+        return outpost_write_exact(data_fd, out, out_pos);
 
     return 0;
 }
 
-static void telnet_apply_pending_resize(nexterm_session_t* session, int telnet_fd) {
+static void telnet_apply_pending_resize(outpost_session_t* session, int telnet_fd) {
     if (!session->resize_pending) return;
     uint16_t cols = session->pending_cols;
     uint16_t rows = session->pending_rows;
@@ -144,7 +144,7 @@ static void telnet_apply_pending_resize(nexterm_session_t* session, int telnet_f
         LOG_DEBUG("Telnet session %s: resized to %ux%u", session->session_id, cols, rows);
 }
 
-static bool telnet_bridge_poll(nexterm_session_t* session, int data_fd, int telnet_fd) {
+static bool telnet_bridge_poll(outpost_session_t* session, int data_fd, int telnet_fd) {
     uint8_t buf[TELNET_BUF_SIZE];
     struct pollfd fds[2] = {
         { .fd = data_fd,   .events = POLLIN },
@@ -162,7 +162,7 @@ static bool telnet_bridge_poll(nexterm_session_t* session, int data_fd, int teln
     if (fds[0].revents & POLLIN) {
         ssize_t n = read(data_fd, buf, sizeof(buf));
         if (n <= 0) return false;
-        if (nexterm_write_exact(telnet_fd, buf, (size_t)n) != 0) return false;
+        if (outpost_write_exact(telnet_fd, buf, (size_t)n) != 0) return false;
     }
 
     if (fds[1].revents & POLLIN) {
@@ -182,8 +182,8 @@ static bool telnet_bridge_poll(nexterm_session_t* session, int data_fd, int teln
 
 static void* telnet_session_thread(void* arg) {
     telnet_thread_args_t* args = (telnet_thread_args_t*)arg;
-    nexterm_session_t* session = args->session;
-    nexterm_control_plane_t* cp = args->cp;
+    outpost_session_t* session = args->session;
+    outpost_control_plane_t* cp = args->cp;
     int data_fd = -1;
     int telnet_fd = -1;
 
@@ -192,23 +192,23 @@ static void* telnet_session_thread(void* arg) {
     LOG_INFO("Telnet session %s: connecting to %s:%u",
              session->session_id, session->host, session->port);
 
-    data_fd = nexterm_cp_open_data_connection(cp, session->session_id);
+    data_fd = outpost_cp_open_data_connection(cp, session->session_id);
     if (data_fd < 0) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to open data connection", NULL);
         goto cleanup;
     }
 
-    telnet_fd = nexterm_tcp_connect(session->host, session->port);
+    telnet_fd = outpost_tcp_connect(session->host, session->port);
     if (telnet_fd < 0) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to connect to telnet host", NULL);
         goto cleanup;
     }
 
     session->telnet_sock = telnet_fd;
     session->state = SESSION_STATE_ACTIVE;
-    nexterm_cp_send_session_result(cp, session->session_id, true, NULL, NULL);
+    outpost_cp_send_session_result(cp, session->session_id, true, NULL, NULL);
 
     LOG_INFO("Telnet session %s active (target=%s:%u)",
              session->session_id, session->host, session->port);
@@ -228,15 +228,15 @@ cleanup:
 
     char sid[MAX_SESSION_ID_LEN];
     snprintf(sid, sizeof(sid), "%s", session->session_id);
-    nexterm_cp_send_session_closed(cp, sid, "session ended");
-    nexterm_sm_finish(&g_session_manager, sid);
+    outpost_cp_send_session_closed(cp, sid, "session ended");
+    outpost_sm_finish(&g_session_manager, sid);
 
     free(args);
     return NULL;
 }
 
-int nexterm_telnet_start(nexterm_session_t* session,
-                         nexterm_control_plane_t* cp) {
+int outpost_telnet_start(outpost_session_t* session,
+                         outpost_control_plane_t* cp) {
     telnet_thread_args_t* args = calloc(1, sizeof(telnet_thread_args_t));
     if (!args) return -1;
 
@@ -255,7 +255,7 @@ int nexterm_telnet_start(nexterm_session_t* session,
     return 0;
 }
 
-void nexterm_telnet_resize(nexterm_session_t* session,
+void outpost_telnet_resize(outpost_session_t* session,
                            uint16_t cols, uint16_t rows) {
-    nexterm_sm_request_resize(&g_session_manager, session->session_id, cols, rows);
+    outpost_sm_request_resize(&g_session_manager, session->session_id, cols, rows);
 }

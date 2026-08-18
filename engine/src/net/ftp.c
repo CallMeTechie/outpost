@@ -9,7 +9,7 @@
 #include "log.h"
 #include "thumbnail.h"
 
-extern nexterm_session_manager_t g_session_manager;
+extern outpost_session_manager_t g_session_manager;
 
 #include <curl/curl.h>
 
@@ -50,8 +50,8 @@ typedef struct {
 } ftp_conn_t;
 
 typedef struct {
-    nexterm_session_t* session;
-    nexterm_control_plane_t* cp;
+    outpost_session_t* session;
+    outpost_control_plane_t* cp;
 } ftp_thread_args_t;
 
 typedef struct {
@@ -93,8 +93,8 @@ static size_t ftp_buf_write_cb(void* contents, size_t size, size_t nmemb, void* 
     return ftp_buf_append((ftp_buf_t*)userp, (const char*)contents, total) ? total : 0;
 }
 
-bool nexterm_ftp_is_ftp_session(const nexterm_session_t* session) {
-    const char* protocol = nexterm_session_get_param(session, "protocol");
+bool outpost_ftp_is_ftp_session(const outpost_session_t* session) {
+    const char* protocol = outpost_session_get_param(session, "protocol");
     return protocol && (strcmp(protocol, "ftp") == 0 ||
                         strcmp(protocol, "ftps") == 0);
 }
@@ -904,7 +904,7 @@ static void handle_thumbnail(ftp_conn_t* c, int fd, uint32_t rid, const char* pa
     uint8_t* jpeg = NULL;
     size_t jpeg_len = 0;
     int ow = 0, oh = 0;
-    if (nexterm_make_thumbnail((const uint8_t*)buf.data, buf.len, (int)size,
+    if (outpost_make_thumbnail((const uint8_t*)buf.data, buf.len, (int)size,
                                &jpeg, &jpeg_len, &ow, &oh) != 0) {
         fp_send_error(fd, rid, "Failed to generate thumbnail", -1);
         ftp_buf_free(&buf);
@@ -1137,49 +1137,49 @@ static void handle_write_end(ftp_upload_t* up, int fd) {
         fp_send_ok(fd, rid);
 }
 
-static const char* extract_path_req(Nexterm_SftpProtocol_SftpMessage_table_t msg) {
-    Nexterm_SftpProtocol_PathReq_table_t req = Nexterm_SftpProtocol_SftpMessage_path_req(msg);
-    return req ? Nexterm_SftpProtocol_PathReq_path(req) : NULL;
+static const char* extract_path_req(Outpost_SftpProtocol_SftpMessage_table_t msg) {
+    Outpost_SftpProtocol_PathReq_table_t req = Outpost_SftpProtocol_SftpMessage_path_req(msg);
+    return req ? Outpost_SftpProtocol_PathReq_path(req) : NULL;
 }
 
-static void dispatch_path_op(Nexterm_SftpProtocol_SftpMsgType_enum_t mt,
+static void dispatch_path_op(Outpost_SftpProtocol_SftpMsgType_enum_t mt,
                              ftp_conn_t* c, int data_fd, uint32_t rid,
-                             Nexterm_SftpProtocol_SftpMessage_table_t msg) {
+                             Outpost_SftpProtocol_SftpMessage_table_t msg) {
     const char* path = extract_path_req(msg);
     if (!path) { fp_send_error(data_fd, rid, "Missing path", -1); return; }
 
     switch (mt) {
-        case Nexterm_SftpProtocol_SftpMsgType_ListDir:
+        case Outpost_SftpProtocol_SftpMsgType_ListDir:
             handle_list_dir(c, data_fd, rid, path); return;
-        case Nexterm_SftpProtocol_SftpMsgType_Stat:
+        case Outpost_SftpProtocol_SftpMsgType_Stat:
             handle_stat(c, data_fd, rid, path); return;
-        case Nexterm_SftpProtocol_SftpMsgType_Mkdir:
+        case Outpost_SftpProtocol_SftpMsgType_Mkdir:
             handle_simple_command(c, data_fd, rid, "MKD", path); return;
-        case Nexterm_SftpProtocol_SftpMsgType_Unlink:
+        case Outpost_SftpProtocol_SftpMsgType_Unlink:
             handle_simple_command(c, data_fd, rid, "DELE", path); return;
-        case Nexterm_SftpProtocol_SftpMsgType_Realpath:
+        case Outpost_SftpProtocol_SftpMsgType_Realpath:
             handle_realpath(c, data_fd, rid, path); return;
-        case Nexterm_SftpProtocol_SftpMsgType_ReadFile:
+        case Outpost_SftpProtocol_SftpMsgType_ReadFile:
             handle_read_file(c, data_fd, rid, path); return;
         default: return;
     }
 }
 
-static void dispatch_write_op(Nexterm_SftpProtocol_SftpMsgType_enum_t mt,
+static void dispatch_write_op(Outpost_SftpProtocol_SftpMsgType_enum_t mt,
                               ftp_conn_t* c, int data_fd, uint32_t rid,
-                              Nexterm_SftpProtocol_SftpMessage_table_t msg,
+                              Outpost_SftpProtocol_SftpMessage_table_t msg,
                               ftp_upload_t** upload) {
-    if (mt == Nexterm_SftpProtocol_SftpMsgType_WriteData) {
+    if (mt == Outpost_SftpProtocol_SftpMsgType_WriteData) {
         if (!*upload) {
             fp_send_error(data_fd, rid, "No write in progress", -1);
             return;
         }
 
-        Nexterm_SftpProtocol_WriteDataReq_table_t req =
-            Nexterm_SftpProtocol_SftpMessage_write_data_req(msg);
+        Outpost_SftpProtocol_WriteDataReq_table_t req =
+            Outpost_SftpProtocol_SftpMessage_write_data_req(msg);
         if (!req) return;
 
-        flatbuffers_uint8_vec_t data = Nexterm_SftpProtocol_WriteDataReq_data(req);
+        flatbuffers_uint8_vec_t data = Outpost_SftpProtocol_WriteDataReq_data(req);
         size_t dlen = flatbuffers_uint8_vec_len(data);
         if (dlen == 0) return;
 
@@ -1187,7 +1187,7 @@ static void dispatch_write_op(Nexterm_SftpProtocol_SftpMsgType_enum_t mt,
         return;
     }
 
-    if (mt == Nexterm_SftpProtocol_SftpMsgType_WriteEnd) {
+    if (mt == Outpost_SftpProtocol_SftpMsgType_WriteEnd) {
         if (*upload) {
             handle_write_end(*upload, data_fd);
             free(*upload);
@@ -1202,96 +1202,96 @@ static void dispatch_write_op(Nexterm_SftpProtocol_SftpMsgType_enum_t mt,
         *upload = NULL;
     }
 
-    Nexterm_SftpProtocol_WriteBeginReq_table_t req =
-        Nexterm_SftpProtocol_SftpMessage_write_begin_req(msg);
-    const char* path = req ? Nexterm_SftpProtocol_WriteBeginReq_path(req) : NULL;
+    Outpost_SftpProtocol_WriteBeginReq_table_t req =
+        Outpost_SftpProtocol_SftpMessage_write_begin_req(msg);
+    const char* path = req ? Outpost_SftpProtocol_WriteBeginReq_path(req) : NULL;
     if (!path) { fp_send_error(data_fd, rid, "Missing path", -1); return; }
 
     *upload = handle_write_begin(c, data_fd, rid, path);
 }
 
 static void dispatch_rmdir(ftp_conn_t* c, int data_fd, uint32_t rid,
-                           Nexterm_SftpProtocol_SftpMessage_table_t msg) {
-    Nexterm_SftpProtocol_RmdirReq_table_t req = Nexterm_SftpProtocol_SftpMessage_rmdir_req(msg);
-    const char* path = req ? Nexterm_SftpProtocol_RmdirReq_path(req) : NULL;
-    bool rec = req ? Nexterm_SftpProtocol_RmdirReq_recursive(req) : false;
+                           Outpost_SftpProtocol_SftpMessage_table_t msg) {
+    Outpost_SftpProtocol_RmdirReq_table_t req = Outpost_SftpProtocol_SftpMessage_rmdir_req(msg);
+    const char* path = req ? Outpost_SftpProtocol_RmdirReq_path(req) : NULL;
+    bool rec = req ? Outpost_SftpProtocol_RmdirReq_recursive(req) : false;
     if (!path) { fp_send_error(data_fd, rid, "Missing path", -1); return; }
     handle_rmdir(c, data_fd, rid, path, rec);
 }
 
 static void dispatch_rename(ftp_conn_t* c, int data_fd, uint32_t rid,
-                            Nexterm_SftpProtocol_SftpMessage_table_t msg) {
-    Nexterm_SftpProtocol_RenameReq_table_t req = Nexterm_SftpProtocol_SftpMessage_rename_req(msg);
-    const char* old_path = req ? Nexterm_SftpProtocol_RenameReq_old_path(req) : NULL;
-    const char* new_path = req ? Nexterm_SftpProtocol_RenameReq_new_path(req) : NULL;
+                            Outpost_SftpProtocol_SftpMessage_table_t msg) {
+    Outpost_SftpProtocol_RenameReq_table_t req = Outpost_SftpProtocol_SftpMessage_rename_req(msg);
+    const char* old_path = req ? Outpost_SftpProtocol_RenameReq_old_path(req) : NULL;
+    const char* new_path = req ? Outpost_SftpProtocol_RenameReq_new_path(req) : NULL;
     if (!old_path || !new_path) { fp_send_error(data_fd, rid, "Missing paths", -1); return; }
     handle_rename(c, data_fd, rid, old_path, new_path);
 }
 
 static void dispatch_chmod(ftp_conn_t* c, int data_fd, uint32_t rid,
-                           Nexterm_SftpProtocol_SftpMessage_table_t msg) {
-    Nexterm_SftpProtocol_ChmodReq_table_t req = Nexterm_SftpProtocol_SftpMessage_chmod_req(msg);
-    const char* path = req ? Nexterm_SftpProtocol_ChmodReq_path(req) : NULL;
-    uint32_t mode = req ? Nexterm_SftpProtocol_ChmodReq_mode(req) : 0;
+                           Outpost_SftpProtocol_SftpMessage_table_t msg) {
+    Outpost_SftpProtocol_ChmodReq_table_t req = Outpost_SftpProtocol_SftpMessage_chmod_req(msg);
+    const char* path = req ? Outpost_SftpProtocol_ChmodReq_path(req) : NULL;
+    uint32_t mode = req ? Outpost_SftpProtocol_ChmodReq_mode(req) : 0;
     if (!path) { fp_send_error(data_fd, rid, "Missing path", -1); return; }
     handle_chmod(c, data_fd, rid, path, mode);
 }
 
 static void dispatch_search(ftp_conn_t* c, int data_fd, uint32_t rid,
-                            Nexterm_SftpProtocol_SftpMessage_table_t msg) {
-    Nexterm_SftpProtocol_SearchReq_table_t req = Nexterm_SftpProtocol_SftpMessage_search_req(msg);
-    const char* sp = req ? Nexterm_SftpProtocol_SearchReq_search_path(req) : NULL;
-    uint32_t max = req ? Nexterm_SftpProtocol_SearchReq_max_results(req) : FP_SEARCH_MAX;
-    uint32_t timeout_ms = req ? Nexterm_SftpProtocol_SearchReq_timeout_ms(req) : 0;
+                            Outpost_SftpProtocol_SftpMessage_table_t msg) {
+    Outpost_SftpProtocol_SearchReq_table_t req = Outpost_SftpProtocol_SftpMessage_search_req(msg);
+    const char* sp = req ? Outpost_SftpProtocol_SearchReq_search_path(req) : NULL;
+    uint32_t max = req ? Outpost_SftpProtocol_SearchReq_max_results(req) : FP_SEARCH_MAX;
+    uint32_t timeout_ms = req ? Outpost_SftpProtocol_SearchReq_timeout_ms(req) : 0;
     if (!sp) { fp_send_error(data_fd, rid, "Missing search path", -1); return; }
     if (timeout_ms == 0) timeout_ms = 30000;
     handle_search_dirs(c, data_fd, rid, sp, max, timeout_ms);
 }
 
 static void dispatch_thumbnail(ftp_conn_t* c, int data_fd, uint32_t rid,
-                               Nexterm_SftpProtocol_SftpMessage_table_t msg) {
-    Nexterm_SftpProtocol_ThumbnailReq_table_t req = Nexterm_SftpProtocol_SftpMessage_thumbnail_req(msg);
-    const char* path = req ? Nexterm_SftpProtocol_ThumbnailReq_path(req) : NULL;
-    uint32_t size = req ? Nexterm_SftpProtocol_ThumbnailReq_size(req) : 100;
+                               Outpost_SftpProtocol_SftpMessage_table_t msg) {
+    Outpost_SftpProtocol_ThumbnailReq_table_t req = Outpost_SftpProtocol_SftpMessage_thumbnail_req(msg);
+    const char* path = req ? Outpost_SftpProtocol_ThumbnailReq_path(req) : NULL;
+    uint32_t size = req ? Outpost_SftpProtocol_ThumbnailReq_size(req) : 100;
     if (!path) { fp_send_error(data_fd, rid, "Missing path", -1); return; }
     handle_thumbnail(c, data_fd, rid, path, size);
 }
 
 static void ftp_dispatch_message(ftp_conn_t* c, int data_fd,
-                                 Nexterm_SftpProtocol_SftpMessage_table_t msg,
+                                 Outpost_SftpProtocol_SftpMessage_table_t msg,
                                  ftp_upload_t** upload) {
-    Nexterm_SftpProtocol_SftpMsgType_enum_t mt =
-        Nexterm_SftpProtocol_SftpMessage_msg_type(msg);
-    uint32_t rid = Nexterm_SftpProtocol_SftpMessage_request_id(msg);
+    Outpost_SftpProtocol_SftpMsgType_enum_t mt =
+        Outpost_SftpProtocol_SftpMessage_msg_type(msg);
+    uint32_t rid = Outpost_SftpProtocol_SftpMessage_request_id(msg);
 
     switch (mt) {
-        case Nexterm_SftpProtocol_SftpMsgType_ListDir:
-        case Nexterm_SftpProtocol_SftpMsgType_Stat:
-        case Nexterm_SftpProtocol_SftpMsgType_Mkdir:
-        case Nexterm_SftpProtocol_SftpMsgType_Unlink:
-        case Nexterm_SftpProtocol_SftpMsgType_Realpath:
-        case Nexterm_SftpProtocol_SftpMsgType_ReadFile:
+        case Outpost_SftpProtocol_SftpMsgType_ListDir:
+        case Outpost_SftpProtocol_SftpMsgType_Stat:
+        case Outpost_SftpProtocol_SftpMsgType_Mkdir:
+        case Outpost_SftpProtocol_SftpMsgType_Unlink:
+        case Outpost_SftpProtocol_SftpMsgType_Realpath:
+        case Outpost_SftpProtocol_SftpMsgType_ReadFile:
             dispatch_path_op(mt, c, data_fd, rid, msg);
             return;
 
-        case Nexterm_SftpProtocol_SftpMsgType_WriteBegin:
-        case Nexterm_SftpProtocol_SftpMsgType_WriteData:
-        case Nexterm_SftpProtocol_SftpMsgType_WriteEnd:
+        case Outpost_SftpProtocol_SftpMsgType_WriteBegin:
+        case Outpost_SftpProtocol_SftpMsgType_WriteData:
+        case Outpost_SftpProtocol_SftpMsgType_WriteEnd:
             dispatch_write_op(mt, c, data_fd, rid, msg, upload);
             return;
 
-        case Nexterm_SftpProtocol_SftpMsgType_Rmdir:
+        case Outpost_SftpProtocol_SftpMsgType_Rmdir:
             dispatch_rmdir(c, data_fd, rid, msg); return;
-        case Nexterm_SftpProtocol_SftpMsgType_Rename:
+        case Outpost_SftpProtocol_SftpMsgType_Rename:
             dispatch_rename(c, data_fd, rid, msg); return;
-        case Nexterm_SftpProtocol_SftpMsgType_Chmod:
+        case Outpost_SftpProtocol_SftpMsgType_Chmod:
             dispatch_chmod(c, data_fd, rid, msg); return;
-        case Nexterm_SftpProtocol_SftpMsgType_SearchDirs:
+        case Outpost_SftpProtocol_SftpMsgType_SearchDirs:
             dispatch_search(c, data_fd, rid, msg); return;
-        case Nexterm_SftpProtocol_SftpMsgType_Thumbnail:
+        case Outpost_SftpProtocol_SftpMsgType_Thumbnail:
             dispatch_thumbnail(c, data_fd, rid, msg); return;
 
-        case Nexterm_SftpProtocol_SftpMsgType_Exec:
+        case Outpost_SftpProtocol_SftpMsgType_Exec:
             fp_send_exec_result(data_fd, rid, "",
                                 "Command execution is not available over FTP", 127);
             return;
@@ -1303,7 +1303,7 @@ static void ftp_dispatch_message(ftp_conn_t* c, int data_fd,
     }
 }
 
-static void ftp_request_loop(nexterm_session_t* session, ftp_conn_t* c, int data_fd) {
+static void ftp_request_loop(outpost_session_t* session, ftp_conn_t* c, int data_fd) {
     ftp_upload_t* upload = NULL;
 
     while (session->state == SESSION_STATE_ACTIVE) {
@@ -1314,15 +1314,15 @@ static void ftp_request_loop(nexterm_session_t* session, ftp_conn_t* c, int data
         if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) break;
 
         uint32_t payload_len;
-        uint8_t* payload = nexterm_read_frame(data_fd, FP_MAX_FRAME, &payload_len);
+        uint8_t* payload = outpost_read_frame(data_fd, FP_MAX_FRAME, &payload_len);
         if (!payload) {
             LOG_DEBUG("FTP session %s: connection closed or read error",
                       session->session_id);
             break;
         }
 
-        Nexterm_SftpProtocol_SftpMessage_table_t msg =
-            Nexterm_SftpProtocol_SftpMessage_as_root(payload);
+        Outpost_SftpProtocol_SftpMessage_table_t msg =
+            Outpost_SftpProtocol_SftpMessage_as_root(payload);
         if (!msg) {
             LOG_WARN("FTP session %s: invalid FlatBuffers message", session->session_id);
             free(payload);
@@ -1339,8 +1339,8 @@ static void ftp_request_loop(nexterm_session_t* session, ftp_conn_t* c, int data
     }
 }
 
-static ftp_tls_mode_t ftp_resolve_tls_mode(const nexterm_session_t* session) {
-    const char* protocol = nexterm_session_get_param(session, "protocol");
+static ftp_tls_mode_t ftp_resolve_tls_mode(const outpost_session_t* session) {
+    const char* protocol = outpost_session_get_param(session, "protocol");
     if (!protocol) return FTP_TLS_NONE;
 
     if (strcmp(protocol, "ftps") == 0)
@@ -1358,16 +1358,16 @@ static const char* ftp_tls_label(ftp_tls_mode_t tls) {
 
 static void* ftp_session_thread(void* arg) {
     ftp_thread_args_t* args = (ftp_thread_args_t*)arg;
-    nexterm_session_t* session = args->session;
-    nexterm_control_plane_t* cp = args->cp;
+    outpost_session_t* session = args->session;
+    outpost_control_plane_t* cp = args->cp;
     int data_fd = -1;
     ftp_conn_t conn;
 
     memset(&conn, 0, sizeof(conn));
     session->state = SESSION_STATE_CONNECTING;
 
-    const char* username = nexterm_session_get_param(session, "username");
-    const char* password = nexterm_session_get_param(session, "password");
+    const char* username = outpost_session_get_param(session, "username");
+    const char* password = outpost_session_get_param(session, "password");
 
     conn.tls = ftp_resolve_tls_mode(session);
 
@@ -1386,16 +1386,16 @@ static void* ftp_session_thread(void* arg) {
              session->session_id, session->host, session->port, username,
              ftp_tls_label(conn.tls));
 
-    data_fd = nexterm_cp_open_data_connection(cp, session->session_id);
+    data_fd = outpost_cp_open_data_connection(cp, session->session_id);
     if (data_fd < 0) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to open data connection", NULL);
         goto cleanup;
     }
 
     conn.curl = curl_easy_init();
     if (!conn.curl) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to initialize FTP client", NULL);
         goto cleanup;
     }
@@ -1404,7 +1404,7 @@ static void* ftp_session_thread(void* arg) {
     if (!ftp_get_cwd(&conn, cwd, sizeof(cwd))) {
         LOG_ERROR("FTP session %s: login failed: %s", session->session_id,
                   conn.errbuf[0] ? conn.errbuf : "unknown error");
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        conn.errbuf[0] ? conn.errbuf
                                                       : "FTP authentication failed",
                                        NULL);
@@ -1412,7 +1412,7 @@ static void* ftp_session_thread(void* arg) {
     }
 
     session->state = SESSION_STATE_ACTIVE;
-    nexterm_cp_send_session_result(cp, session->session_id, true, NULL, NULL);
+    outpost_cp_send_session_result(cp, session->session_id, true, NULL, NULL);
 
     if (fp_send_ready(data_fd) != 0) {
         LOG_ERROR("FTP session %s: failed to send Ready", session->session_id);
@@ -1432,14 +1432,14 @@ cleanup:
 
     char sid[MAX_SESSION_ID_LEN];
     snprintf(sid, sizeof(sid), "%s", session->session_id);
-    nexterm_cp_send_session_closed(cp, sid, "session ended");
-    nexterm_sm_finish(&g_session_manager, sid);
+    outpost_cp_send_session_closed(cp, sid, "session ended");
+    outpost_sm_finish(&g_session_manager, sid);
 
     free(args);
     return NULL;
 }
 
-int nexterm_ftp_start(nexterm_session_t* session, nexterm_control_plane_t* cp) {
+int outpost_ftp_start(outpost_session_t* session, outpost_control_plane_t* cp) {
     ftp_thread_args_t* args = calloc(1, sizeof(ftp_thread_args_t));
     if (!args) return -1;
 

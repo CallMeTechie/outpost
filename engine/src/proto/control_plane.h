@@ -1,14 +1,14 @@
-#ifndef NEXTERM_CONTROL_PLANE_H
-#define NEXTERM_CONTROL_PLANE_H
+#ifndef OUTPOST_CONTROL_PLANE_H
+#define OUTPOST_CONTROL_PLANE_H
 
 #include <stdint.h>
 #include <stdbool.h>
 #include <pthread.h>
 #include <openssl/ssl.h>
 
-#define NEXTERM_ENGINE_VERSION "1.2.2-BETA"
+#define OUTPOST_ENGINE_VERSION "1.2.2-BETA"
 
-typedef struct nexterm_control_plane {
+typedef struct outpost_control_plane {
     int sock_fd;
     bool connected;
     bool running;
@@ -28,37 +28,37 @@ typedef struct nexterm_control_plane {
     bool use_tls;
     SSL_CTX* ssl_ctx;
     SSL* ssl;
-} nexterm_control_plane_t;
+} outpost_control_plane_t;
 
-nexterm_control_plane_t* nexterm_cp_create(const char* server_host,
+outpost_control_plane_t* outpost_cp_create(const char* server_host,
                                            uint16_t server_port,
                                            const char* registration_token,
                                            bool use_tls,
                                            const char* ca_cert_path,
                                            bool tls_skip_verify);
 
-int nexterm_cp_start(nexterm_control_plane_t* cp);
+int outpost_cp_start(outpost_control_plane_t* cp);
 
-void nexterm_cp_stop(nexterm_control_plane_t* cp);
+void outpost_cp_stop(outpost_control_plane_t* cp);
 
-void nexterm_cp_destroy(nexterm_control_plane_t* cp);
+void outpost_cp_destroy(outpost_control_plane_t* cp);
 
-int nexterm_cp_send(nexterm_control_plane_t* cp, const uint8_t* buf, size_t len);
+int outpost_cp_send(outpost_control_plane_t* cp, const uint8_t* buf, size_t len);
 
-int nexterm_cp_send_session_result(nexterm_control_plane_t* cp,
+int outpost_cp_send_session_result(outpost_control_plane_t* cp,
                                    const char* session_id,
                                    bool success,
                                    const char* error_message,
                                    const char* connection_id);
 
-int nexterm_cp_send_session_closed(nexterm_control_plane_t* cp,
+int outpost_cp_send_session_closed(outpost_control_plane_t* cp,
                                     const char* session_id,
                                     const char* reason);
 
-int nexterm_cp_open_data_connection(const nexterm_control_plane_t* cp,
+int outpost_cp_open_data_connection(const outpost_control_plane_t* cp,
                                     const char* session_id);
 
-int nexterm_cp_send_exec_result(nexterm_control_plane_t* cp,
+int outpost_cp_send_exec_result(outpost_control_plane_t* cp,
                                 const char* request_id,
                                 bool success,
                                 const char* stdout_data,
@@ -66,7 +66,7 @@ int nexterm_cp_send_exec_result(nexterm_control_plane_t* cp,
                                 int32_t exit_code,
                                 const char* error_message);
 
-int nexterm_cp_send_port_check_result(nexterm_control_plane_t* cp,
+int outpost_cp_send_port_check_result(outpost_control_plane_t* cp,
                                        const char* request_id,
                                        const char** ids,
                                        const bool* online,
@@ -81,14 +81,14 @@ typedef struct {
     const char* error_message;
 } exec_batch_entry_t;
 
-int nexterm_cp_send_exec_batch_result(nexterm_control_plane_t* cp,
+int outpost_cp_send_exec_batch_result(outpost_control_plane_t* cp,
                                       const char* request_id,
                                       bool success,
                                       const char* error_message,
                                       const exec_batch_entry_t* entries,
                                       size_t count);
 
-int nexterm_cp_upload_recording(nexterm_control_plane_t* cp,
+int outpost_cp_upload_recording(outpost_control_plane_t* cp,
                                 const char* session_id,
                                 const char* file_path);
 

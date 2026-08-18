@@ -6,7 +6,7 @@
 #include "log.h"
 #include "session.h"
 
-extern nexterm_session_manager_t g_session_manager;
+extern outpost_session_manager_t g_session_manager;
 
 #include <guacamole/client.h>
 #include <guacamole/error.h>
@@ -28,8 +28,8 @@ extern nexterm_session_manager_t g_session_manager;
 #define GUAC_HANDSHAKE_TIMEOUT_US 15000000
 
 typedef struct {
-    nexterm_session_t* session;
-    nexterm_control_plane_t* cp;
+    outpost_session_t* session;
+    outpost_control_plane_t* cp;
 } guac_thread_args_t;
 
 typedef struct {
@@ -39,7 +39,7 @@ typedef struct {
     char session_id[MAX_SESSION_ID_LEN];
 } guac_user_thread_args_t;
 
-static void nexterm_guac_log_handler(guac_client* client,
+static void outpost_guac_log_handler(guac_client* client,
         guac_client_log_level level, const char* format, va_list args) {
     char message[2048];
     vsnprintf(message, sizeof(message), format, args);
@@ -155,20 +155,20 @@ static const char* session_type_to_protocol(session_type_t type) {
     }
 }
 
-static guac_client* guac_setup_client(nexterm_session_t* session,
-                                      nexterm_control_plane_t* cp,
+static guac_client* guac_setup_client(outpost_session_t* session,
+                                      outpost_control_plane_t* cp,
                                       const char* protocol_name) {
     if (socketpair(AF_UNIX, SOCK_DGRAM, 0, session->join_pipe) < 0) {
         LOG_ERROR("Failed to create join pipe for session %s: %s",
                   session->session_id, strerror(errno));
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to create join pipe", NULL);
         return NULL;
     }
 
-    int data_fd = nexterm_cp_open_data_connection(cp, session->session_id);
+    int data_fd = outpost_cp_open_data_connection(cp, session->session_id);
     if (data_fd < 0) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to open data connection", NULL);
         close(session->join_pipe[0]); session->join_pipe[0] = -1;
         close(session->join_pipe[1]); session->join_pipe[1] = -1;
@@ -178,7 +178,7 @@ static guac_client* guac_setup_client(nexterm_session_t* session,
 
     guac_client* client = guac_client_alloc();
     if (!client) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to allocate guac client", NULL);
         close(data_fd); session->data_fd = -1;
         close(session->join_pipe[0]); session->join_pipe[0] = -1;
@@ -186,12 +186,12 @@ static guac_client* guac_setup_client(nexterm_session_t* session,
         return NULL;
     }
 
-    client->log_handler = nexterm_guac_log_handler;
+    client->log_handler = outpost_guac_log_handler;
 
     if (guac_client_load_plugin(client, protocol_name)) {
         LOG_ERROR("Failed to load guac plugin '%s': %s",
                   protocol_name, guac_status_string(guac_error));
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to load protocol plugin", NULL);
         guac_client_free(client);
         close(data_fd); session->data_fd = -1;
@@ -229,7 +229,7 @@ static int receive_join_fd(int pipe_fd) {
     return -1;
 }
 
-static void guac_accept_joins(nexterm_session_t* session, guac_client* client,
+static void guac_accept_joins(outpost_session_t* session, guac_client* client,
                               pthread_t* user_threads, int* user_thread_count,
                               int max_user_threads) {
     bool active = true;
@@ -281,13 +281,13 @@ static void guac_accept_joins(nexterm_session_t* session, guac_client* client,
 
 static void* guac_session_thread(void* arg) {
     guac_thread_args_t* args = (guac_thread_args_t*)arg;
-    nexterm_session_t* session = args->session;
-    nexterm_control_plane_t* cp = args->cp;
+    outpost_session_t* session = args->session;
+    outpost_control_plane_t* cp = args->cp;
 
     const char* protocol_name = session_type_to_protocol(session->type);
     if (!protocol_name) {
         LOG_ERROR("Unsupported session type for guac: %d", session->type);
-        nexterm_sm_finish(&g_session_manager, session->session_id);
+        outpost_sm_finish(&g_session_manager, session->session_id);
         free(args);
         return NULL;
     }
@@ -297,7 +297,7 @@ static void* guac_session_thread(void* arg) {
 
     guac_client* client = guac_setup_client(session, cp, protocol_name);
     if (!client) {
-        nexterm_sm_finish(&g_session_manager, session->session_id);
+        outpost_sm_finish(&g_session_manager, session->session_id);
         free(args);
         return NULL;
     }
@@ -308,7 +308,7 @@ static void* guac_session_thread(void* arg) {
     guac_socket_require_keep_alive(client->socket);
 
     session->state = SESSION_STATE_ACTIVE;
-    nexterm_cp_send_session_result(cp, session->session_id, true,
+    outpost_cp_send_session_result(cp, session->session_id, true,
                                    NULL, client->connection_id);
     LOG_INFO("Guac session %s active (connection_id=%s)",
              session->session_id, client->connection_id);
@@ -322,14 +322,14 @@ static void* guac_session_thread(void* arg) {
     if (start_user_thread(client, owner_fd, 1, session->session_id, &owner_thread) != 0) {
         LOG_ERROR("Failed to start owner user thread for session %s", session->session_id);
         close(owner_fd);
-        nexterm_sm_lock(&g_session_manager);
-        nexterm_session_t* failed = nexterm_sm_find_locked(&g_session_manager, session->session_id);
+        outpost_sm_lock(&g_session_manager);
+        outpost_session_t* failed = outpost_sm_find_locked(&g_session_manager, session->session_id);
         if (failed) failed->guac_client = NULL;
-        nexterm_sm_unlock(&g_session_manager);
+        outpost_sm_unlock(&g_session_manager);
         guac_client_stop(client);
         guac_client_free(client);
-        nexterm_cp_send_session_closed(cp, session->session_id, "internal error");
-        nexterm_sm_finish(&g_session_manager, session->session_id);
+        outpost_cp_send_session_closed(cp, session->session_id, "internal error");
+        outpost_sm_finish(&g_session_manager, session->session_id);
         free(args);
         return NULL;
     }
@@ -347,10 +347,10 @@ static void* guac_session_thread(void* arg) {
 
     LOG_INFO("Guac session %s ending", session_id);
 
-    nexterm_sm_lock(&g_session_manager);
-    nexterm_session_t* live = nexterm_sm_find_locked(&g_session_manager, session_id);
+    outpost_sm_lock(&g_session_manager);
+    outpost_session_t* live = outpost_sm_find_locked(&g_session_manager, session_id);
     if (live) live->guac_client = NULL;
-    nexterm_sm_unlock(&g_session_manager);
+    outpost_sm_unlock(&g_session_manager);
 
     guac_client_stop(client);
     guac_client_free(client);
@@ -360,20 +360,20 @@ static void* guac_session_thread(void* arg) {
     struct stat st;
     if (stat(rec_path, &st) == 0) {
         if (st.st_size > 1024)
-            nexterm_cp_upload_recording(cp, session_id, rec_path);
+            outpost_cp_upload_recording(cp, session_id, rec_path);
         else
             unlink(rec_path);
     }
 
-    nexterm_cp_send_session_closed(cp, session_id, "session ended");
-    nexterm_sm_finish(&g_session_manager, session_id);
+    outpost_cp_send_session_closed(cp, session_id, "session ended");
+    outpost_sm_finish(&g_session_manager, session_id);
 
     free(args);
     return NULL;
 }
 
-int nexterm_connection_start_guac(nexterm_session_t* session,
-                                  nexterm_control_plane_t* cp) {
+int outpost_connection_start_guac(outpost_session_t* session,
+                                  outpost_control_plane_t* cp) {
     guac_thread_args_t* args = calloc(1, sizeof(guac_thread_args_t));
     if (!args) return -1;
 
@@ -391,18 +391,18 @@ int nexterm_connection_start_guac(nexterm_session_t* session,
     return 0;
 }
 
-int nexterm_connection_start_ssh(nexterm_session_t* session,
-                                 nexterm_control_plane_t* cp) {
-    return nexterm_ssh_start(session, cp);
+int outpost_connection_start_ssh(outpost_session_t* session,
+                                 outpost_control_plane_t* cp) {
+    return outpost_ssh_start(session, cp);
 }
 
-int nexterm_connection_start_telnet(nexterm_session_t* session,
-                                    nexterm_control_plane_t* cp) {
-    return nexterm_telnet_start(session, cp);
+int outpost_connection_start_telnet(outpost_session_t* session,
+                                    outpost_control_plane_t* cp) {
+    return outpost_telnet_start(session, cp);
 }
 
-int nexterm_connection_join_guac(nexterm_session_t* session,
-                                 nexterm_control_plane_t* cp) {
+int outpost_connection_join_guac(outpost_session_t* session,
+                                 outpost_control_plane_t* cp) {
     char sid[MAX_SESSION_ID_LEN];
     snprintf(sid, sizeof(sid), "%s", session->session_id);
 
@@ -411,7 +411,7 @@ int nexterm_connection_join_guac(nexterm_session_t* session,
         return -1;
     }
 
-    int join_fd = nexterm_cp_open_data_connection(cp, sid);
+    int join_fd = outpost_cp_open_data_connection(cp, sid);
     if (join_fd < 0) {
         LOG_ERROR("Failed to open join data connection for session %s", sid);
         return -1;
@@ -435,12 +435,12 @@ int nexterm_connection_join_guac(nexterm_session_t* session,
     cmsg->cmsg_len = CMSG_LEN(sizeof(int));
     memcpy(CMSG_DATA(cmsg), &join_fd, sizeof(int));
 
-    nexterm_sm_lock(&g_session_manager);
-    nexterm_session_t* live = nexterm_sm_find_locked(&g_session_manager, sid);
+    outpost_sm_lock(&g_session_manager);
+    outpost_session_t* live = outpost_sm_find_locked(&g_session_manager, sid);
     ssize_t n = -1;
     if (live && live->state == SESSION_STATE_ACTIVE && live->join_pipe[1] >= 0)
         n = sendmsg(live->join_pipe[1], &msg, 0);
-    nexterm_sm_unlock(&g_session_manager);
+    outpost_sm_unlock(&g_session_manager);
 
     if (n <= 0) {
         LOG_ERROR("Failed to send join fd for session %s: %s", sid, strerror(errno));
@@ -453,7 +453,7 @@ int nexterm_connection_join_guac(nexterm_session_t* session,
     return 0;
 }
 
-void nexterm_connection_close(nexterm_session_t* session) {
+void outpost_connection_close(outpost_session_t* session) {
     if (session->state == SESSION_STATE_CLOSED ||
         session->state == SESSION_STATE_CLOSING)
         return;

@@ -1,10 +1,10 @@
-#ifndef NEXTERM_SSH_H
-#define NEXTERM_SSH_H
+#ifndef OUTPOST_SSH_H
+#define OUTPOST_SSH_H
 
 #include "session.h"
 #include "ssh_common.h"
 
-struct nexterm_control_plane;
+struct outpost_control_plane;
 
 typedef struct {
     const char* username;
@@ -13,16 +13,16 @@ typedef struct {
     const char* passphrase;
 } ssh_credentials_t;
 
-int nexterm_ssh_start(nexterm_session_t* session,
-                      struct nexterm_control_plane* cp);
+int outpost_ssh_start(outpost_session_t* session,
+                      struct outpost_control_plane* cp);
 
-void nexterm_ssh_resize(nexterm_session_t* session,
+void outpost_ssh_resize(outpost_session_t* session,
                         uint16_t cols, uint16_t rows);
 
-int nexterm_tunnel_start(nexterm_session_t* session,
-                         struct nexterm_control_plane* cp);
+int outpost_tunnel_start(outpost_session_t* session,
+                         struct outpost_control_plane* cp);
 
-int nexterm_ssh_exec_command(struct nexterm_control_plane* cp,
+int outpost_ssh_exec_command(struct outpost_control_plane* cp,
                              const char* request_id,
                              const char* host, uint16_t port,
                              const ssh_credentials_t* creds,
@@ -30,7 +30,7 @@ int nexterm_ssh_exec_command(struct nexterm_control_plane* cp,
                              const jump_host_t* jump_hosts,
                              int jump_count);
 
-int nexterm_ssh_exec_batch(struct nexterm_control_plane* cp,
+int outpost_ssh_exec_batch(struct outpost_control_plane* cp,
                            const char* request_id,
                            const char* host, uint16_t port,
                            const ssh_credentials_t* creds,
@@ -40,7 +40,7 @@ int nexterm_ssh_exec_batch(struct nexterm_control_plane* cp,
                            const jump_host_t* jump_hosts,
                            int jump_count);
 
-int nexterm_extract_jump_hosts(const nexterm_session_t* session,
+int outpost_extract_jump_hosts(const outpost_session_t* session,
                                jump_host_t* jump_hosts,
                                int max_jump_hosts);
 

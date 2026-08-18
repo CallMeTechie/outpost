@@ -13,9 +13,9 @@
 #include <errno.h>
 #include <stdlib.h>
 
-int nexterm_ssh_setup(const char* host, uint16_t port,
+int outpost_ssh_setup(const char* host, uint16_t port,
                       int* out_sock, LIBSSH2_SESSION** out_session) {
-    int sock = nexterm_tcp_connect(host, port);
+    int sock = outpost_tcp_connect(host, port);
     if (sock < 0) return -1;
 
     LIBSSH2_SESSION* session = libssh2_session_init();
@@ -185,7 +185,7 @@ static int ssh_setup_on_channel(jump_chain_t* chain,
     return 0;
 }
 
-int nexterm_ssh_setup_with_jumphosts(const char* target_host, uint16_t target_port,
+int outpost_ssh_setup_with_jumphosts(const char* target_host, uint16_t target_port,
                                      const jump_host_t* jump_hosts, int jump_count,
                                      int* out_sock, LIBSSH2_SESSION** out_session,
                                      jump_chain_t* chain) {
@@ -194,21 +194,21 @@ int nexterm_ssh_setup_with_jumphosts(const char* target_host, uint16_t target_po
         chain->sockets[i] = -1;
 
     if (jump_count <= 0 || jump_count > MAX_JUMP_HOSTS)
-        return nexterm_ssh_setup(target_host, target_port, out_sock, out_session);
+        return outpost_ssh_setup(target_host, target_port, out_sock, out_session);
 
     const jump_host_t* jh = &jump_hosts[0];
     LOG_INFO("Jump host chain: connecting to hop 1 (%s:%u)", jh->host, jh->port);
 
-    if (nexterm_ssh_setup(jh->host, jh->port,
+    if (outpost_ssh_setup(jh->host, jh->port,
                           &chain->sockets[0], &chain->sessions[0]) != 0) {
         LOG_ERROR("Failed to connect to jump host 1 (%s:%u)", jh->host, jh->port);
         return -1;
     }
 
-    if (nexterm_ssh_auth(chain->sessions[0], jh->username,
+    if (outpost_ssh_auth(chain->sessions[0], jh->username,
                          jh->password, jh->private_key, jh->passphrase) != 0) {
         LOG_ERROR("Failed to authenticate to jump host 1 (%s:%u)", jh->host, jh->port);
-        nexterm_jump_chain_teardown(chain);
+        outpost_jump_chain_teardown(chain);
         return -1;
     }
     chain->count = 1;
@@ -224,7 +224,7 @@ int nexterm_ssh_setup_with_jumphosts(const char* target_host, uint16_t target_po
             libssh2_session_last_error(chain->sessions[i - 1], &errmsg, NULL, 0);
             LOG_ERROR("Failed to forward to jump host %d (%s:%u): %s",
                       i + 1, next_jh->host, next_jh->port, errmsg ? errmsg : "unknown");
-            nexterm_jump_chain_teardown(chain);
+            outpost_jump_chain_teardown(chain);
             return -1;
         }
         chain->channels[i - 1] = fwd;
@@ -233,15 +233,15 @@ int nexterm_ssh_setup_with_jumphosts(const char* target_host, uint16_t target_po
         if (ssh_setup_on_channel(chain, chain->sessions[i - 1], chain->sockets[i - 1], fwd,
                                  &chain->sessions[i], &proxy_sock) != 0) {
             LOG_ERROR("Failed SSH handshake over tunnel to jump host %d", i + 1);
-            nexterm_jump_chain_teardown(chain);
+            outpost_jump_chain_teardown(chain);
             return -1;
         }
         chain->sockets[i] = proxy_sock;
 
-        if (nexterm_ssh_auth(chain->sessions[i], next_jh->username,
+        if (outpost_ssh_auth(chain->sessions[i], next_jh->username,
                              next_jh->password, next_jh->private_key, next_jh->passphrase) != 0) {
             LOG_ERROR("Failed to authenticate to jump host %d (%s:%u)", i + 1, next_jh->host, next_jh->port);
-            nexterm_jump_chain_teardown(chain);
+            outpost_jump_chain_teardown(chain);
             return -1;
         }
         chain->count = i + 1;
@@ -255,7 +255,7 @@ int nexterm_ssh_setup_with_jumphosts(const char* target_host, uint16_t target_po
         libssh2_session_last_error(chain->sessions[jump_count - 1], &errmsg, NULL, 0);
         LOG_ERROR("Failed to forward to target %s:%u: %s",
                   target_host, target_port, errmsg ? errmsg : "unknown");
-        nexterm_jump_chain_teardown(chain);
+        outpost_jump_chain_teardown(chain);
         return -1;
     }
     chain->channels[jump_count - 1] = target_fwd;
@@ -264,7 +264,7 @@ int nexterm_ssh_setup_with_jumphosts(const char* target_host, uint16_t target_po
     if (ssh_setup_on_channel(chain, chain->sessions[jump_count - 1], chain->sockets[jump_count - 1], target_fwd,
                              out_session, &target_proxy_sock) != 0) {
         LOG_ERROR("Failed SSH handshake to target over jump host chain");
-        nexterm_jump_chain_teardown(chain);
+        outpost_jump_chain_teardown(chain);
         return -1;
     }
 
@@ -272,7 +272,7 @@ int nexterm_ssh_setup_with_jumphosts(const char* target_host, uint16_t target_po
     return 0;
 }
 
-int nexterm_ssh_auth(LIBSSH2_SESSION* session, const char* username,
+int outpost_ssh_auth(LIBSSH2_SESSION* session, const char* username,
                      const char* password, const char* private_key,
                      const char* passphrase) {
     if (private_key && private_key[0] != '\0') {
@@ -290,7 +290,7 @@ int nexterm_ssh_auth(LIBSSH2_SESSION* session, const char* username,
     return -1;
 }
 
-void nexterm_ssh_teardown(LIBSSH2_SESSION* session, LIBSSH2_CHANNEL* channel,
+void outpost_ssh_teardown(LIBSSH2_SESSION* session, LIBSSH2_CHANNEL* channel,
                           int sock, const char* reason) {
     if (channel) {
         libssh2_channel_send_eof(channel);
@@ -305,7 +305,7 @@ void nexterm_ssh_teardown(LIBSSH2_SESSION* session, LIBSSH2_CHANNEL* channel,
     if (sock >= 0) close(sock);
 }
 
-void nexterm_jump_chain_teardown(jump_chain_t* chain) {
+void outpost_jump_chain_teardown(jump_chain_t* chain) {
     if (!chain) return;
 
     chain->stop_proxies = 1;
@@ -335,17 +335,17 @@ void nexterm_jump_chain_teardown(jump_chain_t* chain) {
     chain->count = 0;
 }
 
-void nexterm_ssh_full_cleanup(LIBSSH2_SESSION* session, LIBSSH2_CHANNEL* channel,
+void outpost_ssh_full_cleanup(LIBSSH2_SESSION* session, LIBSSH2_CHANNEL* channel,
                               int sock, jump_chain_t* chain, const char* reason) {
-    nexterm_ssh_teardown(session, channel,
+    outpost_ssh_teardown(session, channel,
                          (chain && chain->count > 0) ? -1 : sock, reason);
     if (chain && chain->count > 0) {
-        nexterm_jump_chain_teardown(chain);
+        outpost_jump_chain_teardown(chain);
         if (sock >= 0) close(sock);
     }
 }
 
-void nexterm_ssh_read_stream(LIBSSH2_CHANNEL* channel, char* buf,
+void outpost_ssh_read_stream(LIBSSH2_CHANNEL* channel, char* buf,
                              size_t buf_sz, int use_stderr) {
     char tmp[4096];
     size_t len = 0;

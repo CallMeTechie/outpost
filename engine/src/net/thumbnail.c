@@ -63,7 +63,7 @@ static void jpg_write_cb(void* context, void* data, int size) {
     s->len += (size_t)size;
 }
 
-int nexterm_make_thumbnail(const uint8_t* in, size_t in_len, int target,
+int outpost_make_thumbnail(const uint8_t* in, size_t in_len, int target,
                            uint8_t** out, size_t* out_len, int* ow, int* oh) {
     if (!in || in_len == 0 || !out || !out_len) return -1;
     if (target < THUMB_MIN) target = 100;

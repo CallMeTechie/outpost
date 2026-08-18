@@ -6,12 +6,12 @@
 #include <string.h>
 #include <unistd.h>
 
-void nexterm_sm_init(nexterm_session_manager_t* sm) {
-    memset(sm, 0, sizeof(nexterm_session_manager_t));
+void outpost_sm_init(outpost_session_manager_t* sm) {
+    memset(sm, 0, sizeof(outpost_session_manager_t));
     pthread_mutex_init(&sm->mutex, NULL);
 }
 
-nexterm_session_t* nexterm_sm_create(nexterm_session_manager_t* sm,
+outpost_session_t* outpost_sm_create(outpost_session_manager_t* sm,
                                      const char* session_id,
                                      session_type_t type,
                                      const char* host,
@@ -35,8 +35,8 @@ nexterm_session_t* nexterm_sm_create(nexterm_session_manager_t* sm,
         return NULL;
     }
 
-    nexterm_session_t* session = &sm->sessions[free_slot];
-    memset(session, 0, sizeof(nexterm_session_t));
+    outpost_session_t* session = &sm->sessions[free_slot];
+    memset(session, 0, sizeof(outpost_session_t));
 
     snprintf(session->session_id, sizeof(session->session_id), "%s", session_id);
     session->type = type;
@@ -59,14 +59,14 @@ nexterm_session_t* nexterm_sm_create(nexterm_session_manager_t* sm,
     return session;
 }
 
-nexterm_session_t* nexterm_sm_find(nexterm_session_manager_t* sm,
+outpost_session_t* outpost_sm_find(outpost_session_manager_t* sm,
                                    const char* session_id) {
     pthread_mutex_lock(&sm->mutex);
 
     for (int i = 0; i < MAX_SESSIONS; i++) {
         if (sm->sessions[i].session_id[0] != '\0' &&
             strcmp(sm->sessions[i].session_id, session_id) == 0) {
-            nexterm_session_t* s = &sm->sessions[i];
+            outpost_session_t* s = &sm->sessions[i];
             pthread_mutex_unlock(&sm->mutex);
             return s;
         }
@@ -76,15 +76,15 @@ nexterm_session_t* nexterm_sm_find(nexterm_session_manager_t* sm,
     return NULL;
 }
 
-void nexterm_sm_lock(nexterm_session_manager_t* sm) {
+void outpost_sm_lock(outpost_session_manager_t* sm) {
     pthread_mutex_lock(&sm->mutex);
 }
 
-void nexterm_sm_unlock(nexterm_session_manager_t* sm) {
+void outpost_sm_unlock(outpost_session_manager_t* sm) {
     pthread_mutex_unlock(&sm->mutex);
 }
 
-nexterm_session_t* nexterm_sm_find_locked(nexterm_session_manager_t* sm,
+outpost_session_t* outpost_sm_find_locked(outpost_session_manager_t* sm,
                                           const char* session_id) {
     for (int i = 0; i < MAX_SESSIONS; i++) {
         if (sm->sessions[i].session_id[0] != '\0' &&
@@ -94,7 +94,7 @@ nexterm_session_t* nexterm_sm_find_locked(nexterm_session_manager_t* sm,
     return NULL;
 }
 
-static void session_cleanup_resources(nexterm_session_t* session) {
+static void session_cleanup_resources(outpost_session_t* session) {
     for (int j = 0; j < session->param_count; j++) {
         free(session->params[j].value);
         session->params[j].value = NULL;
@@ -114,8 +114,8 @@ static void session_cleanup_resources(nexterm_session_t* session) {
     }
 }
 
-static void session_remove_locked(nexterm_session_manager_t* sm,
-                                  nexterm_session_t* s) {
+static void session_remove_locked(outpost_session_manager_t* sm,
+                                  outpost_session_t* s) {
     LOG_INFO("Session removed: %s", s->session_id);
     session_cleanup_resources(s);
     s->resize_pending = false;
@@ -123,22 +123,22 @@ static void session_remove_locked(nexterm_session_manager_t* sm,
     sm->count--;
 }
 
-void nexterm_sm_remove(nexterm_session_manager_t* sm,
+void outpost_sm_remove(outpost_session_manager_t* sm,
                        const char* session_id) {
     pthread_mutex_lock(&sm->mutex);
 
-    nexterm_session_t* s = nexterm_sm_find_locked(sm, session_id);
+    outpost_session_t* s = outpost_sm_find_locked(sm, session_id);
     if (s)
         session_remove_locked(sm, s);
 
     pthread_mutex_unlock(&sm->mutex);
 }
 
-void nexterm_sm_finish(nexterm_session_manager_t* sm,
+void outpost_sm_finish(outpost_session_manager_t* sm,
                        const char* session_id) {
     pthread_mutex_lock(&sm->mutex);
 
-    nexterm_session_t* s = nexterm_sm_find_locked(sm, session_id);
+    outpost_session_t* s = outpost_sm_find_locked(sm, session_id);
     if (s) {
         s->guac_client = NULL;
         s->state = SESSION_STATE_CLOSED;
@@ -149,7 +149,7 @@ void nexterm_sm_finish(nexterm_session_manager_t* sm,
     pthread_mutex_unlock(&sm->mutex);
 }
 
-void nexterm_sm_request_resize(nexterm_session_manager_t* sm,
+void outpost_sm_request_resize(outpost_session_manager_t* sm,
                                const char* session_id,
                                uint16_t cols, uint16_t rows) {
     pthread_mutex_lock(&sm->mutex);
@@ -167,7 +167,7 @@ void nexterm_sm_request_resize(nexterm_session_manager_t* sm,
     pthread_mutex_unlock(&sm->mutex);
 }
 
-const char* nexterm_session_get_param(const nexterm_session_t* session,
+const char* outpost_session_get_param(const outpost_session_t* session,
                                       const char* key) {
     for (int i = 0; i < session->param_count; i++) {
         if (strcmp(session->params[i].key, key) == 0)
@@ -176,7 +176,7 @@ const char* nexterm_session_get_param(const nexterm_session_t* session,
     return NULL;
 }
 
-int nexterm_session_add_param(nexterm_session_t* session,
+int outpost_session_add_param(outpost_session_t* session,
                               const char* key,
                               const char* value) {
     if (session->param_count >= MAX_PARAMS) {
@@ -194,7 +194,7 @@ int nexterm_session_add_param(nexterm_session_t* session,
     return 0;
 }
 
-void nexterm_sm_destroy(nexterm_session_manager_t* sm) {
+void outpost_sm_destroy(outpost_session_manager_t* sm) {
     pthread_mutex_lock(&sm->mutex);
 
     for (int i = 0; i < MAX_SESSIONS; i++) {

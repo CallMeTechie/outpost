@@ -1,11 +1,11 @@
-#ifndef NEXTERM_SFTP_H
-#define NEXTERM_SFTP_H
+#ifndef OUTPOST_SFTP_H
+#define OUTPOST_SFTP_H
 
 #include "session.h"
 
-struct nexterm_control_plane;
+struct outpost_control_plane;
 
-int nexterm_sftp_start(nexterm_session_t* session,
-                       struct nexterm_control_plane* cp);
+int outpost_sftp_start(outpost_session_t* session,
+                       struct outpost_control_plane* cp);
 
 #endif

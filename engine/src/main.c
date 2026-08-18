@@ -17,17 +17,17 @@
 
 #if defined(__has_include)
 #if __has_include(<execinfo.h>)
-#define NEXTERM_HAVE_EXECINFO 1
+#define OUTPOST_HAVE_EXECINFO 1
 #include <execinfo.h>
 #endif
 #elif defined(__GLIBC__)
-#define NEXTERM_HAVE_EXECINFO 1
+#define OUTPOST_HAVE_EXECINFO 1
 #include <execinfo.h>
 #endif
 
-nexterm_session_manager_t g_session_manager;
+outpost_session_manager_t g_session_manager;
 
-static nexterm_control_plane_t* g_control_plane = NULL;
+static outpost_control_plane_t* g_control_plane = NULL;
 static volatile int g_shutdown = 0;
 
 static void signal_handler(int sig) {
@@ -79,7 +79,7 @@ static void crash_signal_handler(int sig, siginfo_t* info, void* ucontext) {
     }
     crash_write("\n");
 
-#ifdef NEXTERM_HAVE_EXECINFO
+#ifdef OUTPOST_HAVE_EXECINFO
     void* frames[64];
     int frame_count = backtrace(frames, 64);
     crash_write("[nexterm-crash] Backtrace:\n");
@@ -93,17 +93,17 @@ static void crash_signal_handler(int sig, siginfo_t* info, void* ucontext) {
     raise(sig);
 }
 
-static nexterm_log_level_t parse_log_level(const char* str) {
-    if (strcmp(str, "error") == 0) return NEXTERM_LOG_ERROR;
-    if (strcmp(str, "warn") == 0)  return NEXTERM_LOG_WARN;
-    if (strcmp(str, "info") == 0)  return NEXTERM_LOG_INFO;
-    if (strcmp(str, "debug") == 0) return NEXTERM_LOG_DEBUG;
-    if (strcmp(str, "trace") == 0) return NEXTERM_LOG_TRACE;
-    return NEXTERM_LOG_INFO;
+static outpost_log_level_t parse_log_level(const char* str) {
+    if (strcmp(str, "error") == 0) return OUTPOST_LOG_ERROR;
+    if (strcmp(str, "warn") == 0)  return OUTPOST_LOG_WARN;
+    if (strcmp(str, "info") == 0)  return OUTPOST_LOG_INFO;
+    if (strcmp(str, "debug") == 0) return OUTPOST_LOG_DEBUG;
+    if (strcmp(str, "trace") == 0) return OUTPOST_LOG_TRACE;
+    return OUTPOST_LOG_INFO;
 }
 
 static void print_usage(const char* prog) {
-    printf("Nexterm Engine v%s\n\n", NEXTERM_ENGINE_VERSION);
+    printf("Nexterm Engine v%s\n\n", OUTPOST_ENGINE_VERSION);
     printf("Usage: %s [options]\n\n", prog);
     printf("Options:\n");
     printf("  -h, --host HOST    Control plane server host (default: 127.0.0.1)\n");
@@ -153,15 +153,15 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    nexterm_log_set_level(parse_log_level(log_level_str));
+    outpost_log_set_level(parse_log_level(log_level_str));
 
-    nexterm_config_t config;
-    nexterm_config_load(&config);
+    outpost_config_t config;
+    outpost_config_load(&config);
 
     const char* server_host = cli_host ? cli_host : config.server_host;
     uint16_t server_port = cli_port ? cli_port : config.server_port;
 
-    LOG_INFO("Nexterm Engine v%s starting", NEXTERM_ENGINE_VERSION);
+    LOG_INFO("Nexterm Engine v%s starting", OUTPOST_ENGINE_VERSION);
 
     if (libssh2_init(0) != 0) {
         LOG_ERROR("Failed to initialize libssh2");
@@ -192,9 +192,9 @@ int main(int argc, char* argv[]) {
 
     signal(SIGPIPE, SIG_IGN);
 
-    nexterm_sm_init(&g_session_manager);
+    outpost_sm_init(&g_session_manager);
 
-    nexterm_control_plane_t* cp = nexterm_cp_create(server_host, server_port,
+    outpost_control_plane_t* cp = outpost_cp_create(server_host, server_port,
                                                      config.registration_token,
                                                      config.tls,
                                                      config.ca_cert_path,
@@ -206,14 +206,14 @@ int main(int argc, char* argv[]) {
     g_control_plane = cp;
 
     while (!g_shutdown) {
-        if (nexterm_cp_start(cp) == 0) {
+        if (outpost_cp_start(cp) == 0) {
             LOG_INFO("Connected to control plane");
 
             while (cp->running && !g_shutdown) {
                 sleep(1);
             }
 
-            nexterm_cp_stop(cp);
+            outpost_cp_stop(cp);
         }
 
         if (!g_shutdown) {
@@ -226,8 +226,8 @@ int main(int argc, char* argv[]) {
     }
 
     LOG_INFO("Shutting down engine");
-    nexterm_sm_destroy(&g_session_manager);
-    nexterm_cp_destroy(cp);
+    outpost_sm_destroy(&g_session_manager);
+    outpost_cp_destroy(cp);
     curl_global_cleanup();
     libssh2_exit();
 

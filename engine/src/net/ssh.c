@@ -5,7 +5,7 @@
 #include "log.h"
 #include "session.h"
 
-extern nexterm_session_manager_t g_session_manager;
+extern outpost_session_manager_t g_session_manager;
 
 #include <libssh2.h>
 
@@ -20,10 +20,10 @@ extern nexterm_session_manager_t g_session_manager;
 #define SSH_READ_BUF_SIZE  16384
 #define SSH_EXEC_BUF_SIZE  (256 * 1024)
 
-int nexterm_extract_jump_hosts(const nexterm_session_t* session,
+int outpost_extract_jump_hosts(const outpost_session_t* session,
                                jump_host_t* jump_hosts,
                                int max_jump_hosts) {
-    const char* count_str = nexterm_session_get_param(session, "jumpHostCount");
+    const char* count_str = outpost_session_get_param(session, "jumpHostCount");
     if (!count_str) return 0;
     int count = atoi(count_str);
     if (count <= 0) return 0;
@@ -34,33 +34,33 @@ int nexterm_extract_jump_hosts(const nexterm_session_t* session,
         memset(&jump_hosts[i], 0, sizeof(jump_host_t));
 
         snprintf(key, sizeof(key), "jumpHost%d_host", i);
-        const char* host = nexterm_session_get_param(session, key);
+        const char* host = outpost_session_get_param(session, key);
         if (!host || host[0] == '\0') return i;
         snprintf(jump_hosts[i].host, sizeof(jump_hosts[i].host), "%s", host);
 
         snprintf(key, sizeof(key), "jumpHost%d_port", i);
-        const char* port_str = nexterm_session_get_param(session, key);
+        const char* port_str = outpost_session_get_param(session, key);
         jump_hosts[i].port = port_str ? (uint16_t)atoi(port_str) : 22;
 
         snprintf(key, sizeof(key), "jumpHost%d_username", i);
-        const char* username = nexterm_session_get_param(session, key);
+        const char* username = outpost_session_get_param(session, key);
         if (username) snprintf(jump_hosts[i].username, sizeof(jump_hosts[i].username), "%s", username);
 
         snprintf(key, sizeof(key), "jumpHost%d_password", i);
-        jump_hosts[i].password = (char*)nexterm_session_get_param(session, key);
+        jump_hosts[i].password = (char*)outpost_session_get_param(session, key);
 
         snprintf(key, sizeof(key), "jumpHost%d_privateKey", i);
-        jump_hosts[i].private_key = (char*)nexterm_session_get_param(session, key);
+        jump_hosts[i].private_key = (char*)outpost_session_get_param(session, key);
 
         snprintf(key, sizeof(key), "jumpHost%d_passphrase", i);
-        jump_hosts[i].passphrase = (char*)nexterm_session_get_param(session, key);
+        jump_hosts[i].passphrase = (char*)outpost_session_get_param(session, key);
     }
     return count;
 }
 
 typedef struct {
-    nexterm_session_t* session;
-    nexterm_control_plane_t* cp;
+    outpost_session_t* session;
+    outpost_control_plane_t* cp;
 } ssh_thread_args_t;
 
 static void nanosleep_ms(unsigned int ms) {
@@ -93,7 +93,7 @@ static int ssh_read_channel_to_fd(LIBSSH2_CHANNEL* channel, int fd) {
         if (n == LIBSSH2_ERROR_EAGAIN) return 0;
         if (n < 0) return -1;
         if (n == 0) return 0;
-        if (nexterm_write_exact(fd, (const uint8_t*)buf, (size_t)n) != 0) return -1;
+        if (outpost_write_exact(fd, (const uint8_t*)buf, (size_t)n) != 0) return -1;
     }
 }
 
@@ -102,19 +102,19 @@ static void ssh_drain_channel(LIBSSH2_CHANNEL* channel, int fd) {
     for (;;) {
         ssize_t n = libssh2_channel_read(channel, buf, sizeof(buf));
         if (n <= 0) break;
-        nexterm_write_exact(fd, (const uint8_t*)buf, (size_t)n);
+        outpost_write_exact(fd, (const uint8_t*)buf, (size_t)n);
     }
 }
 
-static void ssh_apply_pending_resize(nexterm_session_t* session,
+static void ssh_apply_pending_resize(outpost_session_t* session,
                                      LIBSSH2_CHANNEL* channel) {
     uint16_t cols, rows;
-    nexterm_sm_lock(&g_session_manager);
+    outpost_sm_lock(&g_session_manager);
     bool pending = session->resize_pending;
     cols = session->pending_cols;
     rows = session->pending_rows;
     session->resize_pending = false;
-    nexterm_sm_unlock(&g_session_manager);
+    outpost_sm_unlock(&g_session_manager);
 
     if (!pending) return;
 
@@ -125,7 +125,7 @@ static void ssh_apply_pending_resize(nexterm_session_t* session,
         LOG_DEBUG("SSH session %s: resized to %ux%u", session->session_id, cols, rows);
 }
 
-static bool ssh_bridge_poll(nexterm_session_t* session, int data_fd, int ssh_sock,
+static bool ssh_bridge_poll(outpost_session_t* session, int data_fd, int ssh_sock,
                            LIBSSH2_CHANNEL* channel) {
     char buf[SSH_READ_BUF_SIZE];
     struct pollfd fds[2] = {
@@ -167,7 +167,7 @@ static bool ssh_bridge_poll(nexterm_session_t* session, int data_fd, int ssh_soc
     return true;
 }
 
-static void ssh_bridge_data(const nexterm_session_t* session, int data_fd,
+static void ssh_bridge_data(const outpost_session_t* session, int data_fd,
                             LIBSSH2_CHANNEL* channel, int ssh_sock) {
     while (session->state == SESSION_STATE_ACTIVE
             && ssh_bridge_poll(session, data_fd, ssh_sock, channel));
@@ -175,8 +175,8 @@ static void ssh_bridge_data(const nexterm_session_t* session, int data_fd,
 
 static void* ssh_session_thread(void* arg) {
     ssh_thread_args_t* args = (ssh_thread_args_t*)arg;
-    nexterm_session_t* session = args->session;
-    nexterm_control_plane_t* cp = args->cp;
+    outpost_session_t* session = args->session;
+    outpost_control_plane_t* cp = args->cp;
     int data_fd = -1;
     int ssh_sock = -1;
     LIBSSH2_SESSION* ssh_session = NULL;
@@ -185,40 +185,40 @@ static void* ssh_session_thread(void* arg) {
 
     session->state = SESSION_STATE_CONNECTING;
 
-    const char* username = nexterm_session_get_param(session, "username");
-    const char* password = nexterm_session_get_param(session, "password");
-    const char* private_key = nexterm_session_get_param(session, "privateKey");
-    const char* passphrase = nexterm_session_get_param(session, "passphrase");
+    const char* username = outpost_session_get_param(session, "username");
+    const char* password = outpost_session_get_param(session, "password");
+    const char* private_key = outpost_session_get_param(session, "privateKey");
+    const char* passphrase = outpost_session_get_param(session, "passphrase");
 
     if (!username || username[0] == '\0') {
         LOG_ERROR("SSH session %s: missing username", session->session_id);
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Missing username", NULL);
         goto cleanup;
     }
 
     jump_host_t jump_hosts[MAX_JUMP_HOSTS];
-    int jump_count = nexterm_extract_jump_hosts(session, jump_hosts, MAX_JUMP_HOSTS);
+    int jump_count = outpost_extract_jump_hosts(session, jump_hosts, MAX_JUMP_HOSTS);
 
     LOG_INFO("SSH session %s: connecting to %s:%u as %s (jump_hosts=%d)",
              session->session_id, session->host, session->port, username, jump_count);
 
-    data_fd = nexterm_cp_open_data_connection(cp, session->session_id);
+    data_fd = outpost_cp_open_data_connection(cp, session->session_id);
     if (data_fd < 0) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to open data connection", NULL);
         goto cleanup;
     }
 
-    if (nexterm_ssh_setup_with_jumphosts(session->host, session->port,
+    if (outpost_ssh_setup_with_jumphosts(session->host, session->port,
             jump_hosts, jump_count, &ssh_sock, &ssh_session, &jump_chain) != 0) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to connect to SSH host", NULL);
         goto cleanup;
     }
 
-    if (nexterm_ssh_auth(ssh_session, username, password, private_key, passphrase) != 0) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+    if (outpost_ssh_auth(ssh_session, username, password, private_key, passphrase) != 0) {
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "SSH authentication failed", NULL);
         goto cleanup;
     }
@@ -227,19 +227,19 @@ static void* ssh_session_thread(void* arg) {
 
     channel = libssh2_channel_open_session(ssh_session);
     if (!channel) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to open SSH channel", NULL);
         goto cleanup;
     }
 
     if (libssh2_channel_request_pty(channel, "xterm-256color") != 0) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to request PTY", NULL);
         goto cleanup;
     }
 
     if (libssh2_channel_shell(channel) != 0) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to start shell", NULL);
         goto cleanup;
     }
@@ -250,7 +250,7 @@ static void* ssh_session_thread(void* arg) {
     session->ssh_channel = channel;
     session->ssh_sock = ssh_sock;
     session->state = SESSION_STATE_ACTIVE;
-    nexterm_cp_send_session_result(cp, session->session_id, true, NULL, NULL);
+    outpost_cp_send_session_result(cp, session->session_id, true, NULL, NULL);
 
     LOG_INFO("SSH session %s active (target=%s:%d, user=%s)",
              session->session_id, session->host, session->port, username);
@@ -264,22 +264,22 @@ cleanup:
     session->ssh_channel = NULL;
     session->ssh_sock = -1;
 
-    nexterm_ssh_full_cleanup(ssh_session, channel, ssh_sock, &jump_chain, "Session ended");
+    outpost_ssh_full_cleanup(ssh_session, channel, ssh_sock, &jump_chain, "Session ended");
 
     if (data_fd >= 0)
         close(data_fd);
 
     char sid[MAX_SESSION_ID_LEN];
     snprintf(sid, sizeof(sid), "%s", session->session_id);
-    nexterm_cp_send_session_closed(cp, sid, "session ended");
-    nexterm_sm_finish(&g_session_manager, sid);
+    outpost_cp_send_session_closed(cp, sid, "session ended");
+    outpost_sm_finish(&g_session_manager, sid);
 
     free(args);
     return NULL;
 }
 
-int nexterm_ssh_start(nexterm_session_t* session,
-                      nexterm_control_plane_t* cp) {
+int outpost_ssh_start(outpost_session_t* session,
+                      outpost_control_plane_t* cp) {
     ssh_thread_args_t* args = calloc(1, sizeof(ssh_thread_args_t));
     if (!args) return -1;
 
@@ -297,15 +297,15 @@ int nexterm_ssh_start(nexterm_session_t* session,
     return 0;
 }
 
-void nexterm_ssh_resize(nexterm_session_t* session,
+void outpost_ssh_resize(outpost_session_t* session,
                         uint16_t cols, uint16_t rows) {
-    nexterm_sm_request_resize(&g_session_manager, session->session_id, cols, rows);
+    outpost_sm_request_resize(&g_session_manager, session->session_id, cols, rows);
 }
 
 static void* tunnel_session_thread(void* arg) {
     ssh_thread_args_t* args = (ssh_thread_args_t*)arg;
-    nexterm_session_t* session = args->session;
-    nexterm_control_plane_t* cp = args->cp;
+    outpost_session_t* session = args->session;
+    outpost_control_plane_t* cp = args->cp;
     int data_fd = -1;
     int ssh_sock = -1;
     LIBSSH2_SESSION* ssh_session = NULL;
@@ -314,22 +314,22 @@ static void* tunnel_session_thread(void* arg) {
 
     session->state = SESSION_STATE_CONNECTING;
 
-    const char* username = nexterm_session_get_param(session, "username");
-    const char* password = nexterm_session_get_param(session, "password");
-    const char* private_key = nexterm_session_get_param(session, "privateKey");
-    const char* passphrase = nexterm_session_get_param(session, "passphrase");
-    const char* remote_host = nexterm_session_get_param(session, "remoteHost");
-    const char* remote_port_str = nexterm_session_get_param(session, "remotePort");
+    const char* username = outpost_session_get_param(session, "username");
+    const char* password = outpost_session_get_param(session, "password");
+    const char* private_key = outpost_session_get_param(session, "privateKey");
+    const char* passphrase = outpost_session_get_param(session, "passphrase");
+    const char* remote_host = outpost_session_get_param(session, "remoteHost");
+    const char* remote_port_str = outpost_session_get_param(session, "remotePort");
 
     if (!username || username[0] == '\0') {
-        nexterm_cp_send_session_result(cp, session->session_id, false, "Missing username", NULL);
-        nexterm_sm_finish(&g_session_manager, session->session_id);
+        outpost_cp_send_session_result(cp, session->session_id, false, "Missing username", NULL);
+        outpost_sm_finish(&g_session_manager, session->session_id);
         free(args);
         return NULL;
     }
     if (!remote_host || !remote_port_str) {
-        nexterm_cp_send_session_result(cp, session->session_id, false, "Missing remoteHost/remotePort", NULL);
-        nexterm_sm_finish(&g_session_manager, session->session_id);
+        outpost_cp_send_session_result(cp, session->session_id, false, "Missing remoteHost/remotePort", NULL);
+        outpost_sm_finish(&g_session_manager, session->session_id);
         free(args);
         return NULL;
     }
@@ -337,36 +337,36 @@ static void* tunnel_session_thread(void* arg) {
     char* endptr;
     long remote_port = strtol(remote_port_str, &endptr, 10);
     if (*endptr != '\0' || remote_port <= 0 || remote_port > 65535) {
-        nexterm_cp_send_session_result(cp, session->session_id, false, "Invalid remotePort", NULL);
-        nexterm_sm_finish(&g_session_manager, session->session_id);
+        outpost_cp_send_session_result(cp, session->session_id, false, "Invalid remotePort", NULL);
+        outpost_sm_finish(&g_session_manager, session->session_id);
         free(args);
         return NULL;
     }
 
     jump_host_t jump_hosts[MAX_JUMP_HOSTS];
-    int jump_count = nexterm_extract_jump_hosts(session, jump_hosts, MAX_JUMP_HOSTS);
+    int jump_count = outpost_extract_jump_hosts(session, jump_hosts, MAX_JUMP_HOSTS);
 
     LOG_INFO("Tunnel session %s: %s:%u -> forward to %s:%ld (jump_hosts=%d)",
              session->session_id, session->host, session->port, remote_host, remote_port, jump_count);
 
-    data_fd = nexterm_cp_open_data_connection(cp, session->session_id);
+    data_fd = outpost_cp_open_data_connection(cp, session->session_id);
     if (data_fd < 0) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to open data connection", NULL);
-        nexterm_sm_finish(&g_session_manager, session->session_id);
+        outpost_sm_finish(&g_session_manager, session->session_id);
         free(args);
         return NULL;
     }
 
-    if (nexterm_ssh_setup_with_jumphosts(session->host, session->port,
+    if (outpost_ssh_setup_with_jumphosts(session->host, session->port,
             jump_hosts, jump_count, &ssh_sock, &ssh_session, &jump_chain) != 0) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to connect to SSH host", NULL);
         goto cleanup;
     }
 
-    if (nexterm_ssh_auth(ssh_session, username, password, private_key, passphrase) != 0) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+    if (outpost_ssh_auth(ssh_session, username, password, private_key, passphrase) != 0) {
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "SSH authentication failed", NULL);
         goto cleanup;
     }
@@ -377,7 +377,7 @@ static void* tunnel_session_thread(void* arg) {
         libssh2_session_last_error(ssh_session, &errmsg, NULL, 0);
         LOG_ERROR("Tunnel session %s: forwardOut failed: %s",
                   session->session_id, errmsg ? errmsg : "unknown");
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Port forward failed", NULL);
         goto cleanup;
     }
@@ -388,7 +388,7 @@ static void* tunnel_session_thread(void* arg) {
     session->ssh_channel = channel;
     session->ssh_sock = ssh_sock;
     session->state = SESSION_STATE_ACTIVE;
-    nexterm_cp_send_session_result(cp, session->session_id, true, NULL, NULL);
+    outpost_cp_send_session_result(cp, session->session_id, true, NULL, NULL);
 
     LOG_INFO("Tunnel session %s active (%s:%u -> %s:%ld)",
              session->session_id, session->host, session->port, remote_host, remote_port);
@@ -402,22 +402,22 @@ cleanup:
     session->ssh_channel = NULL;
     session->ssh_sock = -1;
 
-    nexterm_ssh_full_cleanup(ssh_session, channel, ssh_sock, &jump_chain, "Tunnel ended");
+    outpost_ssh_full_cleanup(ssh_session, channel, ssh_sock, &jump_chain, "Tunnel ended");
 
     if (data_fd >= 0)
         close(data_fd);
 
     char sid[MAX_SESSION_ID_LEN];
     snprintf(sid, sizeof(sid), "%s", session->session_id);
-    nexterm_cp_send_session_closed(cp, sid, "tunnel ended");
-    nexterm_sm_finish(&g_session_manager, sid);
+    outpost_cp_send_session_closed(cp, sid, "tunnel ended");
+    outpost_sm_finish(&g_session_manager, sid);
 
     free(args);
     return NULL;
 }
 
-int nexterm_tunnel_start(nexterm_session_t* session,
-                         nexterm_control_plane_t* cp) {
+int outpost_tunnel_start(outpost_session_t* session,
+                         outpost_control_plane_t* cp) {
     ssh_thread_args_t* args = calloc(1, sizeof(ssh_thread_args_t));
     if (!args) return -1;
 
@@ -436,7 +436,7 @@ int nexterm_tunnel_start(nexterm_session_t* session,
 }
 
 typedef struct {
-    nexterm_control_plane_t* cp;
+    outpost_control_plane_t* cp;
     char request_id[128];
     char host[256];
     uint16_t port;
@@ -470,30 +470,30 @@ static void* exec_command_thread(void* arg) {
     LIBSSH2_CHANNEL* channel = NULL;
     jump_chain_t jump_chain = {0};
 
-    if (nexterm_ssh_setup_with_jumphosts(args->host, args->port,
+    if (outpost_ssh_setup_with_jumphosts(args->host, args->port,
             args->jump_hosts, args->jump_count, &ssh_sock, &ssh, &jump_chain) != 0) {
-        nexterm_cp_send_exec_result(args->cp, args->request_id, false,
+        outpost_cp_send_exec_result(args->cp, args->request_id, false,
                                     NULL, NULL, -1, "Failed to connect to SSH host");
         exec_cmd_free(args);
         return NULL;
     }
 
-    if (nexterm_ssh_auth(ssh, args->username, args->password,
+    if (outpost_ssh_auth(ssh, args->username, args->password,
                          args->private_key, args->passphrase) != 0) {
-        nexterm_cp_send_exec_result(args->cp, args->request_id, false,
+        outpost_cp_send_exec_result(args->cp, args->request_id, false,
                                     NULL, NULL, -1, "SSH authentication failed");
         goto cleanup;
     }
 
     channel = libssh2_channel_open_session(ssh);
     if (!channel) {
-        nexterm_cp_send_exec_result(args->cp, args->request_id, false,
+        outpost_cp_send_exec_result(args->cp, args->request_id, false,
                                     NULL, NULL, -1, "Failed to open SSH channel");
         goto cleanup;
     }
 
     if (libssh2_channel_exec(channel, args->command) != 0) {
-        nexterm_cp_send_exec_result(args->cp, args->request_id, false,
+        outpost_cp_send_exec_result(args->cp, args->request_id, false,
                                     NULL, NULL, -1, "Failed to execute command");
         goto cleanup;
     }
@@ -504,19 +504,19 @@ static void* exec_command_thread(void* arg) {
         if (!stdout_buf || !stderr_buf) {
             free(stdout_buf);
             free(stderr_buf);
-            nexterm_cp_send_exec_result(args->cp, args->request_id, false,
+            outpost_cp_send_exec_result(args->cp, args->request_id, false,
                                         NULL, NULL, -1, "Out of memory");
             goto cleanup;
         }
 
-        nexterm_ssh_read_stream(channel, stdout_buf, SSH_EXEC_BUF_SIZE, 0);
-        nexterm_ssh_read_stream(channel, stderr_buf, SSH_EXEC_BUF_SIZE, 1);
+        outpost_ssh_read_stream(channel, stdout_buf, SSH_EXEC_BUF_SIZE, 0);
+        outpost_ssh_read_stream(channel, stderr_buf, SSH_EXEC_BUF_SIZE, 1);
 
         libssh2_channel_close(channel);
         libssh2_channel_wait_closed(channel);
         int exit_code = libssh2_channel_get_exit_status(channel);
 
-        nexterm_cp_send_exec_result(args->cp, args->request_id, true,
+        outpost_cp_send_exec_result(args->cp, args->request_id, true,
                                     stdout_buf, stderr_buf, exit_code, NULL);
 
         free(stdout_buf);
@@ -525,12 +525,12 @@ static void* exec_command_thread(void* arg) {
     }
 
 cleanup:
-    nexterm_ssh_full_cleanup(ssh, channel, ssh_sock, &jump_chain, "Done");
+    outpost_ssh_full_cleanup(ssh, channel, ssh_sock, &jump_chain, "Done");
     exec_cmd_free(args);
     return NULL;
 }
 
-int nexterm_ssh_exec_command(nexterm_control_plane_t* cp,
+int outpost_ssh_exec_command(outpost_control_plane_t* cp,
                              const char* request_id,
                              const char* host, uint16_t port,
                              const ssh_credentials_t* creds,
@@ -577,7 +577,7 @@ int nexterm_ssh_exec_command(nexterm_control_plane_t* cp,
 }
 
 typedef struct {
-    nexterm_control_plane_t* cp;
+    outpost_control_plane_t* cp;
     char request_id[128];
     char host[256];
     uint16_t port;
@@ -643,8 +643,8 @@ static void exec_batch_run_one(LIBSSH2_SESSION* ssh, const char* command,
         return;
     }
 
-    nexterm_ssh_read_stream(channel, stdout_buf, SSH_EXEC_BUF_SIZE, 0);
-    nexterm_ssh_read_stream(channel, stderr_buf, SSH_EXEC_BUF_SIZE, 1);
+    outpost_ssh_read_stream(channel, stdout_buf, SSH_EXEC_BUF_SIZE, 0);
+    outpost_ssh_read_stream(channel, stderr_buf, SSH_EXEC_BUF_SIZE, 1);
 
     libssh2_channel_close(channel);
     libssh2_channel_wait_closed(channel);
@@ -665,19 +665,19 @@ static void* exec_batch_thread(void* arg) {
     LIBSSH2_SESSION* ssh = NULL;
     jump_chain_t jump_chain = {0};
 
-    if (nexterm_ssh_setup_with_jumphosts(a->host, a->port,
+    if (outpost_ssh_setup_with_jumphosts(a->host, a->port,
             a->jump_hosts, a->jump_count, &ssh_sock, &ssh, &jump_chain) != 0) {
-        nexterm_cp_send_exec_batch_result(a->cp, a->request_id, false,
+        outpost_cp_send_exec_batch_result(a->cp, a->request_id, false,
                                           "Failed to connect to SSH host", NULL, 0);
         exec_batch_free(a);
         return NULL;
     }
 
-    if (nexterm_ssh_auth(ssh, a->username, a->password,
+    if (outpost_ssh_auth(ssh, a->username, a->password,
                          a->private_key, a->passphrase) != 0) {
-        nexterm_cp_send_exec_batch_result(a->cp, a->request_id, false,
+        outpost_cp_send_exec_batch_result(a->cp, a->request_id, false,
                                           "SSH authentication failed", NULL, 0);
-        nexterm_ssh_full_cleanup(ssh, NULL, ssh_sock, &jump_chain, "Auth failed");
+        outpost_ssh_full_cleanup(ssh, NULL, ssh_sock, &jump_chain, "Auth failed");
         exec_batch_free(a);
         return NULL;
     }
@@ -689,9 +689,9 @@ static void* exec_batch_thread(void* arg) {
         free(entries);
         free(outs);
         free(errs);
-        nexterm_cp_send_exec_batch_result(a->cp, a->request_id, false,
+        outpost_cp_send_exec_batch_result(a->cp, a->request_id, false,
                                           "Out of memory", NULL, 0);
-        nexterm_ssh_full_cleanup(ssh, NULL, ssh_sock, &jump_chain, "OOM");
+        outpost_ssh_full_cleanup(ssh, NULL, ssh_sock, &jump_chain, "OOM");
         exec_batch_free(a);
         return NULL;
     }
@@ -701,7 +701,7 @@ static void* exec_batch_thread(void* arg) {
         exec_batch_run_one(ssh, a->commands[i], &entries[i], &outs[i], &errs[i]);
     }
 
-    nexterm_cp_send_exec_batch_result(a->cp, a->request_id, true, NULL,
+    outpost_cp_send_exec_batch_result(a->cp, a->request_id, true, NULL,
                                       entries, (size_t)a->command_count);
 
     for (int i = 0; i < a->command_count; i++) {
@@ -712,12 +712,12 @@ static void* exec_batch_thread(void* arg) {
     free(errs);
     free(entries);
 
-    nexterm_ssh_full_cleanup(ssh, NULL, ssh_sock, &jump_chain, "Batch done");
+    outpost_ssh_full_cleanup(ssh, NULL, ssh_sock, &jump_chain, "Batch done");
     exec_batch_free(a);
     return NULL;
 }
 
-int nexterm_ssh_exec_batch(nexterm_control_plane_t* cp,
+int outpost_ssh_exec_batch(outpost_control_plane_t* cp,
                            const char* request_id,
                            const char* host, uint16_t port,
                            const ssh_credentials_t* creds,
@@ -727,7 +727,7 @@ int nexterm_ssh_exec_batch(nexterm_control_plane_t* cp,
                            const jump_host_t* jump_hosts,
                            int jump_count) {
     if (command_count <= 0) {
-        nexterm_cp_send_exec_batch_result(cp, request_id, false,
+        outpost_cp_send_exec_batch_result(cp, request_id, false,
                                           "No commands supplied", NULL, 0);
         return -1;
     }
@@ -750,7 +750,7 @@ int nexterm_ssh_exec_batch(nexterm_control_plane_t* cp,
     if (!args->username || !args->password || !args->private_key ||
         !args->passphrase || !args->ids || !args->commands) {
         exec_batch_free(args);
-        nexterm_cp_send_exec_batch_result(cp, request_id, false, "Out of memory", NULL, 0);
+        outpost_cp_send_exec_batch_result(cp, request_id, false, "Out of memory", NULL, 0);
         return -1;
     }
 
@@ -759,7 +759,7 @@ int nexterm_ssh_exec_batch(nexterm_control_plane_t* cp,
         args->commands[i] = strdup(commands[i] ? commands[i] : "");
         if (!args->ids[i] || !args->commands[i]) {
             exec_batch_free(args);
-            nexterm_cp_send_exec_batch_result(cp, request_id, false, "Out of memory", NULL, 0);
+            outpost_cp_send_exec_batch_result(cp, request_id, false, "Out of memory", NULL, 0);
             return -1;
         }
     }

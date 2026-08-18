@@ -1,13 +1,13 @@
-#ifndef NEXTERM_HTTP_FETCH_H
-#define NEXTERM_HTTP_FETCH_H
+#ifndef OUTPOST_HTTP_FETCH_H
+#define OUTPOST_HTTP_FETCH_H
 
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
 
-struct nexterm_control_plane;
+struct outpost_control_plane;
 
-void nexterm_http_fetch(struct nexterm_control_plane* cp,
+void outpost_http_fetch(struct outpost_control_plane* cp,
                         const char* request_id,
                         const char* method,
                         const char* url,

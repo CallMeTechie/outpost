@@ -7,7 +7,7 @@
 #include "log.h"
 #include "thumbnail.h"
 
-extern nexterm_session_manager_t g_session_manager;
+extern outpost_session_manager_t g_session_manager;
 
 #include <libssh2.h>
 #include <libssh2_sftp.h>
@@ -26,8 +26,8 @@ extern nexterm_session_manager_t g_session_manager;
 #define SFTP_EXEC_BUF      (256 * 1024)
 
 typedef struct {
-    nexterm_session_t* session;
-    nexterm_control_plane_t* cp;
+    outpost_session_t* session;
+    outpost_control_plane_t* cp;
 } sftp_thread_args_t;
 
 static const char* sftp_strerror(unsigned long err) {
@@ -462,7 +462,7 @@ static void handle_thumbnail(LIBSSH2_SFTP* sftp, int fd, uint32_t rid,
     uint8_t* jpeg = NULL;
     size_t jpeg_len = 0;
     int ow = 0, oh = 0;
-    if (nexterm_make_thumbnail(filebuf, got, (int)size, &jpeg, &jpeg_len, &ow, &oh) != 0) {
+    if (outpost_make_thumbnail(filebuf, got, (int)size, &jpeg, &jpeg_len, &ow, &oh) != 0) {
         free(filebuf);
         fp_send_error(fd, rid, "Failed to generate thumbnail", -1);
         return;
@@ -571,18 +571,18 @@ static int sftp_flush_write(LIBSSH2_SFTP* sftp, int data_fd,
 
 static int sftp_handle_write_data(LIBSSH2_SFTP* sftp, int data_fd,
                                    sftp_write_state_t* ws,
-                                   Nexterm_SftpProtocol_SftpMessage_table_t msg) {
+                                   Outpost_SftpProtocol_SftpMessage_table_t msg) {
     if (!ws->handle) {
-        fp_send_error(data_fd, Nexterm_SftpProtocol_SftpMessage_request_id(msg),
+        fp_send_error(data_fd, Outpost_SftpProtocol_SftpMessage_request_id(msg),
                       "No write in progress", -1);
         return 0;
     }
 
-    Nexterm_SftpProtocol_WriteDataReq_table_t req =
-        Nexterm_SftpProtocol_SftpMessage_write_data_req(msg);
+    Outpost_SftpProtocol_WriteDataReq_table_t req =
+        Outpost_SftpProtocol_SftpMessage_write_data_req(msg);
     if (!req) return 0;
 
-    flatbuffers_uint8_vec_t data = Nexterm_SftpProtocol_WriteDataReq_data(req);
+    flatbuffers_uint8_vec_t data = Outpost_SftpProtocol_WriteDataReq_data(req);
     size_t dlen = flatbuffers_uint8_vec_len(data);
     if (dlen == 0) return 0;
 
@@ -605,45 +605,45 @@ static int sftp_handle_write_data(LIBSSH2_SFTP* sftp, int data_fd,
     return 0;
 }
 
-static const char* extract_path_req(Nexterm_SftpProtocol_SftpMessage_table_t msg) {
-    Nexterm_SftpProtocol_PathReq_table_t req = Nexterm_SftpProtocol_SftpMessage_path_req(msg);
-    return req ? Nexterm_SftpProtocol_PathReq_path(req) : NULL;
+static const char* extract_path_req(Outpost_SftpProtocol_SftpMessage_table_t msg) {
+    Outpost_SftpProtocol_PathReq_table_t req = Outpost_SftpProtocol_SftpMessage_path_req(msg);
+    return req ? Outpost_SftpProtocol_PathReq_path(req) : NULL;
 }
 
-static void dispatch_path_op(Nexterm_SftpProtocol_SftpMsgType_enum_t mt,
+static void dispatch_path_op(Outpost_SftpProtocol_SftpMsgType_enum_t mt,
                               LIBSSH2_SFTP* sftp, LIBSSH2_SESSION* ssh,
                               int data_fd, uint32_t rid,
-                              Nexterm_SftpProtocol_SftpMessage_table_t msg) {
+                              Outpost_SftpProtocol_SftpMessage_table_t msg) {
     const char* path = extract_path_req(msg);
     if (!path) { fp_send_error(data_fd, rid, "Missing path", -1); return; }
 
     switch (mt) {
-        case Nexterm_SftpProtocol_SftpMsgType_ListDir:
+        case Outpost_SftpProtocol_SftpMsgType_ListDir:
             handle_list_dir(sftp, data_fd, rid, path); return;
-        case Nexterm_SftpProtocol_SftpMsgType_Stat:
+        case Outpost_SftpProtocol_SftpMsgType_Stat:
             handle_stat(sftp, ssh, data_fd, rid, path); return;
-        case Nexterm_SftpProtocol_SftpMsgType_Mkdir:
+        case Outpost_SftpProtocol_SftpMsgType_Mkdir:
             handle_mkdir(sftp, data_fd, rid, path); return;
-        case Nexterm_SftpProtocol_SftpMsgType_Unlink:
+        case Outpost_SftpProtocol_SftpMsgType_Unlink:
             handle_unlink(sftp, data_fd, rid, path); return;
-        case Nexterm_SftpProtocol_SftpMsgType_Realpath:
+        case Outpost_SftpProtocol_SftpMsgType_Realpath:
             handle_realpath(sftp, data_fd, rid, path); return;
-        case Nexterm_SftpProtocol_SftpMsgType_ReadFile:
+        case Outpost_SftpProtocol_SftpMsgType_ReadFile:
             handle_read_file(sftp, data_fd, rid, path); return;
         default: return;
     }
 }
 
-static void dispatch_write_op(Nexterm_SftpProtocol_SftpMsgType_enum_t mt,
+static void dispatch_write_op(Outpost_SftpProtocol_SftpMsgType_enum_t mt,
                                LIBSSH2_SFTP* sftp, int data_fd, uint32_t rid,
-                               Nexterm_SftpProtocol_SftpMessage_table_t msg,
+                               Outpost_SftpProtocol_SftpMessage_table_t msg,
                                sftp_write_state_t* ws) {
-    if (mt == Nexterm_SftpProtocol_SftpMsgType_WriteData) {
+    if (mt == Outpost_SftpProtocol_SftpMsgType_WriteData) {
         sftp_handle_write_data(sftp, data_fd, ws, msg);
         return;
     }
 
-    if (mt == Nexterm_SftpProtocol_SftpMsgType_WriteEnd) {
+    if (mt == Outpost_SftpProtocol_SftpMsgType_WriteEnd) {
         if (ws->handle) {
             if (sftp_flush_write(sftp, data_fd, ws) != 0) return;
             libssh2_sftp_close(ws->handle);
@@ -664,9 +664,9 @@ static void dispatch_write_op(Nexterm_SftpProtocol_SftpMsgType_enum_t mt,
         if (!ws->buf) { fp_send_error(data_fd, rid, "Out of memory", -1); return; }
         ws->buf_cap = SFTP_WRITE_BUF;
     }
-    Nexterm_SftpProtocol_WriteBeginReq_table_t req =
-        Nexterm_SftpProtocol_SftpMessage_write_begin_req(msg);
-    const char* path = req ? Nexterm_SftpProtocol_WriteBeginReq_path(req) : NULL;
+    Outpost_SftpProtocol_WriteBeginReq_table_t req =
+        Outpost_SftpProtocol_SftpMessage_write_begin_req(msg);
+    const char* path = req ? Outpost_SftpProtocol_WriteBeginReq_path(req) : NULL;
     if (!path) { fp_send_error(data_fd, rid, "Missing path", -1); return; }
 
     ws->handle = libssh2_sftp_open(sftp, path,
@@ -682,98 +682,98 @@ static void dispatch_write_op(Nexterm_SftpProtocol_SftpMsgType_enum_t mt,
 }
 
 static void dispatch_rmdir(LIBSSH2_SFTP* sftp, int data_fd, uint32_t rid,
-                           Nexterm_SftpProtocol_SftpMessage_table_t msg) {
-    Nexterm_SftpProtocol_RmdirReq_table_t req = Nexterm_SftpProtocol_SftpMessage_rmdir_req(msg);
-    const char* path = req ? Nexterm_SftpProtocol_RmdirReq_path(req) : NULL;
-    bool rec = req ? Nexterm_SftpProtocol_RmdirReq_recursive(req) : false;
+                           Outpost_SftpProtocol_SftpMessage_table_t msg) {
+    Outpost_SftpProtocol_RmdirReq_table_t req = Outpost_SftpProtocol_SftpMessage_rmdir_req(msg);
+    const char* path = req ? Outpost_SftpProtocol_RmdirReq_path(req) : NULL;
+    bool rec = req ? Outpost_SftpProtocol_RmdirReq_recursive(req) : false;
     if (!path) { fp_send_error(data_fd, rid, "Missing path", -1); return; }
     handle_rmdir(sftp, data_fd, rid, path, rec);
 }
 
 static void dispatch_rename(LIBSSH2_SFTP* sftp, int data_fd, uint32_t rid,
-                             Nexterm_SftpProtocol_SftpMessage_table_t msg) {
-    Nexterm_SftpProtocol_RenameReq_table_t req = Nexterm_SftpProtocol_SftpMessage_rename_req(msg);
-    const char* old = req ? Nexterm_SftpProtocol_RenameReq_old_path(req) : NULL;
-    const char* new_p = req ? Nexterm_SftpProtocol_RenameReq_new_path(req) : NULL;
+                             Outpost_SftpProtocol_SftpMessage_table_t msg) {
+    Outpost_SftpProtocol_RenameReq_table_t req = Outpost_SftpProtocol_SftpMessage_rename_req(msg);
+    const char* old = req ? Outpost_SftpProtocol_RenameReq_old_path(req) : NULL;
+    const char* new_p = req ? Outpost_SftpProtocol_RenameReq_new_path(req) : NULL;
     if (!old || !new_p) { fp_send_error(data_fd, rid, "Missing paths", -1); return; }
     handle_rename(sftp, data_fd, rid, old, new_p);
 }
 
 static void dispatch_chmod(LIBSSH2_SFTP* sftp, int data_fd, uint32_t rid,
-                            Nexterm_SftpProtocol_SftpMessage_table_t msg) {
-    Nexterm_SftpProtocol_ChmodReq_table_t req = Nexterm_SftpProtocol_SftpMessage_chmod_req(msg);
-    const char* path = req ? Nexterm_SftpProtocol_ChmodReq_path(req) : NULL;
-    uint32_t mode = req ? Nexterm_SftpProtocol_ChmodReq_mode(req) : 0;
+                            Outpost_SftpProtocol_SftpMessage_table_t msg) {
+    Outpost_SftpProtocol_ChmodReq_table_t req = Outpost_SftpProtocol_SftpMessage_chmod_req(msg);
+    const char* path = req ? Outpost_SftpProtocol_ChmodReq_path(req) : NULL;
+    uint32_t mode = req ? Outpost_SftpProtocol_ChmodReq_mode(req) : 0;
     if (!path) { fp_send_error(data_fd, rid, "Missing path", -1); return; }
     handle_chmod(sftp, data_fd, rid, path, mode);
 }
 
 static void dispatch_exec(LIBSSH2_SESSION* ssh, int data_fd, uint32_t rid,
-                           Nexterm_SftpProtocol_SftpMessage_table_t msg) {
-    Nexterm_SftpProtocol_ExecReq_table_t req = Nexterm_SftpProtocol_SftpMessage_exec_req(msg);
-    const char* command = req ? Nexterm_SftpProtocol_ExecReq_command(req) : NULL;
-    const char* stdin_data = req ? Nexterm_SftpProtocol_ExecReq_stdin_data(req) : NULL;
-    uint32_t timeout_ms = req ? Nexterm_SftpProtocol_ExecReq_timeout_ms(req) : 0;
+                           Outpost_SftpProtocol_SftpMessage_table_t msg) {
+    Outpost_SftpProtocol_ExecReq_table_t req = Outpost_SftpProtocol_SftpMessage_exec_req(msg);
+    const char* command = req ? Outpost_SftpProtocol_ExecReq_command(req) : NULL;
+    const char* stdin_data = req ? Outpost_SftpProtocol_ExecReq_stdin_data(req) : NULL;
+    uint32_t timeout_ms = req ? Outpost_SftpProtocol_ExecReq_timeout_ms(req) : 0;
     if (!command) { fp_send_error(data_fd, rid, "Missing command", -1); return; }
     if (timeout_ms == 0) timeout_ms = 300000;
     handle_exec(ssh, data_fd, rid, command, stdin_data, timeout_ms);
 }
 
 static void dispatch_search(LIBSSH2_SFTP* sftp, int data_fd, uint32_t rid,
-                             Nexterm_SftpProtocol_SftpMessage_table_t msg) {
-    Nexterm_SftpProtocol_SearchReq_table_t req = Nexterm_SftpProtocol_SftpMessage_search_req(msg);
-    const char* sp = req ? Nexterm_SftpProtocol_SearchReq_search_path(req) : NULL;
-    uint32_t max = req ? Nexterm_SftpProtocol_SearchReq_max_results(req) : FP_SEARCH_MAX;
-    uint32_t timeout_ms = req ? Nexterm_SftpProtocol_SearchReq_timeout_ms(req) : 0;
+                             Outpost_SftpProtocol_SftpMessage_table_t msg) {
+    Outpost_SftpProtocol_SearchReq_table_t req = Outpost_SftpProtocol_SftpMessage_search_req(msg);
+    const char* sp = req ? Outpost_SftpProtocol_SearchReq_search_path(req) : NULL;
+    uint32_t max = req ? Outpost_SftpProtocol_SearchReq_max_results(req) : FP_SEARCH_MAX;
+    uint32_t timeout_ms = req ? Outpost_SftpProtocol_SearchReq_timeout_ms(req) : 0;
     if (!sp) { fp_send_error(data_fd, rid, "Missing search path", -1); return; }
     if (timeout_ms == 0) timeout_ms = 30000;
     handle_search_dirs(sftp, data_fd, rid, sp, max, timeout_ms);
 }
 
 static void dispatch_thumbnail(LIBSSH2_SFTP* sftp, int data_fd, uint32_t rid,
-                               Nexterm_SftpProtocol_SftpMessage_table_t msg) {
-    Nexterm_SftpProtocol_ThumbnailReq_table_t req = Nexterm_SftpProtocol_SftpMessage_thumbnail_req(msg);
-    const char* path = req ? Nexterm_SftpProtocol_ThumbnailReq_path(req) : NULL;
-    uint32_t size = req ? Nexterm_SftpProtocol_ThumbnailReq_size(req) : 100;
+                               Outpost_SftpProtocol_SftpMessage_table_t msg) {
+    Outpost_SftpProtocol_ThumbnailReq_table_t req = Outpost_SftpProtocol_SftpMessage_thumbnail_req(msg);
+    const char* path = req ? Outpost_SftpProtocol_ThumbnailReq_path(req) : NULL;
+    uint32_t size = req ? Outpost_SftpProtocol_ThumbnailReq_size(req) : 100;
     if (!path) { fp_send_error(data_fd, rid, "Missing path", -1); return; }
     handle_thumbnail(sftp, data_fd, rid, path, size);
 }
 
 static int sftp_dispatch_message(LIBSSH2_SFTP* sftp, LIBSSH2_SESSION* ssh,
                                   int data_fd,
-                                  Nexterm_SftpProtocol_SftpMessage_table_t msg,
+                                  Outpost_SftpProtocol_SftpMessage_table_t msg,
                                   sftp_write_state_t* ws) {
-    Nexterm_SftpProtocol_SftpMsgType_enum_t mt =
-        Nexterm_SftpProtocol_SftpMessage_msg_type(msg);
-    uint32_t rid = Nexterm_SftpProtocol_SftpMessage_request_id(msg);
+    Outpost_SftpProtocol_SftpMsgType_enum_t mt =
+        Outpost_SftpProtocol_SftpMessage_msg_type(msg);
+    uint32_t rid = Outpost_SftpProtocol_SftpMessage_request_id(msg);
 
     switch (mt) {
-        case Nexterm_SftpProtocol_SftpMsgType_ListDir:
-        case Nexterm_SftpProtocol_SftpMsgType_Stat:
-        case Nexterm_SftpProtocol_SftpMsgType_Mkdir:
-        case Nexterm_SftpProtocol_SftpMsgType_Unlink:
-        case Nexterm_SftpProtocol_SftpMsgType_Realpath:
-        case Nexterm_SftpProtocol_SftpMsgType_ReadFile:
+        case Outpost_SftpProtocol_SftpMsgType_ListDir:
+        case Outpost_SftpProtocol_SftpMsgType_Stat:
+        case Outpost_SftpProtocol_SftpMsgType_Mkdir:
+        case Outpost_SftpProtocol_SftpMsgType_Unlink:
+        case Outpost_SftpProtocol_SftpMsgType_Realpath:
+        case Outpost_SftpProtocol_SftpMsgType_ReadFile:
             dispatch_path_op(mt, sftp, ssh, data_fd, rid, msg);
             return 0;
 
-        case Nexterm_SftpProtocol_SftpMsgType_WriteBegin:
-        case Nexterm_SftpProtocol_SftpMsgType_WriteData:
-        case Nexterm_SftpProtocol_SftpMsgType_WriteEnd:
+        case Outpost_SftpProtocol_SftpMsgType_WriteBegin:
+        case Outpost_SftpProtocol_SftpMsgType_WriteData:
+        case Outpost_SftpProtocol_SftpMsgType_WriteEnd:
             dispatch_write_op(mt, sftp, data_fd, rid, msg, ws);
             return 0;
 
-        case Nexterm_SftpProtocol_SftpMsgType_Rmdir:
+        case Outpost_SftpProtocol_SftpMsgType_Rmdir:
             dispatch_rmdir(sftp, data_fd, rid, msg); return 0;
-        case Nexterm_SftpProtocol_SftpMsgType_Rename:
+        case Outpost_SftpProtocol_SftpMsgType_Rename:
             dispatch_rename(sftp, data_fd, rid, msg); return 0;
-        case Nexterm_SftpProtocol_SftpMsgType_Chmod:
+        case Outpost_SftpProtocol_SftpMsgType_Chmod:
             dispatch_chmod(sftp, data_fd, rid, msg); return 0;
-        case Nexterm_SftpProtocol_SftpMsgType_Exec:
+        case Outpost_SftpProtocol_SftpMsgType_Exec:
             dispatch_exec(ssh, data_fd, rid, msg); return 0;
-        case Nexterm_SftpProtocol_SftpMsgType_SearchDirs:
+        case Outpost_SftpProtocol_SftpMsgType_SearchDirs:
             dispatch_search(sftp, data_fd, rid, msg); return 0;
-        case Nexterm_SftpProtocol_SftpMsgType_Thumbnail:
+        case Outpost_SftpProtocol_SftpMsgType_Thumbnail:
             dispatch_thumbnail(sftp, data_fd, rid, msg); return 0;
 
         default:
@@ -783,7 +783,7 @@ static int sftp_dispatch_message(LIBSSH2_SFTP* sftp, LIBSSH2_SESSION* ssh,
     }
 }
 
-static void sftp_request_loop(nexterm_session_t* session,
+static void sftp_request_loop(outpost_session_t* session,
                                LIBSSH2_SFTP* sftp, LIBSSH2_SESSION* ssh,
                                int data_fd) {
     sftp_write_state_t ws = { .handle = NULL, .rid = 0,
@@ -797,15 +797,15 @@ static void sftp_request_loop(nexterm_session_t* session,
         if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) break;
 
         uint32_t payload_len;
-        uint8_t* payload = nexterm_read_frame(data_fd, FP_MAX_FRAME, &payload_len);
+        uint8_t* payload = outpost_read_frame(data_fd, FP_MAX_FRAME, &payload_len);
         if (!payload) {
             LOG_DEBUG("SFTP session %s: connection closed or read error",
                       session->session_id);
             break;
         }
 
-        Nexterm_SftpProtocol_SftpMessage_table_t msg =
-            Nexterm_SftpProtocol_SftpMessage_as_root(payload);
+        Outpost_SftpProtocol_SftpMessage_table_t msg =
+            Outpost_SftpProtocol_SftpMessage_as_root(payload);
         if (!msg) {
             LOG_WARN("SFTP session %s: invalid FlatBuffers message", session->session_id);
             free(payload);
@@ -825,8 +825,8 @@ static void sftp_request_loop(nexterm_session_t* session,
 
 static void* sftp_session_thread(void* arg) {
     sftp_thread_args_t* args = (sftp_thread_args_t*)arg;
-    nexterm_session_t* session = args->session;
-    nexterm_control_plane_t* cp = args->cp;
+    outpost_session_t* session = args->session;
+    outpost_control_plane_t* cp = args->cp;
     int data_fd = -1;
     int ssh_sock = -1;
     LIBSSH2_SESSION* ssh = NULL;
@@ -835,40 +835,40 @@ static void* sftp_session_thread(void* arg) {
 
     session->state = SESSION_STATE_CONNECTING;
 
-    const char* username   = nexterm_session_get_param(session, "username");
-    const char* password   = nexterm_session_get_param(session, "password");
-    const char* priv_key   = nexterm_session_get_param(session, "privateKey");
-    const char* passphrase = nexterm_session_get_param(session, "passphrase");
+    const char* username   = outpost_session_get_param(session, "username");
+    const char* password   = outpost_session_get_param(session, "password");
+    const char* priv_key   = outpost_session_get_param(session, "privateKey");
+    const char* passphrase = outpost_session_get_param(session, "passphrase");
 
     if (!username || strlen(username) == 0) {
         LOG_ERROR("SFTP session %s: missing username", session->session_id);
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Missing username", NULL);
         goto cleanup;
     }
 
     jump_host_t jump_hosts[MAX_JUMP_HOSTS];
-    int jump_count = nexterm_extract_jump_hosts(session, jump_hosts, MAX_JUMP_HOSTS);
+    int jump_count = outpost_extract_jump_hosts(session, jump_hosts, MAX_JUMP_HOSTS);
 
     LOG_INFO("SFTP session %s: connecting to %s:%u as %s (jump_hosts=%d)",
              session->session_id, session->host, session->port, username, jump_count);
 
-    data_fd = nexterm_cp_open_data_connection(cp, session->session_id);
+    data_fd = outpost_cp_open_data_connection(cp, session->session_id);
     if (data_fd < 0) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to open data connection", NULL);
         goto cleanup;
     }
 
-    if (nexterm_ssh_setup_with_jumphosts(session->host, session->port,
+    if (outpost_ssh_setup_with_jumphosts(session->host, session->port,
             jump_hosts, jump_count, &ssh_sock, &ssh, &jump_chain) != 0) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to connect to SSH host", NULL);
         goto cleanup;
     }
 
-    if (nexterm_ssh_auth(ssh, username, password, priv_key, passphrase) != 0) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+    if (outpost_ssh_auth(ssh, username, password, priv_key, passphrase) != 0) {
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "SSH authentication failed", NULL);
         goto cleanup;
     }
@@ -881,13 +881,13 @@ static void* sftp_session_thread(void* arg) {
         libssh2_session_last_error(ssh, &errmsg, NULL, 0);
         LOG_ERROR("SFTP session %s: failed to open SFTP: %s",
                   session->session_id, errmsg ? errmsg : "unknown");
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to open SFTP subsystem", NULL);
         goto cleanup;
     }
 
     session->state = SESSION_STATE_ACTIVE;
-    nexterm_cp_send_session_result(cp, session->session_id, true, NULL, NULL);
+    outpost_cp_send_session_result(cp, session->session_id, true, NULL, NULL);
 
     if (fp_send_ready(data_fd) != 0) {
         LOG_ERROR("SFTP session %s: failed to send Ready", session->session_id);
@@ -903,21 +903,21 @@ static void* sftp_session_thread(void* arg) {
 
 cleanup:
     if (sftp) libssh2_sftp_shutdown(sftp);
-    nexterm_ssh_full_cleanup(ssh, NULL, ssh_sock, &jump_chain, "Session ended");
+    outpost_ssh_full_cleanup(ssh, NULL, ssh_sock, &jump_chain, "Session ended");
     if (data_fd >= 0)
         close(data_fd);
 
     char sid[MAX_SESSION_ID_LEN];
     snprintf(sid, sizeof(sid), "%s", session->session_id);
-    nexterm_cp_send_session_closed(cp, sid, "session ended");
-    nexterm_sm_finish(&g_session_manager, sid);
+    outpost_cp_send_session_closed(cp, sid, "session ended");
+    outpost_sm_finish(&g_session_manager, sid);
 
     free(args);
     return NULL;
 }
 
-int nexterm_sftp_start(nexterm_session_t* session,
-                       nexterm_control_plane_t* cp) {
+int outpost_sftp_start(outpost_session_t* session,
+                       outpost_control_plane_t* cp) {
     sftp_thread_args_t* args = calloc(1, sizeof(sftp_thread_args_t));
     if (!args) return -1;
 

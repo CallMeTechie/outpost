@@ -1,5 +1,5 @@
-#ifndef NEXTERM_IO_H
-#define NEXTERM_IO_H
+#ifndef OUTPOST_IO_H
+#define OUTPOST_IO_H
 
 #include <pthread.h>
 #include <stdbool.h>
@@ -8,24 +8,24 @@
 
 #define FRAME_HEADER_SIZE 4
 
-int nexterm_read_exact(int fd, uint8_t* buf, size_t len);
-int nexterm_write_exact(int fd, const uint8_t* buf, size_t len);
+int outpost_read_exact(int fd, uint8_t* buf, size_t len);
+int outpost_write_exact(int fd, const uint8_t* buf, size_t len);
 
-int nexterm_tcp_connect(const char* host, uint16_t port);
+int outpost_tcp_connect(const char* host, uint16_t port);
 
-SSL_CTX* nexterm_tls_client_ctx_create(const char* ca_cert_path, bool skip_verify);
-SSL* nexterm_tls_handshake(SSL_CTX* ctx, int fd);
-void nexterm_tls_cleanup(SSL* ssl);
+SSL_CTX* outpost_tls_client_ctx_create(const char* ca_cert_path, bool skip_verify);
+SSL* outpost_tls_handshake(SSL_CTX* ctx, int fd);
+void outpost_tls_cleanup(SSL* ssl);
 
-int nexterm_read_exact_s(int fd, SSL* ssl, uint8_t* buf, size_t len);
-int nexterm_write_exact_s(int fd, SSL* ssl, const uint8_t* buf, size_t len);
-int nexterm_send_frame_s(int fd, SSL* ssl, const uint8_t* data, size_t len,
+int outpost_read_exact_s(int fd, SSL* ssl, uint8_t* buf, size_t len);
+int outpost_write_exact_s(int fd, SSL* ssl, const uint8_t* buf, size_t len);
+int outpost_send_frame_s(int fd, SSL* ssl, const uint8_t* data, size_t len,
                          pthread_mutex_t* mutex);
-uint8_t* nexterm_read_frame_s(int fd, SSL* ssl, uint32_t max_size, uint32_t* out_len);
+uint8_t* outpost_read_frame_s(int fd, SSL* ssl, uint32_t max_size, uint32_t* out_len);
 
-#define nexterm_send_frame(fd, data, len, mutex) nexterm_send_frame_s(fd, NULL, data, len, mutex)
-#define nexterm_read_frame(fd, max_size, out_len) nexterm_read_frame_s(fd, NULL, max_size, out_len)
+#define outpost_send_frame(fd, data, len, mutex) outpost_send_frame_s(fd, NULL, data, len, mutex)
+#define outpost_read_frame(fd, max_size, out_len) outpost_read_frame_s(fd, NULL, max_size, out_len)
 
-int nexterm_tls_proxy_start(SSL* ssl, int tls_fd);
+int outpost_tls_proxy_start(SSL* ssl, int tls_fd);
 
 #endif

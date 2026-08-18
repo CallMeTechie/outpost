@@ -13,7 +13,7 @@
 static int fp_finalize_and_send(flatcc_builder_t* b, int fd) {
     size_t sz;
     uint8_t* buf = (uint8_t*)flatcc_builder_finalize_buffer(b, &sz);
-    int ret = nexterm_send_frame(fd, buf, sz, NULL);
+    int ret = outpost_send_frame(fd, buf, sz, NULL);
     flatcc_builder_clear(b);
     free(buf);
     return ret;
@@ -51,147 +51,147 @@ void fp_entries_free(fp_entries_t* list) {
 }
 
 static void fp_start_message(flatcc_builder_t* b,
-                             Nexterm_SftpProtocol_SftpMsgType_enum_t type,
+                             Outpost_SftpProtocol_SftpMsgType_enum_t type,
                              uint32_t rid) {
     flatcc_builder_init(b);
-    Nexterm_SftpProtocol_SftpMessage_start_as_root(b);
-    Nexterm_SftpProtocol_SftpMessage_msg_type_add(b, type);
-    Nexterm_SftpProtocol_SftpMessage_request_id_add(b, rid);
+    Outpost_SftpProtocol_SftpMessage_start_as_root(b);
+    Outpost_SftpProtocol_SftpMessage_msg_type_add(b, type);
+    Outpost_SftpProtocol_SftpMessage_request_id_add(b, rid);
 }
 
 int fp_send_ready(int fd) {
     flatcc_builder_t b;
-    fp_start_message(&b, Nexterm_SftpProtocol_SftpMsgType_Ready, 0);
-    Nexterm_SftpProtocol_SftpMessage_end_as_root(&b);
+    fp_start_message(&b, Outpost_SftpProtocol_SftpMsgType_Ready, 0);
+    Outpost_SftpProtocol_SftpMessage_end_as_root(&b);
     return fp_finalize_and_send(&b, fd);
 }
 
 int fp_send_ok(int fd, uint32_t rid) {
     flatcc_builder_t b;
-    fp_start_message(&b, Nexterm_SftpProtocol_SftpMsgType_Ok, rid);
-    Nexterm_SftpProtocol_SftpMessage_end_as_root(&b);
+    fp_start_message(&b, Outpost_SftpProtocol_SftpMsgType_Ok, rid);
+    Outpost_SftpProtocol_SftpMessage_end_as_root(&b);
     return fp_finalize_and_send(&b, fd);
 }
 
 int fp_send_error(int fd, uint32_t rid, const char* message, int32_t code) {
     flatcc_builder_t b;
-    fp_start_message(&b, Nexterm_SftpProtocol_SftpMsgType_Error, rid);
-    Nexterm_SftpProtocol_SftpMessage_error_res_start(&b);
-    Nexterm_SftpProtocol_ErrorRes_message_create_str(&b, message);
-    Nexterm_SftpProtocol_ErrorRes_code_add(&b, code);
-    Nexterm_SftpProtocol_SftpMessage_error_res_end(&b);
-    Nexterm_SftpProtocol_SftpMessage_end_as_root(&b);
+    fp_start_message(&b, Outpost_SftpProtocol_SftpMsgType_Error, rid);
+    Outpost_SftpProtocol_SftpMessage_error_res_start(&b);
+    Outpost_SftpProtocol_ErrorRes_message_create_str(&b, message);
+    Outpost_SftpProtocol_ErrorRes_code_add(&b, code);
+    Outpost_SftpProtocol_SftpMessage_error_res_end(&b);
+    Outpost_SftpProtocol_SftpMessage_end_as_root(&b);
     return fp_finalize_and_send(&b, fd);
 }
 
 int fp_send_file_data(int fd, uint32_t rid, const uint8_t* data, size_t len,
                       uint64_t total_size) {
     flatcc_builder_t b;
-    fp_start_message(&b, Nexterm_SftpProtocol_SftpMsgType_FileData, rid);
-    Nexterm_SftpProtocol_SftpMessage_file_data_res_start(&b);
-    Nexterm_SftpProtocol_FileDataRes_data_create(&b, data, len);
-    Nexterm_SftpProtocol_FileDataRes_total_size_add(&b, total_size);
-    Nexterm_SftpProtocol_SftpMessage_file_data_res_end(&b);
-    Nexterm_SftpProtocol_SftpMessage_end_as_root(&b);
+    fp_start_message(&b, Outpost_SftpProtocol_SftpMsgType_FileData, rid);
+    Outpost_SftpProtocol_SftpMessage_file_data_res_start(&b);
+    Outpost_SftpProtocol_FileDataRes_data_create(&b, data, len);
+    Outpost_SftpProtocol_FileDataRes_total_size_add(&b, total_size);
+    Outpost_SftpProtocol_SftpMessage_file_data_res_end(&b);
+    Outpost_SftpProtocol_SftpMessage_end_as_root(&b);
     return fp_finalize_and_send(&b, fd);
 }
 
 int fp_send_file_end(int fd, uint32_t rid) {
     flatcc_builder_t b;
-    fp_start_message(&b, Nexterm_SftpProtocol_SftpMsgType_FileEnd, rid);
-    Nexterm_SftpProtocol_SftpMessage_end_as_root(&b);
+    fp_start_message(&b, Outpost_SftpProtocol_SftpMsgType_FileEnd, rid);
+    Outpost_SftpProtocol_SftpMessage_end_as_root(&b);
     return fp_finalize_and_send(&b, fd);
 }
 
 int fp_send_thumbnail(int fd, uint32_t rid, const uint8_t* data, size_t len,
                       uint32_t w, uint32_t h) {
     flatcc_builder_t b;
-    fp_start_message(&b, Nexterm_SftpProtocol_SftpMsgType_ThumbnailResult, rid);
-    Nexterm_SftpProtocol_SftpMessage_thumbnail_res_start(&b);
-    Nexterm_SftpProtocol_ThumbnailRes_data_create(&b, data, len);
-    Nexterm_SftpProtocol_ThumbnailRes_width_add(&b, w);
-    Nexterm_SftpProtocol_ThumbnailRes_height_add(&b, h);
-    Nexterm_SftpProtocol_SftpMessage_thumbnail_res_end(&b);
-    Nexterm_SftpProtocol_SftpMessage_end_as_root(&b);
+    fp_start_message(&b, Outpost_SftpProtocol_SftpMsgType_ThumbnailResult, rid);
+    Outpost_SftpProtocol_SftpMessage_thumbnail_res_start(&b);
+    Outpost_SftpProtocol_ThumbnailRes_data_create(&b, data, len);
+    Outpost_SftpProtocol_ThumbnailRes_width_add(&b, w);
+    Outpost_SftpProtocol_ThumbnailRes_height_add(&b, h);
+    Outpost_SftpProtocol_SftpMessage_thumbnail_res_end(&b);
+    Outpost_SftpProtocol_SftpMessage_end_as_root(&b);
     return fp_finalize_and_send(&b, fd);
 }
 
 int fp_send_dir_list(int fd, uint32_t rid, const fp_entries_t* list) {
     flatcc_builder_t b;
-    fp_start_message(&b, Nexterm_SftpProtocol_SftpMsgType_DirList, rid);
-    Nexterm_SftpProtocol_SftpMessage_dir_list_res_start(&b);
-    Nexterm_SftpProtocol_DirListRes_entries_start(&b);
+    fp_start_message(&b, Outpost_SftpProtocol_SftpMsgType_DirList, rid);
+    Outpost_SftpProtocol_SftpMessage_dir_list_res_start(&b);
+    Outpost_SftpProtocol_DirListRes_entries_start(&b);
 
     for (size_t i = 0; i < list->count; i++) {
         const fp_entry_t* e = &list->items[i];
-        Nexterm_SftpProtocol_DirListRes_entries_push_start(&b);
-        Nexterm_SftpProtocol_DirEntry_name_create_str(&b, e->name);
-        Nexterm_SftpProtocol_DirEntry_is_dir_add(&b, e->is_dir);
-        Nexterm_SftpProtocol_DirEntry_is_symlink_add(&b, e->is_symlink);
-        Nexterm_SftpProtocol_DirEntry_size_add(&b, e->size);
-        Nexterm_SftpProtocol_DirEntry_mtime_add(&b, e->mtime);
-        Nexterm_SftpProtocol_DirEntry_mode_add(&b, e->mode);
-        Nexterm_SftpProtocol_DirListRes_entries_push_end(&b);
+        Outpost_SftpProtocol_DirListRes_entries_push_start(&b);
+        Outpost_SftpProtocol_DirEntry_name_create_str(&b, e->name);
+        Outpost_SftpProtocol_DirEntry_is_dir_add(&b, e->is_dir);
+        Outpost_SftpProtocol_DirEntry_is_symlink_add(&b, e->is_symlink);
+        Outpost_SftpProtocol_DirEntry_size_add(&b, e->size);
+        Outpost_SftpProtocol_DirEntry_mtime_add(&b, e->mtime);
+        Outpost_SftpProtocol_DirEntry_mode_add(&b, e->mode);
+        Outpost_SftpProtocol_DirListRes_entries_push_end(&b);
     }
 
-    Nexterm_SftpProtocol_DirListRes_entries_end(&b);
-    Nexterm_SftpProtocol_SftpMessage_dir_list_res_end(&b);
-    Nexterm_SftpProtocol_SftpMessage_end_as_root(&b);
+    Outpost_SftpProtocol_DirListRes_entries_end(&b);
+    Outpost_SftpProtocol_SftpMessage_dir_list_res_end(&b);
+    Outpost_SftpProtocol_SftpMessage_end_as_root(&b);
     return fp_finalize_and_send(&b, fd);
 }
 
 int fp_send_stat(int fd, uint32_t rid, const fp_stat_t* st) {
     flatcc_builder_t b;
-    fp_start_message(&b, Nexterm_SftpProtocol_SftpMsgType_StatResult, rid);
-    Nexterm_SftpProtocol_SftpMessage_stat_res_start(&b);
-    Nexterm_SftpProtocol_StatRes_size_add(&b, st->size);
-    Nexterm_SftpProtocol_StatRes_mode_add(&b, st->mode);
-    Nexterm_SftpProtocol_StatRes_uid_add(&b, st->uid);
-    Nexterm_SftpProtocol_StatRes_gid_add(&b, st->gid);
-    Nexterm_SftpProtocol_StatRes_atime_add(&b, st->atime);
-    Nexterm_SftpProtocol_StatRes_mtime_add(&b, st->mtime);
-    Nexterm_SftpProtocol_StatRes_owner_create_str(&b, st->owner);
-    Nexterm_SftpProtocol_StatRes_group_create_str(&b, st->group);
-    Nexterm_SftpProtocol_StatRes_is_dir_add(&b, st->is_dir);
-    Nexterm_SftpProtocol_SftpMessage_stat_res_end(&b);
-    Nexterm_SftpProtocol_SftpMessage_end_as_root(&b);
+    fp_start_message(&b, Outpost_SftpProtocol_SftpMsgType_StatResult, rid);
+    Outpost_SftpProtocol_SftpMessage_stat_res_start(&b);
+    Outpost_SftpProtocol_StatRes_size_add(&b, st->size);
+    Outpost_SftpProtocol_StatRes_mode_add(&b, st->mode);
+    Outpost_SftpProtocol_StatRes_uid_add(&b, st->uid);
+    Outpost_SftpProtocol_StatRes_gid_add(&b, st->gid);
+    Outpost_SftpProtocol_StatRes_atime_add(&b, st->atime);
+    Outpost_SftpProtocol_StatRes_mtime_add(&b, st->mtime);
+    Outpost_SftpProtocol_StatRes_owner_create_str(&b, st->owner);
+    Outpost_SftpProtocol_StatRes_group_create_str(&b, st->group);
+    Outpost_SftpProtocol_StatRes_is_dir_add(&b, st->is_dir);
+    Outpost_SftpProtocol_SftpMessage_stat_res_end(&b);
+    Outpost_SftpProtocol_SftpMessage_end_as_root(&b);
     return fp_finalize_and_send(&b, fd);
 }
 
 int fp_send_realpath(int fd, uint32_t rid, const char* path, bool is_dir) {
     flatcc_builder_t b;
-    fp_start_message(&b, Nexterm_SftpProtocol_SftpMsgType_RealpathResult, rid);
-    Nexterm_SftpProtocol_SftpMessage_realpath_res_start(&b);
-    Nexterm_SftpProtocol_RealpathRes_path_create_str(&b, path);
-    Nexterm_SftpProtocol_RealpathRes_is_dir_add(&b, is_dir);
-    Nexterm_SftpProtocol_SftpMessage_realpath_res_end(&b);
-    Nexterm_SftpProtocol_SftpMessage_end_as_root(&b);
+    fp_start_message(&b, Outpost_SftpProtocol_SftpMsgType_RealpathResult, rid);
+    Outpost_SftpProtocol_SftpMessage_realpath_res_start(&b);
+    Outpost_SftpProtocol_RealpathRes_path_create_str(&b, path);
+    Outpost_SftpProtocol_RealpathRes_is_dir_add(&b, is_dir);
+    Outpost_SftpProtocol_SftpMessage_realpath_res_end(&b);
+    Outpost_SftpProtocol_SftpMessage_end_as_root(&b);
     return fp_finalize_and_send(&b, fd);
 }
 
 int fp_send_exec_result(int fd, uint32_t rid, const char* stdout_data,
                         const char* stderr_data, int32_t exit_code) {
     flatcc_builder_t b;
-    fp_start_message(&b, Nexterm_SftpProtocol_SftpMsgType_ExecResult, rid);
-    Nexterm_SftpProtocol_SftpMessage_exec_res_start(&b);
-    Nexterm_SftpProtocol_ExecRes_stdout_data_create_str(&b, stdout_data);
-    Nexterm_SftpProtocol_ExecRes_stderr_data_create_str(&b, stderr_data);
-    Nexterm_SftpProtocol_ExecRes_exit_code_add(&b, exit_code);
-    Nexterm_SftpProtocol_SftpMessage_exec_res_end(&b);
-    Nexterm_SftpProtocol_SftpMessage_end_as_root(&b);
+    fp_start_message(&b, Outpost_SftpProtocol_SftpMsgType_ExecResult, rid);
+    Outpost_SftpProtocol_SftpMessage_exec_res_start(&b);
+    Outpost_SftpProtocol_ExecRes_stdout_data_create_str(&b, stdout_data);
+    Outpost_SftpProtocol_ExecRes_stderr_data_create_str(&b, stderr_data);
+    Outpost_SftpProtocol_ExecRes_exit_code_add(&b, exit_code);
+    Outpost_SftpProtocol_SftpMessage_exec_res_end(&b);
+    Outpost_SftpProtocol_SftpMessage_end_as_root(&b);
     return fp_finalize_and_send(&b, fd);
 }
 
 int fp_send_search_result(int fd, uint32_t rid, const fp_search_t* ctx) {
     flatcc_builder_t b;
-    fp_start_message(&b, Nexterm_SftpProtocol_SftpMsgType_SearchResult, rid);
-    Nexterm_SftpProtocol_SftpMessage_search_res_start(&b);
-    Nexterm_SftpProtocol_SearchRes_directories_start(&b);
+    fp_start_message(&b, Outpost_SftpProtocol_SftpMsgType_SearchResult, rid);
+    Outpost_SftpProtocol_SftpMessage_search_res_start(&b);
+    Outpost_SftpProtocol_SearchRes_directories_start(&b);
     for (int i = 0; i < ctx->count; i++)
-        Nexterm_SftpProtocol_SearchRes_directories_push_create_str(&b, ctx->paths[i]);
-    Nexterm_SftpProtocol_SearchRes_directories_end(&b);
-    Nexterm_SftpProtocol_SftpMessage_search_res_end(&b);
-    Nexterm_SftpProtocol_SftpMessage_end_as_root(&b);
+        Outpost_SftpProtocol_SearchRes_directories_push_create_str(&b, ctx->paths[i]);
+    Outpost_SftpProtocol_SearchRes_directories_end(&b);
+    Outpost_SftpProtocol_SftpMessage_search_res_end(&b);
+    Outpost_SftpProtocol_SftpMessage_end_as_root(&b);
     return fp_finalize_and_send(&b, fd);
 }
 

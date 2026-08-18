@@ -27,9 +27,9 @@ COPY package.json ./
 
 RUN mkdir -p server/lib/generated && \
     flatc --ts --ts-flat-files -o server/lib/generated schema/control_plane.fbs schema/sftp_protocol.fbs && \
-    esbuild server/lib/generated/nexterm/control-plane.ts --bundle --format=cjs --outfile=server/lib/generated/control_plane_generated.js --allow-overwrite --platform=node --external:flatbuffers && \
-    esbuild server/lib/generated/nexterm/sftp-protocol.ts --bundle --format=cjs --outfile=server/lib/generated/sftp_protocol_generated.js --allow-overwrite --platform=node --external:flatbuffers && \
-    rm -rf server/lib/generated/nexterm
+    esbuild server/lib/generated/outpost/control-plane.ts --bundle --format=cjs --outfile=server/lib/generated/control_plane_generated.js --allow-overwrite --platform=node --external:flatbuffers && \
+    esbuild server/lib/generated/outpost/sftp-protocol.ts --bundle --format=cjs --outfile=server/lib/generated/sftp_protocol_generated.js --allow-overwrite --platform=node --external:flatbuffers && \
+    rm -rf server/lib/generated/outpost
 
 
 FROM node:26-alpine AS server-builder

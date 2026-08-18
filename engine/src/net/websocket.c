@@ -4,7 +4,7 @@
 #include "log.h"
 #include "session.h"
 
-extern nexterm_session_manager_t g_session_manager;
+extern outpost_session_manager_t g_session_manager;
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -27,8 +27,8 @@ extern nexterm_session_manager_t g_session_manager;
 #define WS_HANDSHAKE_TIMEOUT_MS 10000
 
 typedef struct {
-    nexterm_session_t* session;
-    nexterm_control_plane_t* cp;
+    outpost_session_t* session;
+    outpost_control_plane_t* cp;
 } ws_thread_args_t;
 
 static void base64_encode(const unsigned char* in, size_t in_len, char* out, size_t out_size) {
@@ -101,7 +101,7 @@ static int ssl_write_all(SSL* ssl, const void* buf, size_t len) {
 }
 
 static int plain_write_all(int fd, const void* buf, size_t len) {
-    return nexterm_write_exact(fd, (const uint8_t*)buf, len);
+    return outpost_write_exact(fd, (const uint8_t*)buf, len);
 }
 
 typedef struct {
@@ -231,7 +231,7 @@ static int ws_read_frame(ws_conn_t* c, ws_frame_t* frame) {
 }
 
 static int ws_handshake(ws_conn_t* c, const char* host, const char* port,
-                        const char* path, nexterm_session_t* session) {
+                        const char* path, outpost_session_t* session) {
     unsigned char nonce[16];
     RAND_bytes(nonce, 16);
     char ws_key[32];
@@ -298,20 +298,20 @@ static int ws_handshake(ws_conn_t* c, const char* host, const char* port,
 
 static void* websocket_session_thread(void* arg) {
     ws_thread_args_t* args = (ws_thread_args_t*)arg;
-    nexterm_session_t* session = args->session;
-    nexterm_control_plane_t* cp = args->cp;
+    outpost_session_t* session = args->session;
+    outpost_control_plane_t* cp = args->cp;
 
-    const char* url = nexterm_session_get_param(session, "ws_url");
+    const char* url = outpost_session_get_param(session, "ws_url");
     if (!url) {
         LOG_ERROR("WebSocket session %s: missing ws_url param", session->session_id);
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Missing ws_url parameter", NULL);
-        nexterm_sm_finish(&g_session_manager, session->session_id);
+        outpost_sm_finish(&g_session_manager, session->session_id);
         free(args);
         return NULL;
     }
 
-    const char* insecure_str = nexterm_session_get_param(session, "ws_insecure");
+    const char* insecure_str = outpost_session_get_param(session, "ws_insecure");
     bool insecure = insecure_str && strcmp(insecure_str, "true") == 0;
 
     char host[256], port_str[8], path[2048];
@@ -319,20 +319,20 @@ static void* websocket_session_thread(void* arg) {
     if (parse_url(url, host, sizeof(host), port_str, sizeof(port_str),
                   path, sizeof(path), &use_tls) != 0) {
         LOG_ERROR("WebSocket session %s: invalid URL: %s", session->session_id, url);
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Invalid WebSocket URL", NULL);
-        nexterm_sm_finish(&g_session_manager, session->session_id);
+        outpost_sm_finish(&g_session_manager, session->session_id);
         free(args);
         return NULL;
     }
 
     session->state = SESSION_STATE_CONNECTING;
 
-    int sock = nexterm_tcp_connect(host, (uint16_t)atoi(port_str));
+    int sock = outpost_tcp_connect(host, (uint16_t)atoi(port_str));
     if (sock < 0) {
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to connect to WebSocket server", NULL);
-        nexterm_sm_finish(&g_session_manager, session->session_id);
+        outpost_sm_finish(&g_session_manager, session->session_id);
         free(args);
         return NULL;
     }
@@ -345,9 +345,9 @@ static void* websocket_session_thread(void* arg) {
         if (!ssl_ctx) {
             LOG_ERROR("WebSocket session %s: SSL_CTX_new failed", session->session_id);
             close(sock);
-            nexterm_cp_send_session_result(cp, session->session_id, false,
+            outpost_cp_send_session_result(cp, session->session_id, false,
                                            "TLS initialization failed", NULL);
-            nexterm_sm_finish(&g_session_manager, session->session_id);
+            outpost_sm_finish(&g_session_manager, session->session_id);
             free(args);
             return NULL;
         }
@@ -364,9 +364,9 @@ static void* websocket_session_thread(void* arg) {
             SSL_free(conn.ssl);
             SSL_CTX_free(ssl_ctx);
             close(sock);
-            nexterm_cp_send_session_result(cp, session->session_id, false,
+            outpost_cp_send_session_result(cp, session->session_id, false,
                                            "TLS handshake failed", NULL);
-            nexterm_sm_finish(&g_session_manager, session->session_id);
+            outpost_sm_finish(&g_session_manager, session->session_id);
             free(args);
             return NULL;
         }
@@ -375,27 +375,27 @@ static void* websocket_session_thread(void* arg) {
     if (ws_handshake(&conn, host, port_str, path, session) != 0) {
         if (conn.tls) { SSL_shutdown(conn.ssl); SSL_free(conn.ssl); SSL_CTX_free(ssl_ctx); }
         close(sock);
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "WebSocket handshake failed", NULL);
-        nexterm_sm_finish(&g_session_manager, session->session_id);
+        outpost_sm_finish(&g_session_manager, session->session_id);
         free(args);
         return NULL;
     }
 
-    int data_fd = nexterm_cp_open_data_connection(cp, session->session_id);
+    int data_fd = outpost_cp_open_data_connection(cp, session->session_id);
     if (data_fd < 0) {
         if (conn.tls) { SSL_shutdown(conn.ssl); SSL_free(conn.ssl); SSL_CTX_free(ssl_ctx); }
         close(sock);
-        nexterm_cp_send_session_result(cp, session->session_id, false,
+        outpost_cp_send_session_result(cp, session->session_id, false,
                                        "Failed to open data connection", NULL);
-        nexterm_sm_finish(&g_session_manager, session->session_id);
+        outpost_sm_finish(&g_session_manager, session->session_id);
         free(args);
         return NULL;
     }
     session->data_fd = data_fd;
 
     session->state = SESSION_STATE_ACTIVE;
-    nexterm_cp_send_session_result(cp, session->session_id, true, NULL, NULL);
+    outpost_cp_send_session_result(cp, session->session_id, true, NULL, NULL);
 
     LOG_INFO("WebSocket session %s active: %s", session->session_id, url);
 
@@ -440,7 +440,7 @@ static void* websocket_session_thread(void* arg) {
                 ws_send_frame(&conn, 0x0A, frame.payload, frame.payload_len, true);
             } else if (frame.opcode == 0x01 || frame.opcode == 0x02 || frame.opcode == 0x00) {
                 if (frame.payload && frame.payload_len > 0) {
-                    if (nexterm_write_exact(data_fd, frame.payload, frame.payload_len) != 0) {
+                    if (outpost_write_exact(data_fd, frame.payload, frame.payload_len) != 0) {
                         free(frame.payload);
                         break;
                     }
@@ -466,15 +466,15 @@ static void* websocket_session_thread(void* arg) {
 
     char sid[MAX_SESSION_ID_LEN];
     snprintf(sid, sizeof(sid), "%s", session->session_id);
-    nexterm_cp_send_session_closed(cp, sid, "websocket session ended");
-    nexterm_sm_finish(&g_session_manager, sid);
+    outpost_cp_send_session_closed(cp, sid, "websocket session ended");
+    outpost_sm_finish(&g_session_manager, sid);
 
     free(args);
     return NULL;
 }
 
-int nexterm_websocket_start(nexterm_session_t* session,
-                            nexterm_control_plane_t* cp) {
+int outpost_websocket_start(outpost_session_t* session,
+                            outpost_control_plane_t* cp) {
     ws_thread_args_t* args = calloc(1, sizeof(ws_thread_args_t));
     if (!args) return -1;
 

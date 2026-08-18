@@ -74,7 +74,7 @@ static size_t header_callback(char* buffer, size_t size, size_t nitems, void* us
 }
 
 typedef struct {
-    nexterm_control_plane_t* cp;
+    outpost_control_plane_t* cp;
     char* request_id;
     char* method;
     char* url;
@@ -100,7 +100,7 @@ static void free_http_fetch_ctx(http_fetch_ctx_t* ctx) {
     free(ctx);
 }
 
-static int send_http_fetch_result(nexterm_control_plane_t* cp,
+static int send_http_fetch_result(outpost_control_plane_t* cp,
                                    const char* request_id,
                                    bool success,
                                    int32_t status_code,
@@ -112,35 +112,35 @@ static int send_http_fetch_result(nexterm_control_plane_t* cp,
     flatcc_builder_t builder;
     flatcc_builder_init(&builder);
 
-    Nexterm_ControlPlane_Envelope_start_as_root(&builder);
-    Nexterm_ControlPlane_Envelope_msg_type_add(&builder, Nexterm_ControlPlane_MessageType_HttpFetchResult);
-    Nexterm_ControlPlane_Envelope_http_fetch_result_start(&builder);
-    Nexterm_ControlPlane_HttpFetchResult_request_id_create_str(&builder, request_id);
-    Nexterm_ControlPlane_HttpFetchResult_success_add(&builder, success);
-    Nexterm_ControlPlane_HttpFetchResult_status_code_add(&builder, status_code);
+    Outpost_ControlPlane_Envelope_start_as_root(&builder);
+    Outpost_ControlPlane_Envelope_msg_type_add(&builder, Outpost_ControlPlane_MessageType_HttpFetchResult);
+    Outpost_ControlPlane_Envelope_http_fetch_result_start(&builder);
+    Outpost_ControlPlane_HttpFetchResult_request_id_create_str(&builder, request_id);
+    Outpost_ControlPlane_HttpFetchResult_success_add(&builder, success);
+    Outpost_ControlPlane_HttpFetchResult_status_code_add(&builder, status_code);
 
     if (resp_header_count > 0) {
-        Nexterm_ControlPlane_HttpFetchResult_headers_start(&builder);
+        Outpost_ControlPlane_HttpFetchResult_headers_start(&builder);
         for (size_t i = 0; i < resp_header_count; i++) {
-            Nexterm_ControlPlane_HttpHeader_start(&builder);
-            Nexterm_ControlPlane_HttpHeader_name_create_str(&builder, resp_header_names[i]);
-            Nexterm_ControlPlane_HttpHeader_value_create_str(&builder, resp_header_values[i]);
-            Nexterm_ControlPlane_HttpHeader_end(&builder);
+            Outpost_ControlPlane_HttpHeader_start(&builder);
+            Outpost_ControlPlane_HttpHeader_name_create_str(&builder, resp_header_names[i]);
+            Outpost_ControlPlane_HttpHeader_value_create_str(&builder, resp_header_values[i]);
+            Outpost_ControlPlane_HttpHeader_end(&builder);
         }
-        Nexterm_ControlPlane_HttpFetchResult_headers_end(&builder);
+        Outpost_ControlPlane_HttpFetchResult_headers_end(&builder);
     }
 
     if (body)
-        Nexterm_ControlPlane_HttpFetchResult_body_create_str(&builder, body);
+        Outpost_ControlPlane_HttpFetchResult_body_create_str(&builder, body);
     if (error_message)
-        Nexterm_ControlPlane_HttpFetchResult_error_message_create_str(&builder, error_message);
+        Outpost_ControlPlane_HttpFetchResult_error_message_create_str(&builder, error_message);
 
-    Nexterm_ControlPlane_Envelope_http_fetch_result_end(&builder);
-    Nexterm_ControlPlane_Envelope_end_as_root(&builder);
+    Outpost_ControlPlane_Envelope_http_fetch_result_end(&builder);
+    Outpost_ControlPlane_Envelope_end_as_root(&builder);
 
     size_t size;
     uint8_t* buf = (uint8_t*)flatcc_builder_finalize_buffer(&builder, &size);
-    int ret = nexterm_send_frame_s(cp->sock_fd, cp->ssl, buf, size, &cp->send_mutex);
+    int ret = outpost_send_frame_s(cp->sock_fd, cp->ssl, buf, size, &cp->send_mutex);
     flatcc_builder_clear(&builder);
     free(buf);
     return ret;
@@ -230,7 +230,7 @@ static void* http_fetch_thread(void* arg) {
     return NULL;
 }
 
-void nexterm_http_fetch(nexterm_control_plane_t* cp,
+void outpost_http_fetch(outpost_control_plane_t* cp,
                         const char* request_id,
                         const char* method,
                         const char* url,

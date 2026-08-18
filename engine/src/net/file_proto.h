@@ -1,5 +1,5 @@
-#ifndef NEXTERM_FILE_PROTO_H
-#define NEXTERM_FILE_PROTO_H
+#ifndef OUTPOST_FILE_PROTO_H
+#define OUTPOST_FILE_PROTO_H
 
 #include <stdbool.h>
 #include <stddef.h>

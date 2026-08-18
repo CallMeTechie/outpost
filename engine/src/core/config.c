@@ -27,7 +27,7 @@ static void strip_quotes(char* str) {
     }
 }
 
-static int parse_config_file(nexterm_config_t* cfg) {
+static int parse_config_file(outpost_config_t* cfg) {
     FILE* f = fopen(CONFIG_FILE, "r");
     if (!f) return -1;
 
@@ -69,7 +69,7 @@ static int parse_config_file(nexterm_config_t* cfg) {
     return 0;
 }
 
-static int write_default_config(const nexterm_config_t* cfg) {
+static int write_default_config(const outpost_config_t* cfg) {
     FILE* f = fopen(CONFIG_FILE, "w");
     if (!f) {
         LOG_ERROR("Failed to create %s: %s", CONFIG_FILE, strerror(errno));
@@ -91,7 +91,7 @@ static int write_default_config(const nexterm_config_t* cfg) {
     return 0;
 }
 
-int nexterm_config_load(nexterm_config_t* cfg) {
+int outpost_config_load(outpost_config_t* cfg) {
     memset(cfg, 0, sizeof(*cfg));
     snprintf(cfg->server_host, sizeof(cfg->server_host), "%s", "127.0.0.1");
     cfg->server_port = 7800;

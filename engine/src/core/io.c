@@ -15,7 +15,7 @@
 #include <fcntl.h>
 #include <openssl/err.h>
 
-int nexterm_read_exact(int fd, uint8_t* buf, size_t len) {
+int outpost_read_exact(int fd, uint8_t* buf, size_t len) {
     size_t total = 0;
     while (total < len) {
         ssize_t n = read(fd, buf + total, len - total);
@@ -25,7 +25,7 @@ int nexterm_read_exact(int fd, uint8_t* buf, size_t len) {
     return 0;
 }
 
-int nexterm_write_exact(int fd, const uint8_t* buf, size_t len) {
+int outpost_write_exact(int fd, const uint8_t* buf, size_t len) {
     size_t total = 0;
     while (total < len) {
         ssize_t n = write(fd, buf + total, len - total);
@@ -35,7 +35,7 @@ int nexterm_write_exact(int fd, const uint8_t* buf, size_t len) {
     return 0;
 }
 
-int nexterm_tcp_connect(const char* host, uint16_t port) {
+int outpost_tcp_connect(const char* host, uint16_t port) {
     struct addrinfo hints = { .ai_family = AF_UNSPEC, .ai_socktype = SOCK_STREAM };
 
     char port_str[8];
@@ -70,7 +70,7 @@ int nexterm_tcp_connect(const char* host, uint16_t port) {
     return fd;
 }
 
-SSL_CTX* nexterm_tls_client_ctx_create(const char* ca_cert_path, bool skip_verify) {
+SSL_CTX* outpost_tls_client_ctx_create(const char* ca_cert_path, bool skip_verify) {
     const SSL_METHOD* method = TLS_client_method();
     SSL_CTX* ctx = SSL_CTX_new(method);
     if (!ctx) {
@@ -108,7 +108,7 @@ SSL_CTX* nexterm_tls_client_ctx_create(const char* ca_cert_path, bool skip_verif
     return ctx;
 }
 
-SSL* nexterm_tls_handshake(SSL_CTX* ctx, int fd) {
+SSL* outpost_tls_handshake(SSL_CTX* ctx, int fd) {
     SSL* ssl = SSL_new(ctx);
     if (!ssl) {
         LOG_ERROR("Failed to create SSL object");
@@ -136,14 +136,14 @@ SSL* nexterm_tls_handshake(SSL_CTX* ctx, int fd) {
     return ssl;
 }
 
-void nexterm_tls_cleanup(SSL* ssl) {
+void outpost_tls_cleanup(SSL* ssl) {
     if (!ssl) return;
     SSL_shutdown(ssl);
     SSL_free(ssl);
 }
 
-int nexterm_read_exact_s(int fd, SSL* ssl, uint8_t* buf, size_t len) {
-    if (!ssl) return nexterm_read_exact(fd, buf, len);
+int outpost_read_exact_s(int fd, SSL* ssl, uint8_t* buf, size_t len) {
+    if (!ssl) return outpost_read_exact(fd, buf, len);
 
     size_t total = 0;
     while (total < len) {
@@ -154,8 +154,8 @@ int nexterm_read_exact_s(int fd, SSL* ssl, uint8_t* buf, size_t len) {
     return 0;
 }
 
-int nexterm_write_exact_s(int fd, SSL* ssl, const uint8_t* buf, size_t len) {
-    if (!ssl) return nexterm_write_exact(fd, buf, len);
+int outpost_write_exact_s(int fd, SSL* ssl, const uint8_t* buf, size_t len) {
+    if (!ssl) return outpost_write_exact(fd, buf, len);
 
     size_t total = 0;
     while (total < len) {
@@ -166,22 +166,22 @@ int nexterm_write_exact_s(int fd, SSL* ssl, const uint8_t* buf, size_t len) {
     return 0;
 }
 
-int nexterm_send_frame_s(int fd, SSL* ssl, const uint8_t* data, size_t len,
+int outpost_send_frame_s(int fd, SSL* ssl, const uint8_t* data, size_t len,
                          pthread_mutex_t* mutex) {
     uint32_t header = htonl((uint32_t)len);
 
     if (mutex) pthread_mutex_lock(mutex);
-    int ret = nexterm_write_exact_s(fd, ssl, (uint8_t*)&header, FRAME_HEADER_SIZE);
+    int ret = outpost_write_exact_s(fd, ssl, (uint8_t*)&header, FRAME_HEADER_SIZE);
     if (ret == 0)
-        ret = nexterm_write_exact_s(fd, ssl, data, len);
+        ret = outpost_write_exact_s(fd, ssl, data, len);
     if (mutex) pthread_mutex_unlock(mutex);
 
     return ret;
 }
 
-uint8_t* nexterm_read_frame_s(int fd, SSL* ssl, uint32_t max_size, uint32_t* out_len) {
+uint8_t* outpost_read_frame_s(int fd, SSL* ssl, uint32_t max_size, uint32_t* out_len) {
     uint8_t header[FRAME_HEADER_SIZE];
-    if (nexterm_read_exact_s(fd, ssl, header, FRAME_HEADER_SIZE) != 0)
+    if (outpost_read_exact_s(fd, ssl, header, FRAME_HEADER_SIZE) != 0)
         return NULL;
 
     uint32_t net_len;
@@ -199,7 +199,7 @@ uint8_t* nexterm_read_frame_s(int fd, SSL* ssl, uint32_t max_size, uint32_t* out
         return NULL;
     }
 
-    if (nexterm_read_exact_s(fd, ssl, buf, payload_len) != 0) {
+    if (outpost_read_exact_s(fd, ssl, buf, payload_len) != 0) {
         free(buf);
         return NULL;
     }
@@ -272,7 +272,7 @@ static void* tls_proxy_thread(void* arg) {
                     continue;
                 break;
             }
-            if (nexterm_write_exact(a->plain_fd, (const uint8_t*)buf, (size_t)n) != 0)
+            if (outpost_write_exact(a->plain_fd, (const uint8_t*)buf, (size_t)n) != 0)
                 break;
         }
 
@@ -290,7 +290,7 @@ done:
     return NULL;
 }
 
-int nexterm_tls_proxy_start(SSL* ssl, int tls_fd) {
+int outpost_tls_proxy_start(SSL* ssl, int tls_fd) {
     int sv[2];
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) != 0) {
         LOG_ERROR("Failed to create socketpair for TLS proxy: %s", strerror(errno));

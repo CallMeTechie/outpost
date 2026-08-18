@@ -1,4 +1,4 @@
-namespace Nexterm.SftpProtocol;
+namespace Outpost.SftpProtocol;
 
 enum SftpMsgType : ubyte {
     Ready = 0,
