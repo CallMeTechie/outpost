@@ -38,11 +38,11 @@ export const getTitleBarHeight = () => {
     return parseInt(value) || 0;
 };
 
-export const getActiveServerUrl = () => localStorage.getItem("nexterm_server_url");
+export const getActiveServerUrl = () => localStorage.getItem("outpost_server_url");
 
 export const setActiveServerUrl = (url) => {
-    url ? localStorage.setItem("nexterm_server_url", url.replace(/\/$/, ""))
-        : localStorage.removeItem("nexterm_server_url");
+    url ? localStorage.setItem("outpost_server_url", url.replace(/\/$/, ""))
+        : localStorage.removeItem("outpost_server_url");
 };
 
 export const openExternalUrl = async (url) => {

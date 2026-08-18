@@ -1,5 +1,5 @@
-const SERVERS_KEY = "nexterm_servers";
-const ACTIVE_KEY = "nexterm_active_server";
+const SERVERS_KEY = "outpost_servers";
+const ACTIVE_KEY = "outpost_active_server";
 
 export const getServers = () => {
     try {
@@ -47,7 +47,7 @@ export const activateServer = (id) => {
     const server = getServers().find(s => s.id === id);
     if (!server) return false;
     localStorage.setItem(ACTIVE_KEY, id);
-    localStorage.setItem("nexterm_server_url", server.url);
+    localStorage.setItem("outpost_server_url", server.url);
     localStorage.setItem("sessionToken", server.token);
     localStorage.removeItem("overrideToken");
     return true;

@@ -78,7 +78,7 @@ export const UserProvider = ({ children }) => {
             }
 
             setActiveServerUrl(null);
-            localStorage.removeItem("nexterm_active_server");
+            localStorage.removeItem("outpost_active_server");
         }
 
         localStorage.removeItem("sessionToken");

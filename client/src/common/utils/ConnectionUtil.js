@@ -32,14 +32,14 @@ export const getWebSocketUrl = (path, params = {}) => {
 };
 
 export const getTabId = () => {
-    let id = sessionStorage.getItem("nexterm_tab_id");
-    if (!id) sessionStorage.setItem("nexterm_tab_id", id = `tab_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+    let id = sessionStorage.getItem("outpost_tab_id");
+    if (!id) sessionStorage.setItem("outpost_tab_id", id = `tab_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
     return id;
 };
 
 export const getBrowserId = () => {
-    let id = localStorage.getItem("nexterm_browser_id");
-    if (!id) localStorage.setItem("nexterm_browser_id", id = `browser_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+    let id = localStorage.getItem("outpost_browser_id");
+    if (!id) localStorage.setItem("outpost_browser_id", id = `browser_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
     return id;
 };
 
