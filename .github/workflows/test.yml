@@ -23,5 +23,11 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
+      - name: Install FlatBuffers compiler
+        run: sudo apt-get update && sudo apt-get install -y flatbuffers-compiler
+
+      - name: Generate protocol modules
+        run: yarn schema:generate
+
       - name: Run tests
         run: yarn test
