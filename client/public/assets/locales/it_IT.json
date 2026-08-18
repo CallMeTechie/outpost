@@ -382,7 +382,7 @@
       },
       "scriptDetails": "Dettagli dello script",
       "scriptContent": "Contenuto della sceneggiatura",
-      "helpTip": "Usa le direttive @NEXTERM: per le funzioni interattive",
+      "helpTip": "Usa le direttive @OUTPOST: per le funzioni interattive",
       "fields": {
         "name": "Nome",
         "description": "Descrizione",

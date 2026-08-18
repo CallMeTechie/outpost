@@ -382,7 +382,7 @@
       },
       "scriptDetails": "Detalhes do Script",
       "scriptContent": "Conteúdo do Script",
-      "helpTip": "Use diretrizes @NEXTERM: para recursos interativos",
+      "helpTip": "Use diretrizes @OUTPOST: para recursos interativos",
       "fields": {
         "name": "Nome",
         "description": "Descrição",

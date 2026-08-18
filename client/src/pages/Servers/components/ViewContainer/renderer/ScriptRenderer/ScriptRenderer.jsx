@@ -361,9 +361,9 @@ export const ScriptRenderer = ({ session, disconnectFromServer, updateProgress, 
                 onCancel={handleCancel}
             />
             <InputDialog open={dialogs.inputOpen} onSubmit={sendInput} onCancel={handleCancel} prompt={dialogs.inputPrompt} />
-            <SummaryDialog open={!!dialogs.summaryData} onClose={closeDialog("NEXTERM_SUMMARY_RESULT", "summaryData")} summaryData={dialogs.summaryData} />
-            <TableDialog open={!!dialogs.tableData} onClose={closeDialog("NEXTERM_TABLE_RESULT", "tableData")} tableData={dialogs.tableData} />
-            <MessageBoxDialog open={!!dialogs.messageBoxData} onClose={closeDialog("NEXTERM_MSGBOX_RESULT", "messageBoxData")} messageData={dialogs.messageBoxData} />
+            <SummaryDialog open={!!dialogs.summaryData} onClose={closeDialog("OUTPOST_SUMMARY_RESULT", "summaryData")} summaryData={dialogs.summaryData} />
+            <TableDialog open={!!dialogs.tableData} onClose={closeDialog("OUTPOST_TABLE_RESULT", "tableData")} tableData={dialogs.tableData} />
+            <MessageBoxDialog open={!!dialogs.messageBoxData} onClose={closeDialog("OUTPOST_MSGBOX_RESULT", "messageBoxData")} messageData={dialogs.messageBoxData} />
         </div>
     );
 };

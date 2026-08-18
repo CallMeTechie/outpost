@@ -8,7 +8,7 @@ import SelectBox from "@/common/components/SelectBox";
 import { mdiFormTextbox, mdiFileDocument, mdiCheck, mdiClose, mdiCodeTags, mdiLightbulb, mdiScript } from "@mdi/js";
 import Icon from "@mdi/react";
 import Editor, { loader } from "@monaco-editor/react";
-import { registerNextermLanguage } from "@/common/monaco/nexterm-lang.js";
+import { registerNextermLanguage } from "@/common/monaco/outpost-lang.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useTranslation } from "react-i18next";
 import { useScripts } from "@/common/contexts/ScriptContext.jsx";
@@ -33,23 +33,23 @@ export const ScriptDialog = ({ open, onClose, editScriptId, selectedOrganization
     const isEditing = !!editScriptId;
 
     const getDefaultContent = () => {
-        return `@NEXTERM:STEP "Getting user preferences"
-@NEXTERM:INPUT APP_NAME "Which application would you like to install?" "nginx"
-@NEXTERM:SELECT INSTALL_TYPE "Choose installation type" stable testing "development version"
+        return `@OUTPOST:STEP "Getting user preferences"
+@OUTPOST:INPUT APP_NAME "Which application would you like to install?" "nginx"
+@OUTPOST:SELECT INSTALL_TYPE "Choose installation type" stable testing "development version"
 
 if [ "$INSTALL_TYPE" = "development version" ]; then
-    @NEXTERM:WARN "Development version may be unstable"
-    @NEXTERM:CONFIRM "Are you sure you want to continue with development version?"
+    @OUTPOST:WARN "Development version may be unstable"
+    @OUTPOST:CONFIRM "Are you sure you want to continue with development version?"
     
-    if [ "$NEXTERM_CONFIRM_RESULT" = "Yes" ]; then
-         @NEXTERM:INFO "Setting up development environment"
+    if [ "$OUTPOST_CONFIRM_RESULT" = "Yes" ]; then
+         @OUTPOST:INFO "Setting up development environment"
     fi
 else
-    @NEXTERM:STEP "Standard installation process"
+    @OUTPOST:STEP "Standard installation process"
     echo "Installing stable version of $APP_NAME..."
 fi
 
-@NEXTERM:SUMMARY "System Information" "OS" "$(lsb_release -d | cut -f2)" "User" "$(whoami)" "Memory" "$(free -h | grep '^Mem:' | awk '{print $2}')"`;
+@OUTPOST:SUMMARY "System Information" "OS" "$(lsb_release -d | cut -f2)" "User" "$(whoami)" "Memory" "$(free -h | grep '^Mem:' | awk '{print $2}')"`;
     };
 
     useEffect(() => {

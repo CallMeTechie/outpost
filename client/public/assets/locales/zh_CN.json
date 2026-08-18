@@ -382,7 +382,7 @@
       },
       "scriptDetails": "脚本详情",
       "scriptContent": "脚本内容",
-      "helpTip": "使用 @NEXTERM: 指令实现交互功能",
+      "helpTip": "使用 @OUTPOST: 指令实现交互功能",
       "fields": {
         "name": "名称",
         "description": "描述",

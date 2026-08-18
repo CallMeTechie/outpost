@@ -382,7 +382,7 @@
       },
       "scriptDetails": "Script Details",
       "scriptContent": "Script Content",
-      "helpTip": "Use @NEXTERM: directives for interactive features",
+      "helpTip": "Use @OUTPOST: directives for interactive features",
       "fields": {
         "name": "Name",
         "description": "Description",

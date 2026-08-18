@@ -382,7 +382,7 @@
       },
       "scriptDetails": "تفاصيل النص",
       "scriptContent": "محتوى النص",
-      "helpTip": "استخدام @NEXTERM: توجيهات للميزات التفاعلية",
+      "helpTip": "استخدام @OUTPOST: توجيهات للميزات التفاعلية",
       "fields": {
         "name": "الاسم",
         "description": "الوصف",

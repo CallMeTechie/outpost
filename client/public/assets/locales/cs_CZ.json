@@ -382,7 +382,7 @@
       },
       "scriptDetails": "Podrobnosti skriptu",
       "scriptContent": "Obsah skriptu",
-      "helpTip": "Použijte @NEXTERM: direktivy pro interaktivní funkce",
+      "helpTip": "Použijte @OUTPOST: direktivy pro interaktivní funkce",
       "fields": {
         "name": "Název",
         "description": "Popis",

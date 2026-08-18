@@ -87,7 +87,7 @@ class ScriptLayer {
     processLine(line) {
         if (this.suppressOutput) {
             const clean = stripAnsi(line).trim();
-            if (clean === "NEXTERM_READY") {
+            if (clean === "OUTPOST_READY") {
                 this.suppressOutput = false;
                 return;
             }
@@ -104,20 +104,20 @@ class ScriptLayer {
             case "info": this.broadcast(MSG.INFO, { message: cmd.message }); break;
             case "success": this.broadcast(MSG.SUCCESS, { message: cmd.message }); break;
             case "confirm":
-                this.pending = { variable: "NEXTERM_CONFIRM_RESULT", prompt: cmd.message, inputType: "confirm" };
+                this.pending = { variable: "OUTPOST_CONFIRM_RESULT", prompt: cmd.message, inputType: "confirm" };
                 this.broadcast(MSG.CONFIRM, this.pending);
                 break;
             case "progress": this.broadcast(MSG.PROGRESS, { percentage: cmd.percentage, message: cmd.message || "" }); break;
             case "summary":
-                this.pending = { variable: "NEXTERM_SUMMARY_RESULT", inputType: "summary" };
+                this.pending = { variable: "OUTPOST_SUMMARY_RESULT", inputType: "summary" };
                 this.broadcast(MSG.SUMMARY, { title: cmd.title, data: cmd.data });
                 break;
             case "table":
-                this.pending = { variable: "NEXTERM_TABLE_RESULT", inputType: "table" };
+                this.pending = { variable: "OUTPOST_TABLE_RESULT", inputType: "table" };
                 this.broadcast(MSG.TABLE, { title: cmd.title, data: cmd.data });
                 break;
             case "msgbox":
-                this.pending = { variable: "NEXTERM_MSGBOX_RESULT", inputType: "msgbox" };
+                this.pending = { variable: "OUTPOST_MSGBOX_RESULT", inputType: "msgbox" };
                 this.broadcast(MSG.MSGBOX, { title: cmd.title, message: cmd.message });
                 break;
             case "end": this.handleEnd(cmd.exitCode); break;

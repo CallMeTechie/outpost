@@ -382,7 +382,7 @@
       },
       "scriptDetails": "Detalles del guión",
       "scriptContent": "Contenido del guión",
-      "helpTip": "Utiliza las directivas @NEXTERM: para las funciones interactivas",
+      "helpTip": "Utiliza las directivas @OUTPOST: para las funciones interactivas",
       "fields": {
         "name": "Nombre",
         "description": "Descripción",

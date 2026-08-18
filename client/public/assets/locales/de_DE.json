@@ -382,7 +382,7 @@
       },
       "scriptDetails": "Skript Details",
       "scriptContent": "Skript Inhalt",
-      "helpTip": "Verwende @NEXTERM: Direktiven für interaktive Funktionen",
+      "helpTip": "Verwende @OUTPOST: Direktiven für interaktive Funktionen",
       "fields": {
         "name": "Name",
         "description": "Beschreibung",

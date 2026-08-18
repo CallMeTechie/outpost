@@ -382,7 +382,7 @@
       },
       "scriptDetails": "Détails du script",
       "scriptContent": "Contenu du script",
-      "helpTip": "Utilisez les directives @NEXTERM: pour les fonctionnalités interactives",
+      "helpTip": "Utilisez les directives @OUTPOST: pour les fonctionnalités interactives",
       "fields": {
         "name": "Nom",
         "description": "Description",

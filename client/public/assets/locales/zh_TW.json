@@ -382,7 +382,7 @@
       },
       "scriptDetails": "劇本詳細內容",
       "scriptContent": "腳本內容",
-      "helpTip": "針對互動功能使用 @NEXTERM: 指令",
+      "helpTip": "針對互動功能使用 @OUTPOST: 指令",
       "fields": {
         "name": "名稱",
         "description": "說明",
