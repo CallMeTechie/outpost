@@ -24,7 +24,7 @@ requests may go unanswered. If you run it, you are on your own.
 
 ## Running it
 
-Requires Node.js 22 or newer and Yarn.
+Requires Node.js 22 or newer, Yarn, and the FlatBuffers compiler (`flatc`).
 
 ```bash
 git clone https://github.com/CallMeTechie/outpost.git
