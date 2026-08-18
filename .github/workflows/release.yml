@@ -89,14 +89,6 @@ jobs:
       upload_url: ${{ needs.create-release.outputs.upload_url }}
     secrets: inherit
 
-  build-docker:
-    name: "Build Docker"
-    needs: create-release
-    uses: ./.github/workflows/build-docker.yml
-    with:
-      version: ${{ needs.create-release.outputs.version }}
-    secrets: inherit
-
   finalize-release:
     name: "Finalize Release"
     needs: [create-release, build-cli, build-mobile, build-server, build-engine, build-connector]
@@ -105,14 +97,6 @@ jobs:
       version: ${{ needs.create-release.outputs.version }}
       semver: ${{ needs.create-release.outputs.semver }}
       release_id: ${{ needs.create-release.outputs.release_id }}
-    secrets: inherit
-
-  deploy-repo:
-    name: "Deploy repository"
-    needs: [create-release, finalize-release]
-    uses: ./.github/workflows/deploy-repo.yml
-    with:
-      version: ${{ needs.create-release.outputs.version }}
     secrets: inherit
 
   cleanup-on-failure:
