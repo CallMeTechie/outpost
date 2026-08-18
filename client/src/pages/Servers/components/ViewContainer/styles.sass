@@ -81,6 +81,11 @@
 
   @media (max-width: breakpoints.$mobile)
     height: calc(100% - 2.5rem)
+    // The layouter carries an inline height of 100%, which wins over the line
+    // above. As a flex item it may still shrink - flex-shrink defaults to 1 -
+    // but only once min-height is no longer auto. Without this the bar pushes
+    // the terminal off-screen instead of taking its own space.
+    min-height: 0
 
   .view-container.fullscreen &
     height: var(--content-height)

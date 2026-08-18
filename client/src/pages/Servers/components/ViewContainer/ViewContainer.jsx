@@ -1,5 +1,6 @@
 import "./styles.sass";
 import ServerTabs from "./components/ServerTabs";
+import TerminalKeyBar from "./components/TerminalKeyBar";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import GuacamoleRenderer from "@/pages/Servers/components/ViewContainer/renderer/GuacamoleRenderer.jsx";
@@ -14,9 +15,11 @@ import { getTitleBarHeight } from "@/common/utils/TauriUtil.js";
 import { useTauriWindow } from "@/common/hooks/useTauriWindow.js";
 import { useBodyClass } from "@/common/hooks/useBodyClass.js";
 import { paneColorFor } from "./utils/paneColors.js";
+import { barKeySequence } from "@/common/utils/keyBarSequences.js";
 
 const BTN_SIZE = 44;
 const BTN_STORAGE_KEY = "fullscreen-btn-position";
+const EMPTY_LATCH = { ctrl: false, alt: false, shift: false };
 
 // Mirrors tabLabel.js's own LIVE_TITLE_MAX_LENGTH (kept as a separate constant rather than an
 // import - tabLabel.js is a pure module maintained outside this task). That module sanitizes and
@@ -65,6 +68,7 @@ export const ViewContainer = ({
     const scriptStateRefs = useRef({});
     const tabOrderRef = useRef([]);
     const [broadcastMode, setBroadcastMode] = useState(false);
+    const [modifierLatch, setModifierLatch] = useState(EMPTY_LATCH);
     const [sessionProgress, setSessionProgress] = useState({});
     // Keyed by session id, exactly like sessionProgress above: the tab strip needs the live
     // terminal title, but it must not join the session objects Servers.jsx builds - those feed
@@ -168,6 +172,33 @@ export const ViewContainer = ({
     const toggleBroadcastMode = useCallback(() => {
         setBroadcastMode(prev => !prev);
     }, []);
+
+    const toggleModifier = useCallback((name) => {
+        setModifierLatch((prev) => ({ ...prev, [name]: !prev[name] }));
+    }, []);
+
+    const clearLatch = useCallback(() => setModifierLatch(EMPTY_LATCH), []);
+
+    const sendBarKey = useCallback((key) => {
+        const sequence = barKeySequence(key, modifierLatch);
+        if (!sequence) return;
+
+        const term = terminalRefs.current[activeSessionId]?.term;
+        // Nothing to send to while a session is still connecting or already
+        // closing. Keep the latch: clearing it would signal success for
+        // something that never happened.
+        if (!term) return;
+
+        // Through term.input rather than straight to the socket: that is the
+        // path typed characters take, so broadcast and everything else hanging
+        // off onData applies to the bar as well. applyLatchedModifiers leaves
+        // the sequence alone because it is never a single printable character -
+        // it does report the latch as spent, so onLatchConsumed has usually
+        // fired by the time we get here. The line below is what covers the case
+        // where it did not.
+        term.input(sequence);
+        setModifierLatch(EMPTY_LATCH);
+    }, [modifierLatch, activeSessionId]);
 
     const toggleFullscreenMode = useCallback(() => {
         setFullscreenMode(prev => !prev);
@@ -423,6 +454,10 @@ export const ViewContainer = ({
         }
     }, [activeSessions.length, activeSessionId, focusSession]);
 
+    useEffect(() => {
+        setModifierLatch(EMPTY_LATCH);
+    }, [activeSessionId]);
+
     const renderRenderer = (session) => {
         if (session.type === "notes") {
             return <NotesRenderer session={session} />;
@@ -456,6 +491,7 @@ export const ViewContainer = ({
                                       markSessionErrored={markSessionErrored}
                                       getSessionError={getSessionError}
                                       registerTerminalRef={registerTerminalRef} broadcastMode={broadcastMode}
+                                      modifierLatch={modifierLatch} onLatchConsumed={clearLatch}
                                       terminalRefs={terminalRefs} updateProgress={updateSessionProgress}
                                       updateTitle={updateLiveTitle}
                                       layoutMode={layoutMode} onBroadcastToggle={toggleBroadcastMode}
@@ -607,12 +643,22 @@ export const ViewContainer = ({
             )}
             {titleBarTabsSlot ? createPortal(serverTabs, titleBarTabsSlot) : serverTabs}
 
+            {activeSession && !hasGuacamole && (
+                <TerminalKeyBar latch={modifierLatch}
+                                onToggleModifier={toggleModifier}
+                                onSendKey={sendBarKey} />
+            )}
+
+            {/* The bar sits above the layouter and takes real room, so the
+                layouter has to give that room up. --key-bar-height is 0px
+                wherever the bar is not shown, leaving this at exactly 100%. */}
             <div ref={layoutRef}
                  className={`view-layouter ${layoutMode} ${isResizing ? "resizing" : ""} ${isResizing && resizingDirection ? `resizing-${resizingDirection}` : ""}`}
-                 style={{ position: "relative", width: "100%", height: "100%" }}>
+                 style={{ position: "relative", width: "100%", height: "calc(100% - var(--key-bar-height))" }}>
                 {renderAllSessions()}
                 {layoutMode !== "single" && renderFlexLayout()}
             </div>
+
         </div>
     );
 };

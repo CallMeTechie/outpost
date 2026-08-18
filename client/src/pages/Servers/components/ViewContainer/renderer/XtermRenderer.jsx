@@ -20,6 +20,7 @@ import ConnectionLoader from "./components/ConnectionLoader";
 import ConnectionError, { mapConnectionError } from "./components/ConnectionError";
 import { getWebSocketUrl } from "@/common/utils/ConnectionUtil.js";
 import { postRequest } from "@/common/utils/RequestUtil.js";
+import { applyLatchedModifiers } from "@/common/utils/keyBarModifiers.js";
 import "@xterm/xterm/css/xterm.css";
 import "./styles/xterm.sass";
 
@@ -33,11 +34,16 @@ const MODIFIER_KEYS = ["Shift", "Control", "Alt", "Meta", "AltGraph", "CapsLock"
 // cannot force a React render per escape sequence.
 const TITLE_UPDATE_THROTTLE_MS = 100;
 
-const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getSessionError, registerTerminalRef, broadcastMode, terminalRefs, updateProgress, updateTitle, layoutMode, onBroadcastToggle, onFullscreenToggle, isShared = false, onOpenSftp }) => {
+const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getSessionError, registerTerminalRef, broadcastMode, modifierLatch, onLatchConsumed, terminalRefs, updateProgress, updateTitle, layoutMode, onBroadcastToggle, onFullscreenToggle, isShared = false, onOpenSftp }) => {
     const ref = useRef(null);
     const termRef = useRef(null);
     const wsRef = useRef(null);
     const broadcastModeRef = useRef(broadcastMode);
+    // Same reason as broadcastModeRef above: the onData callback is registered
+    // once and closes over whatever it sees at that moment. A prop that changes
+    // later never reaches it.
+    const modifierLatchRef = useRef(modifierLatch);
+    const onLatchConsumedRef = useRef(onLatchConsumed);
     const progressParserRef = useRef(null);
     const layoutModeRef = useRef(layoutMode);
     const onBroadcastToggleRef = useRef(onBroadcastToggle);
@@ -104,6 +110,12 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
         passwordPromptRef.current = anchor;
         setPasswordPrompt(anchor);
         updatePasswordHintIndex(0);
+
+        // A latched modifier must not survive into a password prompt: it would
+        // turn the first character of the password into a control character,
+        // and password input has no echo - the user would see nothing until the
+        // login fails.
+        onLatchConsumedRef.current?.();
     }, [updatePasswordHintIndex]);
 
     const movePasswordHint = useCallback((anchor) => {
@@ -143,7 +155,9 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
 
     useEffect(() => {
         broadcastModeRef.current = broadcastMode;
-    }, [broadcastMode]);
+        modifierLatchRef.current = modifierLatch;
+        onLatchConsumedRef.current = onLatchConsumed;
+    }, [broadcastMode, modifierLatch, onLatchConsumed]);
 
     useEffect(() => {
         smartCopyPasteRef.current = smartCopyPaste;
@@ -639,12 +653,16 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
 
         term.onData((data) => {
             if (passwordPromptRef.current) hidePasswordHint();
-            ws.send(data);
+
+            const { data: outgoing, consumed } = applyLatchedModifiers(data, modifierLatchRef.current);
+            if (consumed) onLatchConsumedRef.current?.();
+
+            ws.send(outgoing);
 
             if (broadcastModeRef.current && terminalRefs?.current) {
                 Object.entries(terminalRefs.current).forEach(([sessionId, refs]) => {
                     if (sessionId !== session.id && refs.ws && refs.ws.readyState === WebSocket.OPEN) {
-                        refs.ws.send(data);
+                        refs.ws.send(outgoing);
                     }
                 });
             }
