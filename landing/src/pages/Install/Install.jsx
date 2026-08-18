@@ -13,9 +13,9 @@ const generateEncryptionKey = () => {
 };
 
 const IMAGE_TYPES = [
-    {id: 'aio', name: 'All-in-One', image: 'nexterm/aio', desc: 'Server and engine bundled together', recommended: true, icon: faCubes},
-    {id: 'server', name: 'Server', image: 'nexterm/server', desc: 'Web UI and API only', icon: faServer},
-    {id: 'engine', name: 'Engine', image: 'nexterm/engine', desc: 'Connection engine only', icon: faGears},
+    {id: 'aio', name: 'All-in-One', image: 'outpost/aio', desc: 'Server and engine bundled together', recommended: true, icon: faCubes},
+    {id: 'server', name: 'Server', image: 'outpost/server', desc: 'Web UI and API only', icon: faServer},
+    {id: 'engine', name: 'Engine', image: 'outpost/engine', desc: 'Connection engine only', icon: faGears},
 ];
 
 export const Install = () => {
@@ -23,8 +23,8 @@ export const Install = () => {
     const [deployMethod, setDeployMethod] = useState('docker');
     const [networkMode, setNetworkMode] = useState('host');
     const [volumeType, setVolumeType] = useState('named');
-    const [volumeName, setVolumeName] = useState('nexterm');
-    const [bindPath, setBindPath] = useState('./nexterm-data');
+    const [volumeName, setVolumeName] = useState('outpost');
+    const [bindPath, setBindPath] = useState('./outpost-data');
     const [encryptionKey, setEncryptionKey] = useState('');
     const [copied, setCopied] = useState(false);
     const [copiedConfig, setCopiedConfig] = useState(false);
@@ -54,9 +54,9 @@ registration_token: ""`;
     const getDockerCommand = () => {
         if (imageType === 'engine') {
             return `docker run -d \\
-  --name nexterm-engine \\
+  --name outpost-engine \\
   --restart always \\
-  -v ./config.yaml:/etc/nexterm/config.yaml \\
+  -v ./config.yaml:/etc/outpost/config.yaml \\
   ${selectedImage.image}:latest`;
         }
 
@@ -65,7 +65,7 @@ registration_token: ""`;
         return `docker run -d \\
   -e ENCRYPTION_KEY=${encryptionKey} \\
   ${networkArg} \\
-  --name nexterm \\
+  --name outpost \\
   --restart always \\
   -v ${volumeArg} \\
   ${selectedImage.image}:latest`;
@@ -76,10 +76,10 @@ registration_token: ""`;
             return `services:
   engine:
     image: ${selectedImage.image}:latest
-    container_name: nexterm-engine
+    container_name: outpost-engine
     restart: always
     volumes:
-      - ./config.yaml:/etc/nexterm/config.yaml`;
+      - ./config.yaml:/etc/outpost/config.yaml`;
         }
 
         const volLine = `      - ${volumeArg}`;
@@ -90,9 +90,9 @@ registration_token: ""`;
             : '    ports:\n      - "6989:6989"';
 
         return `services:
-  nexterm:
+  outpost:
     image: ${selectedImage.image}:latest
-    container_name: nexterm
+    container_name: outpost
 ${networkYaml}
     restart: always
     environment:
@@ -107,7 +107,7 @@ ${volLine}${volSection}`;
         <div className="install-page">
             <div className="install-container">
                 <header className="install-header">
-                    <h1>Install Nexterm</h1>
+                    <h1>Install Outpost</h1>
                     <p>Deploy in minutes with Docker</p>
                 </header>
 
@@ -132,14 +132,14 @@ ${volLine}${volSection}`;
                         <span className="step-number">2</span>
                         <div>
                             <h3>Create Project Directory</h3>
-                            <p>Create a directory for your Nexterm configuration</p>
+                            <p>Create a directory for your Outpost configuration</p>
                         </div>
                     </div>
                     <div className="command-block">
                         <div className="command-header">
                             <span>Terminal</span>
                         </div>
-                        <pre><code>mkdir nexterm && cd nexterm</code></pre>
+                        <pre><code>mkdir outpost && cd outpost</code></pre>
                     </div>
                 </div>
 
@@ -201,7 +201,7 @@ ${volLine}${volSection}`;
                                         type="text"
                                         value={volumeType === 'named' ? volumeName : bindPath}
                                         onChange={(e) => volumeType === 'named' ? setVolumeName(e.target.value) : setBindPath(e.target.value)}
-                                        placeholder={volumeType === 'named' ? 'nexterm' : './nexterm-data'}
+                                        placeholder={volumeType === 'named' ? 'outpost' : './outpost-data'}
                                     />
                                 </div>
                             </>
@@ -227,7 +227,7 @@ ${volLine}${volSection}`;
                         <span className="step-number">4</span>
                         <div>
                             <h3>Deploy</h3>
-                            <p>Run the command to start your Nexterm instance</p>
+                            <p>Run the command to start your Outpost instance</p>
                         </div>
                     </div>
 
@@ -271,10 +271,10 @@ ${volLine}${volSection}`;
                     <div className="step-header">
                         <span className="step-number">5</span>
                         <div>
-                            <h3>Access Nexterm</h3>
+                            <h3>Access Outpost</h3>
                             <p>{needsStorage
                                 ? 'Open the web interface in your browser'
-                                : 'The engine will connect to your Nexterm server'
+                                : 'The engine will connect to your Outpost server'
                             }</p>
                         </div>
                     </div>

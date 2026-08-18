@@ -103,7 +103,7 @@ export const Microsoft = () => {
                     <div className="form-group">
                         <label htmlFor="ms-client-id">{t("settings.microsoft.clientId")}</label>
                         {/* A text field directly above a password field is what browsers read as a
-                            login form, and they fill it with the saved Nexterm credentials. Same
+                            login form, and they fill it with the saved Outpost credentials. Same
                             treatment as DirectConnectDialog: its own name, and "new-password" on the
                             secret below — "off" is ignored on password-type inputs. */}
                         <IconInput id="ms-client-id" name="ms-client-id" autoComplete="off"

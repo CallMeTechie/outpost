@@ -4,7 +4,7 @@
 
 # 📝 Scripts & Snippets
 
-Nexterm uses file extensions to distinguish scripts from snippets, not folder structure. This means you can organize your repository however you like.
+Outpost uses file extensions to distinguish scripts from snippets, not folder structure. This means you can organize your repository however you like.
 
 ## Scripts vs Snippets
 
@@ -54,7 +54,7 @@ vzdump --all --mode snapshot --compress zstd
 
 | Tag | Description |
 |-----|-------------|
-| `@name` | Display name in the Nexterm UI |
+| `@name` | Display name in the Outpost UI |
 | `@description` | Additional context about what the command does |
 | `@os` | Comma-separated list of compatible operating systems |
 
@@ -68,7 +68,7 @@ Use these exact values for the `@os` tag:
 > Snippets without an `@os` tag are shown on all systems. Use `Proxmox VE` for commands specific to PVE shell or LXC consoles.
 
 > [!TIP]
-> Check out the [NexStore repository](https://github.com/gnmyt/NexStore/tree/main/nexterm) for more examples.
+> Check out the [NexStore repository](https://github.com/gnmyt/NexStore/tree/main/outpost) for more examples.
 
 ### Scripting Variables & Directives
 

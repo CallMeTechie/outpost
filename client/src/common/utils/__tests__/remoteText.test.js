@@ -3,7 +3,7 @@ import assert from "node:assert";
 import { sanitizeRemoteText } from "../remoteText.js";
 
 test("plain text passes through", () => {
-    assert.strictEqual(sanitizeRemoteText("~/projects/nexterm", 80), "~/projects/nexterm");
+    assert.strictEqual(sanitizeRemoteText("~/projects/outpost", 80), "~/projects/outpost");
 });
 
 // Newlines would let a remote title forge an extra tooltip line that looks like one of ours.

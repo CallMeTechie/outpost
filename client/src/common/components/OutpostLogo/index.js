@@ -1,0 +1,1 @@
+export { OutpostLogo as default } from "./OutpostLogo";

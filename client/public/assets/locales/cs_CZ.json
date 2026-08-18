@@ -53,13 +53,13 @@
       "unsavedChangesText": "Máte neuložené změny. Opravdu chcete zavřít?"
     },
     "loginDialog": {
-      "title": "Nexterm",
+      "title": "Outpost",
       "registrationTitle": "Registrace",
       "ssoOrContinueWith": "nebo pokračujte s",
       "noAuthMethodsAvailable": "Žádné metody ověření nejsou k dispozici.",
       "signInWithPasskey": "Přihlásit se pomocí Passkey",
       "signInWithQrCode": "Přihlášení pomocí kódu QR",
-      "qrScanDescription": "Naskenujte tento QR kód pomocí mobilní aplikace Nexterm a okamžitě se přihlaste.",
+      "qrScanDescription": "Naskenujte tento QR kód pomocí mobilní aplikace Outpost a okamžitě se přihlaste.",
       "backToLogin": "Zpět na přihlášení",
       "authenticating": "Probíhá ověření...",
       "noAccount": "Ještě nemáte účet?",
@@ -70,7 +70,7 @@
       "description": "Zadejte kód zobrazený na zařízení a autorizujte jej pro přístup k účtu.",
       "qrTab": "QR kód",
       "codeTab": "Kód",
-      "qrDescription": "Naskenujte tento QR kód pomocí mobilní aplikace Nexterm a propojte své zařízení.",
+      "qrDescription": "Naskenujte tento QR kód pomocí mobilní aplikace Outpost a propojte své zařízení.",
       "codeLabel": "Kód zařízení",
       "continue": "Pokračovat",
       "verifying": "Ověřování...",
@@ -94,20 +94,20 @@
       }
     },
     "connectorSetup": {
-      "title": "Konektor Nexterm",
+      "title": "Konektor Outpost",
       "serverUrl": "Adresa URL serveru",
-      "serverUrlDescription": "Zadejte adresu URL serveru Nexterm, ke kterému se chcete připojit.",
+      "serverUrlDescription": "Zadejte adresu URL serveru Outpost, ke kterému se chcete připojit.",
       "connect": "Připojení",
       "connecting": "Připojení...",
       "enterServerUrl": "Zadejte prosím adresu URL serveru",
       "connectionFailed": "Nepodařilo se připojit k serveru. Zkontrolujte prosím adresu URL.",
-      "deviceLinkingNotSupported": "Tento server nepodporuje propojení zařízení. Aktualizujte prosím svůj server Nexterm.",
+      "deviceLinkingNotSupported": "Tento server nepodporuje propojení zařízení. Aktualizujte prosím svůj server Outpost.",
       "authMethodDescription": "Zvolte způsob ověřování na serveru.",
       "showCode": "Zobrazit kód",
       "showCodeDesc": "Zobrazení kódu pro ruční zadání ve webovém rozhraní",
       "openBrowser": "Autorizovat",
       "openBrowserDesc": "Otevřete prohlížeč pro automatickou autorizaci",
-      "enterCodeDescription": "Zadáním tohoto kódu ve webovém rozhraní Nexterm toto zařízení autorizujete.",
+      "enterCodeDescription": "Zadáním tohoto kódu ve webovém rozhraní Outpost toto zařízení autorizujete.",
       "copyCode": "Kopírovat kód",
       "codeCopied": "Kód zkopírovaný do schránky",
       "copyFailed": "Nepodařilo se zkopírovat kód",
@@ -635,7 +635,7 @@
       "languageDescription": "Vyberte preferovaný jazyk rozhraní.",
       "currentLanguage": "Aktuální jazyk",
       "missingLanguage": "Chybí váš jazyk?",
-      "helpTranslateLink": "Pomozte přeložit Nexterm",
+      "helpTranslateLink": "Pomozte přeložit Outpost",
       "syncLoginRequired": "Přihlaste se k synchronizaci nastavení",
       "appearanceSyncEnabled": "Nastavení vzhledu se nyní synchronizuje s vaším účtem.",
       "appearanceSyncDisabled": "Nastavení vzhledu se již nebude synchronizovat",
@@ -702,7 +702,7 @@
       },
       "apiKeys": {
         "sectionTitle": "Klíče API",
-        "sectionDescription": "Vytvořte si klíče API, abyste mohli programově přistupovat k Nextermu ze skriptů a integrací.",
+        "sectionDescription": "Vytvořte si klíče API, abyste mohli programově přistupovat k Outpostu ze skriptů a integrací.",
         "addButton": "Vytvořit klíč API",
         "createTitle": "Vytvořit klíč API",
         "createDescription": "Pojmenujte svůj klíč. Token se po vytvoření zobrazí pouze jednou.",
@@ -967,7 +967,7 @@
         "syncDisabled": "Nastavení motivu se již nesynchronizuje"
       },
       "preview": {
-        "text": "$ echo 'Ahoj, Nexterm!'\nAhoj, Nexterm!\n$ "
+        "text": "$ echo 'Ahoj, Outpost!'\nAhoj, Outpost!\n$ "
       }
     },
     "fileManager": {
@@ -1190,7 +1190,7 @@
       "servers": "serverů",
       "statusChecker": {
         "title": "Kontrola stavu",
-        "description": "Nakonfigurujte, jak Nexterm kontroluje online/offline stav vašich serverů.",
+        "description": "Nakonfigurujte, jak Outpost kontroluje online/offline stav vašich serverů.",
         "enable": {
           "title": "Povolit kontrolu stavu",
           "description": "Automaticky kontrolovat, zda jsou servery online nebo offline. Při zakázání budou všechny servery označeny jako online."
@@ -1340,7 +1340,7 @@
       "loading": "Načítání nastavení úložiště...",
       "storage": {
         "title": "Úložiště",
-        "description": "Zobrazte využití disku pro vaše Nexterm data.",
+        "description": "Zobrazte využití disku pro vaše Outpost data.",
         "database": "Databáze",
         "recordings": "Nahrávky",
         "logs": "Logy",
@@ -2063,7 +2063,7 @@
   "support": {
     "title": "Získat podporu",
     "subtitle": "Potřebujete pomoc nebo chcete přispět?",
-    "footer": "Děkujeme, že používáte Nexterm!",
+    "footer": "Děkujeme, že používáte Outpost!",
     "issues": {
       "title": "Nahlášení problému",
       "description": "Našli jste chybu nebo máte požadavek na funkci?"
@@ -2080,7 +2080,7 @@
   "welcome": {
     "hello": "Ahoj",
     "defaultName": "Uživatel",
-    "subtitle": "Vítejte na Nextermu. Správce serverů s otevřeným zdrojovým kódem pro SSH, VNC a RDP.",
+    "subtitle": "Vítejte na Outpostu. Správce serverů s otevřeným zdrojovým kódem pro SSH, VNC a RDP.",
     "downloadApps": "Aplikace ke stažení",
     "connectDevice": "Připojení zařízení",
     "recentConnections": "Nedávná připojení",
@@ -2089,7 +2089,7 @@
   },
   "downloadApps": {
     "title": "Aplikace ke stažení",
-    "subtitle": "Získejte Nexterm do svých zařízení",
+    "subtitle": "Získejte Outpost do svých zařízení",
     "platforms": {
       "windows": "Windows",
       "macos": "macOS",

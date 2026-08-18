@@ -23,7 +23,7 @@ export const createBrowserFsProvider = () => {
                     new FsError(E_NOSYS, "OPFS not available in this browser"));
         opfsScopePromise = navigator.storage.getDirectory()
                 .then(root => root.getDirectoryHandle(
-                        `nexterm-rdp-${Date.now()}`, { create: true }));
+                        `outpost-rdp-${Date.now()}`, { create: true }));
         return opfsScopePromise;
     };
 

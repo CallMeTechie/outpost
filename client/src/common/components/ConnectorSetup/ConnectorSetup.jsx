@@ -1,5 +1,5 @@
 import { DialogProvider } from "@/common/components/Dialog";
-import NextermLogo from "@/common/components/NextermLogo";
+import OutpostLogo from "@/common/components/OutpostLogo";
 import "./styles.sass";
 import Button from "@/common/components/Button";
 import Input from "@/common/components/IconInput";
@@ -23,7 +23,7 @@ const ConnectorIcon = ({ connected }) => (
 const LinkingHeader = ({ connected = false }) => (
     <div className="linking-header">
         <div className={`linking-logo${connected ? " connected" : ""}`}>
-            <NextermLogo size={36} />
+            <OutpostLogo size={36} />
         </div>
         <div className={`linking-dots${connected ? " connected" : ""}`}>
             <span className="dot" /><span className="dot" /><span className="dot" />
@@ -158,7 +158,7 @@ export const ConnectorSetup = ({ open, isAddMode = false, onCancelAdd }) => {
                         <p className="linking-description">{t("common.connectorSetup.serverUrlDescription")}</p>
                         <div className="form-group">
                             <label htmlFor="serverUrl">{t("common.connectorSetup.serverUrl")}</label>
-                            <Input type="text" id="serverUrl" icon={mdiServerNetwork} placeholder="https://nexterm.example.com" value={serverUrl} setValue={setServerUrl} />
+                            <Input type="text" id="serverUrl" icon={mdiServerNetwork} placeholder="https://outpost.example.com" value={serverUrl} setValue={setServerUrl} />
                         </div>
                         <Button text={connecting ? t("common.connectorSetup.connecting") : t("common.connectorSetup.connect")} disabled={connecting} />
                         {isAddMode && <Button type="secondary" text={t("common.actions.cancel")} onClick={handleCancel} />}

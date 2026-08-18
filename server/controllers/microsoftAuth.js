@@ -98,7 +98,7 @@ const handleCallback = async (query = {}, {
 
     // The account this connection belongs to comes from the stored entry alone. The callback
     // carries no session, and taking it from the request would let anyone attach their Microsoft
-    // account to a foreign Nexterm user.
+    // account to a foreign Outpost user.
     const entry = consumeState(query.state);
     if (!entry) return { status: "error", reason: "state_invalid" };
 

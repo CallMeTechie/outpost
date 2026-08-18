@@ -156,7 +156,7 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
                             <div className="form-group">
                                 <label htmlFor="direct-connect-password">{t("servers.dialog.fields.password")}</label>
                                 {/* Chrome/Firefox ignore autoComplete="off" on password fields and fill
-                                    the saved Nexterm login instead; "new-password" is the value they honor. */}
+                                    the saved Outpost login instead; "new-password" is the value they honor. */}
                                 <Input
                                     id="direct-connect-password"
                                     name="direct-connect-password"

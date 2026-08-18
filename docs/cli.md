@@ -1,6 +1,6 @@
 # ⌨️ CLI
 
-The Nexterm CLI (`nt`) lets you connect to your servers straight from the terminal – no browser needed. It uses the same
+The Outpost CLI (`nt`) lets you connect to your servers straight from the terminal – no browser needed. It uses the same
 authentication and entry system as the web UI, so all your servers, folders, and identities are already there.
 
 This is useful when you just want to quickly SSH into a machine without opening the web interface, or when you need to
@@ -23,7 +23,7 @@ cp cli/target/release/nt /usr/local/bin/
 
 ## Getting Started
 
-First, log in to your Nexterm server:
+First, log in to your Outpost server:
 
 ```sh
 nt login
@@ -127,16 +127,16 @@ stays open until you press `Ctrl+C`.
 nt config show
 ```
 
-The CLI stores its configuration in `~/.config/nexterm/config.json`. You can view or change individual settings:
+The CLI stores its configuration in `~/.config/outpost/config.json`. You can view or change individual settings:
 
 ```sh
-nt config set server-url https://nexterm.example.com
+nt config set server-url https://outpost.example.com
 nt config get server-url
 ```
 
 | Key                    | Description                                           |
 |------------------------|-------------------------------------------------------|
-| `server-url`           | The URL of your Nexterm server                        |
+| `server-url`           | The URL of your Outpost server                        |
 | `accept-invalid-certs` | Set to `true` to allow self-signed SSL certificates   |
 
 ### Logging Out

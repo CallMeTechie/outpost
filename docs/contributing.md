@@ -1,6 +1,6 @@
-# Contributing to Nexterm
+# Contributing to Outpost
 
-You plan on contributing to Nexterm? That's great! This document will guide you through the process of contributing to the project.
+You plan on contributing to Outpost? That's great! This document will guide you through the process of contributing to the project.
 
 ## 📦 Prerequisites
 
@@ -23,7 +23,7 @@ You plan on contributing to Nexterm? That's great! This document will guide you 
 
     ```sh
     git clone https://github.com/gnmyt/Nexterm.git
-    cd Nexterm
+    cd Outpost
     ```
 
 2. Create a local environment file:
@@ -114,6 +114,6 @@ If you want the engine to register automatically with the local control plane, s
 
 ## 🌍 Translations
 
-Nexterm uses [Crowdin](https://crowdin.com/project/nexterm) for managing translations. If you'd like to help translate Nexterm into your language or improve existing translations, please visit our [Crowdin project page](https://crowdin.com/project/nexterm).
+Outpost uses [Crowdin](https://crowdin.com/project/outpost) for managing translations. If you'd like to help translate Outpost into your language or improve existing translations, please visit our [Crowdin project page](https://crowdin.com/project/outpost).
 
 To suggest a new language, please open an issue in the repository using the language request template. Translation pull requests will not be accepted as all translations are managed through Crowdin.

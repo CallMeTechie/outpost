@@ -59,7 +59,7 @@
       "noAuthMethodsAvailable": "لا توجد طرق مصادقة متاحة.",
       "signInWithPasskey": "تسجيل الدخول باستخدام مفتاح المرور",
       "signInWithQrCode": "تسجيل الدخول باستخدام رمز الاستجابة السريعة",
-      "qrScanDescription": "امسح رمز الاستجابة السريعة هذا باستخدام تطبيق Nexterm للهاتف المحمول لتسجيل الدخول على الفور.",
+      "qrScanDescription": "امسح رمز الاستجابة السريعة هذا باستخدام تطبيق Outpost للهاتف المحمول لتسجيل الدخول على الفور.",
       "backToLogin": "العودة إلى تسجيل الدخول",
       "authenticating": "توثيق...",
       "noAccount": "ليس لديك حساب؟",
@@ -70,7 +70,7 @@
       "description": "أدخل الرمز الظاهر على جهازك لتفويضه بالوصول إلى حسابك.",
       "qrTab": "رمز الاستجابة السريعة",
       "codeTab": "الكود",
-      "qrDescription": "امسح رمز الاستجابة السريعة هذا باستخدام تطبيق Nexterm للهاتف المحمول لربط جهازك.",
+      "qrDescription": "امسح رمز الاستجابة السريعة هذا باستخدام تطبيق Outpost للهاتف المحمول لربط جهازك.",
       "codeLabel": "رمز الجهاز",
       "continue": "تابع",
       "verifying": "التحقق من...",
@@ -96,18 +96,18 @@
     "connectorSetup": {
       "title": "موصل نيكسيرم",
       "serverUrl": "عنوان URL للخادم",
-      "serverUrlDescription": "أدخل عنوان URL الخاص بخادم Nexterm للاتصال.",
+      "serverUrlDescription": "أدخل عنوان URL الخاص بخادم Outpost للاتصال.",
       "connect": "الاتصال",
       "connecting": "توصيل...",
       "enterServerUrl": "الرجاء إدخال عنوان URL الخادم",
       "connectionFailed": "فشل الاتصال بالخادم. يرجى التحقق من عنوان URL.",
-      "deviceLinkingNotSupported": "هذا الخادم لا يدعم ربط الجهاز. يرجى تحديث خادم Nexterm الخاص بك.",
+      "deviceLinkingNotSupported": "هذا الخادم لا يدعم ربط الجهاز. يرجى تحديث خادم Outpost الخاص بك.",
       "authMethodDescription": "اختر كيف تريد المصادقة مع الخادم.",
       "showCode": "إظهار الرمز",
       "showCodeDesc": "عرض رمز لإدخاله يدوياً على واجهة الويب",
       "openBrowser": "تفويض",
       "openBrowserDesc": "افتح متصفحك للتفويض تلقائياً",
-      "enterCodeDescription": "أدخل هذا الرمز على واجهة الويب Nexterm لتخويل هذا الجهاز.",
+      "enterCodeDescription": "أدخل هذا الرمز على واجهة الويب Outpost لتخويل هذا الجهاز.",
       "copyCode": "نسخ الرمز",
       "codeCopied": "الرمز المنسوخ إلى الحافظة",
       "copyFailed": "فشل في نسخ الرمز",
@@ -702,7 +702,7 @@
       },
       "apiKeys": {
         "sectionTitle": "مفاتيح واجهة برمجة التطبيقات (API)",
-        "sectionDescription": "قم بإنشاء مفاتيح API للوصول إلى Nexterm برمجياً من خلال البرامج النصية وعمليات التكامل.",
+        "sectionDescription": "قم بإنشاء مفاتيح API للوصول إلى Outpost برمجياً من خلال البرامج النصية وعمليات التكامل.",
         "addButton": "إنشاء مفتاح API",
         "createTitle": "إنشاء مفتاح API",
         "createDescription": "قم بتسمية مفتاحك. لن يظهر الرمز المميز إلا مرة واحدة بعد إنشائه.",
@@ -1190,7 +1190,7 @@
       "servers": "الخوادم",
       "statusChecker": {
         "title": "مدقق الحالة",
-        "description": "قم بتهيئة كيفية تحقق Nexterm من حالة الخوادم الخاصة بك على الإنترنت/غير متصل.",
+        "description": "قم بتهيئة كيفية تحقق Outpost من حالة الخوادم الخاصة بك على الإنترنت/غير متصل.",
         "enable": {
           "title": "تمكين أداة التحقق من الحالة",
           "description": "تحقق تلقائيًا مما إذا كانت الخوادم متصلة بالإنترنت أو غير متصلة. عند تعطيلها، سيتم تمييز جميع الخوادم على أنها متصلة بالإنترنت."
@@ -1340,7 +1340,7 @@
       "loading": "تحميل إعدادات التخزين...",
       "storage": {
         "title": "التخزين",
-        "description": "عرض استخدام القرص لبيانات Nexterm الخاصة بك.",
+        "description": "عرض استخدام القرص لبيانات Outpost الخاصة بك.",
         "database": "قاعدة البيانات",
         "recordings": "التسجيلات",
         "logs": "السجلات",
@@ -2080,7 +2080,7 @@
   "welcome": {
     "hello": "مرحباً",
     "defaultName": "المستخدم",
-    "subtitle": "مرحبًا بك في Nexterm. مدير الخادم مفتوح المصدر لخوادم SSH و VNC و RDP.",
+    "subtitle": "مرحبًا بك في Outpost. مدير الخادم مفتوح المصدر لخوادم SSH و VNC و RDP.",
     "downloadApps": "تنزيل التطبيقات",
     "connectDevice": "توصيل الجهاز",
     "recentConnections": "الاتصالات الحديثة",
@@ -2089,7 +2089,7 @@
   },
   "downloadApps": {
     "title": "تنزيل التطبيقات",
-    "subtitle": "احصل على Nexterm على أجهزتك",
+    "subtitle": "احصل على Outpost على أجهزتك",
     "platforms": {
       "windows": "النوافذ",
       "macos": "نظام التشغيل macOS",

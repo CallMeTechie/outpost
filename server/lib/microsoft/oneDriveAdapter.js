@@ -386,7 +386,7 @@ const createOneDriveAdapter = ({ graph, connectionId }) => {
         return { path: segments.length === 0 ? "/drive/root:" : `/drive/root:/${encodeSegments(segments)}` };
     };
 
-    // Microsoft moves the item itself: one PATCH, and not a byte through Nexterm.
+    // Microsoft moves the item itself: one PATCH, and not a byte through Outpost.
     const move = async (path, targetFolder) => {
         await graph.request(connectionId, {
             url: itemUrl(path),

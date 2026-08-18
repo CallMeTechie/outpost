@@ -32,7 +32,7 @@ const fakes = ({ claims = { oid: "ms-account-oid" } } = {}) => {
         deps: {
             loadConfiguration: async () => ({
                 configuration: { fake: true },
-                redirectUri: "https://nexterm.example/api/microsoft/callback",
+                redirectUri: "https://outpost.example/api/microsoft/callback",
             }),
             exchange: async (configuration, currentUrl, options) => {
                 exchanged.push({ currentUrl: currentUrl.href, options });

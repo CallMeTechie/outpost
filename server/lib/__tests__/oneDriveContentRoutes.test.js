@@ -565,7 +565,7 @@ test("POST /multi with a path containing '..': 400, Invalid path", async () => {
     assert.deepStrictEqual(json, { error: "Invalid path" });
 });
 
-test("POST /multi success: 200, zip Content-Disposition with nexterm-download- prefix", async () => {
+test("POST /multi success: 200, zip Content-Disposition with outpost-download- prefix", async () => {
     const content = Buffer.from("archived contents");
     const { sessionToken, connectionId } = registerConnection({
         stat: async () => ({ type: "file" }),
@@ -581,7 +581,7 @@ test("POST /multi success: 200, zip Content-Disposition with nexterm-download- p
 
     assert.strictEqual(res.status, 200);
     assert.strictEqual(res.headers.get("content-type"), "application/zip");
-    assert.match(res.headers.get("content-disposition"), /^attachment; filename="nexterm-download-.*\.zip"$/);
+    assert.match(res.headers.get("content-disposition"), /^attachment; filename="outpost-download-.*\.zip"$/);
 });
 
 // Mirrors sftp.js's own characterization of the same failure mode (sftpContentRoutes.test.js): a

@@ -1,15 +1,15 @@
 # Server CLI
 
-`ntctl` is the server-side admin CLI. It talks directly to the same database the Nexterm server uses, so it can do
+`ntctl` is the server-side admin CLI. It talks directly to the same database the Outpost server uses, so it can do
 things the web UI cannot: recover a locked-out admin, switch auth providers when SSO is broken, inspect migrations,
 or run a quick SQL query.
 
 It is not the same tool as `nt`, which is the end-user CLI for connecting to servers. `ntctl` is meant to be run
-on the machine that hosts the Nexterm server.
+on the machine that hosts the Outpost server.
 
 ## Installation
 
-If you run Nexterm from source, `ntctl` is already there. The `bin` entry in `package.json` exposes it once you've
+If you run Outpost from source, `ntctl` is already there. The `bin` entry in `package.json` exposes it once you've
 installed dependencies:
 
 ```sh
@@ -26,7 +26,7 @@ ntctl --help
 The Docker image ships `ntctl` as `/usr/local/bin/ntctl`, so you can run it inside a running container:
 
 ```sh
-docker exec -it nexterm ntctl user:list
+docker exec -it outpost ntctl user:list
 ```
 
 ## How it finds your data
@@ -42,7 +42,7 @@ in this order:
 If you keep your data somewhere other than the current directory, pass `--data-dir`:
 
 ```sh
-ntctl --data-dir /var/lib/nexterm user:list
+ntctl --data-dir /var/lib/outpost user:list
 ```
 
 This works whether the path points at the data directory itself or its parent. Internally it makes sure the runtime

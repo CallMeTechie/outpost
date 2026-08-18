@@ -70,15 +70,15 @@ const getScriptCommands = (b64) => {
 
 const stripAnsi = (s) => s.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, "");
 
-const findNextermCommand = (line) => {
+const findOutpostCommand = (line) => {
     const clean = stripAnsi(line);
     if (clean.match(/echo\s+["']?OUTPOST_/i) || clean.trim().match(/^[$#>]\s+.*OUTPOST_/)) return null;
     const m = clean.match(/OUTPOST_(INPUT|SELECT|STEP|WARN|INFO|CONFIRM|PROGRESS|SUCCESS|SUMMARY|TABLE|MSGBOX|END):(.*)/s);
     return m ? { command: `OUTPOST_${m[1]}`, rest: m[2] } : null;
 };
 
-const processNextermLine = (line) => {
-    const found = findNextermCommand(line);
+const processOutpostLine = (line) => {
+    const found = findOutpostCommand(line);
     if (!found) return null;
     const { command, rest } = found;
     const parts = rest.split(":");
@@ -111,4 +111,4 @@ const processNextermLine = (line) => {
     }
 };
 
-module.exports = { escapeColons, unescapeColons, parseOptions, checkSudoPrompt, transformScript, getScriptCommands, stripAnsi, findNextermCommand, processNextermLine };
+module.exports = { escapeColons, unescapeColons, parseOptions, checkSudoPrompt, transformScript, getScriptCommands, stripAnsi, findOutpostCommand, processOutpostLine };

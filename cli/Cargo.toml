@@ -2,7 +2,7 @@
 name = "nt"
 version = "1.2.2"
 edition = "2021"
-description = "CLI client for Nexterm"
+description = "CLI client for Outpost"
 authors = ["Mathias Wagner"]
 license = "MIT"
 

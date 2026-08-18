@@ -1,6 +1,6 @@
 import { isTauri } from "@/common/utils/TauriUtil.js";
 
-const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("nexterm_popout") : null;
+const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("outpost_popout") : null;
 
 const POPOUT_CLOSED = "popout_closed";
 const FORCE_CLOSE = "force_close";
@@ -19,7 +19,7 @@ export const openPopout = async (sessionId, monitor = null) => {
     }
 
     const path = monitor === null ? `/popout/${sessionId}` : `/popout/${sessionId}/${monitor}`;
-    const name = monitor === null ? `nexterm_popout_${sessionId}` : `nexterm_popout_${sessionId}_m${monitor}`;
+    const name = monitor === null ? `outpost_popout_${sessionId}` : `outpost_popout_${sessionId}_m${monitor}`;
     window.open(path, name, WINDOW_FEATURES)?.focus();
 };
 

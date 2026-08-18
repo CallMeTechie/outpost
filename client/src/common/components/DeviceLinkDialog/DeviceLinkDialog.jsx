@@ -9,7 +9,7 @@ import { postRequest } from "@/common/utils/RequestUtil.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useTranslation } from "react-i18next";
 import Icon from "@mdi/react";
-import NextermLogo from "@/common/components/NextermLogo";
+import OutpostLogo from "@/common/components/OutpostLogo";
 import { QRCodeCanvas } from "qrcode.react";
 
 const DeviceIcon = ({ type, connected }) => (
@@ -20,7 +20,7 @@ const DeviceIcon = ({ type, connected }) => (
 
 const LinkingHeader = ({ clientType, connected = false }) => (
     <div className="linking-header">
-        <div className={`linking-logo${connected ? " connected" : ""}`}><NextermLogo size={36} /></div>
+        <div className={`linking-logo${connected ? " connected" : ""}`}><OutpostLogo size={36} /></div>
         <div className={`linking-dots${connected ? " connected" : ""}`}>
             <span className="dot" /><span className="dot" /><span className="dot" />
         </div>
@@ -78,7 +78,7 @@ export const DeviceLinkContent = ({ prefillCode = "", onClose, isPage = false })
 
     useEffect(() => { if (mode === "qr" && !qrCode && !prefillCode) startQrMode(); }, [mode]);
 
-    const getQrValue = () => `nexterm://devicelink?token=${qrToken}&server=${encodeURIComponent(window.location.origin)}`;
+    const getQrValue = () => `outpost://devicelink?token=${qrToken}&server=${encodeURIComponent(window.location.origin)}`;
 
     const formatCode = (v) => { const c = v.toUpperCase().replace(/[^A-Z0-9]/g, ""); return c.length <= 4 ? c : `${c.slice(0, 4)}-${c.slice(4, 8)}`; };
 

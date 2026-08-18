@@ -8,7 +8,7 @@ const adapterOn = (handler) => {
     return { graph, calls, adapter: createOneDriveAdapter({ graph, connectionId: 1 }) };
 };
 
-// Microsoft moves an item itself: one PATCH of its parent, and not a byte through Nexterm.
+// Microsoft moves an item itself: one PATCH of its parent, and not a byte through Outpost.
 test("moving an item patches its parent reference", async () => {
     const { calls, adapter } = adapterOn(() => ({ body: {} }));
 

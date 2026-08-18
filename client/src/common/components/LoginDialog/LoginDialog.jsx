@@ -1,5 +1,5 @@
 import { DialogProvider } from "@/common/components/Dialog";
-import NextermLogo from "@/common/components/NextermLogo";
+import OutpostLogo from "@/common/components/OutpostLogo";
 import "./styles.sass";
 import Button from "@/common/components/Button";
 import Input from "@/common/components/IconInput";
@@ -205,13 +205,13 @@ export const LoginDialog = ({ open }) => {
 
     useEffect(() => () => stopPolling(), []);
 
-    const getQrValue = () => `nexterm://authorize?code=${qrCode}&server=${encodeURIComponent(window.location.origin)}`;
+    const getQrValue = () => `outpost://authorize?code=${qrCode}&server=${encodeURIComponent(window.location.origin)}`;
 
     return (
         <DialogProvider disableClosing open={open}>
             <div className={"login-dialog" + (qrMode ? " qr-mode" : "")}>
                 <div className="login-logo">
-                    <NextermLogo size={48} />
+                    <OutpostLogo size={48} />
                     <h1>{registrationView ? t('common.loginDialog.registrationTitle') : t('common.loginDialog.title')}</h1>
                 </div>
 

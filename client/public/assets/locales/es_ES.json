@@ -53,13 +53,13 @@
       "unsavedChangesText": "Tienes cambios sin guardar. ¿Estás seguro de que quieres cerrar?"
     },
     "loginDialog": {
-      "title": "Nexterm",
+      "title": "Outpost",
       "registrationTitle": "Inscripción",
       "ssoOrContinueWith": "o continúa con",
       "noAuthMethodsAvailable": "No hay métodos de autenticación disponibles.",
       "signInWithPasskey": "Iniciar sesión con Passkey",
       "signInWithQrCode": "Iniciar sesión con código QR",
-      "qrScanDescription": "Escanea este código QR con la aplicación móvil Nexterm para iniciar sesión al instante.",
+      "qrScanDescription": "Escanea este código QR con la aplicación móvil Outpost para iniciar sesión al instante.",
       "backToLogin": "Volver al inicio de sesión",
       "authenticating": "Autentificar...",
       "noAccount": "¿Aún no tienes una cuenta?",
@@ -70,7 +70,7 @@
       "description": "Introduce el código que aparece en tu dispositivo para autorizarlo a acceder a tu cuenta.",
       "qrTab": "Código QR",
       "codeTab": "Código",
-      "qrDescription": "Escanea este código QR con la aplicación móvil Nexterm para vincular tu dispositivo.",
+      "qrDescription": "Escanea este código QR con la aplicación móvil Outpost para vincular tu dispositivo.",
       "codeLabel": "Código de dispositivo",
       "continue": "Continúa en",
       "verifying": "Verificando...",
@@ -94,20 +94,20 @@
       }
     },
     "connectorSetup": {
-      "title": "Conector Nexterm",
+      "title": "Conector Outpost",
       "serverUrl": "URL del servidor",
-      "serverUrlDescription": "Introduce la URL de tu servidor Nexterm para conectarte.",
+      "serverUrlDescription": "Introduce la URL de tu servidor Outpost para conectarte.",
       "connect": "Conecta",
       "connecting": "Conectando...",
       "enterServerUrl": "Por favor, introduce la URL del servidor",
       "connectionFailed": "No se ha podido conectar con el servidor. Por favor, comprueba la URL.",
-      "deviceLinkingNotSupported": "Este servidor no admite la vinculación de dispositivos. Actualiza tu servidor Nexterm.",
+      "deviceLinkingNotSupported": "Este servidor no admite la vinculación de dispositivos. Actualiza tu servidor Outpost.",
       "authMethodDescription": "Elige cómo quieres autenticarte con el servidor.",
       "showCode": "Mostrar código",
       "showCodeDesc": "Mostrar un código para introducirlo manualmente en la interfaz web",
       "openBrowser": "Autoriza",
       "openBrowserDesc": "Abre tu navegador para autorizar automáticamente",
-      "enterCodeDescription": "Introduce este código en la interfaz web de Nexterm para autorizar este dispositivo.",
+      "enterCodeDescription": "Introduce este código en la interfaz web de Outpost para autorizar este dispositivo.",
       "copyCode": "Copiar código",
       "codeCopied": "Código copiado en el portapapeles",
       "copyFailed": "Error al copiar código",
@@ -635,7 +635,7 @@
       "languageDescription": "Selecciona el idioma que prefieras para la interfaz.",
       "currentLanguage": "Lengua actual",
       "missingLanguage": "¿Echas de menos tu lengua?",
-      "helpTranslateLink": "Ayuda a traducir Nexterm",
+      "helpTranslateLink": "Ayuda a traducir Outpost",
       "syncLoginRequired": "Inicia sesión para sincronizar los ajustes",
       "appearanceSyncEnabled": "Los ajustes de apariencia se sincronizarán ahora con tu cuenta",
       "appearanceSyncDisabled": "Los ajustes de apariencia ya no se sincronizarán",
@@ -702,7 +702,7 @@
       },
       "apiKeys": {
         "sectionTitle": "Claves API",
-        "sectionDescription": "Crea claves API para acceder a Nexterm mediante programación desde scripts e integraciones.",
+        "sectionDescription": "Crea claves API para acceder a Outpost mediante programación desde scripts e integraciones.",
         "addButton": "Crear clave API",
         "createTitle": "Crear clave API",
         "createDescription": "Ponle un nombre a tu clave. El token solo se mostrará una vez tras su creación.",
@@ -967,7 +967,7 @@
         "syncDisabled": "Los ajustes del tema ya no se sincronizarán"
       },
       "preview": {
-        "text": "$ echo '¡Hola, Nexterm!\n¡Hola, Nexterm!\n$ "
+        "text": "$ echo '¡Hola, Outpost!\n¡Hola, Outpost!\n$ "
       }
     },
     "fileManager": {
@@ -1190,7 +1190,7 @@
       "servers": "servidores",
       "statusChecker": {
         "title": "Comprobador de estado",
-        "description": "Configura cómo Nexterm comprueba el estado online/offline de tus servidores.",
+        "description": "Configura cómo Outpost comprueba el estado online/offline de tus servidores.",
         "enable": {
           "title": "Activar Comprobador de Estado",
           "description": "Comprueba automáticamente si los servidores están conectados o desconectados. Si está desactivado, todos los servidores se marcarán como conectados."
@@ -1340,7 +1340,7 @@
       "loading": "Cargando ajustes de almacenamiento...",
       "storage": {
         "title": "Almacenamiento",
-        "description": "Ver el uso de disco de tus datos Nexterm.",
+        "description": "Ver el uso de disco de tus datos Outpost.",
         "database": "Base de datos",
         "recordings": "Grabaciones",
         "logs": "Registros",
@@ -2063,7 +2063,7 @@
   "support": {
     "title": "Conseguir ayuda",
     "subtitle": "¿Necesitas ayuda o quieres contribuir?",
-    "footer": "¡Gracias por utilizar Nexterm!",
+    "footer": "¡Gracias por utilizar Outpost!",
     "issues": {
       "title": "Informar de un problema",
       "description": "¿Has encontrado un error o tienes una petición de función?"
@@ -2080,7 +2080,7 @@
   "welcome": {
     "hello": "Hola",
     "defaultName": "Usuario",
-    "subtitle": "Bienvenido a Nexterm. El gestor de servidores de código abierto para SSH, VNC y RDP.",
+    "subtitle": "Bienvenido a Outpost. El gestor de servidores de código abierto para SSH, VNC y RDP.",
     "downloadApps": "Descargar aplicaciones",
     "connectDevice": "Conectar dispositivo",
     "recentConnections": "Conexiones recientes",
@@ -2089,7 +2089,7 @@
   },
   "downloadApps": {
     "title": "Descargar aplicaciones",
-    "subtitle": "Consigue Nexterm en tus dispositivos",
+    "subtitle": "Consigue Outpost en tus dispositivos",
     "platforms": {
       "windows": "Windows",
       "macos": "macOS",

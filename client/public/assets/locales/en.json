@@ -53,13 +53,13 @@
       "unsavedChangesText": "You have unsaved changes. Are you sure you want to close?"
     },
     "loginDialog": {
-      "title": "Nexterm",
+      "title": "Outpost",
       "registrationTitle": "Registration",
       "ssoOrContinueWith": "or continue with",
       "noAuthMethodsAvailable": "No authentication methods available.",
       "signInWithPasskey": "Sign in with Passkey",
       "signInWithQrCode": "Sign in with QR Code",
-      "qrScanDescription": "Scan this QR code with the Nexterm mobile app to sign in instantly.",
+      "qrScanDescription": "Scan this QR code with the Outpost mobile app to sign in instantly.",
       "backToLogin": "Back to Login",
       "authenticating": "Authenticating...",
       "noAccount": "Don't have an account?",
@@ -70,7 +70,7 @@
       "description": "Enter the code shown on your device to authorize it to access your account.",
       "qrTab": "QR Code",
       "codeTab": "Code",
-      "qrDescription": "Scan this QR code with the Nexterm mobile app to link your device.",
+      "qrDescription": "Scan this QR code with the Outpost mobile app to link your device.",
       "codeLabel": "Device Code",
       "continue": "Continue",
       "verifying": "Verifying...",
@@ -94,20 +94,20 @@
       }
     },
     "connectorSetup": {
-      "title": "Nexterm Connector",
+      "title": "Outpost Connector",
       "serverUrl": "Server URL",
-      "serverUrlDescription": "Enter the URL of your Nexterm server to connect.",
+      "serverUrlDescription": "Enter the URL of your Outpost server to connect.",
       "connect": "Connect",
       "connecting": "Connecting...",
       "enterServerUrl": "Please enter a server URL",
       "connectionFailed": "Failed to connect to server. Please check the URL.",
-      "deviceLinkingNotSupported": "This server does not support device linking. Please update your Nexterm server.",
+      "deviceLinkingNotSupported": "This server does not support device linking. Please update your Outpost server.",
       "authMethodDescription": "Choose how you want to authenticate with the server.",
       "showCode": "Show Code",
       "showCodeDesc": "Display a code to enter manually on the web interface",
       "openBrowser": "Authorize",
       "openBrowserDesc": "Open your browser to authorize automatically",
-      "enterCodeDescription": "Enter this code on the Nexterm web interface to authorize this device.",
+      "enterCodeDescription": "Enter this code on the Outpost web interface to authorize this device.",
       "copyCode": "Copy Code",
       "codeCopied": "Code copied to clipboard",
       "copyFailed": "Failed to copy code",
@@ -636,7 +636,7 @@
       "languageDescription": "Select your preferred language for the interface.",
       "currentLanguage": "Current Language",
       "missingLanguage": "Missing your language?",
-      "helpTranslateLink": "Help translate Nexterm",
+      "helpTranslateLink": "Help translate Outpost",
       "syncLoginRequired": "Please log in to sync settings",
       "appearanceSyncEnabled": "Appearance settings will now sync to your account",
       "appearanceSyncDisabled": "Appearance settings will no longer sync",
@@ -703,7 +703,7 @@
       },
       "apiKeys": {
         "sectionTitle": "API Keys",
-        "sectionDescription": "Create API keys to access Nexterm programmatically from scripts and integrations.",
+        "sectionDescription": "Create API keys to access Outpost programmatically from scripts and integrations.",
         "addButton": "Create API Key",
         "createTitle": "Create API Key",
         "createDescription": "Give your key a name. The token will be shown only once after creation.",
@@ -731,7 +731,7 @@
       },
       "microsoft": {
         "sectionTitle": "Connected accounts",
-        "sectionDescription": "Connect a Microsoft account so Nexterm can access its OneDrive on your behalf.",
+        "sectionDescription": "Connect a Microsoft account so Outpost can access its OneDrive on your behalf.",
         "connectButton": "Connect",
         "allFilesLabel": "Also shared folders and SharePoint libraries",
         "allFilesHint": "Often requires an administrator's approval in company accounts.",
@@ -744,17 +744,17 @@
         "noConnections": "No Microsoft account connected yet.",
         "rename": "Rename",
         "disconnect": "Disconnect",
-        "confirmDisconnect": "Disconnect this Microsoft account? Nexterm will lose access to its OneDrive.",
+        "confirmDisconnect": "Disconnect this Microsoft account? Outpost will lose access to its OneDrive.",
         "connected": "Microsoft account connected.",
         "disabled": "The Microsoft integration is not set up. Ask an administrator to configure it.",
-        "popupBlocked": "Your browser blocked the sign-in window. Allow pop-ups for Nexterm and try again.",
+        "popupBlocked": "Your browser blocked the sign-in window. Allow pop-ups for Outpost and try again.",
         "errors": {
           "state_invalid": "The sign-in took too long or was already used. Please try again.",
           "consent_required": "Your organisation requires an administrator to approve this access. Ask your administrator, or connect without shared folders.",
           "access_denied": "The sign-in was cancelled.",
           "authorize_failed": "Microsoft refused the sign-in.",
           "app_disabled": "The Microsoft integration is currently disabled.",
-          "exchange_failed": "Nexterm could not complete the sign-in with Microsoft.",
+          "exchange_failed": "Outpost could not complete the sign-in with Microsoft.",
           "no_refresh_token": "Microsoft did not grant lasting access. Please try again."
         }
       }
@@ -997,7 +997,7 @@
         "syncDisabled": "Theme settings will no longer sync"
       },
       "preview": {
-        "text": "$ echo 'Hi, Nexterm!'\nHi, Nexterm!\n$ "
+        "text": "$ echo 'Hi, Outpost!'\nHi, Outpost!\n$ "
       }
     },
     "fileManager": {
@@ -1142,7 +1142,7 @@
     },
     "microsoft": {
       "title": "Microsoft integration",
-      "description": "Register the Azure application Nexterm uses to reach OneDrive on behalf of your users. One registration serves everyone.",
+      "description": "Register the Azure application Outpost uses to reach OneDrive on behalf of your users. One registration serves everyone.",
       "clientId": "Application (client) ID",
       "clientSecret": "Client secret",
       "clientSecretKeep": "Leave unchanged to keep the stored secret",
@@ -1234,7 +1234,7 @@
       "servers": "servers",
       "statusChecker": {
         "title": "Status Checker",
-        "description": "Configure how Nexterm checks the online/offline status of your servers.",
+        "description": "Configure how Outpost checks the online/offline status of your servers.",
         "enable": {
           "title": "Enable Status Checker",
           "description": "Automatically check if servers are online or offline. When disabled, all servers will be marked as online."
@@ -1384,7 +1384,7 @@
       "loading": "Loading storage settings...",
       "storage": {
         "title": "Storage",
-        "description": "View disk usage for your Nexterm data.",
+        "description": "View disk usage for your Outpost data.",
         "database": "Database",
         "recordings": "Recordings",
         "logs": "Logs",
@@ -2238,7 +2238,7 @@
   "support": {
     "title": "Get Support",
     "subtitle": "Need help or want to contribute?",
-    "footer": "Thank you for using Nexterm!",
+    "footer": "Thank you for using Outpost!",
     "issues": {
       "title": "Report an Issue",
       "description": "Found a bug or have a feature request?"
@@ -2255,7 +2255,7 @@
   "welcome": {
     "hello": "Hi",
     "defaultName": "User",
-    "subtitle": "Welcome to Nexterm. The open-source server manager for SSH, VNC and RDP.",
+    "subtitle": "Welcome to Outpost. The open-source server manager for SSH, VNC and RDP.",
     "downloadApps": "Download Apps",
     "connectDevice": "Connect Device",
     "recentConnections": "Recent Connections",
@@ -2264,7 +2264,7 @@
   },
   "downloadApps": {
     "title": "Download Apps",
-    "subtitle": "Get Nexterm on your devices",
+    "subtitle": "Get Outpost on your devices",
     "platforms": {
       "windows": "Windows",
       "macos": "macOS",

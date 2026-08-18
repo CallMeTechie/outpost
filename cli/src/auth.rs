@@ -15,7 +15,7 @@ pub async fn login() -> Result<()> {
             .items(&["Keep current server", "Enter a new server URL"]).default(0).interact()?;
         if choice == 0 { url.clone() } else { Input::new().with_prompt("Server URL").interact_text()? }
     } else {
-        Input::new().with_prompt("Server URL (e.g. https://nexterm.example.com)").interact_text()?
+        Input::new().with_prompt("Server URL (e.g. https://outpost.example.com)").interact_text()?
     };
 
     let server_url = server_url.trim_end_matches('/').to_string();
@@ -30,7 +30,7 @@ pub async fn login() -> Result<()> {
     let resp = client.device_create().await?;
 
     if method == 0 {
-        println!("\n  Open your Nexterm web UI and go to {} > {}\n  Your one-time code: {}\n  This code expires in 10 minutes.\n",
+        println!("\n  Open your Outpost web UI and go to {} > {}\n  Your one-time code: {}\n  This code expires in 10 minutes.\n",
             style("Servers").bold(), style("Connect Device").bold(), style(&resp.code).bold().green());
     } else {
         let link_url = format!("{}/link?code={}", server_url, resp.code);

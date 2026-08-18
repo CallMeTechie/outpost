@@ -200,7 +200,7 @@ app.post("/register", async (req, res) => {
 app.get("/totp/secret", authenticate, async (req, res) => {
     res.json({
         secret: req.user?.totpSecret,
-        url: `otpauth://totp/Nexterm%20%28${req.user?.username}%29?secret=${req.user?.totpSecret}`,
+        url: `otpauth://totp/Outpost%20%28${req.user?.username}%29?secret=${req.user?.totpSecret}`,
     });
 });
 

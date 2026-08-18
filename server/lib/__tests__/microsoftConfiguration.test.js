@@ -8,7 +8,7 @@ const { sealClientSecret } = require("../microsoft/tokenCrypto");
 const app = (overrides = {}) => ({
     id: 1,
     clientId: "app-id",
-    redirectUri: "https://nexterm.example/api/microsoft/callback",
+    redirectUri: "https://outpost.example/api/microsoft/callback",
     enabled: true,
     ...sealClientSecret("s3cr3t"),
     ...overrides,
@@ -38,7 +38,7 @@ test("the configuration is discovered from the multi-tenant issuer", async () =>
     assert.strictEqual(seen[0].clientId, "app-id");
     assert.strictEqual(seen[0].clientSecret, "s3cr3t", "the stored secret must be decrypted before use");
     assert.deepStrictEqual(result.configuration, { ok: true });
-    assert.strictEqual(result.redirectUri, "https://nexterm.example/api/microsoft/callback");
+    assert.strictEqual(result.redirectUri, "https://outpost.example/api/microsoft/callback");
 });
 
 // Discovery is a network round trip. Doing it per token refresh would be absurd.

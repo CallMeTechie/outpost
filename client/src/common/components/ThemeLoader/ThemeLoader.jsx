@@ -3,17 +3,17 @@ import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { getRequest } from "@/common/utils/RequestUtil.js";
 
 const applyActiveThemeCSS = (css) => {
-    let el = document.getElementById("nexterm-custom-theme");
+    let el = document.getElementById("outpost-custom-theme");
     if (!el) {
         el = document.createElement("style");
-        el.id = "nexterm-custom-theme";
+        el.id = "outpost-custom-theme";
         document.body.appendChild(el);
     }
     el.textContent = css;
 };
 
 const removeActiveThemeCSS = () => {
-    const el = document.getElementById("nexterm-custom-theme");
+    const el = document.getElementById("outpost-custom-theme");
     if (el) el.remove();
 };
 

@@ -1,6 +1,6 @@
 # Screenshots
 
-Take a look at what Nexterm has to offer.
+Take a look at what Outpost has to offer.
 
 ## Servers
 
@@ -40,6 +40,6 @@ Record and replay terminal sessions for documentation or debugging.
 
 ## Settings
 
-Customize Nexterm to fit your workflow.
+Customize Outpost to fit your workflow.
 
 ![Settings](/assets/showoff/settings.png)

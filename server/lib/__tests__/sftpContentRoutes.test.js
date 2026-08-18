@@ -305,7 +305,7 @@ test("POST /multi with no paths: 400", async () => {
     assert.deepStrictEqual(json, { error: "No paths provided" });
 });
 
-test("POST /multi success: 200, zip Content-Disposition with nexterm-download- prefix", async () => {
+test("POST /multi success: 200, zip Content-Disposition with outpost-download- prefix", async () => {
     const content = Buffer.from("archived contents");
     const sftpClient = {
         stat: async () => ({ isDir: false }),
@@ -322,7 +322,7 @@ test("POST /multi success: 200, zip Content-Disposition with nexterm-download- p
 
     assert.strictEqual(res.status, 200);
     assert.strictEqual(res.headers.get("content-type"), "application/zip");
-    assert.match(res.headers.get("content-disposition"), /^attachment; filename="nexterm-download-.*\.zip"$/);
+    assert.match(res.headers.get("content-disposition"), /^attachment; filename="outpost-download-.*\.zip"$/);
 });
 
 // Deliberate departure from what Task 1 characterized: this used to pin the response hanging

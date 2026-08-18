@@ -2,11 +2,11 @@ import "./styles.sass";
 import Icon from "@mdi/react";
 import { mdiWindowMinimize, mdiWindowMaximize, mdiWindowClose, mdiWindowRestore } from "@mdi/js";
 import { useEffect, useState } from "react";
-import NextermLogo from "@/common/components/NextermLogo";
+import OutpostLogo from "@/common/components/OutpostLogo";
 import { isTauri } from "@/common/utils/TauriUtil.js";
 import { useTauriWindow } from "@/common/hooks/useTauriWindow.js";
 
-export const TitleBar = ({ title = "Nexterm Connector", hideMaximize = false, showTabs = false }) => {
+export const TitleBar = ({ title = "Outpost Connector", hideMaximize = false, showTabs = false }) => {
     const [isMaximized, setIsMaximized] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isFocused, setIsFocused] = useState(true);
@@ -55,7 +55,7 @@ export const TitleBar = ({ title = "Nexterm Connector", hideMaximize = false, sh
             <div className="title-bar-reveal-zone" />
             <div className={`title-bar ${isFocused ? "" : "inactive"}${showTabs ? " with-tabs" : ""}`} data-tauri-drag-region>
                 <div className="title-bar-left" data-tauri-drag-region>
-                    <NextermLogo size={24} />
+                    <OutpostLogo size={24} />
                     <span data-tauri-drag-region>{title}</span>
                 </div>
                 {showTabs && (

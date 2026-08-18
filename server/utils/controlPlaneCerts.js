@@ -11,7 +11,7 @@ const ensureCPCerts = async () => {
     if (!fs.existsSync(CP_CERT_PATH) || !fs.existsSync(CP_KEY_PATH)) {
         logger.system("Generating self-signed control plane TLS certificates...");
         fs.mkdirSync(CERTS_DIR, { recursive: true });
-        const pems = await selfsigned.generate([{ name: "commonName", value: "nexterm-control-plane" }], {
+        const pems = await selfsigned.generate([{ name: "commonName", value: "outpost-control-plane" }], {
             keySize: 2048,
             days: 3650,
         });

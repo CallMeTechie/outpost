@@ -9,7 +9,7 @@ import { deleteRequest, getRequest, patchRequest, postRequest } from "@/common/u
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import "./styles.sass";
 
-const MESSAGE_TYPE = "nexterm:microsoft";
+const MESSAGE_TYPE = "outpost:microsoft";
 
 export const MicrosoftConnections = () => {
     const { t } = useTranslation();
@@ -71,7 +71,7 @@ export const MicrosoftConnections = () => {
         setConnecting(true);
         try {
             const { url } = await postRequest("microsoft/connections/start", { allFiles });
-            const popup = window.open(url, "nexterm-microsoft", "width=600,height=760");
+            const popup = window.open(url, "outpost-microsoft", "width=600,height=760");
 
             if (!popup) {
                 setConnecting(false);

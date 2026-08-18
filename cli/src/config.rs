@@ -11,7 +11,7 @@ pub struct Config {
 
 impl Config {
     fn path() -> Result<PathBuf> {
-        let dir = dirs::config_dir().context("No config directory")?.join("nexterm");
+        let dir = dirs::config_dir().context("No config directory")?.join("outpost");
         fs::create_dir_all(&dir)?;
         Ok(dir.join("config.json"))
     }

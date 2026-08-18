@@ -30,8 +30,8 @@ export const Navigation = () => {
         <>
             <nav className={scrolled ? "nav-scrolled" : ""}>
                 <Link className="logo-area" to="/">
-                    <img src={Logo} alt="Nexterm Logo"/>
-                    <span>Nexterm</span>
+                    <img src={Logo} alt="Outpost Logo"/>
+                    <span>Outpost</span>
                 </Link>
 
                 <div className="nav-links">
@@ -63,8 +63,8 @@ export const Navigation = () => {
             <div className={`mobile-nav ${mobileOpen ? "mobile-open" : ""}`}>
                 <div className="mobile-content">
                     <Link to="/" className="mobile-logo">
-                        <img src={Logo} alt="Nexterm Logo"/>
-                        <span>Nexterm</span>
+                        <img src={Logo} alt="Outpost Logo"/>
+                        <span>Outpost</span>
                     </Link>
                     
                     <div className="mobile-links">

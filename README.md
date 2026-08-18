@@ -4,7 +4,7 @@ A self-hosted workspace for servers and remote storage. SSH terminals with tmux 
 management, and file panes for SFTP and OneDrive side by side, with transfers running
 directly between them.
 
-Outpost started as a fork of [Nexterm](https://github.com/gnmyt/Nexterm) and has since
+Outpost started as a fork of [Outpost](https://github.com/gnmyt/Nexterm) and has since
 gone its own way.
 
 ## No promises
@@ -40,5 +40,5 @@ There are no published container images yet.
 
 MIT — see [LICENSE](LICENSE).
 
-Outpost is derived from Nexterm, Copyright (c) 2024 Mathias Wagner. The original copyright
+Outpost is derived from Outpost, Copyright (c) 2024 Mathias Wagner. The original copyright
 notice is retained in the license file, as MIT requires.

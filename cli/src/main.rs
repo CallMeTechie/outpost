@@ -9,7 +9,7 @@ mod tunnel;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "nt", about = "Nexterm CLI", version)]
+#[command(name = "nt", about = "Outpost CLI", version)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -17,7 +17,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Authenticate with a Nexterm server
+    /// Authenticate with a Outpost server
     Login,
     /// Clear stored session token
     Logout,

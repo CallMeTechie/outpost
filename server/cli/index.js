@@ -61,8 +61,8 @@ const run = (group, handlerName) => async (...args) => {
 const program = new Command();
 program
     .name("ntctl")
-    .description("Nexterm server admin CLI")
-    .option("--data-dir <path>", "path to Nexterm data directory")
+    .description("Outpost server admin CLI")
+    .option("--data-dir <path>", "path to Outpost data directory")
     .enablePositionalOptions();
 
 const pwOpts = (cmd) => cmd.option("--password <s>", "password value (prompts interactively if omitted)");

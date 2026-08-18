@@ -59,7 +59,7 @@
       "noAuthMethodsAvailable": "无可用的身份验证方式。",
       "signInWithPasskey": "使用密码登录",
       "signInWithQrCode": "使用 QR 码登录",
-      "qrScanDescription": "使用 Nexterm 移动应用程序扫描此二维码，即可立即登录。",
+      "qrScanDescription": "使用 Outpost 移动应用程序扫描此二维码，即可立即登录。",
       "backToLogin": "返回登录",
       "authenticating": "正在验证…",
       "noAccount": "还没有账号吗？",
@@ -70,7 +70,7 @@
       "description": "输入设备上显示的代码，授权其访问您的账户。",
       "qrTab": "QR 码",
       "codeTab": "代码",
-      "qrDescription": "使用 Nexterm 移动应用程序扫描此 QR 代码，链接您的设备。",
+      "qrDescription": "使用 Outpost 移动应用程序扫描此 QR 代码，链接您的设备。",
       "codeLabel": "设备代码",
       "continue": "继续",
       "verifying": "验证中...",
@@ -94,20 +94,20 @@
       }
     },
     "connectorSetup": {
-      "title": "Nexterm 连接器",
+      "title": "Outpost 连接器",
       "serverUrl": "服务器 URL",
-      "serverUrlDescription": "输入 Nexterm 服务器的 URL 以进行连接。",
+      "serverUrlDescription": "输入 Outpost 服务器的 URL 以进行连接。",
       "connect": "连接",
       "connecting": "连接中...",
       "enterServerUrl": "请输入服务器 URL",
       "connectionFailed": "连接服务器失败。请检查 URL。",
-      "deviceLinkingNotSupported": "此服务器不支持设备链接。请更新您的 Nexterm 服务器。",
+      "deviceLinkingNotSupported": "此服务器不支持设备链接。请更新您的 Outpost 服务器。",
       "authMethodDescription": "选择与服务器进行身份验证的方式。",
       "showCode": "显示代码",
       "showCodeDesc": "显示代码，以便在网络界面上手动输入",
       "openBrowser": "授权",
       "openBrowserDesc": "打开浏览器自动授权",
-      "enterCodeDescription": "在 Nexterm Web 界面上输入此代码以授权此设备。",
+      "enterCodeDescription": "在 Outpost Web 界面上输入此代码以授权此设备。",
       "copyCode": "复制代码",
       "codeCopied": "代码复制到剪贴板",
       "copyFailed": "复制代码失败",
@@ -635,7 +635,7 @@
       "languageDescription": "选择界面显示语言。",
       "currentLanguage": "当前语言",
       "missingLanguage": "缺少您的语言？",
-      "helpTranslateLink": "帮助翻译 Nexterm",
+      "helpTranslateLink": "帮助翻译 Outpost",
       "syncLoginRequired": "请登录同步设置",
       "appearanceSyncEnabled": "外观设置现在将同步到您的账户",
       "appearanceSyncDisabled": "外观设置不再同步",
@@ -702,7 +702,7 @@
       },
       "apiKeys": {
         "sectionTitle": "API密钥",
-        "sectionDescription": "创建 API 密钥，以便通过脚本和集成以编程方式访问 Nexterm。",
+        "sectionDescription": "创建 API 密钥，以便通过脚本和集成以编程方式访问 Outpost。",
         "addButton": "创建 API 密钥",
         "createTitle": "创建 API 密钥",
         "createDescription": "为您的密钥命名。该令牌在创建后仅显示一次。",
@@ -967,7 +967,7 @@
         "syncDisabled": "主题设置不再同步"
       },
       "preview": {
-        "text": "$ echo '你好，Nexterm!'\n你好，Nexterm!\n$ "
+        "text": "$ echo '你好，Outpost!'\n你好，Outpost!\n$ "
       }
     },
     "fileManager": {
@@ -1340,7 +1340,7 @@
       "loading": "加载存储设置...",
       "storage": {
         "title": "存储",
-        "description": "查看 Nexterm 数据的磁盘使用情况。",
+        "description": "查看 Outpost 数据的磁盘使用情况。",
         "database": "数据库",
         "recordings": "录制",
         "logs": "日志",
@@ -2063,7 +2063,7 @@
   "support": {
     "title": "获取支持",
     "subtitle": "需要帮助或想作出贡献？",
-    "footer": "感谢您使用 Nexterm！",
+    "footer": "感谢您使用 Outpost！",
     "issues": {
       "title": "报告问题",
       "description": "发现错误或有功能请求？"
@@ -2080,7 +2080,7 @@
   "welcome": {
     "hello": "你好",
     "defaultName": "用户",
-    "subtitle": "欢迎使用 Nexterm。用于 SSH、VNC 和 RDP 的开源服务器管理器。",
+    "subtitle": "欢迎使用 Outpost。用于 SSH、VNC 和 RDP 的开源服务器管理器。",
     "downloadApps": "下载应用程序",
     "connectDevice": "连接设备",
     "recentConnections": "近期联系",
@@ -2089,7 +2089,7 @@
   },
   "downloadApps": {
     "title": "下载应用程序",
-    "subtitle": "在您的设备上获取 Nexterm",
+    "subtitle": "在您的设备上获取 Outpost",
     "platforms": {
       "windows": "视窗",
       "macos": "MacOS",

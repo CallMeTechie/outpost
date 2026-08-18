@@ -47,7 +47,7 @@ module.exports.status = async () => {
 
     console.log(`database:           ${process.env.DB_TYPE === "mysql" ? "mysql" : "sqlite"}`);
     if (process.env.DB_TYPE !== "mysql") {
-        const storage = path.join(process.cwd(), "data", "nexterm.db");
+        const storage = path.join(process.cwd(), "data", "outpost.db");
         const stat = fs.existsSync(storage) ? fs.statSync(storage) : null;
         console.log(`sqlite file:        ${storage}${stat ? ` (${(stat.size / 1024).toFixed(1)} KiB)` : " (not yet created)"}`);
     }

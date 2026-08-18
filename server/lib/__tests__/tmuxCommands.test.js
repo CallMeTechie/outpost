@@ -83,8 +83,8 @@ test("buildSendKeysCommand cannot be broken out of with a single quote", () => {
  */
 test("buildSendKeysCommand appends a trailing colon because -t is a pane target, not a session target", () => {
     assert.strictEqual(
-        buildSendKeysCommand("nx-neu", "echo NEXTERM_OK"),
-        "tmux send-keys -t '=nx-neu:' -- 'echo NEXTERM_OK' Enter",
+        buildSendKeysCommand("nx-neu", "echo OUTPOST_OK"),
+        "tmux send-keys -t '=nx-neu:' -- 'echo OUTPOST_OK' Enter",
     );
 });
 

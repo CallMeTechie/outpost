@@ -261,7 +261,7 @@ app.post("/multi", express.urlencoded({ extended: true }), async (req, res) => {
             return res.status(403).json({ error: "You don't have permission to download files" });
 
         const timestamp = new Date().toISOString().replaceAll(/[:.]/g, "-").slice(0, 19);
-        res.header("Content-Disposition", `attachment; filename="nexterm-download-${timestamp}.zip"`);
+        res.header("Content-Disposition", `attachment; filename="outpost-download-${timestamp}.zip"`);
         res.header("Content-Type", "application/zip");
 
         archive = new ZipArchive({ zlib: { level: 5 } });

@@ -24,8 +24,8 @@ export const useDevFeature = (feature, defaultState = false) => {
 };
 
 export const registerDevFeatureConsoleApi = () => {
-    window.nexterm = {
-        ...window.nexterm,
+    window.outpost = {
+        ...window.outpost,
         enableDemo: () => {
             setDevFeature("demo", true);
             console.info("Demo connections enabled for this session.");

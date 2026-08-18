@@ -140,10 +140,10 @@ const resolveSocketConnection = async (rawConnectionId, user, deps = {}) => {
     return { ok: true, connectionId };
 };
 
-// Deliberately unaudited, unlike every mutating operation on the SFTP socket. Nexterm's audit trail
-// records what touches Nexterm's resources: a server is a shared resource, a personal OneDrive is
+// Deliberately unaudited, unlike every mutating operation on the SFTP socket. Outpost's audit trail
+// records what touches Outpost's resources: a server is a shared resource, a personal OneDrive is
 // not. That is also why a transfer started from this socket IS audited — it moves data onto or off
-// a server — while a rename inside somebody's own drive is not Nexterm's business to record.
+// a server — while a rename inside somebody's own drive is not Outpost's business to record.
 const buildOneDriveHandlers = (op, { adapter, send }) => ({
     [op.LIST_FILES]: async (payload) => {
         const path = requirePath(payload);

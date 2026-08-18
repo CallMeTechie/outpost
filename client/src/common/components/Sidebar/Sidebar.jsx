@@ -1,5 +1,5 @@
 import "./styles.sass";
-import NextermLogo from "@/common/components/NextermLogo";
+import OutpostLogo from "@/common/components/OutpostLogo";
 import { mdiCog, mdiLogout, mdiAccountCogOutline, mdiStarOutline, mdiLifebuoy, mdiServerNetwork, mdiPlus, mdiClose } from "@mdi/js";
 import Icon from "@mdi/react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -60,7 +60,7 @@ export const Sidebar = ({ onToggleCollapse }) => {
                 }} />}
             <div className="sidebar-top">
                 <Tooltip text={t('common.sidebar.collapseTitle')}>
-                    <div className="sidebar-logo nexterm-logo" onClick={onToggleCollapse} title={t('common.sidebar.collapseTitle')}><NextermLogo size={48 * uiScale} /></div>
+                    <div className="sidebar-logo outpost-logo" onClick={onToggleCollapse} title={t('common.sidebar.collapseTitle')}><OutpostLogo size={48 * uiScale} /></div>
                 </Tooltip>
                 <nav>
                     {navigation.map((item, i) => (

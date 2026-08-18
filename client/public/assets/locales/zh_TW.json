@@ -53,13 +53,13 @@
       "unsavedChangesText": "您有未儲存的變更。您確定要關閉？"
     },
     "loginDialog": {
-      "title": "Nexterm",
+      "title": "Outpost",
       "registrationTitle": "註冊",
       "ssoOrContinueWith": "或使用以下方式繼續",
       "noAuthMethodsAvailable": "沒有可用的驗證方法。",
       "signInWithPasskey": "使用通行金鑰登入",
       "signInWithQrCode": "使用 QR 代碼登入",
-      "qrScanDescription": "使用 Nexterm 行動應用程式掃描此 QR 代碼，即可立即登入。",
+      "qrScanDescription": "使用 Outpost 行動應用程式掃描此 QR 代碼，即可立即登入。",
       "backToLogin": "返回登入",
       "authenticating": "驗證...",
       "noAccount": "還沒有帳號嗎？",
@@ -70,7 +70,7 @@
       "description": "輸入裝置上顯示的驗證碼，授權裝置存取您的帳戶。",
       "qrTab": "QR 代碼",
       "codeTab": "代碼",
-      "qrDescription": "使用 Nexterm 行動應用程式掃描此 QR 代碼，即可連結您的裝置。",
+      "qrDescription": "使用 Outpost 行動應用程式掃描此 QR 代碼，即可連結您的裝置。",
       "codeLabel": "裝置代碼",
       "continue": "繼續",
       "verifying": "驗證中...",
@@ -94,20 +94,20 @@
       }
     },
     "connectorSetup": {
-      "title": "Nexterm 連接器",
+      "title": "Outpost 連接器",
       "serverUrl": "伺服器 URL",
-      "serverUrlDescription": "輸入 Nexterm 伺服器的 URL 以連線。",
+      "serverUrlDescription": "輸入 Outpost 伺服器的 URL 以連線。",
       "connect": "連線",
       "connecting": "連線中...",
       "enterServerUrl": "請輸入伺服器 URL",
       "connectionFailed": "連線到伺服器失敗。請檢查 URL。",
-      "deviceLinkingNotSupported": "此伺服器不支援裝置連結。請更新您的 Nexterm 伺服器。",
+      "deviceLinkingNotSupported": "此伺服器不支援裝置連結。請更新您的 Outpost 伺服器。",
       "authMethodDescription": "選擇與伺服器驗證的方式。",
       "showCode": "顯示代碼",
       "showCodeDesc": "顯示要在 Web 介面上手動輸入的代碼",
       "openBrowser": "授權",
       "openBrowserDesc": "開啟瀏覽器以自動授權",
-      "enterCodeDescription": "在 Nexterm Web 介面上輸入此代碼，以授權此裝置。",
+      "enterCodeDescription": "在 Outpost Web 介面上輸入此代碼，以授權此裝置。",
       "copyCode": "複製代碼",
       "codeCopied": "代碼已複製到剪貼簿",
       "copyFailed": "複製代碼失敗",
@@ -635,7 +635,7 @@
       "languageDescription": "選擇您偏好的介面語言。",
       "currentLanguage": "當前語言",
       "missingLanguage": "想念您的語言？",
-      "helpTranslateLink": "協助翻譯 Nexterm",
+      "helpTranslateLink": "協助翻譯 Outpost",
       "syncLoginRequired": "請登入以同步設定",
       "appearanceSyncEnabled": "外觀設定現在會同步至您的帳戶",
       "appearanceSyncDisabled": "外觀設定將不再同步",
@@ -702,7 +702,7 @@
       },
       "apiKeys": {
         "sectionTitle": "API 金鑰",
-        "sectionDescription": "建立 API 金鑰，以便透過腳本和整合功能以程式化方式存取 Nexterm。",
+        "sectionDescription": "建立 API 金鑰，以便透過腳本和整合功能以程式化方式存取 Outpost。",
         "addButton": "建立 API 金鑰",
         "createTitle": "建立 API 金鑰",
         "createDescription": "為您的金鑰命名。該金鑰在建立後僅會顯示一次。",
@@ -967,7 +967,7 @@
         "syncDisabled": "主題設定將不再同步"
       },
       "preview": {
-        "text": "$ echo 'Hi, Nexterm!\n嗨，Nexterm\n$ "
+        "text": "$ echo 'Hi, Outpost!\n嗨，Outpost\n$ "
       }
     },
     "fileManager": {
@@ -1190,7 +1190,7 @@
       "servers": "伺服器",
       "statusChecker": {
         "title": "狀態檢查器",
-        "description": "設定 Nexterm 如何檢查伺服器的在線/離線狀態。",
+        "description": "設定 Outpost 如何檢查伺服器的在線/離線狀態。",
         "enable": {
           "title": "啟用狀態檢查器",
           "description": "自動檢查伺服器是否在線或離線。停用時，所有伺服器都會標記為線上。"
@@ -1340,7 +1340,7 @@
       "loading": "載入儲存設定...",
       "storage": {
         "title": "儲存",
-        "description": "檢視 Nexterm 資料的磁碟使用量。",
+        "description": "檢視 Outpost 資料的磁碟使用量。",
         "database": "資料庫",
         "recordings": "錄音",
         "logs": "日誌",
@@ -2063,7 +2063,7 @@
   "support": {
     "title": "取得支援",
     "subtitle": "需要協助或想要貢獻心力？",
-    "footer": "感謝您使用 Nexterm！",
+    "footer": "感謝您使用 Outpost！",
     "issues": {
       "title": "報告問題",
       "description": "發現錯誤或有功能需求？"
@@ -2080,7 +2080,7 @@
   "welcome": {
     "hello": "您好",
     "defaultName": "使用者",
-    "subtitle": "歡迎來到 Nexterm。適用於 SSH、VNC 和 RDP 的開放原始碼伺服器管理程式。",
+    "subtitle": "歡迎來到 Outpost。適用於 SSH、VNC 和 RDP 的開放原始碼伺服器管理程式。",
     "downloadApps": "下載應用程式",
     "connectDevice": "連接裝置",
     "recentConnections": "近期連線",
@@ -2089,7 +2089,7 @@
   },
   "downloadApps": {
     "title": "下載應用程式",
-    "subtitle": "在您的裝置上取得 Nexterm",
+    "subtitle": "在您的裝置上取得 Outpost",
     "platforms": {
       "windows": "視窗",
       "macos": "MacOS",

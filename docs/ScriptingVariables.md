@@ -1,6 +1,6 @@
 # 📋 Scripting Variables & Directives
 
-Nexterm provides a set of special directives that allow you to create interactive, user-friendly scripts with structured input, feedback, and progress tracking. These directives enhance the script execution experience by providing clear communication and data collection from users.
+Outpost provides a set of special directives that allow you to create interactive, user-friendly scripts with structured input, feedback, and progress tracking. These directives enhance the script execution experience by providing clear communication and data collection from users.
 
 ## Overview
 
@@ -348,4 +348,4 @@ The `@OUTPOST:SUMMARY` directive presents comprehensive results in an organized,
 
 ## Related Documentation
 
-- [Scripts & Snippets](./scripts&snippets.md) - Learn how to create and organize scripts and snippets in Nexterm.
+- [Scripts & Snippets](./scripts&snippets.md) - Learn how to create and organize scripts and snippets in Outpost.

@@ -96,7 +96,7 @@ const COMMANDS = {
 
 const collectServerData = async (entry, identity, credentials) => {
     if (!controlPlane.hasEngine()) {
-        return { status: "error", timestamp: new Date(), errorMessage: "No engine connected. Monitoring requires the Nexterm Engine." };
+        return { status: "error", timestamp: new Date(), errorMessage: "No engine connected. Monitoring requires the Outpost Engine." };
     }
 
     const host = entry.config?.ip;

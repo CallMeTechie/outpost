@@ -33,7 +33,7 @@ module.exports = async (ws, req) => {
     }
 
     if (!controlPlane.hasEngine()) {
-        ws.close(4003, "No engine connected. Tunnels require the Nexterm Engine.");
+        ws.close(4003, "No engine connected. Tunnels require the Outpost Engine.");
         return;
     }
 

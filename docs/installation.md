@@ -1,11 +1,11 @@
 # 🚀 Installation
 
 > [!WARNING]
-> Nexterm is still in beta. Please back up your data regularly and report any issues on [GitHub](https://github.com/gnmyt/Nexterm/issues).
+> Outpost is still in beta. Please back up your data regularly and report any issues on [GitHub](https://github.com/gnmyt/Nexterm/issues).
 
 ## 🔐 Generate Encryption Key
 
-Nexterm requires an encryption key to securely store your data. You can generate a strong key using the following command:
+Outpost requires an encryption key to securely store your data. You can generate a strong key using the following command:
 
 ```sh
 openssl rand -hex 32
@@ -13,16 +13,16 @@ openssl rand -hex 32
 
 ## Docker Images
 
-Nexterm is distributed as three Docker images:
+Outpost is distributed as three Docker images:
 
 | Image            | Description                                                                        |
 |------------------|------------------------------------------------------------------------------------|
-| `nexterm/aio`    | **All-In-One** - server, client, and engine in a single container. Simplest setup. |
-| `nexterm/server` | **Server only** - Node.js backend + web client. Requires a separate engine.        |
-| `nexterm/engine` | **Engine only** - Connection service (SSH, VNC, RDP, Telnet).                      |
+| `outpost/aio`    | **All-In-One** - server, client, and engine in a single container. Simplest setup. |
+| `outpost/server` | **Server only** - Node.js backend + web client. Requires a separate engine.        |
+| `outpost/engine` | **Engine only** - Connection service (SSH, VNC, RDP, Telnet).                      |
 
-For simple deployments, use `nexterm/aio`. For multi-network or distributed setups, deploy `nexterm/server` with one or
-more `nexterm/engine` instances on different networks.
+For simple deployments, use `outpost/aio`. For multi-network or distributed setups, deploy `outpost/server` with one or
+more `outpost/engine` instances on different networks.
 
 ## 🐳 All-In-One (Simple Setup)
 
@@ -32,26 +32,26 @@ more `nexterm/engine` instances on different networks.
 docker run -d \
   -e ENCRYPTION_KEY=aba3aa8e29b9904d5d8d705230b664c053415c54be20ad13be99af0057dfa23a \ # Replace with your generated key
   --network host \
-  --name nexterm \
+  --name outpost \
   --restart always \
-  -v nexterm:/app/data \
-  nexterm/aio:latest
+  -v outpost:/app/data \
+  outpost/aio:latest
 ```
 
 ```shell [Bridge Network]
 docker run -d \
   -e ENCRYPTION_KEY=aba3aa8e29b9904d5d8d705230b664c053415c54be20ad13be99af0057dfa23a \ # Replace with your generated key
   -p 6989:6989 \
-  --name nexterm \
+  --name outpost \
   --restart always \
-  -v nexterm:/app/data \
-  nexterm/aio:latest
+  -v outpost:/app/data \
+  outpost/aio:latest
 ```
 
 :::
 
 > [!NOTE]
-> **Host Network** is strongly recommended. It allows Nexterm to access your host's network stack directly, which is required for features like Wake-on-LAN and connecting to servers via `localhost`. Only use **Bridge Network** if you specifically need network isolation.
+> **Host Network** is strongly recommended. It allows Outpost to access your host's network stack directly, which is required for features like Wake-on-LAN and connecting to servers via `localhost`. Only use **Bridge Network** if you specifically need network isolation.
 
 ## 📦 Docker Compose
 
@@ -61,31 +61,31 @@ docker run -d \
 
 ```yaml [Host Network (Recommended)]
 services:
-  nexterm:
-    image: nexterm/aio:latest
+  outpost:
+    image: outpost/aio:latest
     environment:
       ENCRYPTION_KEY: "aba3aa8e29b9904d5d8d705230b664c053415c54be20ad13be99af0057dfa23a" # Replace with your generated key
     network_mode: host
     restart: always
     volumes:
-      - nexterm:/app/data
+      - outpost:/app/data
 volumes:
-  nexterm:
+  outpost:
 ```
 
 ```yaml [Bridge Network]
 services:
-  nexterm:
-    image: nexterm/aio:latest
+  outpost:
+    image: outpost/aio:latest
     environment:
       ENCRYPTION_KEY: "aba3aa8e29b9904d5d8d705230b664c053415c54be20ad13be99af0057dfa23a" # Replace with your generated key
     ports:
       - "6989:6989"
     restart: always
     volumes:
-      - nexterm:/app/data
+      - outpost:/app/data
 volumes:
-  nexterm:
+  outpost:
 ```
 
 :::
@@ -107,23 +107,23 @@ Then create your `docker-compose.yml`:
 ```yaml
 services:
   server:
-    image: nexterm/server:latest
+    image: outpost/server:latest
     environment:
       ENCRYPTION_KEY: "aba3aa8e29b9904d5d8d705230b664c053415c54be20ad13be99af0057dfa23a" # Replace with your generated key
     ports:
       - "6989:6989"
     restart: always
     volumes:
-      - nexterm:/app/data
+      - outpost:/app/data
 
   engine:
-    image: nexterm/engine:latest
+    image: outpost/engine:latest
     restart: always
     volumes:
-      - ./config.yaml:/etc/nexterm/config.yaml
+      - ./config.yaml:/etc/outpost/config.yaml
 
 volumes:
-  nexterm:
+  outpost:
 ```
 
 ```sh
@@ -136,11 +136,11 @@ To connect to IPv6 servers from within the container using bridge networking, ad
 
 ```diff
 services:
-  nexterm:
+  outpost:
 +   networks:
-+     - nexterm-net
++     - outpost-net
 
 +networks:
-+  nexterm-net:
++  outpost-net:
 +    enable_ipv6: true
 ```

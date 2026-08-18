@@ -1,4 +1,4 @@
-const MESSAGE_TYPE = "nexterm:microsoft";
+const MESSAGE_TYPE = "outpost:microsoft";
 
 const CALLBACK_REASONS = new Set([
     "state_invalid",
@@ -27,10 +27,10 @@ const renderCallbackPage = ({ status, reason } = {}) => {
 
     return `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="utf-8"><title>Nexterm</title></head>
+<head><meta charset="utf-8"><title>Outpost</title></head>
 <body style="font-family:sans-serif;padding:2rem;text-align:center">
 <p>${TEXT[safeStatus]}</p>
-<p><a href="/">Back to Nexterm</a></p>
+<p><a href="/">Back to Outpost</a></p>
 <script>
 (function () {
     var payload = ${payload};

@@ -1,4 +1,4 @@
-const { transformScript, getScriptCommands, processNextermLine, checkSudoPrompt, stripAnsi } = require("../utils/scriptUtils");
+const { transformScript, getScriptCommands, processOutpostLine, checkSudoPrompt, stripAnsi } = require("../utils/scriptUtils");
 const SessionManager = require("./SessionManager");
 const logger = require("../utils/logger");
 
@@ -92,7 +92,7 @@ class ScriptLayer {
                 return;
             }
         }
-        const cmd = processNextermLine(line);
+        const cmd = processOutpostLine(line);
         if (!cmd) return;
         switch (cmd.type) {
             case "input": case "select":

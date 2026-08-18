@@ -53,13 +53,13 @@
       "unsavedChangesText": "Du hast ungespeicherte Änderungen. Bist du sicher, dass du schließen willst?"
     },
     "loginDialog": {
-      "title": "Nexterm",
+      "title": "Outpost",
       "registrationTitle": "Registrieren",
       "ssoOrContinueWith": "oder weiter mit",
       "noAuthMethodsAvailable": "Keine Authentifizierungsmethoden verfügbar.",
       "signInWithPasskey": "Anmeldung mit Passkey",
       "signInWithQrCode": "Anmeldung mit QR-Code",
-      "qrScanDescription": "Scanne diesen QR-Code mit der Nexterm Mobile App, um dich sofort anzumelden.",
+      "qrScanDescription": "Scanne diesen QR-Code mit der Outpost Mobile App, um dich sofort anzumelden.",
       "backToLogin": "Zurück zu Login",
       "authenticating": "Authentifiziere...",
       "noAccount": "Hast du noch kein Konto?",
@@ -70,7 +70,7 @@
       "description": "Gib den auf deinem Gerät angezeigten Code ein, um es für den Zugriff auf dein Konto zu autorisieren.",
       "qrTab": "QR-Code",
       "codeTab": "Code",
-      "qrDescription": "Scanne diesen QR-Code mit der Nexterm Mobile App, um dein Gerät zu verbinden.",
+      "qrDescription": "Scanne diesen QR-Code mit der Outpost Mobile App, um dein Gerät zu verbinden.",
       "codeLabel": "Gerätecode",
       "continue": "Weiter",
       "verifying": "Überprüfe...",
@@ -94,20 +94,20 @@
       }
     },
     "connectorSetup": {
-      "title": "Nexterm Connector",
+      "title": "Outpost Connector",
       "serverUrl": "Server URL",
-      "serverUrlDescription": "Gib die URL deines Nexterm-Servers ein, um eine Verbindung herzustellen.",
+      "serverUrlDescription": "Gib die URL deines Outpost-Servers ein, um eine Verbindung herzustellen.",
       "connect": "Verbinde",
       "connecting": "Verbinden...",
       "enterServerUrl": "Bitte gib eine Server-URL ein",
       "connectionFailed": "Die Verbindung zum Server konnte nicht hergestellt werden. Bitte überprüfe die URL.",
-      "deviceLinkingNotSupported": "Dieser Server unterstützt keine Geräteverknüpfung. Bitte aktualisiere deinen Nexterm-Server.",
+      "deviceLinkingNotSupported": "Dieser Server unterstützt keine Geräteverknüpfung. Bitte aktualisiere deinen Outpost-Server.",
       "authMethodDescription": "Wähle aus, wie du dich beim Server authentifizieren willst.",
       "showCode": "Code anzeigen",
       "showCodeDesc": "Anzeige eines Codes zur manuellen Eingabe auf der Weboberfläche",
       "openBrowser": "Autorisiere",
       "openBrowserDesc": "Öffne deinen Browser zur automatischen Autorisierung",
-      "enterCodeDescription": "Gib diesen Code in der Nexterm-Weboberfläche ein, um das Gerät zu autorisieren.",
+      "enterCodeDescription": "Gib diesen Code in der Outpost-Weboberfläche ein, um das Gerät zu autorisieren.",
       "copyCode": "Code kopieren",
       "codeCopied": "Code in die Zwischenablage kopiert",
       "copyFailed": "Code kann nicht kopiert werden",
@@ -636,7 +636,7 @@
       "languageDescription": "Wähle deine bevorzugte Sprache für die Benutzeroberfläche.",
       "currentLanguage": "Aktuelle Sprache",
       "missingLanguage": "Findest du deine Sprache nicht?",
-      "helpTranslateLink": "Hilf bei der Übersetzung von Nexterm",
+      "helpTranslateLink": "Hilf bei der Übersetzung von Outpost",
       "syncLoginRequired": "Bitte logge dich ein, um die Einstellungen zu synchronisieren",
       "appearanceSyncEnabled": "Die Einstellungen für das Erscheinungsbild werden jetzt mit deinem Konto synchronisiert",
       "appearanceSyncDisabled": "Die Einstellungen für das Erscheinungsbild werden nicht mehr synchronisiert",
@@ -703,7 +703,7 @@
       },
       "apiKeys": {
         "sectionTitle": "API-Schlüssel",
-        "sectionDescription": "Erstelle API-Schlüssel, um programmgesteuert über Skripte und Integrationen auf Nexterm zuzugreifen.",
+        "sectionDescription": "Erstelle API-Schlüssel, um programmgesteuert über Skripte und Integrationen auf Outpost zuzugreifen.",
         "addButton": "API-Schlüssel erstellen",
         "createTitle": "API-Schlüssel erstellen",
         "createDescription": "Gib deinem Schlüssel einen Namen. Das Token wird nach der Erstellung nur einmal angezeigt.",
@@ -731,7 +731,7 @@
       },
       "microsoft": {
         "sectionTitle": "Verbundene Konten",
-        "sectionDescription": "Verbinde ein Microsoft-Konto, damit Nexterm in deinem Namen auf dessen OneDrive zugreifen kann.",
+        "sectionDescription": "Verbinde ein Microsoft-Konto, damit Outpost in deinem Namen auf dessen OneDrive zugreifen kann.",
         "connectButton": "Verbinden",
         "allFilesLabel": "Auch geteilte Ordner und SharePoint-Bibliotheken",
         "allFilesHint": "Erfordert in Firmenkonten oft die Zustimmung eines Administrators.",
@@ -744,17 +744,17 @@
         "noConnections": "Noch kein Microsoft-Konto verbunden.",
         "rename": "Umbenennen",
         "disconnect": "Trennen",
-        "confirmDisconnect": "Dieses Microsoft-Konto trennen? Nexterm verliert damit den Zugriff auf dessen OneDrive.",
+        "confirmDisconnect": "Dieses Microsoft-Konto trennen? Outpost verliert damit den Zugriff auf dessen OneDrive.",
         "connected": "Microsoft-Konto verbunden.",
         "disabled": "Die Microsoft-Anbindung ist nicht eingerichtet. Bitte wende dich an einen Administrator.",
-        "popupBlocked": "Der Browser hat das Anmeldefenster blockiert. Erlaube Pop-ups für Nexterm und versuche es erneut.",
+        "popupBlocked": "Der Browser hat das Anmeldefenster blockiert. Erlaube Pop-ups für Outpost und versuche es erneut.",
         "errors": {
           "state_invalid": "Die Anmeldung hat zu lange gedauert oder wurde bereits verwendet. Bitte erneut versuchen.",
           "consent_required": "Deine Organisation verlangt die Freigabe durch einen Administrator. Wende dich an deinen Administrator oder verbinde ohne geteilte Ordner.",
           "access_denied": "Die Anmeldung wurde abgebrochen.",
           "authorize_failed": "Microsoft hat die Anmeldung abgelehnt.",
           "app_disabled": "Die Microsoft-Anbindung ist derzeit deaktiviert.",
-          "exchange_failed": "Nexterm konnte die Anmeldung bei Microsoft nicht abschließen.",
+          "exchange_failed": "Outpost konnte die Anmeldung bei Microsoft nicht abschließen.",
           "no_refresh_token": "Microsoft hat keinen dauerhaften Zugriff erteilt. Bitte erneut versuchen."
         }
       }
@@ -997,7 +997,7 @@
         "syncDisabled": "Die Theme-Einstellungen werden nicht mehr synchronisiert"
       },
       "preview": {
-        "text": "$ echo 'Hi, Nexterm!'\nHi, Nexterm!\n$ "
+        "text": "$ echo 'Hi, Outpost!'\nHi, Outpost!\n$ "
       }
     },
     "fileManager": {
@@ -1142,7 +1142,7 @@
     },
     "microsoft": {
       "title": "Microsoft-Anbindung",
-      "description": "Hinterlege die Azure-Anwendung, mit der Nexterm im Namen deiner Nutzer auf OneDrive zugreift. Eine Registrierung gilt für alle.",
+      "description": "Hinterlege die Azure-Anwendung, mit der Outpost im Namen deiner Nutzer auf OneDrive zugreift. Eine Registrierung gilt für alle.",
       "clientId": "Anwendungskennung (Client-ID)",
       "clientSecret": "Client-Geheimnis",
       "clientSecretKeep": "Leer lassen, um das gespeicherte Geheimnis zu behalten",
@@ -1234,7 +1234,7 @@
       "servers": "Server",
       "statusChecker": {
         "title": "Status Checker",
-        "description": "Lege fest, wie Nexterm den Online-/Offline-Status deiner Server überprüft.",
+        "description": "Lege fest, wie Outpost den Online-/Offline-Status deiner Server überprüft.",
         "enable": {
           "title": "Status Checker einschalten",
           "description": "Überprüfe automatisch, ob die Server online oder offline sind. Wenn diese Funktion deaktiviert ist, werden alle Server als online markiert."
@@ -1384,7 +1384,7 @@
       "loading": "Laden der Speichereinstellungen...",
       "storage": {
         "title": "Speicher",
-        "description": "Sieh dir die Speichernutzung deiner Nexterm-Daten an.",
+        "description": "Sieh dir die Speichernutzung deiner Outpost-Daten an.",
         "database": "Datenbank",
         "recordings": "Aufzeichnungen",
         "logs": "Logs",
@@ -2238,7 +2238,7 @@
   "support": {
     "title": "Unterstützung erhalten",
     "subtitle": "Brauchst du Hilfe oder möchtest du etwas beitragen?",
-    "footer": "Danke, dass du Nexterm benutzt!",
+    "footer": "Danke, dass du Outpost benutzt!",
     "issues": {
       "title": "Ein Problem melden",
       "description": "Hast du einen Fehler gefunden oder willst du eine Feature-Anfrage stellen?"
@@ -2255,7 +2255,7 @@
   "welcome": {
     "hello": "Hallo",
     "defaultName": "Benutzer",
-    "subtitle": "Willkommen bei Nexterm. Der Open-Source-Server-Manager für SSH, VNC und RDP.",
+    "subtitle": "Willkommen bei Outpost. Der Open-Source-Server-Manager für SSH, VNC und RDP.",
     "downloadApps": "Apps herunterladen",
     "connectDevice": "Gerät verbinden",
     "recentConnections": "Neueste Verbindungen",
@@ -2264,7 +2264,7 @@
   },
   "downloadApps": {
     "title": "Apps herunterladen",
-    "subtitle": "Hol dir Nexterm auf deine Geräte",
+    "subtitle": "Hol dir Outpost auf deine Geräte",
     "platforms": {
       "windows": "Windows",
       "macos": "macOS",

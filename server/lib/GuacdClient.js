@@ -91,7 +91,7 @@ class GuacdClient {
         const conn = this.connectionSettings.connection || {};
 
         if (!this.joinConnectionId && this.recordingEnabled && this.auditLogId) {
-            conn['recording-path'] = '/tmp/nexterm-recordings';
+            conn['recording-path'] = '/tmp/outpost-recordings';
             conn['recording-name'] = this.sessionId;
             conn['create-recording-path'] = 'true';
         }

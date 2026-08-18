@@ -33,7 +33,7 @@ export const Popout = () => {
         getRequest(`/connections/${sessionId}`)
             .then(data => {
                 setSession(data);
-                if (data.server?.name) document.title = `${titleOf(data.server.name)} - Nexterm`;
+                if (data.server?.name) document.title = `${titleOf(data.server.name)} - Outpost`;
             })
             .finally(() => setLoading(false));
     }, [sessionId, user, pinnedMonitor]);
