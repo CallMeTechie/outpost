@@ -8,7 +8,7 @@ import SelectBox from "@/common/components/SelectBox";
 import { mdiFormTextbox, mdiFileDocument, mdiCheck, mdiClose, mdiCodeTags, mdiLightbulb, mdiScript } from "@mdi/js";
 import Icon from "@mdi/react";
 import Editor, { loader } from "@monaco-editor/react";
-import { registerNextermLanguage } from "@/common/monaco/outpost-lang.js";
+import { registerOutpostLanguage } from "@/common/monaco/outpost-lang.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useTranslation } from "react-i18next";
 import { useScripts } from "@/common/contexts/ScriptContext.jsx";
@@ -229,13 +229,13 @@ fi
                             <Editor
                                 value={content}
                                 height="400px"
-                                language="nexterm"
-                                theme="nexterm-dark"
+                                language="outpost"
+                                theme="outpost-dark"
                                 onChange={(value) => setContent(value || "")}
                                 onMount={(editor, monaco) => {
                                     editorRef.current = editor;
-                                    registerNextermLanguage(monaco);
-                                    monaco.editor.setTheme("nexterm-dark");
+                                    registerOutpostLanguage(monaco);
+                                    monaco.editor.setTheme("outpost-dark");
                                 }}
                                 options={{
                                     minimap: { enabled: false },
