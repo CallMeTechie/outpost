@@ -53,8 +53,8 @@ class _SessionsScreenState extends State<SessionsScreen> {
 
   IconData _icon(String? ua) {
     if (ua == null) return MdiIcons.devices;
-    if (ua.startsWith('NextermConnector/')) return MdiIcons.application;
-    if (ua.startsWith('NextermMobile/')) return MdiIcons.cellphoneLink;
+    if (ua.startsWith('OutpostConnector/') || ua.startsWith('NextermConnector/')) return MdiIcons.application;
+    if (ua.startsWith('OutpostMobile/') || ua.startsWith('NextermMobile/')) return MdiIcons.cellphoneLink;
     final l = ua.toLowerCase();
     if (l.contains('mobile') || l.contains('android') || l.contains('iphone')) return MdiIcons.cellphone;
     if (l.contains('tablet') || l.contains('ipad')) return MdiIcons.tablet;
@@ -74,9 +74,9 @@ class _SessionsScreenState extends State<SessionsScreen> {
 
   String _device(String? ua) {
     if (ua == null) return 'Unknown Device';
-    final conn = RegExp(r'^NextermConnector/([\d.]+)\s*\(([^;]+);').firstMatch(ua);
+    final conn = RegExp(r'^(?:Outpost|Nexterm)Connector/([\d.]+)\s*\(([^;]+);').firstMatch(ua);
     if (conn != null) return 'Connector ${conn.group(1)} · ${conn.group(2)?.trim()}';
-    final mobile = RegExp(r'^NextermMobile/([\d.]+)\s*\(([^;)]+)').firstMatch(ua);
+    final mobile = RegExp(r'^(?:Outpost|Nexterm)Mobile/([\d.]+)\s*\(([^;)]+)').firstMatch(ua);
     if (mobile != null) {
       final p = mobile.group(2)?.trim() ?? '';
       return 'Mobile ${mobile.group(1)} · ${p.isNotEmpty ? p[0].toUpperCase() + p.substring(1) : p}';

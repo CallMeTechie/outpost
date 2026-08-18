@@ -16,10 +16,24 @@ impl Config {
         Ok(dir.join("config.json"))
     }
 
+    // The config directory moved from nexterm to outpost. An existing setup keeps its
+    // token: the old file is read once and written back to the new location.
+    fn legacy_path() -> Option<PathBuf> {
+        dirs::config_dir().map(|d| d.join("nexterm").join("config.json"))
+    }
+
     pub fn load() -> Result<Self> {
         let path = Self::path()?;
-        if !path.exists() { return Ok(Self::default()); }
-        serde_json::from_str(&fs::read_to_string(&path)?).context("Failed to parse config")
+        if path.exists() {
+            return serde_json::from_str(&fs::read_to_string(&path)?).context("Failed to parse config");
+        }
+        if let Some(legacy) = Self::legacy_path().filter(|p| p.exists()) {
+            let cfg: Self = serde_json::from_str(&fs::read_to_string(&legacy)?)
+                .context("Failed to parse config")?;
+            cfg.save()?;
+            return Ok(cfg);
+        }
+        Ok(Self::default())
     }
 
     pub fn save(&self) -> Result<()> {
