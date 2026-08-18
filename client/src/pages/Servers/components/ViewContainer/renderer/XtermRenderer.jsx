@@ -44,7 +44,7 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
     const onFullscreenToggleRef = useRef(onFullscreenToggle);
     const connectionLoaderRef = useRef(null);
     const smartCopyPasteRef = useRef(false);
-    // Apps that request mouse tracking (Claude Code, htop, ...) make xterm.js drop the
+    // Apps that request mouse tracking (interactive TUIs, htop, ...) make xterm.js drop the
     // selection on the first mouse report after mouseup, so getSelection() is already
     // empty by the time a copy is triggered. Keep the last non-empty selection around.
     const lastSelectionRef = useRef("");
