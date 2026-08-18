@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Image tag to publish. Defaults to a throwaway tag so a manual build of a lower stack layer cannot overwrite the deployed :xfer image."
+        description: "Image tag to publish. Defaults to a throwaway tag so a manual build of a lower stack layer cannot overwrite the deployed :latest image."
         required: false
         default: test
   push:
@@ -16,12 +16,12 @@ on:
 # still carry their own copy of this file with their own branch listed. Same
 # tag, same group: the last one started wins instead of the last one finished.
 concurrency:
-  group: fork-image-${{ github.event.inputs.tag || 'xfer' }}
+  group: fork-image-${{ github.event.inputs.tag || 'latest' }}
   cancel-in-progress: true
 
 env:
   REGISTRY: ghcr.io
-  TAG: ${{ github.event.inputs.tag || 'xfer' }}
+  TAG: ${{ github.event.inputs.tag || 'latest' }}
 
 jobs:
   components:
@@ -66,7 +66,7 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/outpost-${{ matrix.slug }}:${{ env.TAG }}
           build-args: |
-            VERSION=1.2.2-BETA-xfer
+            VERSION=1.2.2-BETA-${{ env.TAG }}
           cache-from: type=gha,scope=fork-${{ matrix.slug }}
           cache-to: type=gha,mode=max,scope=fork-${{ matrix.slug }}
 
