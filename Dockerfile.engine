@@ -24,7 +24,7 @@ COPY schema/ ./schema/
 COPY engine/ ./engine/
 
 RUN if [ -n "$VERSION" ]; then \
-        sed -i "s/^#define NEXTERM_ENGINE_VERSION \".*\"/#define NEXTERM_ENGINE_VERSION \"$VERSION\"/" engine/src/proto/control_plane.h; \
+        sed -i "s/^#define OUTPOST_ENGINE_VERSION \".*\"/#define OUTPOST_ENGINE_VERSION \"$VERSION\"/" engine/src/proto/control_plane.h; \
     fi
 
 RUN sh scripts/build-engine-release.sh engine
@@ -40,13 +40,13 @@ RUN apk add --no-cache \
 
 COPY --from=guac-builder /src/vendor/guacamole-server/dist/lib/ /usr/local/lib/
 
-COPY --from=engine-builder /src/engine/build/nexterm-engine /usr/local/bin/nexterm-engine
+COPY --from=engine-builder /src/engine/build/outpost-engine /usr/local/bin/outpost-engine
 
 RUN cp /usr/local/lib/freerdp3/*.so /usr/lib/freerdp3/ \
     && ldconfig /usr/local/lib 2>/dev/null || true
 
 ENV LOG_LEVEL=info
 
-WORKDIR /etc/nexterm
+WORKDIR /etc/outpost
 
-ENTRYPOINT ["nexterm-engine"]
+ENTRYPOINT ["outpost-engine"]

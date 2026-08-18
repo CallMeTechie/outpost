@@ -38,9 +38,9 @@ jobs:
         run: |
           mkdir -p server/lib/generated
           flatc --ts --ts-flat-files -o server/lib/generated schema/control_plane.fbs schema/sftp_protocol.fbs
-          esbuild server/lib/generated/nexterm/control-plane.ts --bundle --format=cjs --outfile=server/lib/generated/control_plane_generated.js --allow-overwrite --platform=node --external:flatbuffers
-          esbuild server/lib/generated/nexterm/sftp-protocol.ts --bundle --format=cjs --outfile=server/lib/generated/sftp_protocol_generated.js --allow-overwrite --platform=node --external:flatbuffers
-          rm -rf server/lib/generated/nexterm
+          esbuild server/lib/generated/outpost/control-plane.ts --bundle --format=cjs --outfile=server/lib/generated/control_plane_generated.js --allow-overwrite --platform=node --external:flatbuffers
+          esbuild server/lib/generated/outpost/sftp-protocol.ts --bundle --format=cjs --outfile=server/lib/generated/sftp_protocol_generated.js --allow-overwrite --platform=node --external:flatbuffers
+          rm -rf server/lib/generated/outpost
 
       - name: Upload generated schema
         uses: actions/upload-artifact@v4
@@ -59,26 +59,26 @@ jobs:
         include:
           - name: linux-x64
             os: ubuntu-22.04
-            artifact_name: nexterm-server-linux-x64
+            artifact_name: outpost-server-linux-x64
             output_ext: ""
             is_linux: true
             deb_arch: amd64
             rpm_arch: x86_64
           - name: linux-arm64
             os: ubuntu-22.04-arm
-            artifact_name: nexterm-server-linux-arm64
+            artifact_name: outpost-server-linux-arm64
             output_ext: ""
             is_linux: true
             deb_arch: arm64
             rpm_arch: aarch64
           - name: macos-arm64
             os: macos-latest
-            artifact_name: nexterm-server-macos-arm64
+            artifact_name: outpost-server-macos-arm64
             output_ext: ""
             is_linux: false
           - name: windows-x64
             os: windows-latest
-            artifact_name: nexterm-server-windows-x64.exe
+            artifact_name: outpost-server-windows-x64.exe
             output_ext: ".exe"
             is_linux: false
 
@@ -116,7 +116,7 @@ jobs:
       - name: Build SEA binary
         shell: bash
         env:
-          BIN_NAME: nexterm-server${{ matrix.output_ext }}
+          BIN_NAME: outpost-server${{ matrix.output_ext }}
         run: ./scripts/build-sea.sh
 
       - name: Upload to Release
@@ -125,7 +125,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ inputs.upload_url }}
-          asset_path: build/sea/nexterm-server${{ matrix.output_ext }}
+          asset_path: build/sea/outpost-server${{ matrix.output_ext }}
           asset_name: ${{ matrix.artifact_name }}
           asset_content_type: application/octet-stream
 
@@ -152,18 +152,18 @@ jobs:
           PKG_VERSION: ${{ inputs.semver }}
         run: |
           mkdir -p stage/server dist
-          cp build/sea/nexterm-server stage/server/nexterm-server
-          chmod +x stage/server/nexterm-server
+          cp build/sea/outpost-server stage/server/outpost-server
+          chmod +x stage/server/outpost-server
 
           PKG_ARCH=${{ matrix.deb_arch }} nfpm pkg \
             --config packaging/nfpm-server.yaml \
             --packager deb \
-            --target "dist/nexterm-server_${PKG_VERSION}_${{ matrix.deb_arch }}.deb"
+            --target "dist/outpost-server_${PKG_VERSION}_${{ matrix.deb_arch }}.deb"
 
           PKG_ARCH=${{ matrix.rpm_arch }} nfpm pkg \
             --config packaging/nfpm-server.yaml \
             --packager rpm \
-            --target "dist/nexterm-server-${PKG_VERSION}-1.${{ matrix.rpm_arch }}.rpm"
+            --target "dist/outpost-server-${PKG_VERSION}-1.${{ matrix.rpm_arch }}.rpm"
 
           ls -la dist/
 
@@ -174,8 +174,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ inputs.upload_url }}
-          asset_path: dist/nexterm-server_${{ inputs.semver }}_${{ matrix.deb_arch }}.deb
-          asset_name: nexterm-server_${{ inputs.semver }}_${{ matrix.deb_arch }}.deb
+          asset_path: dist/outpost-server_${{ inputs.semver }}_${{ matrix.deb_arch }}.deb
+          asset_name: outpost-server_${{ inputs.semver }}_${{ matrix.deb_arch }}.deb
           asset_content_type: application/vnd.debian.binary-package
 
       - name: Upload .rpm
@@ -185,6 +185,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ inputs.upload_url }}
-          asset_path: dist/nexterm-server-${{ inputs.semver }}-1.${{ matrix.rpm_arch }}.rpm
-          asset_name: nexterm-server-${{ inputs.semver }}-1.${{ matrix.rpm_arch }}.rpm
+          asset_path: dist/outpost-server-${{ inputs.semver }}-1.${{ matrix.rpm_arch }}.rpm
+          asset_name: outpost-server-${{ inputs.semver }}-1.${{ matrix.rpm_arch }}.rpm
           asset_content_type: application/x-rpm

@@ -21,7 +21,7 @@ const manifestText = new TextDecoder().decode(sea.getAsset(MANIFEST_KEY));
 const meta = JSON.parse(manifestText);
 
 const payloadHash = crypto.createHash("sha256").update(payloadBuf).digest("hex").slice(0, 16);
-const cacheRoot = path.join(os.tmpdir(), `nexterm-sea-${meta.version}-${payloadHash}`);
+const cacheRoot = path.join(os.tmpdir(), `outpost-sea-${meta.version}-${payloadHash}`);
 const appDir = path.join(cacheRoot, "app");
 const readyMarker = path.join(cacheRoot, ".ready");
 

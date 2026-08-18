@@ -1,4 +1,4 @@
-name: nexterm-server
+name: outpost-server
 arch: "${PKG_ARCH}"
 platform: linux
 version: "${PKG_VERSION}"
@@ -6,8 +6,8 @@ section: net
 priority: optional
 maintainer: "Mathias Wagner <mathias@gnm.dev>"
 description: |
-  Nexterm server - Bundles web interface together with server
-vendor: "Nexterm"
+  Outpost server - Bundles web interface together with server
+vendor: "Outpost"
 homepage: "https://github.com/gnmyt/Nexterm"
 license: "MIT"
 
@@ -20,23 +20,23 @@ overrides:
       - glibc
 
 contents:
-  - src: stage/server/nexterm-server
-    dst: /usr/bin/nexterm-server
+  - src: stage/server/outpost-server
+    dst: /usr/bin/outpost-server
     file_info:
       mode: 0755
 
-  - src: packaging/nexterm-server.service
-    dst: /lib/systemd/system/nexterm-server.service
+  - src: packaging/outpost-server.service
+    dst: /lib/systemd/system/outpost-server.service
     file_info:
       mode: 0644
 
   - src: packaging/server.env
-    dst: /etc/nexterm-server/server.env
+    dst: /etc/outpost-server/server.env
     type: config|noreplace
     file_info:
       mode: 0640
 
-  - dst: /var/lib/nexterm-server
+  - dst: /var/lib/outpost-server
     type: dir
     file_info:
       mode: 0750

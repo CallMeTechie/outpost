@@ -1,5 +1,5 @@
-ARG SERVER_IMAGE=nexterm/server:latest
-ARG ENGINE_IMAGE=nexterm/engine:latest
+ARG SERVER_IMAGE=outpost/server:latest
+ARG ENGINE_IMAGE=outpost/engine:latest
 
 FROM ${ENGINE_IMAGE} AS engine
 FROM ${SERVER_IMAGE}
@@ -13,7 +13,7 @@ RUN apk add --no-cache \
 
 COPY --from=engine /usr/local/lib/ /usr/local/lib/
 
-COPY --from=engine /usr/local/bin/nexterm-engine /usr/local/bin/nexterm-engine
+COPY --from=engine /usr/local/bin/outpost-engine /usr/local/bin/outpost-engine
 
 COPY --from=engine /usr/local/lib/freerdp3/ /usr/lib/freerdp3/
 

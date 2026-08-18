@@ -64,7 +64,7 @@ jobs:
           file: ${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: true
-          tags: ${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/nexterm-${{ matrix.slug }}:${{ env.TAG }}
+          tags: ${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/outpost-${{ matrix.slug }}:${{ env.TAG }}
           build-args: |
             VERSION=1.2.2-BETA-xfer
           cache-from: type=gha,scope=fork-${{ matrix.slug }}
@@ -103,9 +103,9 @@ jobs:
           file: Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/nexterm:${{ env.TAG }}
+          tags: ${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/outpost:${{ env.TAG }}
           build-args: |
-            SERVER_IMAGE=${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/nexterm-server:${{ env.TAG }}
-            ENGINE_IMAGE=${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/nexterm-engine:${{ env.TAG }}
+            SERVER_IMAGE=${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/outpost-server:${{ env.TAG }}
+            ENGINE_IMAGE=${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/outpost-engine:${{ env.TAG }}
           cache-from: type=gha,scope=fork-aio
           cache-to: type=gha,mode=max,scope=fork-aio

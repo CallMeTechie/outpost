@@ -10,14 +10,14 @@ YELLOW=$'\033[33m'
 CYAN=$'\033[36m'
 RESET=$'\033[0m'
 
-REPO_BASE="https://packages.buildkite.com/nexterm"
+REPO_BASE="https://packages.buildkite.com/outpost"
 KEYRING_DIR="/etc/apt/keyrings"
-APT_KEYRING="$KEYRING_DIR/nexterm_apt-archive-keyring.gpg"
-APT_LIST="/etc/apt/sources.list.d/buildkite-nexterm-apt.list"
-YUM_REPO="/etc/yum.repos.d/buildkite-nexterm.repo"
+APT_KEYRING="$KEYRING_DIR/outpost_apt-archive-keyring.gpg"
+APT_LIST="/etc/apt/sources.list.d/buildkite-outpost-apt.list"
+YUM_REPO="/etc/yum.repos.d/buildkite-outpost.repo"
 
-SERVER_ENV_FILE="/etc/nexterm-server/server.env"
-ENGINE_CONFIG_FILE="/etc/nexterm-engine/config.yaml"
+SERVER_ENV_FILE="/etc/outpost-server/server.env"
+ENGINE_CONFIG_FILE="/etc/outpost-engine/config.yaml"
 
 SPINNER_PID=""
 
@@ -216,8 +216,8 @@ configure_yum_repo() {
         return
     fi
     cat > "$YUM_REPO" <<EOF
-[nexterm]
-name=Nexterm
+[outpost]
+name=Outpost
 baseurl=$REPO_BASE/rpm_any/rpm_any/\$basearch
 enabled=1
 repo_gpgcheck=1
@@ -264,7 +264,7 @@ server_port: $port
 registration_token: "$token"
 tls: $tls
 EOF
-    chown root:nexterm "$ENGINE_CONFIG_FILE" 2>/dev/null || true
+    chown root:outpost "$ENGINE_CONFIG_FILE" 2>/dev/null || true
     chmod 0660 "$ENGINE_CONFIG_FILE"
 }
 
@@ -287,7 +287,7 @@ set_server_env_var() {
         printf '%s=%s\n' "$key" "$value" >> "$SERVER_ENV_FILE"
     fi
 
-    chown root:nexterm "$SERVER_ENV_FILE" 2>/dev/null || true
+    chown root:outpost "$SERVER_ENV_FILE" 2>/dev/null || true
     chmod 0640 "$SERVER_ENV_FILE"
 }
 
@@ -332,9 +332,9 @@ write_aio_compose() {
     mkdir -p "$dir"
     cat > "$dir/docker-compose.yml" <<EOF
 services:
-  nexterm:
-    image: nexterm/aio:latest
-    container_name: nexterm
+  outpost:
+    image: outpost/aio:latest
+    container_name: outpost
     restart: unless-stopped
     network_mode: host
     environment:
@@ -350,9 +350,9 @@ write_server_compose() {
     mkdir -p "$dir"
     cat > "$dir/docker-compose.yml" <<EOF
 services:
-  nexterm-server:
-    image: nexterm/server:latest
-    container_name: nexterm-server
+  outpost-server:
+    image: outpost/server:latest
+    container_name: outpost-server
     restart: unless-stopped
     ports:
       - "6989:6989"
@@ -377,13 +377,13 @@ tls: false
 EOF
     cat > "$dir/docker-compose.yml" <<EOF
 services:
-  nexterm-engine:
-    image: nexterm/engine:latest
-    container_name: nexterm-engine
+  outpost-engine:
+    image: outpost/engine:latest
+    container_name: outpost-engine
     restart: unless-stopped
     network_mode: host
     volumes:
-      - ./config.yaml:/etc/nexterm/config.yaml
+      - ./config.yaml:/etc/outpost/config.yaml
 EOF
 }
 
@@ -409,7 +409,7 @@ prompt_engine_target() {
 run_docker_flow() {
     section "Docker deployment"
 
-    prompt_choice "Which Nexterm component do you want to deploy?" \
+    prompt_choice "Which Outpost component do you want to deploy?" \
         "All-in-One (recommended): server and engine bundled together" \
         "Server only: web UI and API" \
         "Engine only: connection engine"
@@ -419,7 +419,7 @@ run_docker_flow() {
 
     case "$component_index" in
         0)
-            prompt_install_dir "/opt/nexterm"
+            prompt_install_dir "/opt/outpost"
             local key
             key=$(generate_token)
             write_aio_compose "$INSTALL_DIR" "$key"
@@ -429,7 +429,7 @@ run_docker_flow() {
             print_docker_summary "All-in-One" "$INSTALL_DIR" "http://localhost:6989" "$key"
             ;;
         1)
-            prompt_install_dir "/opt/nexterm-server"
+            prompt_install_dir "/opt/outpost-server"
             local key
             key=$(generate_token)
             write_server_compose "$INSTALL_DIR" "$key"
@@ -439,7 +439,7 @@ run_docker_flow() {
             print_docker_summary "Server" "$INSTALL_DIR" "http://localhost:6989" "$key"
             ;;
         2)
-            prompt_install_dir "/opt/nexterm-engine"
+            prompt_install_dir "/opt/outpost-engine"
             prompt_engine_target
             write_engine_compose "$INSTALL_DIR" "$ENGINE_HOST" "$ENGINE_PORT" "$ENGINE_TOKEN"
             ok "Wrote $INSTALL_DIR/docker-compose.yml and config.yaml"
@@ -469,7 +469,7 @@ print_docker_summary() {
 run_package_flow() {
     section "Package manager deployment"
 
-    prompt_choice "Which Nexterm component do you want to install?" \
+    prompt_choice "Which Outpost component do you want to install?" \
         "All-in-One (recommended): server and engine on this host" \
         "Server only: web UI and API" \
         "Engine only: connection engine"
@@ -488,28 +488,28 @@ run_package_flow() {
 
     case "$component_index" in
         0)
-            pkg_install nexterm-server nexterm-engine
+            pkg_install outpost-server outpost-engine
             local token
             token=$(generate_token)
             set_server_env_var LOCAL_ENGINE_TOKEN "$token"
             write_engine_config "$token" "127.0.0.1" "7800" "false"
             ok "Paired the server and engine with a fresh token"
-            start_service nexterm-engine
-            start_service nexterm-server
+            start_service outpost-engine
+            start_service outpost-server
             print_package_summary aio
             ;;
         1)
-            pkg_install nexterm-server
-            start_service nexterm-server
+            pkg_install outpost-server
+            start_service outpost-server
             print_package_summary server
             ;;
         2)
-            pkg_install nexterm-engine
+            pkg_install outpost-engine
             prompt_engine_target
             local token="${ENGINE_TOKEN}"
             [ -z "$token" ] && warn "No registration token was provided. Drop one into $ENGINE_CONFIG_FILE before the engine can connect."
             write_engine_config "$token" "$ENGINE_HOST" "$ENGINE_PORT" "false"
-            start_service nexterm-engine
+            start_service outpost-engine
             print_package_summary engine
             ;;
     esac
@@ -520,23 +520,23 @@ print_package_summary() {
     section "All done"
     case "$kind" in
         aio)
-            printf '  Components: nexterm-server, nexterm-engine\n'
+            printf '  Components: outpost-server, outpost-engine\n'
             printf '  Web UI:     http://localhost:6989\n'
             printf '  Engine cfg: %s\n' "$ENGINE_CONFIG_FILE"
             printf '  Server env: %s\n\n' "$SERVER_ENV_FILE"
-            service_status_hint nexterm-server
-            service_status_hint nexterm-engine
+            service_status_hint outpost-server
+            service_status_hint outpost-engine
             ;;
         server)
-            printf '  Component:  nexterm-server\n'
+            printf '  Component:  outpost-server\n'
             printf '  Web UI:     http://localhost:6989\n'
             printf '  Server env: %s\n\n' "$SERVER_ENV_FILE"
-            service_status_hint nexterm-server
+            service_status_hint outpost-server
             ;;
         engine)
-            printf '  Component:  nexterm-engine\n'
+            printf '  Component:  outpost-engine\n'
             printf '  Engine cfg: %s\n\n' "$ENGINE_CONFIG_FILE"
-            service_status_hint nexterm-engine
+            service_status_hint outpost-engine
             ;;
     esac
 }
@@ -544,16 +544,16 @@ print_package_summary() {
 main() {
     print_header
 
-    prompt_choice "How would you like to install Nexterm?" \
+    prompt_choice "How would you like to install Outpost?" \
         "Docker (compose file is written and started for you)" \
-        "Package manager (native .deb or .rpm from the Nexterm repository)"
+        "Package manager (native .deb or .rpm from the Outpost repository)"
 
     case "$CHOICE_INDEX" in
         0) run_docker_flow ;;
         1) run_package_flow ;;
     esac
 
-    printf '\n%sThanks for using Nexterm.%s\n' "$GREEN" "$RESET"
+    printf '\n%sThanks for using Outpost.%s\n' "$GREEN" "$RESET"
     printf '%sDocs:%s https://docs.nexterm.dev/\n' "$DIM" "$RESET"
 }
 

@@ -113,14 +113,14 @@ build_engine() {
     cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo
     make -j"$(nproc)"
     if command -v objcopy >/dev/null 2>&1; then
-        objcopy --only-keep-debug nexterm-engine nexterm-engine.debug 2>/dev/null || true
-        strip --strip-debug --keep-file-symbols nexterm-engine 2>/dev/null \
-            || strip --strip-debug nexterm-engine 2>/dev/null || true
-        objcopy --add-gnu-debuglink=nexterm-engine.debug nexterm-engine 2>/dev/null || true
+        objcopy --only-keep-debug outpost-engine outpost-engine.debug 2>/dev/null || true
+        strip --strip-debug --keep-file-symbols outpost-engine 2>/dev/null \
+            || strip --strip-debug outpost-engine 2>/dev/null || true
+        objcopy --add-gnu-debuglink=outpost-engine.debug outpost-engine 2>/dev/null || true
     else
-        strip --strip-debug nexterm-engine 2>/dev/null || true
+        strip --strip-debug outpost-engine 2>/dev/null || true
     fi
-    file nexterm-engine || true
+    file outpost-engine || true
 }
 
 is_system_lib() {
@@ -146,10 +146,10 @@ collect_deps_into() {
 
 package() {
     rm -rf "$OUT_DIR"
-    STAGE="$OUT_DIR/nexterm-engine-linux-$ARCH"
+    STAGE="$OUT_DIR/outpost-engine-linux-$ARCH"
     mkdir -p "$STAGE/lib"
 
-    cp "$ENGINE_SRC/build/nexterm-engine" "$STAGE/nexterm-engine"
+    cp "$ENGINE_SRC/build/outpost-engine" "$STAGE/outpost-engine"
     cp -P "$GUAC_DIST/lib"/*.so* "$STAGE/lib/" 2>/dev/null || true
     if [ -d "$GUAC_DIST/lib/freerdp3" ]; then
         cp -rP "$GUAC_DIST/lib/freerdp3" "$STAGE/lib/"
@@ -158,7 +158,7 @@ package() {
     pass=0
     while [ "$pass" -lt 6 ]; do
         before=$(find "$STAGE/lib" -name '*.so*' | wc -l)
-        collect_deps_into "$STAGE/nexterm-engine" "$STAGE/lib"
+        collect_deps_into "$STAGE/outpost-engine" "$STAGE/lib"
         find "$STAGE/lib" -name '*.so*' -type f | while read -r so; do
             collect_deps_into "$so" "$STAGE/lib"
         done
@@ -167,7 +167,7 @@ package() {
         pass=$((pass + 1))
     done
 
-    patchelf --set-rpath '$ORIGIN/lib:$ORIGIN/lib/freerdp3' "$STAGE/nexterm-engine"
+    patchelf --set-rpath '$ORIGIN/lib:$ORIGIN/lib/freerdp3' "$STAGE/outpost-engine"
     find "$STAGE/lib" -maxdepth 1 -name '*.so*' -type f | while read -r so; do
         patchelf --set-rpath '$ORIGIN:$ORIGIN/freerdp3' "$so" || true
     done
@@ -177,8 +177,8 @@ package() {
         done
     fi
 
-    tar -czf "$OUT_DIR/nexterm-engine-linux-$ARCH.tar.gz" \
-        -C "$OUT_DIR" "nexterm-engine-linux-$ARCH"
+    tar -czf "$OUT_DIR/outpost-engine-linux-$ARCH.tar.gz" \
+        -C "$OUT_DIR" "outpost-engine-linux-$ARCH"
     ls -la "$STAGE/" "$STAGE/lib/" "$OUT_DIR/"
 }
 
@@ -200,8 +200,8 @@ pkg() {
     rm -rf "$REPO_ROOT/stage"
     mkdir -p "$PKG_STAGE/lib" "$PKG_STAGE/freerdp3"
 
-    cp "$ENGINE_SRC/build/nexterm-engine" "$PKG_STAGE/nexterm-engine"
-    patchelf --set-rpath '/usr/lib/nexterm-engine' "$PKG_STAGE/nexterm-engine"
+    cp "$ENGINE_SRC/build/outpost-engine" "$PKG_STAGE/outpost-engine"
+    patchelf --set-rpath '/usr/lib/outpost-engine' "$PKG_STAGE/outpost-engine"
 
     cp -P "$GUAC_DIST/lib"/libguac*.so* "$PKG_STAGE/lib/" 2>/dev/null || true
 
@@ -224,7 +224,7 @@ pkg() {
     if [ -d "$GUAC_DIST/lib/freerdp3" ]; then
         cp -L "$GUAC_DIST/lib/freerdp3"/*.so "$PKG_STAGE/freerdp3/" 2>/dev/null || true
         find "$PKG_STAGE/freerdp3" -name '*.so*' -type f | while read -r so; do
-            patchelf --set-rpath '/usr/lib/nexterm-engine' "$so" || true
+            patchelf --set-rpath '/usr/lib/outpost-engine' "$so" || true
         done
     fi
 
@@ -239,12 +239,12 @@ pkg() {
     PKG_ARCH="$DEB_ARCH" nfpm pkg \
         --config packaging/nfpm-engine.yaml \
         --packager deb \
-        --target "$OUT_DIR/nexterm-engine_${PKG_VERSION}_${DEB_ARCH}.deb"
+        --target "$OUT_DIR/outpost-engine_${PKG_VERSION}_${DEB_ARCH}.deb"
 
     PKG_ARCH="$RPM_ARCH" nfpm pkg \
         --config packaging/nfpm-engine.yaml \
         --packager rpm \
-        --target "$OUT_DIR/nexterm-engine-${PKG_VERSION}-1.${RPM_ARCH}.rpm"
+        --target "$OUT_DIR/outpost-engine-${PKG_VERSION}-1.${RPM_ARCH}.rpm"
 
     ls -la "$OUT_DIR"/*.deb "$OUT_DIR"/*.rpm
 }

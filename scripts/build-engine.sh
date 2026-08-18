@@ -54,7 +54,7 @@ ensure_guacd_built() {
 }
 
 build() {
-    echo "[engine] Building nexterm-engine..."
+    echo "[engine] Building outpost-engine..."
 
     ensure_guacd_built
 
@@ -74,7 +74,7 @@ start_engine() {
 
     export LD_LIBRARY_PATH="$GUACD_SRC/dist/lib:$GUACD_SRC/dist/lib/freerdp3:$LD_LIBRARY_PATH"
 
-    "$ENGINE_BUILD/nexterm-engine" \
+    "$ENGINE_BUILD/outpost-engine" \
         --host "$ENGINE_HOST" \
         --port "$ENGINE_PORT" \
         --log "$ENGINE_LOG_LEVEL" &

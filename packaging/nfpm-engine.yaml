@@ -1,4 +1,4 @@
-name: nexterm-engine
+name: outpost-engine
 arch: "${PKG_ARCH}"
 platform: linux
 version: "${PKG_VERSION}"
@@ -6,8 +6,8 @@ section: net
 priority: optional
 maintainer: "Mathias Wagner <mathias@gnm.dev>"
 description: |
-  Nexterm engine — Connection service for Nexterm
-vendor: "Nexterm"
+  Outpost engine — Connection service for Outpost
+vendor: "Outpost"
 homepage: "https://github.com/gnmyt/Nexterm"
 license: "MIT"
 
@@ -47,30 +47,30 @@ overrides:
       - freerdp-libs
 
 contents:
-  - src: stage/engine/nexterm-engine
-    dst: /usr/lib/nexterm-engine/nexterm-engine
+  - src: stage/engine/outpost-engine
+    dst: /usr/lib/outpost-engine/outpost-engine
     file_info:
       mode: 0755
-  - src: /usr/lib/nexterm-engine/nexterm-engine
-    dst: /usr/bin/nexterm-engine
+  - src: /usr/lib/outpost-engine/outpost-engine
+    dst: /usr/bin/outpost-engine
     type: symlink
 
   - src: stage/engine/lib/
-    dst: /usr/lib/nexterm-engine/
+    dst: /usr/lib/outpost-engine/
     file_info:
       mode: 0755
 
   - src: stage/engine/freerdp3/
-    dst: /usr/lib/nexterm-engine/freerdp3/
+    dst: /usr/lib/outpost-engine/freerdp3/
     file_info:
       mode: 0755
 
-  - src: packaging/nexterm-engine.service
-    dst: /lib/systemd/system/nexterm-engine.service
+  - src: packaging/outpost-engine.service
+    dst: /lib/systemd/system/outpost-engine.service
     file_info:
       mode: 0644
 
-  - dst: /etc/nexterm-engine
+  - dst: /etc/outpost-engine
     type: dir
     file_info:
       mode: 0770

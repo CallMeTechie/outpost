@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD_DIR="$ROOT/build/sea"
 STAGE_DIR="$BUILD_DIR/stage"
 PAYLOAD_DIR="$STAGE_DIR/app"
-BIN_NAME="${BIN_NAME:-nexterm-server}"
+BIN_NAME="${BIN_NAME:-outpost-server}"
 
 NODE_BIN="${NODE_BIN:-$(command -v node)}"
 NODE_MAJOR="$("$NODE_BIN" -p 'process.versions.node.split(".")[0]')"

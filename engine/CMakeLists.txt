@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(nexterm-engine C)
+project(outpost-engine C)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -84,36 +84,36 @@ set(ENGINE_SOURCES
     src/proto/control_plane.c
 )
 
-add_executable(nexterm-engine ${ENGINE_SOURCES})
+add_executable(outpost-engine ${ENGINE_SOURCES})
 
 include(CheckIncludeFile)
 check_include_file(execinfo.h HAVE_EXECINFO_H)
 if(UNIX AND NOT APPLE AND HAVE_EXECINFO_H)
-    target_link_options(nexterm-engine PRIVATE -rdynamic)
+    target_link_options(outpost-engine PRIVATE -rdynamic)
 endif()
 
-add_dependencies(nexterm-engine flatbuffers_gen)
+add_dependencies(outpost-engine flatbuffers_gen)
 if(TARGET flatcc_project)
     add_dependencies(flatbuffers_gen flatcc_project)
 endif()
 
-target_include_directories(nexterm-engine PRIVATE
+target_include_directories(outpost-engine PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/src/core
     ${CMAKE_SOURCE_DIR}/src/net
     ${CMAKE_SOURCE_DIR}/src/proto
 )
 
-target_include_directories(nexterm-engine SYSTEM PRIVATE
+target_include_directories(outpost-engine SYSTEM PRIVATE
     ${FLATBUFFERS_GENERATED_DIR}
     ${GUACAMOLE_DIST_DIR}/include
 )
 
 if(DEFINED FLATCC_INCLUDE_DIR)
-    target_include_directories(nexterm-engine SYSTEM PRIVATE ${FLATCC_INCLUDE_DIR})
+    target_include_directories(outpost-engine SYSTEM PRIVATE ${FLATCC_INCLUDE_DIR})
 endif()
 
-target_link_directories(nexterm-engine PRIVATE
+target_link_directories(outpost-engine PRIVATE
     ${GUACAMOLE_DIST_DIR}/lib
 )
 
@@ -151,10 +151,10 @@ else()
     message(STATUS "libwebp not found - WebP thumbnails disabled")
 endif()
 
-target_include_directories(nexterm-engine PRIVATE ${LIBSSH2_INCLUDE_DIRS})
-target_link_directories(nexterm-engine PRIVATE ${LIBSSH2_LIBRARY_DIRS})
+target_include_directories(outpost-engine PRIVATE ${LIBSSH2_INCLUDE_DIRS})
+target_link_directories(outpost-engine PRIVATE ${LIBSSH2_LIBRARY_DIRS})
 
-target_link_libraries(nexterm-engine PRIVATE
+target_link_libraries(outpost-engine PRIVATE
     guac
     ${LIBSSH2_LIBRARIES}
     CURL::libcurl
@@ -165,20 +165,20 @@ target_link_libraries(nexterm-engine PRIVATE
 )
 
 if(DEFINED FLATCC_LIB_DIR)
-    target_link_directories(nexterm-engine PRIVATE ${FLATCC_LIB_DIR})
-    target_link_libraries(nexterm-engine PRIVATE flatccrt)
+    target_link_directories(outpost-engine PRIVATE ${FLATCC_LIB_DIR})
+    target_link_libraries(outpost-engine PRIVATE flatccrt)
 endif()
 
 if(WEBP_FOUND)
-    target_compile_definitions(nexterm-engine PRIVATE HAVE_WEBP=1)
-    target_include_directories(nexterm-engine PRIVATE ${WEBP_INCLUDE_DIRS})
-    target_link_directories(nexterm-engine PRIVATE ${WEBP_LIBRARY_DIRS})
-    target_link_libraries(nexterm-engine PRIVATE ${WEBP_LIBRARIES})
+    target_compile_definitions(outpost-engine PRIVATE HAVE_WEBP=1)
+    target_include_directories(outpost-engine PRIVATE ${WEBP_INCLUDE_DIRS})
+    target_link_directories(outpost-engine PRIVATE ${WEBP_LIBRARY_DIRS})
+    target_link_libraries(outpost-engine PRIVATE ${WEBP_LIBRARIES})
 endif()
 
-set_target_properties(nexterm-engine PROPERTIES
+set_target_properties(outpost-engine PROPERTIES
     INSTALL_RPATH "${GUACAMOLE_DIST_DIR}/lib"
     BUILD_RPATH "${GUACAMOLE_DIST_DIR}/lib"
 )
 
-install(TARGETS nexterm-engine DESTINATION bin)
+install(TARGETS outpost-engine DESTINATION bin)

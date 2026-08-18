@@ -1,4 +1,4 @@
-name: nexterm-cli
+name: outpost-cli
 arch: "${PKG_ARCH}"
 platform: linux
 version: "${PKG_VERSION}"
@@ -6,8 +6,8 @@ section: net
 priority: optional
 maintainer: "Mathias Wagner <mathias@gnm.dev>"
 description: |
-  Nexterm CLI — Command-line client for Nexterm (nt)
-vendor: "Nexterm"
+  Outpost CLI — Command-line client for Outpost (nt)
+vendor: "Outpost"
 homepage: "https://github.com/gnmyt/Nexterm"
 license: "MIT"
 

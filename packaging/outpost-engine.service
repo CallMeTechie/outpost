@@ -1,17 +1,16 @@
 [Unit]
-Description=Nexterm Server
+Description=Outpost Engine
 Documentation=https://docs.nexterm.dev/
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=nexterm
-Group=nexterm
-WorkingDirectory=/var/lib/nexterm-server
-EnvironmentFile=-/etc/nexterm-server/server.env
-Environment=NODE_ENV=production
-ExecStart=/usr/bin/nexterm-server
+User=outpost
+Group=outpost
+WorkingDirectory=/etc/outpost-engine
+Environment=FREERDP_EXTENSION_PATH=/usr/lib/outpost-engine/freerdp3
+ExecStart=/usr/bin/outpost-engine
 Restart=on-failure
 RestartSec=5
 
@@ -19,7 +18,7 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=full
 ProtectHome=yes
-ReadWritePaths=/var/lib/nexterm-server
+ReadWritePaths=/etc/outpost-engine
 
 [Install]
 WantedBy=multi-user.target
