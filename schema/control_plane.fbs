@@ -1,4 +1,4 @@
-namespace Outpost.ControlPlane;
+namespace Nexterm.ControlPlane;
 
 enum MessageType : byte {
     Ping = 0,

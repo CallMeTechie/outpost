@@ -1,13 +1,14 @@
-// The directive namespace moved from OUTPOST to OUTPOST. Stored user scripts carry
-// both the input directives (@OUTPOST:STEP) and the shell variables the generated
-// script writes into (OUTPOST_CONFIRM_RESULT), so both have to move with them.
+// The directive namespace moved from NEXTERM to OUTPOST. Stored user scripts carry
+// both the input directives (@NEXTERM:STEP) and the shell variables the generated
+// script writes into (NEXTERM_CONFIRM_RESULT), so both have to move with them.
+// Do not rename the NEXTERM literals below — they are this migration's source pattern.
 const renameDirectives = (text) =>
-    text.replace(/@OUTPOST:/g, "@OUTPOST:")
-        .replace(/\bOUTPOST_([A-Z]+_RESULT)\b/g, "OUTPOST_$1");
+    text.replace(/@NEXTERM:/g, "@OUTPOST:")
+        .replace(/\bNEXTERM_([A-Z]+_RESULT)\b/g, "OUTPOST_$1");
 
 const revertDirectives = (text) =>
-    text.replace(/@OUTPOST:/g, "@OUTPOST:")
-        .replace(/\bOUTPOST_([A-Z]+_RESULT)\b/g, "OUTPOST_$1");
+    text.replace(/@OUTPOST:/g, "@NEXTERM:")
+        .replace(/\bOUTPOST_([A-Z]+_RESULT)\b/g, "NEXTERM_$1");
 
 const COLUMNS = [
     { table: "scripts", column: "content" },
@@ -36,7 +37,7 @@ const rewrite = async (queryInterface, transform, needle) => {
 
 module.exports = {
     async up(queryInterface) {
-        await rewrite(queryInterface, renameDirectives, "OUTPOST");
+        await rewrite(queryInterface, renameDirectives, "NEXTERM");
     },
     async down(queryInterface) {
         await rewrite(queryInterface, revertDirectives, "OUTPOST");

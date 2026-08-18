@@ -140,13 +140,17 @@ module.exports.restoreBackup = async (providerId, backupName) => {
     await decompress(tempFile, restorePath);
     fs.unlinkSync(tempFile);
 
-    const restoredDb = path.join(restorePath, "outpost.db");
+    const restoredDb = ["outpost.db", "nexterm.db"]
+        .map(name => path.join(restorePath, name))
+        .find(fs.existsSync);
     const restoredRecordings = path.join(restorePath, "recordings");
     const restoredLogs = path.join(restorePath, "logs");
     const restoredAvatars = path.join(restorePath, "avatars");
 
-    if (fs.existsSync(restoredDb)) {
+    if (restoredDb) {
         fs.copyFileSync(restoredDb, DB_PATH);
+    } else {
+        logger.warn(`Backup restore: no database file found in ${backupName}`);
     }
     if (fs.existsSync(restoredAvatars)) {
         if (fs.existsSync(AVATARS_DIR)) fs.rmSync(AVATARS_DIR, { recursive: true });

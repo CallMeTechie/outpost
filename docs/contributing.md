@@ -114,6 +114,6 @@ If you want the engine to register automatically with the local control plane, s
 
 ## 🌍 Translations
 
-Outpost uses [Crowdin](https://crowdin.com/project/outpost) for managing translations. If you'd like to help translate Outpost into your language or improve existing translations, please visit our [Crowdin project page](https://crowdin.com/project/outpost).
+Outpost uses [Crowdin](https://crowdin.com/project/nexterm) for managing translations. If you'd like to help translate Outpost into your language or improve existing translations, please visit our [Crowdin project page](https://crowdin.com/project/nexterm).
 
 To suggest a new language, please open an issue in the repository using the language request template. Translation pull requests will not be accepted as all translations are managed through Crowdin.

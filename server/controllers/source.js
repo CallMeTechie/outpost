@@ -522,7 +522,7 @@ const parseThemeContent = (content, path) => {
 };
 
 module.exports.ensureDefaultSource = async () => {
-    const DEFAULT_SOURCE_URL = "https://source.outpost.dev";
+    const DEFAULT_SOURCE_URL = "https://source.nexterm.dev";
     const DEFAULT_SOURCE_NAME = "Official";
 
     const existingDefault = await Source.findOne({ where: { isDefault: true } });

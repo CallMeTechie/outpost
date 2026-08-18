@@ -3,12 +3,12 @@ const assert = require("node:assert");
 const { renameDirectives } = require("../../migrations/0043-rename-script-directives");
 
 test("rewrites the input directive prefix", () => {
-    assert.strictEqual(renameDirectives('@OUTPOST:STEP "x"'), '@OUTPOST:STEP "x"');
+    assert.strictEqual(renameDirectives('@NEXTERM:STEP "x"'), '@OUTPOST:STEP "x"');
 });
 
 test("rewrites result variables referenced in user scripts", () => {
     assert.strictEqual(
-        renameDirectives('if [ "$OUTPOST_CONFIRM_RESULT" = "Yes" ]; then'),
+        renameDirectives('if [ "$NEXTERM_CONFIRM_RESULT" = "Yes" ]; then'),
         'if [ "$OUTPOST_CONFIRM_RESULT" = "Yes" ]; then');
 });
 
@@ -19,6 +19,10 @@ test("leaves unrelated text alone", () => {
 
 test("is reversible", () => {
     const { revertDirectives } = require("../../migrations/0043-rename-script-directives");
-    const original = '@OUTPOST:CONFIRM "go" && echo "$OUTPOST_CONFIRM_RESULT"';
+    const original = '@NEXTERM:CONFIRM "go" && echo "$NEXTERM_CONFIRM_RESULT"';
     assert.strictEqual(revertDirectives(renameDirectives(original)), original);
+});
+
+test("actually changes the retired prefix", () => {
+    assert.notStrictEqual(renameDirectives('@NEXTERM:STEP "x"'), '@NEXTERM:STEP "x"');
 });

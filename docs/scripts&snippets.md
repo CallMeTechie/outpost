@@ -68,7 +68,7 @@ Use these exact values for the `@os` tag:
 > Snippets without an `@os` tag are shown on all systems. Use `Proxmox VE` for commands specific to PVE shell or LXC consoles.
 
 > [!TIP]
-> Check out the [NexStore repository](https://github.com/gnmyt/NexStore/tree/main/outpost) for more examples.
+> Check out the [NexStore repository](https://github.com/gnmyt/NexStore/tree/main/nexterm) for more examples.
 
 ### Scripting Variables & Directives
 
