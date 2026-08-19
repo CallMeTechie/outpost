@@ -1,0 +1,29 @@
+@use "@/common/styles/colors"
+
+.update-dialog
+    display: flex
+    flex-direction: column
+    gap: 1rem
+    min-width: 22rem
+
+    .update-error
+        color: colors.$error
+
+    .update-hint
+        white-space: pre-wrap
+
+    .update-progress
+        display: flex
+        flex-direction: column
+        gap: .35rem
+
+        .update-progress-bar
+            height: .35rem
+            border-radius: .2rem
+            background: colors.$primary
+            transition: width .2s ease
+
+    .update-actions
+        display: flex
+        justify-content: flex-end
+        gap: .5rem

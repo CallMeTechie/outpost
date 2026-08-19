@@ -2272,5 +2272,17 @@
       "android": "Android",
       "ios": "iOS"
     }
+  },
+  "updater": {
+    "title": "Update available",
+    "subtitle": "Outpost Connector {{version}} is ready to install.",
+    "later": "Later",
+    "install": "Install now (the app will restart)",
+    "installing": "Downloading…",
+    "failed": "The update could not be installed. You can download it manually from the release page.",
+    "rejected": "The update was rejected because its signature did not verify. Download it manually from the release page.",
+    "packageManaged": "This installation comes from a system package. Update it through your package manager.",
+    "packageManagedDeb": "This installation comes from a .deb package. Update it with: sudo apt update && sudo apt install --only-upgrade outpost-connector",
+    "packageManagedRpm": "This installation comes from an .rpm package. Update it with: sudo dnf upgrade outpost-connector"
   }
 }

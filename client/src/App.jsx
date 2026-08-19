@@ -15,6 +15,9 @@ import i18n from "./i18n.js";
 import Loading from "@/common/components/Loading";
 import { RouteErrorPage } from "@/common/components/ErrorBoundary";
 import TitleBar from "@/common/components/TitleBar";
+import { isTauri } from "@/common/utils/TauriUtil.js";
+import { checkForUpdate, getInstallationKind } from "@/common/utils/updater.js";
+import UpdateDialog from "@/common/components/UpdateDialog";
 
 const Servers = lazy(() => import("@/pages/Servers"));
 const Snippets = lazy(() => import("@/pages/Snippets"));
@@ -30,16 +33,34 @@ export const DISCORD_URL = "https://dc.gnm.dev/";
 
 const App = () => {
     const [translationsLoaded, setTranslationsLoaded] = useState(false);
+    const [update, setUpdate] = useState(null);
+    const [installationKind, setInstallationKind] = useState(null);
 
     useEffect(() => {
         if (i18n.isInitialized) {
             setTranslationsLoaded(true);
             return;
         }
-        
+
         i18n.on("initialized", () => {
             setTranslationsLoaded(true);
         });
+    }, []);
+
+    useEffect(() => {
+        if (!isTauri()) return;
+
+        // Once per launch, deliberately. A long-running instance gets no second
+        // prompt; a recurring check would need its own interval and nag policy.
+        let cancelled = false;
+        (async () => {
+            const [found, kind] = await Promise.all([checkForUpdate(), getInstallationKind()]);
+            if (cancelled || !found) return;
+            setUpdate(found);
+            setInstallationKind(kind);
+        })();
+
+        return () => { cancelled = true; };
     }, []);
 
     const router = createBrowserRouter([
@@ -101,7 +122,15 @@ const App = () => {
         );
     }
 
-    return <RouterProvider router={router}/>;
+    return (
+        <>
+            <RouterProvider router={router}/>
+            {update && (
+                <UpdateDialog open={true} onClose={() => setUpdate(null)}
+                              update={update} installationKind={installationKind}/>
+            )}
+        </>
+    );
 };
 
 export default App;
