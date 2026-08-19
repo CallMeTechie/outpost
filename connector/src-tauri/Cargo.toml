@@ -1,6 +1,6 @@
 [package]
 name = "outpost-connector"
-version = "0.0.2"
+version = "0.1.0"
 description = "The open source server management software for SSH, VNC & RDP"
 authors = ["Mathias Wagner"]
 license = "MIT"
