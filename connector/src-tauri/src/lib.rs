@@ -24,6 +24,32 @@ fn get_user_agent() -> String {
     )
 }
 
+// Linux ships three ways and only the AppImage can replace itself. deb and
+// rpm belong to the system package manager, and each needs a different
+// command, so they are reported separately rather than lumped together.
+//
+// The AppImage runtime exports APPIMAGE with the path of the running image
+// and nothing else does. For the package case the distro files are a proxy:
+// they say which package manager is present, not which package this build
+// came from. An rpm installed on a Debian host would be misreported — off
+// the normal download path and accepted.
+#[tauri::command]
+fn installation_kind() -> &'static str {
+    if cfg!(target_os = "linux") {
+        if std::env::var_os("APPIMAGE").is_some() {
+            "appimage"
+        } else if std::path::Path::new("/etc/debian_version").exists() {
+            "deb"
+        } else if std::path::Path::new("/etc/redhat-release").exists() {
+            "rpm"
+        } else {
+            "package"
+        }
+    } else {
+        "installer"
+    }
+}
+
 #[tauri::command]
 async fn open_external_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
     app.opener()
@@ -138,6 +164,8 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .manage(tunnel_manager)
         .manage(host_fs)
         .invoke_handler(tauri::generate_handler![
@@ -149,6 +177,7 @@ pub fn run() {
             list_tunnels,
             get_tunnel_status,
             get_user_agent,
+            installation_kind,
             host_fs::host_fs_open,
             host_fs::host_fs_read,
             host_fs::host_fs_write,
