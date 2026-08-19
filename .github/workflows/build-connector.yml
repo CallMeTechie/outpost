@@ -264,22 +264,39 @@ jobs:
           set -uo pipefail
           # A healthy run finishes in ~5 minutes; a bad apt mirror can hang for hours.
           # Bound each attempt and retry against a fresh mirror before giving up.
-          # --kill-after backstops SIGTERM with SIGKILL: dpkg/apt can defer SIGTERM
-          # in a critical section, and a survivor would keep holding the dpkg lock,
-          # making every retry fail immediately with "could not get lock".
+          #
+          # IMPORTANT, learned the hard way in production (release v0.1.1): timeout
+          # must run under sudo, not the other way round. "timeout ... bash -c 'sudo
+          # apt-get ...'" runs timeout as an unprivileged process whose direct child
+          # is bash, not apt-get; sudo's apt-get is root-owned and unprivileged
+          # timeout cannot signal it, so SIGTERM and even SIGKILL land on nothing and
+          # apt-get survives untouched. That is exactly what happened: attempt 1 hit
+          # the timeout but apt-get kept running and kept holding the dpkg frontend
+          # lock, so attempts 2 and 3 failed instantly with "could not get lock"
+          # instead of getting a real retry. The fix is "sudo timeout ... apt-get",
+          # one call per apt invocation, so timeout's direct child is the privileged
+          # apt-get it is actually allowed to kill. Do not "simplify" this back to
+          # timeout-wraps-sudo; it silently defeats the whole retry mechanism.
           max_attempts=3
-          attempt_timeout=480 # 8 minutes per attempt
+          update_timeout=120  # 2 minutes: only fetches package lists
+          install_timeout=360 # 6 minutes: actual package install
           for attempt in $(seq 1 "$max_attempts"); do
-            echo "Install attempt $attempt of $max_attempts (limit: ${attempt_timeout}s)"
-            if timeout --kill-after=10 "$attempt_timeout" bash -c '
-              sudo apt-get update &&
-              sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
-            '; then
+            echo "Install attempt $attempt of $max_attempts"
+            if sudo timeout --kill-after=10 "$update_timeout" apt-get update && \
+               sudo timeout --kill-after=10 "$install_timeout" apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev; then
               echo "Linux dependencies installed on attempt $attempt"
               exit 0
             fi
             echo "Attempt $attempt failed or timed out"
             if [ "$attempt" -lt "$max_attempts" ]; then
+              # A killed attempt can still leave an apt-get/dpkg survivor holding
+              # the dpkg lock; clear it before the next attempt so the retry has
+              # an actual chance instead of failing immediately on the lock.
+              echo "Cleaning up before retry"
+              sudo pkill -9 -x apt-get || true
+              sudo pkill -9 -x dpkg || true
+              sudo rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/cache/apt/archives/lock || true
+              sudo dpkg --configure -a || true
               sleep 15
             fi
           done
