@@ -66,7 +66,7 @@ static void crash_write_hex(uintptr_t v) {
 static void crash_signal_handler(int sig, siginfo_t* info, void* ucontext) {
     (void)ucontext;
 
-    crash_write("\n[nexterm-crash] Fatal signal ");
+    crash_write("\n[outpost-crash] Fatal signal ");
     switch (sig) {
         case SIGSEGV: crash_write("SIGSEGV"); break;
         case SIGABRT: crash_write("SIGABRT"); break;
@@ -82,10 +82,10 @@ static void crash_signal_handler(int sig, siginfo_t* info, void* ucontext) {
 #ifdef OUTPOST_HAVE_EXECINFO
     void* frames[64];
     int frame_count = backtrace(frames, 64);
-    crash_write("[nexterm-crash] Backtrace:\n");
+    crash_write("[outpost-crash] Backtrace:\n");
     backtrace_symbols_fd(frames, frame_count, STDERR_FILENO);
 #else
-    crash_write("[nexterm-crash] No in-process backtrace (no execinfo); "
+    crash_write("[outpost-crash] No in-process backtrace (no execinfo); "
                 "inspect the core dump under data/logs/crashes.\n");
 #endif
 
@@ -103,7 +103,7 @@ static outpost_log_level_t parse_log_level(const char* str) {
 }
 
 static void print_usage(const char* prog) {
-    printf("Nexterm Engine v%s\n\n", OUTPOST_ENGINE_VERSION);
+    printf("Outpost Engine v%s\n\n", OUTPOST_ENGINE_VERSION);
     printf("Usage: %s [options]\n\n", prog);
     printf("Options:\n");
     printf("  -h, --host HOST    Control plane server host (default: 127.0.0.1)\n");
@@ -161,7 +161,7 @@ int main(int argc, char* argv[]) {
     const char* server_host = cli_host ? cli_host : config.server_host;
     uint16_t server_port = cli_port ? cli_port : config.server_port;
 
-    LOG_INFO("Nexterm Engine v%s starting", OUTPOST_ENGINE_VERSION);
+    LOG_INFO("Outpost Engine v%s starting", OUTPOST_ENGINE_VERSION);
 
     if (libssh2_init(0) != 0) {
         LOG_ERROR("Failed to initialize libssh2");

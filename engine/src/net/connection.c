@@ -356,7 +356,7 @@ static void* guac_session_thread(void* arg) {
     guac_client_free(client);
 
     char rec_path[512];
-    snprintf(rec_path, sizeof(rec_path), "/tmp/nexterm-recordings/%s", session_id);
+    snprintf(rec_path, sizeof(rec_path), "/tmp/outpost-recordings/%s", session_id);
     struct stat st;
     if (stat(rec_path, &st) == 0) {
         if (st.st_size > 1024)
