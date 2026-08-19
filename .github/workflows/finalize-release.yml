@@ -73,8 +73,8 @@ jobs:
             }
             
             const L = (label, file) => `[${label}](../../releases/download/v${v}/${file})`;
-            const apk = (arch) => L('APK', `nexterm-${v}-${arch}.apk`);
-            const ipa = () => L('IPA', `nexterm-${v}.ipa`);
+            const apk = (arch) => L('APK', `outpost-${v}-${arch}.apk`);
+            const ipa = () => L('IPA', `outpost-${v}.ipa`);
             const cli = (name) => L(name, `nt-${name.toLowerCase().replace(/ /g, '-')}`);
             
             let body = '';
@@ -85,8 +85,8 @@ jobs:
             body += `### Connector (Desktop/Mobile App)\n\n`;
             body += `| Platform / Architecture | Windows | macOS | Linux | Android | iOS |\n`;
             body += `| :-- | :-- | :-- | :-- | :-- | :-- |\n`;
-            body += `| **x86-64** | ${L('EXE', 'nexterm-connector-windows-x64.exe')} · ${L('MSI', 'nexterm-connector-windows-x64.msi')} | ${L('DMG', 'nexterm-connector-macos-x64.dmg')} | ${L('DEB', 'nexterm-connector-linux-x64.deb')} · ${L('RPM', 'nexterm-connector-linux-x64.rpm')} · ${L('AppImage', 'nexterm-connector-linux-x64.AppImage')} | ${apk('x86_64')} | |\n`;
-            body += `| **ARM64** | ${L('EXE', 'nexterm-connector-windows-arm64.exe')} | ${L('DMG', 'nexterm-connector-macos-arm64.dmg')} | | ${apk('arm64-v8a')} | |\n`;
+            body += `| **x86-64** | ${L('EXE', 'outpost-connector-windows-x64.exe')} · ${L('MSI', 'outpost-connector-windows-x64.msi')} | ${L('DMG', 'outpost-connector-macos-x64.dmg')} | ${L('DEB', 'outpost-connector-linux-x64.deb')} · ${L('RPM', 'outpost-connector-linux-x64.rpm')} · ${L('AppImage', 'outpost-connector-linux-x64.AppImage')} | ${apk('x86_64')} | |\n`;
+            body += `| **ARM64** | ${L('EXE', 'outpost-connector-windows-arm64.exe')} | ${L('DMG', 'outpost-connector-macos-arm64.dmg')} | | ${apk('arm64-v8a')} | |\n`;
             body += `| **ARM32** | | | | ${apk('armeabi-v7a')} | |\n`;
             body += `| **Universal** | | | | ${apk('universal')} | ${ipa()} |\n`;
             const s = v.split('-')[0];
@@ -95,17 +95,17 @@ jobs:
             body += `| :-- | :-- | :-- |\n`;
             body += `| **Windows** | ${L('nt.exe', 'nt-windows-x64.exe')} | |\n`;
             body += `| **macOS** | | ${L('nt', 'nt-macos-arm64')} |\n`;
-            body += `| **Linux** | ${L('nt', 'nt-linux-x64')} · ${L('DEB', `nexterm-cli_${s}_amd64.deb`)} · ${L('RPM', `nexterm-cli-${s}-1.x86_64.rpm`)} | ${L('nt', 'nt-linux-arm64')} · ${L('DEB', `nexterm-cli_${s}_arm64.deb`)} · ${L('RPM', `nexterm-cli-${s}-1.aarch64.rpm`)} |\n`;
+            body += `| **Linux** | ${L('nt', 'nt-linux-x64')} · ${L('DEB', `outpost-cli_${s}_amd64.deb`)} · ${L('RPM', `outpost-cli-${s}-1.x86_64.rpm`)} | ${L('nt', 'nt-linux-arm64')} · ${L('DEB', `outpost-cli_${s}_arm64.deb`)} · ${L('RPM', `outpost-cli-${s}-1.aarch64.rpm`)} |\n`;
             body += `\n### Server (Standalone)\n\n`;
             body += `| Platform / Architecture | Windows | macOS | Linux |\n`;
             body += `| :-- | :-- | :-- | :-- |\n`;
-            body += `| **x86-64** | ${L('EXE', 'nexterm-server-windows-x64.exe')} | | ${L('Binary', 'nexterm-server-linux-x64')} · ${L('DEB', `nexterm-server_${s}_amd64.deb`)} · ${L('RPM', `nexterm-server-${s}-1.x86_64.rpm`)} |\n`;
-            body += `| **ARM64** | | ${L('Binary', 'nexterm-server-macos-arm64')} | ${L('Binary', 'nexterm-server-linux-arm64')} · ${L('DEB', `nexterm-server_${s}_arm64.deb`)} · ${L('RPM', `nexterm-server-${s}-1.aarch64.rpm`)} |\n`;
+            body += `| **x86-64** | ${L('EXE', 'outpost-server-windows-x64.exe')} | | ${L('Binary', 'outpost-server-linux-x64')} · ${L('DEB', `outpost-server_${s}_amd64.deb`)} · ${L('RPM', `outpost-server-${s}-1.x86_64.rpm`)} |\n`;
+            body += `| **ARM64** | | ${L('Binary', 'outpost-server-macos-arm64')} | ${L('Binary', 'outpost-server-linux-arm64')} · ${L('DEB', `outpost-server_${s}_arm64.deb`)} · ${L('RPM', `outpost-server-${s}-1.aarch64.rpm`)} |\n`;
             body += `\n### Engine\n\n`;
             body += `| Architecture | Linux |\n`;
             body += `| :-- | :-- |\n`;
-            body += `| **x86-64** | ${L('tar.gz', 'nexterm-engine-linux-x64.tar.gz')} · ${L('DEB', `nexterm-engine_${s}_amd64.deb`)} · ${L('RPM', `nexterm-engine-${s}-1.x86_64.rpm`)} |\n`;
-            body += `| **ARM64** | ${L('tar.gz', 'nexterm-engine-linux-arm64.tar.gz')} · ${L('DEB', `nexterm-engine_${s}_arm64.deb`)} · ${L('RPM', `nexterm-engine-${s}-1.aarch64.rpm`)} |\n`;
+            body += `| **x86-64** | ${L('tar.gz', 'outpost-engine-linux-x64.tar.gz')} · ${L('DEB', `outpost-engine_${s}_amd64.deb`)} · ${L('RPM', `outpost-engine-${s}-1.x86_64.rpm`)} |\n`;
+            body += `| **ARM64** | ${L('tar.gz', 'outpost-engine-linux-arm64.tar.gz')} · ${L('DEB', `outpost-engine_${s}_arm64.deb`)} · ${L('RPM', `outpost-engine-${s}-1.aarch64.rpm`)} |\n`;
             
             if (prs.length) {
               body += `\n---\n\n## What's Changed\n`;

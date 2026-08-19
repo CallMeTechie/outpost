@@ -66,7 +66,7 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/outpost-${{ matrix.slug }}:${{ env.TAG }}
           build-args: |
-            VERSION=1.2.2-BETA-${{ env.TAG }}
+            VERSION=0.1.0-${{ env.TAG }}
           cache-from: type=gha,scope=fork-${{ matrix.slug }}
           cache-to: type=gha,mode=max,scope=fork-${{ matrix.slug }}
 
