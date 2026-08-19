@@ -1,4 +1,4 @@
-package dev.gnm.nexterm
+package de.callmetechie.outpost
 
 import io.flutter.embedding.android.FlutterActivity
 
