@@ -259,9 +259,29 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install Linux dependencies
+        timeout-minutes: 30
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
+          set -uo pipefail
+          # A healthy run finishes in ~5 minutes; a bad apt mirror can hang for hours.
+          # Bound each attempt and retry against a fresh mirror before giving up.
+          max_attempts=3
+          attempt_timeout=480 # 8 minutes per attempt
+          for attempt in $(seq 1 "$max_attempts"); do
+            echo "Install attempt $attempt of $max_attempts (limit: ${attempt_timeout}s)"
+            if timeout "$attempt_timeout" bash -c '
+              sudo apt-get update &&
+              sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
+            '; then
+              echo "Linux dependencies installed on attempt $attempt"
+              exit 0
+            fi
+            echo "Attempt $attempt failed or timed out"
+            if [ "$attempt" -lt "$max_attempts" ]; then
+              sleep 15
+            fi
+          done
+          echo "Failed to install Linux dependencies after $max_attempts attempts"
+          exit 1
 
       - name: Update connector versions
         run: |
