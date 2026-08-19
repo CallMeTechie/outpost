@@ -264,11 +264,14 @@ jobs:
           set -uo pipefail
           # A healthy run finishes in ~5 minutes; a bad apt mirror can hang for hours.
           # Bound each attempt and retry against a fresh mirror before giving up.
+          # --kill-after backstops SIGTERM with SIGKILL: dpkg/apt can defer SIGTERM
+          # in a critical section, and a survivor would keep holding the dpkg lock,
+          # making every retry fail immediately with "could not get lock".
           max_attempts=3
           attempt_timeout=480 # 8 minutes per attempt
           for attempt in $(seq 1 "$max_attempts"); do
             echo "Install attempt $attempt of $max_attempts (limit: ${attempt_timeout}s)"
-            if timeout "$attempt_timeout" bash -c '
+            if timeout --kill-after=10 "$attempt_timeout" bash -c '
               sudo apt-get update &&
               sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
             '; then
