@@ -4,6 +4,12 @@ on:
   push:
     tags: ["v*"]
 
+# A new repository defaults the GITHUB_TOKEN to read-only. Creating the release,
+# uploading assets and pushing the version bump all need write access, and the
+# reusable workflows called below inherit what is granted here.
+permissions:
+  contents: write
+
 jobs:
   create-release:
     name: "Create Release"
@@ -106,6 +112,10 @@ jobs:
     if: failure()
     steps:
       - name: Delete release
+        # create-release itself can fail, leaving release_id empty. The value is
+        # interpolated straight into the script below, so an empty one is a
+        # syntax error rather than a no-op.
+        if: needs.create-release.outputs.release_id != ''
         uses: actions/github-script@v7
         with:
           script: |
