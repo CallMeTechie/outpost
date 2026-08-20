@@ -80,8 +80,12 @@ const listSessions = async (target) => {
     }
 
     // No server running is the normal state on a freshly booted host, not an error.
+    // It is reported rather than folded into a bare empty list because the two
+    // read differently to a user: no session was ever started here, versus the
+    // session that was here is gone (a reboot, or an OOM kill taking the tmux
+    // server with it). The picker picks its wording from this.
     if (exitCode !== 0 && /no server running/i.test(stderr)) {
-        return { available: true, sessions: [] };
+        return { available: true, sessions: [], reason: "no_server" };
     }
 
     if (exitCode !== 0) {

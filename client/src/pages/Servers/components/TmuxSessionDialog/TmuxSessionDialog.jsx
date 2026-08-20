@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
 import Icon from "@mdi/react";
 import { mdiPencil, mdiTrashCan, mdiCheck, mdiClose } from "@mdi/js";
 import { getRequest, deleteRequest, patchRequest } from "@/common/utils/RequestUtil.js";
-import { useToast } from "@/common/contexts/ToastContext.jsx";
 import TmuxWindowView, { displayName } from "./TmuxWindowView.jsx";
+import { emptyStateKey } from "./emptyState.js";
 import "./styles.sass";
 
 const CREATE_NAME_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
@@ -30,7 +30,6 @@ const WindowGrid = ({ count }) => {
 
 const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, identityId }) => {
     const { t } = useTranslation();
-    const { sendToast } = useToast();
     const [state, setState] = useState({ status: "loading", sessions: [], error: null, available: true });
     const [newName, setNewName] = useState("");
     const [pendingKill, setPendingKill] = useState(null);
@@ -41,14 +40,6 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
     const [reloadToken, setReloadToken] = useState(0);
     // Name of the session whose windows are shown. null = session list.
     const [openSession, setOpenSession] = useState(null);
-
-    // onConnectRaw is a fresh closure from the parent on every render. Reaching it
-    // through a ref keeps the fetch effect's dependency array honest (no re-fetch
-    // on every render) while still calling the latest callback below.
-    const onConnectRawRef = useRef(onConnectRaw);
-    useEffect(() => {
-        onConnectRawRef.current = onConnectRaw;
-    }, [onConnectRaw]);
 
     useEffect(() => {
         if (!isOpen || !entryId) return;
@@ -67,14 +58,21 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
             .then((result) => {
                 if (cancelled) return;
                 if (result.available === false) {
-                    setState({ status: "ready", sessions: [], error: null, available: false });
-                    // A host without tmux must never block the way in: skip straight to a
-                    // normal shell, but say so once so the toggle doesn't look broken.
-                    sendToast("Info", t('servers.tmuxDialog.notInstalled'));
-                    onConnectRawRef.current();
+                    // A deliberate reversal of "a host without tmux must never block the
+                    // way in": skipping straight to a raw shell left no time to read why
+                    // the picker was of no use, and the toast was gone by the time the
+                    // terminal had opened. The dialog now stays and states the reason;
+                    // "connect without tmux" below is the very click the skip performed.
+                    setState({
+                        status: "ready", sessions: [], error: null,
+                        available: false, reason: result.reason,
+                    });
                     return;
                 }
-                setState({ status: "ready", sessions: result.sessions || [], error: null, available: true });
+                setState({
+                    status: "ready", sessions: result.sessions || [], error: null,
+                    available: true, reason: result.reason,
+                });
             })
             .catch((error) => {
                 if (cancelled) return;
@@ -82,7 +80,7 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
             });
 
         return () => { cancelled = true; };
-    }, [isOpen, entryId, identityId, reloadToken, sendToast, t]);
+    }, [isOpen, entryId, identityId, reloadToken]);
 
     // Deliberately not named `query`: the fetch effect already has a local of that
     // name. encodeURIComponent, never encodeURI — the latter leaves ? # and &
@@ -103,7 +101,10 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
             setNotice({ text: t('servers.tmuxDialog.refreshFailed'), failed: false });
             return false;
         }
-        setState({ status: "ready", sessions: result.sessions || [], error: null, available: true });
+        setState({
+            status: "ready", sessions: result.sessions || [], error: null,
+            available: true, reason: result.reason,
+        });
         setNotice(null);
         return true;
     };
@@ -181,6 +182,10 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
         ? state.sessions.find((s) => s.name === openSession) || null
         : null;
 
+    // Null when no sentence belongs in place of the list - which includes the
+    // host-without-tmux case the old condition got wrong.
+    const emptyKey = state.status === "ready" ? emptyStateKey(state) : null;
+
     // The session has vanished from underneath the open view - this is only
     // noticed on the next request, there is no background check for it.
     useEffect(() => {
@@ -200,8 +205,8 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
 
                 {notice && <p className={notice.failed ? "tmux-status tmux-error" : "tmux-status tmux-notice"}>{notice.text}</p>}
 
-                {!openedSession && state.status === "ready" && state.sessions.length === 0 && (
-                    <p className="tmux-status">{t('servers.tmuxDialog.empty')}</p>
+                {!openedSession && emptyKey && (
+                    <p className="tmux-status">{t(emptyKey)}</p>
                 )}
 
                 {openedSession && (
