@@ -55,9 +55,10 @@ jobs:
 
       - name: Install OpenSSL (Linux)
         if: startsWith(matrix.os, 'ubuntu-')
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl-dev pkg-config
+        timeout-minutes: 45
+        uses: ./.github/actions/apt-install
+        with:
+          packages: libssl-dev pkg-config
 
       - name: Update CLI version
         shell: bash

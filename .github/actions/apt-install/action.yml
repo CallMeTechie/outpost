@@ -1,0 +1,58 @@
+name: apt-install
+description: Install apt packages with a retrying, self-unlocking timeout wrapper.
+inputs:
+  packages:
+    description: Space-separated list of apt packages to install.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Install apt packages
+      shell: bash
+      run: |
+        set -uo pipefail
+        # A healthy run finishes in ~5 minutes; a bad apt mirror can stall for hours.
+        # The retry here catches a single attempt that stalls or gets killed; it
+        # does NOT get you a different mirror (the mirror list in
+        # /etc/apt/apt-mirrors.txt belongs to the runner, so all three attempts on
+        # the same runner hit largely the same source). Against a mirror that is
+        # persistently slow, it's the generous per-attempt timeout that saves you,
+        # not the attempt count.
+        #
+        # IMPORTANT, learned the hard way in production (release v0.1.1): timeout
+        # must run under sudo, not the other way round. "timeout ... bash -c 'sudo
+        # apt-get ...'" runs timeout as an unprivileged process whose direct child
+        # is bash, not apt-get; sudo's apt-get is root-owned and unprivileged
+        # timeout cannot signal it, so SIGTERM and even SIGKILL land on nothing and
+        # apt-get survives untouched. That is exactly what happened: attempt 1 hit
+        # the timeout but apt-get kept running and kept holding the dpkg frontend
+        # lock, so attempts 2 and 3 failed instantly with "could not get lock"
+        # instead of getting a real retry. The fix is "sudo timeout ... apt-get",
+        # one call per apt invocation, so timeout's direct child is the privileged
+        # apt-get it is actually allowed to kill. Do not "simplify" this back to
+        # timeout-wraps-sudo; it silently defeats the whole retry mechanism.
+        max_attempts=3
+        update_timeout=300  # 5 minutes: package list fetch on a slow mirror
+        install_timeout=480 # 8 minutes: actual package install
+        for attempt in $(seq 1 "$max_attempts"); do
+          echo "Install attempt $attempt of $max_attempts"
+          if sudo timeout --kill-after=10 "$update_timeout" apt-get update && \
+             sudo timeout --kill-after=10 "$install_timeout" apt-get install -y ${{ inputs.packages }}; then
+            echo "Packages installed on attempt $attempt"
+            exit 0
+          fi
+          echo "Attempt $attempt failed or timed out"
+          if [ "$attempt" -lt "$max_attempts" ]; then
+            # A killed attempt can still leave an apt-get/dpkg survivor holding
+            # the dpkg lock; clear it before the next attempt so the retry has
+            # an actual chance instead of failing immediately on the lock.
+            echo "Cleaning up before retry"
+            sudo pkill -9 -x apt-get || true
+            sudo pkill -9 -x dpkg || true
+            sudo rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/cache/apt/archives/lock || true
+            sudo dpkg --configure -a || true
+            sleep 15
+          fi
+        done
+        echo "Failed to install packages after $max_attempts attempts"
+        exit 1
