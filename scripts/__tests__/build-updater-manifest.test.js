@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const { buildManifest, ASSETS } = require("../build-updater-manifest.js");
+const { buildManifest } = require("../build-updater-manifest.js");
 
 const SIGNATURES = {
     "windows-x86_64": "sig-win-x64",
@@ -9,6 +9,17 @@ const SIGNATURES = {
     "darwin-x86_64": "sig-mac-x64",
     "darwin-aarch64": "sig-mac-arm64",
     "linux-x86_64": "sig-linux-x64",
+};
+
+// Declared here on purpose, not imported from the module under test: deriving
+// the expectation from ASSETS would make this assert that ASSETS equals itself.
+const EXPECTED_FILES = {
+    "windows-x86_64": "outpost-connector-windows-x64.exe",
+    "windows-x86_64-msi": "outpost-connector-windows-x64.msi",
+    "windows-aarch64": "outpost-connector-windows-arm64.exe",
+    "darwin-x86_64": "outpost-connector-macos-x64.app.tar.gz",
+    "darwin-aarch64": "outpost-connector-macos-arm64.app.tar.gz",
+    "linux-x86_64": "outpost-connector-linux-x64.AppImage",
 };
 
 const INPUT = {
@@ -31,12 +42,18 @@ test("every platform carries its signature and a download url", () => {
     );
 });
 
-test("every platform url points at its own asset from ASSETS", () => {
+test("every platform url points at exactly the expected file", () => {
     const m = buildManifest(INPUT);
 
-    for (const [key, asset] of Object.entries(ASSETS)) {
-        assert.strictEqual(m.platforms[key].url, `${INPUT.baseUrl}/${asset}`);
+    for (const [key, file] of Object.entries(EXPECTED_FILES)) {
+        assert.strictEqual(m.platforms[key].url, `${INPUT.baseUrl}/${file}`);
     }
+});
+
+test("the manifest covers exactly the platforms this test expects, no more, no fewer", () => {
+    const m = buildManifest(INPUT);
+
+    assert.deepStrictEqual(Object.keys(m.platforms).sort(), Object.keys(EXPECTED_FILES).sort());
 });
 
 test("a missing signature fails loudly instead of shipping a partial manifest", () => {
