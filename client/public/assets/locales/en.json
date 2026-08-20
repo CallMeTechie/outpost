@@ -2283,7 +2283,7 @@
     "failed": "The update could not be installed. You can download it manually from the release page.",
     "rejected": "The update was rejected because its signature did not verify. Download it manually from the release page.",
     "packageManaged": "This installation comes from a system package. Update it through your package manager.",
-    "packageManagedDeb": "This installation comes from a .deb package. Update it with: sudo apt update && sudo apt install --only-upgrade outpost-connector",
-    "packageManagedRpm": "This installation comes from an .rpm package. Update it with: sudo dnf upgrade outpost-connector"
+    "packageManagedDeb": "This installation comes from a .deb package. Download the new one from the release page and install it with: sudo dpkg -i <file>",
+    "packageManagedRpm": "This installation comes from an .rpm package. Download the new one from the release page and install it with: sudo rpm -U <file>"
   }
 }
