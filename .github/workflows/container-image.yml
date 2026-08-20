@@ -1,4 +1,4 @@
-name: Fork Image
+name: Container Image
 
 on:
   workflow_dispatch:
@@ -16,7 +16,7 @@ on:
 # still carry their own copy of this file with their own branch listed. Same
 # tag, same group: the last one started wins instead of the last one finished.
 concurrency:
-  group: fork-image-${{ github.event.inputs.tag || 'latest' }}
+  group: container-image-${{ github.event.inputs.tag || 'latest' }}
   cancel-in-progress: true
 
 env:
@@ -57,6 +57,14 @@ jobs:
         id: owner
         run: echo "value=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
 
+      # Dockerfile.server writes this into the image's own package.json, so a
+      # pinned value is what the running server then reports about itself - it
+      # read 0.1.0 for every build since that release. Taken from the tree being
+      # built, which is the only source that cannot drift.
+      - name: Read the project version
+        id: version
+        run: echo "value=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -66,9 +74,9 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/outpost-${{ matrix.slug }}:${{ env.TAG }}
           build-args: |
-            VERSION=0.1.0-${{ env.TAG }}
-          cache-from: type=gha,scope=fork-${{ matrix.slug }}
-          cache-to: type=gha,mode=max,scope=fork-${{ matrix.slug }}
+            VERSION=${{ steps.version.outputs.value }}-${{ env.TAG }}
+          cache-from: type=gha,scope=image-${{ matrix.slug }}
+          cache-to: type=gha,mode=max,scope=image-${{ matrix.slug }}
 
   aio:
     name: "Build all-in-one"
@@ -107,5 +115,5 @@ jobs:
           build-args: |
             SERVER_IMAGE=${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/outpost-server:${{ env.TAG }}
             ENGINE_IMAGE=${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/outpost-engine:${{ env.TAG }}
-          cache-from: type=gha,scope=fork-aio
-          cache-to: type=gha,mode=max,scope=fork-aio
+          cache-from: type=gha,scope=image-aio
+          cache-to: type=gha,mode=max,scope=image-aio
