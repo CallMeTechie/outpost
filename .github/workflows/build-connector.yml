@@ -259,11 +259,16 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install Linux dependencies
-        timeout-minutes: 30
+        timeout-minutes: 45
         run: |
           set -uo pipefail
-          # A healthy run finishes in ~5 minutes; a bad apt mirror can hang for hours.
-          # Bound each attempt and retry against a fresh mirror before giving up.
+          # A healthy run finishes in ~5 minutes; a bad apt mirror can stall for hours.
+          # The retry here catches a single attempt that stalls or gets killed; it
+          # does NOT get you a different mirror (the mirror list in
+          # /etc/apt/apt-mirrors.txt belongs to the runner, so all three attempts on
+          # the same runner hit largely the same source). Against a mirror that is
+          # persistently slow, it's the generous per-attempt timeout that saves you,
+          # not the attempt count.
           #
           # IMPORTANT, learned the hard way in production (release v0.1.1): timeout
           # must run under sudo, not the other way round. "timeout ... bash -c 'sudo
@@ -278,8 +283,8 @@ jobs:
           # apt-get it is actually allowed to kill. Do not "simplify" this back to
           # timeout-wraps-sudo; it silently defeats the whole retry mechanism.
           max_attempts=3
-          update_timeout=120  # 2 minutes: only fetches package lists
-          install_timeout=360 # 6 minutes: actual package install
+          update_timeout=300  # 5 minutes: package list fetch on a slow mirror
+          install_timeout=480 # 8 minutes: actual package install
           for attempt in $(seq 1 "$max_attempts"); do
             echo "Install attempt $attempt of $max_attempts"
             if sudo timeout --kill-after=10 "$update_timeout" apt-get update && \
