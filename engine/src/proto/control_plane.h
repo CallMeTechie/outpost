@@ -6,7 +6,7 @@
 #include <pthread.h>
 #include <openssl/ssl.h>
 
-#define OUTPOST_ENGINE_VERSION "0.1.1"
+#define OUTPOST_ENGINE_VERSION "0.1.2"
 
 typedef struct outpost_control_plane {
     int sock_fd;
