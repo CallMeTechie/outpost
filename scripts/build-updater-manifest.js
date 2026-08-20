@@ -1,15 +1,19 @@
 const fs = require("node:fs");
 
-// The updater manifest maps Tauri's OS-ARCH platform keys to the release
-// assets it may install. Only NSIS, MSI, .app.tar.gz and AppImage can be
-// updated in place; the msi is deliberately absent because a platform key
-// holds exactly one url, and deb/rpm belong to the package manager.
+// The updater manifest maps Tauri's OS-ARCH(-installer) platform keys to the
+// release assets it may install. Tauri looks up `{os}-{arch}-{installer}`
+// before falling back to `{os}-{arch}`, so the MSI build gets its own
+// "windows-x86_64-msi" key and the plain "windows-x86_64" entry stays the
+// NSIS fallback for anything that doesn't report itself as an MSI install.
+// deb and rpm are still absent: the updater cannot replace those formats in
+// place, that's the package manager's job.
 //
 // These names are also the filenames the workflow must hand over in the
 // signature directory. Tauri's own bundle filenames derive from productName
 // ("Outpost Connector") and differ; the workflow renames them first.
 const ASSETS = {
     "windows-x86_64": "outpost-connector-windows-x64.exe",
+    "windows-x86_64-msi": "outpost-connector-windows-x64.msi",
     "windows-aarch64": "outpost-connector-windows-arm64.exe",
     "darwin-x86_64": "outpost-connector-macos-x64.app.tar.gz",
     "darwin-aarch64": "outpost-connector-macos-arm64.app.tar.gz",

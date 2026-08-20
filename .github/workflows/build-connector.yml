@@ -26,6 +26,7 @@ jobs:
             format: msi
             artifact_path: connector/src-tauri/target/release/bundle/msi/*.msi
             artifact_name: outpost-connector-windows-x64.msi
+            updater_key: outpost-connector-windows-x64.msi
           - arch: x64
             target: x86_64-pc-windows-msvc
             format: exe

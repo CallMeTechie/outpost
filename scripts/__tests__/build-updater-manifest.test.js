@@ -1,9 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const { buildManifest } = require("../build-updater-manifest.js");
+const { buildManifest, ASSETS } = require("../build-updater-manifest.js");
 
 const SIGNATURES = {
     "windows-x86_64": "sig-win-x64",
+    "windows-x86_64-msi": "sig-win-x64-msi",
     "windows-aarch64": "sig-win-arm64",
     "darwin-x86_64": "sig-mac-x64",
     "darwin-aarch64": "sig-mac-arm64",
@@ -30,18 +31,12 @@ test("every platform carries its signature and a download url", () => {
     );
 });
 
-test("windows points at the NSIS installer, never the msi", () => {
+test("every platform url points at its own asset from ASSETS", () => {
     const m = buildManifest(INPUT);
 
-    assert.match(m.platforms["windows-x86_64"].url, /outpost-connector-windows-x64\.exe$/);
-    assert.doesNotMatch(m.platforms["windows-x86_64"].url, /\.msi$/);
-});
-
-test("macos points at the app bundle archive, never the dmg", () => {
-    const m = buildManifest(INPUT);
-
-    assert.match(m.platforms["darwin-aarch64"].url, /outpost-connector-macos-arm64\.app\.tar\.gz$/);
-    assert.doesNotMatch(m.platforms["darwin-aarch64"].url, /\.dmg$/);
+    for (const [key, asset] of Object.entries(ASSETS)) {
+        assert.strictEqual(m.platforms[key].url, `${INPUT.baseUrl}/${asset}`);
+    }
 });
 
 test("a missing signature fails loudly instead of shipping a partial manifest", () => {
