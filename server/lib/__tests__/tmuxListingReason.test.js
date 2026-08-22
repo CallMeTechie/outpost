@@ -43,3 +43,46 @@ test("a listing that produced sessions carries no reason", async () => {
     assert.strictEqual(listing.sessions.length, 1);
     assert.strictEqual(listing.sessions[0].name, "work");
 });
+
+/**
+ * The second wording for the same state. tmux prints "no server running" only
+ * when the socket file is still there but nothing answers on it
+ * (ECONNREFUSED); a host where tmux has not run since boot has no socket at
+ * all, and there the message is "error connecting to <socket> (No such file or
+ * directory)" (ENOENT, measured against tmux 3.5a). Without this branch a
+ * freshly set up server answered the picker with a raw 502 whose text was that
+ * line twice - the listing runs two tmux commands, and each one prints it.
+ *
+ * No reason accompanies it: nothing died here, so the plain "no session yet"
+ * wording is the accurate one, and "no_server" would claim an earlier session
+ * had ended.
+ */
+test("a host whose tmux socket was never created reads as an empty list", async () => {
+    const stderr = "error connecting to /tmp/tmux-0/default (No such file or directory)\n"
+        + "error connecting to /tmp/tmux-0/default (No such file or directory)";
+    const listing = await withExec(
+        { success: true, exitCode: 1, stdout: "", stderr },
+        () => TmuxService.listSessions(target),
+    );
+
+    assert.deepStrictEqual(listing, { available: true, sessions: [] });
+});
+
+/**
+ * The counterpart that keeps the branch above honest: "error connecting to" is
+ * not by itself a report of an absent server. A socket that exists but cannot
+ * be opened is a real fault - a foreign socket path, a wrong user - and must
+ * keep reaching the user as an error instead of an empty picker.
+ */
+test("a socket that cannot be opened stays an error", async () => {
+    await assert.rejects(
+        () => withExec(
+            {
+                success: true, exitCode: 1, stdout: "",
+                stderr: "error connecting to /tmp/tmux-1000/default (Permission denied)",
+            },
+            () => TmuxService.listSessions(target),
+        ),
+        (error) => error.code === "TMUX_FAILED" && /Permission denied/.test(error.message),
+    );
+});

@@ -88,6 +88,24 @@ const listSessions = async (target) => {
         return { available: true, sessions: [], reason: "no_server" };
     }
 
+    // The other half of the same state, and the one that reaches a newly set up
+    // server. tmux says "no server running" only when the socket file is still
+    // there and nothing answers on it (ECONNREFUSED); where tmux has not run
+    // since boot there is no socket at all, and the client then says
+    // "error connecting to <socket> (No such file or directory)" (ENOENT,
+    // measured against tmux 3.5a). Falling through to the throw below turned
+    // that into a 502 whose message was the tmux line twice, because the
+    // listing runs two tmux commands and each one prints it.
+    //
+    // No reason travels with it: nothing died here, so the plain "no session
+    // yet" wording is the true one - "no_server" would claim an earlier session
+    // had ended. Matching is on the errno text, not on "error connecting to"
+    // alone: that same line with (Permission denied) is a real fault and has to
+    // keep throwing.
+    if (exitCode !== 0 && /error connecting to .*\(No such file or directory\)/i.test(stderr)) {
+        return { available: true, sessions: [] };
+    }
+
     if (exitCode !== 0) {
         // stderr is empty on every transport failure (the engine never populates it
         // for those); errorMessage is where the engine's own reason - "Failed to
