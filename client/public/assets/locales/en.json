@@ -1646,6 +1646,7 @@
       "cycle": "Use the arrow keys to switch identity"
     },
     "tabs": {
+      "newSession": "New session",
       "contextMenu": {
         "popOut": "Pop Out",
         "startSharing": "Start Sharing",

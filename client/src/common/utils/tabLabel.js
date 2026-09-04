@@ -97,6 +97,16 @@ export const buildTabLabel = (session, identity = {}, t) => {
     // that never had a same-named sibling.
     const text = identity?.number > 1 ? `${body} (${identity.number})` : body;
 
+    // The same three pieces the tab strip draws separately (docs/design/mockups/ui-servers.html,
+    // .tab): the name, then the kind in caption type and subtext colour, then the number. `text`
+    // above stays the single joined string, because the tooltip, the document title and the
+    // numbering rules all read it and none of them has anywhere to put three fields. Splitting it
+    // here rather than in ServerTabs keeps the order rule -- type first, number last -- stated
+    // once, next to the suffix it orders.
+    const name = hasCustomName ? identity.name : base;
+    const kind = typeSuffix.trim();
+    const number = identity?.number > 1 ? identity.number : null;
+
     const tooltip = [
         field("servers.tabLabel.tooltip.server", baseName(session)),
         // The fallback to the raw `session.type` only ever fires for a type this module has no
@@ -115,7 +125,7 @@ export const buildTabLabel = (session, identity = {}, t) => {
         hasCustomName ? field("servers.tabLabel.tooltip.automaticName", auto) : null,
     ].filter(Boolean);
 
-    return { text, tooltip };
+    return { text, name, kind, number, tooltip };
 };
 
 // Which suffix bucket a session's type falls into. Not the literal suffix text - notes needs

@@ -1644,6 +1644,7 @@
       "cycle": "Verwende die Pfeiltasten, um die Identität zu wechseln"
     },
     "tabs": {
+      "newSession": "Neue Sitzung",
       "contextMenu": {
         "popOut": "In eigenem Fenster öffnen",
         "startSharing": "Teilen",

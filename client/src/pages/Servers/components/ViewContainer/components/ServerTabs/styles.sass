@@ -66,6 +66,25 @@
         background-color: colors.$primary
         color: colors.$white
 
+  // The artboard's .tab-add. A button, not a decorated div: it is the strip's only
+  // action and has to be reachable by keyboard like every other one.
+  .tab-add
+    flex: none
+    align-self: stretch
+    display: flex
+    align-items: center
+    padding: 0 0.75rem
+    border: none
+    background: none
+    color: colors.$subtext
+    font-size: 1rem
+    line-height: 1
+    cursor: pointer
+
+    &:hover
+      background-color: colors.$dark-gray
+      color: colors.$white
+
   .tabs-container
     position: relative
     flex: 1
@@ -139,15 +158,19 @@
     &::-webkit-scrollbar
       display: none
 
+    // The artboard's tab (docs/design/mockups/ui-servers.html, .tab): a rectangle
+    // separated by a hairline, carrying the pane colour twice -- as a stripe along the
+    // top edge and as a swatch before the name. Both replace the 3px underline, which
+    // read as a selection marker rather than as "this tab belongs to that window".
     .server-tab
       display: flex
       gap: 0.5rem
-      padding: 0.25rem 0.5rem
+      padding: 0 0.75rem
+      height: 100%
       align-items: center
-      border-radius: 0.5rem 0.5rem 0 0
-      // Carries the pane's colour when this tab has a grid slot (split view); falls
-      // back to the old plain underline everywhere else, including single-window mode.
-      border-bottom: 3px solid var(--pane-color, transparent)
+      border-right: 1px solid colors.$gray
+      position: relative
+      color: colors.$subtext
       cursor: pointer
       user-select: none
       overflow: hidden
@@ -164,10 +187,8 @@
         gap: 0.25rem
 
       &:hover
-        background-color: colors.$gray
-        // Only the colour changes on hover — the pane colour still wins over this
-        // fallback, so hovering never erases which window the tab belongs to.
-        border-bottom-color: var(--pane-color, colors.$primary-opacity)
+        background-color: colors.$dark-gray
+        color: colors.$white
 
       &.dragging
         cursor: grabbing
@@ -178,14 +199,34 @@
         border-left: 3px solid colors.$primary
         background-color: colors.$primary-opacity
 
+      // Sized to the caption type beside it, not to a toolbar icon: the artboard's
+      // close cross (.tab .x) reads as punctuation after the name, and at 1.2rem it
+      // was the loudest thing in the strip.
       svg
-        width: 1.2rem
-        height: 1.2rem
+        width: 0.875rem
+        height: 0.875rem
         flex-shrink: 0
 
         @media (max-width: breakpoints.$mobile)
-          width: 1rem
-          height: 1rem
+          width: 0.8125rem
+          height: 0.8125rem
+
+      // Spans the tab's full width at its top edge; 3px when active. Absolute, so it
+      // cannot take part in the flex row and cannot change the tab's height.
+      .tab-stripe
+        position: absolute
+        left: 0
+        right: 0
+        top: 0
+        height: 2px
+        background: var(--pane-color, transparent)
+
+      .tab-swatch
+        width: 0.5rem
+        height: 0.5rem
+        border-radius: 2px
+        background: var(--pane-color, colors.$gray-strong)
+        flex: none
 
       .progress-circle
         position: relative
@@ -241,7 +282,11 @@
 
       h2
         margin: 0
-        font-size: 1.15rem
+        display: flex
+        align-items: baseline
+        gap: 0.375rem
+        font-size: 0.875rem
+        font-weight: 500
         flex: 1
         min-width: 0
         white-space: nowrap
@@ -256,12 +301,22 @@
         // the full text still available through the title tooltip below.
         max-width: 200px
 
-        @media (max-width: breakpoints.$tablet)
-          font-size: 1.1rem
-
         @media (max-width: breakpoints.$mobile)
-          font-size: 0.9rem
+          font-size: 0.8125rem
           max-width: 100px
+
+        .tab-name
+          min-width: 0
+          overflow: hidden
+          text-overflow: ellipsis
+
+        // What the tab is, not what it is called: caption type, quieter colour, and it
+        // never competes with the name for the ellipsis.
+        .tab-kind, .tab-number
+          flex: none
+          font-size: 0.75rem
+          font-weight: 500
+          color: colors.$subtext
 
       .tab-participants
         margin-right: 0.25rem
@@ -273,9 +328,9 @@
         cursor: pointer
 
         .close-btn
-          opacity: 0.6
+          opacity: 0.45
           transition: all 0.2s ease
-          padding: 0.25rem
+          padding: 0.2rem
           border-radius: 0.25rem
 
           @media (max-width: breakpoints.$mobile)
@@ -292,11 +347,14 @@
       // tabs also sit on colors.$lighter-background in the title-bar slot (see :291 below), and
       // a translucent tint stays measurably more distinct than $gray against either one.
       background-color: colors.$gray-strong
-      border-bottom-color: var(--pane-color, colors.$primary)
+      color: colors.$white
+
+      .tab-stripe
+        height: 3px
+        background: var(--pane-color, colors.$primary)
 
       &:hover
         background-color: colors.$gray-strong
-        border-bottom-color: var(--pane-color, colors.$primary)
 
 .title-bar .server-tabs
   max-width: 100%

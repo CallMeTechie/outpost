@@ -1600,6 +1600,7 @@
       "cycle": "Usa i tasti freccia per cambiare identità"
     },
     "tabs": {
+      "newSession": "Nuova sessione",
       "contextMenu": {
         "popOut": "Stacca schermo",
         "startSharing": "Avvia Condivisione",

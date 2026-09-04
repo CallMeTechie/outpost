@@ -1600,6 +1600,7 @@
       "cycle": "K přepínání identity použijte šipky"
     },
     "tabs": {
+      "newSession": "Nová relace",
       "contextMenu": {
         "popOut": "Pop Out",
         "startSharing": "Začněte sdílet",

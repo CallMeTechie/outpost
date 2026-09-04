@@ -1600,6 +1600,7 @@
       "cycle": "استخدم مفاتيح الأسهم لتغيير الهوية"
     },
     "tabs": {
+      "newSession": "جلسة جديدة",
       "contextMenu": {
         "popOut": "بوب آوت",
         "startSharing": "بدء المشاركة",

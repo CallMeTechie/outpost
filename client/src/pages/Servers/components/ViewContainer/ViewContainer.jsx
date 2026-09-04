@@ -51,6 +51,7 @@ const loadBtnPosition = () => {
 };
 
 export const ViewContainer = ({
+                                  onNewSession,
                                   activeSessions,
                                   activeSessionId,
                                   setActiveSessionId,
@@ -708,7 +709,8 @@ export const ViewContainer = ({
                     sessionProgress={sessionProgress} liveTitles={liveTitles} fullscreenEnabled={fullscreenMode}
                     onFullscreenToggle={toggleFullscreenMode}
                     openNotes={openNotes} renameSession={renameSession}
-                    hibernateSession={hibernateSession} duplicateSession={duplicateSession} />
+                    hibernateSession={hibernateSession} duplicateSession={duplicateSession}
+                    onNewSession={onNewSession} />
     );
 
     return (

@@ -1600,6 +1600,7 @@
       "cycle": "使用方向键切换角色"
     },
     "tabs": {
+      "newSession": "新会话",
       "contextMenu": {
         "popOut": "弹出",
         "startSharing": "开始分享",

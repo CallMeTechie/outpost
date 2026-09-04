@@ -1018,7 +1018,8 @@ export const Servers = () => {
                                getSessionError={getSessionError}
                                setOpenFileEditors={setOpenFileEditors}
                                openTerminalFromFileManager={openTerminalFromFileManager}
-                               tabIdentities={displayIdentities} />}
+                               tabIdentities={displayIdentities}
+                               onNewSession={() => openDirectConnect()} />}
             {openFileEditors.map((editor) => (
                 editor.type === "preview" ? (
                     <FilePreviewWindow

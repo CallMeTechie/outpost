@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback, useContext } from "react";
 import { useTranslation } from "react-i18next";
 import Icon from "@mdi/react";
-import { mdiArrowCollapseAll, mdiClose, mdiViewSplitVertical, mdiChevronLeft, mdiChevronRight, mdiSleep, mdiOpenInNew, mdiShareVariant, mdiLinkVariant, mdiPencil, mdiEye, mdiCloseCircle, mdiContentDuplicate, mdiNoteEditOutline, mdiMicrosoft, mdiRenameBox } from "@mdi/js";
+import { mdiArrowCollapseAll, mdiClose, mdiViewSplitVertical, mdiChevronLeft, mdiChevronRight, mdiSleep, mdiOpenInNew, mdiShareVariant, mdiLinkVariant, mdiPencil, mdiEye, mdiCloseCircle, mdiContentDuplicate, mdiNoteEditOutline, mdiRenameBox } from "@mdi/js";
 import { useDrag, useDrop } from "react-dnd";
 import TerminalActionsMenu from "../TerminalActionsMenu";
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator, useContextMenu } from "@/common/components/ContextMenu";
@@ -11,7 +11,6 @@ import { UserContext } from "@/common/contexts/UserContext.jsx";
 import AvatarStack from "@/common/components/AvatarStack";
 import { postRequest, deleteRequest, patchRequest } from "@/common/utils/RequestUtil";
 import { getBaseUrl } from "@/common/utils/ConnectionUtil.js";
-import { getIconPath } from "@/common/utils/iconUtils.js";
 import { paneColorFor } from "../../utils/paneColors.js";
 import { buildTabLabel } from "@/common/utils/tabLabel.js";
 import RenameTabDialog from "./RenameTabDialog.jsx";
@@ -145,8 +144,17 @@ const DraggableTab = ({
                 onAuxClick={handleAuxClick}
                 className={`server-tab ${session.id === activeSessionId ? "server-tab-active" : ""} ${isDragging ? "dragging" : ""} ${isOver ? "drop-target" : ""}`}
                 style={{ opacity: isDragging ? 0.5 : 1, ...(paneColor && { "--pane-color": paneColor }) }}>
-                <div className={`progress-circle ${!showProgress ? "no-progress" : ""}`}>
-                    {showProgress && (
+                {/* The artboard's tab (docs/design/mockups/ui-servers.html, .tab): a colour
+                    stripe along the top edge, a colour swatch, the name, the kind, the close
+                    cross. The icon it replaces said nothing the name did not already say, while
+                    the pane colour -- which says which split window the tab belongs to -- was
+                    only a hairline under the tab. The progress ring is not in the artboard but
+                    is not decoration either: it takes the swatch's place only while a script is
+                    actually running, so nothing is lost and the strip stays calm the rest of
+                    the time. */}
+                <span className="tab-stripe" aria-hidden="true" />
+                {showProgress ? (
+                <div className="progress-circle">
                         <svg width="24" height="24" viewBox="0 0 24 24">
                             <circle
                                 cx="12"
@@ -171,10 +179,15 @@ const DraggableTab = ({
                                 transform="rotate(-90 12 12)"
                             />
                         </svg>
-                    )}
-                    <Icon path={isNotes ? mdiNoteEditOutline : isOneDrive ? mdiMicrosoft : getIconPath(server.icon)} className="progress-icon" />
                 </div>
-                <h2 title={tabTooltip}>{tabLabel.text}</h2>
+                ) : (
+                    <span className="tab-swatch" aria-hidden="true" />
+                )}
+                <h2 title={tabTooltip}>
+                    <span className="tab-name">{tabLabel.name}</span>
+                    {tabLabel.kind && <span className="tab-kind">{tabLabel.kind}</span>}
+                    {tabLabel.number && <span className="tab-number">({tabLabel.number})</span>}
+                </h2>
                 <AvatarStack className="tab-participants" users={otherParticipants} max={2}
                              getKey={participant => participant.viewerId} />
                 <div className="tab-actions">
@@ -267,6 +280,7 @@ const DraggableTab = ({
 };
 
 export const ServerTabs = ({
+    onNewSession,
     activeSessions,
     setActiveSessionId,
     activeSessionId,
@@ -425,6 +439,14 @@ export const ServerTabs = ({
                                 liveTitle={liveTitles[session.id]} />
                         );
                     })}
+                    {/* The artboard's .tab-add: opening another session is the one action the
+                        strip itself is for, and it was reachable only from the welcome screen,
+                        which disappears the moment a first tab exists. */}
+                    {onNewSession && (
+                        <button type="button" className="tab-add" onClick={onNewSession}
+                                title={t("servers.tabs.newSession")}
+                                aria-label={t("servers.tabs.newSession")}>+</button>
+                    )}
                 </div>
                 {showRightArrow && (
                     <div className="scroll-indicator right">

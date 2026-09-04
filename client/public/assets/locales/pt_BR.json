@@ -1600,6 +1600,7 @@
       "cycle": "Use as setas do teclado para trocar de identidade"
     },
     "tabs": {
+      "newSession": "Nova sessão",
       "contextMenu": {
         "popOut": "Abrir em Janela Pop-Up",
         "startSharing": "Iniciar Compartilhamento",

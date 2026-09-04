@@ -1600,6 +1600,7 @@
       "cycle": "Usa las teclas de flecha para cambiar de identidad"
     },
     "tabs": {
+      "newSession": "Nueva sesión",
       "contextMenu": {
         "popOut": "Salir",
         "startSharing": "Empezar a compartir",
