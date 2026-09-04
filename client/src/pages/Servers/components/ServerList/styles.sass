@@ -262,6 +262,9 @@
 
   p
     margin: 0
+    // .no-servers p centres its text; this block reads as a sentence with actions
+    // under it, so it has to say left explicitly rather than inherit from the container.
+    text-align: left
     font-size: 0.8125rem
     line-height: 1.45
     color: colors.$subtext
