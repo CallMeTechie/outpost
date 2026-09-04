@@ -1,7 +1,7 @@
 # Outpost — Design-System (Servers-Arbeitsfläche, Runde 1)
 
-Festschreibung des Bestands aus `client/src/common/styles/` plus zwei
-markierte Vorschläge. Quelle der Werte: `_colors.sass`, `main.sass`,
+Festschreibung des Bestands aus `client/src/common/styles/`; die in Runde 1
+vorgeschlagene Typo- und Abstandsskala ist seitdem Bestand (`_tokens.sass`). Quelle der Werte: `_colors.sass`, `main.sass`,
 `_breakpoints.sass`, gezählte Verwendung in `client/src/common/components/`.
 Änderungen an Werten gehören zuerst dorthin, dann hierher, dann in
 `mockups/tokens.css` — nie in umgekehrter Reihenfolge.
@@ -41,7 +41,10 @@ dupliziert.
 ## Typografie
 
 Bestand: **Plus Jakarta Sans**, Basis `16px * var(--ui-scale)`, Überschriften
-700. **Vorschlag (nicht im Bestand formalisiert):**
+700. Seit Runde 1 als Tokens in `client/src/common/styles/_tokens.sass`.
+Schriftfamilien: `--font-sans` (UI) und `--font-mono` — Letztere für
+UI-Monospace wie Pfade, Hostnamen, Session-Namen, **nicht** für das Terminal,
+dessen Schrift der Nutzer in den Darstellungseinstellungen wählt:
 
 | Token | Wert | Zweck |
 |---|---|---|
@@ -49,9 +52,9 @@ Bestand: **Plus Jakarta Sans**, Basis `16px * var(--ui-scale)`, Überschriften
 | `--type-heading` | 600 1rem/1.4 | Abschnittsüberschrift, Ordnername |
 | `--type-body` | 500 0.875rem/1.45 | Listeneinträge, Formulare |
 | `--type-caption` | 500 0.75rem/1.4 | Meta, Tab-Untertitel, Tastenkürzel |
-| `--type-mono` | 400 0.875rem/1.5 monospace | Terminal, Pfade, Hostnamen |
+| `--type-mono` | 400 0.875rem/1.5 var(--font-mono) | Pfade, Hostnamen, Session-Namen (nicht das Terminal) |
 
-## Abstände (Vorschlag, aus der Verwendung abgeleitet)
+## Abstände (Bestand seit Runde 1, aus der Verwendung abgeleitet)
 
 Basis 0.125 rem. Beobachtete Häufungen: 0.375 · 0.5 · 0.625 · 0.75 · 1 rem.
 
@@ -121,4 +124,5 @@ Trefferflächen ≥ 44×44 px in der Tastenleiste und auf Touch.
 Die `tokens`-Stufe liest `*.css`, `*.sass`, `*.scss`, `*.less` und Inline-
 `style=`-Attribute in Komponenten. Rohwerte gelten als Verstoß, außer in den
 Definitionsdateien: `docs/design/mockups/tokens.css` und
-`client/src/common/styles/_colors.sass` (im Manifest unter `token_definitions`).
+`client/src/common/styles/_colors.sass` und `_tokens.sass` (im Manifest unter
+`token_definitions`).
