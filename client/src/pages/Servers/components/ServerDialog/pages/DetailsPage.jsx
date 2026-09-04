@@ -36,14 +36,21 @@ const DetailsPage = ({name, setName, icon, setIcon, config, setConfig, fieldConf
     }));
 
     const showEngineSelect = engines.length > 1;
-    // UI-SERVER-DIALOG-DETAILS, state error: an engine that is offline. With a
-    // single engine there is no select to carry the "(offline)" suffix, and
-    // even with several the suffix alone does not say what it means for saving.
-    const offlineEngines = engines.filter(e => !e.connected);
+    // UI-SERVER-DIALOG-DETAILS, state error: THIS server's engine being offline.
+    // Checking all of them claimed "connecting only after it starts" whenever
+    // any unrelated engine was down. Without an explicit engineId the server
+    // uses the default one, so that is what gets checked then.
+    // Only when this server points at a specific engine. Without an engineId the
+    // server picks the first CONNECTED one (ControlPlaneServer._getDefaultEngineId),
+    // so there is nothing to warn about in that case.
+    const selectedEngine = config?.engineId
+        ? engines.find(e => String(e.id) === String(config.engineId))
+        : null;
+    const engineOffline = Boolean(selectedEngine && !selectedEngine.connected);
     
     return (
         <>
-            {offlineEngines.length > 0 && (
+            {engineOffline && (
                 <p className="details-engine-state warning" role="status">
                     {t("servers.dialog.engineOfflineNotice")}
                 </p>

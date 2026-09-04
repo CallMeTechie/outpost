@@ -110,6 +110,7 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
                     if (result.id) allIdentityIds.add(result.id);
                 } catch (error) {
                     sendToast("Error", error.message || t("servers.messages.createIdentityFailed"));
+                    setSaveError(error.message || t("servers.messages.createIdentityFailed"));
                     console.error(error);
                     return null;
                 }
@@ -122,6 +123,7 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
                     allIdentityIds.add(parseInt(identityId));
                 } catch (error) {
                     sendToast("Error", error.message || t("servers.messages.updateIdentityFailed"));
+                    setSaveError(error.message || t("servers.messages.updateIdentityFailed"));
                     console.error(error);
                     return null;
                 }
@@ -210,6 +212,9 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
         setSaveError(null);
         if (!validateRequiredFields(entryType, config.protocol, name, config)) {
             sendToast("Error", t("servers.messages.fillRequiredFields"));
+            // Reachable past the disabled button: the Enter listener calls
+            // handleSubmit directly.
+            setSaveError(t("servers.messages.fillRequiredFields"));
             return;
         }
         editServerId ? patchServer() : createServer();

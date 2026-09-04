@@ -34,7 +34,7 @@ const MODIFIER_KEYS = ["Shift", "Control", "Alt", "Meta", "AltGraph", "CapsLock"
 // cannot force a React render per escape sequence.
 const TITLE_UPDATE_THROTTLE_MS = 100;
 
-const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getSessionError, registerTerminalRef, broadcastMode, modifierLatch, onLatchConsumed, terminalRefs, updateProgress, updateTitle, layoutMode, onBroadcastToggle, onFullscreenToggle, isShared = false, onOpenSftp }) => {
+const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getSessionError, registerTerminalRef, onTerminalReady, broadcastMode, modifierLatch, onLatchConsumed, terminalRefs, updateProgress, updateTitle, layoutMode, onBroadcastToggle, onFullscreenToggle, isShared = false, onOpenSftp }) => {
     const ref = useRef(null);
     const termRef = useRef(null);
     const wsRef = useRef(null);
@@ -517,6 +517,10 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
 
         ws.onopen = () => {
             ws.send(`\x01${term.cols},${term.rows}`);
+            // Not when the socket is constructed but when it is open: only from
+            // here does a key press actually reach the host (UI-SERVERS-KEYBAR,
+            // state disabled).
+            onTerminalReady?.(session.id, true);
         }
 
         const reportError = (message) => {
@@ -586,6 +590,7 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
         };
 
         ws.onclose = (event) => {
+            onTerminalReady?.(session.id, false);
             clearInterval(interval);
             if (isCleaningUp) return;
 

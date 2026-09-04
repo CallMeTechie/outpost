@@ -76,6 +76,10 @@ export const ViewContainer = ({
     const [broadcastMode, setBroadcastMode] = useState(false);
     const [modifierLatch, setModifierLatch] = useState(EMPTY_LATCH);
     const [sessionProgress, setSessionProgress] = useState({});
+    // A real state, not a ref: writing a ref schedules no re-render, so the key
+    // bar would have entered its disabled state and never left it by its own
+    // condition (UI-SERVERS-KEYBAR).
+    const [readySessions, setReadySessions] = useState({});
     // Keyed by session id, exactly like sessionProgress above: the tab strip needs the live
     // terminal title, but it must not join the session objects Servers.jsx builds - those feed
     // identitySignature, and a value that can change many times a second would drag the tab
@@ -161,7 +165,11 @@ export const ViewContainer = ({
     // closing there is no term to write to and sendBarKey returns without
     // doing anything (see below). Showing the keys as live in that window
     // promises something the press does not deliver.
-    const terminalReady = Boolean(terminalRefs.current[activeSessionId]?.term);
+    const terminalReady = Boolean(readySessions[activeSessionId]);
+
+    const onTerminalReady = useCallback((sessionId, ready) => {
+        setReadySessions((prev) => (prev[sessionId] === ready ? prev : { ...prev, [sessionId]: ready }));
+    }, []);
 
     const registerTerminalRef = useCallback((sessionId, refs) => {
         refs ? terminalRefs.current[sessionId] = refs : delete terminalRefs.current[sessionId];
@@ -566,6 +574,7 @@ export const ViewContainer = ({
                                       markSessionErrored={markSessionErrored}
                                       getSessionError={getSessionError}
                                       registerTerminalRef={registerTerminalRef} broadcastMode={broadcastMode}
+                                      onTerminalReady={onTerminalReady}
                                       modifierLatch={modifierLatch} onLatchConsumed={clearLatch}
                                       terminalRefs={terminalRefs} updateProgress={updateSessionProgress}
                                       updateTitle={updateLiveTitle}
