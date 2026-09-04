@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback, useContext } from "react";
 import { useTranslation } from "react-i18next";
 import Icon from "@mdi/react";
-import { mdiClose, mdiViewSplitVertical, mdiChevronLeft, mdiChevronRight, mdiSleep, mdiOpenInNew, mdiShareVariant, mdiLinkVariant, mdiPencil, mdiEye, mdiCloseCircle, mdiContentDuplicate, mdiNoteEditOutline, mdiMicrosoft, mdiRenameBox } from "@mdi/js";
+import { mdiArrowCollapseAll, mdiClose, mdiViewSplitVertical, mdiChevronLeft, mdiChevronRight, mdiSleep, mdiOpenInNew, mdiShareVariant, mdiLinkVariant, mdiPencil, mdiEye, mdiCloseCircle, mdiContentDuplicate, mdiNoteEditOutline, mdiMicrosoft, mdiRenameBox } from "@mdi/js";
 import { useDrag, useDrop } from "react-dnd";
 import TerminalActionsMenu from "../TerminalActionsMenu";
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator, useContextMenu } from "@/common/components/ContextMenu";
@@ -285,6 +285,8 @@ export const ServerTabs = ({
     broadcastEnabled,
     onKeyboardShortcut,
     hasGuacamole,
+    focusEnabled,
+    onFocusToggle,
     sessionProgress = {},
     liveTitles = {},
     fullscreenEnabled,
@@ -292,6 +294,7 @@ export const ServerTabs = ({
     tabIdentities = {},
 }) => {
 
+    const { t } = useTranslation();
     const tabsRef = useRef(null);
 
     const [tabOrder, setTabOrder] = useState([]);
@@ -401,22 +404,6 @@ export const ServerTabs = ({
 
     return (
         <div className="server-tabs" data-ui-id="UI-SERVERS-TABS">
-            <div className="layout-controls">
-                <TerminalActionsMenu
-                    layoutMode={layoutMode}
-                    onBroadcastToggle={onBroadcastToggle}
-                    onSnippetSelected={onSnippetSelected}
-                    broadcastEnabled={broadcastEnabled}
-                    onKeyboardShortcut={onKeyboardShortcut}
-                    hasGuacamole={hasGuacamole}
-                    fullscreenEnabled={fullscreenEnabled}
-                    onFullscreenToggle={onFullscreenToggle}
-                    activeSession={activeSession}
-                />
-                <Icon path={mdiViewSplitVertical} className={`layout-btn ${layoutMode !== "single" ? "active" : ""}`}
-                    title={layoutMode === "single" ? "Enable Split View" : "Disable Split View"}
-                    onClick={onToggleSplit} />
-            </div>
             <div className="tabs-container">
                 {showLeftArrow && (
                     <div className="scroll-indicator left">
@@ -446,6 +433,26 @@ export const ServerTabs = ({
                         </button>
                     </div>
                 )}
+            </div>
+            <div className="layout-controls">
+                <TerminalActionsMenu
+                    layoutMode={layoutMode}
+                    onBroadcastToggle={onBroadcastToggle}
+                    onSnippetSelected={onSnippetSelected}
+                    broadcastEnabled={broadcastEnabled}
+                    onKeyboardShortcut={onKeyboardShortcut}
+                    hasGuacamole={hasGuacamole}
+                    fullscreenEnabled={fullscreenEnabled}
+                    onFullscreenToggle={onFullscreenToggle}
+                    activeSession={activeSession}
+                />
+                <Icon path={mdiArrowCollapseAll} data-ui-id="UI-SERVERS-FOCUS"
+                    className={`layout-btn ${focusEnabled ? "active" : ""}`}
+                    title={t("servers.terminalActions.focusMode")}
+                    onClick={onFocusToggle} />
+                <Icon path={mdiViewSplitVertical} className={`layout-btn ${layoutMode !== "single" ? "active" : ""}`}
+                    title={layoutMode === "single" ? "Enable Split View" : "Disable Split View"}
+                    onClick={onToggleSplit} />
             </div>
         </div>
     );

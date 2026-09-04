@@ -26,22 +26,24 @@
       width: 1.5rem
       height: 1.5rem
 
+  // Sits right of the tab strip (UI-SERVERS-FOCUS, UI-SERVERS-ACTIONS): the
+  // separator and the spacing face the tabs, so they mirror to the left side.
   .layout-controls
     display: flex
     gap: 0.3rem
     align-items: center
-    margin-right: 1rem
-    padding-right: 1rem
-    border-right: 1px solid colors.$gray
+    margin-left: 1rem
+    padding-left: 1rem
+    border-left: 1px solid colors.$gray
 
     @media (max-width: breakpoints.$tablet)
-      margin-right: 0.5rem
-      padding-right: 0.5rem
+      margin-left: 0.5rem
+      padding-left: 0.5rem
 
     @media (max-width: breakpoints.$mobile)
-      margin-right: 0
-      padding-right: 0
-      border-right: none
+      margin-left: 0
+      padding-left: 0
+      border-left: none
       gap: 0.1rem
 
     .layout-btn

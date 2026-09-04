@@ -8,6 +8,17 @@ body.sidebar-resizing
   .view-container
     pointer-events: none
 
+// Focus mode (UI-SERVERS-FOCUS): hide the server list, keep the window alone
+// (not: fullscreen_browser). This hangs off the body marker, NOT off a
+// descendant selector on .server-page: ServerList is mounted through a portal
+// into #left-pane-slot, which lives in .left-pane -- a sibling subtree of the
+// .main-content that holds .server-page. A portal does not move the real DOM,
+// so :has() from .server-page can never reach the list. The body is the only
+// ancestor both subtrees share.
+body.session-focus
+  .left-pane-slot
+    display: none
+
 .server-page
   display: flex
   width: 100%

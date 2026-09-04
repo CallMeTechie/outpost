@@ -31,7 +31,9 @@
   .actions-menu-dropdown
     position: absolute
     top: calc(100% + 8px)
-    left: 0
+    // Anchored right: the trigger now sits at the right edge of the tab bar,
+    // so a left-anchored menu would overflow the viewport.
+    right: 0
     background-color: colors.$gray-full
     border: 1px solid colors.$gray
     border-radius: 6px

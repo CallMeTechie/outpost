@@ -30,6 +30,12 @@ const EMPTY_LATCH = { ctrl: false, alt: false, shift: false };
 // the value enters state; sanitizing stays solely tabLabel.js's job.
 const LIVE_TITLE_MAX_LENGTH = 80;
 
+// Minimum usable widths from docs/design/design-system.md. Below these the pane
+// cannot be worked in with the server list and tab bar taking space, so focus
+// mode switches itself on (UI-SERVERS-FOCUS).
+const FOCUS_MIN_TERMINAL_REM = 40;
+const FOCUS_MIN_FILE_PANE_REM = 22;
+
 const getMinY = () => getTitleBarHeight() + 16;
 const clampPosition = (x, y) => ({
     x: Math.max(0, Math.min(window.innerWidth - BTN_SIZE, x)),
@@ -79,6 +85,15 @@ export const ViewContainer = ({
     // same as sessionProgress) stays a small leak rather than an unbounded one.
     const [liveTitles, setLiveTitles] = useState({});
     const [fullscreenMode, setFullscreenMode] = useState(false);
+    // Focus mode hides the same chrome as fullscreen (server list, tab bar) but
+    // deliberately does NOT put the window into browser/app fullscreen - that is
+    // a different thing, and the design manifest rules it out explicitly
+    // (UI-SERVERS-FOCUS, not: fullscreen_browser). focusManual remembers whether
+    // the user asked for it, so the width automation below can undo only what it
+    // switched on itself.
+    const [focusMode, setFocusMode] = useState(false);
+    const focusManualRef = useRef(false);
+    const chromeHidden = fullscreenMode || focusMode;
     const [titleBarTabsSlot, setTitleBarTabsSlot] = useState(null);
     const appWindow = useTauriWindow();
     const { t } = useTranslation();
@@ -88,6 +103,7 @@ export const ViewContainer = ({
     }, []);
 
     useBodyClass("session-fullscreen", fullscreenMode);
+    useBodyClass("session-focus", focusMode);
 
     useEffect(() => {
         if (!appWindow) return;
@@ -134,6 +150,7 @@ export const ViewContainer = ({
 
     const activeSession = activeSessions.find(session => session.id === activeSessionId);
     const hasGuacamole = activeSession?.server?.renderer === "guac";
+    const hasFilePane = activeSession?.type === "sftp" || activeSession?.type === "onedrive";
 
     const registerTerminalRef = useCallback((sessionId, refs) => {
         refs ? terminalRefs.current[sessionId] = refs : delete terminalRefs.current[sessionId];
@@ -204,6 +221,48 @@ export const ViewContainer = ({
         setFullscreenMode(prev => !prev);
     }, []);
 
+    const toggleFocusMode = useCallback(() => {
+        setFocusMode(prev => {
+            focusManualRef.current = !prev;
+            return !prev;
+        });
+    }, []);
+
+    // Ctrl+Shift+F. Captured on the window so it works while the terminal has
+    // focus - xterm would otherwise swallow the key - and preventDefault so the
+    // browser's own find-in-page does not open on top of it.
+    useEffect(() => {
+        const onKeyDown = (event) => {
+            if (!event.ctrlKey || !event.shiftKey || event.altKey) return;
+            if (event.key !== "F" && event.key !== "f") return;
+            event.preventDefault();
+            toggleFocusMode();
+        };
+        window.addEventListener("keydown", onKeyDown, true);
+        return () => window.removeEventListener("keydown", onKeyDown, true);
+    }, [toggleFocusMode]);
+
+    // Below the minimum widths the panes are unusable with the chrome shown, so
+    // focus mode switches itself on. Coming back out is only automatic when the
+    // user did not ask for it by hand.
+    const viewRef = useRef(null);
+    useEffect(() => {
+        const element = viewRef.current;
+        if (!element || typeof ResizeObserver === "undefined") return;
+
+        const remInPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+        const minWidthPx = (hasFilePane ? FOCUS_MIN_FILE_PANE_REM : FOCUS_MIN_TERMINAL_REM) * remInPx;
+
+        const observer = new ResizeObserver(([entry]) => {
+            const width = entry?.contentRect?.width ?? 0;
+            if (width === 0) return;
+            if (width < minWidthPx) setFocusMode(true);
+            else if (!focusManualRef.current) setFocusMode(false);
+        });
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, [hasFilePane]);
+
     const onBtnMouseDown = useCallback((e) => {
         e.preventDefault();
         dragRef.current = { startX: e.clientX, startY: e.clientY, btnX: btnPosition.x, btnY: btnPosition.y };
@@ -238,6 +297,11 @@ export const ViewContainer = ({
         const { startX, startY } = dragRef.current;
         if (Math.abs(e.clientX - startX) < 5 && Math.abs(e.clientY - startY) < 5) toggleFullscreenMode();
     }, [toggleFullscreenMode]);
+
+    const onFocusBtnClick = useCallback((e) => {
+        const { startX, startY } = dragRef.current;
+        if (Math.abs(e.clientX - startX) < 5 && Math.abs(e.clientY - startY) < 5) toggleFocusMode();
+    }, [toggleFocusMode]);
 
     const handleKeyboardShortcut = useCallback((keys) => {
         const activeGuacamole = guacamoleRefs.current[activeSessionId];
@@ -609,7 +673,7 @@ export const ViewContainer = ({
         );
     });
 
-    const serverTabs = fullscreenMode && !titleBarTabsSlot ? null : (
+    const serverTabs = chromeHidden && !titleBarTabsSlot ? null : (
         <ServerTabs activeSessions={activeSessions} setActiveSessionId={focusSession}
                     activeSessionId={activeSessionId}
                     closeSession={closeSession}
@@ -620,6 +684,7 @@ export const ViewContainer = ({
                     onTabOrderChange={onTabOrderChange} onBroadcastToggle={toggleBroadcastMode}
                     onSnippetSelected={handleSnippetSelected} broadcastEnabled={broadcastMode}
                     onKeyboardShortcut={handleKeyboardShortcut} hasGuacamole={hasGuacamole}
+                    focusEnabled={focusMode} onFocusToggle={toggleFocusMode}
                     sessionProgress={sessionProgress} liveTitles={liveTitles} fullscreenEnabled={fullscreenMode}
                     onFullscreenToggle={toggleFullscreenMode}
                     openNotes={openNotes} renameSession={renameSession}
@@ -627,14 +692,15 @@ export const ViewContainer = ({
     );
 
     return (
-        <div data-ui-id="UI-SERVERS-VIEW" className={`view-container ${fullscreenMode ? "fullscreen" : ""}`}>
-            {fullscreenMode && !hasGuacamole && !titleBarTabsSlot && (
+        <div data-ui-id="UI-SERVERS-VIEW" ref={viewRef}
+             className={`view-container ${fullscreenMode ? "fullscreen" : ""} ${focusMode ? "focus-mode" : ""}`}>
+            {chromeHidden && !hasGuacamole && !titleBarTabsSlot && (
                 <div
                     className={`exit-fullscreen-btn-container ${isDragging ? "dragging" : ""}`}
                     style={{ left: btnPosition.x, top: btnPosition.y }}
                     onMouseDown={onBtnMouseDown}
-                    onClick={onBtnClick}
-                    title={t("servers.terminalActions.exitFullScreen")}
+                    onClick={focusMode ? onFocusBtnClick : onBtnClick}
+                    title={focusMode ? t("servers.terminalActions.exitFocusMode") : t("servers.terminalActions.exitFullScreen")}
                 >
                     <button className="exit-fullscreen-btn">
                         <Icon path={mdiFullscreenExit} />

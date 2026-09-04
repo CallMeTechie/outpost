@@ -17,7 +17,7 @@ den Fokus-Modus. Nichts wird neu gebaut, was es gibt.
 ## Darstellung
 - Art: Seite, Route `/servers`. Dreiteilig: Liste links (einklappbar), Tabs oben, Fläche rechts.
 - Fokus-Modus: `Ctrl+Shift+F` schaltet; unter 40 rem Terminal-Breite bzw. 22 rem Datei-Pane greift er automatisch. Im Fokus-Modus: Liste und Tab-Leiste ausgeblendet, nur das aktive Pane; `UI-SERVERS-ACTIONS` bleibt als schmaler Griff erreichbar.
-- Tastenleiste nur unter `$mobile` (768 px) und nur, wenn das aktive Pane ein Terminal ist.
+- Tastenleiste nur auf Touch-Geräten (`@media (pointer: coarse)`, nicht an einem Breitpunkt: ein aufgeklapptes Foldable ist breiter als jeder Mobil-Breitpunkt und braucht sie am dringendsten) und nur, wenn das aktive Pane ein Terminal ist.
 
 ## Elemente — eins nach dem anderen
 ### UI-SERVERS-LIST — Server
@@ -54,7 +54,7 @@ den Fokus-Modus. Nichts wird neu gebaut, was es gibt.
 - Zustand `selected` = aktiv (Akzent-Icon).
 
 ### UI-SERVERS-KEYBAR — Tastenleiste
-- `data-ui-id="UI-SERVERS-KEYBAR"` an `TerminalKeyBar`. Nur unter 768 px, nur bei Terminal-Pane; Höhe `--key-bar-height`. Trefferflächen ≥ 44 px.
+- `data-ui-id="UI-SERVERS-KEYBAR"` an `TerminalKeyBar`. Nur bei `pointer: coarse`, nur bei Terminal-Pane; Höhe `--key-bar-height`. Trefferflächen ≥ 44 px.
 
 ### UI-SERVERS-ACTIONS — Aktionen
 - `data-ui-id="UI-SERVERS-ACTIONS"` an `TerminalActionsMenu` (gesetzt).
