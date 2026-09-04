@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI-SERVERS — Servers — Arbeitsfläche</title>
+<link rel="stylesheet" href="./tokens.css">
+<style>
+	/* Artboard-Rahmen — nur Darstellungshilfen, keine Produkt-Styles */
+	* { box-sizing: border-box; }
+	html { font-size: calc(16px * var(--ui-scale)); }
+	body {
+		margin: 0; padding: var(--space-6);
+		background: var(--background); color: var(--text);
+		font: var(--type-body);
+	}
+	kbd { font: var(--type-caption); font-family: ui-monospace, "JetBrains Mono", monospace; color: var(--subtext); }
+	.art-head { display: flex; align-items: baseline; gap: var(--space-3); margin: 0 0 var(--space-4); }
+	.art-head h1 { font: var(--type-title); margin: 0; }
+	.art-head code { font: var(--type-mono); color: var(--subtext); }
+	.art-head a { color: var(--subtext); margin-left: auto; }
+	.block { margin: 0 0 var(--space-8); }
+	.block > h2 { font: var(--type-heading); color: var(--subtext); margin: 0 0 var(--space-2); }
+	.block > h2 small { font: var(--type-caption); margin-left: var(--space-2); }
+	.frame { width: 82rem; max-width: 100%; border: 1px solid var(--gray); border-radius: var(--radius-md); overflow: hidden; background: var(--background); }
+
+	/* Zustandsbeschriftung */
+	section[data-ui-state] { position: relative; }
+	section[data-ui-state]::before {
+		content: attr(data-ui-state);
+		position: absolute; top: 2px; right: 2px; z-index: 5;
+		font: var(--type-caption); font-family: ui-monospace, "JetBrains Mono", monospace;
+		color: var(--subtext); background: var(--background);
+		border: 1px dashed var(--gray-strong); border-radius: var(--radius-sm);
+		padding: 0 var(--space-1); line-height: 1.2; pointer-events: none;
+	}
+	.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr)); gap: var(--space-4); }
+	.gallery > * { border: 1px solid var(--gray); border-radius: var(--radius-md); overflow: hidden; background: var(--lighter-background); }
+	.gallery > .wide { grid-column: 1 / -1; }
+	.gallery section[data-ui-state] { min-height: 4rem; }
+	.gallery-caption { font: var(--type-caption); color: var(--subtext); padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--gray); background: var(--background); }
+
+	/* ---------- Arbeitsfläche ---------- */
+	.workspace {
+		display: grid; grid-template-columns: 17rem 1fr;
+		grid-template-rows: var(--title-bar-height) 1fr var(--key-bar-height);
+		grid-template-areas: "list tabs" "list view" "list keybar";
+		height: 42rem;
+	}
+	.workspace.focus { grid-template-columns: 1fr; grid-template-rows: 1fr; grid-template-areas: "view"; height: 34rem; }
+	.workspace.welcome { grid-template-rows: var(--title-bar-height) 1fr; grid-template-areas: "list tabs" "list view"; }
+
+	/* Server-Liste */
+	.list { grid-area: list; background: var(--lighter-background); border-right: 1px solid var(--gray); display: flex; flex-direction: column; min-height: 0; }
+	.list > section { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+	.search { padding: var(--space-2); border-bottom: 1px solid var(--gray); }
+	.search .input {
+		display: flex; align-items: center; gap: var(--space-2);
+		height: 2rem; padding: 0 var(--space-2);
+		background: var(--dark-gray); border: 1px solid var(--gray); border-radius: var(--radius-sm);
+		color: var(--subtext); font: var(--type-body);
+	}
+	.search .input .val { color: var(--text); }
+	.search .input .caret { width: 1px; height: 1rem; background: var(--text); }
+	.search .input kbd { margin-left: auto; }
+	.search .hint { margin: var(--space-2) 0 0; font: var(--type-caption); color: var(--subtext); }
+	.search.focus .input { border-color: var(--accent-color); box-shadow: 0 0 0 1px var(--accent-color); }
+	.entries { list-style: none; margin: 0; padding: var(--space-1) 0; overflow: hidden; flex: 1; }
+	.entries .group {
+		display: flex; align-items: center; gap: var(--space-1);
+		padding: var(--space-1) var(--space-2) var(--space-1) var(--space-2);
+		font: var(--type-caption); color: var(--subtext); text-transform: none;
+	}
+	.entries .group::before { content: "▾"; font-size: 0.6rem; }
+	.entries .group.closed::before { content: "▸"; }
+	.entries .entry {
+		display: flex; align-items: center; gap: var(--space-2);
+		height: 1.75rem; padding: 0 var(--space-2) 0 var(--space-4);
+		font: var(--type-body); color: var(--text); cursor: default;
+	}
+	.entries .entry .dot { width: 0.4rem; height: 0.4rem; border-radius: 50%; background: var(--gray-strong); flex: none; }
+	.entries .entry .dot.on { background: var(--success); }
+	.entries .entry .meta { margin-left: auto; font: var(--type-caption); color: var(--subtext); }
+	.entries .entry.hover { background: var(--dark-gray); }
+	.entries .entry.selected { background: var(--primary-opacity); box-shadow: inset 2px 0 0 var(--accent-color); }
+	.entries .entry.focus-visible { outline: 2px solid var(--accent-color); outline-offset: -2px; }
+	.entries .entry.ctx { background: var(--dark-gray); }
+	.list-msg { padding: var(--space-4) var(--space-3); font: var(--type-body); color: var(--subtext); }
+	.list-msg.error { color: var(--error); }
+	.list-msg .cta { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3); }
+	.skeleton { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-2); }
+	.skeleton i { display: block; height: 0.875rem; border-radius: var(--radius-sm); background: var(--dark-gray); }
+	.skeleton i:nth-child(1) { width: 40%; } .skeleton i:nth-child(2) { width: 70%; margin-left: var(--space-2); }
+	.skeleton i:nth-child(3) { width: 55%; margin-left: var(--space-2); } .skeleton i:nth-child(4) { width: 65%; margin-left: var(--space-2); }
+	.skeleton i:nth-child(5) { width: 35%; } .skeleton i:nth-child(6) { width: 60%; margin-left: var(--space-2); }
+
+	/* Kontextmenü */
+	.menu {
+		position: absolute; z-index: 10; min-width: 12rem;
+		background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md);
+		box-shadow: var(--shadow-sm); padding: var(--space-1) 0; font: var(--type-body);
+	}
+	.menu.static { position: static; display: inline-block; margin: var(--space-3); }
+	.menu .item { display: flex; align-items: center; gap: var(--space-3); height: 1.875rem; padding: 0 var(--space-3); }
+	.menu .item kbd { margin-left: auto; }
+	.menu .item.hover { background: var(--dark-gray); }
+	.menu .item.danger { color: var(--error); }
+	.menu .item.disabled { color: var(--subtext); opacity: 0.55; }
+	.menu .sep { height: 1px; background: var(--gray); margin: var(--space-1) 0; }
+	.menu .item.check::before { content: "✓"; width: 0.75rem; color: var(--accent-color); }
+	.menu .item.nocheck::before { content: ""; width: 0.75rem; }
+
+	/* Tab-Leiste */
+	.tabs { grid-area: tabs; display: flex; align-items: stretch; background: var(--lighter-background); border-bottom: 1px solid var(--gray); min-width: 0; position: relative; }
+	.tabs > section { display: flex; flex: 1; min-width: 0; }
+	.tabstrip { display: flex; align-items: stretch; flex: 1; min-width: 0; overflow: hidden; }
+	.tab {
+		display: flex; align-items: center; gap: var(--space-2);
+		padding: 0 var(--space-3); border-right: 1px solid var(--gray);
+		font: var(--type-body); color: var(--subtext); position: relative; white-space: nowrap;
+	}
+	.tab .stripe { position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--pane); }
+	.tab .swatch { width: 0.5rem; height: 0.5rem; border-radius: 2px; background: var(--pane); flex: none; }
+	.tab .x { margin-left: var(--space-1); color: var(--subtext); opacity: 0.6; }
+	.tab .kind { font: var(--type-caption); color: var(--subtext); }
+	.tab.active { background: var(--gray-strong); color: var(--text); }
+	.tab.active .stripe { height: 3px; }
+	.tab.hover { background: var(--dark-gray); }
+	.tab.sleeping { opacity: 0.6; }
+	.tab.sleeping .swatch { background: transparent; border: 1px solid var(--pane); }
+	.tab-add { display: flex; align-items: center; padding: 0 var(--space-3); color: var(--subtext); }
+	.tabs-empty { display: flex; align-items: center; padding: 0 var(--space-3); font: var(--type-caption); color: var(--subtext); flex: 1; }
+	.tabs-right { display: flex; align-items: stretch; margin-left: auto; border-left: 1px solid var(--gray); position: relative; }
+	.tabs-right > div { display: flex; align-items: stretch; position: relative; }
+	.tabs-right > div > section { display: flex; align-items: stretch; }
+	.tbtn {
+		display: flex; align-items: center; gap: var(--space-2); min-width: 2.75rem; padding: 0 var(--space-3);
+		color: var(--subtext); font: var(--type-body); border-left: 1px solid var(--gray); justify-content: center;
+	}
+	.tbtn.on { color: var(--text); background: var(--primary-opacity); box-shadow: inset 0 -2px 0 var(--accent-color); }
+	.tbtn.disabled { opacity: 0.4; }
+	.tbtn.open { background: var(--dark-gray); color: var(--text); }
+	.tabs-right .menu { top: calc(100% + 2px); right: var(--space-1); }
+	.tabs .ctx-menu { top: calc(100% + 2px); left: 8.5rem; }
+
+	/* Fläche */
+	.view { grid-area: view; display: flex; min-height: 0; min-width: 0; background: var(--terminal); position: relative; }
+	.view > section { display: flex; flex: 1; min-width: 0; min-height: 0; }
+	.split { display: grid; grid-template-columns: minmax(40rem, 1fr) minmax(22rem, 34%); flex: 1; min-height: 0; }
+	.pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; border-top: 2px solid var(--pane, transparent); }
+	.pane + .pane { border-left: 1px solid var(--gray); }
+	.pane-head { display: flex; align-items: center; gap: var(--space-2); height: 1.75rem; padding: 0 var(--space-3); font: var(--type-caption); color: var(--subtext); background: var(--lighter-background); border-bottom: 1px solid var(--gray); }
+	.pane-head .swatch { width: 0.5rem; height: 0.5rem; border-radius: 2px; background: var(--pane); }
+	.pane-head .path { font: var(--type-mono); font-size: 0.75rem; color: var(--subtext); }
+	.pane-head .right { margin-left: auto; display: flex; gap: var(--space-3); }
+	.pane.active-pane .pane-head { color: var(--text); }
+	.term { flex: 1; padding: var(--space-2) var(--space-3); font: var(--type-mono); color: var(--text); white-space: pre; overflow: hidden; background: var(--terminal); }
+	.term .p { color: var(--success); }
+	.term .d { color: var(--subtext); }
+	.term .cur { display: inline-block; width: 0.55em; height: 1.1em; vertical-align: -0.2em; background: var(--text); }
+	.files { flex: 1; background: var(--lighter-background); font: var(--type-body); overflow: hidden; }
+	.files .row { display: flex; align-items: center; gap: var(--space-2); height: 1.75rem; padding: 0 var(--space-3); border-bottom: 1px solid var(--dark-gray); }
+	.files .row .name { flex: 1; font: var(--type-mono); font-size: 0.8125rem; color: var(--text); }
+	.files .row .size, .files .row .date { font: var(--type-caption); color: var(--subtext); font-variant-numeric: tabular-nums; }
+	.files .row .size { width: 4.5rem; text-align: right; }
+	.files .row .date { width: 6.5rem; text-align: right; }
+	.files .row.dir .name::before { content: "▸ "; color: var(--subtext); }
+	.files .row.hover { background: var(--dark-gray); }
+	.files .row.selected { background: var(--primary-opacity); box-shadow: inset 2px 0 0 var(--accent-color); }
+	.files .head { color: var(--subtext); font: var(--type-caption); }
+	.files .head .name { font: var(--type-caption); color: var(--subtext); }
+	.center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-3); color: var(--subtext); font: var(--type-body); text-align: center; padding: var(--space-6); }
+	.center.error .msg { color: var(--error); }
+	.center .cta { display: flex; gap: var(--space-2); }
+	.spinner { width: 1.25rem; height: 1.25rem; border-radius: 50%; border: 2px solid var(--gray); border-top-color: var(--accent-color); }
+
+	/* Buttons */
+	.btn { display: inline-flex; align-items: center; gap: var(--space-2); height: 2rem; padding: 0 var(--space-3); border-radius: var(--radius-sm); border: 1px solid var(--gray); background: var(--dark-gray); color: var(--text); font: var(--type-body); white-space: nowrap; }
+	.btn.primary { background: var(--accent-color); border-color: var(--accent-color); color: var(--white); }
+	.btn.ghost { background: transparent; }
+	.btn kbd { color: inherit; opacity: 0.7; }
+	.btn.primary kbd { color: var(--white); }
+
+	/* Tastenleiste */
+	.keybar { grid-area: keybar; background: var(--lighter-background); border-top: 1px solid var(--gray); display: flex; }
+	.keybar > section { display: flex; flex: 1; }
+	.keys { display: flex; flex: 1; align-items: stretch; gap: 1px; padding: 0 var(--space-1); }
+	.keys .k { flex: 1; min-width: 2.75rem; display: flex; align-items: center; justify-content: center; font: var(--type-caption); font-family: ui-monospace, "JetBrains Mono", monospace; color: var(--text); border-radius: var(--radius-sm); margin: var(--space-1) 0; }
+	.keys .k.hover { background: var(--dark-gray); }
+	.keys .k.held { background: var(--primary-opacity); color: var(--text); box-shadow: inset 0 0 0 1px var(--accent-color); }
+	.keys .k.sep { flex: 0 0 var(--space-2); min-width: 0; }
+	.keys.disabled .k { color: var(--subtext); opacity: 0.4; }
+	.keys .note { display: flex; align-items: center; font: var(--type-caption); color: var(--subtext); padding: 0 var(--space-3); }
+
+	/* Fokus-Modus */
+	.focus-toggle-float { position: absolute; top: var(--space-2); right: var(--space-2); z-index: 6; display: flex; }
+	.focus-toggle-float .tbtn { border: 1px solid var(--accent-color); border-radius: var(--radius-sm); height: 2rem; background: var(--primary-opacity); color: var(--text); box-shadow: none; }
+
+	/* Willkommen */
+	.welcome-wrap { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: var(--space-8) var(--space-6); background: var(--background); overflow: hidden; }
+	.welcome { width: 100%; max-width: 44rem; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); }
+	.welcome h3 { grid-column: 1 / -1; margin: 0; font: var(--type-title); }
+	.welcome h3 small { display: block; font: var(--type-body); color: var(--subtext); margin-top: var(--space-1); }
+	.welcome h4 { margin: 0 0 var(--space-2); font: var(--type-caption); color: var(--subtext); letter-spacing: 0.02em; }
+	.recent { list-style: none; margin: 0; padding: 0; border: 1px solid var(--gray); border-radius: var(--radius-md); background: var(--lighter-background); overflow: hidden; }
+	.recent li { display: flex; align-items: center; gap: var(--space-2); height: 2.25rem; padding: 0 var(--space-3); border-bottom: 1px solid var(--dark-gray); }
+	.recent li:last-child { border-bottom: 0; }
+	.recent li .n { font: var(--type-mono); color: var(--text); }
+	.recent li .m { font: var(--type-caption); color: var(--subtext); }
+	.recent li kbd { margin-left: auto; }
+	.recent li.focus-visible { outline: 2px solid var(--accent-color); outline-offset: -2px; }
+	.starts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+	.starts li { display: flex; align-items: center; gap: var(--space-3); height: 2.75rem; padding: 0 var(--space-3); border: 1px solid var(--gray); border-radius: var(--radius-md); background: var(--lighter-background); }
+	.starts li .t { font: var(--type-body); color: var(--text); }
+	.starts li .s { font: var(--type-caption); color: var(--subtext); }
+	.starts li kbd { margin-left: auto; }
+	.welcome-empty { grid-column: 1 / -1; padding: var(--space-4); border: 1px dashed var(--gray-strong); border-radius: var(--radius-md); color: var(--subtext); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+	.welcome-empty .cta { display: flex; gap: var(--space-2); margin-left: auto; }
+</style>
+</head>
+<body>
+
+<header class="mb-context" style="font:var(--type-caption);color:var(--subtext);background:var(--lighter-background);border:1px solid var(--gray);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin:0 0 var(--space-4);line-height:1.6">
+	<strong style="color:var(--text);font:var(--type-heading)">Darstellungskontext</strong><br>
+	<b style="color:var(--text)">Art:</b> Seite · Route /servers · dreiteilig: Liste (einklappbar) · Tabs · Fläche<br>
+	Tastatur: Ctrl+Shift+F Fokus-Modus · E Bearbeiten · T tmux · Ctrl+K Direkt verbinden
+</header>
+<header class="art-head">
+	<h1>UI-SERVERS</h1>
+	<span>Servers — Arbeitsfläche</span>
+	<code>/servers</code>
+	<a href="./index.html">← Kontaktbogen</a>
+</header>
+
+<!-- ===================================================================
+     Block 1 — Arbeitsfläche, alle Elemente im default-Zustand
+     Split-View-Zuordnungsfarben aus client/src/pages/Servers/components/
+     ViewContainer/utils/paneColors.js (blau · amber · violett), hier nur
+     als Inline-Wert je Tab/Pane gesetzt — kein Token.
+     =================================================================== -->
+<div class="block">
+	<h2>Arbeitsfläche <small>Split Terminal | Datei-Pane · Liste links · Sessions oben · Tastenleiste unten</small></h2>
+	<div class="frame workspace">
+
+		<aside class="list" data-ui-id="UI-SERVERS-LIST" aria-label="Server">
+			<section data-ui-state="default">
+				<div class="search" data-ui-id="UI-SERVERS-SEARCH">
+					<section data-ui-state="default">
+						<div class="input" role="search"><span>Suche</span><kbd>/</kbd></div>
+					</section>
+				</div>
+				<ul class="entries">
+					<li class="group">Homelab</li>
+					<li class="entry"><span class="dot on"></span>nas<span class="meta">2 Sessions</span></li>
+					<li class="entry ctx"><span class="dot on"></span>pihole<span class="meta">SFTP</span></li>
+					<li class="entry"><span class="dot"></span>Proxmox</li>
+					<li class="group">Arbeit</li>
+					<li class="entry"><span class="dot"></span>build-01</li>
+					<li class="entry"><span class="dot"></span>vpn</li>
+					<li class="group closed">OneDrive</li>
+				</ul>
+				<div class="menu" data-ui-id="UI-SERVERS-LIST-MENU" role="menu" style="top: 8.6rem; left: 5rem;">
+					<section data-ui-state="default">
+						<div class="item hover">Verbinden<kbd>↵</kbd></div>
+						<div class="item">SFTP öffnen<kbd>⇧↵</kbd></div>
+						<div class="item">Notizen</div>
+						<div class="sep"></div>
+						<div class="item">Bearbeiten<kbd>E</kbd></div>
+						<div class="item">Duplizieren</div>
+						<div class="item">Port weiterleiten</div>
+						<div class="item">Session beitreten</div>
+						<div class="sep"></div>
+						<div class="item danger">Löschen<kbd>⌫</kbd></div>
+					</section>
+				</div>
+			</section>
+		</aside>
+
+		<nav class="tabs" data-ui-id="UI-SERVERS-TABS" aria-label="Sessions">
+			<section data-ui-state="default">
+				<div class="tabstrip">
+					<div class="tab active" style="--pane:#2A72C9"><span class="stripe"></span><span class="swatch"></span>nas<span class="x">×</span></div>
+					<div class="tab" style="--pane:#A8741A"><span class="stripe"></span><span class="swatch"></span>pihole <span class="kind">(SFTP)</span><span class="x">×</span></div>
+					<div class="tab" style="--pane:#8E3FD4"><span class="stripe"></span><span class="swatch"></span>Notizen<span class="x">×</span></div>
+					<div class="tab-add">+</div>
+				</div>
+				<div class="tabs-right">
+					<div data-ui-id="UI-SERVERS-ACTIONS">
+						<section data-ui-state="default">
+							<div class="tbtn open" role="button" aria-haspopup="menu" aria-expanded="true" title="Aktionen">⋯</div>
+							<div class="menu" role="menu">
+								<div class="item hover">Fokus-Modus<kbd>⌃⇧F</kbd></div>
+								<div class="item">Teilen</div>
+								<div class="item">Ausklinken</div>
+								<div class="sep"></div>
+								<div class="item">Schließen<kbd>⌃W</kbd></div>
+							</div>
+						</section>
+					</div>
+					<div data-ui-id="UI-SERVERS-FOCUS">
+						<section data-ui-state="default">
+							<div class="tbtn" role="switch" aria-checked="false" title="Fokus-Modus">Fokus <kbd>⌃⇧F</kbd></div>
+						</section>
+					</div>
+				</div>
+			</section>
+		</nav>
+
+		<main class="view" data-ui-id="UI-SERVERS-VIEW" aria-label="Arbeitsfläche">
+			<section data-ui-state="default">
+				<div class="split">
+					<div class="pane active-pane" style="--pane:#2A72C9">
+						<div class="pane-head"><span class="swatch"></span>nas · Terminal<span class="right"><span>tmux: main</span><span>80×24</span></span></div>
+						<div class="term"><span class="p">nas:~$</span> uptime
+ 21:14:03 up 41 days,  3:12,  1 user,  load average: 0.42, 0.37, 0.31
+<span class="p">nas:~$</span> docker compose ls
+<span class="d">NAME        STATUS       CONFIG FILES</span>
+outpost     running(2)   /volume1/docker/outpost/compose.yaml
+<span class="p">nas:~$</span> <span class="cur"></span></div>
+					</div>
+					<div class="pane" style="--pane:#2A72C9">
+						<div class="pane-head"><span class="swatch"></span>nas · Dateien <span class="path">/volume1/docker</span><span class="right"><span>⇧⌘.</span></span></div>
+						<div class="files">
+							<div class="row head"><span class="name">Name</span><span class="size">Größe</span><span class="date">Geändert</span></div>
+							<div class="row dir"><span class="name">..</span><span class="size"></span><span class="date"></span></div>
+							<div class="row dir selected"><span class="name">outpost</span><span class="size">—</span><span class="date">heute 20:58</span></div>
+							<div class="row dir"><span class="name">nexterm</span><span class="size">—</span><span class="date">02.09.2026</span></div>
+							<div class="row dir"><span class="name">pihole</span><span class="size">—</span><span class="date">14.08.2026</span></div>
+							<div class="row"><span class="name">compose.yaml</span><span class="size">1,2 KB</span><span class="date">heute 20:41</span></div>
+							<div class="row hover"><span class="name">.env</span><span class="size">318 B</span><span class="date">14.08.2026</span></div>
+						</div>
+					</div>
+				</div>
+			</section>
+		</main>
+
+		<nav class="keybar" data-ui-id="UI-SERVERS-KEYBAR" aria-label="Tastenleiste">
+			<section data-ui-state="default">
+				<div class="keys">
+					<div class="k">Esc</div><div class="k">Tab</div><div class="k held">Ctrl</div><div class="k">Alt</div>
+					<div class="k sep"></div>
+					<div class="k">←</div><div class="k">↑</div><div class="k">↓</div><div class="k">→</div>
+					<div class="k sep"></div>
+					<div class="k">Home</div><div class="k">End</div><div class="k">PgUp</div><div class="k">PgDn</div>
+					<div class="k sep"></div>
+					<div class="k">|</div><div class="k">~</div><div class="k">-</div><div class="k">/</div>
+				</div>
+			</section>
+		</nav>
+
+	</div>
+</div>
+
+<!-- ===================================================================
+     Block 2 — Fokus-Modus aktiv: nur das aktive Pane, Liste und Tabs weg
+     =================================================================== -->
+<div class="block">
+	<h2>Fokus-Modus aktiv <small>Liste und Tab-Leiste ausgeblendet · greift automatisch unter 40 rem (Terminal) / 22 rem (Dateien)</small></h2>
+	<div class="frame workspace focus">
+		<div class="view">
+			<div class="pane active-pane" style="--pane:#2A72C9; flex:1;">
+				<div class="pane-head"><span class="swatch"></span>nas · Terminal<span class="right"><span>tmux: main</span><span>132×36</span></span></div>
+				<div class="term"><span class="p">nas:~$</span> docker compose -f /volume1/docker/outpost/compose.yaml logs --tail 3 server
+<span class="d">server-1  | [engine] tmux new-session -d -s main</span>
+<span class="d">server-1  | [engine] attached pty 0 → session main</span>
+<span class="d">server-1  | [ws] client connected (ma.backes)</span>
+<span class="p">nas:~$</span> <span class="cur"></span></div>
+			</div>
+			<div class="focus-toggle-float" data-ui-id="UI-SERVERS-FOCUS">
+				<section data-ui-state="selected">
+					<div class="tbtn on" role="switch" aria-checked="true" title="Fokus-Modus beenden">Fokus <kbd>⌃⇧F</kbd></div>
+				</section>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- ===================================================================
+     Block 3 — Leerzustand ohne offene Session: Willkommen
+     Tab-Leiste leer (UI-SERVERS-TABS empty), Aktionen ohne Ziel (disabled)
+     =================================================================== -->
+<div class="block">
+	<h2>Willkommen <small>keine offene Session · fünf letzte Verbindungen aus GET /entries/recent?limit=5</small></h2>
+	<div class="frame workspace welcome">
+
+		<aside class="list">
+			<div class="search"><div class="input" role="search"><span>Suche</span><kbd>/</kbd></div></div>
+			<ul class="entries">
+				<li class="group">Homelab</li>
+				<li class="entry"><span class="dot"></span>nas</li>
+				<li class="entry"><span class="dot"></span>pihole</li>
+				<li class="entry"><span class="dot"></span>Proxmox</li>
+				<li class="group">Arbeit</li>
+				<li class="entry"><span class="dot"></span>build-01</li>
+				<li class="entry"><span class="dot"></span>vpn</li>
+				<li class="group closed">OneDrive</li>
+			</ul>
+		</aside>
+
+		<nav class="tabs" data-ui-id="UI-SERVERS-TABS" aria-label="Sessions">
+			<section data-ui-state="empty">
+				<div class="tabs-empty">Keine offene Session</div>
+				<div class="tabs-right">
+					<div data-ui-id="UI-SERVERS-ACTIONS">
+						<section data-ui-state="disabled">
+							<div class="tbtn disabled" role="button" aria-disabled="true" title="Aktionen">⋯</div>
+						</section>
+					</div>
+				</div>
+			</section>
+		</nav>
+
+		<main class="view" data-ui-id="UI-SERVERS-WELCOME" aria-label="Willkommen">
+			<section data-ui-state="default">
+				<div class="welcome-wrap">
+					<div class="welcome">
+						<h3>Willkommen<small>Wähle eine Verbindung oder lege los.</small></h3>
+						<div>
+							<h4>Zuletzt verbunden</h4>
+							<ul class="recent">
+								<li class="focus-visible"><span class="n">nas</span><span class="m">SSH · vor 12 min</span><kbd>↵</kbd></li>
+								<li><span class="n">pihole</span><span class="m">SFTP · heute</span></li>
+								<li><span class="n">proxmox</span><span class="m">SSH · gestern</span></li>
+								<li><span class="n">build-01</span><span class="m">SSH · vor 3 Tagen</span></li>
+								<li><span class="n">vpn</span><span class="m">SSH · vor 6 Tagen</span></li>
+							</ul>
+						</div>
+						<div>
+							<h4>Weiter</h4>
+							<ul class="starts">
+								<li><span><span class="t">Erste Schritte</span><br><span class="s">Server anlegen, SSH-Config importieren</span></span><kbd>1</kbd></li>
+								<li><span><span class="t">Gerät verbinden</span><br><span class="s">Direktverbindung ohne gespeicherten Eintrag</span></span><kbd>2</kbd></li>
+								<li><span><span class="t">Apps laden</span><br><span class="s">Desktop und Mobile</span></span><kbd>3</kbd></li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</section>
+		</main>
+
+	</div>
+</div>
+
+<!-- ===================================================================
+     Weitere Zustände — je Element, gestapelt
+     =================================================================== -->
+<div class="block">
+	<h2>Weitere Zustände <small>alle im Manifest deklarierten Zustände, die oben nicht im Layout stehen</small></h2>
+	<div class="gallery">
+
+		<div data-ui-id="UI-SERVERS-LIST" aria-label="Server">
+			<div class="gallery-caption">UI-SERVERS-LIST · list · Server</div>
+			<section data-ui-state="loading">
+				<div class="search"><div class="input"><span>Suche</span><kbd>/</kbd></div></div>
+				<div class="skeleton" aria-busy="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+			</section>
+			<section data-ui-state="empty">
+				<div class="search"><div class="input"><span>Suche</span><kbd>/</kbd></div></div>
+				<div class="list-msg">
+					Noch keine Server. Server anlegen, SSH-Config importieren oder direkt verbinden.
+					<div class="cta"><span class="btn primary">Server anlegen <kbd>N</kbd></span><span class="btn">Importieren</span><span class="btn ghost">Direkt verbinden</span></div>
+				</div>
+			</section>
+			<section data-ui-state="error">
+				<div class="search"><div class="input"><span>Suche</span><kbd>/</kbd></div></div>
+				<div class="list-msg error">
+					Serverliste konnte nicht geladen werden.
+					<div class="cta"><span class="btn">Erneut laden <kbd>R</kbd></span></div>
+				</div>
+			</section>
+			<section data-ui-state="selected">
+				<div class="search"><div class="input"><span>Suche</span><kbd>/</kbd></div></div>
+				<ul class="entries">
+					<li class="group">Homelab</li>
+					<li class="entry selected focus-visible"><span class="dot on"></span>nas<span class="meta">2 Sessions</span></li>
+					<li class="entry"><span class="dot on"></span>pihole<span class="meta">SFTP</span></li>
+					<li class="entry hover"><span class="dot"></span>Proxmox</li>
+				</ul>
+			</section>
+		</div>
+
+		<div>
+			<div class="gallery-caption">UI-SERVERS-SEARCH · field · Suche</div>
+			<div data-ui-id="UI-SERVERS-SEARCH">
+				<section data-ui-state="empty">
+					<div class="search focus">
+						<div class="input" role="search"><span class="val">prox-02</span><span class="caret"></span><kbd>Esc</kbd></div>
+						<p class="hint">Kein Server passt zur Suche.</p>
+					</div>
+					<ul class="entries">
+						<li class="group">Homelab</li>
+						<li class="group">Arbeit</li>
+						<li class="group closed">OneDrive</li>
+					</ul>
+				</section>
+			</div>
+		</div>
+
+		<div>
+			<div class="gallery-caption">UI-SERVERS-LIST-MENU · overlay · Kontextmenü Server</div>
+			<div data-ui-id="UI-SERVERS-LIST-MENU">
+				<section data-ui-state="disabled">
+					<div class="menu static" role="menu" aria-disabled="true">
+						<div class="item disabled">Verbinden<kbd>↵</kbd></div>
+						<div class="item disabled">SFTP öffnen<kbd>⇧↵</kbd></div>
+						<div class="item disabled">Notizen</div>
+						<div class="sep"></div>
+						<div class="item disabled">Bearbeiten<kbd>E</kbd></div>
+						<div class="item disabled">Duplizieren</div>
+						<div class="item disabled">Port weiterleiten</div>
+						<div class="item disabled">Session beitreten</div>
+						<div class="sep"></div>
+						<div class="item disabled">Löschen<kbd>⌫</kbd></div>
+					</div>
+				</section>
+			</div>
+		</div>
+
+		<div>
+			<div class="gallery-caption">UI-SERVERS-KEYBAR · nav · Tastenleiste</div>
+			<div data-ui-id="UI-SERVERS-KEYBAR">
+				<section data-ui-state="disabled">
+					<div class="keybar" style="height: var(--key-bar-height); border-top: 0;">
+						<div class="keys disabled" aria-disabled="true">
+							<div class="k">Esc</div><div class="k">Tab</div><div class="k">Ctrl</div><div class="k">Alt</div>
+							<div class="k sep"></div>
+							<div class="k">←</div><div class="k">↑</div><div class="k">↓</div><div class="k">→</div>
+							<div class="note">aktives Pane ist kein Terminal</div>
+						</div>
+					</div>
+				</section>
+			</div>
+		</div>
+
+		<div class="wide">
+			<div class="gallery-caption">UI-SERVERS-TABS · nav · Sessions</div>
+			<div data-ui-id="UI-SERVERS-TABS" aria-label="Sessions">
+				<section data-ui-state="selected" style="height: 17rem;">
+					<div class="tabs" style="height: var(--title-bar-height);">
+						<div class="tabstrip">
+							<div class="tab" style="--pane:#2A72C9"><span class="stripe"></span><span class="swatch"></span>nas<span class="x">×</span></div>
+							<div class="tab active" style="--pane:#A8741A"><span class="stripe"></span><span class="swatch"></span>pihole <span class="kind">(SFTP)</span><span class="x">×</span></div>
+							<div class="tab sleeping" style="--pane:#8E3FD4"><span class="stripe"></span><span class="swatch"></span>Notizen<span class="x">×</span></div>
+							<div class="tab-add">+</div>
+						</div>
+						<div class="menu ctx-menu" role="menu">
+							<div class="item hover">Umbenennen<kbd>F2</kbd></div>
+							<div class="item">Duplizieren</div>
+							<div class="item">Teilen</div>
+							<div class="item">Schlafen legen</div>
+							<div class="item">Ausklinken</div>
+							<div class="sep"></div>
+							<div class="item">Schließen<kbd>⌃W</kbd></div>
+						</div>
+					</div>
+				</section>
+			</div>
+		</div>
+
+		<div class="wide">
+			<div class="gallery-caption">UI-SERVERS-VIEW · region · Arbeitsfläche</div>
+			<div data-ui-id="UI-SERVERS-VIEW" aria-label="Arbeitsfläche">
+				<section data-ui-state="loading" style="height: 12rem; display:flex;">
+					<div class="pane active-pane" style="--pane:#2A72C9; flex:1;">
+						<div class="pane-head"><span class="swatch"></span>nas · Terminal</div>
+						<div class="center" aria-busy="true"><div class="spinner"></div><div>Verbinde …</div></div>
+					</div>
+				</section>
+				<section data-ui-state="error" style="height: 12rem; display:flex;">
+					<div class="pane active-pane" style="--pane:#2A72C9; flex:1;">
+						<div class="pane-head"><span class="swatch"></span>nas · Terminal</div>
+						<div class="center error">
+							<div class="msg">Verbindung fehlgeschlagen. Erneut versuchen oder Server bearbeiten.</div>
+							<div class="cta"><span class="btn primary">Erneut versuchen <kbd>↵</kbd></span><span class="btn">Server bearbeiten <kbd>E</kbd></span></div>
+						</div>
+					</div>
+				</section>
+			</div>
+		</div>
+
+		<div class="wide">
+			<div class="gallery-caption">UI-SERVERS-WELCOME · empty · Willkommen</div>
+			<div data-ui-id="UI-SERVERS-WELCOME" aria-label="Willkommen">
+				<section data-ui-state="empty">
+					<div class="welcome-wrap" style="padding: var(--space-6);">
+						<div class="welcome">
+							<h3>Willkommen<small>Wähle eine Verbindung oder lege los.</small></h3>
+							<div class="welcome-empty">
+								<span>Noch keine Verbindungen. Lege einen Server an oder verbinde dich direkt.</span>
+								<span class="cta"><span class="btn primary">Server anlegen <kbd>N</kbd></span><span class="btn">Direkt verbinden</span></span>
+							</div>
+							<div style="grid-column: 1 / -1;">
+								<h4>Weiter</h4>
+								<ul class="starts">
+									<li><span><span class="t">Erste Schritte</span><br><span class="s">Server anlegen, SSH-Config importieren</span></span><kbd>1</kbd></li>
+									<li><span><span class="t">Gerät verbinden</span><br><span class="s">Direktverbindung ohne gespeicherten Eintrag</span></span><kbd>2</kbd></li>
+									<li><span><span class="t">Apps laden</span><br><span class="s">Desktop und Mobile</span></span><kbd>3</kbd></li>
+								</ul>
+							</div>
+						</div>
+					</div>
+				</section>
+			</div>
+		</div>
+
+	</div>
+</div>
+
+</body>
+</html>

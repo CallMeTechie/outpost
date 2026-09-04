@@ -1,0 +1,404 @@
+schema: mockingbird/1
+project: outpost
+revision: 1
+updated: 2026-09-03
+design_system: docs/design/design-system.md
+mockups_index: docs/design/mockups/index.html
+tokens_css: docs/design/mockups/tokens.css
+
+changelog:
+  - rev: 1
+    date: 2026-09-03
+    summary: Runde 1 — Servers-Arbeitsfläche und drei Dialoge, Bestand festgeschrieben, Fokus-Modus neu
+    touched: [UI-SERVERS, UI-SERVER-DIALOG, UI-TMUX-DIALOG, UI-DIRECT-CONNECT]
+
+adapters:
+  web: { locator: attribute, attribute: data-ui-id, visual_check: false }
+primary_adapter: web
+
+screens:
+  - id: UI-SERVERS
+    kind: page
+    title: Servers — Arbeitsfläche
+    artboard: docs/design/mockups/ui-servers.html
+    guide: docs/design/guides/ui-servers.md
+    route_hint: /servers
+    presentation: { keyboard: "Ctrl+Shift+F Fokus-Modus, E Bearbeiten, T tmux, Ctrl+K Direkt verbinden" }
+    description: Server-Liste, Session-Tabs, Terminal-/Datei-Fläche, Fokus-Modus, Leerzustand.
+    elements:
+      - id: UI-SERVERS-LIST
+        type: list
+        label: Server
+        status: required
+        verify: required
+        data_source: "GET /entries — Ordner, Organisationen, Server, OneDrive-Konten des Nutzers"
+        semantic_anchor:
+          means: Die Verbindungsziele des Nutzers, gruppiert nach Ordner und Organisation, plus verknüpfte OneDrive-Konten.
+          concept: server_entry
+          aliases: [server, entry, host, folder, organization]
+          not: [session, tab, identity, snippet]
+          cardinality: many
+          example: "Homelab › nas · pihole · Proxmox"
+          empty_means: Noch kein Server angelegt — Hinweis auf Anlegen, Import oder Direktverbindung.
+        states:
+          - { id: default }
+          - { id: loading }
+          - { id: empty, copy: "Noch keine Server. Server anlegen, SSH-Config importieren oder direkt verbinden." }
+          - { id: error, copy: "Serverliste konnte nicht geladen werden." }
+          - { id: selected }
+        locators:
+          web: "[data-ui-id='UI-SERVERS-LIST']"
+
+      - id: UI-SERVERS-SEARCH
+        type: field
+        label: Suche
+        status: required
+        verify: recommended
+        data_source: static
+        semantic_anchor:
+          means: Filtert die Server-Liste nach Name oder Tag, ohne die Gruppierung aufzulösen.
+        states:
+          - { id: default }
+          - { id: empty, copy: "Kein Server passt zur Suche." }
+        locators:
+          web: "[data-ui-id='UI-SERVERS-SEARCH']"
+
+      - id: UI-SERVERS-LIST-MENU
+        type: overlay
+        label: Kontextmenü Server
+        status: required
+        verify: recommended
+        data_source: static
+        semantic_anchor:
+          means: Zweitweg für Aktionen auf einem Eintrag — Verbinden, SFTP öffnen, Notizen, Bearbeiten, Duplizieren, Port weiterleiten, Session beitreten, Löschen.
+          not: [primary_navigation]
+        states:
+          - { id: default }
+          - { id: disabled }
+        locators:
+          web: "[data-ui-id='UI-SERVERS-LIST-MENU']"
+
+      - id: UI-SERVERS-TABS
+        type: nav
+        label: Sessions
+        status: required
+        verify: required
+        data_source: "offene Sessions des Nutzers (Server-, SFTP-, Notiz-, Skript-Tabs)"
+        semantic_anchor:
+          means: Die aktuell offenen Sessions als Tabs, jede mit ihrer Split-View-Zuordnungsfarbe; Kontextmenü mit Umbenennen, Duplizieren, Teilen, Schlafen legen, Ausklinken, Schließen.
+          concept: session
+          aliases: [tab, connection, view]
+          not: [server_entry, folder]
+          cardinality: many
+          example: "nas · pihole (SFTP) · Notizen"
+        states:
+          - { id: default }
+          - { id: selected }
+          - { id: empty }
+        locators:
+          web: "[data-ui-id='UI-SERVERS-TABS']"
+
+      - id: UI-SERVERS-VIEW
+        type: region
+        label: Arbeitsfläche
+        status: required
+        verify: required
+        data_source: "aktive Session(en): Terminal (xterm), Datei-Pane, Guacamole, Notizen, Skript"
+        semantic_anchor:
+          means: Der Inhalt der aktiven Session, einzeln oder als Split; Terminal und Datei-Pane nebeneinander sind der Kernfall.
+          concept: session_view
+          aliases: [renderer, pane, terminal, file_pane]
+          not: [server_entry]
+          cardinality: one
+        states:
+          - { id: default }
+          - { id: loading, copy: "Verbinde …" }
+          - { id: error, copy: "Verbindung fehlgeschlagen. Erneut versuchen oder Server bearbeiten." }
+        locators:
+          web: "[data-ui-id='UI-SERVERS-VIEW']"
+
+      - id: UI-SERVERS-FOCUS
+        type: toggle
+        label: Fokus-Modus
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: Blendet Server-Liste und Tab-Leiste aus, nur das aktive Pane bleibt; Taste Ctrl+Shift+F, greift automatisch unter den Mindestbreiten (Terminal 40 rem, Datei-Pane 22 rem).
+          not: [fullscreen_browser]
+        states:
+          - { id: default }
+          - { id: selected }
+        locators:
+          web: "[data-ui-id='UI-SERVERS-FOCUS']"
+
+      - id: UI-SERVERS-KEYBAR
+        type: nav
+        label: Tastenleiste
+        status: required
+        verify: recommended
+        data_source: static
+        semantic_anchor:
+          means: Terminal-Sondertasten (Esc, Tab, Ctrl, Pfeile) nur auf Touch bzw. unter 768 px, und nur wenn das aktive Pane ein Terminal ist; am Desktop nie.
+        states:
+          - { id: default }
+          - { id: disabled }
+        locators:
+          web: "[data-ui-id='UI-SERVERS-KEYBAR']"
+
+      - id: UI-SERVERS-ACTIONS
+        type: action
+        label: Aktionen
+        status: required
+        verify: recommended
+        data_source: static
+        semantic_anchor:
+          means: Menü mit Aktionen auf die aktive Session (Fokus-Modus, Teilen, Ausklinken, Schließen).
+        states:
+          - { id: default }
+          - { id: disabled }
+        locators:
+          web: "[data-ui-id='UI-SERVERS-ACTIONS']"
+
+      - id: UI-SERVERS-WELCOME
+        type: empty
+        label: Willkommen
+        status: required
+        verify: required
+        data_source: "GET /entries/recent?limit=5"
+        semantic_anchor:
+          means: Leerzustand ohne offene Session — Begrüßung, die fünf zuletzt genutzten Verbindungen, Erste Schritte, Gerät verbinden, Apps laden. Positiv, handlungsleitend, kein Marketing.
+          concept: recent_connection
+          aliases: [recent, history]
+          not: [all_servers, marketing]
+          cardinality: many
+          example: "nas · pihole · proxmox · build-01 · vpn"
+          empty_means: Noch nie verbunden — Erste Schritte zeigen.
+        states:
+          - { id: default }
+          - { id: empty, copy: "Noch keine Verbindungen. Lege einen Server an oder verbinde dich direkt." }
+        locators:
+          web: "[data-ui-id='UI-SERVERS-WELCOME']"
+
+  - id: UI-SERVER-DIALOG
+    kind: dialog
+    title: Server anlegen / bearbeiten
+    artboard: docs/design/mockups/ui-server-dialog.html
+    guide: docs/design/guides/ui-server-dialog.md
+    presentation: { over: UI-SERVERS, trigger: "Kontextmenü › Bearbeiten / Neu, Taste E", size: "mittig, 44rem, max 85vh", dismiss: "Esc, Backdrop, Abbrechen; nach Speichern automatisch", keyboard: "Ctrl+1/2/3 Tabs, Ctrl+Enter Speichern" }
+    description: Drei Tabs — Details, Identität, Einstellungen.
+    elements:
+      - id: UI-SERVER-DIALOG-TABS
+        type: nav
+        label: Details · Identität · Einstellungen
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: Die drei Abschnitte des Dialogs in fester Reihenfolge.
+        states:
+          - { id: default }
+          - { id: selected }
+        locators:
+          web: "[data-ui-id='UI-SERVER-DIALOG-TABS']"
+
+      - id: UI-SERVER-DIALOG-DETAILS
+        type: form
+        label: Details
+        status: required
+        verify: required
+        data_source: "Server-Stammdaten"
+        semantic_anchor:
+          means: Name, Icon, Server-IP, Port, Protokoll, Engine, MAC-Adresse und WoL-Broadcast des Servers.
+          concept: server_entry
+          aliases: [server, host]
+          not: [identity]
+          cardinality: one
+          example: "nas · 192.168.2.151 · 22 · SSH"
+        states:
+          - { id: default }
+          - { id: error, copy: "Engine offline — Verbindung erst nach Start möglich." }
+        locators:
+          web: "[data-ui-id='UI-SERVER-DIALOG-DETAILS']"
+
+      - id: UI-SERVER-DIALOG-IDENTITY
+        type: form
+        label: Identität
+        status: required
+        verify: required
+        data_source: "Identitäten des Nutzers und der Organisation"
+        semantic_anchor:
+          means: Zugangsdaten, mit denen dieser Server erreicht wird — persönliche und Organisations-Identitäten, verknüpfbar; Authentifizierung Passwort, SSH-Key oder beides.
+          concept: identity
+          aliases: [credential, ssh_key, login]
+          not: [server_entry, user_account]
+          cardinality: many
+          example: "ma.backes (SSH-Key) · deploy (Passwort)"
+          empty_means: Keine Identität vorhanden — Anlegen anbieten.
+        states:
+          - { id: default }
+          - { id: empty, copy: "Keine persönlichen Identitäten. Neue Identität anlegen." }
+        locators:
+          web: "[data-ui-id='UI-SERVER-DIALOG-IDENTITY']"
+
+      - id: UI-SERVER-DIALOG-SETTINGS
+        type: form
+        label: Einstellungen
+        status: required
+        verify: recommended
+        data_source: "Server-Einstellungen"
+        semantic_anchor:
+          means: Verhalten dieses Servers in drei Gruppen — Terminal (Schrift, Cursor, Scrollback, Bell), Verbindung (Keep-alive, Timeout, Jump-Host, Startbefehl), tmux (automatisch anhängen, Standard-Session). Keine Stammdaten.
+          not: [server_entry]
+        states:
+          - { id: default }
+        locators:
+          web: "[data-ui-id='UI-SERVER-DIALOG-SETTINGS']"
+
+      - id: UI-SERVER-DIALOG-SAVE
+        type: action
+        label: Speichern
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: Legt den Server an bzw. speichert Änderungen und schließt den Dialog; Beschriftung „Erstellen" beim Anlegen, „Speichern" beim Bearbeiten.
+        states:
+          - { id: default }
+          - { id: disabled }
+          - { id: error }
+        locators:
+          web: "[data-ui-id='UI-SERVER-DIALOG-SAVE']"
+
+  - id: UI-TMUX-DIALOG
+    kind: dialog
+    title: tmux-Sessions
+    artboard: docs/design/mockups/ui-tmux-dialog.html
+    guide: docs/design/guides/ui-tmux-dialog.md
+    presentation: { over: UI-SERVERS, trigger: "Kontextmenü › Session beitreten, Taste T", size: "mittig, 52rem, max 80vh", dismiss: "Esc, Backdrop, Abbrechen; nach Beitreten automatisch", keyboard: "↑↓ Session, ←→ Fenster, Enter Beitreten, N Neu" }
+    description: Sessions auf dem verbundenen Server, Fenster-Raster der gewählten Session, Beitreten oder Neu.
+    elements:
+      - id: UI-TMUX-DIALOG-SESSIONS
+        type: list
+        label: Sessions
+        status: required
+        verify: required
+        data_source: "tmux list-sessions auf dem verbundenen Server"
+        semantic_anchor:
+          means: Die tmux-Sessions des Servers — nicht Outposts eigene Tabs.
+          concept: tmux_session
+          aliases: [session, tmux]
+          not: [tab, server_entry, window]
+          cardinality: many
+          example: "main (3 Fenster) · deploy (1 Fenster)"
+          empty_means: Kein tmux-Socket oder keine Session — leerer Picker, kein Fehler.
+        states:
+          - { id: default }
+          - { id: loading }
+          - { id: empty, copy: "Keine tmux-Session. Neue Session starten." }
+          - { id: error, copy: "tmux nicht erreichbar." }
+          - { id: selected }
+        locators:
+          web: "[data-ui-id='UI-TMUX-DIALOG-SESSIONS']"
+
+      - id: UI-TMUX-DIALOG-WINDOWS
+        type: list
+        label: Fenster
+        status: required
+        verify: required
+        data_source: "tmux list-windows der gewählten Session"
+        semantic_anchor:
+          means: Die Fenster der gewählten Session als Raster, aktives Fenster markiert.
+          concept: tmux_window
+          aliases: [window, pane_group]
+          not: [tmux_session, tab]
+          cardinality: many
+          example: "0 bash · 1 htop · 2 logs"
+        states:
+          - { id: default }
+          - { id: empty }
+          - { id: selected }
+        locators:
+          web: "[data-ui-id='UI-TMUX-DIALOG-WINDOWS']"
+
+      - id: UI-TMUX-DIALOG-ATTACH
+        type: action
+        label: Beitreten
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: Hängt das Terminal an die gewählte Session und das gewählte Fenster.
+        states:
+          - { id: default }
+          - { id: disabled }
+        locators:
+          web: "[data-ui-id='UI-TMUX-DIALOG-ATTACH']"
+
+      - id: UI-TMUX-DIALOG-NEW
+        type: action
+        label: Neue Session
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: Startet eine neue tmux-Session auf dem Server und hängt sich an.
+        states:
+          - { id: default }
+        locators:
+          web: "[data-ui-id='UI-TMUX-DIALOG-NEW']"
+
+  - id: UI-DIRECT-CONNECT
+    kind: dialog
+    title: Direkt verbinden
+    artboard: docs/design/mockups/ui-direct-connect.html
+    guide: docs/design/guides/ui-direct-connect.md
+    presentation: { over: UI-SERVERS, trigger: "Welcome › Schnellverbindung, Taste Ctrl+K", size: "mittig, 32rem", dismiss: "Esc, Backdrop; nach Verbinden automatisch", keyboard: "Enter Verbinden" }
+    description: Einmalverbindung ohne gespeicherten Server.
+    elements:
+      - id: UI-DIRECT-CONNECT-HOST
+        type: field
+        label: Host
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: Zieladresse (Host oder IP) und Port für eine Einmalverbindung.
+        states:
+          - { id: default }
+          - { id: error, copy: "Host nicht erreichbar." }
+        locators:
+          web: "[data-ui-id='UI-DIRECT-CONNECT-HOST']"
+
+      - id: UI-DIRECT-CONNECT-AUTH
+        type: form
+        label: Authentifizierung
+        status: required
+        verify: required
+        data_source: "Auswahl Passwort / SSH-Key / beides, dann Benutzername, Passwort, Key, Passphrase"
+        semantic_anchor:
+          means: Zugangsdaten nur für diese Verbindung — nicht gespeichert, keine Identität.
+          concept: credential
+          aliases: [auth, login]
+          not: [identity, server_entry]
+          cardinality: one
+        states:
+          - { id: default }
+          - { id: error, copy: "Anmeldung abgelehnt." }
+        locators:
+          web: "[data-ui-id='UI-DIRECT-CONNECT-AUTH']"
+
+      - id: UI-DIRECT-CONNECT-GO
+        type: action
+        label: Verbinden
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: Öffnet eine Session-Tab mit dieser Verbindung und schließt den Dialog.
+        states:
+          - { id: default }
+          - { id: disabled }
+          - { id: loading, copy: "Verbinde …" }
+        locators:
+          web: "[data-ui-id='UI-DIRECT-CONNECT-GO']"

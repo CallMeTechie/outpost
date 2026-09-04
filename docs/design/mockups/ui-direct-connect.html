@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI-DIRECT-CONNECT — Direkt verbinden</title>
+<link rel="stylesheet" href="./tokens.css">
+<style>
+	/* Artboard-eigene Regeln; alle Werte aus tokens.css */
+	*, *::before, *::after { box-sizing: border-box; }
+	html { font-size: calc(16px * var(--ui-scale)); }
+	body {
+		margin: 0; min-height: 100vh;
+		background: var(--background); color: var(--text);
+		font: var(--type-body);
+	}
+
+	/* Artboard-Kopf (nicht Teil des Screens) */
+	.artboard-head {
+		display: flex; align-items: baseline; gap: var(--space-3);
+		padding: var(--space-3) var(--space-4);
+		border-bottom: 1px solid var(--gray);
+		font: var(--type-caption); color: var(--subtext);
+	}
+	.artboard-head code { font: var(--type-mono); font-size: 0.75rem; color: var(--text); }
+	.artboard-head .kind { padding: 0 var(--space-2); border: 1px solid var(--gray); border-radius: var(--radius-sm); }
+
+	/* Bühne: Seitenhintergrund + Dialog-Backdrop */
+	.stage {
+		position: relative;
+		display: grid; place-items: start center;
+		padding: var(--space-8) var(--space-4);
+		background: var(--dialog-background);
+		min-height: calc(100vh - 2.5rem);
+	}
+
+	/* Dialog */
+	.dialog {
+		width: 100%; max-width: 26rem;
+		background: var(--lighter-background);
+		border: 1px solid var(--gray);
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-lg);
+		overflow: hidden;
+	}
+	.dialog-head { padding: var(--space-4) var(--space-4) var(--space-2); }
+	.dialog-head h1 { margin: 0; font: var(--type-title); }
+	.dialog-head p  { margin: var(--space-1) 0 0; font: var(--type-caption); color: var(--subtext); }
+	.dialog-body { display: grid; gap: var(--space-4); padding: var(--space-2) var(--space-4) var(--space-4); }
+	.dialog-foot {
+		padding: var(--space-3) var(--space-4);
+		border-top: 1px solid var(--gray);
+		background: var(--dark-gray);
+	}
+
+	/* Element-Block mit gestapelten Zuständen */
+	.element { display: grid; gap: var(--space-2); }
+	.element > header {
+		display: flex; justify-content: space-between; align-items: baseline;
+		font: var(--type-heading);
+	}
+	.element > header code { font: var(--type-mono); font-size: 0.6875rem; color: var(--subtext); }
+	.state {
+		position: relative;
+		padding: var(--space-3);
+		border: 1px dashed var(--gray);
+		border-radius: var(--radius-md);
+	}
+	.state + .state { margin-top: 0; }
+	.state-tag {
+		position: absolute; top: calc(-1 * var(--space-2)); right: var(--space-2);
+		padding: 0 var(--space-2);
+		background: var(--lighter-background);
+		border: 1px solid var(--gray); border-radius: var(--radius-sm);
+		font: var(--type-mono); font-size: 0.6875rem; color: var(--subtext);
+		text-transform: lowercase;
+	}
+	.state[data-ui-state="error"] .state-tag    { color: var(--error);   border-color: var(--error); }
+	.state[data-ui-state="loading"] .state-tag  { color: var(--primary); border-color: var(--primary); }
+
+	/* Formularbausteine */
+	.row { display: grid; gap: var(--space-2); }
+	.row.host { grid-template-columns: 1fr 5.5rem; }
+	.row.two  { grid-template-columns: 1fr 1fr; }
+	label.f { display: grid; gap: var(--space-1); font: var(--type-caption); color: var(--subtext); }
+	.input {
+		width: 100%; min-height: 2.25rem;
+		padding: 0 var(--space-3);
+		background: var(--background); color: var(--text);
+		border: 1px solid var(--gray); border-radius: var(--radius-sm);
+		font: var(--type-body); outline: none;
+	}
+	.input.mono { font: var(--type-mono); }
+	.input::placeholder { color: var(--subtext); opacity: .7; }
+	.input:focus-visible { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-opacity); }
+	textarea.input { min-height: 4.5rem; padding: var(--space-2) var(--space-3); resize: vertical; }
+	.is-error .input { border-color: var(--error); background: var(--error-opacity); }
+
+	.msg {
+		display: flex; gap: var(--space-2); align-items: center;
+		padding: var(--space-2) var(--space-3);
+		border-left: 2px solid var(--error);
+		background: var(--error-opacity);
+		border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+		font: var(--type-body); color: var(--text);
+	}
+	.msg::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: var(--error); flex: none; }
+
+	/* Segment-Auswahl Passwort / SSH-Key / beides */
+	.seg {
+		display: grid; grid-template-columns: repeat(3, 1fr);
+		padding: 2px; gap: 2px;
+		background: var(--background);
+		border: 1px solid var(--gray); border-radius: var(--radius-sm);
+	}
+	.seg button {
+		min-height: 2rem; border: 0; border-radius: calc(var(--radius-sm) - 1px);
+		background: transparent; color: var(--subtext);
+		font: var(--type-body); cursor: pointer;
+	}
+	.seg button:hover { background: var(--dark-gray); color: var(--text); }
+	.seg button[aria-pressed="true"] { background: var(--primary-opacity); color: var(--text); box-shadow: inset 0 0 0 1px var(--primary); }
+	.seg button:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+	/* Primäre Aktion */
+	.btn {
+		display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+		width: 100%; min-height: 2.75rem;
+		padding: 0 var(--space-4);
+		background: var(--primary); color: var(--white);
+		border: 0; border-radius: var(--radius-sm);
+		font: var(--type-heading); cursor: pointer;
+		transition: filter 120ms;
+	}
+	.btn:hover { filter: brightness(1.1); }
+	.btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+	.btn kbd {
+		font: var(--type-caption); padding: 0 var(--space-1);
+		border: 1px solid var(--gray-strong); border-radius: var(--radius-sm);
+		color: var(--white); opacity: .8;
+	}
+	.btn[disabled] { background: var(--gray); color: var(--subtext); cursor: not-allowed; }
+	.btn[disabled] kbd { display: none; }
+	.btn.is-loading { background: var(--primary-opacity); color: var(--text); cursor: progress; }
+	.spin {
+		width: 1rem; height: 1rem; border-radius: 50%;
+		border: 2px solid var(--gray-strong); border-top-color: var(--primary);
+		animation: spin 800ms linear infinite;
+	}
+	@keyframes spin { to { transform: rotate(360deg); } }
+	@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
+	/* Zustands-Notiz am Fuß */
+	.state .note { margin: var(--space-2) 0 0; font: var(--type-caption); color: var(--subtext); }
+</style>
+</head>
+<body>
+
+<header class="mb-context" style="font:var(--type-caption);color:var(--subtext);background:var(--lighter-background);border:1px solid var(--gray);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin:0 0 var(--space-4);line-height:1.6">
+	<strong style="color:var(--text);font:var(--type-heading)">Darstellungskontext</strong><br>
+	<b style="color:var(--text)">Art:</b> Dialog, modal · erscheint über UI-SERVERS auf dem Backdrop<br>
+	Öffnen: Welcome › Schnellverbindung, Taste Ctrl+K · Schließen: Esc, Backdrop; nach Verbinden automatisch<br>Größe: mittig, 32 rem · Tastatur: Enter Verbinden
+</header>
+<div class="artboard-head">
+	<code>UI-DIRECT-CONNECT</code>
+	<span class="kind">dialog</span>
+	<span>Direkt verbinden · alle Zustände gestapelt, nicht interaktiv</span>
+</div>
+
+<div class="stage">
+	<div class="dialog" role="dialog" aria-labelledby="dc-title" aria-describedby="dc-desc">
+
+		<header class="dialog-head">
+			<h1 id="dc-title">Direkt verbinden</h1>
+			<p id="dc-desc">Einmalverbindung ohne gespeicherten Server.</p>
+		</header>
+
+		<div class="dialog-body">
+
+			<!-- UI-DIRECT-CONNECT-HOST -->
+			<div class="element" data-ui-id="UI-DIRECT-CONNECT-HOST">
+				<header><span>Host</span><code>UI-DIRECT-CONNECT-HOST</code></header>
+
+				<section class="state" data-ui-state="default">
+					<span class="state-tag">default</span>
+					<div class="row host">
+						<label class="f">Host oder IP
+							<input class="input mono" type="text" placeholder="Host oder IP" autocomplete="off" spellcheck="false">
+						</label>
+						<label class="f">Port
+							<input class="input mono" type="text" inputmode="numeric" value="22">
+						</label>
+					</div>
+				</section>
+
+				<section class="state is-error" data-ui-state="error">
+					<span class="state-tag">error</span>
+					<div class="row host">
+						<label class="f">Host oder IP
+							<input class="input mono" type="text" placeholder="Host oder IP" aria-invalid="true" aria-describedby="host-err">
+						</label>
+						<label class="f">Port
+							<input class="input mono" type="text" inputmode="numeric" value="22">
+						</label>
+					</div>
+					<p class="msg" id="host-err" role="alert" style="margin: var(--space-2) 0 0;">Host nicht erreichbar.</p>
+				</section>
+			</div>
+
+			<!-- UI-DIRECT-CONNECT-AUTH -->
+			<div class="element" data-ui-id="UI-DIRECT-CONNECT-AUTH">
+				<header><span>Authentifizierung</span><code>UI-DIRECT-CONNECT-AUTH</code></header>
+
+				<section class="state" data-ui-state="default">
+					<span class="state-tag">default · beides</span>
+					<div class="row">
+						<div class="seg" role="group" aria-label="Authentifizierungsart">
+							<button type="button" aria-pressed="false">Passwort</button>
+							<button type="button" aria-pressed="false">SSH-Key</button>
+							<button type="button" aria-pressed="true">beides</button>
+						</div>
+						<label class="f">Benutzername
+							<input class="input mono" type="text" placeholder="Benutzername" autocomplete="off" spellcheck="false">
+						</label>
+						<label class="f">Passwort
+							<input class="input" type="password" placeholder="••••••••" autocomplete="off">
+						</label>
+						<label class="f">Key
+							<textarea class="input mono" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" spellcheck="false"></textarea>
+						</label>
+						<label class="f">Passphrase
+							<input class="input" type="password" placeholder="Passphrase des Keys" autocomplete="off">
+						</label>
+					</div>
+					<p class="note">Nur für diese Verbindung — wird nicht gespeichert.</p>
+				</section>
+
+				<section class="state is-error" data-ui-state="error">
+					<span class="state-tag">error</span>
+					<div class="row">
+						<p class="msg" role="alert">Anmeldung abgelehnt.</p>
+						<div class="seg" role="group" aria-label="Authentifizierungsart">
+							<button type="button" aria-pressed="false">Passwort</button>
+							<button type="button" aria-pressed="false">SSH-Key</button>
+							<button type="button" aria-pressed="true">beides</button>
+						</div>
+						<label class="f">Benutzername
+							<input class="input mono" type="text" placeholder="Benutzername" aria-invalid="true">
+						</label>
+						<label class="f">Passwort
+							<input class="input" type="password" placeholder="••••••••" aria-invalid="true">
+						</label>
+						<label class="f">Key
+							<textarea class="input mono" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" aria-invalid="true"></textarea>
+						</label>
+						<label class="f">Passphrase
+							<input class="input" type="password" placeholder="Passphrase des Keys" aria-invalid="true">
+						</label>
+					</div>
+				</section>
+			</div>
+
+		</div>
+
+		<!-- UI-DIRECT-CONNECT-GO -->
+		<footer class="dialog-foot">
+			<div class="element" data-ui-id="UI-DIRECT-CONNECT-GO">
+				<header><span>Aktion</span><code>UI-DIRECT-CONNECT-GO</code></header>
+
+				<section class="state" data-ui-state="default">
+					<span class="state-tag">default</span>
+					<button type="button" class="btn">Verbinden <kbd>↵</kbd></button>
+				</section>
+
+				<section class="state" data-ui-state="disabled">
+					<span class="state-tag">disabled</span>
+					<button type="button" class="btn" disabled>Verbinden</button>
+				</section>
+
+				<section class="state" data-ui-state="loading">
+					<span class="state-tag">loading</span>
+					<button type="button" class="btn is-loading" aria-busy="true" disabled>
+						<span class="spin" aria-hidden="true"></span>Verbinde …
+					</button>
+				</section>
+			</div>
+		</footer>
+
+	</div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,1404 @@
+<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>outpost — Mockups (Revision 1)</title>
+<link rel="stylesheet" href="./tokens.css">
+<style>
+.mb-page { font: var(--type-body, 500 0.875rem/1.45 system-ui, sans-serif); color: var(--text, #eee); background: var(--background, #111); margin: 0; padding: var(--space-8, 2rem); }
+.mb-page > h1 { font: var(--type-title, 700 1.25rem/1.3 system-ui); margin: 0 0 .5rem; }
+.mb-page > h2 { font: var(--type-heading, 600 1rem/1.4 system-ui); margin: 2.5rem 0 .5rem; padding-top: 1.5rem; border-top: 1px solid var(--gray, #333); }
+.mb-page > .sub, .mb-page > .meta { color: var(--subtext, #aaa); }
+.mb-page > .ctx { background: var(--lighter-background, #1a1a1a); border: 1px solid var(--gray, #333); border-radius: var(--radius-md, .5rem); padding: .75rem 1rem; margin: .75rem 0; line-height: 1.6; }
+.mb-page > table { border-collapse: collapse; width: 100%; margin: .75rem 0; font: var(--type-caption, 500 0.75rem/1.4 system-ui); }
+.mb-page > table th, .mb-page > table td { text-align: left; vertical-align: top; padding: .35rem .5rem; border-bottom: 1px solid var(--gray, #333); }
+.mb-page > table th { color: var(--subtext, #aaa); font-weight: 600; }
+.mb-page > p code, .mb-page > table code, .mb-page > h2 code, .mb-page > .ctx code, .mb-page > .mb-toc code { font: var(--type-mono, 400 0.8rem monospace); color: var(--subtext, #aaa); }
+.mb-page > p a, .mb-page > .mb-toc a { color: var(--primary, #4b7bff); }
+.mb-embed { border: 1px solid var(--gray, #333); border-radius: var(--radius-lg, .75rem); overflow: hidden; margin: 1rem 0 0; }
+.mb-embed-label { font: var(--type-caption, 500 .75rem system-ui); color: var(--subtext, #aaa); padding: .4rem .75rem; background: var(--lighter-background, #1a1a1a); border-bottom: 1px solid var(--gray, #333); }
+.mb-toc { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; }
+</style>
+<style>
+/* ui-direct-connect */
+#ab-ui-direct-connect *, #ab-ui-direct-connect *::before, #ab-ui-direct-connect *::after{ box-sizing: border-box; }
+#ab-ui-direct-connect{ font-size: calc(16px * var(--ui-scale)); }
+#ab-ui-direct-connect{}
+#ab-ui-direct-connect .artboard-head{}
+#ab-ui-direct-connect .artboard-head code{ font: var(--type-mono); font-size: 0.75rem; color: var(--text); }
+#ab-ui-direct-connect .artboard-head .kind{ padding: 0 var(--space-2); border: 1px solid var(--gray); border-radius: var(--radius-sm); }
+#ab-ui-direct-connect .stage{}
+#ab-ui-direct-connect .dialog{}
+#ab-ui-direct-connect .dialog-head{ padding: var(--space-4) var(--space-4) var(--space-2); }
+#ab-ui-direct-connect .dialog-head h1{ margin: 0; font: var(--type-title); }
+#ab-ui-direct-connect .dialog-head p{ margin: var(--space-1) 0 0; font: var(--type-caption); color: var(--subtext); }
+#ab-ui-direct-connect .dialog-body{ display: grid; gap: var(--space-4); padding: var(--space-2) var(--space-4) var(--space-4); }
+#ab-ui-direct-connect .dialog-foot{}
+#ab-ui-direct-connect .element{ display: grid; gap: var(--space-2); }
+#ab-ui-direct-connect .element > header{}
+#ab-ui-direct-connect .element > header code{ font: var(--type-mono); font-size: 0.6875rem; color: var(--subtext); }
+#ab-ui-direct-connect .state{}
+#ab-ui-direct-connect .state + .state{ margin-top: 0; }
+#ab-ui-direct-connect .state-tag{}
+#ab-ui-direct-connect .state[data-ui-state="error"] .state-tag{ color: var(--error);   border-color: var(--error); }
+#ab-ui-direct-connect .state[data-ui-state="loading"] .state-tag{ color: var(--primary); border-color: var(--primary); }
+#ab-ui-direct-connect .row{ display: grid; gap: var(--space-2); }
+#ab-ui-direct-connect .row.host{ grid-template-columns: 1fr 5.5rem; }
+#ab-ui-direct-connect .row.two{ grid-template-columns: 1fr 1fr; }
+#ab-ui-direct-connect label.f{ display: grid; gap: var(--space-1); font: var(--type-caption); color: var(--subtext); }
+#ab-ui-direct-connect .input{}
+#ab-ui-direct-connect .input.mono{ font: var(--type-mono); }
+#ab-ui-direct-connect .input::placeholder{ color: var(--subtext); opacity: .7; }
+#ab-ui-direct-connect .input:focus-visible{ border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-opacity); }
+#ab-ui-direct-connect textarea.input{ min-height: 4.5rem; padding: var(--space-2) var(--space-3); resize: vertical; }
+#ab-ui-direct-connect .is-error .input{ border-color: var(--error); background: var(--error-opacity); }
+#ab-ui-direct-connect .msg{}
+#ab-ui-direct-connect .msg::before{ content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: var(--error); flex: none; }
+#ab-ui-direct-connect .seg{}
+#ab-ui-direct-connect .seg button{}
+#ab-ui-direct-connect .seg button:hover{ background: var(--dark-gray); color: var(--text); }
+#ab-ui-direct-connect .seg button[aria-pressed="true"]{ background: var(--primary-opacity); color: var(--text); box-shadow: inset 0 0 0 1px var(--primary); }
+#ab-ui-direct-connect .seg button:focus-visible{ outline: 2px solid var(--primary); outline-offset: 1px; }
+#ab-ui-direct-connect .btn{}
+#ab-ui-direct-connect .btn:hover{ filter: brightness(1.1); }
+#ab-ui-direct-connect .btn:focus-visible{ outline: 2px solid var(--primary); outline-offset: 2px; }
+#ab-ui-direct-connect .btn kbd{}
+#ab-ui-direct-connect .btn[disabled]{ background: var(--gray); color: var(--subtext); cursor: not-allowed; }
+#ab-ui-direct-connect .btn[disabled] kbd{ display: none; }
+#ab-ui-direct-connect .btn.is-loading{ background: var(--primary-opacity); color: var(--text); cursor: progress; }
+#ab-ui-direct-connect .spin{}
+@keyframes spin{ to { transform: rotate(360deg); }
+ }
+@media (prefers-reduced-motion: reduce){#ab-ui-direct-connect .spin{ animation: none; }
+ }
+#ab-ui-direct-connect .state .note{ margin: var(--space-2) 0 0; font: var(--type-caption); color: var(--subtext); }
+
+</style>
+<style>
+/* ui-server-dialog */
+#ab-ui-server-dialog *{ box-sizing: border-box; }
+#ab-ui-server-dialog{ font-size: calc(16px * var(--ui-scale)); }
+#ab-ui-server-dialog{}
+#ab-ui-server-dialog a{ color: var(--primary); }
+#ab-ui-server-dialog .artboard-head{}
+#ab-ui-server-dialog .artboard-head strong{ font: var(--type-heading); color: var(--text); }
+#ab-ui-server-dialog .artboard-head code{ font: var(--type-mono); font-size: 0.75rem; color: var(--subtext); }
+#ab-ui-server-dialog .backdrop{}
+#ab-ui-server-dialog .dialog{}
+#ab-ui-server-dialog .dialog-head{}
+#ab-ui-server-dialog .dialog-head h1{ margin: 0; font: var(--type-title); }
+#ab-ui-server-dialog .dialog-head .close{}
+#ab-ui-server-dialog .dialog-body{ padding: var(--space-2) var(--space-4) var(--space-4); display: grid; gap: var(--space-4); }
+#ab-ui-server-dialog .dialog-foot{}
+#ab-ui-server-dialog .element{ display: grid; gap: var(--space-2); }
+#ab-ui-server-dialog .element > header{}
+#ab-ui-server-dialog .element > header code{ font: var(--type-mono); font-size: 0.75rem; color: var(--primary); }
+#ab-ui-server-dialog .element > header .type{ padding: 0 var(--space-1); border: 1px solid var(--gray); border-radius: var(--radius-sm); }
+#ab-ui-server-dialog section[data-ui-state]{}
+#ab-ui-server-dialog section[data-ui-state]::before{}
+#ab-ui-server-dialog section[data-ui-state="error"]::before{ color: var(--error); }
+#ab-ui-server-dialog section[data-ui-state="empty"]::before, #ab-ui-server-dialog section[data-ui-state="disabled"]::before{ color: var(--subtext); }
+#ab-ui-server-dialog section[data-ui-state="selected"]::before{ color: var(--primary); }
+#ab-ui-server-dialog .tabs{ display: flex; gap: var(--space-1); padding: var(--space-1); background: var(--dark-gray); border-radius: var(--radius-md); }
+#ab-ui-server-dialog .tab{}
+#ab-ui-server-dialog .tab[aria-current="page"]{ background: var(--gray-strong); color: var(--text); }
+#ab-ui-server-dialog .tab.is-selected{ background: var(--primary-opacity); color: var(--text); box-shadow: inset 0 0 0 1px var(--primary); }
+#ab-ui-server-dialog .grid{ display: grid; grid-template-columns: repeat(12, 1fr); gap: var(--space-2) var(--space-3); }
+#ab-ui-server-dialog .field{ display: grid; gap: var(--space-1); }
+#ab-ui-server-dialog .c3{ grid-column: span 3; }
+#ab-ui-server-dialog .c4{ grid-column: span 4; }
+#ab-ui-server-dialog .c5{ grid-column: span 5; }
+#ab-ui-server-dialog .c6{ grid-column: span 6; }
+#ab-ui-server-dialog .c7{ grid-column: span 7; }
+#ab-ui-server-dialog .c8{ grid-column: span 8; }
+#ab-ui-server-dialog .c9{ grid-column: span 9; }
+#ab-ui-server-dialog .c12{ grid-column: span 12; }
+#ab-ui-server-dialog label, #ab-ui-server-dialog .label{ font: var(--type-caption); color: var(--subtext); }
+#ab-ui-server-dialog .input, #ab-ui-server-dialog select.input{}
+#ab-ui-server-dialog .input.mono{ font: var(--type-mono); }
+#ab-ui-server-dialog .input:focus-visible{ border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-opacity); }
+#ab-ui-server-dialog .input.is-error{ border-color: var(--error); background: var(--error-opacity); }
+#ab-ui-server-dialog .input::placeholder{ color: var(--subtext); opacity: .7; }
+#ab-ui-server-dialog .help{ font: var(--type-caption); color: var(--subtext); }
+#ab-ui-server-dialog .help.error{ color: var(--error); }
+#ab-ui-server-dialog .icon-field{ display: flex; align-items: center; gap: var(--space-2); height: 2.25rem; }
+#ab-ui-server-dialog .avatar{}
+#ab-ui-server-dialog .tri{ display: inline-flex; padding: 2px; background: var(--dark-gray); border: 1px solid var(--gray); border-radius: var(--radius-sm); }
+#ab-ui-server-dialog .tri span{ padding: var(--space-1) var(--space-3); border-radius: var(--radius-sm); color: var(--subtext); font: var(--type-caption); }
+#ab-ui-server-dialog .tri span[aria-checked="true"]{ background: var(--primary); color: var(--white); }
+#ab-ui-server-dialog .toggle{ width: 2.25rem; height: 1.25rem; border-radius: 1rem; background: var(--gray); position: relative; flex: none; }
+#ab-ui-server-dialog .toggle::after{ content: ""; position: absolute; top: 2px; left: 2px; width: calc(1.25rem - 4px); height: calc(1.25rem - 4px); border-radius: 50%; background: var(--subtext); }
+#ab-ui-server-dialog .toggle.on{ background: var(--primary); }
+#ab-ui-server-dialog .toggle.on::after{ left: auto; right: 2px; background: var(--white); }
+#ab-ui-server-dialog .group{ display: grid; gap: var(--space-1); }
+#ab-ui-server-dialog .group-head{ display: flex; justify-content: space-between; align-items: baseline; font: var(--type-caption); color: var(--subtext); }
+#ab-ui-server-dialog .ident{ display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2); border: 1px solid var(--gray); border-radius: var(--radius-sm); background: var(--background); }
+#ab-ui-server-dialog .ident.linked{ border-color: var(--primary); background: var(--primary-opacity); }
+#ab-ui-server-dialog .ident .name{ flex: 1; font: var(--type-mono); }
+#ab-ui-server-dialog .chip{ padding: 0 var(--space-2); border-radius: var(--radius-sm); background: var(--gray); font: var(--type-caption); color: var(--text); line-height: 1.5rem; }
+#ab-ui-server-dialog .empty-box{ padding: var(--space-3); border: 1px dashed var(--gray-strong); border-radius: var(--radius-sm); color: var(--subtext); text-align: center; }
+#ab-ui-server-dialog .empty-box a{ text-decoration: none; font-weight: 600; }
+#ab-ui-server-dialog .fieldset{ border: 1px solid var(--gray); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); display: grid; gap: var(--space-2); }
+#ab-ui-server-dialog .fieldset > .label{ text-transform: uppercase; letter-spacing: .04em; }
+#ab-ui-server-dialog .row{ display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: 1.75rem; }
+#ab-ui-server-dialog .actions{ display: flex; gap: var(--space-2); justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+#ab-ui-server-dialog .btn{}
+#ab-ui-server-dialog .btn.ghost{ background: transparent; color: var(--subtext); border-color: var(--gray); }
+#ab-ui-server-dialog .btn.primary{ background: var(--primary); color: var(--white); }
+#ab-ui-server-dialog .btn.primary[disabled]{ opacity: .45; }
+#ab-ui-server-dialog .btn.primary.is-error{ background: var(--error); border-color: var(--error); }
+#ab-ui-server-dialog .btn:focus-visible{ outline: 2px solid var(--primary); outline-offset: 2px; }
+#ab-ui-server-dialog .kbd{ font: var(--type-caption); color: var(--subtext); opacity: .8; }
+#ab-ui-server-dialog .variant{ display: grid; gap: var(--space-1); }
+#ab-ui-server-dialog .variant .label{ text-align: right; }
+
+</style>
+<style>
+/* ui-servers */
+#ab-ui-servers *{ box-sizing: border-box; }
+#ab-ui-servers{ font-size: calc(16px * var(--ui-scale)); }
+#ab-ui-servers{}
+#ab-ui-servers kbd{ font: var(--type-caption); font-family: ui-monospace, "JetBrains Mono", monospace; color: var(--subtext); }
+#ab-ui-servers .art-head{ display: flex; align-items: baseline; gap: var(--space-3); margin: 0 0 var(--space-4); }
+#ab-ui-servers .art-head h1{ font: var(--type-title); margin: 0; }
+#ab-ui-servers .art-head code{ font: var(--type-mono); color: var(--subtext); }
+#ab-ui-servers .art-head a{ color: var(--subtext); margin-left: auto; }
+#ab-ui-servers .block{ margin: 0 0 var(--space-8); }
+#ab-ui-servers .block > h2{ font: var(--type-heading); color: var(--subtext); margin: 0 0 var(--space-2); }
+#ab-ui-servers .block > h2 small{ font: var(--type-caption); margin-left: var(--space-2); }
+#ab-ui-servers .frame{ width: 82rem; max-width: 100%; border: 1px solid var(--gray); border-radius: var(--radius-md); overflow: hidden; background: var(--background); }
+#ab-ui-servers section[data-ui-state]{ position: relative; }
+#ab-ui-servers section[data-ui-state]::before{}
+#ab-ui-servers .gallery{ display: grid; grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr)); gap: var(--space-4); }
+#ab-ui-servers .gallery > *{ border: 1px solid var(--gray); border-radius: var(--radius-md); overflow: hidden; background: var(--lighter-background); }
+#ab-ui-servers .gallery > .wide{ grid-column: 1 / -1; }
+#ab-ui-servers .gallery section[data-ui-state]{ min-height: 4rem; }
+#ab-ui-servers .gallery-caption{ font: var(--type-caption); color: var(--subtext); padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--gray); background: var(--background); }
+#ab-ui-servers .workspace{}
+#ab-ui-servers .workspace.focus{ grid-template-columns: 1fr; grid-template-rows: 1fr; grid-template-areas: "view"; height: 34rem; }
+#ab-ui-servers .workspace.welcome{ grid-template-rows: var(--title-bar-height) 1fr; grid-template-areas: "list tabs" "list view"; }
+#ab-ui-servers .list{ grid-area: list; background: var(--lighter-background); border-right: 1px solid var(--gray); display: flex; flex-direction: column; min-height: 0; }
+#ab-ui-servers .list > section{ display: flex; flex-direction: column; flex: 1; min-height: 0; }
+#ab-ui-servers .search{ padding: var(--space-2); border-bottom: 1px solid var(--gray); }
+#ab-ui-servers .search .input{}
+#ab-ui-servers .search .input .val{ color: var(--text); }
+#ab-ui-servers .search .input .caret{ width: 1px; height: 1rem; background: var(--text); }
+#ab-ui-servers .search .input kbd{ margin-left: auto; }
+#ab-ui-servers .search .hint{ margin: var(--space-2) 0 0; font: var(--type-caption); color: var(--subtext); }
+#ab-ui-servers .search.focus .input{ border-color: var(--accent-color); box-shadow: 0 0 0 1px var(--accent-color); }
+#ab-ui-servers .entries{ list-style: none; margin: 0; padding: var(--space-1) 0; overflow: hidden; flex: 1; }
+#ab-ui-servers .entries .group{}
+#ab-ui-servers .entries .group::before{ content: "▾"; font-size: 0.6rem; }
+#ab-ui-servers .entries .group.closed::before{ content: "▸"; }
+#ab-ui-servers .entries .entry{}
+#ab-ui-servers .entries .entry .dot{ width: 0.4rem; height: 0.4rem; border-radius: 50%; background: var(--gray-strong); flex: none; }
+#ab-ui-servers .entries .entry .dot.on{ background: var(--success); }
+#ab-ui-servers .entries .entry .meta{ margin-left: auto; font: var(--type-caption); color: var(--subtext); }
+#ab-ui-servers .entries .entry.hover{ background: var(--dark-gray); }
+#ab-ui-servers .entries .entry.selected{ background: var(--primary-opacity); box-shadow: inset 2px 0 0 var(--accent-color); }
+#ab-ui-servers .entries .entry.focus-visible{ outline: 2px solid var(--accent-color); outline-offset: -2px; }
+#ab-ui-servers .entries .entry.ctx{ background: var(--dark-gray); }
+#ab-ui-servers .list-msg{ padding: var(--space-4) var(--space-3); font: var(--type-body); color: var(--subtext); }
+#ab-ui-servers .list-msg.error{ color: var(--error); }
+#ab-ui-servers .list-msg .cta{ display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3); }
+#ab-ui-servers .skeleton{ display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-2); }
+#ab-ui-servers .skeleton i{ display: block; height: 0.875rem; border-radius: var(--radius-sm); background: var(--dark-gray); }
+#ab-ui-servers .skeleton i:nth-child(1){ width: 40%; }
+#ab-ui-servers .skeleton i:nth-child(2){ width: 70%; margin-left: var(--space-2); }
+#ab-ui-servers .skeleton i:nth-child(3){ width: 55%; margin-left: var(--space-2); }
+#ab-ui-servers .skeleton i:nth-child(4){ width: 65%; margin-left: var(--space-2); }
+#ab-ui-servers .skeleton i:nth-child(5){ width: 35%; }
+#ab-ui-servers .skeleton i:nth-child(6){ width: 60%; margin-left: var(--space-2); }
+#ab-ui-servers .menu{}
+#ab-ui-servers .menu.static{ position: static; display: inline-block; margin: var(--space-3); }
+#ab-ui-servers .menu .item{ display: flex; align-items: center; gap: var(--space-3); height: 1.875rem; padding: 0 var(--space-3); }
+#ab-ui-servers .menu .item kbd{ margin-left: auto; }
+#ab-ui-servers .menu .item.hover{ background: var(--dark-gray); }
+#ab-ui-servers .menu .item.danger{ color: var(--error); }
+#ab-ui-servers .menu .item.disabled{ color: var(--subtext); opacity: 0.55; }
+#ab-ui-servers .menu .sep{ height: 1px; background: var(--gray); margin: var(--space-1) 0; }
+#ab-ui-servers .menu .item.check::before{ content: "✓"; width: 0.75rem; color: var(--accent-color); }
+#ab-ui-servers .menu .item.nocheck::before{ content: ""; width: 0.75rem; }
+#ab-ui-servers .tabs{ grid-area: tabs; display: flex; align-items: stretch; background: var(--lighter-background); border-bottom: 1px solid var(--gray); min-width: 0; position: relative; }
+#ab-ui-servers .tabs > section{ display: flex; flex: 1; min-width: 0; }
+#ab-ui-servers .tabstrip{ display: flex; align-items: stretch; flex: 1; min-width: 0; overflow: hidden; }
+#ab-ui-servers .tab{}
+#ab-ui-servers .tab .stripe{ position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--pane); }
+#ab-ui-servers .tab .swatch{ width: 0.5rem; height: 0.5rem; border-radius: 2px; background: var(--pane); flex: none; }
+#ab-ui-servers .tab .x{ margin-left: var(--space-1); color: var(--subtext); opacity: 0.6; }
+#ab-ui-servers .tab .kind{ font: var(--type-caption); color: var(--subtext); }
+#ab-ui-servers .tab.active{ background: var(--gray-strong); color: var(--text); }
+#ab-ui-servers .tab.active .stripe{ height: 3px; }
+#ab-ui-servers .tab.hover{ background: var(--dark-gray); }
+#ab-ui-servers .tab.sleeping{ opacity: 0.6; }
+#ab-ui-servers .tab.sleeping .swatch{ background: transparent; border: 1px solid var(--pane); }
+#ab-ui-servers .tab-add{ display: flex; align-items: center; padding: 0 var(--space-3); color: var(--subtext); }
+#ab-ui-servers .tabs-empty{ display: flex; align-items: center; padding: 0 var(--space-3); font: var(--type-caption); color: var(--subtext); flex: 1; }
+#ab-ui-servers .tabs-right{ display: flex; align-items: stretch; margin-left: auto; border-left: 1px solid var(--gray); position: relative; }
+#ab-ui-servers .tabs-right > div{ display: flex; align-items: stretch; position: relative; }
+#ab-ui-servers .tabs-right > div > section{ display: flex; align-items: stretch; }
+#ab-ui-servers .tbtn{}
+#ab-ui-servers .tbtn.on{ color: var(--text); background: var(--primary-opacity); box-shadow: inset 0 -2px 0 var(--accent-color); }
+#ab-ui-servers .tbtn.disabled{ opacity: 0.4; }
+#ab-ui-servers .tbtn.open{ background: var(--dark-gray); color: var(--text); }
+#ab-ui-servers .tabs-right .menu{ top: calc(100% + 2px); right: var(--space-1); }
+#ab-ui-servers .tabs .ctx-menu{ top: calc(100% + 2px); left: 8.5rem; }
+#ab-ui-servers .view{ grid-area: view; display: flex; min-height: 0; min-width: 0; background: var(--terminal); position: relative; }
+#ab-ui-servers .view > section{ display: flex; flex: 1; min-width: 0; min-height: 0; }
+#ab-ui-servers .split{ display: grid; grid-template-columns: minmax(40rem, 1fr) minmax(22rem, 34%); flex: 1; min-height: 0; }
+#ab-ui-servers .pane{ display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; border-top: 2px solid var(--pane, transparent); }
+#ab-ui-servers .pane + .pane{ border-left: 1px solid var(--gray); }
+#ab-ui-servers .pane-head{ display: flex; align-items: center; gap: var(--space-2); height: 1.75rem; padding: 0 var(--space-3); font: var(--type-caption); color: var(--subtext); background: var(--lighter-background); border-bottom: 1px solid var(--gray); }
+#ab-ui-servers .pane-head .swatch{ width: 0.5rem; height: 0.5rem; border-radius: 2px; background: var(--pane); }
+#ab-ui-servers .pane-head .path{ font: var(--type-mono); font-size: 0.75rem; color: var(--subtext); }
+#ab-ui-servers .pane-head .right{ margin-left: auto; display: flex; gap: var(--space-3); }
+#ab-ui-servers .pane.active-pane .pane-head{ color: var(--text); }
+#ab-ui-servers .term{ flex: 1; padding: var(--space-2) var(--space-3); font: var(--type-mono); color: var(--text); white-space: pre; overflow: hidden; background: var(--terminal); }
+#ab-ui-servers .term .p{ color: var(--success); }
+#ab-ui-servers .term .d{ color: var(--subtext); }
+#ab-ui-servers .term .cur{ display: inline-block; width: 0.55em; height: 1.1em; vertical-align: -0.2em; background: var(--text); }
+#ab-ui-servers .files{ flex: 1; background: var(--lighter-background); font: var(--type-body); overflow: hidden; }
+#ab-ui-servers .files .row{ display: flex; align-items: center; gap: var(--space-2); height: 1.75rem; padding: 0 var(--space-3); border-bottom: 1px solid var(--dark-gray); }
+#ab-ui-servers .files .row .name{ flex: 1; font: var(--type-mono); font-size: 0.8125rem; color: var(--text); }
+#ab-ui-servers .files .row .size, #ab-ui-servers .files .row .date{ font: var(--type-caption); color: var(--subtext); font-variant-numeric: tabular-nums; }
+#ab-ui-servers .files .row .size{ width: 4.5rem; text-align: right; }
+#ab-ui-servers .files .row .date{ width: 6.5rem; text-align: right; }
+#ab-ui-servers .files .row.dir .name::before{ content: "▸ "; color: var(--subtext); }
+#ab-ui-servers .files .row.hover{ background: var(--dark-gray); }
+#ab-ui-servers .files .row.selected{ background: var(--primary-opacity); box-shadow: inset 2px 0 0 var(--accent-color); }
+#ab-ui-servers .files .head{ color: var(--subtext); font: var(--type-caption); }
+#ab-ui-servers .files .head .name{ font: var(--type-caption); color: var(--subtext); }
+#ab-ui-servers .center{ flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-3); color: var(--subtext); font: var(--type-body); text-align: center; padding: var(--space-6); }
+#ab-ui-servers .center.error .msg{ color: var(--error); }
+#ab-ui-servers .center .cta{ display: flex; gap: var(--space-2); }
+#ab-ui-servers .spinner{ width: 1.25rem; height: 1.25rem; border-radius: 50%; border: 2px solid var(--gray); border-top-color: var(--accent-color); }
+#ab-ui-servers .btn{ display: inline-flex; align-items: center; gap: var(--space-2); height: 2rem; padding: 0 var(--space-3); border-radius: var(--radius-sm); border: 1px solid var(--gray); background: var(--dark-gray); color: var(--text); font: var(--type-body); white-space: nowrap; }
+#ab-ui-servers .btn.primary{ background: var(--accent-color); border-color: var(--accent-color); color: var(--white); }
+#ab-ui-servers .btn.ghost{ background: transparent; }
+#ab-ui-servers .btn kbd{ color: inherit; opacity: 0.7; }
+#ab-ui-servers .btn.primary kbd{ color: var(--white); }
+#ab-ui-servers .keybar{ grid-area: keybar; background: var(--lighter-background); border-top: 1px solid var(--gray); display: flex; }
+#ab-ui-servers .keybar > section{ display: flex; flex: 1; }
+#ab-ui-servers .keys{ display: flex; flex: 1; align-items: stretch; gap: 1px; padding: 0 var(--space-1); }
+#ab-ui-servers .keys .k{ flex: 1; min-width: 2.75rem; display: flex; align-items: center; justify-content: center; font: var(--type-caption); font-family: ui-monospace, "JetBrains Mono", monospace; color: var(--text); border-radius: var(--radius-sm); margin: var(--space-1) 0; }
+#ab-ui-servers .keys .k.hover{ background: var(--dark-gray); }
+#ab-ui-servers .keys .k.held{ background: var(--primary-opacity); color: var(--text); box-shadow: inset 0 0 0 1px var(--accent-color); }
+#ab-ui-servers .keys .k.sep{ flex: 0 0 var(--space-2); min-width: 0; }
+#ab-ui-servers .keys.disabled .k{ color: var(--subtext); opacity: 0.4; }
+#ab-ui-servers .keys .note{ display: flex; align-items: center; font: var(--type-caption); color: var(--subtext); padding: 0 var(--space-3); }
+#ab-ui-servers .focus-toggle-float{ position: absolute; top: var(--space-2); right: var(--space-2); z-index: 6; display: flex; }
+#ab-ui-servers .focus-toggle-float .tbtn{ border: 1px solid var(--accent-color); border-radius: var(--radius-sm); height: 2rem; background: var(--primary-opacity); color: var(--text); box-shadow: none; }
+#ab-ui-servers .welcome-wrap{ flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: var(--space-8) var(--space-6); background: var(--background); overflow: hidden; }
+#ab-ui-servers .welcome{ width: 100%; max-width: 44rem; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); }
+#ab-ui-servers .welcome h3{ grid-column: 1 / -1; margin: 0; font: var(--type-title); }
+#ab-ui-servers .welcome h3 small{ display: block; font: var(--type-body); color: var(--subtext); margin-top: var(--space-1); }
+#ab-ui-servers .welcome h4{ margin: 0 0 var(--space-2); font: var(--type-caption); color: var(--subtext); letter-spacing: 0.02em; }
+#ab-ui-servers .recent{ list-style: none; margin: 0; padding: 0; border: 1px solid var(--gray); border-radius: var(--radius-md); background: var(--lighter-background); overflow: hidden; }
+#ab-ui-servers .recent li{ display: flex; align-items: center; gap: var(--space-2); height: 2.25rem; padding: 0 var(--space-3); border-bottom: 1px solid var(--dark-gray); }
+#ab-ui-servers .recent li:last-child{ border-bottom: 0; }
+#ab-ui-servers .recent li .n{ font: var(--type-mono); color: var(--text); }
+#ab-ui-servers .recent li .m{ font: var(--type-caption); color: var(--subtext); }
+#ab-ui-servers .recent li kbd{ margin-left: auto; }
+#ab-ui-servers .recent li.focus-visible{ outline: 2px solid var(--accent-color); outline-offset: -2px; }
+#ab-ui-servers .starts{ list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+#ab-ui-servers .starts li{ display: flex; align-items: center; gap: var(--space-3); height: 2.75rem; padding: 0 var(--space-3); border: 1px solid var(--gray); border-radius: var(--radius-md); background: var(--lighter-background); }
+#ab-ui-servers .starts li .t{ font: var(--type-body); color: var(--text); }
+#ab-ui-servers .starts li .s{ font: var(--type-caption); color: var(--subtext); }
+#ab-ui-servers .starts li kbd{ margin-left: auto; }
+#ab-ui-servers .welcome-empty{ grid-column: 1 / -1; padding: var(--space-4); border: 1px dashed var(--gray-strong); border-radius: var(--radius-md); color: var(--subtext); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+#ab-ui-servers .welcome-empty .cta{ display: flex; gap: var(--space-2); margin-left: auto; }
+
+</style>
+<style>
+/* ui-tmux-dialog */
+#ab-ui-tmux-dialog{ --on-accent: #FFFFFF; }
+#ab-ui-tmux-dialog *, #ab-ui-tmux-dialog *::before, #ab-ui-tmux-dialog *::after{ box-sizing: border-box; }
+#ab-ui-tmux-dialog{ font-size: calc(16px * var(--ui-scale)); }
+#ab-ui-tmux-dialog{}
+#ab-ui-tmux-dialog .artboard{ max-width: 64rem; margin: 0 auto; display: grid; gap: var(--space-8); }
+#ab-ui-tmux-dialog .ab-head{ display: grid; gap: var(--space-1); padding-bottom: var(--space-4); border-bottom: 1px solid var(--gray); }
+#ab-ui-tmux-dialog .ab-head h1{ margin: 0; font: var(--type-title); }
+#ab-ui-tmux-dialog .ab-id{ font: var(--type-mono); color: var(--subtext); }
+#ab-ui-tmux-dialog .ab-desc{ margin: 0; color: var(--subtext); }
+#ab-ui-tmux-dialog h2{ margin: 0; font: var(--type-heading); }
+#ab-ui-tmux-dialog .ab-note{ font: var(--type-caption); color: var(--subtext); }
+#ab-ui-tmux-dialog .stage{}
+#ab-ui-tmux-dialog .stage-chrome{}
+#ab-ui-tmux-dialog .stage::before{ content: ""; position: absolute; inset: 0; background: var(--dialog-background); }
+#ab-ui-tmux-dialog .dialog{}
+#ab-ui-tmux-dialog .dialog-head{ padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--gray); font: var(--type-title); }
+#ab-ui-tmux-dialog .dialog-body{ display: grid; grid-template-columns: 15rem 1fr; min-height: 16rem; }
+#ab-ui-tmux-dialog .pane{ padding: var(--space-3); display: grid; grid-template-rows: auto 1fr; gap: var(--space-2); align-content: start; }
+#ab-ui-tmux-dialog .pane + .pane{ border-left: 1px solid var(--gray); }
+#ab-ui-tmux-dialog .pane-label{}
+#ab-ui-tmux-dialog .dialog-foot{}
+#ab-ui-tmux-dialog .sessions{ list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; align-content: start; }
+#ab-ui-tmux-dialog .sessions li{}
+#ab-ui-tmux-dialog .sessions .name{ font: var(--type-mono); }
+#ab-ui-tmux-dialog .sessions .meta{ font: var(--type-caption); color: var(--subtext); white-space: nowrap; }
+#ab-ui-tmux-dialog .sessions li[aria-selected="true"]{ background: var(--primary-opacity); border-left-color: var(--primary); }
+#ab-ui-tmux-dialog .windows{}
+#ab-ui-tmux-dialog .windows li{}
+#ab-ui-tmux-dialog .windows .idx{ font: var(--type-mono); font-size: .75rem; color: var(--subtext); }
+#ab-ui-tmux-dialog .windows .name{ font: var(--type-mono); }
+#ab-ui-tmux-dialog .windows .name .cur{ color: var(--primary); }
+#ab-ui-tmux-dialog .windows li[aria-selected="true"]{ border-color: var(--primary); background: var(--primary-opacity); }
+#ab-ui-tmux-dialog .windows-empty{ min-height: 8rem; border: 1px dashed var(--gray); border-radius: var(--radius-sm); }
+#ab-ui-tmux-dialog .copy-empty{ margin: 0; padding: var(--space-3) var(--space-3); color: var(--subtext); }
+#ab-ui-tmux-dialog .copy-empty strong{ color: var(--text); font-weight: 600; }
+#ab-ui-tmux-dialog .copy-error{}
+#ab-ui-tmux-dialog .skeleton{ display: grid; gap: 2px; }
+#ab-ui-tmux-dialog .skeleton li{ display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); min-height: 2.25rem; }
+#ab-ui-tmux-dialog .skel{ height: .75rem; border-radius: var(--radius-sm); background: var(--gray); }
+#ab-ui-tmux-dialog .btn{}
+#ab-ui-tmux-dialog .btn-primary{ background: var(--primary); border-color: var(--primary); color: var(--on-accent); }
+#ab-ui-tmux-dialog .btn:focus-visible{ outline: 2px solid var(--primary); outline-offset: 2px; }
+#ab-ui-tmux-dialog .btn[disabled]{ opacity: .45; cursor: not-allowed; }
+#ab-ui-tmux-dialog .element{ display: grid; gap: var(--space-3); padding-top: var(--space-6); border-top: 1px solid var(--gray); }
+#ab-ui-tmux-dialog .element-head{ display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-3); }
+#ab-ui-tmux-dialog .element-head code{ font: var(--type-mono); color: var(--text); }
+#ab-ui-tmux-dialog .chip{ font: var(--type-caption); color: var(--subtext); padding: 0 var(--space-2); border-radius: var(--radius-sm); background: var(--dark-gray); }
+#ab-ui-tmux-dialog .state-row{ display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-start; }
+#ab-ui-tmux-dialog section[data-ui-state]{ display: grid; gap: var(--space-2); }
+#ab-ui-tmux-dialog section[data-ui-state] > h4{ margin: 0; font: var(--type-mono); font-size: .75rem; color: var(--subtext); }
+#ab-ui-tmux-dialog section[data-ui-state] > h4::before{ content: "state · "; }
+#ab-ui-tmux-dialog section[data-ui-state] > h4 .note{ font: var(--type-caption); }
+#ab-ui-tmux-dialog .frame{ width: 15rem; padding: var(--space-3); background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); display: grid; gap: var(--space-2); }
+#ab-ui-tmux-dialog .frame-wide{ width: 26rem; }
+#ab-ui-tmux-dialog .frame-inline{ width: auto; }
+
+</style>
+</head>
+<body class="mb-page">
+<h1>outpost — Mockups</h1>
+<p class="sub">Manifest-Revision 1 · 2026-09-03 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
+<ul class="mb-toc">
+<li><a href="#UI-SERVERS">Servers — Arbeitsfläche</a> <code>UI-SERVERS</code></li>
+<li><a href="#UI-SERVER-DIALOG">Server anlegen / bearbeiten</a> <code>UI-SERVER-DIALOG</code></li>
+<li><a href="#UI-TMUX-DIALOG">tmux-Sessions</a> <code>UI-TMUX-DIALOG</code></li>
+<li><a href="#UI-DIRECT-CONNECT">Direkt verbinden</a> <code>UI-DIRECT-CONNECT</code></li>
+</ul>
+<h2 id="UI-SERVERS">Servers — Arbeitsfläche <code>UI-SERVERS</code></h2>
+<p>Server-Liste, Session-Tabs, Terminal-/Datei-Fläche, Fokus-Modus, Leerzustand.</p>
+<div class="ctx"><b>Art:</b> Seite · Route <code>/servers</code><br><b>Tastatur:</b> Ctrl+Shift+F Fokus-Modus</div>
+<p class="meta">Artboard: <a href="./ui-servers.html">ui-servers.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-servers.md</code></p>
+<table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
+<tr><td><code>UI-SERVERS-LIST</code></td><td>Server</td><td>Die Verbindungsziele des Nutzers, gruppiert nach Ordner und Organisation, plus verknüpfte OneDrive-Konten. <b>Nicht:</b> session, tab, identity, snippet.</td><td><code>default · loading · empty · error · selected</code></td></tr>
+<tr><td><code>UI-SERVERS-SEARCH</code></td><td>Suche</td><td>Filtert die Server-Liste nach Name oder Tag, ohne die Gruppierung aufzulösen.</td><td><code>default · empty</code></td></tr>
+<tr><td><code>UI-SERVERS-LIST-MENU</code></td><td>Kontextmenü Server</td><td>Zweitweg für Aktionen auf einem Eintrag — Verbinden, SFTP öffnen, Notizen, Bearbeiten, Duplizieren, Port weiterleiten, Session beitreten, Löschen. <b>Nicht:</b> primary_navigation.</td><td><code>default · disabled</code></td></tr>
+<tr><td><code>UI-SERVERS-TABS</code></td><td>Sessions</td><td>Die aktuell offenen Sessions als Tabs, jede mit ihrer Split-View-Zuordnungsfarbe; Kontextmenü mit Umbenennen, Duplizieren, Teilen, Schlafen legen, Ausklinken, Schließen. <b>Nicht:</b> server_entry, folder.</td><td><code>default · selected · empty</code></td></tr>
+<tr><td><code>UI-SERVERS-VIEW</code></td><td>Arbeitsfläche</td><td>Der Inhalt der aktiven Session, einzeln oder als Split; Terminal und Datei-Pane nebeneinander sind der Kernfall. <b>Nicht:</b> server_entry.</td><td><code>default · loading · error</code></td></tr>
+<tr><td><code>UI-SERVERS-FOCUS</code></td><td>Fokus-Modus</td><td>Blendet Server-Liste und Tab-Leiste aus, nur das aktive Pane bleibt; Taste Ctrl+Shift+F, greift automatisch unter den Mindestbreiten (Terminal 40 rem, Datei-Pane 22 rem). <b>Nicht:</b> fullscreen_browser.</td><td><code>default · selected</code></td></tr>
+<tr><td><code>UI-SERVERS-KEYBAR</code></td><td>Tastenleiste</td><td>Terminal-Sondertasten (Esc, Tab, Ctrl, Pfeile) nur auf Touch bzw. unter 768 px, und nur wenn das aktive Pane ein Terminal ist; am Desktop nie.</td><td><code>default · disabled</code></td></tr>
+<tr><td><code>UI-SERVERS-ACTIONS</code></td><td>Aktionen</td><td>Menü mit Aktionen auf die aktive Session (Fokus-Modus, Teilen, Ausklinken, Schließen).</td><td><code>default · disabled</code></td></tr>
+<tr><td><code>UI-SERVERS-WELCOME</code></td><td>Willkommen</td><td>Leerzustand ohne offene Session — Begrüßung, die fünf zuletzt genutzten Verbindungen, Erste Schritte, Gerät verbinden, Apps laden. Positiv, handlungsleitend, kein Marketing. <b>Nicht:</b> all_servers, marketing.</td><td><code>default · empty</code></td></tr>
+</table>
+<div class="mb-embed"><div class="mb-embed-label">Auszug: ui-servers.html — alle Zustände, wie im Artboard</div><div id="ab-ui-servers">
+
+
+<header class="mb-context" style="font:var(--type-caption);color:var(--subtext);background:var(--lighter-background);border:1px solid var(--gray);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin:0 0 var(--space-4);line-height:1.6">
+	<strong style="color:var(--text);font:var(--type-heading)">Darstellungskontext</strong><br>
+	<b style="color:var(--text)">Art:</b> Seite · Route /servers · dreiteilig: Liste (einklappbar) · Tabs · Fläche<br>
+	Tastatur: Ctrl+Shift+F Fokus-Modus · E Bearbeiten · T tmux · Ctrl+K Direkt verbinden
+</header>
+<header class="art-head">
+	<h1>UI-SERVERS</h1>
+	<span>Servers — Arbeitsfläche</span>
+	<code>/servers</code>
+	<a href="./index.html">← Kontaktbogen</a>
+</header>
+
+<!-- ===================================================================
+     Block 1 — Arbeitsfläche, alle Elemente im default-Zustand
+     Split-View-Zuordnungsfarben aus client/src/pages/Servers/components/
+     ViewContainer/utils/paneColors.js (blau · amber · violett), hier nur
+     als Inline-Wert je Tab/Pane gesetzt — kein Token.
+     =================================================================== -->
+<div class="block">
+	<h2>Arbeitsfläche <small>Split Terminal | Datei-Pane · Liste links · Sessions oben · Tastenleiste unten</small></h2>
+	<div class="frame workspace">
+
+		<aside class="list" data-ui-id="UI-SERVERS-LIST" aria-label="Server">
+			<section data-ui-state="default">
+				<div class="search" data-ui-id="UI-SERVERS-SEARCH">
+					<section data-ui-state="default">
+						<div class="input" role="search"><span>Suche</span><kbd>/</kbd></div>
+					</section>
+				</div>
+				<ul class="entries">
+					<li class="group">Homelab</li>
+					<li class="entry"><span class="dot on"></span>nas<span class="meta">2 Sessions</span></li>
+					<li class="entry ctx"><span class="dot on"></span>pihole<span class="meta">SFTP</span></li>
+					<li class="entry"><span class="dot"></span>Proxmox</li>
+					<li class="group">Arbeit</li>
+					<li class="entry"><span class="dot"></span>build-01</li>
+					<li class="entry"><span class="dot"></span>vpn</li>
+					<li class="group closed">OneDrive</li>
+				</ul>
+				<div class="menu" data-ui-id="UI-SERVERS-LIST-MENU" role="menu" style="top: 8.6rem; left: 5rem;">
+					<section data-ui-state="default">
+						<div class="item hover">Verbinden<kbd>↵</kbd></div>
+						<div class="item">SFTP öffnen<kbd>⇧↵</kbd></div>
+						<div class="item">Notizen</div>
+						<div class="sep"></div>
+						<div class="item">Bearbeiten<kbd>E</kbd></div>
+						<div class="item">Duplizieren</div>
+						<div class="item">Port weiterleiten</div>
+						<div class="item">Session beitreten</div>
+						<div class="sep"></div>
+						<div class="item danger">Löschen<kbd>⌫</kbd></div>
+					</section>
+				</div>
+			</section>
+		</aside>
+
+		<nav class="tabs" data-ui-id="UI-SERVERS-TABS" aria-label="Sessions">
+			<section data-ui-state="default">
+				<div class="tabstrip">
+					<div class="tab active" style="--pane:#2A72C9"><span class="stripe"></span><span class="swatch"></span>nas<span class="x">×</span></div>
+					<div class="tab" style="--pane:#A8741A"><span class="stripe"></span><span class="swatch"></span>pihole <span class="kind">(SFTP)</span><span class="x">×</span></div>
+					<div class="tab" style="--pane:#8E3FD4"><span class="stripe"></span><span class="swatch"></span>Notizen<span class="x">×</span></div>
+					<div class="tab-add">+</div>
+				</div>
+				<div class="tabs-right">
+					<div data-ui-id="UI-SERVERS-ACTIONS">
+						<section data-ui-state="default">
+							<div class="tbtn open" role="button" aria-haspopup="menu" aria-expanded="true" title="Aktionen">⋯</div>
+							<div class="menu" role="menu">
+								<div class="item hover">Fokus-Modus<kbd>⌃⇧F</kbd></div>
+								<div class="item">Teilen</div>
+								<div class="item">Ausklinken</div>
+								<div class="sep"></div>
+								<div class="item">Schließen<kbd>⌃W</kbd></div>
+							</div>
+						</section>
+					</div>
+					<div data-ui-id="UI-SERVERS-FOCUS">
+						<section data-ui-state="default">
+							<div class="tbtn" role="switch" aria-checked="false" title="Fokus-Modus">Fokus <kbd>⌃⇧F</kbd></div>
+						</section>
+					</div>
+				</div>
+			</section>
+		</nav>
+
+		<main class="view" data-ui-id="UI-SERVERS-VIEW" aria-label="Arbeitsfläche">
+			<section data-ui-state="default">
+				<div class="split">
+					<div class="pane active-pane" style="--pane:#2A72C9">
+						<div class="pane-head"><span class="swatch"></span>nas · Terminal<span class="right"><span>tmux: main</span><span>80×24</span></span></div>
+						<div class="term"><span class="p">nas:~$</span> uptime
+ 21:14:03 up 41 days,  3:12,  1 user,  load average: 0.42, 0.37, 0.31
+<span class="p">nas:~$</span> docker compose ls
+<span class="d">NAME        STATUS       CONFIG FILES</span>
+outpost     running(2)   /volume1/docker/outpost/compose.yaml
+<span class="p">nas:~$</span> <span class="cur"></span></div>
+					</div>
+					<div class="pane" style="--pane:#2A72C9">
+						<div class="pane-head"><span class="swatch"></span>nas · Dateien <span class="path">/volume1/docker</span><span class="right"><span>⇧⌘.</span></span></div>
+						<div class="files">
+							<div class="row head"><span class="name">Name</span><span class="size">Größe</span><span class="date">Geändert</span></div>
+							<div class="row dir"><span class="name">..</span><span class="size"></span><span class="date"></span></div>
+							<div class="row dir selected"><span class="name">outpost</span><span class="size">—</span><span class="date">heute 20:58</span></div>
+							<div class="row dir"><span class="name">nexterm</span><span class="size">—</span><span class="date">02.09.2026</span></div>
+							<div class="row dir"><span class="name">pihole</span><span class="size">—</span><span class="date">14.08.2026</span></div>
+							<div class="row"><span class="name">compose.yaml</span><span class="size">1,2 KB</span><span class="date">heute 20:41</span></div>
+							<div class="row hover"><span class="name">.env</span><span class="size">318 B</span><span class="date">14.08.2026</span></div>
+						</div>
+					</div>
+				</div>
+			</section>
+		</main>
+
+		<nav class="keybar" data-ui-id="UI-SERVERS-KEYBAR" aria-label="Tastenleiste">
+			<section data-ui-state="default">
+				<div class="keys">
+					<div class="k">Esc</div><div class="k">Tab</div><div class="k held">Ctrl</div><div class="k">Alt</div>
+					<div class="k sep"></div>
+					<div class="k">←</div><div class="k">↑</div><div class="k">↓</div><div class="k">→</div>
+					<div class="k sep"></div>
+					<div class="k">Home</div><div class="k">End</div><div class="k">PgUp</div><div class="k">PgDn</div>
+					<div class="k sep"></div>
+					<div class="k">|</div><div class="k">~</div><div class="k">-</div><div class="k">/</div>
+				</div>
+			</section>
+		</nav>
+
+	</div>
+</div>
+
+<!-- ===================================================================
+     Block 2 — Fokus-Modus aktiv: nur das aktive Pane, Liste und Tabs weg
+     =================================================================== -->
+<div class="block">
+	<h2>Fokus-Modus aktiv <small>Liste und Tab-Leiste ausgeblendet · greift automatisch unter 40 rem (Terminal) / 22 rem (Dateien)</small></h2>
+	<div class="frame workspace focus">
+		<div class="view">
+			<div class="pane active-pane" style="--pane:#2A72C9; flex:1;">
+				<div class="pane-head"><span class="swatch"></span>nas · Terminal<span class="right"><span>tmux: main</span><span>132×36</span></span></div>
+				<div class="term"><span class="p">nas:~$</span> docker compose -f /volume1/docker/outpost/compose.yaml logs --tail 3 server
+<span class="d">server-1  | [engine] tmux new-session -d -s main</span>
+<span class="d">server-1  | [engine] attached pty 0 → session main</span>
+<span class="d">server-1  | [ws] client connected (ma.backes)</span>
+<span class="p">nas:~$</span> <span class="cur"></span></div>
+			</div>
+			<div class="focus-toggle-float" data-ui-id="UI-SERVERS-FOCUS">
+				<section data-ui-state="selected">
+					<div class="tbtn on" role="switch" aria-checked="true" title="Fokus-Modus beenden">Fokus <kbd>⌃⇧F</kbd></div>
+				</section>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- ===================================================================
+     Block 3 — Leerzustand ohne offene Session: Willkommen
+     Tab-Leiste leer (UI-SERVERS-TABS empty), Aktionen ohne Ziel (disabled)
+     =================================================================== -->
+<div class="block">
+	<h2>Willkommen <small>keine offene Session · fünf letzte Verbindungen aus GET /entries/recent?limit=5</small></h2>
+	<div class="frame workspace welcome">
+
+		<aside class="list">
+			<div class="search"><div class="input" role="search"><span>Suche</span><kbd>/</kbd></div></div>
+			<ul class="entries">
+				<li class="group">Homelab</li>
+				<li class="entry"><span class="dot"></span>nas</li>
+				<li class="entry"><span class="dot"></span>pihole</li>
+				<li class="entry"><span class="dot"></span>Proxmox</li>
+				<li class="group">Arbeit</li>
+				<li class="entry"><span class="dot"></span>build-01</li>
+				<li class="entry"><span class="dot"></span>vpn</li>
+				<li class="group closed">OneDrive</li>
+			</ul>
+		</aside>
+
+		<nav class="tabs" data-ui-id="UI-SERVERS-TABS" aria-label="Sessions">
+			<section data-ui-state="empty">
+				<div class="tabs-empty">Keine offene Session</div>
+				<div class="tabs-right">
+					<div data-ui-id="UI-SERVERS-ACTIONS">
+						<section data-ui-state="disabled">
+							<div class="tbtn disabled" role="button" aria-disabled="true" title="Aktionen">⋯</div>
+						</section>
+					</div>
+				</div>
+			</section>
+		</nav>
+
+		<main class="view" data-ui-id="UI-SERVERS-WELCOME" aria-label="Willkommen">
+			<section data-ui-state="default">
+				<div class="welcome-wrap">
+					<div class="welcome">
+						<h3>Willkommen<small>Wähle eine Verbindung oder lege los.</small></h3>
+						<div>
+							<h4>Zuletzt verbunden</h4>
+							<ul class="recent">
+								<li class="focus-visible"><span class="n">nas</span><span class="m">SSH · vor 12 min</span><kbd>↵</kbd></li>
+								<li><span class="n">pihole</span><span class="m">SFTP · heute</span></li>
+								<li><span class="n">proxmox</span><span class="m">SSH · gestern</span></li>
+								<li><span class="n">build-01</span><span class="m">SSH · vor 3 Tagen</span></li>
+								<li><span class="n">vpn</span><span class="m">SSH · vor 6 Tagen</span></li>
+							</ul>
+						</div>
+						<div>
+							<h4>Weiter</h4>
+							<ul class="starts">
+								<li><span><span class="t">Erste Schritte</span><br><span class="s">Server anlegen, SSH-Config importieren</span></span><kbd>1</kbd></li>
+								<li><span><span class="t">Gerät verbinden</span><br><span class="s">Direktverbindung ohne gespeicherten Eintrag</span></span><kbd>2</kbd></li>
+								<li><span><span class="t">Apps laden</span><br><span class="s">Desktop und Mobile</span></span><kbd>3</kbd></li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</section>
+		</main>
+
+	</div>
+</div>
+
+<!-- ===================================================================
+     Weitere Zustände — je Element, gestapelt
+     =================================================================== -->
+<div class="block">
+	<h2>Weitere Zustände <small>alle im Manifest deklarierten Zustände, die oben nicht im Layout stehen</small></h2>
+	<div class="gallery">
+
+		<div data-ui-id="UI-SERVERS-LIST" aria-label="Server">
+			<div class="gallery-caption">UI-SERVERS-LIST · list · Server</div>
+			<section data-ui-state="loading">
+				<div class="search"><div class="input"><span>Suche</span><kbd>/</kbd></div></div>
+				<div class="skeleton" aria-busy="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+			</section>
+			<section data-ui-state="empty">
+				<div class="search"><div class="input"><span>Suche</span><kbd>/</kbd></div></div>
+				<div class="list-msg">
+					Noch keine Server. Server anlegen, SSH-Config importieren oder direkt verbinden.
+					<div class="cta"><span class="btn primary">Server anlegen <kbd>N</kbd></span><span class="btn">Importieren</span><span class="btn ghost">Direkt verbinden</span></div>
+				</div>
+			</section>
+			<section data-ui-state="error">
+				<div class="search"><div class="input"><span>Suche</span><kbd>/</kbd></div></div>
+				<div class="list-msg error">
+					Serverliste konnte nicht geladen werden.
+					<div class="cta"><span class="btn">Erneut laden <kbd>R</kbd></span></div>
+				</div>
+			</section>
+			<section data-ui-state="selected">
+				<div class="search"><div class="input"><span>Suche</span><kbd>/</kbd></div></div>
+				<ul class="entries">
+					<li class="group">Homelab</li>
+					<li class="entry selected focus-visible"><span class="dot on"></span>nas<span class="meta">2 Sessions</span></li>
+					<li class="entry"><span class="dot on"></span>pihole<span class="meta">SFTP</span></li>
+					<li class="entry hover"><span class="dot"></span>Proxmox</li>
+				</ul>
+			</section>
+		</div>
+
+		<div>
+			<div class="gallery-caption">UI-SERVERS-SEARCH · field · Suche</div>
+			<div data-ui-id="UI-SERVERS-SEARCH">
+				<section data-ui-state="empty">
+					<div class="search focus">
+						<div class="input" role="search"><span class="val">prox-02</span><span class="caret"></span><kbd>Esc</kbd></div>
+						<p class="hint">Kein Server passt zur Suche.</p>
+					</div>
+					<ul class="entries">
+						<li class="group">Homelab</li>
+						<li class="group">Arbeit</li>
+						<li class="group closed">OneDrive</li>
+					</ul>
+				</section>
+			</div>
+		</div>
+
+		<div>
+			<div class="gallery-caption">UI-SERVERS-LIST-MENU · overlay · Kontextmenü Server</div>
+			<div data-ui-id="UI-SERVERS-LIST-MENU">
+				<section data-ui-state="disabled">
+					<div class="menu static" role="menu" aria-disabled="true">
+						<div class="item disabled">Verbinden<kbd>↵</kbd></div>
+						<div class="item disabled">SFTP öffnen<kbd>⇧↵</kbd></div>
+						<div class="item disabled">Notizen</div>
+						<div class="sep"></div>
+						<div class="item disabled">Bearbeiten<kbd>E</kbd></div>
+						<div class="item disabled">Duplizieren</div>
+						<div class="item disabled">Port weiterleiten</div>
+						<div class="item disabled">Session beitreten</div>
+						<div class="sep"></div>
+						<div class="item disabled">Löschen<kbd>⌫</kbd></div>
+					</div>
+				</section>
+			</div>
+		</div>
+
+		<div>
+			<div class="gallery-caption">UI-SERVERS-KEYBAR · nav · Tastenleiste</div>
+			<div data-ui-id="UI-SERVERS-KEYBAR">
+				<section data-ui-state="disabled">
+					<div class="keybar" style="height: var(--key-bar-height); border-top: 0;">
+						<div class="keys disabled" aria-disabled="true">
+							<div class="k">Esc</div><div class="k">Tab</div><div class="k">Ctrl</div><div class="k">Alt</div>
+							<div class="k sep"></div>
+							<div class="k">←</div><div class="k">↑</div><div class="k">↓</div><div class="k">→</div>
+							<div class="note">aktives Pane ist kein Terminal</div>
+						</div>
+					</div>
+				</section>
+			</div>
+		</div>
+
+		<div class="wide">
+			<div class="gallery-caption">UI-SERVERS-TABS · nav · Sessions</div>
+			<div data-ui-id="UI-SERVERS-TABS" aria-label="Sessions">
+				<section data-ui-state="selected" style="height: 17rem;">
+					<div class="tabs" style="height: var(--title-bar-height);">
+						<div class="tabstrip">
+							<div class="tab" style="--pane:#2A72C9"><span class="stripe"></span><span class="swatch"></span>nas<span class="x">×</span></div>
+							<div class="tab active" style="--pane:#A8741A"><span class="stripe"></span><span class="swatch"></span>pihole <span class="kind">(SFTP)</span><span class="x">×</span></div>
+							<div class="tab sleeping" style="--pane:#8E3FD4"><span class="stripe"></span><span class="swatch"></span>Notizen<span class="x">×</span></div>
+							<div class="tab-add">+</div>
+						</div>
+						<div class="menu ctx-menu" role="menu">
+							<div class="item hover">Umbenennen<kbd>F2</kbd></div>
+							<div class="item">Duplizieren</div>
+							<div class="item">Teilen</div>
+							<div class="item">Schlafen legen</div>
+							<div class="item">Ausklinken</div>
+							<div class="sep"></div>
+							<div class="item">Schließen<kbd>⌃W</kbd></div>
+						</div>
+					</div>
+				</section>
+			</div>
+		</div>
+
+		<div class="wide">
+			<div class="gallery-caption">UI-SERVERS-VIEW · region · Arbeitsfläche</div>
+			<div data-ui-id="UI-SERVERS-VIEW" aria-label="Arbeitsfläche">
+				<section data-ui-state="loading" style="height: 12rem; display:flex;">
+					<div class="pane active-pane" style="--pane:#2A72C9; flex:1;">
+						<div class="pane-head"><span class="swatch"></span>nas · Terminal</div>
+						<div class="center" aria-busy="true"><div class="spinner"></div><div>Verbinde …</div></div>
+					</div>
+				</section>
+				<section data-ui-state="error" style="height: 12rem; display:flex;">
+					<div class="pane active-pane" style="--pane:#2A72C9; flex:1;">
+						<div class="pane-head"><span class="swatch"></span>nas · Terminal</div>
+						<div class="center error">
+							<div class="msg">Verbindung fehlgeschlagen. Erneut versuchen oder Server bearbeiten.</div>
+							<div class="cta"><span class="btn primary">Erneut versuchen <kbd>↵</kbd></span><span class="btn">Server bearbeiten <kbd>E</kbd></span></div>
+						</div>
+					</div>
+				</section>
+			</div>
+		</div>
+
+		<div class="wide">
+			<div class="gallery-caption">UI-SERVERS-WELCOME · empty · Willkommen</div>
+			<div data-ui-id="UI-SERVERS-WELCOME" aria-label="Willkommen">
+				<section data-ui-state="empty">
+					<div class="welcome-wrap" style="padding: var(--space-6);">
+						<div class="welcome">
+							<h3>Willkommen<small>Wähle eine Verbindung oder lege los.</small></h3>
+							<div class="welcome-empty">
+								<span>Noch keine Verbindungen. Lege einen Server an oder verbinde dich direkt.</span>
+								<span class="cta"><span class="btn primary">Server anlegen <kbd>N</kbd></span><span class="btn">Direkt verbinden</span></span>
+							</div>
+							<div style="grid-column: 1 / -1;">
+								<h4>Weiter</h4>
+								<ul class="starts">
+									<li><span><span class="t">Erste Schritte</span><br><span class="s">Server anlegen, SSH-Config importieren</span></span><kbd>1</kbd></li>
+									<li><span><span class="t">Gerät verbinden</span><br><span class="s">Direktverbindung ohne gespeicherten Eintrag</span></span><kbd>2</kbd></li>
+									<li><span><span class="t">Apps laden</span><br><span class="s">Desktop und Mobile</span></span><kbd>3</kbd></li>
+								</ul>
+							</div>
+						</div>
+					</div>
+				</section>
+			</div>
+		</div>
+
+	</div>
+</div>
+
+
+</div></div>
+<h2 id="UI-SERVER-DIALOG">Server anlegen / bearbeiten <code>UI-SERVER-DIALOG</code></h2>
+<p>Drei Tabs — Details, Identität, Einstellungen.</p>
+<div class="ctx"><b>Art:</b> Dialog (modal, mit Backdrop)<br><b>Erscheint über:</b> UI-SERVERS<br><b>Öffnen durch:</b> Kontextmenü › Bearbeiten / Neu<br><b>Größe:</b> mittig<br><b>Schließen:</b> Esc<br><b>Tastatur:</b> Ctrl+1/2/3 Tabs</div>
+<p class="meta">Artboard: <a href="./ui-server-dialog.html">ui-server-dialog.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-server-dialog.md</code></p>
+<table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
+<tr><td><code>UI-SERVER-DIALOG-TABS</code></td><td>Details · Identität · Einstellungen</td><td>Die drei Abschnitte des Dialogs in fester Reihenfolge.</td><td><code>default · selected</code></td></tr>
+<tr><td><code>UI-SERVER-DIALOG-DETAILS</code></td><td>Details</td><td>Name, Icon, Server-IP, Port, Protokoll, Engine, MAC-Adresse und WoL-Broadcast des Servers. <b>Nicht:</b> identity.</td><td><code>default · error</code></td></tr>
+<tr><td><code>UI-SERVER-DIALOG-IDENTITY</code></td><td>Identität</td><td>Zugangsdaten, mit denen dieser Server erreicht wird — persönliche und Organisations-Identitäten, verknüpfbar; Authentifizierung Passwort, SSH-Key oder beides. <b>Nicht:</b> server_entry, user_account.</td><td><code>default · empty</code></td></tr>
+<tr><td><code>UI-SERVER-DIALOG-SETTINGS</code></td><td>Einstellungen</td><td>Verhalten dieses Servers in drei Gruppen — Terminal (Schrift, Cursor, Scrollback, Bell), Verbindung (Keep-alive, Timeout, Jump-Host, Startbefehl), tmux (automatisch anhängen, Standard-Session). Keine Stammdaten. <b>Nicht:</b> server_entry.</td><td><code>default</code></td></tr>
+<tr><td><code>UI-SERVER-DIALOG-SAVE</code></td><td>Speichern</td><td>Legt den Server an bzw. speichert Änderungen und schließt den Dialog; Beschriftung „Erstellen" beim Anlegen, „Speichern" beim Bearbeiten.</td><td><code>default · disabled · error</code></td></tr>
+</table>
+<div class="mb-embed"><div class="mb-embed-label">Auszug: ui-server-dialog.html — alle Zustände, wie im Artboard</div><div id="ab-ui-server-dialog">
+
+
+<header class="mb-context" style="font:var(--type-caption);color:var(--subtext);background:var(--lighter-background);border:1px solid var(--gray);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin:0 0 var(--space-4);line-height:1.6">
+	<strong style="color:var(--text);font:var(--type-heading)">Darstellungskontext</strong><br>
+	<b style="color:var(--text)">Art:</b> Dialog, modal · erscheint über UI-SERVERS auf dem Backdrop (--dialog-background)<br>
+	Öffnen: Kontextmenü › Bearbeiten / Neu, Taste E · Schließen: Esc, Backdrop, Abbrechen; nach Speichern automatisch<br>Größe: mittig, 44 rem, max. 85 vh · Tastatur: Ctrl+1/2/3 Tabs, Ctrl+Enter Speichern
+</header>
+<div class="artboard-head">
+	<strong>UI-SERVER-DIALOG</strong>
+	<code>kind: dialog</code>
+	<span>Server anlegen / bearbeiten — Drei Tabs — Details, Identität, Einstellungen.</span>
+</div>
+
+<div class="backdrop">
+	<div class="dialog" role="dialog" aria-labelledby="dlg-title" data-ui-id="UI-SERVER-DIALOG">
+
+		<div class="dialog-head">
+			<h1 id="dlg-title">Server anlegen / bearbeiten</h1>
+			<button class="close" aria-label="Schließen">×</button>
+		</div>
+
+		<div class="dialog-body">
+
+			<!-- UI-SERVER-DIALOG-TABS · nav · states: default, selected -->
+			<div class="element" data-ui-id="UI-SERVER-DIALOG-TABS">
+				<header><code>UI-SERVER-DIALOG-TABS</code><span class="type">nav</span><span>Details · Identität · Einstellungen</span></header>
+
+				<section data-ui-state="default">
+					<nav class="tabs" aria-label="Dialogabschnitte">
+						<span class="tab" aria-current="page">Details</span>
+						<span class="tab">Identität</span>
+						<span class="tab">Einstellungen</span>
+					</nav>
+				</section>
+
+				<section data-ui-state="selected">
+					<nav class="tabs" aria-label="Dialogabschnitte">
+						<span class="tab">Details</span>
+						<span class="tab is-selected" aria-current="page">Identität</span>
+						<span class="tab">Einstellungen</span>
+					</nav>
+				</section>
+			</div>
+
+			<!-- UI-SERVER-DIALOG-DETAILS · form · states: default, error -->
+			<div class="element" data-ui-id="UI-SERVER-DIALOG-DETAILS">
+				<header><code>UI-SERVER-DIALOG-DETAILS</code><span class="type">form</span><span>Details — Server-Stammdaten</span></header>
+
+				<section data-ui-state="default">
+					<div class="grid">
+						<div class="field c9">
+							<label for="d-name">Name</label>
+							<input class="input" id="d-name" value="nas">
+						</div>
+						<div class="field c3">
+							<span class="label">Icon</span>
+							<div class="icon-field"><span class="avatar" aria-hidden="true">N</span><span class="help">LetterAvatar</span></div>
+						</div>
+						<div class="field c6">
+							<label for="d-ip">Server-IP</label>
+							<input class="input mono" id="d-ip" value="192.168.2.151">
+						</div>
+						<div class="field c3">
+							<label for="d-port">Port</label>
+							<input class="input mono" id="d-port" value="22">
+						</div>
+						<div class="field c3">
+							<label for="d-proto">Protokoll</label>
+							<select class="input" id="d-proto"><option selected>SSH</option></select>
+						</div>
+						<div class="field c12">
+							<label for="d-engine">Engine</label>
+							<select class="input" id="d-engine"><option value="">—</option></select>
+						</div>
+						<div class="field c6">
+							<label for="d-mac">MAC-Adresse</label>
+							<input class="input mono" id="d-mac" value="">
+						</div>
+						<div class="field c6">
+							<label for="d-wol">WoL-Broadcast</label>
+							<input class="input mono" id="d-wol" value="">
+						</div>
+					</div>
+				</section>
+
+				<section data-ui-state="error">
+					<div class="grid">
+						<div class="field c9">
+							<label for="e-name">Name</label>
+							<input class="input" id="e-name" value="nas">
+						</div>
+						<div class="field c3">
+							<span class="label">Icon</span>
+							<div class="icon-field"><span class="avatar" aria-hidden="true">N</span></div>
+						</div>
+						<div class="field c6">
+							<label for="e-ip">Server-IP</label>
+							<input class="input mono" id="e-ip" value="192.168.2.151">
+						</div>
+						<div class="field c3">
+							<label for="e-port">Port</label>
+							<input class="input mono" id="e-port" value="22">
+						</div>
+						<div class="field c3">
+							<label for="e-proto">Protokoll</label>
+							<select class="input" id="e-proto"><option selected>SSH</option></select>
+						</div>
+						<div class="field c12">
+							<label for="e-engine">Engine</label>
+							<select class="input is-error" id="e-engine" aria-invalid="true" aria-describedby="e-engine-help"><option value="">—</option></select>
+							<span class="help error" id="e-engine-help" role="alert">Engine offline — Verbindung erst nach Start möglich.</span>
+						</div>
+						<div class="field c6">
+							<label for="e-mac">MAC-Adresse</label>
+							<input class="input mono" id="e-mac" value="">
+						</div>
+						<div class="field c6">
+							<label for="e-wol">WoL-Broadcast</label>
+							<input class="input mono" id="e-wol" value="">
+						</div>
+					</div>
+				</section>
+			</div>
+
+			<!-- UI-SERVER-DIALOG-IDENTITY · form · states: default, empty -->
+			<div class="element" data-ui-id="UI-SERVER-DIALOG-IDENTITY">
+				<header><code>UI-SERVER-DIALOG-IDENTITY</code><span class="type">form</span><span>Identität — Identitäten des Nutzers und der Organisation</span></header>
+
+				<section data-ui-state="default">
+					<div class="grid">
+						<div class="group c6">
+							<div class="group-head"><span>Persönliche Identitäten</span></div>
+							<div class="ident linked">
+								<input type="checkbox" checked aria-label="ma.backes verknüpfen">
+								<span class="name">ma.backes</span>
+								<span class="chip">SSH-Key</span>
+							</div>
+						</div>
+						<div class="group c6">
+							<div class="group-head"><span>Organisations-Identitäten</span></div>
+							<div class="ident linked">
+								<input type="checkbox" checked aria-label="deploy verknüpfen">
+								<span class="name">deploy</span>
+								<span class="chip">Passwort</span>
+							</div>
+						</div>
+						<div class="field c12">
+							<span class="label">Authentifizierung</span>
+							<div class="tri" role="radiogroup" aria-label="Authentifizierung">
+								<span role="radio" aria-checked="false">Passwort</span>
+								<span role="radio" aria-checked="true">SSH-Key</span>
+								<span role="radio" aria-checked="false">beides</span>
+							</div>
+						</div>
+					</div>
+				</section>
+
+				<section data-ui-state="empty">
+					<div class="grid">
+						<div class="group c6">
+							<div class="group-head"><span>Persönliche Identitäten</span></div>
+							<div class="empty-box">Keine persönlichen Identitäten. <a href="#">Neue Identität anlegen.</a></div>
+						</div>
+						<div class="group c6">
+							<div class="group-head"><span>Organisations-Identitäten</span></div>
+							<div class="ident">
+								<input type="checkbox" aria-label="deploy verknüpfen">
+								<span class="name">deploy</span>
+								<span class="chip">Passwort</span>
+							</div>
+						</div>
+						<div class="field c12">
+							<span class="label">Authentifizierung</span>
+							<div class="tri" role="radiogroup" aria-label="Authentifizierung">
+								<span role="radio" aria-checked="true">Passwort</span>
+								<span role="radio" aria-checked="false">SSH-Key</span>
+								<span role="radio" aria-checked="false">beides</span>
+							</div>
+						</div>
+					</div>
+				</section>
+			</div>
+
+			<!-- UI-SERVER-DIALOG-SETTINGS · form · states: default -->
+			<div class="element" data-ui-id="UI-SERVER-DIALOG-SETTINGS">
+				<header><code>UI-SERVER-DIALOG-SETTINGS</code><span class="type">form</span><span>Einstellungen — Server-Einstellungen</span></header>
+
+				<section data-ui-state="default">
+					<div class="grid">
+						<div class="fieldset c6">
+							<span class="label">Terminal</span>
+							<div class="row"><span class="help">Verhaltensoptionen des Servers</span><span class="toggle on" role="switch" aria-checked="true" aria-label="Terminaleinstellung"></span></div>
+						</div>
+						<div class="fieldset c6">
+							<span class="label">Verbindung</span>
+							<div class="row"><span class="help">Verhaltensoptionen des Servers</span><span class="toggle" role="switch" aria-checked="false" aria-label="Verbindungseinstellung"></span></div>
+						</div>
+					</div>
+				</section>
+			</div>
+
+		</div>
+
+		<!-- UI-SERVER-DIALOG-SAVE · action · states: default, disabled, error -->
+		<div class="dialog-foot">
+			<div class="element" data-ui-id="UI-SERVER-DIALOG-SAVE" style="flex:1">
+				<header><code>UI-SERVER-DIALOG-SAVE</code><span class="type">action</span><span>Speichern — „Erstellen" beim Anlegen, „Speichern" beim Bearbeiten</span></header>
+
+				<section data-ui-state="default">
+					<div class="actions">
+						<button class="btn ghost" type="button">Abbrechen</button>
+						<span class="variant"><span class="label">Anlegen</span><button class="btn primary" type="button">Erstellen</button></span>
+						<span class="variant"><span class="label">Bearbeiten</span><button class="btn primary" type="button">Speichern</button></span>
+					</div>
+				</section>
+
+				<section data-ui-state="disabled">
+					<div class="actions">
+						<button class="btn ghost" type="button">Abbrechen</button>
+						<span class="variant"><span class="label">Anlegen</span><button class="btn primary" type="button" disabled>Erstellen</button></span>
+						<span class="variant"><span class="label">Bearbeiten</span><button class="btn primary" type="button" disabled>Speichern</button></span>
+					</div>
+				</section>
+
+				<section data-ui-state="error">
+					<div class="actions">
+						<button class="btn ghost" type="button">Abbrechen</button>
+						<span class="variant"><span class="label">Anlegen</span><button class="btn primary is-error" type="button" aria-invalid="true">Erstellen</button></span>
+						<span class="variant"><span class="label">Bearbeiten</span><button class="btn primary is-error" type="button" aria-invalid="true">Speichern</button></span>
+					</div>
+				</section>
+			</div>
+		</div>
+
+	</div>
+</div>
+
+
+</div></div>
+<h2 id="UI-TMUX-DIALOG">tmux-Sessions <code>UI-TMUX-DIALOG</code></h2>
+<p>Sessions auf dem verbundenen Server, Fenster-Raster der gewählten Session, Beitreten oder Neu.</p>
+<div class="ctx"><b>Art:</b> Dialog (modal, mit Backdrop)<br><b>Erscheint über:</b> UI-SERVERS<br><b>Öffnen durch:</b> Kontextmenü › Session beitreten<br><b>Größe:</b> mittig<br><b>Schließen:</b> Esc<br><b>Tastatur:</b> ↑↓ Session</div>
+<p class="meta">Artboard: <a href="./ui-tmux-dialog.html">ui-tmux-dialog.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-tmux-dialog.md</code></p>
+<table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
+<tr><td><code>UI-TMUX-DIALOG-SESSIONS</code></td><td>Sessions</td><td>Die tmux-Sessions des Servers — nicht Outposts eigene Tabs. <b>Nicht:</b> tab, server_entry, window.</td><td><code>default · loading · empty · error · selected</code></td></tr>
+<tr><td><code>UI-TMUX-DIALOG-WINDOWS</code></td><td>Fenster</td><td>Die Fenster der gewählten Session als Raster, aktives Fenster markiert. <b>Nicht:</b> tmux_session, tab.</td><td><code>default · empty · selected</code></td></tr>
+<tr><td><code>UI-TMUX-DIALOG-ATTACH</code></td><td>Beitreten</td><td>Hängt das Terminal an die gewählte Session und das gewählte Fenster.</td><td><code>default · disabled</code></td></tr>
+<tr><td><code>UI-TMUX-DIALOG-NEW</code></td><td>Neue Session</td><td>Startet eine neue tmux-Session auf dem Server und hängt sich an.</td><td><code>default</code></td></tr>
+</table>
+<div class="mb-embed"><div class="mb-embed-label">Auszug: ui-tmux-dialog.html — alle Zustände, wie im Artboard</div><div id="ab-ui-tmux-dialog">
+
+<header class="mb-context" style="font:var(--type-caption);color:var(--subtext);background:var(--lighter-background);border:1px solid var(--gray);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin:0 0 var(--space-4);line-height:1.6">
+	<strong style="color:var(--text);font:var(--type-heading)">Darstellungskontext</strong><br>
+	<b style="color:var(--text)">Art:</b> Dialog, modal · erscheint über UI-SERVERS, nur bei bestehender SSH-Session<br>
+	Öffnen: Kontextmenü › Session beitreten, Taste T · Schließen: Esc, Backdrop, Abbrechen; nach Beitreten automatisch<br>Größe: mittig, 52 rem, max. 80 vh · Tastatur: ↑↓ Session, ←→ Fenster, Enter Beitreten, N Neu
+</header>
+<main class="artboard">
+
+	<header class="ab-head">
+		<span class="ab-id">UI-TMUX-DIALOG · kind: dialog</span>
+		<h1>tmux-Sessions</h1>
+		<p class="ab-desc">Sessions auf dem verbundenen Server, Fenster-Raster der gewählten Session, Beitreten oder Neu.</p>
+	</header>
+
+	<!-- Übersicht: Dialog auf dem Backdrop -->
+	<section aria-labelledby="ov">
+		<h2 id="ov">Übersicht</h2>
+		<p class="ab-note">Session „main" gewählt, Fenster „1 htop" aktiv und gewählt, Beitreten möglich.</p>
+		<div class="stage">
+			<div class="stage-chrome"></div>
+			<div class="dialog" role="dialog" aria-labelledby="dlg-title" data-ui-id="UI-TMUX-DIALOG">
+				<div class="dialog-head" id="dlg-title">tmux-Sessions</div>
+				<div class="dialog-body">
+					<div class="pane">
+						<div class="pane-label" id="lbl-sessions">Sessions</div>
+						<ul class="sessions" role="listbox" aria-labelledby="lbl-sessions" data-ui-id="UI-TMUX-DIALOG-SESSIONS">
+							<li role="option" aria-selected="true"><span class="name">main</span><span class="meta">3 Fenster</span></li>
+							<li role="option" aria-selected="false"><span class="name">deploy</span><span class="meta">1 Fenster</span></li>
+						</ul>
+					</div>
+					<div class="pane">
+						<div class="pane-label" id="lbl-windows">Fenster</div>
+						<ul class="windows" role="listbox" aria-labelledby="lbl-windows" data-ui-id="UI-TMUX-DIALOG-WINDOWS">
+							<li role="option" aria-selected="false"><span class="idx">0</span><span class="name">bash</span></li>
+							<li role="option" aria-selected="true"><span class="idx">1</span><span class="name">htop<span class="cur">*</span></span></li>
+							<li role="option" aria-selected="false"><span class="idx">2</span><span class="name">logs</span></li>
+						</ul>
+					</div>
+				</div>
+				<div class="dialog-foot">
+					<button type="button" class="btn" data-ui-id="UI-TMUX-DIALOG-NEW">Neue Session</button>
+					<button type="button" class="btn btn-primary" data-ui-id="UI-TMUX-DIALOG-ATTACH">Beitreten</button>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- UI-TMUX-DIALOG-SESSIONS -->
+	<section class="element" aria-labelledby="el-sessions">
+		<div class="element-head">
+			<code id="el-sessions">UI-TMUX-DIALOG-SESSIONS</code>
+			<span>Sessions</span>
+			<span class="chip">list</span>
+			<span class="ab-note">tmux list-sessions auf dem verbundenen Server</span>
+		</div>
+		<div class="state-row">
+
+			<section data-ui-state="default">
+				<h4>default</h4>
+				<div class="frame">
+					<div class="pane-label">Sessions</div>
+					<ul class="sessions" role="listbox" data-ui-id="UI-TMUX-DIALOG-SESSIONS">
+						<li role="option" aria-selected="false"><span class="name">main</span><span class="meta">3 Fenster</span></li>
+						<li role="option" aria-selected="false"><span class="name">deploy</span><span class="meta">1 Fenster</span></li>
+					</ul>
+				</div>
+			</section>
+
+			<section data-ui-state="loading">
+				<h4>loading</h4>
+				<div class="frame">
+					<div class="pane-label">Sessions</div>
+					<ul class="sessions skeleton" role="listbox" aria-busy="true" data-ui-id="UI-TMUX-DIALOG-SESSIONS">
+						<li><span class="skel" style="width: 45%"></span><span class="skel" style="width: 30%"></span></li>
+						<li><span class="skel" style="width: 55%"></span><span class="skel" style="width: 30%"></span></li>
+					</ul>
+				</div>
+			</section>
+
+			<section data-ui-state="empty">
+				<h4>empty</h4>
+				<div class="frame">
+					<div class="pane-label">Sessions</div>
+					<div role="listbox" data-ui-id="UI-TMUX-DIALOG-SESSIONS">
+						<p class="copy-empty">Keine tmux-Session. <strong>Neue Session starten.</strong></p>
+					</div>
+				</div>
+			</section>
+
+			<section data-ui-state="error">
+				<h4>error</h4>
+				<div class="frame">
+					<div class="pane-label">Sessions</div>
+					<div role="listbox" data-ui-id="UI-TMUX-DIALOG-SESSIONS">
+						<p class="copy-error" role="alert">tmux nicht erreichbar.</p>
+					</div>
+				</div>
+			</section>
+
+			<section data-ui-state="selected">
+				<h4>selected</h4>
+				<div class="frame">
+					<div class="pane-label">Sessions</div>
+					<ul class="sessions" role="listbox" data-ui-id="UI-TMUX-DIALOG-SESSIONS">
+						<li role="option" aria-selected="true"><span class="name">main</span><span class="meta">3 Fenster</span></li>
+						<li role="option" aria-selected="false"><span class="name">deploy</span><span class="meta">1 Fenster</span></li>
+					</ul>
+				</div>
+			</section>
+
+		</div>
+	</section>
+
+	<!-- UI-TMUX-DIALOG-WINDOWS -->
+	<section class="element" aria-labelledby="el-windows">
+		<div class="element-head">
+			<code id="el-windows">UI-TMUX-DIALOG-WINDOWS</code>
+			<span>Fenster</span>
+			<span class="chip">list</span>
+			<span class="ab-note">tmux list-windows der gewählten Session · * = aktives Fenster (tmux-Konvention)</span>
+		</div>
+		<div class="state-row">
+
+			<section data-ui-state="default">
+				<h4>default</h4>
+				<div class="frame frame-wide">
+					<div class="pane-label">Fenster</div>
+					<ul class="windows" role="listbox" data-ui-id="UI-TMUX-DIALOG-WINDOWS">
+						<li role="option" aria-selected="false"><span class="idx">0</span><span class="name">bash</span></li>
+						<li role="option" aria-selected="false"><span class="idx">1</span><span class="name">htop<span class="cur">*</span></span></li>
+						<li role="option" aria-selected="false"><span class="idx">2</span><span class="name">logs</span></li>
+					</ul>
+				</div>
+			</section>
+
+			<section data-ui-state="empty">
+				<h4>empty <span class="note">— ohne Copy im Manifest, leeres Raster</span></h4>
+				<div class="frame frame-wide">
+					<div class="pane-label">Fenster</div>
+					<div class="windows-empty" role="listbox" data-ui-id="UI-TMUX-DIALOG-WINDOWS"></div>
+				</div>
+			</section>
+
+			<section data-ui-state="selected">
+				<h4>selected</h4>
+				<div class="frame frame-wide">
+					<div class="pane-label">Fenster</div>
+					<ul class="windows" role="listbox" data-ui-id="UI-TMUX-DIALOG-WINDOWS">
+						<li role="option" aria-selected="false"><span class="idx">0</span><span class="name">bash</span></li>
+						<li role="option" aria-selected="true"><span class="idx">1</span><span class="name">htop<span class="cur">*</span></span></li>
+						<li role="option" aria-selected="false"><span class="idx">2</span><span class="name">logs</span></li>
+					</ul>
+				</div>
+			</section>
+
+		</div>
+	</section>
+
+	<!-- UI-TMUX-DIALOG-ATTACH -->
+	<section class="element" aria-labelledby="el-attach">
+		<div class="element-head">
+			<code id="el-attach">UI-TMUX-DIALOG-ATTACH</code>
+			<span>Beitreten</span>
+			<span class="chip">action</span>
+			<span class="ab-note">hängt das Terminal an gewählte Session und gewähltes Fenster</span>
+		</div>
+		<div class="state-row">
+
+			<section data-ui-state="default">
+				<h4>default</h4>
+				<div class="frame frame-inline">
+					<button type="button" class="btn btn-primary" data-ui-id="UI-TMUX-DIALOG-ATTACH">Beitreten</button>
+				</div>
+			</section>
+
+			<section data-ui-state="disabled">
+				<h4>disabled</h4>
+				<div class="frame frame-inline">
+					<button type="button" class="btn btn-primary" disabled data-ui-id="UI-TMUX-DIALOG-ATTACH">Beitreten</button>
+				</div>
+			</section>
+
+		</div>
+	</section>
+
+	<!-- UI-TMUX-DIALOG-NEW -->
+	<section class="element" aria-labelledby="el-new">
+		<div class="element-head">
+			<code id="el-new">UI-TMUX-DIALOG-NEW</code>
+			<span>Neue Session</span>
+			<span class="chip">action</span>
+			<span class="ab-note">startet eine neue tmux-Session auf dem Server und hängt sich an</span>
+		</div>
+		<div class="state-row">
+
+			<section data-ui-state="default">
+				<h4>default</h4>
+				<div class="frame frame-inline">
+					<button type="button" class="btn" data-ui-id="UI-TMUX-DIALOG-NEW">Neue Session</button>
+				</div>
+			</section>
+
+		</div>
+	</section>
+
+</main>
+
+</div></div>
+<h2 id="UI-DIRECT-CONNECT">Direkt verbinden <code>UI-DIRECT-CONNECT</code></h2>
+<p>Einmalverbindung ohne gespeicherten Server.</p>
+<div class="ctx"><b>Art:</b> Dialog (modal, mit Backdrop)<br><b>Erscheint über:</b> UI-SERVERS<br><b>Öffnen durch:</b> Welcome › Schnellverbindung<br><b>Größe:</b> mittig<br><b>Schließen:</b> Esc<br><b>Tastatur:</b> Enter Verbinden" </div>
+<p class="meta">Artboard: <a href="./ui-direct-connect.html">ui-direct-connect.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-direct-connect.md</code></p>
+<table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
+<tr><td><code>UI-DIRECT-CONNECT-HOST</code></td><td>Host</td><td>Zieladresse (Host oder IP) und Port für eine Einmalverbindung.</td><td><code>default · error</code></td></tr>
+<tr><td><code>UI-DIRECT-CONNECT-AUTH</code></td><td>Authentifizierung</td><td>Zugangsdaten nur für diese Verbindung — nicht gespeichert, keine Identität. <b>Nicht:</b> identity, server_entry.</td><td><code>default · error</code></td></tr>
+<tr><td><code>UI-DIRECT-CONNECT-GO</code></td><td>Verbinden</td><td>Öffnet eine Session-Tab mit dieser Verbindung und schließt den Dialog.</td><td><code>default · disabled · loading</code></td></tr>
+</table>
+<div class="mb-embed"><div class="mb-embed-label">Auszug: ui-direct-connect.html — alle Zustände, wie im Artboard</div><div id="ab-ui-direct-connect">
+
+
+<header class="mb-context" style="font:var(--type-caption);color:var(--subtext);background:var(--lighter-background);border:1px solid var(--gray);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin:0 0 var(--space-4);line-height:1.6">
+	<strong style="color:var(--text);font:var(--type-heading)">Darstellungskontext</strong><br>
+	<b style="color:var(--text)">Art:</b> Dialog, modal · erscheint über UI-SERVERS auf dem Backdrop<br>
+	Öffnen: Welcome › Schnellverbindung, Taste Ctrl+K · Schließen: Esc, Backdrop; nach Verbinden automatisch<br>Größe: mittig, 32 rem · Tastatur: Enter Verbinden
+</header>
+<div class="artboard-head">
+	<code>UI-DIRECT-CONNECT</code>
+	<span class="kind">dialog</span>
+	<span>Direkt verbinden · alle Zustände gestapelt, nicht interaktiv</span>
+</div>
+
+<div class="stage">
+	<div class="dialog" role="dialog" aria-labelledby="dc-title" aria-describedby="dc-desc">
+
+		<header class="dialog-head">
+			<h1 id="dc-title">Direkt verbinden</h1>
+			<p id="dc-desc">Einmalverbindung ohne gespeicherten Server.</p>
+		</header>
+
+		<div class="dialog-body">
+
+			<!-- UI-DIRECT-CONNECT-HOST -->
+			<div class="element" data-ui-id="UI-DIRECT-CONNECT-HOST">
+				<header><span>Host</span><code>UI-DIRECT-CONNECT-HOST</code></header>
+
+				<section class="state" data-ui-state="default">
+					<span class="state-tag">default</span>
+					<div class="row host">
+						<label class="f">Host oder IP
+							<input class="input mono" type="text" placeholder="Host oder IP" autocomplete="off" spellcheck="false">
+						</label>
+						<label class="f">Port
+							<input class="input mono" type="text" inputmode="numeric" value="22">
+						</label>
+					</div>
+				</section>
+
+				<section class="state is-error" data-ui-state="error">
+					<span class="state-tag">error</span>
+					<div class="row host">
+						<label class="f">Host oder IP
+							<input class="input mono" type="text" placeholder="Host oder IP" aria-invalid="true" aria-describedby="host-err">
+						</label>
+						<label class="f">Port
+							<input class="input mono" type="text" inputmode="numeric" value="22">
+						</label>
+					</div>
+					<p class="msg" id="host-err" role="alert" style="margin: var(--space-2) 0 0;">Host nicht erreichbar.</p>
+				</section>
+			</div>
+
+			<!-- UI-DIRECT-CONNECT-AUTH -->
+			<div class="element" data-ui-id="UI-DIRECT-CONNECT-AUTH">
+				<header><span>Authentifizierung</span><code>UI-DIRECT-CONNECT-AUTH</code></header>
+
+				<section class="state" data-ui-state="default">
+					<span class="state-tag">default · beides</span>
+					<div class="row">
+						<div class="seg" role="group" aria-label="Authentifizierungsart">
+							<button type="button" aria-pressed="false">Passwort</button>
+							<button type="button" aria-pressed="false">SSH-Key</button>
+							<button type="button" aria-pressed="true">beides</button>
+						</div>
+						<label class="f">Benutzername
+							<input class="input mono" type="text" placeholder="Benutzername" autocomplete="off" spellcheck="false">
+						</label>
+						<label class="f">Passwort
+							<input class="input" type="password" placeholder="••••••••" autocomplete="off">
+						</label>
+						<label class="f">Key
+							<textarea class="input mono" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" spellcheck="false"></textarea>
+						</label>
+						<label class="f">Passphrase
+							<input class="input" type="password" placeholder="Passphrase des Keys" autocomplete="off">
+						</label>
+					</div>
+					<p class="note">Nur für diese Verbindung — wird nicht gespeichert.</p>
+				</section>
+
+				<section class="state is-error" data-ui-state="error">
+					<span class="state-tag">error</span>
+					<div class="row">
+						<p class="msg" role="alert">Anmeldung abgelehnt.</p>
+						<div class="seg" role="group" aria-label="Authentifizierungsart">
+							<button type="button" aria-pressed="false">Passwort</button>
+							<button type="button" aria-pressed="false">SSH-Key</button>
+							<button type="button" aria-pressed="true">beides</button>
+						</div>
+						<label class="f">Benutzername
+							<input class="input mono" type="text" placeholder="Benutzername" aria-invalid="true">
+						</label>
+						<label class="f">Passwort
+							<input class="input" type="password" placeholder="••••••••" aria-invalid="true">
+						</label>
+						<label class="f">Key
+							<textarea class="input mono" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" aria-invalid="true"></textarea>
+						</label>
+						<label class="f">Passphrase
+							<input class="input" type="password" placeholder="Passphrase des Keys" aria-invalid="true">
+						</label>
+					</div>
+				</section>
+			</div>
+
+		</div>
+
+		<!-- UI-DIRECT-CONNECT-GO -->
+		<footer class="dialog-foot">
+			<div class="element" data-ui-id="UI-DIRECT-CONNECT-GO">
+				<header><span>Aktion</span><code>UI-DIRECT-CONNECT-GO</code></header>
+
+				<section class="state" data-ui-state="default">
+					<span class="state-tag">default</span>
+					<button type="button" class="btn">Verbinden <kbd>↵</kbd></button>
+				</section>
+
+				<section class="state" data-ui-state="disabled">
+					<span class="state-tag">disabled</span>
+					<button type="button" class="btn" disabled>Verbinden</button>
+				</section>
+
+				<section class="state" data-ui-state="loading">
+					<span class="state-tag">loading</span>
+					<button type="button" class="btn is-loading" aria-busy="true" disabled>
+						<span class="spin" aria-hidden="true"></span>Verbinde …
+					</button>
+				</section>
+			</div>
+		</footer>
+
+	</div>
+</div>
+
+
+</div></div>
+</body></html>

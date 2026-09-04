@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI-TMUX-DIALOG · tmux-Sessions</title>
+<link rel="stylesheet" href="./tokens.css">
+<style>
+	/* Artboard-eigene Regeln. Alle Werte aus tokens.css; einzige Ergänzung: --on-accent
+	   (Text auf Akzentfläche) — im Token-Satz noch nicht vorhanden, hier als Vorschlag. */
+	:root { --on-accent: #FFFFFF; }
+	*, *::before, *::after { box-sizing: border-box; }
+	html { font-size: calc(16px * var(--ui-scale)); }
+	body {
+		margin: 0; padding: var(--space-8);
+		background: var(--background); color: var(--text);
+		font: var(--type-body);
+	}
+	.artboard { max-width: 64rem; margin: 0 auto; display: grid; gap: var(--space-8); }
+
+	/* Kopf des Artboards (Annotation, nicht UI) */
+	.ab-head { display: grid; gap: var(--space-1); padding-bottom: var(--space-4); border-bottom: 1px solid var(--gray); }
+	.ab-head h1 { margin: 0; font: var(--type-title); }
+	.ab-id { font: var(--type-mono); color: var(--subtext); }
+	.ab-desc { margin: 0; color: var(--subtext); }
+	h2 { margin: 0; font: var(--type-heading); }
+	.ab-note { font: var(--type-caption); color: var(--subtext); }
+
+	/* Bühne: App-Fläche + Backdrop */
+	.stage {
+		position: relative; height: 30rem; overflow: hidden;
+		background: var(--terminal); border: 1px solid var(--gray); border-radius: var(--radius-md);
+		display: grid; place-items: center;
+	}
+	.stage-chrome {
+		position: absolute; top: 0; left: 0; right: 0; height: var(--title-bar-height);
+		background: var(--lighter-background); border-bottom: 1px solid var(--gray);
+	}
+	.stage::before { content: ""; position: absolute; inset: 0; background: var(--dialog-background); }
+
+	/* Dialog */
+	.dialog {
+		position: relative; width: 42rem; max-width: calc(100% - 2 * var(--space-8));
+		background: var(--lighter-background); border: 1px solid var(--gray);
+		border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+		display: grid; grid-template-rows: auto 1fr auto;
+	}
+	.dialog-head { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--gray); font: var(--type-title); }
+	.dialog-body { display: grid; grid-template-columns: 15rem 1fr; min-height: 16rem; }
+	.pane { padding: var(--space-3); display: grid; grid-template-rows: auto 1fr; gap: var(--space-2); align-content: start; }
+	.pane + .pane { border-left: 1px solid var(--gray); }
+	.pane-label {
+		font: var(--type-caption); color: var(--subtext);
+		text-transform: uppercase; letter-spacing: .06em;
+	}
+	.dialog-foot {
+		display: flex; justify-content: space-between; align-items: center; gap: var(--space-3);
+		padding: var(--space-3) var(--space-4); border-top: 1px solid var(--gray);
+	}
+
+	/* Sessions-Liste */
+	.sessions { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; align-content: start; }
+	.sessions li {
+		display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2);
+		padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm);
+		border-left: 2px solid transparent; min-height: 2.25rem;
+	}
+	.sessions .name { font: var(--type-mono); }
+	.sessions .meta { font: var(--type-caption); color: var(--subtext); white-space: nowrap; }
+	.sessions li[aria-selected="true"] { background: var(--primary-opacity); border-left-color: var(--primary); }
+
+	/* Fenster-Raster */
+	.windows {
+		list-style: none; margin: 0; padding: 0;
+		display: grid; grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); gap: var(--space-2);
+		align-content: start;
+	}
+	.windows li {
+		display: grid; gap: 2px; min-height: 3.5rem;
+		padding: var(--space-2) var(--space-3);
+		background: var(--dark-gray); border: 1px solid var(--gray); border-radius: var(--radius-sm);
+	}
+	.windows .idx { font: var(--type-mono); font-size: .75rem; color: var(--subtext); }
+	.windows .name { font: var(--type-mono); }
+	.windows .name .cur { color: var(--primary); }            /* tmux-Konvention: * = aktives Fenster */
+	.windows li[aria-selected="true"] { border-color: var(--primary); background: var(--primary-opacity); }
+	.windows-empty { min-height: 8rem; border: 1px dashed var(--gray); border-radius: var(--radius-sm); }
+
+	/* Leer-, Fehler-, Ladezustand */
+	.copy-empty { margin: 0; padding: var(--space-3) var(--space-3); color: var(--subtext); }
+	.copy-empty strong { color: var(--text); font-weight: 600; }
+	.copy-error {
+		margin: 0; padding: var(--space-2) var(--space-3);
+		color: var(--error); background: var(--error-opacity);
+		border-left: 2px solid var(--error); border-radius: var(--radius-sm);
+	}
+	.skeleton { display: grid; gap: 2px; }
+	.skeleton li { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); min-height: 2.25rem; }
+	.skel { height: .75rem; border-radius: var(--radius-sm); background: var(--gray); }
+
+	/* Buttons */
+	.btn {
+		font: var(--type-body); color: var(--text);
+		min-height: 2.25rem; padding: var(--space-2) var(--space-4);
+		background: transparent; border: 1px solid var(--gray-strong); border-radius: var(--radius-sm);
+		cursor: pointer; transition: background-color 120ms, border-color 120ms;
+	}
+	.btn-primary { background: var(--primary); border-color: var(--primary); color: var(--on-accent); }
+	.btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+	.btn[disabled] { opacity: .45; cursor: not-allowed; }
+
+	/* Zustands-Abschnitte (Annotation) */
+	.element { display: grid; gap: var(--space-3); padding-top: var(--space-6); border-top: 1px solid var(--gray); }
+	.element-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-3); }
+	.element-head code { font: var(--type-mono); color: var(--text); }
+	.chip { font: var(--type-caption); color: var(--subtext); padding: 0 var(--space-2); border-radius: var(--radius-sm); background: var(--dark-gray); }
+	.state-row { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-start; }
+	section[data-ui-state] { display: grid; gap: var(--space-2); }
+	section[data-ui-state] > h4 { margin: 0; font: var(--type-mono); font-size: .75rem; color: var(--subtext); }
+	section[data-ui-state] > h4::before { content: "state · "; }
+	section[data-ui-state] > h4 .note { font: var(--type-caption); }
+	.frame { width: 15rem; padding: var(--space-3); background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); display: grid; gap: var(--space-2); }
+	.frame-wide { width: 26rem; }
+	.frame-inline { width: auto; }
+</style>
+</head>
+<body>
+<header class="mb-context" style="font:var(--type-caption);color:var(--subtext);background:var(--lighter-background);border:1px solid var(--gray);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin:0 0 var(--space-4);line-height:1.6">
+	<strong style="color:var(--text);font:var(--type-heading)">Darstellungskontext</strong><br>
+	<b style="color:var(--text)">Art:</b> Dialog, modal · erscheint über UI-SERVERS, nur bei bestehender SSH-Session<br>
+	Öffnen: Kontextmenü › Session beitreten, Taste T · Schließen: Esc, Backdrop, Abbrechen; nach Beitreten automatisch<br>Größe: mittig, 52 rem, max. 80 vh · Tastatur: ↑↓ Session, ←→ Fenster, Enter Beitreten, N Neu
+</header>
+<main class="artboard">
+
+	<header class="ab-head">
+		<span class="ab-id">UI-TMUX-DIALOG · kind: dialog</span>
+		<h1>tmux-Sessions</h1>
+		<p class="ab-desc">Sessions auf dem verbundenen Server, Fenster-Raster der gewählten Session, Beitreten oder Neu.</p>
+	</header>
+
+	<!-- Übersicht: Dialog auf dem Backdrop -->
+	<section aria-labelledby="ov">
+		<h2 id="ov">Übersicht</h2>
+		<p class="ab-note">Session „main" gewählt, Fenster „1 htop" aktiv und gewählt, Beitreten möglich.</p>
+		<div class="stage">
+			<div class="stage-chrome"></div>
+			<div class="dialog" role="dialog" aria-labelledby="dlg-title" data-ui-id="UI-TMUX-DIALOG">
+				<div class="dialog-head" id="dlg-title">tmux-Sessions</div>
+				<div class="dialog-body">
+					<div class="pane">
+						<div class="pane-label" id="lbl-sessions">Sessions</div>
+						<ul class="sessions" role="listbox" aria-labelledby="lbl-sessions" data-ui-id="UI-TMUX-DIALOG-SESSIONS">
+							<li role="option" aria-selected="true"><span class="name">main</span><span class="meta">3 Fenster</span></li>
+							<li role="option" aria-selected="false"><span class="name">deploy</span><span class="meta">1 Fenster</span></li>
+						</ul>
+					</div>
+					<div class="pane">
+						<div class="pane-label" id="lbl-windows">Fenster</div>
+						<ul class="windows" role="listbox" aria-labelledby="lbl-windows" data-ui-id="UI-TMUX-DIALOG-WINDOWS">
+							<li role="option" aria-selected="false"><span class="idx">0</span><span class="name">bash</span></li>
+							<li role="option" aria-selected="true"><span class="idx">1</span><span class="name">htop<span class="cur">*</span></span></li>
+							<li role="option" aria-selected="false"><span class="idx">2</span><span class="name">logs</span></li>
+						</ul>
+					</div>
+				</div>
+				<div class="dialog-foot">
+					<button type="button" class="btn" data-ui-id="UI-TMUX-DIALOG-NEW">Neue Session</button>
+					<button type="button" class="btn btn-primary" data-ui-id="UI-TMUX-DIALOG-ATTACH">Beitreten</button>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- UI-TMUX-DIALOG-SESSIONS -->
+	<section class="element" aria-labelledby="el-sessions">
+		<div class="element-head">
+			<code id="el-sessions">UI-TMUX-DIALOG-SESSIONS</code>
+			<span>Sessions</span>
+			<span class="chip">list</span>
+			<span class="ab-note">tmux list-sessions auf dem verbundenen Server</span>
+		</div>
+		<div class="state-row">
+
+			<section data-ui-state="default">
+				<h4>default</h4>
+				<div class="frame">
+					<div class="pane-label">Sessions</div>
+					<ul class="sessions" role="listbox" data-ui-id="UI-TMUX-DIALOG-SESSIONS">
+						<li role="option" aria-selected="false"><span class="name">main</span><span class="meta">3 Fenster</span></li>
+						<li role="option" aria-selected="false"><span class="name">deploy</span><span class="meta">1 Fenster</span></li>
+					</ul>
+				</div>
+			</section>
+
+			<section data-ui-state="loading">
+				<h4>loading</h4>
+				<div class="frame">
+					<div class="pane-label">Sessions</div>
+					<ul class="sessions skeleton" role="listbox" aria-busy="true" data-ui-id="UI-TMUX-DIALOG-SESSIONS">
+						<li><span class="skel" style="width: 45%"></span><span class="skel" style="width: 30%"></span></li>
+						<li><span class="skel" style="width: 55%"></span><span class="skel" style="width: 30%"></span></li>
+					</ul>
+				</div>
+			</section>
+
+			<section data-ui-state="empty">
+				<h4>empty</h4>
+				<div class="frame">
+					<div class="pane-label">Sessions</div>
+					<div role="listbox" data-ui-id="UI-TMUX-DIALOG-SESSIONS">
+						<p class="copy-empty">Keine tmux-Session. <strong>Neue Session starten.</strong></p>
+					</div>
+				</div>
+			</section>
+
+			<section data-ui-state="error">
+				<h4>error</h4>
+				<div class="frame">
+					<div class="pane-label">Sessions</div>
+					<div role="listbox" data-ui-id="UI-TMUX-DIALOG-SESSIONS">
+						<p class="copy-error" role="alert">tmux nicht erreichbar.</p>
+					</div>
+				</div>
+			</section>
+
+			<section data-ui-state="selected">
+				<h4>selected</h4>
+				<div class="frame">
+					<div class="pane-label">Sessions</div>
+					<ul class="sessions" role="listbox" data-ui-id="UI-TMUX-DIALOG-SESSIONS">
+						<li role="option" aria-selected="true"><span class="name">main</span><span class="meta">3 Fenster</span></li>
+						<li role="option" aria-selected="false"><span class="name">deploy</span><span class="meta">1 Fenster</span></li>
+					</ul>
+				</div>
+			</section>
+
+		</div>
+	</section>
+
+	<!-- UI-TMUX-DIALOG-WINDOWS -->
+	<section class="element" aria-labelledby="el-windows">
+		<div class="element-head">
+			<code id="el-windows">UI-TMUX-DIALOG-WINDOWS</code>
+			<span>Fenster</span>
+			<span class="chip">list</span>
+			<span class="ab-note">tmux list-windows der gewählten Session · * = aktives Fenster (tmux-Konvention)</span>
+		</div>
+		<div class="state-row">
+
+			<section data-ui-state="default">
+				<h4>default</h4>
+				<div class="frame frame-wide">
+					<div class="pane-label">Fenster</div>
+					<ul class="windows" role="listbox" data-ui-id="UI-TMUX-DIALOG-WINDOWS">
+						<li role="option" aria-selected="false"><span class="idx">0</span><span class="name">bash</span></li>
+						<li role="option" aria-selected="false"><span class="idx">1</span><span class="name">htop<span class="cur">*</span></span></li>
+						<li role="option" aria-selected="false"><span class="idx">2</span><span class="name">logs</span></li>
+					</ul>
+				</div>
+			</section>
+
+			<section data-ui-state="empty">
+				<h4>empty <span class="note">— ohne Copy im Manifest, leeres Raster</span></h4>
+				<div class="frame frame-wide">
+					<div class="pane-label">Fenster</div>
+					<div class="windows-empty" role="listbox" data-ui-id="UI-TMUX-DIALOG-WINDOWS"></div>
+				</div>
+			</section>
+
+			<section data-ui-state="selected">
+				<h4>selected</h4>
+				<div class="frame frame-wide">
+					<div class="pane-label">Fenster</div>
+					<ul class="windows" role="listbox" data-ui-id="UI-TMUX-DIALOG-WINDOWS">
+						<li role="option" aria-selected="false"><span class="idx">0</span><span class="name">bash</span></li>
+						<li role="option" aria-selected="true"><span class="idx">1</span><span class="name">htop<span class="cur">*</span></span></li>
+						<li role="option" aria-selected="false"><span class="idx">2</span><span class="name">logs</span></li>
+					</ul>
+				</div>
+			</section>
+
+		</div>
+	</section>
+
+	<!-- UI-TMUX-DIALOG-ATTACH -->
+	<section class="element" aria-labelledby="el-attach">
+		<div class="element-head">
+			<code id="el-attach">UI-TMUX-DIALOG-ATTACH</code>
+			<span>Beitreten</span>
+			<span class="chip">action</span>
+			<span class="ab-note">hängt das Terminal an gewählte Session und gewähltes Fenster</span>
+		</div>
+		<div class="state-row">
+
+			<section data-ui-state="default">
+				<h4>default</h4>
+				<div class="frame frame-inline">
+					<button type="button" class="btn btn-primary" data-ui-id="UI-TMUX-DIALOG-ATTACH">Beitreten</button>
+				</div>
+			</section>
+
+			<section data-ui-state="disabled">
+				<h4>disabled</h4>
+				<div class="frame frame-inline">
+					<button type="button" class="btn btn-primary" disabled data-ui-id="UI-TMUX-DIALOG-ATTACH">Beitreten</button>
+				</div>
+			</section>
+
+		</div>
+	</section>
+
+	<!-- UI-TMUX-DIALOG-NEW -->
+	<section class="element" aria-labelledby="el-new">
+		<div class="element-head">
+			<code id="el-new">UI-TMUX-DIALOG-NEW</code>
+			<span>Neue Session</span>
+			<span class="chip">action</span>
+			<span class="ab-note">startet eine neue tmux-Session auf dem Server und hängt sich an</span>
+		</div>
+		<div class="state-row">
+
+			<section data-ui-state="default">
+				<h4>default</h4>
+				<div class="frame frame-inline">
+					<button type="button" class="btn" data-ui-id="UI-TMUX-DIALOG-NEW">Neue Session</button>
+				</div>
+			</section>
+
+		</div>
+	</section>
+
+</main>
+</body>
+</html>

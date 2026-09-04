@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI-SERVER-DIALOG — Server anlegen / bearbeiten</title>
+<link rel="stylesheet" href="./tokens.css">
+<style>
+	/* Artboard: UI-SERVER-DIALOG (kind: dialog). All values come from tokens.css. */
+	* { box-sizing: border-box; }
+	html { font-size: calc(16px * var(--ui-scale)); }
+	body {
+		margin: 0; min-height: 100vh;
+		background: var(--background); color: var(--text);
+		font: var(--type-body);
+	}
+	a { color: var(--primary); }
+
+	/* Artboard frame (not part of the product UI) */
+	.artboard-head {
+		display: flex; align-items: baseline; gap: var(--space-3);
+		padding: var(--space-3) var(--space-4);
+		border-bottom: 1px solid var(--gray);
+		font: var(--type-caption); color: var(--subtext);
+	}
+	.artboard-head strong { font: var(--type-heading); color: var(--text); }
+	.artboard-head code { font: var(--type-mono); font-size: 0.75rem; color: var(--subtext); }
+
+	/* Backdrop */
+	.backdrop {
+		background: var(--dialog-background);
+		padding: var(--space-8) var(--space-4);
+		display: flex; justify-content: center;
+	}
+
+	/* Dialog */
+	.dialog {
+		width: 100%; max-width: 42rem;
+		background: var(--lighter-background);
+		border: 1px solid var(--gray);
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-lg);
+		overflow: hidden;
+	}
+	.dialog-head {
+		display: flex; align-items: center; justify-content: space-between;
+		padding: var(--space-3) var(--space-4);
+		border-bottom: 1px solid var(--gray);
+	}
+	.dialog-head h1 { margin: 0; font: var(--type-title); }
+	.dialog-head .close {
+		width: 2rem; height: 2rem; display: grid; place-items: center;
+		border-radius: var(--radius-sm); color: var(--subtext);
+		background: transparent; border: 0; font: var(--type-heading); cursor: default;
+	}
+	.dialog-body { padding: var(--space-2) var(--space-4) var(--space-4); display: grid; gap: var(--space-4); }
+	.dialog-foot {
+		display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2);
+		padding: var(--space-3) var(--space-4);
+		border-top: 1px solid var(--gray);
+		background: var(--darker-gray);
+	}
+
+	/* Element block with stacked, labelled state sections */
+	.element { display: grid; gap: var(--space-2); }
+	.element > header {
+		display: flex; align-items: baseline; gap: var(--space-2);
+		font: var(--type-caption); color: var(--subtext);
+	}
+	.element > header code { font: var(--type-mono); font-size: 0.75rem; color: var(--primary); }
+	.element > header .type { padding: 0 var(--space-1); border: 1px solid var(--gray); border-radius: var(--radius-sm); }
+	section[data-ui-state] {
+		position: relative;
+		border: 1px dashed var(--gray-strong); border-radius: var(--radius-md);
+		padding: var(--space-3); padding-top: calc(var(--space-3) + 0.75rem);
+	}
+	section[data-ui-state]::before {
+		content: attr(data-ui-state);
+		position: absolute; top: 0; left: var(--space-3); transform: translateY(-50%);
+		padding: 0 var(--space-1); background: var(--lighter-background);
+		font: var(--type-mono); font-size: 0.6875rem; color: var(--subtext); text-transform: lowercase;
+	}
+	section[data-ui-state="error"]::before { color: var(--error); }
+	section[data-ui-state="empty"]::before,
+	section[data-ui-state="disabled"]::before { color: var(--subtext); }
+	section[data-ui-state="selected"]::before { color: var(--primary); }
+
+	/* Tabs (TabSwitcher) */
+	.tabs { display: flex; gap: var(--space-1); padding: var(--space-1); background: var(--dark-gray); border-radius: var(--radius-md); }
+	.tab {
+		flex: 1; text-align: center; padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-sm); color: var(--subtext); font: var(--type-body);
+	}
+	.tab[aria-current="page"] { background: var(--gray-strong); color: var(--text); }
+	.tab.is-selected { background: var(--primary-opacity); color: var(--text); box-shadow: inset 0 0 0 1px var(--primary); }
+
+	/* Form primitives (Input, SelectBox, TriToggle, ToggleSwitch, Chip, LetterAvatar) */
+	.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: var(--space-2) var(--space-3); }
+	.field { display: grid; gap: var(--space-1); }
+	.c3 { grid-column: span 3; } .c4 { grid-column: span 4; } .c5 { grid-column: span 5; }
+	.c6 { grid-column: span 6; } .c7 { grid-column: span 7; } .c8 { grid-column: span 8; } .c9 { grid-column: span 9; } .c12 { grid-column: span 12; }
+	label, .label { font: var(--type-caption); color: var(--subtext); }
+	.input, select.input {
+		width: 100%; height: 2.25rem; padding: 0 var(--space-2);
+		background: var(--background); color: var(--text);
+		border: 1px solid var(--gray); border-radius: var(--radius-sm);
+		font: var(--type-body); outline: none;
+	}
+	.input.mono { font: var(--type-mono); }
+	.input:focus-visible { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-opacity); }
+	.input.is-error { border-color: var(--error); background: var(--error-opacity); }
+	.input::placeholder { color: var(--subtext); opacity: .7; }
+	.help { font: var(--type-caption); color: var(--subtext); }
+	.help.error { color: var(--error); }
+	.icon-field { display: flex; align-items: center; gap: var(--space-2); height: 2.25rem; }
+	.avatar {
+		width: 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center;
+		background: var(--primary-opacity); color: var(--text); font: var(--type-heading);
+	}
+	.tri { display: inline-flex; padding: 2px; background: var(--dark-gray); border: 1px solid var(--gray); border-radius: var(--radius-sm); }
+	.tri span { padding: var(--space-1) var(--space-3); border-radius: var(--radius-sm); color: var(--subtext); font: var(--type-caption); }
+	.tri span[aria-checked="true"] { background: var(--primary); color: var(--white); }
+	.toggle { width: 2.25rem; height: 1.25rem; border-radius: 1rem; background: var(--gray); position: relative; flex: none; }
+	.toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: calc(1.25rem - 4px); height: calc(1.25rem - 4px); border-radius: 50%; background: var(--subtext); }
+	.toggle.on { background: var(--primary); }
+	.toggle.on::after { left: auto; right: 2px; background: var(--white); }
+
+	/* Identity lists */
+	.group { display: grid; gap: var(--space-1); }
+	.group-head { display: flex; justify-content: space-between; align-items: baseline; font: var(--type-caption); color: var(--subtext); }
+	.ident { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2); border: 1px solid var(--gray); border-radius: var(--radius-sm); background: var(--background); }
+	.ident.linked { border-color: var(--primary); background: var(--primary-opacity); }
+	.ident .name { flex: 1; font: var(--type-mono); }
+	.chip { padding: 0 var(--space-2); border-radius: var(--radius-sm); background: var(--gray); font: var(--type-caption); color: var(--text); line-height: 1.5rem; }
+	.empty-box { padding: var(--space-3); border: 1px dashed var(--gray-strong); border-radius: var(--radius-sm); color: var(--subtext); text-align: center; }
+	.empty-box a { text-decoration: none; font-weight: 600; }
+	.fieldset { border: 1px solid var(--gray); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); display: grid; gap: var(--space-2); }
+	.fieldset > .label { text-transform: uppercase; letter-spacing: .04em; }
+	.row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: 1.75rem; }
+
+	/* Buttons */
+	.actions { display: flex; gap: var(--space-2); justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+	.btn {
+		height: 2.25rem; padding: 0 var(--space-4); border-radius: var(--radius-sm);
+		font: var(--type-body); font-weight: 600; border: 1px solid transparent; cursor: default;
+	}
+	.btn.ghost { background: transparent; color: var(--subtext); border-color: var(--gray); }
+	.btn.primary { background: var(--primary); color: var(--white); }
+	.btn.primary[disabled] { opacity: .45; }
+	.btn.primary.is-error { background: var(--error); border-color: var(--error); }
+	.btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+	.kbd { font: var(--type-caption); color: var(--subtext); opacity: .8; }
+	.variant { display: grid; gap: var(--space-1); }
+	.variant .label { text-align: right; }
+</style>
+</head>
+<body>
+
+<header class="mb-context" style="font:var(--type-caption);color:var(--subtext);background:var(--lighter-background);border:1px solid var(--gray);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin:0 0 var(--space-4);line-height:1.6">
+	<strong style="color:var(--text);font:var(--type-heading)">Darstellungskontext</strong><br>
+	<b style="color:var(--text)">Art:</b> Dialog, modal · erscheint über UI-SERVERS auf dem Backdrop (--dialog-background)<br>
+	Öffnen: Kontextmenü › Bearbeiten / Neu, Taste E · Schließen: Esc, Backdrop, Abbrechen; nach Speichern automatisch<br>Größe: mittig, 44 rem, max. 85 vh · Tastatur: Ctrl+1/2/3 Tabs, Ctrl+Enter Speichern
+</header>
+<div class="artboard-head">
+	<strong>UI-SERVER-DIALOG</strong>
+	<code>kind: dialog</code>
+	<span>Server anlegen / bearbeiten — Drei Tabs — Details, Identität, Einstellungen.</span>
+</div>
+
+<div class="backdrop">
+	<div class="dialog" role="dialog" aria-labelledby="dlg-title" data-ui-id="UI-SERVER-DIALOG">
+
+		<div class="dialog-head">
+			<h1 id="dlg-title">Server anlegen / bearbeiten</h1>
+			<button class="close" aria-label="Schließen">×</button>
+		</div>
+
+		<div class="dialog-body">
+
+			<!-- UI-SERVER-DIALOG-TABS · nav · states: default, selected -->
+			<div class="element" data-ui-id="UI-SERVER-DIALOG-TABS">
+				<header><code>UI-SERVER-DIALOG-TABS</code><span class="type">nav</span><span>Details · Identität · Einstellungen</span></header>
+
+				<section data-ui-state="default">
+					<nav class="tabs" aria-label="Dialogabschnitte">
+						<span class="tab" aria-current="page">Details</span>
+						<span class="tab">Identität</span>
+						<span class="tab">Einstellungen</span>
+					</nav>
+				</section>
+
+				<section data-ui-state="selected">
+					<nav class="tabs" aria-label="Dialogabschnitte">
+						<span class="tab">Details</span>
+						<span class="tab is-selected" aria-current="page">Identität</span>
+						<span class="tab">Einstellungen</span>
+					</nav>
+				</section>
+			</div>
+
+			<!-- UI-SERVER-DIALOG-DETAILS · form · states: default, error -->
+			<div class="element" data-ui-id="UI-SERVER-DIALOG-DETAILS">
+				<header><code>UI-SERVER-DIALOG-DETAILS</code><span class="type">form</span><span>Details — Server-Stammdaten</span></header>
+
+				<section data-ui-state="default">
+					<div class="grid">
+						<div class="field c9">
+							<label for="d-name">Name</label>
+							<input class="input" id="d-name" value="nas">
+						</div>
+						<div class="field c3">
+							<span class="label">Icon</span>
+							<div class="icon-field"><span class="avatar" aria-hidden="true">N</span><span class="help">LetterAvatar</span></div>
+						</div>
+						<div class="field c6">
+							<label for="d-ip">Server-IP</label>
+							<input class="input mono" id="d-ip" value="192.168.2.151">
+						</div>
+						<div class="field c3">
+							<label for="d-port">Port</label>
+							<input class="input mono" id="d-port" value="22">
+						</div>
+						<div class="field c3">
+							<label for="d-proto">Protokoll</label>
+							<select class="input" id="d-proto"><option selected>SSH</option></select>
+						</div>
+						<div class="field c12">
+							<label for="d-engine">Engine</label>
+							<select class="input" id="d-engine"><option value="">—</option></select>
+						</div>
+						<div class="field c6">
+							<label for="d-mac">MAC-Adresse</label>
+							<input class="input mono" id="d-mac" value="">
+						</div>
+						<div class="field c6">
+							<label for="d-wol">WoL-Broadcast</label>
+							<input class="input mono" id="d-wol" value="">
+						</div>
+					</div>
+				</section>
+
+				<section data-ui-state="error">
+					<div class="grid">
+						<div class="field c9">
+							<label for="e-name">Name</label>
+							<input class="input" id="e-name" value="nas">
+						</div>
+						<div class="field c3">
+							<span class="label">Icon</span>
+							<div class="icon-field"><span class="avatar" aria-hidden="true">N</span></div>
+						</div>
+						<div class="field c6">
+							<label for="e-ip">Server-IP</label>
+							<input class="input mono" id="e-ip" value="192.168.2.151">
+						</div>
+						<div class="field c3">
+							<label for="e-port">Port</label>
+							<input class="input mono" id="e-port" value="22">
+						</div>
+						<div class="field c3">
+							<label for="e-proto">Protokoll</label>
+							<select class="input" id="e-proto"><option selected>SSH</option></select>
+						</div>
+						<div class="field c12">
+							<label for="e-engine">Engine</label>
+							<select class="input is-error" id="e-engine" aria-invalid="true" aria-describedby="e-engine-help"><option value="">—</option></select>
+							<span class="help error" id="e-engine-help" role="alert">Engine offline — Verbindung erst nach Start möglich.</span>
+						</div>
+						<div class="field c6">
+							<label for="e-mac">MAC-Adresse</label>
+							<input class="input mono" id="e-mac" value="">
+						</div>
+						<div class="field c6">
+							<label for="e-wol">WoL-Broadcast</label>
+							<input class="input mono" id="e-wol" value="">
+						</div>
+					</div>
+				</section>
+			</div>
+
+			<!-- UI-SERVER-DIALOG-IDENTITY · form · states: default, empty -->
+			<div class="element" data-ui-id="UI-SERVER-DIALOG-IDENTITY">
+				<header><code>UI-SERVER-DIALOG-IDENTITY</code><span class="type">form</span><span>Identität — Identitäten des Nutzers und der Organisation</span></header>
+
+				<section data-ui-state="default">
+					<div class="grid">
+						<div class="group c6">
+							<div class="group-head"><span>Persönliche Identitäten</span></div>
+							<div class="ident linked">
+								<input type="checkbox" checked aria-label="ma.backes verknüpfen">
+								<span class="name">ma.backes</span>
+								<span class="chip">SSH-Key</span>
+							</div>
+						</div>
+						<div class="group c6">
+							<div class="group-head"><span>Organisations-Identitäten</span></div>
+							<div class="ident linked">
+								<input type="checkbox" checked aria-label="deploy verknüpfen">
+								<span class="name">deploy</span>
+								<span class="chip">Passwort</span>
+							</div>
+						</div>
+						<div class="field c12">
+							<span class="label">Authentifizierung</span>
+							<div class="tri" role="radiogroup" aria-label="Authentifizierung">
+								<span role="radio" aria-checked="false">Passwort</span>
+								<span role="radio" aria-checked="true">SSH-Key</span>
+								<span role="radio" aria-checked="false">beides</span>
+							</div>
+						</div>
+					</div>
+				</section>
+
+				<section data-ui-state="empty">
+					<div class="grid">
+						<div class="group c6">
+							<div class="group-head"><span>Persönliche Identitäten</span></div>
+							<div class="empty-box">Keine persönlichen Identitäten. <a href="#">Neue Identität anlegen.</a></div>
+						</div>
+						<div class="group c6">
+							<div class="group-head"><span>Organisations-Identitäten</span></div>
+							<div class="ident">
+								<input type="checkbox" aria-label="deploy verknüpfen">
+								<span class="name">deploy</span>
+								<span class="chip">Passwort</span>
+							</div>
+						</div>
+						<div class="field c12">
+							<span class="label">Authentifizierung</span>
+							<div class="tri" role="radiogroup" aria-label="Authentifizierung">
+								<span role="radio" aria-checked="true">Passwort</span>
+								<span role="radio" aria-checked="false">SSH-Key</span>
+								<span role="radio" aria-checked="false">beides</span>
+							</div>
+						</div>
+					</div>
+				</section>
+			</div>
+
+			<!-- UI-SERVER-DIALOG-SETTINGS · form · states: default -->
+			<div class="element" data-ui-id="UI-SERVER-DIALOG-SETTINGS">
+				<header><code>UI-SERVER-DIALOG-SETTINGS</code><span class="type">form</span><span>Einstellungen — Server-Einstellungen</span></header>
+
+				<section data-ui-state="default">
+					<div class="grid">
+						<div class="fieldset c6">
+							<span class="label">Terminal</span>
+							<div class="row"><span class="help">Verhaltensoptionen des Servers</span><span class="toggle on" role="switch" aria-checked="true" aria-label="Terminaleinstellung"></span></div>
+						</div>
+						<div class="fieldset c6">
+							<span class="label">Verbindung</span>
+							<div class="row"><span class="help">Verhaltensoptionen des Servers</span><span class="toggle" role="switch" aria-checked="false" aria-label="Verbindungseinstellung"></span></div>
+						</div>
+					</div>
+				</section>
+			</div>
+
+		</div>
+
+		<!-- UI-SERVER-DIALOG-SAVE · action · states: default, disabled, error -->
+		<div class="dialog-foot">
+			<div class="element" data-ui-id="UI-SERVER-DIALOG-SAVE" style="flex:1">
+				<header><code>UI-SERVER-DIALOG-SAVE</code><span class="type">action</span><span>Speichern — „Erstellen" beim Anlegen, „Speichern" beim Bearbeiten</span></header>
+
+				<section data-ui-state="default">
+					<div class="actions">
+						<button class="btn ghost" type="button">Abbrechen</button>
+						<span class="variant"><span class="label">Anlegen</span><button class="btn primary" type="button">Erstellen</button></span>
+						<span class="variant"><span class="label">Bearbeiten</span><button class="btn primary" type="button">Speichern</button></span>
+					</div>
+				</section>
+
+				<section data-ui-state="disabled">
+					<div class="actions">
+						<button class="btn ghost" type="button">Abbrechen</button>
+						<span class="variant"><span class="label">Anlegen</span><button class="btn primary" type="button" disabled>Erstellen</button></span>
+						<span class="variant"><span class="label">Bearbeiten</span><button class="btn primary" type="button" disabled>Speichern</button></span>
+					</div>
+				</section>
+
+				<section data-ui-state="error">
+					<div class="actions">
+						<button class="btn ghost" type="button">Abbrechen</button>
+						<span class="variant"><span class="label">Anlegen</span><button class="btn primary is-error" type="button" aria-invalid="true">Erstellen</button></span>
+						<span class="variant"><span class="label">Bearbeiten</span><button class="btn primary is-error" type="button" aria-invalid="true">Speichern</button></span>
+					</div>
+				</section>
+			</div>
+		</div>
+
+	</div>
+</div>
+
+</body>
+</html>
