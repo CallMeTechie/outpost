@@ -2288,6 +2288,17 @@
     }
   },
   "welcome": {
+    "title": "Welcome",
+    "tagline": "Pick a connection, or start something new.",
+    "next": "Next",
+    "noRecent": "Nothing connected yet.",
+    "hibernated": "Sleeping",
+    "starts": {
+      "createDescription": "Add a server or import an SSH config",
+      "directDescription": "Connect without a saved entry",
+      "deviceDescription": "Link this browser to a device",
+      "appsDescription": "Desktop and mobile"
+    },
     "hello": "Hi",
     "defaultName": "User",
     "subtitle": "Welcome to Outpost. The open-source server manager for SSH, VNC and RDP.",

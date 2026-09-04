@@ -2106,6 +2106,17 @@
     }
   },
   "welcome": {
+    "title": "Vítej",
+    "tagline": "Vyber připojení nebo začni něco nového.",
+    "next": "Dál",
+    "noRecent": "Zatím žádné připojení.",
+    "hibernated": "Spí",
+    "starts": {
+      "createDescription": "Přidat server nebo importovat SSH config",
+      "directDescription": "Připojit bez uloženého záznamu",
+      "deviceDescription": "Propojit tento prohlížeč se zařízením",
+      "appsDescription": "Desktop a mobil"
+    },
     "hello": "Ahoj",
     "defaultName": "Uživatel",
     "subtitle": "Vítejte na Outpostu. Správce serverů s otevřeným zdrojovým kódem pro SSH, VNC a RDP.",

@@ -2106,6 +2106,17 @@
     }
   },
   "welcome": {
+    "title": "欢迎",
+    "tagline": "选择一个连接，或开始新的。",
+    "next": "下一步",
+    "noRecent": "还没有连接。",
+    "hibernated": "休眠中",
+    "starts": {
+      "createDescription": "添加服务器或导入 SSH 配置",
+      "directDescription": "无需保存条目即可连接",
+      "deviceDescription": "将此浏览器关联到设备",
+      "appsDescription": "桌面与移动端"
+    },
     "hello": "你好",
     "defaultName": "用户",
     "subtitle": "欢迎使用 Outpost。用于 SSH、VNC 和 RDP 的开源服务器管理器。",

@@ -1006,6 +1006,7 @@ export const Servers = () => {
                     resumeSession={resumeConnection}
                     openSFTP={openSFTP}
                     openDirectConnect={openDirectConnect}
+                    onCreateServer={() => { setServerDialogProtocol(null); setServerDialogOpen(true); }}
                 />
             }
             {visibleSessions.length > 0 &&

@@ -2288,6 +2288,17 @@
     }
   },
   "welcome": {
+    "title": "Willkommen",
+    "tagline": "Wähle eine Verbindung oder lege los.",
+    "next": "Weiter",
+    "noRecent": "Noch nichts verbunden.",
+    "hibernated": "Schläft",
+    "starts": {
+      "createDescription": "Server anlegen oder SSH-Config importieren",
+      "directDescription": "Verbinden ohne gespeicherten Eintrag",
+      "deviceDescription": "Diesen Browser mit einem Gerät verbinden",
+      "appsDescription": "Desktop und Mobile"
+    },
     "hello": "Hallo",
     "defaultName": "Benutzer",
     "subtitle": "Willkommen bei Outpost. Der Open-Source-Server-Manager für SSH, VNC und RDP.",

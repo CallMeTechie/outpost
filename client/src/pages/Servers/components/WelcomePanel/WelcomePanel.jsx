@@ -1,25 +1,13 @@
 import "./styles.sass";
 import { useContext, useEffect, useState } from "react";
-import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
-import Icon from "@mdi/react";
-import { mdiHistory, mdiPower, mdiPlay, mdiServerNetwork, mdiConnection, mdiFolderOpen, mdiCursorDefaultClick, mdiDownload, mdiLinkVariant } from "@mdi/js";
+import { mdiConnection, mdiFolderOpen, mdiCursorDefaultClick } from "@mdi/js";
 import { getRequest } from "@/common/utils/RequestUtil";
 import { useTranslation } from "react-i18next";
 import { ContextMenu, ContextMenuItem, useContextMenu } from "@/common/components/ContextMenu";
-import { getIconPath } from "@/common/utils/iconUtils.js";
-import Button from "@/common/components/Button";
+import { formatTimeAgo } from "@/common/utils/timeAgo.js";
 import DownloadAppsDialog from "@/common/components/DownloadAppsDialog";
 import { DeviceLinkDialog } from "@/common/components/DeviceLinkDialog/DeviceLinkDialog.jsx";
-import { getAvatarLabel } from "@/common/utils/avatar.js";
-
-const formatTimeAgo = (timestamp) => {
-    const diffMins = Math.floor((Date.now() - new Date(timestamp)) / 60000);
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-    return `${Math.floor(diffMins / 1440)}d ago`;
-};
 
 const PROTOCOL_LABELS = {
     "entry.ssh_connect": "SSH", "entry.sftp_connect": "SFTP", "entry.rdp_connect": "RDP",
@@ -33,8 +21,8 @@ export const WelcomePanel = ({
                                  resumeSession,
                                  openSFTP,
                                  openDirectConnect,
+                                 onCreateServer,
                              }) => {
-    const { user } = useContext(UserContext);
     const { getServerById } = useContext(ServerContext);
     const { t } = useTranslation();
     const [recentConnections, setRecentConnections] = useState([]);
@@ -83,65 +71,93 @@ export const WelcomePanel = ({
         }
     };
 
+    // The artboard's "Weiter" column (.starts): one line per way in, each with a title, a line
+    // saying what it does, and its position as the accelerator. Built from the actions that
+    // actually exist rather than from the artboard's three, so nothing loses its entry point --
+    // the artboard folds device linking and direct connect into one line, but they are two
+    // different dialogs here.
+    const starts = [
+        onCreateServer && {
+            key: "create",
+            title: t("welcome.getStarted"),
+            description: t("welcome.starts.createDescription"),
+            onClick: () => onCreateServer(),
+        },
+        openDirectConnect && {
+            key: "direct",
+            title: t("servers.contextMenu.quickConnect"),
+            description: t("welcome.starts.directDescription"),
+            onClick: () => openDirectConnect(),
+        },
+        {
+            key: "device",
+            title: t("welcome.connectDevice"),
+            description: t("welcome.starts.deviceDescription"),
+            onClick: () => setDeviceLinkDialogOpen(true),
+        },
+        {
+            key: "apps",
+            title: t("welcome.downloadApps"),
+            description: t("welcome.starts.appsDescription"),
+            onClick: () => setDownloadDialogOpen(true),
+        },
+    ].filter(Boolean);
+
     return (
         <div className="welcome-panel" data-ui-id="UI-SERVERS-WELCOME">
-            <div className="welcome-left">
-                <h1>{t("welcome.hello")}, <span>{getAvatarLabel(user, t("welcome.defaultName"))}</span>!</h1>
-                <p>{t("welcome.subtitle")}</p>
-                <div className="welcome-buttons">
-                    <Button icon={mdiDownload} text={t("welcome.downloadApps")} onClick={() => setDownloadDialogOpen(true)} />
-                    <Button icon={mdiLinkVariant} text={t("welcome.connectDevice")} onClick={() => setDeviceLinkDialogOpen(true)} />
-                    {openDirectConnect && (
-                        <Button icon={mdiCursorDefaultClick} text={t("servers.contextMenu.quickConnect")}
-                                onClick={() => openDirectConnect()} />
-                    )}
-                </div>
-            </div>
+            <div className="welcome">
+                <h3>
+                    {t("welcome.title")}
+                    <small>{t("welcome.tagline")}</small>
+                </h3>
 
-            <div className="welcome-right">
-                {loading ? (
-                    <div className="loading-state">
-                        <div className="loading-spinner" />
-                    </div>
-                ) : recentConnections.length > 0 ? (
-                    <div className="recent-connections">
-                        <div className="section-header">
-                            <Icon path={mdiHistory} />
-                            <h3>{t("welcome.recentConnections")}</h3>
-                        </div>
-                        <div className="recent-list">
+                <div className="welcome-column">
+                    <h4>{t("welcome.recentConnections")}</h4>
+                    {loading ? (
+                        <ul className="recent" aria-busy="true">
+                            {[0, 1, 2].map((i) => <li key={i} className="skeleton"><i /></li>)}
+                        </ul>
+                    ) : recentConnections.length > 0 ? (
+                        <ul className="recent">
                             {recentConnections.map((item, i) => {
                                 const hibernated = getHibernated(item.entryId);
+                                const protocol = PROTOCOL_LABELS[item.connectionType];
+                                const when = hibernated ? t("welcome.hibernated") : formatTimeAgo(item.timestamp, t);
                                 return (
-                                    <div key={`${item.entryId}-${i}`}
-                                         className={`recent-item${hibernated ? " hibernated" : ""}`}
-                                         onClick={() => handleClick(item)}
-                                         onContextMenu={(e) => handleContextMenu(e, item)}>
-                                        <div className="item-icon"><Icon path={getIconPath(item.icon)} /></div>
-                                        <div className="item-info">
-                                            <span className="item-name">{item.name}</span>
-                                            <span className="item-meta">
-                                                {hibernated ?
-                                                    <span className="hibernated-badge"><Icon path={mdiPower} />Hibernated</span> : formatTimeAgo(item.timestamp)}
-                                            </span>
-                                        </div>
-                                        <div className="item-action">
-                                            <span
-                                                className="protocol-badge">{PROTOCOL_LABELS[item.connectionType] || "Connect"}</span>
-                                            <Icon path={mdiPlay} className="play-icon" />
-                                        </div>
-                                    </div>
+                                    <li key={`${item.entryId}-${i}`}
+                                        className={hibernated ? "hibernated" : undefined}
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => handleClick(item)}
+                                        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), handleClick(item))}
+                                        onContextMenu={(e) => handleContextMenu(e, item)}>
+                                        <span className="n">{item.name}</span>
+                                        <span className="m">{[protocol, when].filter(Boolean).join(" · ")}</span>
+                                    </li>
                                 );
                             })}
-                        </div>
-                    </div>
-                ) : (
-                    <div className="empty-state">
-                        <Icon path={mdiServerNetwork} />
-                        <h3>{t("welcome.getStarted")}</h3>
-                        <p>{t("welcome.getStartedHint")}</p>
-                    </div>
-                )}
+                        </ul>
+                    ) : (
+                        <p className="welcome-empty">{t("welcome.noRecent")}</p>
+                    )}
+                </div>
+
+                <div className="welcome-column">
+                    <h4>{t("welcome.next")}</h4>
+                    <ul className="starts">
+                        {starts.map((start, index) => (
+                            <li key={start.key} role="button" tabIndex={0}
+                                onClick={start.onClick}
+                                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), start.onClick())}>
+                                <span>
+                                    <span className="t">{start.title}</span>
+                                    <span className="s">{start.description}</span>
+                                </span>
+                                <kbd>{index + 1}</kbd>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
             </div>
 
             <ContextMenu isOpen={contextMenu.isOpen} position={contextMenu.position} onClose={contextMenu.close}
@@ -149,10 +165,10 @@ export const WelcomePanel = ({
                 {server && (
                     <>
                         <ContextMenuItem icon={mdiConnection} label={t("servers.contextMenu.connect")}
-                                         onClick={connect} />
+                                         shortcut="Enter" onClick={connect} />
                         {server.protocol === "ssh" && openSFTP && (
                             <ContextMenuItem icon={mdiFolderOpen} label={t("servers.contextMenu.openSFTP")}
-                                             onClick={connectSftp} />
+                                             shortcut="Shift+Enter" onClick={connectSftp} />
                         )}
                         {openDirectConnect && (
                             <ContextMenuItem icon={mdiCursorDefaultClick} label={t("servers.contextMenu.quickConnect")}
