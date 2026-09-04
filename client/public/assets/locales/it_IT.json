@@ -1665,8 +1665,7 @@
       },
       "connecting": "Connessione…",
       "engineOffline": "(offline)",
-      "engineLoadFailed": "Impossibile caricare i motori.",
-      "engineOfflineNotice": "Il motore «{{name}}» è offline.",
+      "engineOfflineNotice": "Motore offline — la connessione è possibile solo dopo l'avvio.",
       "settings": {
         "jumpHosts": {
           "title": "Ospiti del salto",

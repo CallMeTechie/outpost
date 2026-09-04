@@ -1665,8 +1665,7 @@
       },
       "connecting": "Connexion…",
       "engineOffline": "(hors ligne)",
-      "engineLoadFailed": "Les moteurs n'ont pas pu être chargés.",
-      "engineOfflineNotice": "Le moteur « {{name}} » est hors ligne.",
+      "engineOfflineNotice": "Moteur hors ligne — la connexion n'est possible qu'après son démarrage.",
       "settings": {
         "jumpHosts": {
           "title": "Hôtes de saut",

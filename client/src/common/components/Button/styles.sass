@@ -43,7 +43,9 @@
     @media (max-width: 480px)
       font-size: 0.85rem
 
-  &:hover
+  // :not(:disabled) so a disabled button does not light up under the
+  // cursor and promise a click it will not accept.
+  &:hover:not(:disabled)
     filter: brightness(0.8)
 
   &:active

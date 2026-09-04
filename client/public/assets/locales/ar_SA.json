@@ -1665,8 +1665,7 @@
       },
       "connecting": "جارٍ الاتصال…",
       "engineOffline": "(غير متصل بالإنترنت)",
-      "engineLoadFailed": "تعذر تحميل المحركات.",
-      "engineOfflineNotice": "المحرك „{{name}}“ غير متصل.",
+      "engineOfflineNotice": "المحرك غير متصل — الاتصال ممكن بعد تشغيله فقط.",
       "settings": {
         "jumpHosts": {
           "title": "مضيفو القفزات",

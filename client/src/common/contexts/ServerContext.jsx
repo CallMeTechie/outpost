@@ -10,9 +10,15 @@ export const ServerProvider = ({ children }) => {
     // Distinguishes "still loading" from "loading failed": both leave servers
     // null, and without this the list rendered nothing at all in either case
     // (UI-SERVERS-LIST, states loading and error).
-    const [serversError, setServersError] = useState(null);
+    const [loadError, setLoadError] = useState(null);
     const { user, sessionToken } = useContext(UserContext);
-    const { registerHandler } = useContext(StateStreamContext);
+    const { registerHandler, connectionError } = useContext(StateStreamContext);
+
+    // The list is filled by the state stream, not by loadServers -- so a broken
+    // stream is the failure mode that actually happens, and without it the error
+    // branch was unreachable while the skeletons ran forever. Declared after
+    // connectionError on purpose: reading it earlier is a temporal dead zone.
+    const serversError = loadError || (connectionError ? "stream" : null);
 
     useEffect(() => {
         if (user) return registerHandler(STATE_TYPES.ENTRIES, setServers);
@@ -21,10 +27,10 @@ export const ServerProvider = ({ children }) => {
     const loadServers = useCallback(async () => {
         try {
             setServers(await getRequest("/entries/list"));
-            setServersError(null);
+            setLoadError(null);
         } catch (error) {
             console.error("Failed to load servers", error?.message);
-            setServersError(error?.message || "unknown");
+            setLoadError(error?.message || "unknown");
         }
     }, []);
 

@@ -28,7 +28,7 @@ import ActionConfirmDialog from "@/common/components/ActionConfirmDialog";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { Permission } from "@/common/utils/permissions.js";
 
-const flattenEntries = (entries, path = []) => entries.flatMap(entry =>
+const flattenEntries = (entries, path = []) => (entries || []).flatMap(entry =>
     entry.type === "folder" || entry.type === "organization"
         ? flattenEntries(entry.entries, [...path, entry])
         : [{ ...entry, _path: path }]
@@ -253,9 +253,11 @@ export const ServerList = ({
         }),
     });
 
-    const filteredServers = search || selectedTags.length > 0
-        ? filterEntries(servers, search, selectedTags)
-        : servers;
+    // The search field is rendered during loading too, and servers is null then;
+    // typing used to reach flattenEntries(null) and crash the render.
+    const filteredServers = !servers
+        ? servers
+        : (search || selectedTags.length > 0 ? filterEntries(servers, search, selectedTags) : servers);
     const renameStateServers = renameStateId ? filteredServers.map(applyRenameState(renameStateId)) : filteredServers;
 
     const handleContextMenu = (e) => {
@@ -576,7 +578,7 @@ export const ServerList = ({
                             <Button type="secondary" text={t("servers.retry")} onClick={loadServers} />
                         </div>
                     )}
-                    {servers && servers.length >= 1 && (
+                    {servers && servers.length >= 1 && filteredServers.length >= 1 && (
                         <div className={`servers${isOver ? " drop-zone-active" : ""}`}
                             onContextMenu={handleContextMenu}
                             ref={serversContainerRef}>

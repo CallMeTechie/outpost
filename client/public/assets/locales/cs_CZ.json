@@ -1665,8 +1665,7 @@
       },
       "connecting": "Připojování…",
       "engineOffline": "(offline)",
-      "engineLoadFailed": "Enginy se nepodařilo načíst.",
-      "engineOfflineNotice": "Engine „{{name}}“ není připojen.",
+      "engineOfflineNotice": "Engine je offline — připojení až po jeho spuštění.",
       "settings": {
         "jumpHosts": {
           "title": "Jump hosty",

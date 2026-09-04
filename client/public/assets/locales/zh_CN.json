@@ -1665,8 +1665,7 @@
       },
       "connecting": "连接中…",
       "engineOffline": "（离线）",
-      "engineLoadFailed": "无法加载引擎。",
-      "engineOfflineNotice": "引擎“{{name}}”已离线。",
+      "engineOfflineNotice": "引擎已离线 — 启动后才能连接。",
       "settings": {
         "jumpHosts": {
           "title": "跳板机",

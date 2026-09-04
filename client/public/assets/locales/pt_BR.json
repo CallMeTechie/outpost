@@ -1665,8 +1665,7 @@
       },
       "connecting": "Conectando…",
       "engineOffline": "(off-line)",
-      "engineLoadFailed": "Não foi possível carregar os engines.",
-      "engineOfflineNotice": "O engine “{{name}}” está offline.",
+      "engineOfflineNotice": "Engine offline — a conexão só é possível após iniciá-lo.",
       "settings": {
         "jumpHosts": {
           "title": "Anfitriões de salto",

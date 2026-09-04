@@ -19,16 +19,15 @@ const PROTOCOL_OPTIONS = [
 const DetailsPage = ({name, setName, icon, setIcon, config, setConfig, fieldConfig}) => {
     const { t } = useTranslation();
     const [engines, setEngines] = useState([]);
-    // UI-SERVER-DIALOG-DETAILS, state error. The engine request used to fail
-    // into an empty catch, and with a single engine there was no select to
-    // carry the "(offline)" hint either -- so a broken or unreachable engine
-    // left the form looking perfectly fine.
-    const [engineError, setEngineError] = useState(false);
-
     useEffect(() => {
+        // A failure here is usually not an error to show: GET /engines sits
+        // behind SETTINGS_ENGINES, which is not a default permission, so every
+        // non-admin gets a 403. Staying quiet leaves the form as it was before
+        // engines existed; the state the manifest calls "error" is an OFFLINE
+        // engine, not an unreadable list.
         getRequest("engines")
-            .then(data => { setEngines(data || []); setEngineError(false); })
-            .catch(error => { console.error("Failed to load engines", error?.message); setEngineError(true); });
+            .then(data => setEngines(data || []))
+            .catch(error => console.debug("Engine list unavailable", error?.message));
     }, []);
 
     const engineOptions = engines.map(e => ({
@@ -37,19 +36,16 @@ const DetailsPage = ({name, setName, icon, setIcon, config, setConfig, fieldConf
     }));
 
     const showEngineSelect = engines.length > 1;
-    // A single engine has no select to hang the hint on, so it gets its own line.
-    const soleEngineOffline = engines.length === 1 && !engines[0].connected;
+    // UI-SERVER-DIALOG-DETAILS, state error: an engine that is offline. With a
+    // single engine there is no select to carry the "(offline)" suffix, and
+    // even with several the suffix alone does not say what it means for saving.
+    const offlineEngines = engines.filter(e => !e.connected);
     
     return (
         <>
-            {engineError && (
-                <p className="details-engine-state error" role="alert">
-                    {t("servers.dialog.engineLoadFailed")}
-                </p>
-            )}
-            {soleEngineOffline && (
+            {offlineEngines.length > 0 && (
                 <p className="details-engine-state warning" role="status">
-                    {t("servers.dialog.engineOfflineNotice", { name: engines[0].name })}
+                    {t("servers.dialog.engineOfflineNotice")}
                 </p>
             )}
             <div className="name-row">

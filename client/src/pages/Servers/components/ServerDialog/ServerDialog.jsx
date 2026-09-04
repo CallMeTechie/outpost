@@ -29,6 +29,10 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
         return { ssh: "mdiConsole", telnet: "mdiConsole", rdp: "mdiMonitor", vnc: "mdiDesktopClassic", sftp: "mdiFolderNetwork", ftp: "mdiFolderNetwork", ftps: "mdiFolderNetwork", demo: "mdiFlaskOutline" }[protocol] || "mdiServerNetwork";
     };
 
+    // UI-SERVER-DIALOG-SAVE, state error: a failed save used to leave the
+    // dialog untouched and say so only in a toast, which is gone in seconds
+    // while the unsaved form is still on screen.
+    const [saveError, setSaveError] = useState(null);
     const [name, setName] = useState("");
     const [icon, setIcon] = useState(null);
     const [identities, setIdentities] = useState([]);
@@ -176,6 +180,7 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
             }
         } catch (error) {
             sendToast("Error", error.message || t("servers.messages.createFailed"));
+            setSaveError(error.message || t("servers.messages.createFailed"));
             console.error(error);
         }
     };
@@ -196,11 +201,13 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
             onClose();
         } catch (error) {
             sendToast("Error", error.message || t("servers.messages.updateFailed"));
+            setSaveError(error.message || t("servers.messages.updateFailed"));
             console.error(error);
         }
     };
 
     const handleSubmit = useCallback(() => {
+        setSaveError(null);
         if (!validateRequiredFields(entryType, config.protocol, name, config)) {
             sendToast("Error", t("servers.messages.fillRequiredFields"));
             return;
@@ -210,6 +217,7 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
 
     useEffect(() => {
         if (!open) return;
+        setSaveError(null);
 
         if (editServerId) {
             getRequest("entries/" + editServerId).then((server) => {
@@ -351,6 +359,9 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
                                       fieldConfig={fieldConfig} editServerId={editServerId} />}
                 </form>
 
+                {saveError && (
+                    <p className="server-dialog-error" role="alert">{saveError}</p>
+                )}
                 {/* UI-SERVER-DIALOG-SAVE, state disabled: the same condition
                     handleSubmit enforces, so an incomplete form is visible
                     before the click rather than answered with a toast after. */}

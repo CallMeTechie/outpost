@@ -19,7 +19,7 @@ const MODIFIERS = [
     { name: "shift", label: "Shift", aria: "servers.keyBar.shift" },
 ];
 
-export const TerminalKeyBar = ({ latch, onToggleModifier, onSendKey }) => {
+export const TerminalKeyBar = ({ latch, onToggleModifier, onSendKey, disabled = false }) => {
     const { t } = useTranslation();
 
     // Without this the button takes focus, the terminal loses it, and the
@@ -27,17 +27,18 @@ export const TerminalKeyBar = ({ latch, onToggleModifier, onSendKey }) => {
     const keepFocus = (event) => event.preventDefault();
 
     return (
-        <div className="terminal-key-bar" role="toolbar" data-ui-id="UI-SERVERS-KEYBAR">
-            <button type="button" className="key" onPointerDown={keepFocus}
+        <div className={`terminal-key-bar${disabled ? " disabled" : ""}`} role="toolbar"
+             aria-disabled={disabled} data-ui-id="UI-SERVERS-KEYBAR">
+            <button type="button" className="key" disabled={disabled} onPointerDown={keepFocus}
                     aria-label={t("servers.keyBar.escape")}
                     onClick={() => onSendKey("escape")}>Esc</button>
 
-            <button type="button" className="key" onPointerDown={keepFocus}
+            <button type="button" className="key" disabled={disabled} onPointerDown={keepFocus}
                     aria-label={t("servers.keyBar.tab")}
                     onClick={() => onSendKey("tab")}>Tab</button>
 
             {MODIFIERS.map(({ name, label, aria }) => (
-                <button key={name} type="button" onPointerDown={keepFocus}
+                <button key={name} type="button" disabled={disabled} onPointerDown={keepFocus}
                         className={`key modifier ${latch[name] ? "latched" : ""}`}
                         aria-label={t(aria)}
                         aria-pressed={latch[name]}
@@ -45,7 +46,7 @@ export const TerminalKeyBar = ({ latch, onToggleModifier, onSendKey }) => {
             ))}
 
             {ARROWS.map(({ key, path, label }) => (
-                <button key={key} type="button" className="key arrow" onPointerDown={keepFocus}
+                <button key={key} type="button" className="key arrow" disabled={disabled} onPointerDown={keepFocus}
                         aria-label={t(label)}
                         onClick={() => onSendKey(key)}><Icon path={path} /></button>
             ))}

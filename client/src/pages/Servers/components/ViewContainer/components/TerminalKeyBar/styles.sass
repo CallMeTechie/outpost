@@ -3,6 +3,14 @@
 .terminal-key-bar
   display: none
 
+  // UI-SERVERS-KEYBAR, state disabled: while a session connects or closes there
+  // is no terminal to write to, so the keys must not look live.
+  &.disabled
+    opacity: 0.5
+
+    .key
+      cursor: not-allowed
+
   // pointer: coarse, not a width breakpoint. Whether someone needs these keys
   // depends on whether they type with a finger and have no physical keyboard,
   // not on how wide the screen is - an unfolded foldable is wider than any

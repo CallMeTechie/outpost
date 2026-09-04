@@ -1665,8 +1665,7 @@
       },
       "connecting": "Подключение…",
       "engineOffline": "(Оффлайн)",
-      "engineLoadFailed": "Не удалось загрузить движки.",
-      "engineOfflineNotice": "Движок «{{name}}» не в сети.",
+      "engineOfflineNotice": "Движок не в сети — подключение возможно только после запуска.",
       "settings": {
         "jumpHosts": {
           "title": "Промежуточные хосты",

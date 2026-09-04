@@ -1736,8 +1736,7 @@
       },
       "connecting": "Connecting…",
       "engineOffline": "(offline)",
-      "engineLoadFailed": "Engines could not be loaded.",
-      "engineOfflineNotice": "Engine “{{name}}” is offline.",
+      "engineOfflineNotice": "Engine offline — connecting is only possible once it is running.",
       "settings": {
         "initialCommand": {
           "title": "Initial command",

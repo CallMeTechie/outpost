@@ -1665,8 +1665,7 @@
       },
       "connecting": "Conectando…",
       "engineOffline": "(sin conexión)",
-      "engineLoadFailed": "No se pudieron cargar los motores.",
-      "engineOfflineNotice": "El motor «{{name}}» está desconectado.",
+      "engineOfflineNotice": "Motor desconectado: la conexión solo es posible tras iniciarlo.",
       "settings": {
         "jumpHosts": {
           "title": "Anfitriones de salto",

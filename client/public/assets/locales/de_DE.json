@@ -1734,8 +1734,7 @@
       },
       "connecting": "Verbinde …",
       "engineOffline": "(offline)",
-      "engineLoadFailed": "Engines konnten nicht geladen werden.",
-      "engineOfflineNotice": "Engine „{{name}}“ ist offline.",
+      "engineOfflineNotice": "Engine offline — Verbindung erst nach Start möglich.",
       "settings": {
         "jumpHosts": {
           "title": "Jump-Hosts",

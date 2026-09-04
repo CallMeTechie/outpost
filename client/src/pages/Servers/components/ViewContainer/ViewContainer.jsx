@@ -157,6 +157,11 @@ export const ViewContainer = ({
     // write to (UI-SERVERS-KEYBAR anchor: "nur wenn das aktive Pane ein
     // Terminal ist").
     const isTerminalPane = (activeSession?.type || activeSession?.server?.renderer) === "terminal";
+    // UI-SERVERS-KEYBAR, state disabled: while a session is connecting or
+    // closing there is no term to write to and sendBarKey returns without
+    // doing anything (see below). Showing the keys as live in that window
+    // promises something the press does not deliver.
+    const terminalReady = Boolean(terminalRefs.current[activeSessionId]?.term);
 
     const registerTerminalRef = useCallback((sessionId, refs) => {
         refs ? terminalRefs.current[sessionId] = refs : delete terminalRefs.current[sessionId];
@@ -718,7 +723,8 @@ export const ViewContainer = ({
             {activeSession && isTerminalPane && (
                 <TerminalKeyBar latch={modifierLatch}
                                 onToggleModifier={toggleModifier}
-                                onSendKey={sendBarKey} />
+                                onSendKey={sendBarKey}
+                                disabled={!terminalReady} />
             )}
 
             {/* The bar sits above the layouter and takes real room, so the
