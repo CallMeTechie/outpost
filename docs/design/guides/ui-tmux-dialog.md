@@ -26,7 +26,7 @@ und den Commit „read a missing socket as an empty picker, not an error".
 - `data-ui-id` am `WindowGrid`. Datenquelle: `tmux list-windows` der gewählten Session; aktives Fenster markiert. `empty` bei Session ohne Fenster.
 
 ### UI-TMUX-DIALOG-ATTACH / -NEW
-- `data-ui-id` je Button. Beitreten `disabled` ohne Auswahl. Neue Session startet und hängt an, Name = Standard-Session aus den Server-Einstellungen, sonst `outpost`.
+- `data-ui-id` je Button. Beitreten `disabled` ohne Auswahl. Neue Session startet und hängt an; Name aus dem Namensfeld, sonst `outpost`. (Eine Server-Einstellung für einen Standard-Sessionnamen gibt es nicht — der Entry kennt nur `tmuxEnabled`. Der Anker im Manifest verlangt sie auch nicht; diese Anleitung tat es, das war erfunden.)
 
 ## Ausdrücklich nicht
 - Keine Vermischung von tmux-Sessions und Outpost-Tabs in einer Liste.

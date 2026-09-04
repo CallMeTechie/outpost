@@ -325,7 +325,7 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
                 </div>
 
                 {tabs.length > 1 && (
-                    <div className="server-dialog-tabs">
+                    <div className="server-dialog-tabs" data-ui-id="UI-SERVER-DIALOG-TABS">
                         <TabSwitcher
                             tabs={tabSwitcherTabs}
                             activeTab={activeTab.toString()}
@@ -351,7 +351,7 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
                                       fieldConfig={fieldConfig} editServerId={editServerId} />}
                 </form>
 
-                <Button className="server-dialog-button" onClick={handleSubmit}
+                <Button className="server-dialog-button" dataUiId="UI-SERVER-DIALOG-SAVE" onClick={handleSubmit}
                         text={editServerId ? t("servers.dialog.actions.save") : t("servers.dialog.actions.create")} />
             </div>
 

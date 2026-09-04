@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
@@ -10,6 +10,11 @@ import { emptyStateKey } from "./emptyState.js";
 import "./styles.sass";
 
 const CREATE_NAME_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+
+// What "Neue Session" creates when the name field is empty. The guide asks for
+// the server's configured default session and this fallback; entries carry no
+// such setting today, so the fallback is what is used.
+const DEFAULT_SESSION_NAME = "outpost";
 
 /**
  * The window count as a 2x2 grid: four slots, filled with as many as are
@@ -40,6 +45,11 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
     const [reloadToken, setReloadToken] = useState(0);
     // Name of the session whose windows are shown. null = session list.
     const [openSession, setOpenSession] = useState(null);
+    // Select-then-attach (UI-TMUX-DIALOG-SESSIONS/-WINDOWS/-ATTACH): a row click
+    // marks, it no longer connects. Nothing is preselected, so Attach really is
+    // disabled until the user has chosen -- and Enter cannot connect by accident.
+    const [selectedSession, setSelectedSession] = useState(null);
+    const [selectedWindow, setSelectedWindow] = useState(null);
 
     useEffect(() => {
         if (!isOpen || !entryId) return;
@@ -186,6 +196,81 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
     // host-without-tmux case the old condition got wrong.
     const emptyKey = state.status === "ready" ? emptyStateKey(state) : null;
 
+    const selected = selectedSession
+        ? state.sessions.find((s) => s.name === selectedSession) || null
+        : null;
+    // Memoised: a fresh [] on every render would re-register the keydown listener
+    // below on every render, since it is in that effect's dependency list.
+    const selectedWindows = useMemo(() => selected?.windowList || [], [selected]);
+    const canAttach = selected !== null && busyName === null;
+
+    // A selection that no longer exists (killed, renamed, session ended) must not
+    // keep the Attach button enabled against a name that is gone.
+    useEffect(() => {
+        if (selectedSession && state.status === "ready" && !selected) {
+            setSelectedSession(null);
+            setSelectedWindow(null);
+        }
+    }, [selectedSession, selected, state.status]);
+
+    // Keyboard per the guide: up/down session, left/right window, Enter attach,
+    // N new session. Skipped while an input has focus -- the rename and new-name
+    // fields need their own letters and their own Enter.
+    useEffect(() => {
+        if (!isOpen || openSession) return;
+
+        const step = (list, current, delta) => {
+            if (list.length === 0) return current;
+            const at = list.indexOf(current);
+            if (at === -1) return list[delta > 0 ? 0 : list.length - 1];
+            return list[(at + delta + list.length) % list.length];
+        };
+
+        const onKeyDown = (event) => {
+            const tag = event.target?.tagName;
+            if (tag === "INPUT" || tag === "TEXTAREA" || event.target?.isContentEditable) return;
+            if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+            const names = state.sessions.map((s) => s.name);
+            const windowIds = selectedWindows.map((w) => w.id);
+
+            switch (event.key) {
+                case "ArrowDown":
+                case "ArrowUp": {
+                    if (names.length === 0) return;
+                    event.preventDefault();
+                    const next = step(names, selectedSession, event.key === "ArrowDown" ? 1 : -1);
+                    setSelectedSession(next);
+                    setSelectedWindow(null);
+                    return;
+                }
+                case "ArrowRight":
+                case "ArrowLeft": {
+                    if (windowIds.length === 0) return;
+                    event.preventDefault();
+                    setSelectedWindow(step(windowIds, selectedWindow, event.key === "ArrowRight" ? 1 : -1));
+                    return;
+                }
+                case "Enter":
+                    if (!canAttach) return;
+                    event.preventDefault();
+                    onSelect(selectedSession, false, selectedWindow ?? undefined);
+                    return;
+                case "n":
+                case "N":
+                    if (busyName !== null) return;
+                    event.preventDefault();
+                    onSelect(newName && canCreate ? newName : DEFAULT_SESSION_NAME, true);
+                    return;
+                default:
+            }
+        };
+
+        document.addEventListener("keydown", onKeyDown);
+        return () => document.removeEventListener("keydown", onKeyDown);
+    }, [isOpen, openSession, state.sessions, selectedSession, selectedWindow,
+        selectedWindows, canAttach, busyName, newName, canCreate, onSelect]);
+
     // The session has vanished from underneath the open view - this is only
     // noticed on the next request, there is no background check for it.
     useEffect(() => {
@@ -243,112 +328,154 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                     />
                 )}
 
-                {!openedSession && state.status === "ready" && state.sessions.length > 0 && (
-                    <ul className="tmux-session-list">
-                        {state.sessions.map((session) => (
-                            <li key={session.name} className="tmux-session-row">
-                                {renaming === session.name ? (
-                                    <div className="tmux-row-rename">
-                                        <input type="text" value={renameValue} maxLength={64} autoFocus
-                                               disabled={busyName !== null}
-                                               onChange={(e) => setRenameValue(e.target.value)}
-                                               onKeyDown={(e) => {
-                                                   if (e.key === "Enter") renameSession(session.name);
-                                                   if (e.key === "Escape") {
-                                                       // DialogProvider closes the whole dialog on Escape via a
-                                                       // native document-level keydown listener (see Dialog.jsx).
-                                                       // React 19 delegates events at the portal container
-                                                       // (document.body, which is where this dialog is portalled),
-                                                       // and that delegated dispatch runs before the event reaches
-                                                       // `document` in the real DOM bubble order. stopPropagation()
-                                                       // here therefore stops the native event before it ever
-                                                       // reaches DialogProvider's listener, so only the rename is
-                                                       // cancelled and the dialog - and the connection attempt
-                                                       // behind it - stays open.
-                                                       e.stopPropagation();
-                                                       setRenaming(null);
-                                                   }
-                                               }} />
-                                        <button className="tmux-icon-button" disabled={busyName !== null || !canRename}
-                                                title={t('servers.tmuxDialog.actions.confirmRename')}
-                                                aria-label={t('servers.tmuxDialog.actions.confirmRename')}
-                                                onClick={() => renameSession(session.name)}>
-                                            <Icon path={mdiCheck} size={0.7} />
-                                        </button>
-                                        <button className="tmux-icon-button" disabled={busyName !== null}
-                                                title={t('servers.tmuxDialog.actions.cancelRename')}
-                                                aria-label={t('servers.tmuxDialog.actions.cancelRename')}
-                                                onClick={() => setRenaming(null)}>
-                                            <Icon path={mdiClose} size={0.7} />
-                                        </button>
-                                    </div>
-                                ) : pendingKill === session.name ? (
-                                    <div className="tmux-row-confirm">
-                                        <span>{t('servers.tmuxDialog.killConfirm', { name: session.name, interpolation: { escapeValue: false } })}</span>
-                                        <Button text={t('servers.tmuxDialog.actions.confirmKill')} disabled={busyName !== null}
-                                                onClick={() => killSession(session.name)} />
-                                        <Button type="secondary" text={t('servers.tmuxDialog.actions.cancelKill')}
-                                                onClick={() => setPendingKill(null)} />
-                                    </div>
-                                ) : (
-                                    <>
-                                        <button className="tmux-session-item" disabled={busyName !== null}
-                                                onClick={() => onSelect(session.name, false)}>
-                                            <span className="tmux-session-name">{session.name}</span>
-                                            <span className="tmux-session-meta">
-                                                {session.attached && t('servers.tmuxDialog.attachedLabel')}
-                                            </span>
-                                        </button>
-                                        <div className="tmux-session-actions">
-                                            <button className="tmux-icon-button tmux-window-grid"
-                                                    disabled={busyName !== null}
-                                                    title={t('servers.tmuxDialog.windowsOpen', { count: session.windows })}
-                                                    aria-label={t('servers.tmuxDialog.windowsOpen', { count: session.windows })}
-                                                    onClick={() => setOpenSession(session.name)}>
-                                                <WindowGrid count={Math.min(session.windows, 4)} />
-                                            </button>
-                                            <button className="tmux-icon-button"
-                                                    disabled={busyName !== null}
-                                                    title={t('servers.tmuxDialog.actions.rename')}
-                                                    aria-label={t('servers.tmuxDialog.actions.rename')}
-                                                    onClick={() => startRename(session.name)}>
-                                                <Icon path={mdiPencil} size={0.7} />
-                                            </button>
-                                            <button className="tmux-icon-button"
-                                                    disabled={busyName !== null}
-                                                    title={t('servers.tmuxDialog.actions.kill')}
-                                                    aria-label={t('servers.tmuxDialog.actions.kill')}
-                                                    onClick={() => (session.attached ? setPendingKill(session.name) : killSession(session.name))}>
-                                                <Icon path={mdiTrashCan} size={0.7} />
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
-                                {renaming === session.name && !canRename && (
-                                    <p className="tmux-hint">{t('servers.tmuxDialog.nameHint')}</p>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
-                )}
+                {!openedSession && state.status === "ready" && (
+                    <div className="tmux-panes">
+                        <div className="tmux-pane">
+                            <div className="tmux-pane-label" id="tmux-lbl-sessions">
+                                {t('servers.tmuxDialog.panes.sessions')}
+                            </div>
+                            <ul className="tmux-session-list" role="listbox" aria-labelledby="tmux-lbl-sessions"
+                                data-ui-id="UI-TMUX-DIALOG-SESSIONS">
+                                {state.sessions.map((session) => (
+                                    <li key={session.name} className="tmux-session-row" role="option"
+                                        aria-selected={session.name === selectedSession}>
+                                        {renaming === session.name ? (
+                                            <div className="tmux-row-rename">
+                                                <input type="text" value={renameValue} maxLength={64} autoFocus
+                                                       disabled={busyName !== null}
+                                                       onChange={(e) => setRenameValue(e.target.value)}
+                                                       onKeyDown={(e) => {
+                                                           if (e.key === "Enter") renameSession(session.name);
+                                                           if (e.key === "Escape") {
+                                                               // DialogProvider closes the whole dialog on Escape via a
+                                                               // native document-level keydown listener (see Dialog.jsx).
+                                                               // React 19 delegates events at the portal container
+                                                               // (document.body, which is where this dialog is portalled),
+                                                               // and that delegated dispatch runs before the event reaches
+                                                               // `document` in the real DOM bubble order. stopPropagation()
+                                                               // here therefore stops the native event before it ever
+                                                               // reaches DialogProvider's listener, so only the rename is
+                                                               // cancelled and the dialog - and the connection attempt
+                                                               // behind it - stays open.
+                                                               e.stopPropagation();
+                                                               setRenaming(null);
+                                                           }
+                                                       }} />
+                                                <button className="tmux-icon-button" disabled={busyName !== null || !canRename}
+                                                        title={t('servers.tmuxDialog.actions.confirmRename')}
+                                                        aria-label={t('servers.tmuxDialog.actions.confirmRename')}
+                                                        onClick={() => renameSession(session.name)}>
+                                                    <Icon path={mdiCheck} size={0.7} />
+                                                </button>
+                                                <button className="tmux-icon-button" disabled={busyName !== null}
+                                                        title={t('servers.tmuxDialog.actions.cancelRename')}
+                                                        aria-label={t('servers.tmuxDialog.actions.cancelRename')}
+                                                        onClick={() => setRenaming(null)}>
+                                                    <Icon path={mdiClose} size={0.7} />
+                                                </button>
+                                            </div>
+                                        ) : pendingKill === session.name ? (
+                                            <div className="tmux-row-confirm">
+                                                <span>{t('servers.tmuxDialog.killConfirm', { name: session.name, interpolation: { escapeValue: false } })}</span>
+                                                <Button text={t('servers.tmuxDialog.actions.confirmKill')} disabled={busyName !== null}
+                                                        onClick={() => killSession(session.name)} />
+                                                <Button type="secondary" text={t('servers.tmuxDialog.actions.cancelKill')}
+                                                        onClick={() => setPendingKill(null)} />
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {/* Selects; it no longer connects. Double click still connects
+                                                    straight away, so the old one-gesture path is not lost. */}
+                                                <button className="tmux-session-item" disabled={busyName !== null}
+                                                        onClick={() => { setSelectedSession(session.name); setSelectedWindow(null); }}
+                                                        onDoubleClick={() => onSelect(session.name, false)}>
+                                                    <span className="tmux-session-name">{session.name}</span>
+                                                    <span className="tmux-session-meta">
+                                                        {session.attached && t('servers.tmuxDialog.attachedLabel')}
+                                                    </span>
+                                                </button>
+                                                <div className="tmux-session-actions">
+                                                    <button className="tmux-icon-button tmux-window-grid"
+                                                            disabled={busyName !== null}
+                                                            title={t('servers.tmuxDialog.windowsOpen', { count: session.windows })}
+                                                            aria-label={t('servers.tmuxDialog.windowsOpen', { count: session.windows })}
+                                                            onClick={() => setOpenSession(session.name)}>
+                                                        <WindowGrid count={Math.min(session.windows, 4)} />
+                                                    </button>
+                                                    <button className="tmux-icon-button"
+                                                            disabled={busyName !== null}
+                                                            title={t('servers.tmuxDialog.actions.rename')}
+                                                            aria-label={t('servers.tmuxDialog.actions.rename')}
+                                                            onClick={() => startRename(session.name)}>
+                                                        <Icon path={mdiPencil} size={0.7} />
+                                                    </button>
+                                                    <button className="tmux-icon-button"
+                                                            disabled={busyName !== null}
+                                                            title={t('servers.tmuxDialog.actions.kill')}
+                                                            aria-label={t('servers.tmuxDialog.actions.kill')}
+                                                            onClick={() => (session.attached ? setPendingKill(session.name) : killSession(session.name))}>
+                                                        <Icon path={mdiTrashCan} size={0.7} />
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
+                                        {renaming === session.name && !canRename && (
+                                            <p className="tmux-hint">{t('servers.tmuxDialog.nameHint')}</p>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                            <div className="tmux-new-session">
+                                <input type="text" value={newName} maxLength={64}
+                                       placeholder={t('servers.tmuxDialog.newSessionPlaceholder')}
+                                       disabled={busyName !== null}
+                                       onChange={(e) => setNewName(e.target.value)}
+                                       onKeyDown={(e) => { if (e.key === "Enter" && canCreate && busyName === null) onSelect(newName, true); }} />
+                            </div>
+                            {newName.length > 0 && !canCreate && <p className="tmux-hint">{t('servers.tmuxDialog.nameHint')}</p>}
+                        </div>
 
-                {!openedSession && (
-                    <div className="tmux-new-session">
-                        <input type="text" value={newName} maxLength={64}
-                               placeholder={t('servers.tmuxDialog.newSessionPlaceholder')}
-                               disabled={busyName !== null}
-                               onChange={(e) => setNewName(e.target.value)}
-                               onKeyDown={(e) => { if (e.key === "Enter" && canCreate && busyName === null) onSelect(newName, true); }} />
-                        <Button text={t('servers.tmuxDialog.actions.create')} disabled={!canCreate || busyName !== null}
-                                onClick={() => onSelect(newName, true)} />
+                        <div className="tmux-pane">
+                            <div className="tmux-pane-label" id="tmux-lbl-windows">
+                                {t('servers.tmuxDialog.panes.windows')}
+                            </div>
+                            <ul className="tmux-window-list" role="listbox" aria-labelledby="tmux-lbl-windows"
+                                data-ui-id="UI-TMUX-DIALOG-WINDOWS">
+                                {selectedWindows.map((win) => (
+                                    <li key={win.id} className="tmux-window-row" role="option"
+                                        aria-selected={win.id === selectedWindow}>
+                                        <button className="tmux-window-item" disabled={busyName !== null}
+                                                onClick={() => setSelectedWindow(win.id)}
+                                                onDoubleClick={() => onSelect(selectedSession, false, win.id)}>
+                                            <span className="tmux-window-index">{win.index}</span>
+                                            <span className="tmux-window-name">{displayName(win.name)}</span>
+                                            {win.active && <span className="tmux-window-current">*</span>}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                            {/* Two different emptinesses, and they must not read alike: nothing
+                                chosen yet, versus a chosen session that has no windows. */}
+                            {selected === null && (
+                                <p className="tmux-hint">{t('servers.tmuxDialog.pickSession')}</p>
+                            )}
+                            {selected !== null && selectedWindows.length === 0 && (
+                                <p className="tmux-hint">{t('servers.tmuxDialog.noWindows')}</p>
+                            )}
+                        </div>
                     </div>
                 )}
-                {!openedSession && newName.length > 0 && !canCreate && <p className="tmux-hint">{t('servers.tmuxDialog.nameHint')}</p>}
 
                 <div className="dialog-actions">
                     <Button type="secondary" text={t('servers.tmuxDialog.actions.cancel')} onClick={onClose} />
                     <Button type="secondary" text={t('servers.tmuxDialog.actions.connectRaw')} disabled={busyName !== null}
                             onClick={onConnectRaw} />
+                    <Button type="secondary" dataUiId="UI-TMUX-DIALOG-NEW"
+                            text={t('servers.tmuxDialog.actions.newSession')} disabled={busyName !== null}
+                            onClick={() => onSelect(newName && canCreate ? newName : DEFAULT_SESSION_NAME, true)} />
+                    <Button dataUiId="UI-TMUX-DIALOG-ATTACH"
+                            text={t('servers.tmuxDialog.actions.attach')} disabled={!canAttach}
+                            onClick={() => onSelect(selectedSession, false, selectedWindow ?? undefined)} />
                 </div>
             </div>
         </DialogProvider>

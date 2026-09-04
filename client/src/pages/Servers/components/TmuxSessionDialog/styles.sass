@@ -10,7 +10,7 @@
     opacity: 0.7
 
   .tmux-error
-    color: var(--error-color, #d9534f)
+    color: colors.$error
 
   .tmux-notice
     opacity: 0.85
@@ -25,8 +25,8 @@
     // with this same base class and must keep its plain, unboxed look.
     &.tmux-window-confirm
       padding: 0.4rem 0.5rem 0.4rem 0.7rem
-      border: 1px solid color-mix(in srgb, var(--error-color, #d9534f) 30%, transparent)
-      background: color-mix(in srgb, var(--error-color, #d9534f) 8%, transparent)
+      border: 1px solid color-mix(in srgb, colors.$error 30%, transparent)
+      background: color-mix(in srgb, colors.$error 8%, transparent)
       border-radius: 0.5rem
 
       span
@@ -40,11 +40,11 @@
         background: color-mix(in srgb, colors.$primary 8%, transparent)
 
   .tmux-confirm-yes
-    color: var(--error-color, #d9534f)
+    color: colors.$error
 
     &:hover
-      background-color: color-mix(in srgb, var(--error-color, #d9534f) 18%, transparent)
-      color: var(--error-color, #d9534f)
+      background-color: color-mix(in srgb, colors.$error 18%, transparent)
+      color: colors.$error
 
   .tmux-row-confirm.is-soft .tmux-confirm-yes
     color: colors.$primary
@@ -69,6 +69,73 @@
       font-family: inherit
       font-size: 0.9rem
 
+  // Two panes side by side (UI-TMUX-DIALOG-SESSIONS left, -WINDOWS right), per
+  // the artboard. Below the dialog's own width they stack, so the picker stays
+  // usable on a narrow window.
+  .tmux-panes
+    display: grid
+    grid-template-columns: 18rem 1fr
+    gap: 1rem
+    align-items: start
+
+    @media (max-width: 40rem)
+      grid-template-columns: 1fr
+
+  .tmux-pane
+    display: flex
+    flex-direction: column
+    gap: 0.5rem
+    min-width: 0
+
+  .tmux-pane-label
+    font-size: 0.8rem
+    opacity: 0.7
+
+  .tmux-window-list
+    list-style: none
+    margin: 0
+    padding: 0
+    display: flex
+    flex-direction: column
+    gap: 0.25rem
+
+  .tmux-window-row
+    display: flex
+
+  .tmux-window-item
+    width: 100%
+    display: flex
+    align-items: center
+    gap: 0.5rem
+    padding: 0.4rem 0.75rem
+    background: none
+    border: 1px solid colors.$gray
+    border-radius: 0.5rem
+    color: inherit
+    cursor: pointer
+    text-align: left
+
+    &:hover
+      background: colors.$dark-gray
+
+  .tmux-window-name
+    min-width: 0
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+
+  // The current tmux window, as the artboard marks it.
+  .tmux-window-current
+    margin-left: auto
+    color: colors.$primary
+
+  // One selection style for both listboxes: the row is chosen, not yet acted on.
+  [role="option"][aria-selected="true"]
+    > .tmux-session-item,
+    > .tmux-window-item
+      border-color: colors.$primary
+      background: colors.$primary-opacity
+
   .tmux-session-list
     list-style: none
     margin: 0
@@ -85,13 +152,13 @@
     gap: 1rem
     padding: 0.5rem 0.75rem
     background: none
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1))
+    border: 1px solid colors.$gray
     border-radius: 0.5rem
     color: inherit
     cursor: pointer
 
     &:hover
-      background: var(--hover-color, rgba(255, 255, 255, 0.05))
+      background: colors.$dark-gray
 
   .tmux-session-name
     font-weight: 500

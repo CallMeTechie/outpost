@@ -508,9 +508,16 @@ export const Servers = () => {
 
             setActiveSessions(prevSessions => [...prevSessions, sessionData]);
             setActiveSessionId(session.sessionId);
+            return true;
         } catch (error) {
             console.error("Failed to create session", error);
-            sendToast("Error", t('servers.connectionFailed', { message: error?.message || t('servers.unknownError') }));
+            const message = t('servers.connectionFailed', { message: error?.message || t('servers.unknownError') });
+            sendToast("Error", message);
+            // The real message, not a fixed one: this path covers 403, 400 and
+            // 500 from POST /connections. It does NOT cover a rejected SSH
+            // login -- the server answers 201 with a sessionId before the login
+            // is attempted, and the failure reaches the session tab instead.
+            return { error: message };
         }
     };
 
@@ -542,7 +549,7 @@ export const Servers = () => {
             return;
         }
 
-        void performConnection(
+        return performConnection(
             options.server,
             options.identity ?? null,
             null,
@@ -833,9 +840,12 @@ export const Servers = () => {
         setDirectConnectServer(null);
     };
 
-    const handleDirectConnect = (directIdentity) => {
+    // Returns whether the connection came up, so the dialog can keep itself open
+    // and show "Anmeldung abgelehnt." instead of vanishing on a failed login.
+    // undefined means the attempt was handed to another dialog (connection
+    // reason, tmux picker) -- that counts as done here, not as a failure.
+    const handleDirectConnect = (directIdentity) =>
         initiateConnection({ server: directConnectServer, directIdentity });
-    };
 
     useEffect(() => {
         if (!servers) return;

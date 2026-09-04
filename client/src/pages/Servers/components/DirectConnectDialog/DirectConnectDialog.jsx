@@ -27,6 +27,21 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
     const [password, setPassword] = useState("");
     const [sshKey, setSshKey] = useState(null);
     const [passphrase, setPassphrase] = useState("");
+    // UI-DIRECT-CONNECT-GO carries a loading state. It holds from the click
+    // until onConnect reports back, which is the round trip of
+    // POST /connections -- not a claim that the SSH login succeeded, since the
+    // server answers before attempting it.
+    const [connecting, setConnecting] = useState(false);
+    // UI-DIRECT-CONNECT-AUTH, state error: shown in place, not only as a toast,
+    // and the dialog stays open so the input can be corrected.
+    //
+    // Honest boundary: this catches what POST /connections refuses (403, 400,
+    // 500). It does NOT catch a rejected SSH login -- the server answers 201
+    // with a sessionId before the login is even attempted, and the rejection
+    // surfaces in the session tab. The manifest's copy "Anmeldung abgelehnt."
+    // therefore does not fit this branch; the real server message is shown
+    // instead of claiming a cause we cannot know.
+    const [authError, setAuthError] = useState(null);
 
     const allAuthOptions = [
         { label: t("servers.dialog.identities.passwordOnly"), value: "password-only" },
@@ -50,6 +65,13 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
         };
         reader.readAsText(file);
     };
+
+    // Same conditions validateFields() enforces, as a value: the button is
+    // disabled instead of the click producing a toast (UI-DIRECT-CONNECT-GO,
+    // state disabled).
+    const canConnect = (authType === "password-only" || Boolean(username))
+        && ((authType !== "password" && authType !== "password-only" && authType !== "both") || Boolean(password))
+        && ((authType !== "ssh" && authType !== "both") || Boolean(sshKey));
 
     const validateFields = () => {
         if (authType !== "password-only" && !username) {
@@ -84,9 +106,26 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
             ),
         };
 
-        onConnect(directIdentity);
-        onClose();
-    }, [username, authType, password, sshKey, passphrase, onConnect, onClose]);
+        setConnecting(true);
+        setAuthError(null);
+        // onConnect reports back: true connected, false rejected, undefined the
+        // attempt was handed to another dialog. Only a hard false keeps us open
+        // -- otherwise the loading state would never be visible at all, because
+        // closing in the same handler unmounts the dialog in the same commit.
+        Promise.resolve(onConnect(directIdentity))
+            .then((result) => {
+                if (result?.error) {
+                    setConnecting(false);
+                    setAuthError(result.error);
+                    return;
+                }
+                onClose();
+            })
+            .catch((error) => {
+                setConnecting(false);
+                setAuthError(error?.message || t("servers.unknownError"));
+            });
+    }, [username, authType, password, sshKey, passphrase, onConnect, onClose, t]);
 
     useEffect(() => {
         if (!open) return;
@@ -96,6 +135,8 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
         setPassword("");
         setSshKey(null);
         setPassphrase("");
+        setConnecting(false);
+        setAuthError(null);
     }, [open, defaultAuthType]);
 
     useEffect(() => {
@@ -124,7 +165,8 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
                 </div>
 
                 <div className="direct-connect-content">
-                    <div className="identity-section">
+                    <div className="identity-section" data-ui-id="UI-DIRECT-CONNECT-AUTH">
+                        {authError && <p className="direct-connect-error" role="alert">{authError}</p>}
                         <div className={`name-row ${!showUsername ? 'single-column' : ''}`}>
                             {showUsername && (
                                 <div className="form-group">
@@ -205,8 +247,10 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
 
                 <Button
                     className="direct-connect-button"
+                    dataUiId="UI-DIRECT-CONNECT-GO"
                     onClick={handleConnect}
-                    text={t("servers.contextMenu.connect")}
+                    disabled={!canConnect || connecting}
+                    text={connecting ? t("servers.dialog.connecting") : t("servers.contextMenu.connect")}
                 />
             </div>
         </DialogProvider>

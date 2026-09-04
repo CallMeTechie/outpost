@@ -1659,6 +1659,7 @@
         "macAddress": "aa:bb:bb:cc:dd:ee:ff",
         "wolBroadcastAddress": "255.255.255.255"
       },
+      "connecting": "جارٍ الاتصال…",
       "engineOffline": "(غير متصل بالإنترنت)",
       "settings": {
         "jumpHosts": {

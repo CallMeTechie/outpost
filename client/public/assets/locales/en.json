@@ -1730,6 +1730,7 @@
                 "macAddress": "AA:BB:CC:DD:EE:FF",
                 "wolBroadcastAddress": "255.255.255.255"
             },
+            "connecting": "Connecting…",
             "engineOffline": "(offline)",
             "settings": {
                 "initialCommand": {
@@ -1871,6 +1872,12 @@
             }
         },
         "tmuxDialog": {
+            "panes": {
+                "sessions": "Sessions",
+                "windows": "Windows"
+            },
+            "pickSession": "Pick a session to see its windows.",
+            "noWindows": "This session has no windows.",
             "title": "Attach to a tmux session",
             "loading": "Looking for running sessions…",
             "empty": "No session is running on this host yet.",
@@ -1895,6 +1902,8 @@
             "windowKillConfirm": "Someone is looking at this window right now. Close it?",
             "windowKillLastConfirm": "This is the last window — closing it ends the session \"{{name}}\" completely.",
             "actions": {
+                "attach": "Attach",
+                "newSession": "New session",
                 "cancel": "Cancel",
                 "create": "Create",
                 "connectRaw": "Connect without tmux",

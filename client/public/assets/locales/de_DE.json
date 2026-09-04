@@ -1728,6 +1728,7 @@
                 "macAddress": "AA:BB:CC:DD:EE:FF",
                 "wolBroadcastAddress": "255.255.255.255"
             },
+            "connecting": "Verbinde …",
             "engineOffline": "(offline)",
             "settings": {
                 "jumpHosts": {
@@ -2181,6 +2182,12 @@
             "unknownUser": "Unbekannter Nutzer"
         },
         "tmuxDialog": {
+            "panes": {
+                "sessions": "Sessions",
+                "windows": "Fenster"
+            },
+            "pickSession": "Wähle eine Session, um ihre Fenster zu sehen.",
+            "noWindows": "Diese Session hat keine Fenster.",
             "title": "An eine tmux-Session anhängen",
             "loading": "Suche nach laufenden Sessions…",
             "empty": "Auf diesem Host läuft noch keine Session.",
@@ -2205,6 +2212,8 @@
             "windowKillConfirm": "In dieses Fenster schaut gerade jemand. Wirklich schließen?",
             "windowKillLastConfirm": "Das ist das letzte Fenster — damit endet die Session „{{name}}\" vollständig.",
             "actions": {
+                "attach": "Beitreten",
+                "newSession": "Neue Session",
                 "cancel": "Abbrechen",
                 "create": "Anlegen",
                 "connectRaw": "Ohne tmux verbinden",
