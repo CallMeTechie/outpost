@@ -21,6 +21,7 @@ Eine Akzentfarbe, sonst Grau-Stufen; Farbe nur als Bedeutung.
 | Rolle | dunkel (Standard) | hell | OLED | Verwendung |
 |---|---|---|---|---|
 | `--accent-color` / `--primary` | `#314BD3` | `#314BD3` | `#314BD3` | die eine Akzentfarbe: aktive Auswahl, primäre Aktion |
+| `--on-accent` | `#FFFFFF` | `#FFFFFF` | `#FFFFFF` | Text und Icons auf der Akzentfarbe — nie `--white`, das im hellen Thema schwarz wird |
 | `--primary-opacity` | accent 25 % | accent 15 % | accent 25 % | Hintergrund aktiver/gehoverter Elemente |
 | `--background` | `#000A12` | `#FFFFFF` | `#000000` | Seitenhintergrund |
 | `--terminal` | `#13181C` | `#F5F5F5` | `#000000` | Terminal-Fläche |

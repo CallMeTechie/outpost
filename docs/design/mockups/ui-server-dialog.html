@@ -120,7 +120,7 @@
 	.tri { display: inline-flex; padding: 2px; background: var(--dark-gray); border: 1px solid var(--gray); border-radius: var(--radius-sm); }
 	.tri span { padding: var(--space-1) var(--space-3); border-radius: var(--radius-sm); color: var(--subtext); font: var(--type-caption); }
 	.tri span[aria-checked="true"] { background: var(--primary); color: var(--white); }
-	.toggle { width: 2.25rem; height: 1.25rem; border-radius: 1rem; background: var(--gray); position: relative; flex: none; }
+	.toggle { width: 2.25rem; height: 1.25rem; border-radius: var(--radius-xl); background: var(--gray); position: relative; flex: none; }
 	.toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: calc(1.25rem - 4px); height: calc(1.25rem - 4px); border-radius: 50%; background: var(--subtext); }
 	.toggle.on { background: var(--primary); }
 	.toggle.on::after { left: auto; right: 2px; background: var(--white); }

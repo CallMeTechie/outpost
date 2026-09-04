@@ -1,5 +1,8 @@
 :root
   --accent-color: #314BD3
+  // Text/icons placed ON the accent colour. Not --white, which flips to black
+  // in the light theme -- on #314BD3 the readable colour is white in every theme.
+  --on-accent: #FFFFFF
 
 :root[data-theme="dark"]
   --background: #000A12
@@ -96,6 +99,7 @@ $gray: var(--gray)
 $gray-strong: var(--gray-strong)
 $light-gray: var(--light-gray)
 $primary: var(--primary)
+$on-accent: var(--on-accent)
 $primary-opacity: var(--primary-opacity)
 $error: var(--error)
 $error-opacity: var(--error-opacity)
