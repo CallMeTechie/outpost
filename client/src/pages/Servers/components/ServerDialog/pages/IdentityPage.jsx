@@ -189,7 +189,7 @@ const IdentityPage = ({ serverIdentities, setIdentityUpdates, identityUpdates, s
     }));
 
     return (
-        <div className="identities">
+        <div className="identities" data-ui-id="UI-SERVER-DIALOG-IDENTITY">
             {currentOrganizationId && (
                 <IdentitySection title={t("servers.dialog.identities.organizationIdentities")} icon={mdiAccountGroup} description={t("servers.dialog.identities.orgDescription")}
                     identities={linkedOrg} available={availableOrg} onUpdate={handleUpdate} onDelete={handleDelete} onMoveToOrg={handleMove} onLink={handleLink} onAdd={() => addNew(true)}

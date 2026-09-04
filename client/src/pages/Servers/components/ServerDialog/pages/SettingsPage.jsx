@@ -192,7 +192,9 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
     }
 
     return (
-        <>
+        // display: contents, same as DetailsPage: carries the marker without
+        // becoming a flex item of its own.
+        <div className="settings-page" data-ui-id="UI-SERVER-DIALOG-SETTINGS">
             {showJumpHosts && (
                 <div className="jump-hosts-section">
                     <div className="jump-hosts-header">
@@ -504,7 +506,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
                     </div>
                 </div>
             )}
-        </>
+        </div>
     );
 };
 
