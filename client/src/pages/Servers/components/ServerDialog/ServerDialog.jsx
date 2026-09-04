@@ -351,7 +351,11 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
                                       fieldConfig={fieldConfig} editServerId={editServerId} />}
                 </form>
 
+                {/* UI-SERVER-DIALOG-SAVE, state disabled: the same condition
+                    handleSubmit enforces, so an incomplete form is visible
+                    before the click rather than answered with a toast after. */}
                 <Button className="server-dialog-button" dataUiId="UI-SERVER-DIALOG-SAVE" onClick={handleSubmit}
+                        disabled={!validateRequiredFields(entryType, config.protocol, name, config)}
                         text={editServerId ? t("servers.dialog.actions.save") : t("servers.dialog.actions.create")} />
             </div>
 

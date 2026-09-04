@@ -151,6 +151,12 @@ export const ViewContainer = ({
     const activeSession = activeSessions.find(session => session.id === activeSessionId);
     const hasGuacamole = activeSession?.server?.renderer === "guac";
     const hasFilePane = activeSession?.type === "sftp" || activeSession?.type === "onedrive";
+    // The same derivation the renderer switch uses further down. The key bar
+    // sends terminal keys, so it belongs to a terminal pane only -- it used to
+    // appear over SFTP, notes and OneDrive too, where sendBarKey has no term to
+    // write to (UI-SERVERS-KEYBAR anchor: "nur wenn das aktive Pane ein
+    // Terminal ist").
+    const isTerminalPane = (activeSession?.type || activeSession?.server?.renderer) === "terminal";
 
     const registerTerminalRef = useCallback((sessionId, refs) => {
         refs ? terminalRefs.current[sessionId] = refs : delete terminalRefs.current[sessionId];
@@ -709,7 +715,7 @@ export const ViewContainer = ({
             )}
             {titleBarTabsSlot ? createPortal(serverTabs, titleBarTabsSlot) : serverTabs}
 
-            {activeSession && !hasGuacamole && (
+            {activeSession && isTerminalPane && (
                 <TerminalKeyBar latch={modifierLatch}
                                 onToggleModifier={toggleModifier}
                                 onSendKey={sendBarKey} />

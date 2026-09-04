@@ -155,3 +155,16 @@
   background-color: colors.$dark-gray
   border: 1px solid colors.$gray
   border-radius: 0.3rem
+
+// UI-SERVERS-LIST, state selected: the entry the foreground session runs on.
+.server-object.selected
+  background-color: colors.$primary-opacity
+
+  &::before
+    content: ""
+    position: absolute
+    left: 0
+    top: 0
+    bottom: 0
+    width: 2px
+    background: colors.$primary

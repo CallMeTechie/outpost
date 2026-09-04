@@ -112,13 +112,17 @@ export const TerminalActionsMenu = ({ layoutMode, onBroadcastToggle, onSnippetSe
                             <span>{t('servers.terminalActions.keyboardShortcuts')}</span>
                         </div>
                     )}
-                    {layoutMode !== "single" && (
-                        <div className={`menu-item ${broadcastEnabled ? 'active' : ''}`} onClick={() => handleMenuItemClick("broadcast")}>
-                            <Icon path={mdiBroadcast} />
-                            <span>{t('servers.terminalActions.broadcasting')}</span>
-                            {broadcastEnabled && <span className="badge">{t('servers.terminalActions.badgeOn')}</span>}
-                        </div>
-                    )}
+                    {/* Disabled rather than hidden with a single pane
+                        (UI-SERVERS-ACTIONS, state disabled): hiding it left no
+                        trace that broadcasting exists at all. */}
+                    <div className={`menu-item ${broadcastEnabled ? 'active' : ''}${layoutMode === "single" ? ' disabled' : ''}`}
+                         aria-disabled={layoutMode === "single"}
+                         title={layoutMode === "single" ? t('servers.terminalActions.broadcastNeedsSplit') : undefined}
+                         onClick={() => { if (layoutMode !== "single") handleMenuItemClick("broadcast"); }}>
+                        <Icon path={mdiBroadcast} />
+                        <span>{t('servers.terminalActions.broadcasting')}</span>
+                        {broadcastEnabled && <span className="badge">{t('servers.terminalActions.badgeOn')}</span>}
+                    </div>
                     <div className={`menu-item ${fullscreenEnabled ? 'active' : ''}`} onClick={() => handleMenuItemClick("fullscreen")}>
                         <Icon path={mdiFullscreen} />
                         <span>{t('servers.terminalActions.fullScreen')}</span>

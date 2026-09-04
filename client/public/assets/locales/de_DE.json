@@ -1570,6 +1570,9 @@
   },
   "servers": {
     "addServerNote": "Rechtsklick zum Hinzufügen eines neuen Servers",
+    "listLoadFailed": "Serverliste konnte nicht geladen werden.",
+    "retry": "Erneut versuchen",
+    "noSearchMatch": "Kein Server passt zur Suche.",
     "searchPlaceholder": "Suche",
     "time": {
       "justNow": "Gerade eben",
@@ -1628,6 +1631,7 @@
       "deleteFailServer": "Das Löschen von „{{name}} “ ist fehlgeschlagen.",
       "deleteFailFolder": "Der Ordner „{{name}} “ konnte nicht gelöscht werden.",
       "wakeOnLan": "Wake-On-LAN",
+      "wakeOnLanNeedsMac": "Braucht eine MAC-Adresse in den Server-Einstellungen",
       "shutdown": "Herunterfahren",
       "stop": "Stop",
       "start": "Start",
@@ -1730,6 +1734,8 @@
       },
       "connecting": "Verbinde …",
       "engineOffline": "(offline)",
+      "engineLoadFailed": "Engines konnten nicht geladen werden.",
+      "engineOfflineNotice": "Engine „{{name}}“ ist offline.",
       "settings": {
         "jumpHosts": {
           "title": "Jump-Hosts",
@@ -2163,7 +2169,8 @@
       "exitFullScreen": "Beende den Vollbildmodus",
       "badgeOn": "ON",
       "focusMode": "Fokus-Modus",
-      "exitFocusMode": "Fokus-Modus verlassen"
+      "exitFocusMode": "Fokus-Modus verlassen",
+      "broadcastNeedsSplit": "Nur bei geteilter Ansicht"
     },
     "notesPanel": {
       "title": "Anmerkungen",

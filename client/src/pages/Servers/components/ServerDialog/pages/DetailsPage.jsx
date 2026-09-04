@@ -19,9 +19,16 @@ const PROTOCOL_OPTIONS = [
 const DetailsPage = ({name, setName, icon, setIcon, config, setConfig, fieldConfig}) => {
     const { t } = useTranslation();
     const [engines, setEngines] = useState([]);
+    // UI-SERVER-DIALOG-DETAILS, state error. The engine request used to fail
+    // into an empty catch, and with a single engine there was no select to
+    // carry the "(offline)" hint either -- so a broken or unreachable engine
+    // left the form looking perfectly fine.
+    const [engineError, setEngineError] = useState(false);
 
     useEffect(() => {
-        getRequest("engines").then(data => setEngines(data || [])).catch(() => {});
+        getRequest("engines")
+            .then(data => { setEngines(data || []); setEngineError(false); })
+            .catch(error => { console.error("Failed to load engines", error?.message); setEngineError(true); });
     }, []);
 
     const engineOptions = engines.map(e => ({
@@ -30,9 +37,21 @@ const DetailsPage = ({name, setName, icon, setIcon, config, setConfig, fieldConf
     }));
 
     const showEngineSelect = engines.length > 1;
+    // A single engine has no select to hang the hint on, so it gets its own line.
+    const soleEngineOffline = engines.length === 1 && !engines[0].connected;
     
     return (
         <>
+            {engineError && (
+                <p className="details-engine-state error" role="alert">
+                    {t("servers.dialog.engineLoadFailed")}
+                </p>
+            )}
+            {soleEngineOffline && (
+                <p className="details-engine-state warning" role="status">
+                    {t("servers.dialog.engineOfflineNotice", { name: engines[0].name })}
+                </p>
+            )}
             <div className="name-row">
                 <div className="form-group">
                     <label htmlFor="name">{t("servers.dialog.fields.name")}</label>

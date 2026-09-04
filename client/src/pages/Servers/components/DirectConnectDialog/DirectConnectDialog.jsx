@@ -54,6 +54,8 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
     // therefore does not fit this branch; the real server message is shown
     // instead of claiming a cause we cannot know.
     const [authError, setAuthError] = useState(null);
+    // UI-DIRECT-CONNECT-HOST, state error.
+    const [hostError, setHostError] = useState(null);
 
     const allAuthOptions = [
         { label: t("servers.dialog.identities.passwordOnly"), value: "password-only" },
@@ -124,6 +126,7 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
 
         setConnecting(true);
         setAuthError(null);
+        setHostError(null);
         // onConnect reports back: true connected, false rejected, undefined the
         // attempt was handed to another dialog. Only a hard false keeps us open
         // -- otherwise the loading state would never be visible at all, because
@@ -132,7 +135,13 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
             .then((result) => {
                 if (result?.error) {
                     setConnecting(false);
-                    setAuthError(result.error);
+                    // Put the message where it belongs. A rejected target is a
+                    // host problem, everything else is a credentials problem.
+                    // "Host nicht erreichbar." itself never arrives here: the
+                    // server answers 201 before the SSH attempt, so an
+                    // unreachable host surfaces in the session tab.
+                    if (/directTarget|host|port/i.test(result.error)) setHostError(result.error);
+                    else setAuthError(result.error);
                     return;
                 }
                 onClose();
@@ -155,6 +164,7 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
         setPassphrase("");
         setConnecting(false);
         setAuthError(null);
+        setHostError(null);
     }, [open, defaultAuthType]);
 
     useEffect(() => {
@@ -184,6 +194,7 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
 
                 <div className="direct-connect-content">
                     <div className="host-row" data-ui-id="UI-DIRECT-CONNECT-HOST">
+                        {hostError && <p className="direct-connect-error host-error" role="alert">{hostError}</p>}
                         <div className="form-group host-field">
                             <label htmlFor="direct-connect-host">{t("servers.dialog.fields.host")}</label>
                             <Input

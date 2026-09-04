@@ -4,6 +4,7 @@ import { getIconPath } from "@/common/utils/iconUtils.js";
 import "./styles.sass";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import { useLiveSessions } from "@/common/contexts/LiveSessionContext.jsx";
+import { useActiveSessions } from "@/common/contexts/SessionContext.jsx";
 import AvatarStack from "@/common/components/AvatarStack";
 import { getSessionOwnerLabel } from "@/common/utils/avatar.js";
 import { useTranslation } from "react-i18next";
@@ -15,11 +16,18 @@ import { DropIndicator } from "../DropIndicator";
 export const ServerObject = ({ id, name, position, folderId, organizationId, nestedLevel, icon, type, connectToServer, status, tags = [], hibernatedSessionCount = 0 }) => {
     const { loadServers, getServerById } = useContext(ServerContext);
     const { getLiveSessionsForEntry } = useLiveSessions();
+    const { activeSessions, activeSessionId } = useActiveSessions();
     const { t } = useTranslation();
     const [dropPlacement, setDropPlacement] = useState(null);
     const elementRef = useRef(null);
 
     const isIntegrationEntry = Boolean(type?.startsWith("pve-"));
+
+    // UI-SERVERS-LIST, state selected: the entry the foreground session belongs
+    // to. The class was constant before, so the list never showed which server
+    // the visible terminal is on.
+    const isSelected = activeSessions?.some((session) =>
+        session.id === activeSessionId && session.server?.id === id);
 
     const [{ opacity }, dragRef] = useDrag({
         item: { type: "server", id, folderId, position, isIntegrationEntry },
@@ -90,7 +98,8 @@ export const ServerObject = ({ id, name, position, folderId, organizationId, nes
 
     return (
         <div 
-            className={"server-object"}
+            className={`server-object${isSelected ? " selected" : ""}`}
+            aria-selected={isSelected}
             style={{ paddingLeft: `${15 + (nestedLevel * 15)}px`, opacity, position: 'relative' }} 
             data-id={id}
             ref={(node) => {

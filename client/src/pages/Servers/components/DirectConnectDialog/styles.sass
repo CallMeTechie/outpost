@@ -59,3 +59,8 @@
     margin: 0 0 0.5rem
     color: colors.$error
     font-size: 0.85rem
+
+  // Spans both columns of .host-row so the message is not squeezed into the
+  // port field's width.
+  .direct-connect-error.host-error
+    grid-column: 1 / -1

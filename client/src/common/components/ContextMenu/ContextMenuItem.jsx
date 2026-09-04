@@ -11,6 +11,9 @@ export const ContextMenuItem = ({
     children,
     customContent = null,
     danger = false,
+    // Additive and optional: lets a disabled item say WHY it is disabled.
+    // Without it the component drops the attribute and the explanation is lost.
+    title,
 }) => {
     const [isSubmenuOpen, setIsSubmenuOpen] = useState(false);
     const itemRef = useRef(null);
@@ -137,6 +140,7 @@ export const ContextMenuItem = ({
         <div
             ref={itemRef}
             className={`context-menu-item ${disabled ? "disabled" : ""} ${danger ? "danger" : ""} ${hasSubmenu ? "has-submenu" : ""} ${isSubmenuOpen && isMobile ? "submenu-open-mobile" : ""}`}
+            title={title}
             onClick={handleClick}
             onKeyDown={handleKeyDown}
             onMouseEnter={!isMobile ? handleMouseEnter : undefined}

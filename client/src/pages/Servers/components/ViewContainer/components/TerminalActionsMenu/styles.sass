@@ -113,3 +113,12 @@
       @media (max-width: breakpoints.$mobile)
         font-size: 12px
         padding: 3px 10px
+
+  // UI-SERVERS-ACTIONS, state disabled: present but not actionable, so the
+  // capability stays discoverable when the layout does not allow it.
+  .menu-item.disabled
+    opacity: 0.45
+    cursor: not-allowed
+
+    &:hover
+      background: none

@@ -159,6 +159,50 @@
         text-overflow: ellipsis
         max-width: 80%
 
+    // UI-SERVERS-LIST, state loading: skeleton rows rather than a
+    // full-surface spinner, so the list keeps its shape while it fills.
+    .servers-skeleton
+      display: flex
+      flex-direction: column
+      gap: 0.375rem
+      padding: 0.5rem
+
+      .skeleton-row
+        height: 2rem
+        border-radius: 0.5rem
+        background: colors.$dark-gray
+        animation: serverSkeleton 1.4s ease-in-out infinite
+
+        &:nth-child(2)
+          animation-delay: 0.1s
+        &:nth-child(3)
+          animation-delay: 0.2s
+        &:nth-child(4)
+          animation-delay: 0.3s
+        &:nth-child(5)
+          animation-delay: 0.4s
+
+    // UI-SERVERS-LIST, state error. The load failure used to be swallowed in
+    // ServerContext, so this surface had nothing to show.
+    .servers-error
+      display: flex
+      flex-direction: column
+      align-items: center
+      justify-content: center
+      gap: 0.75rem
+      height: 100%
+      padding: 1rem
+      text-align: center
+      color: colors.$subtext
+
+      svg
+        width: 2.5rem
+        height: 2.5rem
+        color: colors.$error
+
+      p
+        margin: 0
+
     .no-servers
       display: flex
       user-select: none
@@ -199,3 +243,9 @@
       background-color: colors.$primary
   .is-resizing
     background-color: colors.$primary
+
+@keyframes serverSkeleton
+  0%, 100%
+    opacity: 0.45
+  50%
+    opacity: 0.75

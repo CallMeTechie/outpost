@@ -7,43 +7,14 @@ import { useLiveSessions } from "@/common/contexts/LiveSessionContext.jsx";
 import { getSessionOwnerLabel } from "@/common/utils/avatar.js";
 import { IdentityContext } from "@/common/contexts/IdentityContext.jsx";
 import { useScripts } from "@/common/contexts/ScriptContext.jsx";
+import Button from "@/common/components/Button";
 import ServerEntries from "./components/ServerEntries.jsx";
 import OneDriveAccounts from "./components/OneDriveAccounts";
 import { isCredentiallessProtocol } from "@/common/utils/ConnectionUtil.js";
 import { useDevFeature } from "@/common/utils/devFeatures.js";
 import { useBodyClass } from "@/common/hooks/useBodyClass.js";
 import Icon from "@mdi/react";
-import {
-    mdiCursorDefaultClick,
-    mdiTag,
-    mdiConnection,
-    mdiContentCopy,
-    mdiFolderOpen,
-    mdiFolderPlus,
-    mdiFolderRemove,
-    mdiFormTextbox,
-    mdiPencil,
-    mdiPower,
-    mdiServerMinus,
-    mdiPowerPlug,
-    mdiStop,
-    mdiAccountCircle,
-    mdiImport,
-    mdiFileDocumentOutline,
-    mdiBroadcast,
-    mdiPlusCircle,
-    mdiFlaskOutline,
-    mdiConsole,
-    mdiMonitor,
-    mdiDesktopClassic,
-    mdiFolderNetwork,
-    mdiCog,
-    mdiSync,
-    mdiPlay,
-    mdiScript,
-    mdiTunnel,
-    mdiNoteEditOutline,
-} from "@mdi/js";
+import { mdiAccountCircle, mdiAlertCircleOutline, mdiBroadcast, mdiCog, mdiConnection, mdiConsole, mdiContentCopy, mdiCursorDefaultClick, mdiDesktopClassic, mdiFileDocumentOutline, mdiFlaskOutline, mdiFolderNetwork, mdiFolderOpen, mdiFolderPlus, mdiFolderRemove, mdiFormTextbox, mdiImport, mdiMagnify, mdiMonitor, mdiNoteEditOutline, mdiPencil, mdiPlay, mdiPlusCircle, mdiPower, mdiPowerPlug, mdiScript, mdiServerMinus, mdiStop, mdiSync, mdiTag, mdiTunnel } from "@mdi/js";
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator, useContextMenu } from "@/common/components/ContextMenu";
 import { useDrop, useDragLayer } from "react-dnd";
 import { deleteRequest, patchRequest, postRequest, putRequest } from "@/common/utils/RequestUtil.js";
@@ -75,7 +46,10 @@ const filterEntries = (entries, searchTerm, selectedTags = []) => {
     }
 
     const flat = flattenEntries(entries);
-    const opts = { keys: ['name', 'ip'], threshold: 0.3, ignoreLocation: true, minMatchCharLength: 1 };
+    // 'tags.name' so the field finds what the manifest promises ("nach Name
+    // oder Tag"). The tag filter button next to it stays: it picks from the
+    // known tags, this matches a typed one.
+    const opts = { keys: ['name', 'ip', 'tags.name'], threshold: 0.3, ignoreLocation: true, minMatchCharLength: 1 };
     let results = new Fuse(flat, opts).search(searchTerm);
     if (results.length > 0 && results.length < 3) results = new Fuse(flat, { ...opts, threshold: 0.5 }).search(searchTerm);
     else if (results.length > 20) results = new Fuse(flat, { ...opts, threshold: 0.2 }).search(searchTerm);
@@ -114,7 +88,7 @@ export const ServerList = ({
     setMobileOpen,
 }) => {
     const { t } = useTranslation();
-    const { servers, loadServers, getServerById } = useContext(ServerContext);
+    const { servers, serversError, loadServers, getServerById } = useContext(ServerContext);
     const { getLiveSessionsForEntry } = useLiveSessions();
     const { identities } = useContext(IdentityContext);
     const { hasPermission } = useContext(UserContext);
@@ -586,12 +560,34 @@ export const ServerList = ({
                             onClose={() => setShowTagFilter(false)}
                         />
                     )}
+                    {/* Loading: skeleton rows, not a full-surface spinner
+                        (UI-SERVERS-LIST, guide). servers stays null while the
+                        request is in flight AND after it failed, so the error
+                        below has to be checked first. */}
+                    {!servers && !serversError && (
+                        <div className="servers-skeleton" aria-busy="true" aria-live="polite">
+                            {[0, 1, 2, 3, 4].map((i) => <div key={i} className="skeleton-row" />)}
+                        </div>
+                    )}
+                    {!servers && serversError && (
+                        <div className="servers-error" role="alert">
+                            <Icon path={mdiAlertCircleOutline} />
+                            <p>{t("servers.listLoadFailed")}</p>
+                            <Button type="secondary" text={t("servers.retry")} onClick={loadServers} />
+                        </div>
+                    )}
                     {servers && servers.length >= 1 && (
                         <div className={`servers${isOver ? " drop-zone-active" : ""}`}
                             onContextMenu={handleContextMenu}
                             ref={serversContainerRef}>
                             <ServerEntries entries={renameStateServers} setRenameStateId={setRenameStateId}
                                 nestedLevel={0} connectToServer={connectToServer} hibernatedSessions={hibernatedSessions} />
+                        </div>
+                    )}
+                    {servers && servers.length >= 1 && filteredServers.length === 0 && (
+                        <div className="no-servers">
+                            <Icon path={mdiMagnify} />
+                            <p>{t("servers.noSearchMatch")}</p>
                         </div>
                     )}
                     {servers && servers.length === 0 && (
@@ -859,13 +855,19 @@ export const ServerList = ({
                                     />
                                 )}
 
-                                {server?.wakeOnLanEnabled && server?.macAddress && (
-                                    <ContextMenuItem
-                                        icon={mdiPowerPlug}
-                                        label={t("servers.contextMenu.wakeOnLan")}
-                                        onClick={wakeServer}
-                                    />
-                                )}
+                                {/* Disabled rather than hidden when the server
+                                    has no MAC address (UI-SERVERS-LIST-MENU,
+                                    state disabled): hiding it gave no hint that
+                                    the capability exists or where to enable it. */}
+                                <ContextMenuItem
+                                    icon={mdiPowerPlug}
+                                    label={t("servers.contextMenu.wakeOnLan")}
+                                    disabled={!(server?.wakeOnLanEnabled && server?.macAddress)}
+                                    title={server?.wakeOnLanEnabled && server?.macAddress
+                                        ? undefined
+                                        : t("servers.contextMenu.wakeOnLanNeedsMac")}
+                                    onClick={wakeServer}
+                                />
 
                                 <ContextMenuSeparator />
 

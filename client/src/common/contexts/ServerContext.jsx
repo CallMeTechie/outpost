@@ -7,6 +7,10 @@ export const ServerContext = createContext({});
 
 export const ServerProvider = ({ children }) => {
     const [servers, setServers] = useState(null);
+    // Distinguishes "still loading" from "loading failed": both leave servers
+    // null, and without this the list rendered nothing at all in either case
+    // (UI-SERVERS-LIST, states loading and error).
+    const [serversError, setServersError] = useState(null);
     const { user, sessionToken } = useContext(UserContext);
     const { registerHandler } = useContext(StateStreamContext);
 
@@ -17,7 +21,11 @@ export const ServerProvider = ({ children }) => {
     const loadServers = useCallback(async () => {
         try {
             setServers(await getRequest("/entries/list"));
-        } catch {}
+            setServersError(null);
+        } catch (error) {
+            console.error("Failed to load servers", error?.message);
+            setServersError(error?.message || "unknown");
+        }
     }, []);
 
     const retrieveServerById = async (serverId) => {
@@ -40,5 +48,5 @@ export const ServerProvider = ({ children }) => {
 
     useEffect(() => { if (!sessionToken) setServers([]); }, [sessionToken]);
 
-    return <ServerContext.Provider value={{ servers, loadServers, getServerById, retrieveServerById }}>{children}</ServerContext.Provider>;
+    return <ServerContext.Provider value={{ servers, serversError, loadServers, getServerById, retrieveServerById }}>{children}</ServerContext.Provider>;
 };

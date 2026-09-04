@@ -1570,6 +1570,9 @@
   },
   "servers": {
     "addServerNote": "Right-click to add a new server",
+    "listLoadFailed": "The server list could not be loaded.",
+    "retry": "Retry",
+    "noSearchMatch": "No server matches the search.",
     "searchPlaceholder": "Search",
     "connectionFailed": "Failed to connect: {{message}}",
     "unknownError": "Unknown error",
@@ -1630,6 +1633,7 @@
       "deleteFailServer": "Failed to delete \"{{name}}\".",
       "deleteFailFolder": "Failed to delete the folder \"{{name}}\".",
       "wakeOnLan": "Wake-On-LAN",
+      "wakeOnLanNeedsMac": "Needs a MAC address in the server settings",
       "shutdown": "Shutdown",
       "stop": "Stop",
       "start": "Start",
@@ -1732,6 +1736,8 @@
       },
       "connecting": "Connecting…",
       "engineOffline": "(offline)",
+      "engineLoadFailed": "Engines could not be loaded.",
+      "engineOfflineNotice": "Engine “{{name}}” is offline.",
       "settings": {
         "initialCommand": {
           "title": "Initial command",
@@ -2212,7 +2218,8 @@
       "exitFullScreen": "Exit Full-Screen Mode",
       "badgeOn": "ON",
       "focusMode": "Focus mode",
-      "exitFocusMode": "Exit focus mode"
+      "exitFocusMode": "Exit focus mode",
+      "broadcastNeedsSplit": "Only with a split view"
     },
     "notesPanel": {
       "title": "Notes",
