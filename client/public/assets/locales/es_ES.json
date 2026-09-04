@@ -1525,6 +1525,8 @@
     }
   },
   "servers": {
+    "emptyList": "Aún no hay servidores. Añade uno, importa una config SSH o conecta directamente.",
+    "emptyCreate": "Añadir servidor",
     "addServerNote": "Haz clic con el botón derecho para añadir un nuevo servidor",
     "listLoadFailed": "No se pudo cargar la lista de servidores.",
     "retry": "Reintentar",

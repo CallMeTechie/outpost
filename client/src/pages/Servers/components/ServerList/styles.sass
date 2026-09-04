@@ -249,3 +249,24 @@
     opacity: 0.45
   50%
     opacity: 0.75
+
+// UI-SERVERS-LIST, state empty: the artboard's message plus the three ways out of
+// it, stacked so they fit the pane's width whatever it is.
+.no-servers.empty-cta
+  display: flex
+  flex-direction: column
+  align-items: stretch
+  gap: 0.75rem
+  padding: 1rem 0.75rem
+  text-align: left
+
+  p
+    margin: 0
+    font-size: 0.8125rem
+    line-height: 1.45
+    color: colors.$subtext
+
+  .cta
+    display: flex
+    flex-wrap: wrap
+    gap: 0.5rem

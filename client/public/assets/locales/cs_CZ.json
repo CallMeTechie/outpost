@@ -1525,6 +1525,8 @@
     }
   },
   "servers": {
+    "emptyList": "Zatím žádné servery. Přidej server, importuj SSH config nebo se připoj přímo.",
+    "emptyCreate": "Přidat server",
     "addServerNote": "Kliknutím pravým tlačítkem myši přidáte nový server",
     "listLoadFailed": "Seznam serverů se nepodařilo načíst.",
     "retry": "Zkusit znovu",

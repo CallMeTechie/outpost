@@ -592,11 +592,26 @@ export const ServerList = ({
                             <p>{t("servers.noSearchMatch")}</p>
                         </div>
                     )}
+                    {/* UI-SERVERS-LIST, state empty: the artboard offers the three ways
+                        out of an empty list instead of telling people to right-click.
+                        The right-click still works; it just is not the only way in. */}
                     {servers && servers.length === 0 && (
-                        <div className={`no-servers${isOver ? " drop-zone-active" : ""}`}
+                        <div className={`no-servers empty-cta${isOver ? " drop-zone-active" : ""}`}
                             onContextMenu={handleContextMenu}>
-                            <Icon path={mdiCursorDefaultClick} />
-                            <p>{t("servers.addServerNote")}</p>
+                            <p>{t("servers.emptyList")}</p>
+                            <div className="cta">
+                                {canManageResources && (
+                                    <>
+                                        <Button text={t("servers.emptyCreate")} onClick={() => createServer("ssh")} />
+                                        <Button type="secondary" text={t("servers.contextMenu.import")}
+                                                onClick={openSSHConfigImport} />
+                                    </>
+                                )}
+                                {openDirectConnect && (
+                                    <Button type="secondary" text={t("servers.contextMenu.quickConnect")}
+                                            onClick={() => openDirectConnect()} />
+                                )}
+                            </div>
                         </div>
                     )}
 

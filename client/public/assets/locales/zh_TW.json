@@ -1525,6 +1525,8 @@
     }
   },
   "servers": {
+    "emptyList": "尚無伺服器。新增一個、匯入 SSH 設定，或直接連線。",
+    "emptyCreate": "新增伺服器",
     "addServerNote": "按滑鼠右鍵新增伺服器",
     "listLoadFailed": "無法載入伺服器清單。",
     "retry": "重試",
