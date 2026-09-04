@@ -5,6 +5,8 @@ updated: 2026-09-03
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
 tokens_css: docs/design/mockups/tokens.css
+token_definitions: [client/src/common/styles/_colors.sass]
+source_roots: [client/src]
 
 changelog:
   - rev: 1

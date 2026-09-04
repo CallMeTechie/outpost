@@ -116,9 +116,9 @@ Trefferflächen ≥ 44×44 px in der Tastenleiste und auf Touch.
 - Keine zweite Akzentfarbe; Farbe nur als Bedeutung.
 - Kein Onboarding-Overlay, keine Marketing-Leere im Leerzustand.
 
-## Bekannte Lücke für `/design-verify`
+## Token-Quellen für `/design-verify`
 
-Der `web`-Adapter scannt in der `tokens`-Stufe nur `*.css`. Outposts Styles
-sind Sass (`*.sass`); Rohwerte dort bleiben in v0.1 unentdeckt. Die
-`tokens`-Stufe ist beratend, das Verdikt bleibt unberührt — aber wer sich
-darauf verlässt, sollte das wissen.
+Die `tokens`-Stufe liest `*.css`, `*.sass`, `*.scss`, `*.less` und Inline-
+`style=`-Attribute in Komponenten. Rohwerte gelten als Verstoß, außer in den
+Definitionsdateien: `docs/design/mockups/tokens.css` und
+`client/src/common/styles/_colors.sass` (im Manifest unter `token_definitions`).
