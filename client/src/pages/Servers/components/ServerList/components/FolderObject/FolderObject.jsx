@@ -1,5 +1,3 @@
-import Icon from "@mdi/react";
-import { mdiFolderOpenOutline, mdiFolderOutline } from "@mdi/js";
 import ProxmoxIcon from "../../assets/proxmox.png";
 import "./styles.sass";
 import { useContext, useEffect, useRef, useState } from "react";
@@ -88,13 +86,18 @@ export const FolderObject = ({ id, name, nestedLevel, position, onClick, isOpen,
         }
     }, [renameState]);
     return (
-        <div className={"folder-object" + (isOver ? " folder-is-over" : "")} data-id={id}
+        <div className={"folder-object" + (isOver ? " folder-is-over" : "") + (isOpen ? "" : " closed")} data-id={id}
              ref={(node) => dragRef(dropRef(node))} onClick={renameState ? (e) => e.stopPropagation() : onClick}
-             style={{ paddingLeft: `${10 + (nestedLevel * 15)}px`, opacity }}>
+             style={{ paddingLeft: `${8 + (nestedLevel * 14)}px`, opacity }}>
+            {/* The artboard writes a group as a caret and a quiet label, not a
+                folder icon and a row (docs/design/mockups/ui-servers.html,
+                .entries .group). The caret comes from CSS so it can flip with
+                the open state without a second icon. Proxmox keeps its mark:
+                that one carries information, the folder icon did not. */}
             {(folderType === 'integration-node' || folderType === 'integration-root') ? (
-                <img src={ProxmoxIcon} alt="Proxmox" style={{ width: '1.5rem', height: '1.5rem' }} />
+                <img src={ProxmoxIcon} alt="Proxmox" style={{ width: '1rem', height: '1rem' }} />
             ) : (
-                <Icon path={isOpen ? mdiFolderOpenOutline : mdiFolderOutline} />
+                <span className={`folder-caret${isOpen ? "" : " closed"}`} aria-hidden="true" />
             )}
             {!renameState && <p className="truncate-text">{nameState}</p>}
             {renameState && <input type="text" ref={inputRef} value={nameState} onBlur={changeName}
