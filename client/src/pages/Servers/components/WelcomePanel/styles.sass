@@ -2,9 +2,7 @@
 @use "@/common/styles/breakpoints"
 
 // The artboard's welcome screen (docs/design/mockups/ui-servers.html, .welcome):
-// two columns under one heading -- what you connected to last, and the ways in.
-// It replaces a greeting and a row of buttons that said what the product is
-// rather than what to do next.
+// a greeting, the last targets as cards, and the ways in as one quiet row.
 .welcome-panel
   flex: 1
   display: flex
@@ -16,98 +14,106 @@
 
 .welcome
   width: 100%
-  max-width: 44rem
-  display: grid
-  grid-template-columns: 1fr 1fr
+  max-width: 52rem
+  display: flex
+  flex-direction: column
   gap: 1.5rem
 
-  @media (max-width: breakpoints.$tablet)
-    grid-template-columns: 1fr
-
   h3
-    grid-column: 1 / -1
     margin: 0
     font-size: 1.25rem
-    font-weight: 600
+    font-weight: 700
     color: colors.$white
 
-    small
-      display: block
-      margin-top: 0.25rem
-      font-size: 0.875rem
-      font-weight: 500
+    span
       color: colors.$subtext
+      font-weight: 500
 
-  h4
-    margin: 0 0 0.5rem
-    font-size: 0.75rem
-    font-weight: 500
-    letter-spacing: 0.02em
-    color: colors.$subtext
+// Six targets at a glance. Each carries a colour of its own, derived from the entry
+// so it is the same one every time -- an identity colour, not the pane colour a tab
+// gets from its position in the grid (see entryColorFor).
+.targets
+  display: grid
+  grid-template-columns: repeat(3, 1fr)
+  gap: 0.75rem
 
-.welcome-column
-  min-width: 0
+  @media (max-width: breakpoints.$tablet)
+    grid-template-columns: repeat(2, 1fr)
 
-.recent
-  list-style: none
-  margin: 0
-  padding: 0
-  border: 1px solid colors.$gray
-  border-radius: 0.5rem
-  background-color: colors.$lighter-background
-  overflow: hidden
+  @media (max-width: breakpoints.$mobile)
+    grid-template-columns: 1fr
 
-  li
+  .card
     display: flex
-    align-items: center
+    flex-direction: column
     gap: 0.5rem
-    height: 2.25rem
-    padding: 0 0.75rem
-    border-bottom: 1px solid colors.$dark-gray
+    min-height: 5rem
+    padding: 0.75rem
+    border: 1px solid colors.$gray
+    border-top: 2px solid var(--pane, colors.$gray-strong)
+    border-radius: 0.5rem
+    background-color: colors.$lighter-background
     cursor: pointer
     outline: none
-
-    &:last-child
-      border-bottom: 0
+    transition: background-color 0.12s ease
 
     &:hover
-      background-color: colors.$dark-gray
+      background-color: colors.$gray-full
 
     &:focus-visible
       outline: 2px solid colors.$primary
       outline-offset: -2px
 
-    &.hibernated
-      opacity: 0.7
+    &.sleeping
+      opacity: 0.65
 
-    .n
+      .when
+        color: colors.$warning
+
+    .top
+      display: flex
+      align-items: center
+      gap: 0.5rem
+      min-width: 0
+
+    .dot
+      width: 0.4rem
+      height: 0.4rem
+      border-radius: 50%
+      background: colors.$gray-strong
+      flex: none
+
+      &.on
+        background: colors.$success
+
+    .host
       font-family: var(--font-mono)
-      font-size: 0.8125rem
+      font-size: 0.875rem
       color: colors.$white
       min-width: 0
       overflow: hidden
       text-overflow: ellipsis
       white-space: nowrap
 
-    .m
+    .kind
       margin-left: auto
       flex: none
+      font-family: var(--font-mono)
+      font-size: 0.75rem
+      color: var(--pane, colors.$subtext)
+
+    .when
+      margin-top: auto
       font-size: 0.75rem
       font-weight: 500
       color: colors.$subtext
-      white-space: nowrap
 
-  // Placeholders while the request is in flight: the list keeps its shape rather
-  // than collapsing and pushing the second column around.
-  li.skeleton
+  // Keeps the row's shape while the request is in flight, so nothing below it jumps
+  // when the cards arrive.
+  .card.skeleton
+    background-color: colors.$dark-gray
+    border-top-color: colors.$gray
     cursor: default
-
-    i
-      display: block
-      width: 40%
-      height: 0.75rem
-      border-radius: 0.25rem
-      background-color: colors.$dark-gray
 
 .welcome-empty
   margin: 0
@@ -117,48 +123,37 @@
   font-size: 0.8125rem
   color: colors.$subtext
 
-.starts
-  list-style: none
-  margin: 0
-  padding: 0
+// Small and in one row: after the first day nobody needs them prominent, but this
+// screen is the only place some of these dialogs open from.
+.ways
   display: flex
-  flex-direction: column
   gap: 0.5rem
+  flex-wrap: wrap
 
-  li
+  .w
     display: flex
     align-items: center
-    gap: 0.75rem
-    min-height: 2.75rem
-    padding: 0.375rem 0.75rem
+    height: 2rem
+    padding: 0 0.75rem
     border: 1px solid colors.$gray
     border-radius: 0.5rem
-    background-color: colors.$lighter-background
+    background: none
+    font-family: inherit
+    font-size: 0.75rem
+    font-weight: 500
+    color: colors.$subtext
     cursor: pointer
-    outline: none
+    transition: background-color 0.12s ease
 
     &:hover
       background-color: colors.$dark-gray
+      color: colors.$white
 
     &:focus-visible
       outline: 2px solid colors.$primary
-      outline-offset: -2px
+      outline-offset: 1px
 
-    .t
-      display: block
-      font-size: 0.875rem
-      font-weight: 500
+    &.primary
+      border-color: colors.$primary
+      background-color: colors.$primary-opacity
       color: colors.$white
-
-    .s
-      display: block
-      font-size: 0.75rem
-      font-weight: 500
-      color: colors.$subtext
-
-    kbd
-      margin-left: auto
-      flex: none
-      font-family: var(--font-mono)
-      font-size: 0.75rem
-      color: colors.$subtext

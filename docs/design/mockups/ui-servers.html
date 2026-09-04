@@ -198,24 +198,33 @@
 
 	/* Willkommen */
 	.welcome-wrap { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: var(--space-8) var(--space-6); background: var(--background); overflow: hidden; }
-	.welcome { width: 100%; max-width: 44rem; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); }
-	.welcome h3 { grid-column: 1 / -1; margin: 0; font: var(--type-title); }
-	.welcome h3 small { display: block; font: var(--type-body); color: var(--subtext); margin-top: var(--space-1); }
-	.welcome h4 { margin: 0 0 var(--space-2); font: var(--type-caption); color: var(--subtext); letter-spacing: 0.02em; }
-	.recent { list-style: none; margin: 0; padding: 0; border: 1px solid var(--gray); border-radius: var(--radius-md); background: var(--lighter-background); overflow: hidden; }
-	.recent li { display: flex; align-items: center; gap: var(--space-2); height: 2.25rem; padding: 0 var(--space-3); border-bottom: 1px solid var(--dark-gray); }
-	.recent li:last-child { border-bottom: 0; }
-	.recent li .n { font: var(--type-mono); color: var(--text); }
-	.recent li .m { font: var(--type-caption); color: var(--subtext); }
-	.recent li kbd { margin-left: auto; }
-	.recent li.focus-visible { outline: 2px solid var(--accent-color); outline-offset: -2px; }
-	.starts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
-	.starts li { display: flex; align-items: center; gap: var(--space-3); height: 2.75rem; padding: 0 var(--space-3); border: 1px solid var(--gray); border-radius: var(--radius-md); background: var(--lighter-background); }
-	.starts li .t { font: var(--type-body); color: var(--text); }
-	.starts li .s { font: var(--type-caption); color: var(--subtext); }
-	.starts li kbd { margin-left: auto; }
-	.welcome-empty { grid-column: 1 / -1; padding: var(--space-4); border: 1px dashed var(--gray-strong); border-radius: var(--radius-md); color: var(--subtext); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
-	.welcome-empty .cta { display: flex; gap: var(--space-2); margin-left: auto; }
+	.welcome { width: 100%; max-width: 52rem; display: flex; flex-direction: column; gap: var(--space-6); }
+	.welcome h3 { margin: 0; font: var(--type-title); }
+	.welcome h3 span { color: var(--subtext); font-weight: 500; }
+	/* Six targets at a glance. Each carries a colour of its own, derived from the entry so it
+	   stays the same one every time -- an identity colour, not the pane colour a tab gets from
+	   its position in the grid. */
+	.targets { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
+	.targets .card { display: flex; flex-direction: column; gap: var(--space-2); min-height: 5rem; padding: var(--space-3);
+		border: 1px solid var(--gray); border-top: 2px solid var(--pane); border-radius: var(--radius-md); background: var(--lighter-background); }
+	.targets .card.hover { background: var(--gray-full); }
+	.targets .card.focus-visible { outline: 2px solid var(--accent-color); outline-offset: -2px; }
+	.targets .card .top { display: flex; align-items: center; gap: var(--space-2); }
+	.targets .card .dot { width: 0.4rem; height: 0.4rem; border-radius: 50%; background: var(--gray-strong); flex: none; }
+	.targets .card .dot.on { background: var(--success); }
+	.targets .card .host { font: var(--type-mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.targets .card .kind { margin-left: auto; font: var(--type-caption); font-family: ui-monospace, "JetBrains Mono", monospace; color: var(--pane); }
+	.targets .card .when { margin-top: auto; font: var(--type-caption); color: var(--subtext); }
+	.targets .card.sleeping { opacity: 0.65; }
+	.targets .card.sleeping .when { color: var(--warning); }
+	.targets .card.skeleton { background: var(--dark-gray); border-top-color: var(--gray); }
+	/* The ways in, small and in one row: after the first day nobody needs them prominent. */
+	.ways { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+	.ways .w { display: flex; align-items: center; gap: var(--space-2); height: 2rem; padding: 0 var(--space-3);
+		border: 1px solid var(--gray); border-radius: var(--radius-md); font: var(--type-caption); color: var(--subtext); }
+	.ways .w.primary { border-color: var(--accent-color); background: var(--primary-opacity); color: var(--text); }
+	.ways .w.hover { background: var(--dark-gray); color: var(--text); }
+	.welcome-empty { padding: var(--space-4); border: 1px dashed var(--gray-strong); border-radius: var(--radius-md); color: var(--subtext); }
 </style>
 </head>
 <body>
@@ -380,7 +389,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
      Tab-Leiste leer (UI-SERVERS-TABS empty), Aktionen ohne Ziel (disabled)
      =================================================================== -->
 <div class="block">
-	<h2>Willkommen <small>keine offene Session · fünf letzte Verbindungen aus GET /entries/recent?limit=5</small></h2>
+	<h2>Willkommen <small>keine offene Session · zuletzt genutzte Ziele als Kacheln aus GET /entries/recent?limit=6</small></h2>
 	<div class="frame workspace welcome">
 
 		<aside class="list">
@@ -414,24 +423,17 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 			<section data-ui-state="default">
 				<div class="welcome-wrap">
 					<div class="welcome">
-						<h3>Willkommen<small>Wähle eine Verbindung oder lege los.</small></h3>
-						<div>
-							<h4>Zuletzt verbunden</h4>
-							<ul class="recent">
-								<li class="focus-visible"><span class="n">nas</span><span class="m">SSH · vor 12 min</span><kbd>↵</kbd></li>
-								<li><span class="n">pihole</span><span class="m">SFTP · heute</span></li>
-								<li><span class="n">proxmox</span><span class="m">SSH · gestern</span></li>
-								<li><span class="n">build-01</span><span class="m">SSH · vor 3 Tagen</span></li>
-								<li><span class="n">vpn</span><span class="m">SSH · vor 6 Tagen</span></li>
-							</ul>
+						<h3>Guten Abend, Marc. <span>Wo geht&rsquo;s weiter?</span></h3>
+						<div class="targets">
+							<div class="card focus-visible" style="--pane:#2A72C9"><div class="top"><span class="dot on"></span><span class="host">nas</span><span class="kind">SSH</span></div><span class="when">vor 12 Minuten</span></div>
+							<div class="card hover" style="--pane:#A8741A"><div class="top"><span class="dot on"></span><span class="host">pihole</span><span class="kind">SFTP</span></div><span class="when">vor 3 Stunden</span></div>
+							<div class="card sleeping" style="--pane:#8E3FD4"><div class="top"><span class="dot"></span><span class="host">proxmox</span><span class="kind">SSH</span></div><span class="when">schl&auml;ft &middot; fortsetzen</span></div>
+							<div class="card" style="--pane:#C25218"><div class="top"><span class="dot"></span><span class="host">build-01</span><span class="kind">SSH</span></div><span class="when">gestern</span></div>
+							<div class="card" style="--pane:#12908C"><div class="top"><span class="dot"></span><span class="host">vpn</span><span class="kind">SSH</span></div><span class="when">vor 6 Tagen</span></div>
+							<div class="card" style="--pane:#C13B94"><div class="top"><span class="dot"></span><span class="host">Desktop&nbsp;VM</span><span class="kind">RDP</span></div><span class="when">letzte Woche</span></div>
 						</div>
-						<div>
-							<h4>Weiter</h4>
-							<ul class="starts">
-								<li><span><span class="t">Erste Schritte</span><br><span class="s">Server anlegen, SSH-Config importieren</span></span><kbd>1</kbd></li>
-								<li><span><span class="t">Gerät verbinden</span><br><span class="s">Direktverbindung ohne gespeicherten Eintrag</span></span><kbd>2</kbd></li>
-								<li><span><span class="t">Apps laden</span><br><span class="s">Desktop und Mobile</span></span><kbd>3</kbd></li>
-							</ul>
+						<div class="ways">
+							<span class="w primary">Direkt verbinden</span><span class="w">Server anlegen</span><span class="w">SSH-Config importieren</span><span class="w">Ger&auml;t verbinden</span><span class="w">Apps laden</span>
 						</div>
 					</div>
 				</div>
@@ -584,18 +586,23 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 				<section data-ui-state="empty">
 					<div class="welcome-wrap" style="padding: var(--space-6);">
 						<div class="welcome">
-							<h3>Willkommen<small>Wähle eine Verbindung oder lege los.</small></h3>
-							<div class="welcome-empty">
-								<span>Noch keine Verbindungen. Lege einen Server an oder verbinde dich direkt.</span>
-								<span class="cta"><span class="btn primary">Server anlegen <kbd>N</kbd></span><span class="btn">Direkt verbinden</span></span>
+							<h3>Guten Morgen, Marc. <span>Noch nichts verbunden.</span></h3>
+							<div class="welcome-empty">Sobald du dich zum ersten Mal verbindest, stehen die Ziele hier.</div>
+							<div class="ways">
+								<span class="w primary">Server anlegen</span><span class="w">SSH-Config importieren</span><span class="w">Direkt verbinden</span><span class="w">Ger&auml;t verbinden</span><span class="w">Apps laden</span>
 							</div>
-							<div style="grid-column: 1 / -1;">
-								<h4>Weiter</h4>
-								<ul class="starts">
-									<li><span><span class="t">Erste Schritte</span><br><span class="s">Server anlegen, SSH-Config importieren</span></span><kbd>1</kbd></li>
-									<li><span><span class="t">Gerät verbinden</span><br><span class="s">Direktverbindung ohne gespeicherten Eintrag</span></span><kbd>2</kbd></li>
-									<li><span><span class="t">Apps laden</span><br><span class="s">Desktop und Mobile</span></span><kbd>3</kbd></li>
-								</ul>
+						</div>
+					</div>
+				</section>
+				<section data-ui-state="loading">
+					<div class="welcome-wrap" style="padding: var(--space-6);">
+						<div class="welcome">
+							<h3>Guten Abend, Marc. <span>Wo geht&rsquo;s weiter?</span></h3>
+							<div class="targets" aria-busy="true">
+								<div class="card skeleton"></div><div class="card skeleton"></div><div class="card skeleton"></div>
+							</div>
+							<div class="ways">
+								<span class="w primary">Direkt verbinden</span><span class="w">Server anlegen</span><span class="w">SSH-Config importieren</span><span class="w">Ger&auml;t verbinden</span><span class="w">Apps laden</span>
 							</div>
 						</div>
 					</div>

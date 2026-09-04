@@ -2290,17 +2290,16 @@
     }
   },
   "welcome": {
-    "title": "Willkommen",
-    "tagline": "Wähle eine Verbindung oder lege los.",
-    "next": "Weiter",
-    "noRecent": "Noch nichts verbunden.",
-    "hibernated": "Schläft",
-    "starts": {
-      "createDescription": "Server anlegen oder SSH-Config importieren",
-      "directDescription": "Verbinden ohne gespeicherten Eintrag",
-      "deviceDescription": "Diesen Browser mit einem Gerät verbinden",
-      "appsDescription": "Desktop und Mobile"
+    "whereNext": "Wo geht's weiter?",
+    "noneYet": "Noch nichts verbunden.",
+    "resume": "schläft · fortsetzen",
+    "emptyHint": "Sobald du dich zum ersten Mal verbindest, stehen die Ziele hier.",
+    "greeting": {
+      "morning": "Guten Morgen",
+      "afternoon": "Guten Tag",
+      "evening": "Guten Abend"
     },
+    "hibernated": "Schläft",
     "hello": "Hallo",
     "defaultName": "Benutzer",
     "subtitle": "Willkommen bei Outpost. Der Open-Source-Server-Manager für SSH, VNC und RDP.",

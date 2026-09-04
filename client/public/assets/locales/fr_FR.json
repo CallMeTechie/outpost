@@ -2108,17 +2108,16 @@
     }
   },
   "welcome": {
-    "title": "Bienvenue",
-    "tagline": "Choisis une connexion ou commence quelque chose.",
-    "next": "Suite",
-    "noRecent": "Aucune connexion pour l'instant.",
-    "hibernated": "En veille",
-    "starts": {
-      "createDescription": "Ajouter un serveur ou importer une config SSH",
-      "directDescription": "Se connecter sans entrée enregistrée",
-      "deviceDescription": "Lier ce navigateur à un appareil",
-      "appsDescription": "Bureau et mobile"
+    "whereNext": "On va où ?",
+    "noneYet": "Aucune connexion pour l'instant.",
+    "resume": "en veille · reprendre",
+    "emptyHint": "Dès ta première connexion, tes cibles apparaissent ici.",
+    "greeting": {
+      "morning": "Bonjour",
+      "afternoon": "Bon après-midi",
+      "evening": "Bonsoir"
     },
+    "hibernated": "En veille",
     "hello": "Bonjour",
     "defaultName": "Utilisateur",
     "subtitle": "Bienvenue à Outpost. Le gestionnaire de serveur open-source pour SSH, VNC et RDP.",

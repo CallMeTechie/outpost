@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert";
-import { PANE_COLORS, paneColorFor } from "../paneColors.js";
+import { PANE_COLORS, paneColorFor, entryColorFor } from "../paneColors.js";
 
 // Every ground a pane colour is drawn on, copied from common/styles/_colors.sass: --terminal
 // carries the pane border, --background carries the tab line (.server-tabs sets none of its own).
@@ -103,4 +103,34 @@ test("the faint pane border still holds 3:1 against every terminal ground", () =
             assert.ok(ratio >= 3, `${colour} at ${FAINT_MIX * 100}% on ${ground} (${background}) is only ${ratio.toFixed(2)}:1`);
         }
     }
+});
+
+// --- entryColorFor: the identity colour a welcome-screen target card carries ---
+// Not a pane colour: it comes from the entry id rather than from a position in the grid, so a
+// card keeps its colour across reloads and however the recent list is ordered. The contrast
+// checks above cover the palette itself and therefore cover these too.
+
+test("entryColorFor is stable for the same entry", () => {
+    assert.strictEqual(entryColorFor(42), entryColorFor(42));
+    assert.strictEqual(entryColorFor("nas"), entryColorFor("nas"));
+    // A number and its string form address the same entry and must not disagree.
+    assert.strictEqual(entryColorFor(42), entryColorFor("42"));
+});
+
+test("entryColorFor always returns a colour from the palette", () => {
+    for (const id of [0, 1, 7, 123456, "nas", "server.kinworks.de", "Desktop VM", ""]) {
+        assert.ok(PANE_COLORS.includes(entryColorFor(id)), `${id} -> ${entryColorFor(id)}`);
+    }
+});
+
+test("entryColorFor falls back rather than throwing on a missing id", () => {
+    assert.strictEqual(entryColorFor(null), PANE_COLORS[0]);
+    assert.strictEqual(entryColorFor(undefined), PANE_COLORS[0]);
+});
+
+test("entryColorFor spreads a realistic set of ids over more than one colour", () => {
+    // Not a distribution guarantee -- just that the hash does something. A constant return
+    // would make every card identical and would pass every test above.
+    const ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    assert.ok(new Set(ids.map(entryColorFor)).size > 1);
 });

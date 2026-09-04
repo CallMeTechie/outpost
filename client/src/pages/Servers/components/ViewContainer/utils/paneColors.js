@@ -31,3 +31,22 @@ export const PANE_COLORS = [
 // "this session has no pane", and gets no colour rather than a guessed one.
 export const paneColorFor = (index) =>
     Number.isInteger(index) && index >= 0 ? PANE_COLORS[index % PANE_COLORS.length] : null;
+
+// A colour for an entry that has no pane -- the welcome screen's target cards. It is an IDENTITY
+// colour, not a pane colour: derived from the entry id, so the same target keeps the same colour
+// across reloads and however the recent list is ordered. A pane colour comes from a position in
+// the grid and changes as panes open and close, which is exactly what a card must not do.
+//
+// Same palette and same hashing as getAvatarColor in common/utils/avatar.js, so the two cannot
+// drift; the caveat at the top of PANE_COLORS about distinguishability applies here too.
+export const entryColorFor = (entryId) => {
+    const key = String(entryId ?? "");
+    if (!key) return PANE_COLORS[0];
+
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+        hash = (hash << 5) - hash + key.charCodeAt(i);
+        hash |= 0;
+    }
+    return PANE_COLORS[Math.abs(hash) % PANE_COLORS.length];
+};

@@ -174,16 +174,23 @@ screens:
         verify: required
         data_source: "GET /entries/recent?limit=5"
         semantic_anchor:
-          means: Leerzustand ohne offene Session — Begrüßung, die fünf zuletzt genutzten Verbindungen sowie die Aktionen Apps laden, Gerät verbinden und Schnellverbindung (letztere ist der Einstieg in UI-DIRECT-CONNECT). Positiv, handlungsorientiert, kein Marketing.
+          means: >
+            Leerzustand ohne offene Session — eine Begrüßung mit Namen, die zuletzt genutzten
+            Verbindungen als Kacheln (je eine Kennfarbe aus der Eintrags-ID, nicht die
+            Pane-Farbe eines Tabs) und darunter die Einstiege Direkt verbinden, Server anlegen,
+            SSH-Config importieren, Gerät verbinden, Apps laden. Schlafende Sitzungen erscheinen
+            als Kachel und werden fortgesetzt statt neu verbunden. Positiv, handlungsorientiert,
+            kein Marketing.
           concept: recent_connection
           aliases: [recent, history]
           not: [all_servers, marketing]
           cardinality: many
-          example: "nas · pihole · proxmox · build-01 · vpn"
+          example: "nas · pihole · proxmox · build-01 · vpn · Desktop VM"
           empty_means: Noch nie verbunden — Erste Schritte zeigen.
         states:
           - { id: default }
-          - { id: empty, copy: "Noch keine Verbindungen. Lege einen Server an oder verbinde dich direkt." }
+          - { id: loading, copy: "Platzhalter-Kacheln, kein Spinner — die Kachelreihe behält ihre Form." }
+          - { id: empty, copy: "Sobald du dich zum ersten Mal verbindest, stehen die Ziele hier." }
         locators:
           web: "[data-ui-id='UI-SERVERS-WELCOME']"
 

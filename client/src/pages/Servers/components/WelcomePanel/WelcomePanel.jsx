@@ -1,11 +1,15 @@
 import "./styles.sass";
 import { useContext, useEffect, useState } from "react";
+import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
+import { useLiveSessions } from "@/common/contexts/LiveSessionContext.jsx";
 import { mdiConnection, mdiFolderOpen, mdiCursorDefaultClick } from "@mdi/js";
 import { getRequest } from "@/common/utils/RequestUtil";
 import { useTranslation } from "react-i18next";
 import { ContextMenu, ContextMenuItem, useContextMenu } from "@/common/components/ContextMenu";
 import { formatTimeAgo } from "@/common/utils/timeAgo.js";
+import { getAvatarLabel } from "@/common/utils/avatar.js";
+import { entryColorFor } from "../ViewContainer/utils/paneColors.js";
 import DownloadAppsDialog from "@/common/components/DownloadAppsDialog";
 import { DeviceLinkDialog } from "@/common/components/DeviceLinkDialog/DeviceLinkDialog.jsx";
 
@@ -15,6 +19,14 @@ const PROTOCOL_LABELS = {
     "entry.demo_connect": "Demo", "entry.pve_connect": "PVE",
 };
 
+// Which greeting the hour falls under. Boundaries are the everyday ones, not astronomical:
+// the point is that the screen sounds like it noticed when you sat down.
+const greetingKey = (hour) => {
+    if (hour < 11) return "welcome.greeting.morning";
+    if (hour < 18) return "welcome.greeting.afternoon";
+    return "welcome.greeting.evening";
+};
+
 export const WelcomePanel = ({
                                  connectToServer,
                                  hibernatedSessions = [],
@@ -22,8 +34,11 @@ export const WelcomePanel = ({
                                  openSFTP,
                                  openDirectConnect,
                                  onCreateServer,
+                                 onImportSSHConfig,
                              }) => {
+    const { user } = useContext(UserContext);
     const { getServerById } = useContext(ServerContext);
+    const { getLiveSessionsForEntry } = useLiveSessions();
     const { t } = useTranslation();
     const [recentConnections, setRecentConnections] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -32,13 +47,21 @@ export const WelcomePanel = ({
     const [deviceLinkDialogOpen, setDeviceLinkDialogOpen] = useState(false);
     const contextMenu = useContextMenu();
 
+    // Six, because the grid is three wide and two rows is what fits above the fold.
     useEffect(() => {
-        getRequest("/entries/recent?limit=5").then(data => setRecentConnections(data || [])).catch(() => {
+        getRequest("/entries/recent?limit=6").then(data => setRecentConnections(data || [])).catch(() => {
         }).finally(() => setLoading(false));
     }, []);
 
     const server = contextItem ? getServerById(contextItem.entryId) : null;
     const getHibernated = (entryId) => hibernatedSessions.find(s => s.server?.id === entryId);
+
+    // Pinned once when the panel mounts, not read per render: every card on one screen then
+    // agrees about what "12 minutes ago" means, and the render body stays pure -- reading the
+    // clock during render makes the output depend on when React happens to re-render.
+    const [now] = useState(() => Date.now());
+    const greeting = t(greetingKey(new Date(now).getHours()));
+    const name = getAvatarLabel(user, t("welcome.defaultName"));
 
     const handleClick = (item) => {
         const hibernated = getHibernated(item.entryId);
@@ -71,92 +94,76 @@ export const WelcomePanel = ({
         }
     };
 
-    // The artboard's "Weiter" column (.starts): one line per way in, each with a title, a line
-    // saying what it does, and its position as the accelerator. Built from the actions that
-    // actually exist rather than from the artboard's three, so nothing loses its entry point --
-    // the artboard folds device linking and direct connect into one line, but they are two
-    // different dialogs here.
-    const starts = [
-        onCreateServer && {
-            key: "create",
-            title: t("welcome.getStarted"),
-            description: t("welcome.starts.createDescription"),
-            onClick: () => onCreateServer(),
-        },
-        openDirectConnect && {
-            key: "direct",
-            title: t("servers.contextMenu.quickConnect"),
-            description: t("welcome.starts.directDescription"),
-            onClick: () => openDirectConnect(),
-        },
-        {
-            key: "device",
-            title: t("welcome.connectDevice"),
-            description: t("welcome.starts.deviceDescription"),
-            onClick: () => setDeviceLinkDialogOpen(true),
-        },
-        {
-            key: "apps",
-            title: t("welcome.downloadApps"),
-            description: t("welcome.starts.appsDescription"),
-            onClick: () => setDownloadDialogOpen(true),
-        },
+    // The artboard's .ways row. Small and in one line: after the first day nobody needs them
+    // prominent, but every one of them has to stay reachable -- this screen is the only place
+    // some of these dialogs can be opened from.
+    const hasTargets = recentConnections.length > 0;
+    const ways = [
+        openDirectConnect && { key: "direct", label: t("servers.contextMenu.quickConnect"),
+            primary: hasTargets, onClick: () => openDirectConnect() },
+        onCreateServer && { key: "create", label: t("welcome.emptyCreate"),
+            primary: !hasTargets, onClick: () => onCreateServer() },
+        onImportSSHConfig && { key: "import", label: t("servers.contextMenu.import"),
+            onClick: () => onImportSSHConfig() },
+        { key: "device", label: t("welcome.connectDevice"), onClick: () => setDeviceLinkDialogOpen(true) },
+        { key: "apps", label: t("welcome.downloadApps"), onClick: () => setDownloadDialogOpen(true) },
     ].filter(Boolean);
 
     return (
         <div className="welcome-panel" data-ui-id="UI-SERVERS-WELCOME">
             <div className="welcome">
                 <h3>
-                    {t("welcome.title")}
-                    <small>{t("welcome.tagline")}</small>
+                    {greeting}, {name}.{" "}
+                    <span>{loading || hasTargets ? t("welcome.whereNext") : t("welcome.noneYet")}</span>
                 </h3>
 
-                <div className="welcome-column">
-                    <h4>{t("welcome.recentConnections")}</h4>
-                    {loading ? (
-                        <ul className="recent" aria-busy="true">
-                            {[0, 1, 2].map((i) => <li key={i} className="skeleton"><i /></li>)}
-                        </ul>
-                    ) : recentConnections.length > 0 ? (
-                        <ul className="recent">
-                            {recentConnections.map((item, i) => {
-                                const hibernated = getHibernated(item.entryId);
-                                const protocol = PROTOCOL_LABELS[item.connectionType];
-                                const when = hibernated ? t("welcome.hibernated") : formatTimeAgo(item.timestamp, t);
-                                return (
-                                    <li key={`${item.entryId}-${i}`}
-                                        className={hibernated ? "hibernated" : undefined}
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={() => handleClick(item)}
-                                        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), handleClick(item))}
-                                        onContextMenu={(e) => handleContextMenu(e, item)}>
-                                        <span className="n">{item.name}</span>
-                                        <span className="m">{[protocol, when].filter(Boolean).join(" · ")}</span>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    ) : (
-                        <p className="welcome-empty">{t("welcome.noRecent")}</p>
-                    )}
-                </div>
+                {loading ? (
+                    <div className="targets" aria-busy="true">
+                        {[0, 1, 2].map((i) => <div key={i} className="card skeleton" />)}
+                    </div>
+                ) : hasTargets ? (
+                    <div className="targets">
+                        {recentConnections.map((item, i) => {
+                            const hibernated = getHibernated(item.entryId);
+                            // The same meaning the list's dot carries: something is running on
+                            // this entry right now. /entries/recent returns no reachability
+                            // field, and a hibernated session is parked, not connected -- so
+                            // neither of those may light it.
+                            const online = getLiveSessionsForEntry(item.entryId).length > 0;
+                            return (
+                                <div key={`${item.entryId}-${i}`}
+                                     className={`card${hibernated ? " sleeping" : ""}`}
+                                     style={{ "--pane": entryColorFor(item.entryId) }}
+                                     role="button"
+                                     tabIndex={0}
+                                     title={item.name}
+                                     onClick={() => handleClick(item)}
+                                     onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), handleClick(item))}
+                                     onContextMenu={(e) => handleContextMenu(e, item)}>
+                                    <div className="top">
+                                        <span className={`dot${online ? " on" : ""}`} />
+                                        <span className="host">{item.name}</span>
+                                        <span className="kind">{PROTOCOL_LABELS[item.connectionType] || ""}</span>
+                                    </div>
+                                    <span className="when">
+                                        {hibernated ? t("welcome.resume") : formatTimeAgo(item.timestamp, t, now)}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <p className="welcome-empty">{t("welcome.emptyHint")}</p>
+                )}
 
-                <div className="welcome-column">
-                    <h4>{t("welcome.next")}</h4>
-                    <ul className="starts">
-                        {starts.map((start, index) => (
-                            <li key={start.key} role="button" tabIndex={0}
-                                onClick={start.onClick}
-                                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), start.onClick())}>
-                                <span>
-                                    <span className="t">{start.title}</span>
-                                    <span className="s">{start.description}</span>
-                                </span>
-                                <kbd>{index + 1}</kbd>
-                            </li>
-                        ))}
-                    </ul>
+                <div className="ways">
+                    {ways.map((way) => (
+                        <button key={way.key} type="button"
+                                className={`w${way.primary ? " primary" : ""}`}
+                                onClick={way.onClick}>
+                            {way.label}
+                        </button>
+                    ))}
                 </div>
             </div>
 

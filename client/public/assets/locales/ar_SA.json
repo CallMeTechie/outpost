@@ -2106,17 +2106,16 @@
     }
   },
   "welcome": {
-    "title": "مرحبًا",
-    "tagline": "اختر اتصالًا أو ابدأ شيئًا جديدًا.",
-    "next": "التالي",
-    "noRecent": "لا توجد اتصالات بعد.",
-    "hibernated": "نائم",
-    "starts": {
-      "createDescription": "أضف خادمًا أو استورد إعدادات SSH",
-      "directDescription": "الاتصال بدون مدخل محفوظ",
-      "deviceDescription": "اربط هذا المتصفح بجهاز",
-      "appsDescription": "سطح المكتب والجوال"
+    "whereNext": "إلى أين؟",
+    "noneYet": "لا توجد اتصالات بعد.",
+    "resume": "نائم · استئناف",
+    "emptyHint": "بمجرد اتصالك لأول مرة، ستظهر وجهاتك هنا.",
+    "greeting": {
+      "morning": "صباح الخير",
+      "afternoon": "طاب يومك",
+      "evening": "مساء الخير"
     },
+    "hibernated": "نائم",
     "hello": "مرحباً",
     "defaultName": "المستخدم",
     "subtitle": "مرحبًا بك في Outpost. مدير الخادم مفتوح المصدر لخوادم SSH و VNC و RDP.",

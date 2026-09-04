@@ -1007,6 +1007,7 @@ export const Servers = () => {
                     openSFTP={openSFTP}
                     openDirectConnect={openDirectConnect}
                     onCreateServer={() => { setServerDialogProtocol(null); setServerDialogOpen(true); }}
+                    onImportSSHConfig={() => setSSHConfigImportDialogOpen(true)}
                 />
             }
             {visibleSessions.length > 0 &&
