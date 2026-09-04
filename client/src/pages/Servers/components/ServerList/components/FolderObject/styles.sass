@@ -3,7 +3,10 @@
 
 // A group heading, per the artboard (.entries .group): caret, quiet label, no
 // border and no folder icon. It sits above its rows rather than beside them, so
-// it is deliberately smaller and calmer than an entry.
+// it is deliberately smaller and calmer than an entry — which is exactly what
+// the old mobile rule undid, growing the heading past the rows it heads.
+// Organisation rows share this class and still carry an icon; it is sized to
+// the caret, not to the icon the heading used to have.
 .folder-object
   display: flex
   gap: 0.25rem
@@ -15,6 +18,9 @@
   cursor: pointer
   border-radius: 0.25rem
   transition: background-color 0.12s ease
+
+  @media (max-width: breakpoints.$mobile)
+    padding: 0.4rem 0.5rem
 
   .folder-caret
     flex: none
@@ -28,17 +34,10 @@
     &.closed::before
       content: "▸"
 
-  @media (max-width: breakpoints.$mobile)
-    padding: 0.6rem 0.5rem
-    gap: 0.625rem
-
   svg
-    width: 1.5rem
+    width: 0.85rem
+    height: 0.85rem
     flex-shrink: 0
-
-    @media (max-width: breakpoints.$mobile)
-      width: 1.75rem
-      height: 1.75rem
 
   p
     margin: 0
@@ -46,35 +45,26 @@
     overflow: hidden
     text-overflow: ellipsis
 
-    @media (max-width: breakpoints.$mobile)
-      font-size: 0.95rem
-
   &:hover
     color: colors.$white
     background-color: colors.$dark-gray
-    border: 1px solid colors.$gray
-    border-radius: 0.3rem
 
   &:active
     background-color: colors.$gray
-    border-color: colors.$primary
 
   input
-    padding: 0.4rem 0.6rem
+    padding: 0.25rem 0.4rem
     border: 1px solid colors.$gray
     background-color: transparent
     color: colors.$white
     box-sizing: border-box
-    border-radius: 0.7rem
-    font-size: 12pt
+    border-radius: 0.25rem
+    font-size: 0.75rem
     width: 100%
     outline: none
 
-    @media (max-width: breakpoints.$mobile)
-      padding: 0.5rem 0.75rem
-      font-size: 14pt
-
+// Drop target. A background and an inset ring, never a border: a border would
+// add 2px and make the row jump while something is dragged over it.
 .folder-is-over
   background-color: colors.$dark-gray
-  border: 1px solid colors.$gray
-  border-radius: 0.3rem
+  box-shadow: inset 0 0 0 1px colors.$gray
