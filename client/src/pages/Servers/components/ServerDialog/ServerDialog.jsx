@@ -278,18 +278,32 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
     useEffect(() => {
         if (!open) return;
 
-        const submitOnEnter = (event) => {
+        const onKeyDown = (event) => {
             if (event.key === "Enter") {
                 handleSubmit();
+                return;
             }
+
+            // Ctrl+1/2/3 switch tabs, as the manifest's presentation block
+            // declares (UI-SERVER-DIALOG-TABS). Skipped while typing so the
+            // shortcut cannot fight an input, and bounded by the tabs that
+            // actually exist for this entry type.
+            if (!event.ctrlKey && !event.metaKey) return;
+            if (event.altKey || event.shiftKey) return;
+            const tag = event.target?.tagName;
+            if (tag === "INPUT" || tag === "TEXTAREA" || event.target?.isContentEditable) return;
+            const index = ["1", "2", "3"].indexOf(event.key);
+            if (index === -1 || index >= tabs.length) return;
+            event.preventDefault();
+            setActiveTab(index);
         };
 
-        document.addEventListener("keydown", submitOnEnter);
+        document.addEventListener("keydown", onKeyDown);
 
         return () => {
-            document.removeEventListener("keydown", submitOnEnter);
+            document.removeEventListener("keydown", onKeyDown);
         };
-    }, [open, handleSubmit]);
+    }, [open, handleSubmit, tabs.length]);
 
     const refreshIdentities = () => {
         if (!editServerId) return;

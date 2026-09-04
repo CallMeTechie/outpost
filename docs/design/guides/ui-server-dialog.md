@@ -32,7 +32,7 @@ plus Locator-Marker; der Einstellungen-Tab bekommt seine drei Gruppen.
 - `empty`: „Keine persönlichen Identitäten. Neue Identität anlegen." mit Aktion.
 
 ### UI-SERVER-DIALOG-SETTINGS
-- `data-ui-id` am Wrapper. Drei Gruppen mit Überschrift (`--type-heading`): **Terminal** (Schrift, Cursor, Scrollback, Bell) · **Verbindung** (Keep-alive, Timeout, Jump-Host, Startbefehl) · **tmux** (automatisch anhängen, Standard-Session). Keine Stammdaten hier.
+- `data-ui-id` am Wrapper. Die Gruppen entsprechen dem, was `entry.config` wirklich führt: Jump-Hosts · Startbefehl · tmux ein/aus · Monitoring · Wake-on-LAN · Terminal-Tastenverhalten (Backspace, Entf, Funktionstasten); bei RDP zusätzlich Sicherheit, Tastaturlayout, Anzeige, Audio, Leistung. (Runde 1 nannte hier Schrift, Cursor, Scrollback, Bell, Keep-alive und Timeout — die gibt es nicht, das war beim Schreiben geraten.)
 
 ### UI-SERVER-DIALOG-SAVE
 - `data-ui-id` am primären Button. Beschriftung „Erstellen" (`servers.dialog.actions.create`) beim Anlegen, „Speichern" (`…actions.save`) beim Bearbeiten. `disabled` bei ungültigem Formular; `error` zeigt die Serverantwort unter dem Button.

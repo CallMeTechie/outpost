@@ -32,7 +32,7 @@ den Fokus-Modus. Nichts wird neu gebaut, was es gibt.
 
 ### UI-SERVERS-LIST-MENU — Kontextmenü Server
 - `data-ui-id="UI-SERVERS-LIST-MENU"` am `ContextMenu`-Container der Liste.
-- Einträge in dieser Reihenfolge: Verbinden · SFTP öffnen · Notizen · — · Bearbeiten · Duplizieren · Port weiterleiten · Session beitreten · — · Löschen (destruktiv, `--error`, mit `ActionConfirmDialog`).
+- Einträge in dieser Reihenfolge: Verbinden · SFTP öffnen · Notizen · — · Bearbeiten · Duplizieren · Session beitreten · — · Löschen (destruktiv, `--error`, mit `ActionConfirmDialog`). Port weiterleiten steht nur in der Desktop-App (Tauri) und rendert im Web-Build nicht.
 - Zweitweg: jede Aktion hat auch eine Taste (bestehende i18n-Schlüssel `servers.contextMenu.*` beibehalten).
 
 ### UI-SERVERS-TABS — Sessions
@@ -58,7 +58,7 @@ den Fokus-Modus. Nichts wird neu gebaut, was es gibt.
 
 ### UI-SERVERS-ACTIONS — Aktionen
 - `data-ui-id="UI-SERVERS-ACTIONS"` an `TerminalActionsMenu` (gesetzt).
-- Inhalt (Bestand, so beibehalten): Snippets · Tastenkürzel · Broadcast ·
+- Inhalt (Bestand, so beibehalten): Snippets · Broadcast (bei einzelner Ansicht deaktiviert, nicht versteckt) · Vollbild. Tastenkürzel erscheinen nur bei Guacamole-Sitzungen — bei einem SSH-Terminal gäbe es nichts, worauf sie wirken.
   Vollbild. **Nicht** Teilen/Ausklinken/Schließen — die liegen im
   Tab-Kontextmenü. Der Eintrag „Vollbild" wird beim Fokus-Modus (Blocker 2)
   zu dessen Umschalter ausgebaut, nicht ersetzt.

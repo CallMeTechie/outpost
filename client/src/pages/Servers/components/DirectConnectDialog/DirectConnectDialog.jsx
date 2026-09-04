@@ -171,7 +171,10 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
         if (!open) return;
 
         const submitOnEnter = (event) => {
-            if (event.key === "Enter") {
+            // Same gate as the button: without it Enter on an empty form sent
+            // directTarget {host:"", port:NaN} and ended in a Joi error instead
+            // of a session (UI-DIRECT-CONNECT-GO).
+            if (event.key === "Enter" && canConnect && !connecting) {
                 handleConnect();
             }
         };
@@ -181,7 +184,7 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
         return () => {
             document.removeEventListener("keydown", submitOnEnter);
         };
-    }, [open, handleConnect]);
+    }, [open, handleConnect, canConnect, connecting]);
 
     const showUsername = authType !== "password-only";
 

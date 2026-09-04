@@ -58,7 +58,7 @@ screens:
         verify: recommended
         data_source: static
         semantic_anchor:
-          means: Filtert die Server-Liste nach Name oder Tag, ohne die Gruppierung aufzulösen.
+          means: Filtert die Server-Liste nach Name, IP oder Tag, ohne die Gruppierung aufzulösen.
         states:
           - { id: default }
           - { id: empty, copy: "Kein Server passt zur Suche." }
@@ -72,7 +72,7 @@ screens:
         verify: recommended
         data_source: static
         semantic_anchor:
-          means: Zweitweg für Aktionen auf einem Eintrag — Verbinden, SFTP öffnen, Notizen, Bearbeiten, Duplizieren, Port weiterleiten, Session beitreten, Löschen.
+          means: Zweitweg für Aktionen auf einem Eintrag — Verbinden, SFTP öffnen, Notizen, Bearbeiten, Duplizieren, Session beitreten, Löschen. Port weiterleiten erscheint nur in der Desktop-App (Tauri), im Web-Build nie.
           not: [primary_navigation]
         states:
           - { id: default }
@@ -141,7 +141,7 @@ screens:
         verify: recommended
         data_source: static
         semantic_anchor:
-          means: Terminal-Sondertasten (Esc, Tab, Ctrl, Pfeile) nur auf Touch bzw. unter 768 px, und nur wenn das aktive Pane ein Terminal ist; am Desktop nie.
+          means: Terminal-Sondertasten (Esc, Tab, Ctrl, Pfeile) nur auf Touch-Geräten (pointer: coarse, kein Breitpunkt), und nur wenn das aktive Pane ein Terminal ist; am Desktop nie.
         states:
           - { id: default }
           - { id: disabled }
@@ -156,8 +156,9 @@ screens:
         data_source: static
         semantic_anchor:
           means: >
-            Werkzeuge für das aktive Terminal-Pane: Snippets, Tastenkürzel,
-            Broadcast an alle Panes, Vollbild. Teilen, Ausklinken und Schließen
+            Werkzeuge für das aktive Pane: Snippets, Broadcast an alle Panes
+            (nur bei geteilter Ansicht bedienbar), Vollbild. Tastenkürzel nur
+            bei Guacamole-Sitzungen, wo sie hingehören. Teilen, Ausklinken und Schließen
             liegen im Tab-Kontextmenü (UI-SERVERS-TABS), nicht hier — die
             Trennung ist beabsichtigt: hier Werkzeuge, dort Sitzungsverwaltung.
         states:
@@ -254,7 +255,12 @@ screens:
         verify: recommended
         data_source: "Server-Einstellungen"
         semantic_anchor:
-          means: Verhalten dieses Servers in drei Gruppen — Terminal (Schrift, Cursor, Scrollback, Bell), Verbindung (Keep-alive, Timeout, Jump-Host, Startbefehl), tmux (automatisch anhängen, Standard-Session). Keine Stammdaten.
+          means: >
+            Verhalten dieses Servers, nicht seine Stammdaten: Jump-Hosts,
+            Startbefehl, tmux ein/aus, Monitoring, Wake-on-LAN,
+            Terminal-Tastenverhalten (Backspace, Entf, Funktionstasten) und
+            für RDP zusätzlich Sicherheit, Tastaturlayout, Anzeige, Audio
+            und Leistung.
           not: [server_entry]
         states:
           - { id: default }
