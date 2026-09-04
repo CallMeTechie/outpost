@@ -2077,6 +2077,14 @@
       "tilde": "Til",
       "dash": "Hífen",
       "slash": "Barra"
+    },
+    "list": {
+      "online": "Online",
+      "offline": "Offline",
+      "sessions_one": "1 sessão",
+      "sessions_other": "{{count}} sessões",
+      "sleeping_one": "1 dormindo",
+      "sleeping_other": "{{count}} dormindo"
     }
   },
   "support": {

@@ -2259,6 +2259,14 @@
       "tilde": "Tilde",
       "dash": "Dash",
       "slash": "Slash"
+    },
+    "list": {
+      "online": "Online",
+      "offline": "Offline",
+      "sessions_one": "1 session",
+      "sessions_other": "{{count}} sessions",
+      "sleeping_one": "1 sleeping",
+      "sleeping_other": "{{count}} sleeping"
     }
   },
   "support": {

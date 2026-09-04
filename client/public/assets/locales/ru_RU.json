@@ -2077,6 +2077,14 @@
       "tilde": "Тильда",
       "dash": "Дефис",
       "slash": "Косая черта"
+    },
+    "list": {
+      "online": "В сети",
+      "offline": "Не в сети",
+      "sessions_one": "1 сессия",
+      "sessions_other": "{{count}} сессий",
+      "sleeping_one": "1 спит",
+      "sleeping_other": "{{count}} спят"
     }
   },
   "support": {

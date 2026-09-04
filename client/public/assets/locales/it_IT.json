@@ -2077,6 +2077,14 @@
       "tilde": "Tilde",
       "dash": "Trattino",
       "slash": "Barra"
+    },
+    "list": {
+      "online": "Online",
+      "offline": "Offline",
+      "sessions_one": "1 sessione",
+      "sessions_other": "{{count}} sessioni",
+      "sleeping_one": "1 sospesa",
+      "sleeping_other": "{{count}} sospese"
     }
   },
   "support": {

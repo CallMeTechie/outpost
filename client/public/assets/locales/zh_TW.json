@@ -2077,6 +2077,14 @@
       "tilde": "波浪號",
       "dash": "連字號",
       "slash": "斜線"
+    },
+    "list": {
+      "online": "線上",
+      "offline": "離線",
+      "sessions_one": "1 個工作階段",
+      "sessions_other": "{{count}} 個工作階段",
+      "sleeping_one": "1 個休眠",
+      "sleeping_other": "{{count}} 個休眠"
     }
   },
   "support": {

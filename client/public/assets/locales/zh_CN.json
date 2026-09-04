@@ -2077,6 +2077,14 @@
       "tilde": "波浪号",
       "dash": "连字符",
       "slash": "斜杠"
+    },
+    "list": {
+      "online": "在线",
+      "offline": "离线",
+      "sessions_one": "1 个会话",
+      "sessions_other": "{{count}} 个会话",
+      "sleeping_one": "1 个休眠",
+      "sleeping_other": "{{count}} 个休眠"
     }
   },
   "support": {

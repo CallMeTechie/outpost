@@ -2075,6 +2075,14 @@
       "tilde": "علامة التلدة",
       "dash": "شرطة",
       "slash": "شرطة مائلة"
+    },
+    "list": {
+      "online": "متصل",
+      "offline": "غير متصل",
+      "sessions_one": "جلسة واحدة",
+      "sessions_other": "{{count}} جلسات",
+      "sleeping_one": "جلسة نائمة",
+      "sleeping_other": "{{count}} جلسات نائمة"
     }
   },
   "support": {

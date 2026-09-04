@@ -2077,6 +2077,14 @@
       "tilde": "Vlnovka",
       "dash": "Pomlčka",
       "slash": "Lomítko"
+    },
+    "list": {
+      "online": "Online",
+      "offline": "Offline",
+      "sessions_one": "1 relace",
+      "sessions_other": "{{count}} relací",
+      "sleeping_one": "1 spící",
+      "sleeping_other": "{{count}} spících"
     }
   },
   "support": {

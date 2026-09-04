@@ -2077,6 +2077,14 @@
       "tilde": "Tilde",
       "dash": "Tiret",
       "slash": "Barre oblique"
+    },
+    "list": {
+      "online": "En ligne",
+      "offline": "Hors ligne",
+      "sessions_one": "1 session",
+      "sessions_other": "{{count}} sessions",
+      "sleeping_one": "1 en veille",
+      "sleeping_other": "{{count}} en veille"
     }
   },
   "support": {

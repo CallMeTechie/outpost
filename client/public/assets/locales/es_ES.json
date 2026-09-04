@@ -2077,6 +2077,14 @@
       "tilde": "Virgulilla",
       "dash": "Guion",
       "slash": "Barra"
+    },
+    "list": {
+      "online": "En línea",
+      "offline": "Sin conexión",
+      "sessions_one": "1 sesión",
+      "sessions_other": "{{count}} sesiones",
+      "sleeping_one": "1 en reposo",
+      "sleeping_other": "{{count}} en reposo"
     }
   },
   "support": {

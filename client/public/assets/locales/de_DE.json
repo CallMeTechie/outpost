@@ -2259,6 +2259,14 @@
       "tilde": "Tilde",
       "dash": "Bindestrich",
       "slash": "Schrägstrich"
+    },
+    "list": {
+      "online": "Verbunden",
+      "offline": "Nicht verbunden",
+      "sessions_one": "1 Sitzung",
+      "sessions_other": "{{count}} Sitzungen",
+      "sleeping_one": "1 schläft",
+      "sleeping_other": "{{count}} schlafen"
     }
   },
   "support": {
