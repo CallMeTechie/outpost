@@ -602,7 +602,7 @@ export const ServerList = ({
                             <div className="cta">
                                 {canManageResources && (
                                     <>
-                                        <Button text={t("servers.emptyCreate")} onClick={() => createServer("ssh")} />
+                                        <Button type="primary" text={t("servers.emptyCreate")} onClick={() => createServer("ssh")} />
                                         <Button type="secondary" text={t("servers.contextMenu.import")}
                                                 onClick={openSSHConfigImport} />
                                     </>

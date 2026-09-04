@@ -100,7 +100,7 @@ export const WelcomePanel = ({
                 <p>{t("welcome.lead")}</p>
                 <div className="welcome-buttons">
                     {openDirectConnect && (
-                        <Button icon={mdiCursorDefaultClick} text={t("servers.contextMenu.quickConnect")}
+                        <Button type="primary" icon={mdiCursorDefaultClick} text={t("servers.contextMenu.quickConnect")}
                                 onClick={() => openDirectConnect()} />
                     )}
                     {onCreateServer && (
