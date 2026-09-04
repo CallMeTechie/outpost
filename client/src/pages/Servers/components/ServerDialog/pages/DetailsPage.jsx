@@ -71,17 +71,6 @@ const DetailsPage = ({name, setName, icon, setIcon, config, setConfig, fieldConf
                 </div>
             </div>
 
-            {showEngineSelect && (
-                <div className="form-group">
-                    <label>{t("servers.dialog.fields.engine")}</label>
-                    <SelectBox
-                        options={engineOptions}
-                        selected={config.engineId ? String(config.engineId) : engineOptions[0]?.value}
-                        setSelected={(value) => setConfig(prev => ({ ...prev, engineId: value }))}
-                    />
-                </div>
-            )}
-            
             {fieldConfig.showIpPort && (
                 <>
                     <div className="address-row">
@@ -104,6 +93,19 @@ const DetailsPage = ({name, setName, icon, setIcon, config, setConfig, fieldConf
                             <SelectBox options={PROTOCOL_OPTIONS} selected={config.protocol} 
                                        setSelected={(value) => setConfig(prev => ({ ...prev, protocol: value }))} />
                         </div>
+                    )}
+
+                    {/* After the protocol, as the artboard orders it: the engine is a
+                        deployment detail, not part of naming the host. */}
+                    {showEngineSelect && (
+                <div className="form-group">
+                    <label>{t("servers.dialog.fields.engine")}</label>
+                    <SelectBox
+                        options={engineOptions}
+                        selected={config.engineId ? String(config.engineId) : engineOptions[0]?.value}
+                        setSelected={(value) => setConfig(prev => ({ ...prev, engineId: value }))}
+                    />
+                </div>
                     )}
                     {config.wakeOnLanEnabled && (
                         <>

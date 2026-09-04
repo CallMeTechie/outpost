@@ -141,7 +141,7 @@ screens:
         verify: recommended
         data_source: static
         semantic_anchor:
-          means: Terminal-Sondertasten (Esc, Tab, Ctrl, Pfeile) nur auf Touch-Geräten (pointer: coarse, kein Breitpunkt), und nur wenn das aktive Pane ein Terminal ist; am Desktop nie.
+          means: Terminal-Sondertasten (Esc, Tab, Ctrl, Alt, Shift, Pfeile, Home, Ende, Bild auf/ab sowie die auf Touch-Tastaturen vergrabenen Zeichen | ~ - /) nur auf Touch-Geräten (pointer: coarse, kein Breitpunkt), und nur wenn das aktive Pane ein Terminal ist; am Desktop nie. Sie sitzt über der Arbeitsfläche, nicht darunter: unterhalb schneidet eine Kette aus vier height-100%-Containern sie ab.
         states:
           - { id: default }
           - { id: disabled }
@@ -174,7 +174,7 @@ screens:
         verify: required
         data_source: "GET /entries/recent?limit=5"
         semantic_anchor:
-          means: Leerzustand ohne offene Session — Begrüßung, die fünf zuletzt genutzten Verbindungen, Erste Schritte, Gerät verbinden, Apps laden. Positiv, handlungsleitend, kein Marketing.
+          means: Leerzustand ohne offene Session — Begrüßung, die fünf zuletzt genutzten Verbindungen sowie die Aktionen Apps laden, Gerät verbinden und Schnellverbindung (letztere ist der Einstieg in UI-DIRECT-CONNECT). Positiv, handlungsorientiert, kein Marketing.
           concept: recent_connection
           aliases: [recent, history]
           not: [all_servers, marketing]

@@ -2067,6 +2067,16 @@
     "liveSessions": {
       "activeOn": "現場直播： {{users}}",
       "unknownUser": "未知使用者"
+    },
+    "keyBar": {
+      "home": "行首",
+      "end": "行尾",
+      "pageUp": "上一頁",
+      "pageDown": "下一頁",
+      "pipe": "豎線",
+      "tilde": "波浪號",
+      "dash": "連字號",
+      "slash": "斜線"
     }
   },
   "support": {

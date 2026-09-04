@@ -1,5 +1,17 @@
 const ARROW_FINALS = { up: "A", down: "B", right: "C", left: "D" };
 
+// Home and End share the arrows' CSI form and take the same modifier parameter.
+const CURSOR_FINALS = { home: "H", end: "F" };
+
+// Page keys use the numeric "tilde" form instead, where the modifier goes after
+// the number: ESC [ 5 ; 2 ~ rather than ESC [ 1 ; 2 5 ~.
+const TILDE_NUMBERS = { pageup: "5", pagedown: "6" };
+
+// Characters a touch keyboard buries behind two layers. They are literals, not
+// sequences: Ctrl and Alt have no meaningful encoding here and are ignored
+// rather than invented, the same choice Ctrl+Tab gets below.
+const LITERALS = { pipe: "|", tilde: "~", dash: "-", slash: "/" };
+
 // The usual encoding: 1 is "no modifier", and each modifier adds its bit.
 const modifierParameter = (latch) => 1 + (latch.shift ? 1 : 0) + (latch.alt ? 2 : 0) + (latch.ctrl ? 4 : 0);
 
@@ -26,9 +38,15 @@ export const barKeySequence = (key, latch) => {
         return "\x09";
     }
 
-    const final = ARROW_FINALS[key];
-    if (!final) return null;
+    if (key in LITERALS) return LITERALS[key];
 
     const parameter = modifierParameter(held);
+
+    const tilde = TILDE_NUMBERS[key];
+    if (tilde) return parameter === 1 ? `\x1b[${tilde}~` : `\x1b[${tilde};${parameter}~`;
+
+    const final = ARROW_FINALS[key] || CURSOR_FINALS[key];
+    if (!final) return null;
+
     return parameter === 1 ? `\x1b[${final}` : `\x1b[1;${parameter}${final}`;
 };

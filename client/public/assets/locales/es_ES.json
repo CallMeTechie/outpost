@@ -2067,6 +2067,16 @@
     "liveSessions": {
       "activeOn": "Sesiones en directo: {{users}}",
       "unknownUser": "Usuario desconocido"
+    },
+    "keyBar": {
+      "home": "Inicio",
+      "end": "Fin",
+      "pageUp": "Página arriba",
+      "pageDown": "Página abajo",
+      "pipe": "Barra vertical",
+      "tilde": "Virgulilla",
+      "dash": "Guion",
+      "slash": "Barra"
     }
   },
   "support": {

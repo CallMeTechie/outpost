@@ -188,7 +188,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
     const showJumpHosts = config?.protocol === 'ssh';
 
     if (!fieldConfig.showMonitoring && !fieldConfig.showKeyboardLayout && !fieldConfig.showDisplaySettings && !fieldConfig.showAudioSettings && !fieldConfig.showWakeOnLan && !fieldConfig.showTerminalSettings && !showJumpHosts) {
-        return <p className="text-center">{t('servers.dialog.settings.noSettings')}</p>;
+        return <p className="settings-page text-center" data-ui-id="UI-SERVER-DIALOG-SETTINGS">{t('servers.dialog.settings.noSettings')}</p>;
     }
 
     return (

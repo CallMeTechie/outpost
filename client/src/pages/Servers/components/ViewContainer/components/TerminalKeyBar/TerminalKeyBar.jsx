@@ -13,6 +13,23 @@ const ARROWS = [
     { key: "right", path: mdiArrowRight, label: "servers.keyBar.right" },
 ];
 
+// The artboard's third and fourth groups: navigation keys and the characters a
+// touch keyboard buries two layers deep. Labels are the keycap text, so they
+// need no translation; the aria-labels do.
+const NAVIGATION = [
+    { key: "home", label: "Home", aria: "servers.keyBar.home" },
+    { key: "end", label: "End", aria: "servers.keyBar.end" },
+    { key: "pageup", label: "PgUp", aria: "servers.keyBar.pageUp" },
+    { key: "pagedown", label: "PgDn", aria: "servers.keyBar.pageDown" },
+];
+
+const CHARACTERS = [
+    { key: "pipe", label: "|", aria: "servers.keyBar.pipe" },
+    { key: "tilde", label: "~", aria: "servers.keyBar.tilde" },
+    { key: "dash", label: "-", aria: "servers.keyBar.dash" },
+    { key: "slash", label: "/", aria: "servers.keyBar.slash" },
+];
+
 const MODIFIERS = [
     { name: "ctrl", label: "Ctrl", aria: "servers.keyBar.ctrl" },
     { name: "alt", label: "Alt", aria: "servers.keyBar.alt" },
@@ -49,6 +66,18 @@ export const TerminalKeyBar = ({ latch, onToggleModifier, onSendKey, disabled = 
                 <button key={key} type="button" className="key arrow" disabled={disabled} onPointerDown={keepFocus}
                         aria-label={t(label)}
                         onClick={() => onSendKey(key)}><Icon path={path} /></button>
+            ))}
+
+            {NAVIGATION.map(({ key, label, aria }) => (
+                <button key={key} type="button" className="key nav" disabled={disabled} onPointerDown={keepFocus}
+                        aria-label={t(aria)}
+                        onClick={() => onSendKey(key)}>{label}</button>
+            ))}
+
+            {CHARACTERS.map(({ key, label, aria }) => (
+                <button key={key} type="button" className="key char" disabled={disabled} onPointerDown={keepFocus}
+                        aria-label={t(aria)}
+                        onClick={() => onSendKey(key)}>{label}</button>
             ))}
         </div>
     );

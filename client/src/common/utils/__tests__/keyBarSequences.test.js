@@ -63,3 +63,40 @@ test("a missing latch does not throw", () => {
     assert.equal(barKeySequence("tab", undefined), "\x09");
     assert.equal(barKeySequence("up", null), "\x1b[A");
 });
+
+// Home, End and the page keys: the artboard's second and third key group.
+// Two different CSI shapes, which is the whole reason they are worth testing.
+
+test("home and end use the arrows' CSI form", () => {
+    assert.equal(barKeySequence("home", none), "\x1b[H");
+    assert.equal(barKeySequence("end", none), "\x1b[F");
+});
+
+test("home and end take the modifier parameter like an arrow", () => {
+    assert.equal(barKeySequence("home", { ctrl: false, alt: false, shift: true }), "\x1b[1;2H");
+    assert.equal(barKeySequence("end", { ctrl: true, alt: false, shift: false }), "\x1b[1;5F");
+});
+
+test("page keys use the numeric tilde form, with the modifier after the number", () => {
+    assert.equal(barKeySequence("pageup", none), "\x1b[5~");
+    assert.equal(barKeySequence("pagedown", none), "\x1b[6~");
+    assert.equal(barKeySequence("pageup", { ctrl: false, alt: false, shift: true }), "\x1b[5;2~");
+    assert.equal(barKeySequence("pagedown", { ctrl: true, alt: false, shift: false }), "\x1b[6;5~");
+});
+
+test("the buried characters are literals, not sequences", () => {
+    assert.equal(barKeySequence("pipe", none), "|");
+    assert.equal(barKeySequence("tilde", none), "~");
+    assert.equal(barKeySequence("dash", none), "-");
+    assert.equal(barKeySequence("slash", none), "/");
+});
+
+test("a literal ignores latched modifiers rather than inventing an encoding", () => {
+    // Same choice Ctrl+Tab makes above: terminals disagree on Ctrl+| and no
+    // target application reads it, so a made-up sequence would be worse.
+    assert.equal(barKeySequence("pipe", { ctrl: true, alt: true, shift: true }), "|");
+});
+
+test("an unknown key is still null", () => {
+    assert.equal(barKeySequence("nonsense", none), null);
+});

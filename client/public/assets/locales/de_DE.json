@@ -2250,7 +2250,15 @@
       "up": "Pfeil nach oben",
       "down": "Pfeil nach unten",
       "left": "Pfeil nach links",
-      "right": "Pfeil nach rechts"
+      "right": "Pfeil nach rechts",
+      "home": "Pos1",
+      "end": "Ende",
+      "pageUp": "Bild auf",
+      "pageDown": "Bild ab",
+      "pipe": "Senkrechter Strich",
+      "tilde": "Tilde",
+      "dash": "Bindestrich",
+      "slash": "Schrägstrich"
     }
   },
   "support": {

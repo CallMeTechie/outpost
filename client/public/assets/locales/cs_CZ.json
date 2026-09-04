@@ -2067,6 +2067,16 @@
     "liveSessions": {
       "activeOn": "Živé přenosy: {{users}}",
       "unknownUser": "Neznámý uživatel"
+    },
+    "keyBar": {
+      "home": "Home",
+      "end": "End",
+      "pageUp": "O stránku nahoru",
+      "pageDown": "O stránku dolů",
+      "pipe": "Svislá čára",
+      "tilde": "Vlnovka",
+      "dash": "Pomlčka",
+      "slash": "Lomítko"
     }
   },
   "support": {
