@@ -559,6 +559,7 @@ export const ServerList = ({
         <>
             {isMobile && mobileOpen && <div className="server-list-overlay" onClick={() => setMobileOpen?.(false)} />}
             <div
+                data-ui-id="UI-SERVERS-LIST"
                 className={`server-list ${isCollapsed ? "collapsed" : ""} ${isMobile ? "mobile" : ""} ${mobileOpen ? "mobile-open" : ""}`}
                 style={!isMobile ? { width: isCollapsed ? "0px" : `${width}px` } : undefined} 
                 ref={serverListRef}
@@ -604,6 +605,7 @@ export const ServerList = ({
                     <OneDriveAccounts openOneDrive={openOneDrive} />
 
                     <ContextMenu
+                        dataUiId="UI-SERVERS-LIST-MENU"
                         isOpen={contextMenu.isOpen}
                         position={contextMenu.position}
                         onClose={contextMenu.close}

@@ -27,7 +27,7 @@ export const TerminalKeyBar = ({ latch, onToggleModifier, onSendKey }) => {
     const keepFocus = (event) => event.preventDefault();
 
     return (
-        <div className="terminal-key-bar" role="toolbar">
+        <div className="terminal-key-bar" role="toolbar" data-ui-id="UI-SERVERS-KEYBAR">
             <button type="button" className="key" onPointerDown={keepFocus}
                     aria-label={t("servers.keyBar.escape")}
                     onClick={() => onSendKey("escape")}>Esc</button>

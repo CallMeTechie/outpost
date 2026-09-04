@@ -84,7 +84,7 @@ export const WelcomePanel = ({
     };
 
     return (
-        <div className="welcome-panel">
+        <div className="welcome-panel" data-ui-id="UI-SERVERS-WELCOME">
             <div className="welcome-left">
                 <h1>{t("welcome.hello")}, <span>{getAvatarLabel(user, t("welcome.defaultName"))}</span>!</h1>
                 <p>{t("welcome.subtitle")}</p>

@@ -7,7 +7,10 @@ export const ContextMenu = ({
     position, 
     onClose, 
     children,
-    trigger = null 
+    trigger = null,
+    // Optional design-manifest id, so a caller can mark its own menu without
+    // this shared component knowing about any particular screen.
+    dataUiId = undefined
 }) => {
     const menuRef = useRef(null);
     const [adjustedPosition, setAdjustedPosition] = useState(position);
@@ -106,6 +109,7 @@ export const ContextMenu = ({
                 top: `${adjustedPosition.y}px`,
             }}
             role="menu"
+            data-ui-id={dataUiId}
             aria-orientation="vertical"
             tabIndex={-1}
             onTransitionEnd={handleAnimationEnd}

@@ -89,7 +89,7 @@ export const TerminalActionsMenu = ({ layoutMode, onBroadcastToggle, onSnippetSe
     };
 
     return (
-        <div className="terminal-actions-menu" ref={menuRef}>
+        <div className="terminal-actions-menu" ref={menuRef} data-ui-id="UI-SERVERS-ACTIONS">
             <Icon 
                 path={mdiMenu} 
                 className={`actions-menu-btn ${menuOpen ? 'active' : ''}`}

@@ -627,7 +627,7 @@ export const ViewContainer = ({
     );
 
     return (
-        <div className={`view-container ${fullscreenMode ? "fullscreen" : ""}`}>
+        <div data-ui-id="UI-SERVERS-VIEW" className={`view-container ${fullscreenMode ? "fullscreen" : ""}`}>
             {fullscreenMode && !hasGuacamole && !titleBarTabsSlot && (
                 <div
                     className={`exit-fullscreen-btn-container ${isDragging ? "dragging" : ""}`}

@@ -155,7 +155,11 @@ screens:
         verify: recommended
         data_source: static
         semantic_anchor:
-          means: Menü mit Aktionen auf die aktive Session (Fokus-Modus, Teilen, Ausklinken, Schließen).
+          means: >
+            Werkzeuge für das aktive Terminal-Pane: Snippets, Tastenkürzel,
+            Broadcast an alle Panes, Vollbild. Teilen, Ausklinken und Schließen
+            liegen im Tab-Kontextmenü (UI-SERVERS-TABS), nicht hier — die
+            Trennung ist beabsichtigt: hier Werkzeuge, dort Sitzungsverwaltung.
         states:
           - { id: default }
           - { id: disabled }

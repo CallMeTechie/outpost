@@ -400,7 +400,7 @@ export const ServerTabs = ({
     const orderedSessions = tabOrder.map(sessionId => activeSessions.find(session => session.id === sessionId)).filter(Boolean);
 
     return (
-        <div className="server-tabs">
+        <div className="server-tabs" data-ui-id="UI-SERVERS-TABS">
             <div className="layout-controls">
                 <TerminalActionsMenu
                     layoutMode={layoutMode}

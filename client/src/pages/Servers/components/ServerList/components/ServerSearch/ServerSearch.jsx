@@ -26,7 +26,7 @@ export const ServerSearch = ({search, setSearch}) => {
     }, [searchKeybind]);
 
     return (
-        <div className="server-search">
+        <div className="server-search" data-ui-id="UI-SERVERS-SEARCH">
             <Icon path={mdiMagnify} className="search-icon" />
             <input className="search-input" placeholder={t("servers.searchPlaceholder")} ref={inputRef}
                 value={search} onChange={(e) => setSearch(e.target.value)} />

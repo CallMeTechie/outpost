@@ -57,7 +57,12 @@ den Fokus-Modus. Nichts wird neu gebaut, was es gibt.
 - `data-ui-id="UI-SERVERS-KEYBAR"` an `TerminalKeyBar`. Nur unter 768 px, nur bei Terminal-Pane; Höhe `--key-bar-height`. Trefferflächen ≥ 44 px.
 
 ### UI-SERVERS-ACTIONS — Aktionen
-- `data-ui-id="UI-SERVERS-ACTIONS"` an `TerminalActionsMenu`. Enthält zusätzlich „Fokus-Modus (Ctrl+Shift+F)". `disabled` ohne aktive Session.
+- `data-ui-id="UI-SERVERS-ACTIONS"` an `TerminalActionsMenu` (gesetzt).
+- Inhalt (Bestand, so beibehalten): Snippets · Tastenkürzel · Broadcast ·
+  Vollbild. **Nicht** Teilen/Ausklinken/Schließen — die liegen im
+  Tab-Kontextmenü. Der Eintrag „Vollbild" wird beim Fokus-Modus (Blocker 2)
+  zu dessen Umschalter ausgebaut, nicht ersetzt.
+- `disabled` ohne aktive Session fehlt noch (Important-Befund).
 
 ### UI-SERVERS-WELCOME — Willkommen
 - `data-ui-id="UI-SERVERS-WELCOME"` an `WelcomePanel`. Datenquelle `GET /entries/recent?limit=5` — **die letzten fünf Verbindungen**, nicht alle Server.
