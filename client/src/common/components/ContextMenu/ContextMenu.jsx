@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { matchesShortcut } from "./shortcuts.js";
 import { createPortal } from "react-dom";
 import "./styles.sass";
 
@@ -83,8 +84,26 @@ export const ContextMenu = ({
                 items[nextIndex]?.focus();
             };
 
-            if (e.key === "ArrowDown") navigate(1);
-            if (e.key === "ArrowUp") navigate(-1);
+            if (e.key === "ArrowDown") return navigate(1);
+            if (e.key === "ArrowUp") return navigate(-1);
+
+            // Accelerators, only while this menu is open -- see shortcuts.js on why they are
+            // not page-wide. Searched in the DOM rather than derived from the children,
+            // because the items are built conditionally by every caller and an open submenu
+            // must be reachable too. Disabled items are excluded by the selector, so a
+            // shortcut on a greyed-out entry does nothing, exactly like clicking it.
+            // Plain Enter/Space belong to the focused item (ContextMenuItem's own handler).
+            // Matching them here as well would run the action twice.
+            const bare = !e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey;
+            if (bare && (e.key === "Enter" || e.key === " ")) return;
+
+            const match = Array.from(menuRef.current?.querySelectorAll('.context-menu-item[data-shortcut]:not(.disabled)') || [])
+                .find((item) => matchesShortcut(item.dataset.shortcut, e));
+            if (match) {
+                e.preventDefault();
+                e.stopPropagation();
+                match.click();
+            }
         };
 
         document.addEventListener("mousedown", handleClickOutside);

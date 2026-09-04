@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Icon from "@mdi/react";
 import { mdiChevronRight, mdiChevronDown } from "@mdi/js";
+import { formatShortcut } from "./shortcuts.js";
 
 export const ContextMenuItem = ({
     icon,
@@ -14,6 +15,10 @@ export const ContextMenuItem = ({
     // Additive and optional: lets a disabled item say WHY it is disabled.
     // Without it the component drops the attribute and the explanation is lost.
     title,
+    // A menu accelerator in the notation shortcuts.js parses ("E", "F2", "Ctrl+W").
+    // It is printed here and matched by ContextMenu while this menu is open -- the
+    // same string for both, so the two can never disagree.
+    shortcut,
 }) => {
     const [isSubmenuOpen, setIsSubmenuOpen] = useState(false);
     const itemRef = useRef(null);
@@ -89,9 +94,13 @@ export const ContextMenuItem = ({
 
     const handleKeyDown = (e) => {
         if (disabled) return;
+        // Only the unmodified keys activate the focused item: Shift+Enter and friends are
+        // accelerators belonging to some other item, and claiming them here would run this
+        // item's action instead of the one the user pressed for.
+        const bare = !e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey;
         const actions = {
-            "Enter": () => (e.preventDefault(), handleClick(e)),
-            " ": () => (e.preventDefault(), handleClick(e)),
+            "Enter": () => bare && (e.preventDefault(), handleClick(e)),
+            " ": () => bare && (e.preventDefault(), handleClick(e)),
             "ArrowRight": () => hasSubmenu && (e.preventDefault(), e.stopPropagation(), setIsSubmenuOpen(true), 
                 setTimeout(() => submenuRef.current?.querySelector('.context-menu-item:not(.disabled)')?.focus(), 50)),
             "ArrowLeft": () => hasSubmenu && isSubmenuOpen && (e.preventDefault(), e.stopPropagation(), 
@@ -150,9 +159,11 @@ export const ContextMenuItem = ({
             aria-disabled={disabled}
             aria-haspopup={hasSubmenu ? "menu" : undefined}
             aria-expanded={hasSubmenu ? isSubmenuOpen : undefined}
+            data-shortcut={shortcut || undefined}
         >
             {icon && (typeof icon === "string" ? <Icon path={icon} className="menu-icon" /> : <span className="menu-icon">{icon}</span>)}
             <span className="menu-label">{label}</span>
+            {shortcut && !hasSubmenu && <kbd className="menu-shortcut">{formatShortcut(shortcut)}</kbd>}
             {hasSubmenu && (
                 <>
                     <Icon path={isMobile ? mdiChevronDown : mdiChevronRight} className={`submenu-arrow ${isSubmenuOpen ? "open" : ""}`} />

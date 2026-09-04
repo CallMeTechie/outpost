@@ -210,6 +210,7 @@ const DraggableTab = ({
                 <ContextMenuItem
                     icon={mdiRenameBox}
                     label={t("servers.tabs.contextMenu.rename")}
+                    shortcut="F2"
                     onClick={() => setRenameDialogOpen(true)}
                 />
                 <ContextMenuSeparator />
@@ -264,6 +265,7 @@ const DraggableTab = ({
                 <ContextMenuItem
                     icon={mdiClose}
                     label={t("servers.tabs.contextMenu.closeSession")}
+                    shortcut="Ctrl+W"
                     onClick={() => closeSession(session.id)}
                     danger
                 />

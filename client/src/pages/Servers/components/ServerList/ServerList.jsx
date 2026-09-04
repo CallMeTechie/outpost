@@ -781,12 +781,14 @@ export const ServerList = ({
                                             <ContextMenuItem
                                                 icon={mdiConnection}
                                                 label={t("servers.contextMenu.connect")}
+                                                shortcut="Enter"
                                                 onClick={() => connectToServer(server?.id)}
                                             />
                                         ) : server.identities.length === 1 ? (
                                             <ContextMenuItem
                                                 icon={mdiConnection}
                                                 label={t("servers.contextMenu.connect")}
+                                                shortcut="Enter"
                                                 onClick={() => connect()}
                                             />
                                         ) : (
@@ -813,6 +815,7 @@ export const ServerList = ({
                                             <ContextMenuItem
                                                 icon={mdiFolderOpen}
                                                 label={t("servers.contextMenu.openSFTP")}
+                                                shortcut="Shift+Enter"
                                                 onClick={() => connectSFTP()}
                                             />
                                         ) : (
@@ -884,6 +887,7 @@ export const ServerList = ({
                                 <ContextMenuItem
                                     icon={mdiPencil}
                                     label={t("servers.contextMenu.editServer")}
+                                    shortcut="E"
                                     onClick={editServer}
                                 />
 
@@ -904,6 +908,7 @@ export const ServerList = ({
                                 <ContextMenuItem
                                     icon={mdiServerMinus}
                                     label={t("servers.contextMenu.deleteServer")}
+                                    shortcut="Delete"
                                     onClick={openDeleteConfirm}
                                     danger
                                 />
@@ -952,6 +957,7 @@ export const ServerList = ({
                                 <ContextMenuItem
                                     icon={mdiPencil}
                                     label={t("servers.contextMenu.editServer")}
+                                    shortcut="E"
                                     onClick={editServer}
                                 />
                                 <ContextMenuItem
@@ -994,6 +1000,7 @@ export const ServerList = ({
                                 <ContextMenuItem
                                     icon={mdiServerMinus}
                                     label={t("servers.contextMenu.deleteServer")}
+                                    shortcut="Delete"
                                     onClick={openDeleteConfirm}
                                     danger
                                 />
