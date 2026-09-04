@@ -49,7 +49,11 @@ const DetailsPage = ({name, setName, icon, setIcon, config, setConfig, fieldConf
     const engineOffline = Boolean(selectedEngine && !selectedEngine.connected);
     
     return (
-        <>
+        // display: contents keeps the children direct flex items of
+        // .server-dialog-content -- a normal wrapper would collapse them into
+        // one item and eat the 1rem gap between them. The element exists only
+        // to carry the marker the manifest declares.
+        <div className="details-page" data-ui-id="UI-SERVER-DIALOG-DETAILS">
             {engineOffline && (
                 <p className="details-engine-state warning" role="status">
                     {t("servers.dialog.engineOfflineNotice")}
@@ -119,7 +123,7 @@ const DetailsPage = ({name, setName, icon, setIcon, config, setConfig, fieldConf
                     )}
                 </>
             )}
-        </>
+        </div>
     );
 }
 

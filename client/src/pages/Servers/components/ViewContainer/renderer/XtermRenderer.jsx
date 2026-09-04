@@ -839,6 +839,12 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
             ref.current?.removeEventListener('mousedown', handleSelectionReset, true);
             lastSelectionRef.current = "";
             if (ws) {
+                // Before onclose is silenced: the effect re-runs on every terminal
+                // preference change and opens a fresh socket, so without this the key
+                // bar would stay enabled through the second connect window -- and a
+                // press there hits ws.send on a CONNECTING socket. Also the only
+                // place readySessions entries are ever cleared.
+                onTerminalReady?.(session.id, false);
                 ws.onclose = null;
                 ws.onerror = null;
                 ws.close();
