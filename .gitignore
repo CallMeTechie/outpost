@@ -151,3 +151,6 @@ docs/public/openapi.json
 
 # CLI
 cli/target/
+
+# mockingbird run state (per machine, per run)
+.claude/.mockingbird-*
