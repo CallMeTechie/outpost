@@ -1,9 +1,11 @@
 import { memo, useRef, useEffect, useCallback } from "react";
 import Icon from "@mdi/react";
 import { mdiLaptop, mdiServer } from "@mdi/js";
+import { useTranslation } from "react-i18next";
 import "./styles.sass";
 
 export const ConnectionLoader = memo(({ onReady }) => {
+    const { t } = useTranslation();
     const containerRef = useRef(null);
     const progressBarRef = useRef(null);
     const isHiddenRef = useRef(false);
@@ -53,7 +55,10 @@ export const ConnectionLoader = memo(({ onReady }) => {
     }, [onReady, hide, show, isHidden]);
 
     return (
-        <div ref={containerRef} className="connection-loader">
+        // aria-busy and a label so the loading state is announced and findable,
+        // not only animated (UI-SERVERS-VIEW, state loading).
+        <div ref={containerRef} className="connection-loader" role="status" aria-busy="true"
+             aria-label={t("servers.dialog.connecting")}>
             <div ref={progressBarRef} className="connection-loader__progress-bar" />
             <div className="connection-loader__content">
                 <div className="connection-loader__device">

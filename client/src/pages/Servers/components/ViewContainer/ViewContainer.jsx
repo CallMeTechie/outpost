@@ -714,7 +714,13 @@ export const ViewContainer = ({
     return (
         <div data-ui-id="UI-SERVERS-VIEW" ref={viewRef}
              className={`view-container ${fullscreenMode ? "fullscreen" : ""} ${focusMode ? "focus-mode" : ""}`}>
-            {chromeHidden && !hasGuacamole && !titleBarTabsSlot && (
+            {/* In focus mode this is the ONLY way back: the toggle in the tab
+                strip is inside the chrome the mode hides. It therefore carries
+                the marker and the switch semantics while focus is on, matching
+                the floating toggle the artboard shows. A Guacamole session gets
+                it too for the same reason -- otherwise focus mode would be a
+                one-way door there (Ctrl+Shift+F aside). */}
+            {chromeHidden && !titleBarTabsSlot && (focusMode || !hasGuacamole) && (
                 <div
                     className={`exit-fullscreen-btn-container ${isDragging ? "dragging" : ""}`}
                     style={{ left: btnPosition.x, top: btnPosition.y }}
@@ -722,7 +728,8 @@ export const ViewContainer = ({
                     onClick={focusMode ? onFocusBtnClick : onBtnClick}
                     title={focusMode ? t("servers.terminalActions.exitFocusMode") : t("servers.terminalActions.exitFullScreen")}
                 >
-                    <button className="exit-fullscreen-btn">
+                    <button className="exit-fullscreen-btn"
+                            {...(focusMode ? { "data-ui-id": "UI-SERVERS-FOCUS", role: "switch", "aria-checked": true } : {})}>
                         <Icon path={mdiFullscreenExit} />
                     </button>
                 </div>

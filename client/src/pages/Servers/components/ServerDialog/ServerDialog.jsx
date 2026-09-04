@@ -384,7 +384,11 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
                 {/* UI-SERVER-DIALOG-SAVE, state disabled: the same condition
                     handleSubmit enforces, so an incomplete form is visible
                     before the click rather than answered with a toast after. */}
+                {/* aria-invalid on the button itself: the message sits next to
+                    it, so a check scoped to [data-ui-id='UI-SERVER-DIALOG-SAVE']
+                    would otherwise never see the error state. */}
                 <Button className="server-dialog-button" dataUiId="UI-SERVER-DIALOG-SAVE" onClick={handleSubmit}
+                        ariaInvalid={Boolean(saveError)}
                         disabled={!validateRequiredFields(entryType, config.protocol, name, config)}
                         text={editServerId ? t("servers.dialog.actions.save") : t("servers.dialog.actions.create")} />
             </div>
