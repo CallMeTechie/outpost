@@ -21,10 +21,10 @@ app.post("/", async (req, res) => {
     if (validateSchema(res, createSessionValidation, req.body)) return;
     
     try {
-        const { entryId, identityId, connectionReason, type, directIdentity, tabId, browserId, scriptId, startPath, tmuxSession, tmuxCreate, tmuxWindowId } = req.body;
+        const { entryId, identityId, connectionReason, type, directIdentity, tabId, browserId, scriptId, startPath, tmuxSession, tmuxCreate, tmuxWindowId, directTarget } = req.body;
         const ipAddress = req.ip || req.socket?.remoteAddress || 'unknown';
         const userAgent = req.headers['user-agent'] || 'unknown';
-        const result = await createSession(req.user.id, entryId, identityId, connectionReason, type, directIdentity, tabId, browserId, scriptId, startPath, ipAddress, userAgent, tmuxSession, tmuxCreate, tmuxWindowId);
+        const result = await createSession(req.user.id, entryId, identityId, connectionReason, type, directIdentity, tabId, browserId, scriptId, startPath, ipAddress, userAgent, tmuxSession, tmuxCreate, tmuxWindowId, directTarget);
         
         if (result?.code) {
             return res.status(result.code).json({ error: result.message });

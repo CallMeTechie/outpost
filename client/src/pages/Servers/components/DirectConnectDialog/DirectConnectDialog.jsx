@@ -5,6 +5,7 @@ import Button from "@/common/components/Button";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useTranslation } from "react-i18next";
 import {
+    mdiServerOutline,
     mdiAccountCircleOutline,
     mdiFileUploadOutline,
     mdiLockOutline,
@@ -17,11 +18,22 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
     const { t } = useTranslation();
     const { sendToast } = useToast();
 
-    const protocol = server?.protocol ?? server?.config?.protocol;
+    // Without an entry there is nothing to read it from, and the validation only
+    // accepts ssh or telnet for a one-off target.
+    const protocol = server?.protocol ?? server?.config?.protocol ?? "ssh";
     const fieldConfig = useMemo(() => getFieldConfig("server", protocol), [protocol]);
     const allowedAuthTypes = fieldConfig.allowedAuthTypes || ["password", "ssh", "both"];
     const defaultAuthType = allowedAuthTypes[0] || "password";
+    const hasEntry = Boolean(server);
+    const defaultPort = protocol === "telnet" ? 23 : 22;
 
+    // Host and port are always shown (UI-DIRECT-CONNECT-HOST). With an entry
+    // selected they describe that entry and are read-only -- the target is
+    // already decided, and letting it be edited would route a permitted entry
+    // at an arbitrary host. Without an entry they are the input for a one-off
+    // connection, which the server gates on its own permission.
+    const [host, setHost] = useState("");
+    const [port, setPort] = useState("");
     const [username, setUsername] = useState("");
     const [authType, setAuthType] = useState(defaultAuthType);
     const [password, setPassword] = useState("");
@@ -69,7 +81,11 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
     // Same conditions validateFields() enforces, as a value: the button is
     // disabled instead of the click producing a toast (UI-DIRECT-CONNECT-GO,
     // state disabled).
-    const canConnect = (authType === "password-only" || Boolean(username))
+    const portNumber = Number(port);
+    const targetValid = hasEntry
+        || (Boolean(host.trim()) && Number.isInteger(portNumber) && portNumber >= 1 && portNumber <= 65535);
+    const canConnect = targetValid
+        && (authType === "password-only" || Boolean(username))
         && ((authType !== "password" && authType !== "password-only" && authType !== "both") || Boolean(password))
         && ((authType !== "ssh" && authType !== "both") || Boolean(sshKey));
 
@@ -112,7 +128,7 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
         // attempt was handed to another dialog. Only a hard false keeps us open
         // -- otherwise the loading state would never be visible at all, because
         // closing in the same handler unmounts the dialog in the same commit.
-        Promise.resolve(onConnect(directIdentity))
+        Promise.resolve(onConnect(directIdentity, hasEntry ? null : { host: host.trim(), port: portNumber, protocol }))
             .then((result) => {
                 if (result?.error) {
                     setConnecting(false);
@@ -125,11 +141,13 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
                 setConnecting(false);
                 setAuthError(error?.message || t("servers.unknownError"));
             });
-    }, [username, authType, password, sshKey, passphrase, onConnect, onClose, t]);
+    }, [username, authType, password, sshKey, passphrase, host, port, portNumber, hasEntry, protocol, onConnect, onClose, t]);
 
     useEffect(() => {
         if (!open) return;
 
+        setHost(server?.config?.ip ?? server?.ip ?? "");
+        setPort(String(server?.config?.port ?? server?.port ?? defaultPort));
         setUsername("");
         setAuthType(defaultAuthType);
         setPassword("");
@@ -165,6 +183,36 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
                 </div>
 
                 <div className="direct-connect-content">
+                    <div className="host-row" data-ui-id="UI-DIRECT-CONNECT-HOST">
+                        <div className="form-group host-field">
+                            <label htmlFor="direct-connect-host">{t("servers.dialog.fields.host")}</label>
+                            <Input
+                                id="direct-connect-host"
+                                name="direct-connect-host"
+                                icon={mdiServerOutline}
+                                type="text"
+                                placeholder={t("servers.dialog.placeholders.host")}
+                                autoComplete="off"
+                                value={host}
+                                setValue={setHost}
+                                disabled={hasEntry}
+                            />
+                        </div>
+                        <div className="form-group port-field">
+                            <label htmlFor="direct-connect-port">{t("servers.dialog.fields.port")}</label>
+                            <Input
+                                id="direct-connect-port"
+                                name="direct-connect-port"
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="off"
+                                value={port}
+                                setValue={setPort}
+                                disabled={hasEntry}
+                            />
+                        </div>
+                    </div>
+
                     <div className="identity-section" data-ui-id="UI-DIRECT-CONNECT-AUTH">
                         {authError && <p className="direct-connect-error" role="alert">{authError}</p>}
                         <div className={`name-row ${!showUsername ? 'single-column' : ''}`}>

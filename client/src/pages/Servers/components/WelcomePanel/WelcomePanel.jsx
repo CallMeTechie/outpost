@@ -91,6 +91,10 @@ export const WelcomePanel = ({
                 <div className="welcome-buttons">
                     <Button icon={mdiDownload} text={t("welcome.downloadApps")} onClick={() => setDownloadDialogOpen(true)} />
                     <Button icon={mdiLinkVariant} text={t("welcome.connectDevice")} onClick={() => setDeviceLinkDialogOpen(true)} />
+                    {openDirectConnect && (
+                        <Button icon={mdiCursorDefaultClick} text={t("servers.contextMenu.quickConnect")}
+                                onClick={() => openDirectConnect()} />
+                    )}
                 </div>
             </div>
 

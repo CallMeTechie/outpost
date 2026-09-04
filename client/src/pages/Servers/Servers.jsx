@@ -116,7 +116,20 @@ export const Servers = () => {
     const handleConnectionsUpdate = useCallback((sessions) => {
         if (!servers) return;
         const mappedSessions = sessions.map(session => {
-            const server = getServerById(session.entryId);
+            // A one-off connection has no entry to look up. Its target rides on
+            // the session, so the same stand-in is rebuilt here -- otherwise the
+            // next broadcast would drop the tab the user is looking at.
+            const directTarget = session.configuration?.directTarget;
+            const server = directTarget
+                ? {
+                    id: null,
+                    name: `${directTarget.host}:${directTarget.port}`,
+                    directTarget,
+                    renderer: "terminal",
+                    type: "server",
+                    config: { ip: directTarget.host, port: directTarget.port, protocol: directTarget.protocol },
+                }
+                : getServerById(session.entryId);
             if (!server) return null;
             return {
                 id: session.sessionId,
@@ -401,8 +414,29 @@ export const Servers = () => {
         return null;
     };
 
+    // Any organization in the tree that demands a reason. Used for a connection
+    // that has no entry to look the policy up from.
+    const anyOrganizationRequiresReason = (entries) => {
+        for (const entry of entries || []) {
+            if (entry.type === "organization") {
+                if (entry.requireConnectionReason) return true;
+                if (anyOrganizationRequiresReason(entry.entries)) return true;
+            } else if (entry.type === "folder" && entry.entries) {
+                if (anyOrganizationRequiresReason(entry.entries)) return true;
+            }
+        }
+        return false;
+    };
+
     const checkConnectionReasonRequired = (serverId, servers) => {
-        if (!servers || !serverId) return false;
+        if (!servers) return false;
+
+        // A one-off connection has no entry, so the policy comes from the
+        // user's own organizations -- the same source the server reads it from
+        // (directConnectionReasonRequired, over the account's memberships).
+        // Without this the server would answer 400 and the user would have no
+        // way to supply what it asks for.
+        if (!serverId) return anyOrganizationRequiresReason(servers);
 
         return findOrganizationForServer(parseInt(serverId), servers)?.requireConnectionReason || false;
     };
@@ -469,7 +503,9 @@ export const Servers = () => {
     const performConnection = async (server, identity, connectionReason = null, type = null, directIdentity = null, scriptId = null, scriptName = null, tmux = null) => {
         try {
             const payload = {
-                entryId: server.id,
+                // Exactly one of the two: a stored entry, or a one-off target.
+                // The server rejects both and neither.
+                ...(server.id ? { entryId: server.id } : { directTarget: server.directTarget }),
                 identityId: identity?.id,
                 connectionReason,
                 type,
@@ -486,7 +522,7 @@ export const Servers = () => {
             }
             const session = await postRequest("/connections", payload);
 
-            const organization = findOrganizationForServer(server.id, servers);
+            const organization = server.id ? findOrganizationForServer(server.id, servers) : null;
             const organizationId = organization ? parseInt(organization.id.split("-")[1]) : null;
 
             const sessionData = {
@@ -812,8 +848,10 @@ export const Servers = () => {
         setCurrentFolderId(null);
     };
 
-    const openDirectConnect = (server) => {
-        if (!requiresIdentity(server)) {
+    // Called with an entry (it has no stored identity) or without one (a one-off
+    // connection to a freely entered host, gated on connect.direct server side).
+    const openDirectConnect = (server = null) => {
+        if (server && !requiresIdentity(server)) {
             initiateConnection({ server });
             return;
         }
@@ -835,6 +873,22 @@ export const Servers = () => {
         }
     };
 
+    // Ctrl+K opens a one-off connection from anywhere on the page, as the
+    // manifest declares. Skipped while typing so it cannot steal the shortcut
+    // from an input, and while a session has focus the terminal keeps its keys.
+    useEffect(() => {
+        const onKeyDown = (event) => {
+            if (!(event.ctrlKey || event.metaKey) || event.shiftKey || event.altKey) return;
+            if (event.key !== "k" && event.key !== "K") return;
+            const tag = event.target?.tagName;
+            if (tag === "INPUT" || tag === "TEXTAREA" || event.target?.isContentEditable) return;
+            event.preventDefault();
+            openDirectConnect();
+        };
+        window.addEventListener("keydown", onKeyDown);
+        return () => window.removeEventListener("keydown", onKeyDown);
+    });
+
     const closeDirectConnectDialog = () => {
         setDirectConnectDialogOpen(false);
         setDirectConnectServer(null);
@@ -844,8 +898,23 @@ export const Servers = () => {
     // and show "Anmeldung abgelehnt." instead of vanishing on a failed login.
     // undefined means the attempt was handed to another dialog (connection
     // reason, tmux picker) -- that counts as done here, not as a failure.
-    const handleDirectConnect = (directIdentity) =>
-        initiateConnection({ server: directConnectServer, directIdentity });
+    const handleDirectConnect = (directIdentity, directTarget) =>
+        initiateConnection({
+            // Without a stored entry the dialog supplies the target, and this
+            // stands in for the entry everywhere the tab needs a name.
+            server: directConnectServer ?? {
+                id: null,
+                name: `${directTarget.host}:${directTarget.port}`,
+                directTarget,
+                // Without a renderer the view falls through to "Unknown
+                // renderer"; "terminal" is the value its switch knows and the
+                // one a plain SSH entry carries, matching the server side.
+                renderer: "terminal",
+                type: "server",
+                config: { ip: directTarget.host, port: directTarget.port, protocol: directTarget.protocol },
+            },
+            directIdentity,
+        });
 
     useEffect(() => {
         if (!servers) return;

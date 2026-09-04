@@ -11,6 +11,9 @@ const { getTmuxSessions } = require("./tmux");
 const { isAllowedSession } = require("../lib/tmux/commands");
 const { resolveIdentity } = require("../utils/identityResolver");
 const { Permission } = require("../permissions/registry");
+const { hasAccountPermission } = require("../utils/permission");
+const OrganizationMember = require("../models/OrganizationMember");
+const { buildTransientEntry } = require("../utils/directTarget");
 const Organization = require('../models/Organization');
 const logger = require("../utils/logger");
 const stateBroadcaster = require("../lib/StateBroadcaster");
@@ -56,31 +59,66 @@ const getRequiredConnectPermission = (entry, type, scriptId) => {
     return ENTRY_TYPE_TO_CONNECT_PERMISSION[entryType] || Permission.CONNECT_SSH;
 };
 
-const createSession = async (accountId, entryId, identityId, connectionReason, type = null, directIdentity = null, tabId = null, browserId = null, scriptId = null, startPath = null, ipAddress = null, userAgent = null, tmuxSession = null, tmuxCreate = false, tmuxWindowId = null) => {
-    const entry = await Entry.findByPk(entryId);
-    if (!entry) {
-        return { code: 404, message: "Entry not found" };
+// A direct connection has no entry, and therefore no organization to read the
+// audit policy from. Reading it from the user's memberships instead is what
+// stops the policy from being sidestepped: a member of an org that demands a
+// connection reason cannot escape it by typing the same host by hand.
+const directConnectionReasonRequired = async (accountId) => {
+    // status "active" like every other membership check in the codebase
+    // (utils/permission.js, permissions/engine.js, controllers/folder.js). An
+    // open invitation is not a membership: the account sees none of that
+    // organization's entries and holds none of its permissions, so its audit
+    // policy does not bind either. Without the filter the client -- which reads
+    // the same policy from the active memberships in the entry tree -- would
+    // never show the reason dialog the server then demands.
+    const memberships = await OrganizationMember.findAll({ where: { accountId, status: "active" } });
+    for (const membership of memberships) {
+        const settings = await getOrganizationAuditSettingsInternal(membership.organizationId);
+        if (settings?.requireConnectionReason) return true;
     }
+    return false;
+};
 
-    const requiredPermission = getRequiredConnectPermission(entry, type, scriptId);
-    const accessResult = await validateEntryAccess(accountId, entry, "Access denied", requiredPermission);
-    if (!accessResult.valid) {
-        return { code: 403, message: "Access denied" };
-    }
+const createSession = async (accountId, entryId, identityId, connectionReason, type = null, directIdentity = null, tabId = null, browserId = null, scriptId = null, startPath = null, ipAddress = null, userAgent = null, tmuxSession = null, tmuxCreate = false, tmuxWindowId = null, directTarget = null) => {
+    // Two ways in. The direct one has no entry behind it, so it cannot lean on
+    // per-entry access rules and carries its own permission instead.
+    let entry;
+    if (directTarget) {
+        if (!(await hasAccountPermission(accountId, Permission.CONNECT_DIRECT))) {
+            return { code: 403, message: "Access denied" };
+        }
 
-    if (directIdentity && entry.type?.startsWith('pve-')) {
-        return { code: 400, message: "Direct connections are not supported for Proxmox entries" };
+        if (!connectionReason && await directConnectionReasonRequired(accountId)) {
+            return { code: 400, message: "Connection reason required" };
+        }
+
+        entry = buildTransientEntry(directTarget);
+    } else {
+        entry = await Entry.findByPk(entryId);
+        if (!entry) {
+            return { code: 404, message: "Entry not found" };
+        }
+
+        const requiredPermission = getRequiredConnectPermission(entry, type, scriptId);
+        const accessResult = await validateEntryAccess(accountId, entry, "Access denied", requiredPermission);
+        if (!accessResult.valid) {
+            return { code: 403, message: "Access denied" };
+        }
+
+        if (directIdentity && entry.type?.startsWith('pve-')) {
+            return { code: 400, message: "Direct connections are not supported for Proxmox entries" };
+        }
+
+        if (entry.organizationId) {
+            const auditSettings = await getOrganizationAuditSettingsInternal(entry.organizationId);
+            if (auditSettings?.requireConnectionReason && !connectionReason) {
+                return { code: 400, message: "Connection reason required" };
+            }
+        }
     }
 
     if (tmuxSession && directIdentity) {
         return { code: 400, message: "tmux sessions are not supported with a direct identity" };
-    }
-
-    if (entry.organizationId) {
-        const auditSettings = await getOrganizationAuditSettingsInternal(entry.organizationId);
-        if (auditSettings?.requireConnectionReason && !connectionReason) {
-            return { code: 400, message: "Connection reason required" };
-        }
     }
 
     const result = await resolveIdentity(entry, identityId, directIdentity, accountId);
@@ -116,7 +154,14 @@ const createSession = async (accountId, entryId, identityId, connectionReason, t
         action: getAuditAction(entry, scriptId),
         resource: scriptId ? RESOURCE_TYPES.SCRIPT : RESOURCE_TYPES.ENTRY,
         resourceId: scriptId || entry.id,
-        details: { connectionReason, ...(scriptId && { serverId: entry.id }) },
+        // A direct connection has no entry to point at, so the target itself is
+        // the record. Without this the audit trail would show an account
+        // connecting somewhere with no way to learn where.
+        details: {
+            connectionReason,
+            ...(scriptId && { serverId: entry.id }),
+            ...(directTarget && { directTarget: `${directTarget.host}:${directTarget.port}`, protocol: directTarget.protocol }),
+        },
         ipAddress,
         userAgent,
     });
@@ -131,9 +176,12 @@ const createSession = async (accountId, entryId, identityId, connectionReason, t
         tmuxCreate: Boolean(tmuxCreate),
         tmuxWindowId: tmuxWindowId || null,
         renderer: type === "sftp" ? "sftp" : entry.renderer,
+        // Carried on the session so ConnectionService can rebuild the same
+        // transient entry later; there is no row to load it back from.
+        directTarget: directTarget || null,
     };
 
-    const session = SessionManager.create(accountId, entryId, configuration, connectionReason, tabId, browserId, auditLogId, entry.organizationId);
+    const session = SessionManager.create(accountId, entryId ?? null, configuration, connectionReason, tabId, browserId, auditLogId, entry.organizationId);
 
     stateBroadcaster.broadcast("CONNECTIONS", { accountId });
     if (entry.organizationId) stateBroadcaster.broadcast("LIVE_SESSIONS", { organizationId: entry.organizationId });
@@ -167,11 +215,13 @@ const getSessions = async (accountId, tabId = null, browserId = null) => {
     const sessions = SessionManager.getAll(accountId, filterTabId, filterBrowserId);
     if (!sessions.length) return [];
 
-    const entryIds = [...new Set(sessions.map(s => s.entryId))];
-    const [entries, snapshots] = await Promise.all([
+    // Direct connections carry entryId null; querying with it in the IN list
+    // is at best pointless and at worst dialect-dependent.
+    const entryIds = [...new Set(sessions.map(s => s.entryId).filter(id => id !== null && id !== undefined))];
+    const [entries, snapshots] = entryIds.length ? await Promise.all([
         Entry.findAll({ where: { id: entryIds }, attributes: ['id', 'organizationId'] }),
         MonitoringSnapshot.findAll({ where: { entryId: entryIds }, attributes: ['entryId', 'osInfo'] }),
-    ]);
+    ]) : [[], []];
 
     const entryMap = Object.fromEntries(entries.map(e => [e.id, e]));
     const snapshotMap = Object.fromEntries(snapshots.map(s => [s.entryId, s.osInfo?.name || null]));
@@ -234,7 +284,11 @@ const getSession = async (accountId, sessionId) => {
         return { code: 403, message: "Access denied" };
     }
 
-    const entry = await Entry.findByPk(session.entryId);
+    // A one-off connection has no row. Answering 404 here made the pop-out
+    // window drop the tab it had just opened.
+    const entry = session.configuration?.directTarget
+        ? buildTransientEntry(session.configuration.directTarget)
+        : await Entry.findByPk(session.entryId);
     if (!entry) {
         return { code: 404, message: "Entry not found" };
     }
@@ -309,12 +363,15 @@ const duplicateSession = async (accountId, sessionId, tabId = null, browserId = 
         return { code: 403, message: "Access denied" };
     }
 
-    const entry = await Entry.findByPk(session.entryId);
-    if (!entry) {
-        return { code: 404, message: "Entry not found" };
-    }
-
+    // Same shape as getSession: a one-off connection has no row, and its target
+    // travels on the session instead.
     const config = session.configuration || {};
+    if (!config.directTarget) {
+        const entry = await Entry.findByPk(session.entryId);
+        if (!entry) {
+            return { code: 404, message: "Entry not found" };
+        }
+    }
     
     return await createSession(
         accountId,
@@ -331,7 +388,8 @@ const duplicateSession = async (accountId, sessionId, tabId = null, browserId = 
         userAgent,
         config.tmuxSession || null,
         false,
-        config.tmuxWindowId || null
+        config.tmuxWindowId || null,
+        config.directTarget || null
     );
 };
 
@@ -380,4 +438,4 @@ const pasteIdentityPassword = async (accountId, sessionId, ipAddress = null, use
     }
 };
 
-module.exports = { createSession, getSessions, getSession, hibernateSession, resumeSession, deleteSession, startSharing, stopSharing, updateSharePermissions, duplicateSession, pasteIdentityPassword };
+module.exports = { createSession, getSessions, getSession, hibernateSession, resumeSession, deleteSession, startSharing, stopSharing, updateSharePermissions, duplicateSession, pasteIdentityPassword, directConnectionReasonRequired };

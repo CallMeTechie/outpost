@@ -1,7 +1,18 @@
 const Joi = require("joi");
 
+// Either a stored entry or a one-off target, never both and never neither.
+// The direct path skips per-entry access rules by construction, so it is gated
+// on its own permission in the controller (connect.direct, off by default).
 module.exports.createSessionValidation = Joi.object({
-    entryId: Joi.number().required(),
+    entryId: Joi.number().optional(),
+    directTarget: Joi.object({
+        // A hostname or an IP. No scheme, no path, no credentials in the string:
+        // those belong in directIdentity, and a URL-shaped host is a sign
+        // something is being smuggled.
+        host: Joi.string().max(255).pattern(/^[A-Za-z0-9._:-]+$/).required(),
+        port: Joi.number().integer().min(1).max(65535).required(),
+        protocol: Joi.string().valid("ssh", "telnet").required(),
+    }).optional(),
     identityId: Joi.number().allow(null).optional(),
     connectionReason: Joi.string().allow(null, '').optional(),
     type: Joi.string().allow(null).optional(),
@@ -26,7 +37,12 @@ module.exports.createSessionValidation = Joi.object({
         sshKey: Joi.string().optional(),
         passphrase: Joi.string().optional(),
     }).optional()
-});
+})
+    .xor("entryId", "directTarget")
+    // A one-off target has no stored identity to point at, and no script or
+    // saved tmux session belongs to it either.
+    .with("directTarget", "directIdentity")
+    .without("directTarget", ["identityId", "scriptId", "tmuxSession", "tmuxCreate", "tmuxWindowId"]);
 
 module.exports.sessionIdValidation = Joi.object({
     id: Joi.string().uuid().required()

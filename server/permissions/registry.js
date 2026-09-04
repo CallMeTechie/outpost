@@ -30,6 +30,7 @@ const Permission = Object.freeze({
     CONNECT_VNC: "connect.vnc",
     CONNECT_PROXMOX: "connect.proxmox",
     CONNECT_TUNNEL: "connect.tunnel",
+    CONNECT_DIRECT: "connect.direct",
     FILES_VIEW: "files.view",
     FILES_UPLOAD: "files.upload",
     FILES_DOWNLOAD: "files.download",
@@ -92,6 +93,7 @@ const PERMISSIONS = [
     { id: P.CONNECT_VNC, scopes: BOTH, category: "connections", default: true, label: "Connect via VNC", description: "Open VNC sessions to servers." },
     { id: P.CONNECT_PROXMOX, scopes: BOTH, category: "connections", default: true, label: "Connect to Proxmox", description: "Open Proxmox VM, container and shell sessions." },
     { id: P.CONNECT_TUNNEL, scopes: BOTH, category: "connections", default: true, label: "Port Forwarding", description: "Create SSH tunnels and port forwards to servers." },
+    { id: P.CONNECT_DIRECT, scopes: [SYSTEM], category: "connections", default: false, label: "Connect Without an Entry", description: "Open a one-off connection to a freely entered host. This bypasses per-entry access rules, so it is off by default." },
 
     { id: P.FILES_VIEW, scopes: BOTH, category: "files", default: true, label: "Browse Files", description: "Open the file manager and browse files over SFTP." },
     { id: P.FILES_UPLOAD, scopes: BOTH, category: "files", default: true, label: "Upload Files", description: "Upload files to servers." },

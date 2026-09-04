@@ -1,6 +1,7 @@
 const Session = require("../models/Session");
 const Account = require("../models/Account");
 const Entry = require("../models/Entry");
+const { buildTransientEntry } = require("../utils/directTarget");
 const Integration = require("../models/Integration");
 const SessionManager = require("../lib/SessionManager");
 const { validateEntryAccess } = require("../controllers/entry");
@@ -114,6 +115,16 @@ const authenticateWebSocket = async (ws, query) => {
         }
         targetEntryId = serverSession.entryId;
         SessionManager.updateActivity(sessionId);
+    }
+
+    // A one-off connection has no entry, and none of the checks below can be
+    // run against one. What stands in their place is already settled: the
+    // session belongs to this account (checked above), and it could only have
+    // been created with the connect.direct permission in the first place. The
+    // target is rebuilt into the same shape the rest of this path expects.
+    const directTarget = serverSession?.configuration?.directTarget;
+    if (directTarget) {
+        return { user, entry: buildTransientEntry(directTarget), session, serverSession };
     }
 
     if (!targetEntryId) {

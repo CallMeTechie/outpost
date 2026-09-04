@@ -4,6 +4,7 @@ const { getProvider, describeProviders, getProviderOAuth, isSubscriptionConnecte
 const { generateCommand } = require("../lib/ai/commandGen");
 const SessionManager = require("../lib/SessionManager");
 const Entry = require("../models/Entry");
+const { buildTransientEntry } = require("../utils/directTarget");
 
 const isConfigured = (settings) => {
     if (!settings?.enabled || !settings.provider || !settings.model) return false;
@@ -141,7 +142,10 @@ module.exports.generateSessionCommand = async (accountId, { sessionId, prompt, s
     if (!session) return { code: 404, message: "Session not found" };
     if (session.accountId !== accountId) return { code: 403, message: "Access denied" };
 
-    const entry = await Entry.findByPk(session.entryId);
+    // A one-off connection has no row; the target rides on the session.
+    const entry = session.configuration?.directTarget
+        ? buildTransientEntry(session.configuration.directTarget)
+        : await Entry.findByPk(session.entryId);
 
     try {
         return await generateCommand({ settings, entry, prompt, shell, rejected });

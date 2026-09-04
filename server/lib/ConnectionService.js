@@ -5,6 +5,7 @@ const { getIdentityCredentials } = require("../controllers/identity");
 const { getIntegrationCredentials } = require("../controllers/integration");
 const { createTicket, getNodeForServer, openLXCConsole } = require("../controllers/pve");
 const Entry = require("../models/Entry");
+const { buildTransientEntry } = require("../utils/directTarget");
 const Integration = require("../models/Integration");
 const { resolveIdentity } = require("../utils/identityResolver");
 const { getScript } = require("../controllers/script");
@@ -160,7 +161,11 @@ const openEngineSession = async (sessionId, sessionType, host, port, params, jum
 const createConnectionForSession = async (sessionId, accountId) => {
     const session = requireSession(sessionId);
 
-    const entry = await Entry.findByPk(session.entryId);
+    // A direct connection has no row to load: the target travels on the session
+    // and is rebuilt into the same shape the protocol handlers expect.
+    const entry = session.entryId
+        ? await Entry.findByPk(session.entryId)
+        : buildTransientEntry(session.configuration.directTarget);
     if (!entry) throw new Error("Entry not found");
 
     const { type, identityId, directIdentity, scriptId } = session.configuration;

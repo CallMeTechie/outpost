@@ -19,6 +19,14 @@
     flex-direction: column
     gap: 0.5rem
 
+    // Host and port (UI-DIRECT-CONNECT-HOST). A sibling of .identity-section,
+    // not a child: the target is not part of the credentials. The port needs
+    // far less room than the address.
+    .host-row
+      display: grid
+      grid-template-columns: 3fr 1fr
+      gap: 1rem
+
     .identity-section
       display: flex
       flex-direction: column
@@ -32,15 +40,17 @@
         &.single-column
           grid-template-columns: 1fr
 
-      .form-group
-        display: flex
-        flex-direction: column
-        gap: 0.3rem
+    // One level up from .identity-section so it covers the host row too. Same
+    // elements as before plus the new ones; nothing loses its styling.
+    .form-group
+      display: flex
+      flex-direction: column
+      gap: 0.3rem
 
-        label
-          font-size: 0.85rem
-          font-weight: 600
-          color: colors.$subtext
+      label
+        font-size: 0.85rem
+        font-weight: 600
+        color: colors.$subtext
   .direct-connect-button
     width: 100%
 
