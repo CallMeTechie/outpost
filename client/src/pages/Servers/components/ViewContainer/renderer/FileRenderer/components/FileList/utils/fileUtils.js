@@ -7,6 +7,9 @@ export const THUMBNAIL_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "bmp"]
 export const PREVIEWABLE_EXTENSIONS = [
     "jpg", "jpeg", "png", "gif", "bmp", "webp", "svg",
     "mp4", "webm", "ogg", "mov", "mp3", "wav", "flac", "m4a", "pdf",
+    // Rendered in a sandboxed iframe through the path-based preview route, so a page's own
+    // images and stylesheets load with it (see panePreviewUrl).
+    "html", "htm",
 ];
 
 export const FILE_ICONS = {

@@ -64,3 +64,21 @@ export const paneContentUrl = (session, sessionToken, { path, preview, thumbnail
 
     return `${routeBase}${suffix}?${query}`;
 };
+
+// The HTML preview address. Unlike paneContentUrl above, the credential and the file path live in
+// the URL PATH: a relative link inside the previewed page resolves against the path, so it lands
+// back on this same route with the token still attached. That is what lets a mockup show its own
+// images and stylesheets without anything rewriting its HTML.
+//
+// SFTP only. OneDrive serves its own content from Microsoft's addresses, where this trick has no
+// meaning; a caller gets null and falls back to the plain preview.
+export const panePreviewUrl = (session, previewToken, remotePath) => {
+    if (paneProvider(session) !== PROVIDER_SFTP) return null;
+    if (typeof previewToken !== "string" || !previewToken) return null;
+    if (typeof remotePath !== "string" || !remotePath) return null;
+
+    // Each segment is encoded on its own so a space or a hash in a directory name survives, while
+    // the separators stay separators. The leading slash is dropped: it is implied by the route.
+    const segments = remotePath.split("/").filter(Boolean).map(encodeURIComponent);
+    return `/api/entries/sftp/preview/${encodeURIComponent(previewToken)}/${segments.join("/")}`;
+};

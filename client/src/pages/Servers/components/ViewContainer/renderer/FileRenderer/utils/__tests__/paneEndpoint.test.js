@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert";
-import { paneProvider, paneEndpoint, paneSocket, paneContentUrl, PROVIDER_SFTP, PROVIDER_ONEDRIVE }
+import { paneProvider, paneEndpoint, paneSocket, paneContentUrl, panePreviewUrl, PROVIDER_SFTP, PROVIDER_ONEDRIVE }
     from "../paneEndpoint.js";
 
 const sftp = { id: "sess-1", type: "sftp", server: { name: "web01" } };
@@ -105,4 +105,34 @@ test("an unusable session yields no content URL, not a half-built one", () => {
     assert.strictEqual(paneContentUrl({ type: "onedrive" }, "tok", { path: "/x" }), null);
     assert.strictEqual(paneContentUrl({ type: "sftp" }, "tok", { path: "/x" }), null);
     assert.strictEqual(paneContentUrl(undefined, "tok", { path: "/x" }), null);
+});
+
+// --- panePreviewUrl: the path-based address the HTML preview uses ---
+
+test("panePreviewUrl puts the token and the path in the URL path, not the query", () => {
+    const url = panePreviewUrl({ id: "sess-1" }, "tok-abc", "/home/marc/mockup/index.html");
+    assert.strictEqual(url, "/api/entries/sftp/preview/tok-abc/home/marc/mockup/index.html");
+    // The whole point: a relative link resolves against this and keeps the token.
+    assert.ok(!url.includes("?"), "no query string, or a relative link would lose the credential");
+});
+
+test("panePreviewUrl encodes each segment but keeps the separators", () => {
+    const url = panePreviewUrl({ id: "s" }, "t", "/var/www/my site/a#b/page.html");
+    assert.strictEqual(url, "/api/entries/sftp/preview/t/var/www/my%20site/a%23b/page.html");
+});
+
+test("panePreviewUrl tolerates a trailing or doubled slash", () => {
+    assert.strictEqual(panePreviewUrl({ id: "s" }, "t", "//srv//x.html"),
+        "/api/entries/sftp/preview/t/srv/x.html");
+});
+
+test("panePreviewUrl refuses anything that would build a broken address", () => {
+    assert.strictEqual(panePreviewUrl({ id: "s" }, "", "/a.html"), null);
+    assert.strictEqual(panePreviewUrl({ id: "s" }, null, "/a.html"), null);
+    assert.strictEqual(panePreviewUrl({ id: "s" }, "t", ""), null);
+    assert.strictEqual(panePreviewUrl({ id: "s" }, "t", null), null);
+});
+
+test("panePreviewUrl declines for OneDrive, which serves its own content", () => {
+    assert.strictEqual(panePreviewUrl({ type: "onedrive", oneDrive: { connectionId: 3 } }, "t", "/a.html"), null);
 });

@@ -12,6 +12,7 @@ const logger = require("../utils/logger");
 const { ZipArchive } = require("archiver");
 const { createEngineSftpAdapter } = require("../lib/fileTransfer/engineSftpAdapter");
 const { archiveFolder, archiveItems } = require("../lib/fileContent/archive");
+const previewTokens = require("../lib/fileContent/previewTokens");
 const {
     THUMB_EXTS, MAX_THUMB_SIZE,
     getExt, getFileName, sanitizeFileName, clampThumbSize, contentHeaders, sendFile,
@@ -80,6 +81,84 @@ const validateRequest = (query) => {
     if (remotePath.split("/").includes("..")) return "Invalid path";
     return null;
 };
+
+/**
+ * POST /entries/sftp/preview-token
+ * @summary Issue a short-lived token for the HTML preview route
+ * @tags SFTP
+ * @param {string} sessionId.query.required - Server session ID
+ * @param {string} sessionToken.query.required - Session authentication token
+ * @return {object} 200 - { token, expiresAt }
+ */
+app.post("/preview-token", async (req, res) => {
+    const { sessionToken, sessionId } = req.query;
+    if (!sessionToken || !sessionId) return res.status(400).json({ error: "Missing session parameters" });
+
+    try {
+        // Authenticated before a token exists: issuing is cheap, and an unauthenticated caller
+        // must not be able to put entries in the map at all.
+        const ctx = await validateSession(sessionToken, sessionId);
+        if (ctx.error) return res.status(ctx.status).json({ error: ctx.error });
+
+        if (!(await checkFilePermission(ctx, Permission.FILES_DOWNLOAD)))
+            return res.status(403).json({ error: "You don't have permission to read files" });
+
+        const issued = previewTokens.issue(sessionId, sessionToken);
+        if (!issued) return res.status(400).json({ error: "Could not issue a preview token" });
+        res.json(issued);
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+/**
+ * GET /entries/sftp/preview/{token}/{path}
+ * @summary Serve a file inline for the HTML preview, with the credential in the path
+ * @description The token and the file path both live in the URL path rather than the query, so a
+ * relative link inside a previewed page - an image, a stylesheet, an image referenced from inside
+ * that stylesheet - resolves to this same route and carries the token with it. That is what makes
+ * a mockup display with its assets intact without rewriting its HTML.
+ * @tags SFTP
+ * @param {string} token.path.required - Preview token from POST /preview-token
+ * @return {file} 200 - File content
+ */
+app.get(/^\/preview\/([^/]+)\/(.*)$/, async (req, res) => {
+    const token = req.params[0];
+    // Express has already percent-decoded each segment; the leading slash is not part of the
+    // route and has to come back, since every SFTP path here is absolute.
+    const remotePath = "/" + (req.params[1] || "");
+
+    try {
+        const resolved = previewTokens.resolve(token);
+        if (!resolved) return res.status(401).json({ error: "Preview link expired" });
+
+        // Re-validated on every request rather than trusted from the token: the session may have
+        // ended, the account may have lost the permission, the connection may be gone. The token
+        // says which session to ask about, never that the answer is still yes.
+        const ctx = await validateSession(resolved.sessionToken, resolved.sessionId);
+        if (ctx.error) return res.status(ctx.status).json({ error: ctx.error });
+
+        if (!(await checkFilePermission(ctx, Permission.FILES_DOWNLOAD)))
+            return res.status(403).json({ error: "You don't have permission to read files" });
+
+        const stats = await ctx.sftpClient.stat(remotePath);
+        // A directory has nothing to render, and the ZIP branch of the download route would turn
+        // a mistyped relative link into an archive download inside an iframe.
+        if (stats.isDir) return res.status(400).json({ error: "Not a file" });
+
+        const fileName = getFileName(remotePath);
+        const headers = contentHeaders({ fileName, size: stats.size, ext: getExt(remotePath), preview: true });
+        for (const [name, value] of Object.entries(headers)) res.header(name, value);
+        // The page is sandboxed in the iframe as well; this stops a browser from being talked into
+        // treating a file as something other than what contentHeaders decided.
+        res.header("X-Content-Type-Options", "nosniff");
+        res.header("Cache-Control", "private, max-age=60");
+
+        await sendFile(ctx.adapter, res, remotePath);
+    } catch (err) {
+        handleError(res, err);
+    }
+});
 
 /**
  * POST /sftp/upload

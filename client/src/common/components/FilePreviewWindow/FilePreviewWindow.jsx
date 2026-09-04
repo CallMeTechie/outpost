@@ -8,8 +8,9 @@ import { tauriDownload } from "@/common/utils/RequestUtil.js";
 import Icon from "@mdi/react";
 import { mdiImage, mdiFileDownload } from "@mdi/js";
 import FloatingWindow, { FloatingWindowAction } from "@/common/components/FloatingWindow";
-import { paneContentUrl } from
+import { paneContentUrl, panePreviewUrl } from
     "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/utils/paneEndpoint.js";
+import { postRequest } from "@/common/utils/RequestUtil.js";
 import "./styles.sass";
 
 export const FilePreviewWindow = ({ file, session, onClose }) => {
@@ -18,6 +19,10 @@ export const FilePreviewWindow = ({ file, session, onClose }) => {
     const { sendToast } = useToast();
     const [fileUrl, setFileUrl] = useState(null);
     const [fileType, setFileType] = useState(null);
+    // html only: the address that carries its credential in the path, so the page's own images
+    // and stylesheets resolve. Null until the token is back, and null for any provider without
+    // such a route -- the render falls back to "cannot preview" rather than to a broken frame.
+    const [htmlUrl, setHtmlUrl] = useState(null);
 
     useEffect(() => {
         if (!file) {
@@ -44,9 +49,35 @@ export const FilePreviewWindow = ({ file, session, onClose }) => {
             video: ["mp4", "webm", "ogg", "mov"],
             audio: ["mp3", "wav", "ogg", "flac", "m4a"],
             pdf: ["pdf"],
+            html: ["html", "htm"],
         };
         setFileType(Object.entries(typeMap).find(([, exts]) => exts.includes(extension))?.[0] || "unknown");
     }, [file, session, sessionToken, sendToast, t]);
+
+    // A token per opened file rather than one kept alive: they last minutes, and a preview window
+    // that sat open overnight should ask again rather than hold a credential all night.
+    useEffect(() => {
+        if (fileType !== "html" || !file || !session?.id) {
+            setHtmlUrl(null);
+            return;
+        }
+
+        let cancelled = false;
+        // sessionToken goes in the query, not a header: /api/entries/sftp is mounted without the
+        // authenticate middleware (server/index.js), and every route under it reads it from there.
+        postRequest(`entries/sftp/preview-token?sessionId=${encodeURIComponent(session.id)}`
+            + `&sessionToken=${encodeURIComponent(sessionToken)}`)
+            .then((data) => {
+                if (cancelled) return;
+                const url = panePreviewUrl(session, data?.token, file);
+                setHtmlUrl(url ? `${getBaseUrl()}${url}` : null);
+            })
+            .catch(() => {
+                if (!cancelled) setHtmlUrl(null);
+            });
+
+        return () => { cancelled = true; };
+    }, [fileType, file, session, sessionToken]);
 
     const downloadFile = async () => {
         if (fileUrl === null) {
@@ -101,6 +132,24 @@ export const FilePreviewWindow = ({ file, session, onClose }) => {
                 return (
                     <div className="preview-content pdf-preview">
                         <iframe src={fileUrl} title={file} />
+                    </div>
+                );
+            case "html":
+                if (!htmlUrl) {
+                    return (
+                        <div className="preview-content unknown-preview">
+                            <Icon path={mdiImage} size={3} />
+                            <h3>{t("servers.fileManager.filePreview.loading")}</h3>
+                            <p>{file.split("/").pop()}</p>
+                        </div>
+                    );
+                }
+                return (
+                    <div className="preview-content html-preview">
+                        {/* Sandboxed: the page may run its own scripts so a mockup behaves like a
+                            mockup, but allow-same-origin is deliberately absent, so it cannot read
+                            this app's storage or cookies. */}
+                        <iframe src={htmlUrl} title={file} sandbox="allow-scripts allow-forms allow-popups" />
                     </div>
                 );
             default:

@@ -406,6 +406,11 @@ module.exports.remove = async (sessionId, options = {}) => {
     // authorized, before either side even opens its auxiliary connection, so a session can hold a
     // slot without ever having a master connection at all.
     try { require("./fileTransfer/registry").releaseSession(sessionId); } catch {}
+    // Same reasoning, same place: a preview token reads files through this session, so it must
+    // not outlive it. It would fail on the next request anyway -- validateSession no longer finds
+    // the session -- but leaving it in the map until its TTL is a credential with nothing behind
+    // it lying around for ten minutes.
+    try { require("./fileContent/previewTokens").revokeForSession(sessionId); } catch {}
 
     const { code = 1000, reason = "Session terminated" } = options;
     // Everything below can throw (finalizeTerminalRecording awaits compression and a DB write,
