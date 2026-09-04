@@ -951,6 +951,8 @@
         "syncDisabled": "Los ajustes del cursor ya no se sincronizarán"
       },
       "input": {
+        "keyBar": "Barra de teclas",
+        "keyBarAuto": "Automático (dispositivos táctiles)",
         "title": "Entrada",
         "description": "Controla cómo funcionan los atajos de teclado dentro del terminal.",
         "smartCopyPaste": "Ctrl+C inteligente",
@@ -1825,6 +1827,7 @@
       }
     },
     "fileManager": {
+      "copiedPath": "Ruta copiada: {{path}}",
       "dropOverlay": "Arrastra y suelta los archivos o carpetas para subirlos",
       "createFile": {
         "title": "Crear archivo",
@@ -1853,6 +1856,7 @@
         "unsavedChanges": "Tienes cambios sin guardar. ¿Estás seguro de que quieres cerrar este archivo?"
       },
       "contextMenu": {
+        "copyPath": "Copiar ruta",
         "open": "Abre",
         "download": "Descarga",
         "rename": "Cambia el nombre de",

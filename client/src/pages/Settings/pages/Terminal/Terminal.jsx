@@ -16,6 +16,7 @@ export const Terminal = () => {
         selectedTheme, setSelectedTheme, selectedFont, setSelectedFont,
         fontSize, setFontSize, cursorStyle, setCursorStyle, cursorBlink, setCursorBlink,
         smartCopyPaste, setSmartCopyPaste,
+        keyBarMode, setKeyBarMode,
         passwordPromptDetection, setPasswordPromptDetection,
         getAvailableThemes, getAvailableFonts, getTerminalTheme, getCursorStyles,
         isGroupSynced, toggleGroupSync,
@@ -61,6 +62,14 @@ export const Terminal = () => {
     const toggleOptions = [
         { label: t("settings.terminal.input.enabled"), value: "true" },
         { label: t("settings.terminal.input.disabled"), value: "false" }
+    ];
+
+    // Three states, not a toggle: the useful default is neither on nor off but "ask the
+    // device", and a two-way switch cannot say that.
+    const keyBarOptions = [
+        { label: t("settings.terminal.input.keyBarAuto"), value: "auto" },
+        { label: t("settings.terminal.input.enabled"), value: "always" },
+        { label: t("settings.terminal.input.disabled"), value: "never" }
     ];
 
     const fontStyle = { fontFamily: selectedFont, fontSize: `${fontSize}px` };
@@ -131,6 +140,7 @@ export const Terminal = () => {
                 <div className="input-settings">
                     {renderFontOption(t("settings.terminal.input.smartCopyPaste"), toggleOptions, smartCopyPaste.toString(), (value) => setSmartCopyPaste(value === "true"))}
                     {renderFontOption(t("settings.terminal.input.passwordPromptDetection"), toggleOptions, passwordPromptDetection.toString(), (value) => setPasswordPromptDetection(value === "true"))}
+                    {renderFontOption(t("settings.terminal.input.keyBar"), keyBarOptions, keyBarMode, setKeyBarMode)}
                 </div>
             ))}
 

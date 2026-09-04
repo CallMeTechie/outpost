@@ -14,6 +14,7 @@ const PATH_TO_GROUP = {
     "terminal.cursorStyle": "terminal.cursor", "terminal.cursorBlink": "terminal.cursor",
     "terminal.smartCopyPaste": "terminal.input",
     "terminal.passwordPromptDetection": "terminal.input",
+    "terminal.keyBar": "terminal.input",
     "terminal.theme": "terminal.theme",
     "theme.mode": "appearance", "theme.accentColor": "appearance", "theme.uiScale": "appearance",
     "files.showThumbnails": "files", "files.defaultViewMode": "files", "files.showHiddenFiles": "files",
@@ -464,6 +465,32 @@ export const PreferencesProvider = ({ children, user, refreshUser }) => {
     const cursorStyle = get("terminal.cursorStyle", "block");
     const cursorBlink = get("terminal.cursorBlink", true);
     const smartCopyPaste = get("terminal.smartCopyPaste", true);
+    // "auto" | "always" | "never". The bar exists for devices with no physical keyboard, so
+    // auto asks the device rather than the viewport: a coarse pointer with no hover is a
+    // touchscreen, and a narrow window on a desktop is not.
+    const keyBarMode = get("terminal.keyBar", "auto");
+
+    // Whether this device has no precise pointer and no hover -- a touchscreen. Not a width
+    // check: a narrow window on a desktop still has a keyboard, and a tablet in landscape
+    // still has none. Kept live, because a convertible changes this without a reload.
+    const [isTouchOnly, setIsTouchOnly] = useState(() =>
+        typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse) and (hover: none)").matches);
+
+    useEffect(() => {
+        const query = window.matchMedia?.("(pointer: coarse) and (hover: none)");
+        if (!query) return;
+        const onChange = (event) => setIsTouchOnly(event.matches);
+        query.addEventListener("change", onChange);
+        return () => query.removeEventListener("change", onChange);
+    }, []);
+
+    const showKeyBar = keyBarMode === "always" || (keyBarMode !== "never" && isTouchOnly);
+
+    // The layouter subtracts this from its own height, so it has to follow the same
+    // decision the JSX makes -- see the note in main.sass.
+    useEffect(() => {
+        document.documentElement.style.setProperty("--key-bar-height", showKeyBar ? "2.75rem" : "0px");
+    }, [showKeyBar]);
     const passwordPromptDetection = get("terminal.passwordPromptDetection", true);
 
     const getTerminalTheme = useCallback((theme) => {
@@ -500,6 +527,7 @@ export const PreferencesProvider = ({ children, user, refreshUser }) => {
     const setCursorStyle = useCallback((style) => set("terminal.cursorStyle", style), [set]);
     const setCursorBlink = useCallback((blink) => set("terminal.cursorBlink", blink), [set]);
     const setSmartCopyPaste = useCallback((enabled) => set("terminal.smartCopyPaste", enabled), [set]);
+    const setKeyBarMode = useCallback((mode) => set("terminal.keyBar", mode), [set]);
     const setPasswordPromptDetection = useCallback((enabled) => set("terminal.passwordPromptDetection", enabled), [set]);
 
     const showThumbnails = get("files.showThumbnails", true);
@@ -535,6 +563,7 @@ export const PreferencesProvider = ({ children, user, refreshUser }) => {
             selectedTheme, setSelectedTheme, selectedFont, setSelectedFont, fontSize, setFontSize,
             cursorStyle, setCursorStyle, cursorBlink, setCursorBlink,
             smartCopyPaste, setSmartCopyPaste,
+            keyBarMode, setKeyBarMode, showKeyBar,
             passwordPromptDetection, setPasswordPromptDetection,
             getCurrentTheme, getTerminalTheme, getAvailableThemes, getAvailableFonts, getCursorStyles,
             isOledMode: themeMode === "oled",

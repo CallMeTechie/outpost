@@ -7,6 +7,7 @@ import {
     mdiInformationOutline, mdiConsole, mdiFileSearchOutline, mdiFilePlus, mdiFolderPlus,
 } from "@mdi/js";
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator, useContextMenu } from "@/common/components/ContextMenu";
+import { copyToClipboard } from "@/common/utils/clipboard.js";
 import { ActionConfirmDialog } from "@/common/components/ActionConfirmDialog/ActionConfirmDialog.jsx";
 import { useTranslation } from "react-i18next";
 import { usePreferences } from "@/common/contexts/PreferencesContext.jsx";
@@ -186,6 +187,16 @@ export const FileList = forwardRef(({
     const handleCreateFile = () => { if (newFileName.trim()) createFile(newFileName.trim()); setCreatingFile(false); };
     const handleCreateFileKeyDown = (e) => e.key === 'Enter' ? (e.preventDefault(), handleCreateFile()) : e.key === 'Escape' && setCreatingFile(false);
     const openFile = () => selectedItem?.size >= 1024 * 1024 ? setBigFileDialogOpen(true) : setCurrentFile(`${path}/${selectedItem?.name}`);
+    // The absolute path of the item, including its name -- what you paste into a terminal or
+    // a script. copyToClipboard handles the plain-http case, where navigator.clipboard does
+    // not exist at all; the toast reports what actually happened rather than assuming success.
+    const handleCopyPath = async (item) => {
+        if (!item) return;
+        const full = getFullPath(path, item.name);
+        if (await copyToClipboard(full)) sendToast(t("common.success"), t("servers.fileManager.copiedPath", { path: full }));
+        else sendToast(t("common.error"), t("servers.fileManager.error.copyFailed"));
+    };
+
     const handlePropertiesClick = (item = null) => { setPropertiesItem(item); setPropertiesDialogOpen(true); };
     const handleEmptyContextMenu = (e) => { if (e.target.closest('.file-item')) return; e.preventDefault(); emptyContextMenu.open(e, { x: e.pageX, y: e.pageY }); };
     const handleOpenTerminal = (targetPath = null) => onOpenTerminal?.(targetPath || path);
@@ -314,6 +325,8 @@ export const FileList = forwardRef(({
                     </>
                 )}
                 {capabilities.content && <ContextMenuItem icon={mdiFileDownload} label={t("servers.fileManager.contextMenu.download")} onClick={() => downloadFile(`${path}/${selectedItem?.name}`)} />}
+                <ContextMenuItem icon={mdiContentCopy} label={t("servers.fileManager.contextMenu.copyPath")}
+                                 onClick={() => handleCopyPath(selectedItem)} />
                 <ContextMenuItem icon={mdiInformationOutline} label={t("servers.fileManager.contextMenu.properties")} onClick={() => handlePropertiesClick(selectedItem)} />
                 {selectedItem?.type === "folder" && capabilities.terminal && (
                     <ContextMenuItem icon={mdiConsole} label={t("servers.fileManager.contextMenu.openTerminal")} onClick={() => handleOpenTerminal(`${path}/${selectedItem.name}`)} />

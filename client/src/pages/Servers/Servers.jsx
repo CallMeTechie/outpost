@@ -1021,6 +1021,7 @@ export const Servers = () => {
                                setOpenFileEditors={setOpenFileEditors}
                                openTerminalFromFileManager={openTerminalFromFileManager}
                                tabIdentities={displayIdentities}
+                               openSFTP={openSFTP}
                                onNewSession={() => openDirectConnect()} />}
             {openFileEditors.map((editor) => (
                 editor.type === "preview" ? (

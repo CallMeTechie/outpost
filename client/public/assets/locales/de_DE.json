@@ -981,6 +981,8 @@
         "syncDisabled": "Die Cursor-Einstellungen werden nicht mehr synchronisiert"
       },
       "input": {
+        "keyBar": "Tastenleiste",
+        "keyBarAuto": "Automatisch (Touch-Geräte)",
         "title": "Eingabe",
         "description": "Lege fest, wie sich Tastenkombinationen im Terminal verhalten.",
         "smartCopyPaste": "Smart Strg+C",
@@ -1903,6 +1905,7 @@
       }
     },
     "fileManager": {
+      "copiedPath": "Pfad kopiert: {{path}}",
       "dropOverlay": "Zieh Dateien oder Ordner per Drag & Drop hinein, um sie hochzuladen",
       "createFile": {
         "title": "Datei erstellen",
@@ -1935,6 +1938,7 @@
         "conflictReload": "Verwerfen und neu laden"
       },
       "contextMenu": {
+        "copyPath": "Pfad kopieren",
         "open": "Öffnen",
         "download": "Herunterladen",
         "rename": "Umbenennen",
@@ -2084,6 +2088,7 @@
         "error": "Ein Fehler ist aufgetreten"
       },
       "error": {
+        "copyFailed": "Kopieren in die Zwischenablage nicht möglich",
         "unusableSession": "Dieses Pane hat keine brauchbare Verbindung.",
         "oneDriveDisconnected": "Dieses Microsoft-Konto ist getrennt. Unter Einstellungen → Konto neu verbinden.",
         "contentUnavailable": "Dateiinhalte stehen für dieses Konto noch nicht zur Verfügung."

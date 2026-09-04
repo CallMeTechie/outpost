@@ -17,11 +17,10 @@
     --mobile-nav-height: calc(3.5rem + env(safe-area-inset-bottom, 0px))
     --content-height: calc(100dvh - var(--safe-area-top))
 
-  // Same query as the key bar itself, so the height the layouter subtracts is
-  // set exactly where the bar is shown - and nowhere else. A width breakpoint
-  // would miss an unfolded foldable, which is a touch device either way.
-  @media (pointer: coarse)
-    --key-bar-height: 2.75rem
+  // --key-bar-height is set from JS (PreferencesContext), not from a media query:
+  // whether the bar is there depends on the device AND on the user's setting, and CSS
+  // cannot see the setting. Two sources disagreed before -- the query reserved room on
+  // touch devices while the JSX rendered the bar everywhere.
 
 body, html
   margin: 0

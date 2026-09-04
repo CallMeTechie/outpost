@@ -981,6 +981,8 @@
         "syncDisabled": "Cursor settings will no longer sync"
       },
       "input": {
+        "keyBar": "On-screen key bar",
+        "keyBarAuto": "Automatic (touch devices)",
         "title": "Input",
         "description": "Control how keyboard shortcuts behave inside the terminal.",
         "smartCopyPaste": "Smart Ctrl+C",
@@ -1952,6 +1954,7 @@
       }
     },
     "fileManager": {
+      "copiedPath": "Path copied: {{path}}",
       "dropOverlay": "Drop files or folders to upload",
       "createFile": {
         "title": "Create File",
@@ -1984,6 +1987,7 @@
         "conflictReload": "Discard mine and reload"
       },
       "contextMenu": {
+        "copyPath": "Copy path",
         "open": "Open",
         "download": "Download",
         "rename": "Rename",
@@ -2133,6 +2137,7 @@
         "error": "An error occurred"
       },
       "error": {
+        "copyFailed": "Could not copy to the clipboard",
         "unusableSession": "This pane has no usable connection.",
         "oneDriveDisconnected": "This Microsoft account is disconnected. Reconnect it under Settings → Account.",
         "contentUnavailable": "File contents are not available for this account yet."

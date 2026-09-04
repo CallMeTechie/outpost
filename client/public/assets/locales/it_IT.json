@@ -951,6 +951,8 @@
         "syncDisabled": "Le impostazioni del cursore non si sincronizzano più"
       },
       "input": {
+        "keyBar": "Barra dei tasti",
+        "keyBarAuto": "Automatico (dispositivi touch)",
         "title": "Input",
         "description": "Controlla come funzionano le scorciatoie da tastiera all’interno del terminale.",
         "smartCopyPaste": "Ctrl+C intelligente",
@@ -1825,6 +1827,7 @@
       }
     },
     "fileManager": {
+      "copiedPath": "Percorso copiato: {{path}}",
       "dropOverlay": "Trascina i file o le cartelle per caricarli",
       "createFile": {
         "title": "Crea file",
@@ -1853,6 +1856,7 @@
         "unsavedChanges": "Le modifiche non sono state salvate. Sei sicuro di voler chiudere questo file?"
       },
       "contextMenu": {
+        "copyPath": "Copia percorso",
         "open": "Aprire",
         "download": "Scarica",
         "rename": "Rinomina",

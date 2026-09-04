@@ -951,6 +951,8 @@
         "syncDisabled": "Les paramètres du curseur ne seront plus synchronisés"
       },
       "input": {
+        "keyBar": "Barre de touches",
+        "keyBarAuto": "Automatique (appareils tactiles)",
         "title": "Saisie",
         "description": "Gère le fonctionnement des raccourcis clavier dans le terminal.",
         "smartCopyPaste": "Ctrl+C intelligent",
@@ -1825,6 +1827,7 @@
       }
     },
     "fileManager": {
+      "copiedPath": "Chemin copié : {{path}}",
       "dropOverlay": "Glisse-dépose tes fichiers ou dossiers pour les mettre en ligne",
       "createFile": {
         "title": "Créer un fichier",
@@ -1853,6 +1856,7 @@
         "unsavedChanges": "Tu as des modifications non enregistrées. Es-tu sûr de vouloir fermer ce fichier ?"
       },
       "contextMenu": {
+        "copyPath": "Copier le chemin",
         "open": "Ouvrir",
         "download": "Télécharger",
         "rename": "Renommer",

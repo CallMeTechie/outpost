@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback, useContext } from "react";
 import { useTranslation } from "react-i18next";
 import Icon from "@mdi/react";
-import { mdiArrowCollapseAll, mdiClose, mdiViewSplitVertical, mdiChevronLeft, mdiChevronRight, mdiSleep, mdiOpenInNew, mdiShareVariant, mdiLinkVariant, mdiPencil, mdiEye, mdiCloseCircle, mdiContentDuplicate, mdiNoteEditOutline, mdiRenameBox } from "@mdi/js";
+import { mdiArrowCollapseAll, mdiClose, mdiViewSplitVertical, mdiChevronLeft, mdiChevronRight, mdiSleep, mdiFolderOpen, mdiOpenInNew, mdiShareVariant, mdiLinkVariant, mdiPencil, mdiEye, mdiCloseCircle, mdiContentDuplicate, mdiNoteEditOutline, mdiRenameBox } from "@mdi/js";
 import { useDrag, useDrop } from "react-dnd";
 import TerminalActionsMenu from "../TerminalActionsMenu";
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator, useContextMenu } from "@/common/components/ContextMenu";
@@ -25,6 +25,7 @@ const DraggableTab = ({
     hibernateSession,
     duplicateSession,
     openNotes,
+    openSFTP,
     renameSession,
     index,
     moveTab,
@@ -54,6 +55,12 @@ const DraggableTab = ({
     const canHibernate = !isLocal && !isJoined;
     const canDuplicate = !isLocal && !isJoined;
     const canOpenNotes = !isLocal && !isJoined && !!server?.id && !session.scriptId;
+    // SFTP opens a second session on the same entry, so it needs a real entry and an
+    // SSH one at that -- the file browser speaks SFTP over the same connection. It is
+    // offered on an SFTP tab too: a second file browser on the same host is useful, and
+    // that is the one thing this menu could not do before.
+    const canOpenSFTP = !isLocal && !isJoined && !!server?.id && !session.scriptId
+        && (server?.protocol === "ssh" || session.type === "sftp") && !!openSFTP;
     const isSharing = !!session.shareId;
     // Looked up by session id, not counted by position in the tab strip — the strip and the grid
     // can list sessions in different orders, and a lookup keeps them from disagreeing.
@@ -241,6 +248,13 @@ const DraggableTab = ({
                         <ContextMenuSeparator />
                     </>
                 )}
+                {canOpenSFTP && (
+                    <ContextMenuItem
+                        icon={mdiFolderOpen}
+                        label={t("servers.contextMenu.openSFTP")}
+                        onClick={() => openSFTP(server.id, server.identities?.[0] ? { id: server.identities[0] } : null)}
+                    />
+                )}
                 {canOpenNotes && (
                     <ContextMenuItem
                         icon={mdiNoteEditOutline}
@@ -283,6 +297,7 @@ const DraggableTab = ({
 
 export const ServerTabs = ({
     onNewSession,
+    openSFTP,
     activeSessions,
     setActiveSessionId,
     activeSessionId,
@@ -434,7 +449,7 @@ export const ServerTabs = ({
                             <DraggableTab key={session.id} session={session} server={session.server} index={index} moveTab={moveTab}
                                 activeSessionId={activeSessionId} setActiveSessionId={setActiveSessionId}
                                 closeSession={closeSession} hibernateSession={hibernateSession} duplicateSession={duplicateSession}
-                                openNotes={openNotes} renameSession={renameSession}
+                                openNotes={openNotes} renameSession={renameSession} openSFTP={openSFTP}
                                 progress={sessionProgress[session.id] || 0}
                                 paneColorSessions={paneColorSessions}
                                 identity={tabIdentities[session.id]}

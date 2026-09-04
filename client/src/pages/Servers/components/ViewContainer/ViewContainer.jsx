@@ -11,6 +11,7 @@ import NotesRenderer from "@/pages/Servers/components/ViewContainer/renderer/Not
 import Icon from "@mdi/react";
 import { mdiFullscreenExit } from "@mdi/js";
 import { useTranslation } from "react-i18next";
+import { usePreferences } from "@/common/contexts/PreferencesContext.jsx";
 import { getTitleBarHeight } from "@/common/utils/TauriUtil.js";
 import { useTauriWindow } from "@/common/hooks/useTauriWindow.js";
 import { useBodyClass } from "@/common/hooks/useBodyClass.js";
@@ -52,6 +53,7 @@ const loadBtnPosition = () => {
 
 export const ViewContainer = ({
                                   onNewSession,
+                                  openSFTP,
                                   activeSessions,
                                   activeSessionId,
                                   setActiveSessionId,
@@ -102,6 +104,7 @@ export const ViewContainer = ({
     const [titleBarTabsSlot, setTitleBarTabsSlot] = useState(null);
     const appWindow = useTauriWindow();
     const { t } = useTranslation();
+    const { showKeyBar } = usePreferences();
 
     useEffect(() => {
         setTitleBarTabsSlot(document.getElementById("titlebar-tabs-slot"));
@@ -710,7 +713,7 @@ export const ViewContainer = ({
                     onFullscreenToggle={toggleFullscreenMode}
                     openNotes={openNotes} renameSession={renameSession}
                     hibernateSession={hibernateSession} duplicateSession={duplicateSession}
-                    onNewSession={onNewSession} />
+                    onNewSession={onNewSession} openSFTP={openSFTP} />
     );
 
     return (
@@ -738,7 +741,7 @@ export const ViewContainer = ({
             )}
             {titleBarTabsSlot ? createPortal(serverTabs, titleBarTabsSlot) : serverTabs}
 
-            {activeSession && isTerminalPane && (
+            {activeSession && isTerminalPane && showKeyBar && (
                 <TerminalKeyBar latch={modifierLatch}
                                 onToggleModifier={toggleModifier}
                                 onSendKey={sendBarKey}
