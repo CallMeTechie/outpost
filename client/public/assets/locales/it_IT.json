@@ -2108,15 +2108,9 @@
     }
   },
   "welcome": {
-    "whereNext": "Dove andiamo?",
-    "noneYet": "Nessuna connessione finora.",
+    "lead": "Collegati a uno dei tuoi server — o aggiungine uno nuovo.",
     "resume": "in pausa · riprendi",
     "emptyHint": "Alla prima connessione le tue destinazioni compaiono qui.",
-    "greeting": {
-      "morning": "Buongiorno",
-      "afternoon": "Buon pomeriggio",
-      "evening": "Buonasera"
-    },
     "hibernated": "In pausa",
     "hello": "Ciao",
     "defaultName": "Utente",

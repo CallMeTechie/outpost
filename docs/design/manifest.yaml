@@ -175,22 +175,22 @@ screens:
         data_source: "GET /entries/recent?limit=5"
         semantic_anchor:
           means: >
-            Leerzustand ohne offene Session — eine Begrüßung mit Namen, die zuletzt genutzten
-            Verbindungen als Kacheln (je eine Kennfarbe aus der Eintrags-ID, nicht die
-            Pane-Farbe eines Tabs) und darunter die Einstiege Direkt verbinden, Server anlegen,
-            SSH-Config importieren, Gerät verbinden, Apps laden. Schlafende Sitzungen erscheinen
-            als Kachel und werden fortgesetzt statt neu verbunden. Positiv, handlungsorientiert,
-            kein Marketing.
+            Leerzustand ohne offene Session — links die Begrüßung mit Namen und die Einstiege
+            (Schnellverbindung, Server anlegen, Gerät verbinden, Apps herunterladen), rechts die
+            zuletzt genutzten Verbindungen als Zeilen mit Farbfeld (Kennfarbe aus der Eintrags-ID,
+            nicht die Pane-Farbe eines Tabs), Name, Alter und Protokoll-Badge. Schlafende
+            Sitzungen erscheinen in der Liste und werden fortgesetzt statt neu verbunden.
+            Positiv, handlungsorientiert, kein Marketing.
           concept: recent_connection
           aliases: [recent, history]
           not: [all_servers, marketing]
           cardinality: many
-          example: "nas · pihole · proxmox · build-01 · vpn · Desktop VM"
+          example: "nas · pihole · proxmox · build-01 · vpn"
           empty_means: Noch nie verbunden — Erste Schritte zeigen.
         states:
           - { id: default }
-          - { id: loading, copy: "Platzhalter-Kacheln, kein Spinner — die Kachelreihe behält ihre Form." }
-          - { id: empty, copy: "Sobald du dich zum ersten Mal verbindest, stehen die Ziele hier." }
+          - { id: loading, copy: "Platzhalter-Zeilen, kein Spinner — die Spalte behält ihre Höhe." }
+          - { id: empty, copy: "Noch nichts verbunden. Sobald du dich zum ersten Mal verbindest, stehen die Ziele hier." }
         locators:
           web: "[data-ui-id='UI-SERVERS-WELCOME']"
 

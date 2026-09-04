@@ -2108,15 +2108,9 @@
     }
   },
   "welcome": {
-    "whereNext": "Kam dál?",
-    "noneYet": "Zatím žádné připojení.",
+    "lead": "Připoj se k některému ze svých serverů — nebo přidej nový.",
     "resume": "spí · pokračovat",
     "emptyHint": "Jakmile se poprvé připojíš, tvoje cíle se objeví tady.",
-    "greeting": {
-      "morning": "Dobré ráno",
-      "afternoon": "Dobrý den",
-      "evening": "Dobrý večer"
-    },
     "hibernated": "Spí",
     "hello": "Ahoj",
     "defaultName": "Uživatel",

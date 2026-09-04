@@ -2108,15 +2108,9 @@
     }
   },
   "welcome": {
-    "whereNext": "去哪儿？",
-    "noneYet": "还没有连接。",
+    "lead": "连接到你的某台服务器 — 或添加一台新的。",
     "resume": "休眠中 · 继续",
     "emptyHint": "首次连接后，你的目标会显示在这里。",
-    "greeting": {
-      "morning": "早上好",
-      "afternoon": "下午好",
-      "evening": "晚上好"
-    },
     "hibernated": "休眠中",
     "hello": "你好",
     "defaultName": "用户",

@@ -2108,15 +2108,9 @@
     }
   },
   "welcome": {
-    "whereNext": "要去哪裡？",
-    "noneYet": "尚無連線。",
+    "lead": "連線到你的某台伺服器 — 或新增一台。",
     "resume": "休眠中 · 繼續",
     "emptyHint": "首次連線後，你的目標會顯示在這裡。",
-    "greeting": {
-      "morning": "早安",
-      "afternoon": "午安",
-      "evening": "晚安"
-    },
     "hibernated": "休眠中",
     "hello": "您好",
     "defaultName": "使用者",

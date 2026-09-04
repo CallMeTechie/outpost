@@ -1,159 +1,214 @@
 @use "@/common/styles/colors"
 @use "@/common/styles/breakpoints"
 
-// The artboard's welcome screen (docs/design/mockups/ui-servers.html, .welcome):
-// a greeting, the last targets as cards, and the ways in as one quiet row.
+// The welcome screen, per docs/design/mockups/ui-servers.html (.welcome): the greeting
+// and the actions on the left, the recent connections on the right, both centred on the
+// surface. Two earlier attempts replaced this with lists of small grey boxes; what makes
+// it work is the size -- a 1.8rem greeting, real buttons, and rows big enough to look
+// like the click targets they are.
 .welcome-panel
+  user-select: none
+  overflow-y: auto
   flex: 1
   display: flex
-  align-items: flex-start
-  justify-content: center
-  padding: 2rem 1.5rem
-  background-color: colors.$background
-  overflow: auto
-
-.welcome
-  width: 100%
-  max-width: 52rem
-  display: flex
-  flex-direction: column
-  gap: 1.5rem
-
-  h3
-    margin: 0
-    font-size: 1.25rem
-    font-weight: 700
-    color: colors.$white
-
-    span
-      color: colors.$subtext
-      font-weight: 500
-
-// Six targets at a glance. Each carries a colour of its own, derived from the entry
-// so it is the same one every time -- an identity colour, not the pane colour a tab
-// gets from its position in the grid (see entryColorFor).
-.targets
-  display: grid
-  grid-template-columns: repeat(3, 1fr)
-  gap: 0.75rem
+  align-items: center
+  justify-content: space-around
+  padding: 2rem
+  gap: 2rem
 
   @media (max-width: breakpoints.$tablet)
-    grid-template-columns: repeat(2, 1fr)
-
-  @media (max-width: breakpoints.$mobile)
-    grid-template-columns: 1fr
-
-  .card
-    display: flex
     flex-direction: column
-    gap: 0.5rem
-    min-height: 5rem
-    padding: 0.75rem
-    border: 1px solid colors.$gray
-    border-top: 2px solid var(--pane, colors.$gray-strong)
-    border-radius: 0.5rem
-    background-color: colors.$lighter-background
-    cursor: pointer
-    outline: none
-    transition: background-color 0.12s ease
+    align-items: stretch
+    justify-content: flex-start
 
-    &:hover
-      background-color: colors.$gray-full
+  .welcome-left
+    width: 32%
+    min-width: 17.5rem
 
-    &:focus-visible
-      outline: 2px solid colors.$primary
-      outline-offset: -2px
+    @media (max-width: breakpoints.$tablet)
+      width: 100%
 
-    &.sleeping
-      opacity: 0.65
+    h1
+      margin: 0
+      font-size: 1.8rem
+      line-height: 1.2
 
-      .when
-        color: colors.$warning
+      span
+        color: colors.$primary
 
-    .top
+    p
+      margin: 0.7rem 0 1.5rem 0
+      color: colors.$subtext
+      font-size: 1rem
+      font-weight: 600
+      line-height: 1.5
+
+    .welcome-buttons
+      display: flex
+      gap: 0.75rem
+      flex-wrap: wrap
+
+  .welcome-right
+    width: 42%
+    max-width: 30rem
+    min-width: 20rem
+
+    @media (max-width: breakpoints.$tablet)
+      width: 100%
+      max-width: none
+      min-width: 0
+
+  .recent-connections
+    max-width: 30rem
+
+    .section-header
       display: flex
       align-items: center
       gap: 0.5rem
-      min-width: 0
-
-    .dot
-      width: 0.4rem
-      height: 0.4rem
-      border-radius: 50%
-      background: colors.$gray-strong
-      flex: none
-
-      &.on
-        background: colors.$success
-
-    .host
-      font-family: var(--font-mono)
-      font-size: 0.875rem
-      color: colors.$white
-      min-width: 0
-      overflow: hidden
-      text-overflow: ellipsis
-      white-space: nowrap
-
-    .kind
-      margin-left: auto
-      flex: none
-      font-family: var(--font-mono)
-      font-size: 0.75rem
-      color: var(--pane, colors.$subtext)
-
-    .when
-      margin-top: auto
-      font-size: 0.75rem
-      font-weight: 500
+      margin-bottom: 1rem
       color: colors.$subtext
 
-  // Keeps the row's shape while the request is in flight, so nothing below it jumps
-  // when the cards arrive.
-  .card.skeleton
-    background-color: colors.$dark-gray
-    border-top-color: colors.$gray
-    cursor: default
+      svg
+        width: 1.25rem
+        height: 1.25rem
 
-.welcome-empty
-  margin: 0
-  padding: 1rem
-  border: 1px dashed colors.$gray-strong
-  border-radius: 0.5rem
-  font-size: 0.8125rem
-  color: colors.$subtext
+      h3
+        margin: 0
+        font-size: 0.9rem
+        font-weight: 600
+        color: colors.$white
 
-// Small and in one row: after the first day nobody needs them prominent, but this
-// screen is the only place some of these dialogs open from.
-.ways
-  display: flex
-  gap: 0.5rem
-  flex-wrap: wrap
+    .recent-list
+      display: flex
+      flex-direction: column
+      gap: 0.5rem
 
-  .w
+  .recent-item
     display: flex
     align-items: center
-    height: 2rem
-    padding: 0 0.75rem
-    border: 1px solid colors.$gray
+    gap: 0.75rem
+    padding: 0.75rem
+    background-color: colors.$dark-gray
+    border: 1px solid transparent
     border-radius: 0.5rem
-    background: none
-    font-family: inherit
-    font-size: 0.75rem
-    font-weight: 500
-    color: colors.$subtext
     cursor: pointer
-    transition: background-color 0.12s ease
+    outline: none
+    transition: background-color 0.15s ease, border-color 0.15s ease
 
-    &:hover
-      background-color: colors.$dark-gray
-      color: colors.$white
+    &:hover, &:focus-visible
+      background-color: colors.$gray
+      border-color: colors.$gray
+
+      .play-icon
+        opacity: 1
+        transform: translateX(0)
 
     &:focus-visible
-      outline: 2px solid colors.$primary
-      outline-offset: 1px
+      border-color: colors.$primary
 
-    &.primary
+    // Placeholder while the request is in flight: same height as a real row, so the
+    // column does not resize when the answer arrives.
+    &.skeleton
+      height: 3.5rem
+      cursor: default
+      background-color: colors.$dark-gray
+      opacity: 0.5
+
+    &.hibernated
       border-color: colors.$primary
       background-color: colors.$primary-opacity
+
+      &:hover
+        background-color: color-mix(in srgb, colors.$primary 20%, transparent)
+
+    .item-icon
+      width: 2rem
+      height: 2rem
+      display: flex
+      align-items: center
+      justify-content: center
+      border-radius: 0.3rem
+      flex-shrink: 0
+
+      svg
+        width: 1.1rem
+        height: 1.1rem
+        color: white
+
+    .item-info
+      flex: 1
+      min-width: 0
+      display: flex
+      flex-direction: column
+      gap: 0.15rem
+
+      .item-name
+        font-weight: 600
+        font-size: 0.9rem
+        color: colors.$white
+        white-space: nowrap
+        overflow: hidden
+        text-overflow: ellipsis
+
+      .item-meta
+        font-size: 0.75rem
+        color: colors.$subtext
+
+        .hibernated-badge
+          display: inline-flex
+          align-items: center
+          gap: 0.25rem
+          color: colors.$primary
+          font-weight: 600
+
+          svg
+            width: 0.7rem
+            height: 0.7rem
+
+    .item-action
+      display: flex
+      align-items: center
+      gap: 0.5rem
+      flex-shrink: 0
+
+      .protocol-badge
+        font-size: 0.7rem
+        font-weight: 600
+        padding: 0.2rem 0.5rem
+        background-color: colors.$gray
+        border-radius: 0.25rem
+        color: colors.$subtext
+
+      .play-icon
+        width: 1rem
+        height: 1rem
+        color: colors.$primary
+        opacity: 0
+        transform: translateX(-4px)
+        transition: opacity 0.15s ease, transform 0.15s ease
+
+  .empty-state
+    display: flex
+    flex-direction: column
+    align-items: center
+    text-align: center
+    gap: 0.5rem
+    padding: 2rem 1rem
+    color: colors.$subtext
+
+    svg
+      width: 2.5rem
+      height: 2.5rem
+      color: colors.$gray-strong
+
+    h3
+      margin: 0
+      font-size: 0.95rem
+      font-weight: 600
       color: colors.$white
+
+    p
+      margin: 0
+      font-size: 0.85rem
+      line-height: 1.5
+      max-width: 22rem

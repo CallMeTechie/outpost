@@ -2108,15 +2108,9 @@
     }
   },
   "welcome": {
-    "whereNext": "On va où ?",
-    "noneYet": "Aucune connexion pour l'instant.",
+    "lead": "Connecte-toi à l'un de tes serveurs — ou ajoutes-en un.",
     "resume": "en veille · reprendre",
     "emptyHint": "Dès ta première connexion, tes cibles apparaissent ici.",
-    "greeting": {
-      "morning": "Bonjour",
-      "afternoon": "Bon après-midi",
-      "evening": "Bonsoir"
-    },
     "hibernated": "En veille",
     "hello": "Bonjour",
     "defaultName": "Utilisateur",

@@ -2290,15 +2290,9 @@
     }
   },
   "welcome": {
-    "whereNext": "Where to?",
-    "noneYet": "Nothing connected yet.",
+    "lead": "Connect to one of your servers — or add a new one.",
     "resume": "sleeping · resume",
     "emptyHint": "Once you connect for the first time, your targets show up here.",
-    "greeting": {
-      "morning": "Good morning",
-      "afternoon": "Good afternoon",
-      "evening": "Good evening"
-    },
     "hibernated": "Sleeping",
     "hello": "Hi",
     "defaultName": "User",

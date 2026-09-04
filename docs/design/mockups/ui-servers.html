@@ -197,34 +197,33 @@
 	.focus-toggle-float .tbtn { border: 1px solid var(--accent-color); border-radius: var(--radius-sm); height: 2rem; background: var(--primary-opacity); color: var(--text); box-shadow: none; }
 
 	/* Willkommen */
-	.welcome-wrap { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: var(--space-8) var(--space-6); background: var(--background); overflow: hidden; }
-	.welcome { width: 100%; max-width: 52rem; display: flex; flex-direction: column; gap: var(--space-6); }
-	.welcome h3 { margin: 0; font: var(--type-title); }
-	.welcome h3 span { color: var(--subtext); font-weight: 500; }
-	/* Six targets at a glance. Each carries a colour of its own, derived from the entry so it
-	   stays the same one every time -- an identity colour, not the pane colour a tab gets from
-	   its position in the grid. */
-	.targets { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
-	.targets .card { display: flex; flex-direction: column; gap: var(--space-2); min-height: 5rem; padding: var(--space-3);
-		border: 1px solid var(--gray); border-top: 2px solid var(--pane); border-radius: var(--radius-md); background: var(--lighter-background); }
-	.targets .card.hover { background: var(--gray-full); }
-	.targets .card.focus-visible { outline: 2px solid var(--accent-color); outline-offset: -2px; }
-	.targets .card .top { display: flex; align-items: center; gap: var(--space-2); }
-	.targets .card .dot { width: 0.4rem; height: 0.4rem; border-radius: 50%; background: var(--gray-strong); flex: none; }
-	.targets .card .dot.on { background: var(--success); }
-	.targets .card .host { font: var(--type-mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.targets .card .kind { margin-left: auto; font: var(--type-caption); font-family: ui-monospace, "JetBrains Mono", monospace; color: var(--pane); }
-	.targets .card .when { margin-top: auto; font: var(--type-caption); color: var(--subtext); }
-	.targets .card.sleeping { opacity: 0.65; }
-	.targets .card.sleeping .when { color: var(--warning); }
-	.targets .card.skeleton { background: var(--dark-gray); border-top-color: var(--gray); }
-	/* The ways in, small and in one row: after the first day nobody needs them prominent. */
-	.ways { display: flex; gap: var(--space-2); flex-wrap: wrap; }
-	.ways .w { display: flex; align-items: center; gap: var(--space-2); height: 2rem; padding: 0 var(--space-3);
-		border: 1px solid var(--gray); border-radius: var(--radius-md); font: var(--type-caption); color: var(--subtext); }
-	.ways .w.primary { border-color: var(--accent-color); background: var(--primary-opacity); color: var(--text); }
-	.ways .w.hover { background: var(--dark-gray); color: var(--text); }
-	.welcome-empty { padding: var(--space-4); border: 1px dashed var(--gray-strong); border-radius: var(--radius-md); color: var(--subtext); }
+	.welcome-wrap { flex: 1; display: flex; align-items: center; justify-content: space-around; gap: var(--space-6); padding: var(--space-8); background: var(--background); overflow: hidden; }
+	.welcome-left { width: 32%; min-width: 17.5rem; }
+	.welcome-left h1 { margin: 0; font-size: 1.8rem; font-weight: 700; line-height: 1.2; }
+	.welcome-left h1 span { color: var(--primary); }
+	.welcome-left p { margin: var(--space-2) 0 var(--space-6); color: var(--subtext); font-size: 1rem; font-weight: 600; line-height: 1.5; }
+	.welcome-left .btns { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+	.welcome-right { width: 42%; max-width: 30rem; min-width: 20rem; }
+	.sec-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-4); color: var(--subtext); }
+	.sec-head b { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+	.recent { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+	/* Rows big enough to read as the click targets they are: a colour field carrying one colour
+	   per target, the name over its age, the protocol as a badge, and a play arrow that flies in
+	   on hover -- that last one is what makes the row feel clickable. */
+	.recent li { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3);
+		background: var(--dark-gray); border: 1px solid transparent; border-radius: var(--radius-md); }
+	.recent li.hover { background: var(--gray); border-color: var(--gray); }
+	.recent li.hover .play { opacity: 1; }
+	.recent li .ico { width: 2rem; height: 2rem; border-radius: 0.3rem; background: var(--tint); flex: none; }
+	.recent li .info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+	.recent li .nm { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+	.recent li .ag { font: var(--type-caption); color: var(--subtext); }
+	.recent li .badge { font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.5rem; background: var(--gray); border-radius: var(--radius-sm); color: var(--subtext); }
+	.recent li .play { color: var(--primary); opacity: 0; }
+	.recent li.sleeping { border-color: var(--primary); background: var(--primary-opacity); }
+	.recent li.sleeping .ag { color: var(--primary); font-weight: 600; }
+	.recent li.skeleton { height: 3.5rem; opacity: 0.5; }
+	.welcome-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-2); padding: var(--space-8) var(--space-4); color: var(--subtext); }
 </style>
 </head>
 <body>
@@ -389,7 +388,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
      Tab-Leiste leer (UI-SERVERS-TABS empty), Aktionen ohne Ziel (disabled)
      =================================================================== -->
 <div class="block">
-	<h2>Willkommen <small>keine offene Session · zuletzt genutzte Ziele als Kacheln aus GET /entries/recent?limit=6</small></h2>
+	<h2>Willkommen <small>keine offene Session · fünf letzte Verbindungen aus GET /entries/recent?limit=5</small></h2>
 	<div class="frame workspace welcome">
 
 		<aside class="list">
@@ -422,19 +421,14 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 		<main class="view" data-ui-id="UI-SERVERS-WELCOME" aria-label="Willkommen">
 			<section data-ui-state="default">
 				<div class="welcome-wrap">
-					<div class="welcome">
-						<h3>Guten Abend, Marc. <span>Wo geht&rsquo;s weiter?</span></h3>
-						<div class="targets">
-							<div class="card focus-visible" style="--pane:#2A72C9"><div class="top"><span class="dot on"></span><span class="host">nas</span><span class="kind">SSH</span></div><span class="when">vor 12 Minuten</span></div>
-							<div class="card hover" style="--pane:#A8741A"><div class="top"><span class="dot on"></span><span class="host">pihole</span><span class="kind">SFTP</span></div><span class="when">vor 3 Stunden</span></div>
-							<div class="card sleeping" style="--pane:#8E3FD4"><div class="top"><span class="dot"></span><span class="host">proxmox</span><span class="kind">SSH</span></div><span class="when">schl&auml;ft &middot; fortsetzen</span></div>
-							<div class="card" style="--pane:#C25218"><div class="top"><span class="dot"></span><span class="host">build-01</span><span class="kind">SSH</span></div><span class="when">gestern</span></div>
-							<div class="card" style="--pane:#12908C"><div class="top"><span class="dot"></span><span class="host">vpn</span><span class="kind">SSH</span></div><span class="when">vor 6 Tagen</span></div>
-							<div class="card" style="--pane:#C13B94"><div class="top"><span class="dot"></span><span class="host">Desktop&nbsp;VM</span><span class="kind">RDP</span></div><span class="when">letzte Woche</span></div>
-						</div>
-						<div class="ways">
-							<span class="w primary">Direkt verbinden</span><span class="w">Server anlegen</span><span class="w">SSH-Config importieren</span><span class="w">Ger&auml;t verbinden</span><span class="w">Apps laden</span>
-						</div>
+					<div class="welcome-left">
+						<h1>Hallo, <span>Marc Backes</span>!</h1>
+						<p>Verbinde dich mit einem deiner Server &mdash; oder lege einen neuen an.</p>
+						<div class="btns"><span class="btn primary">Schnellverbindung</span><span class="btn">Server anlegen</span><span class="btn">Ger&auml;t verbinden</span><span class="btn">Apps herunterladen</span></div>
+					</div>
+					<div class="welcome-right">
+						<div class="sec-head"><b>Neueste Verbindungen</b></div>
+						<ul class="recent"><li class=""><span class="ico" style="--tint:#2A72C9"></span><span class="info"><span class="nm">nas</span><span class="ag">vor 12 Minuten</span></span><span class="badge">SSH</span><span class="play">&#9654;</span></li><li class="hover"><span class="ico" style="--tint:#A8741A"></span><span class="info"><span class="nm">pihole</span><span class="ag">vor 3 Stunden</span></span><span class="badge">SFTP</span><span class="play">&#9654;</span></li><li class="sleeping"><span class="ico" style="--tint:#8E3FD4"></span><span class="info"><span class="nm">proxmox</span><span class="ag">schl&auml;ft &middot; fortsetzen</span></span><span class="badge">SSH</span><span class="play">&#9654;</span></li><li class=""><span class="ico" style="--tint:#C25218"></span><span class="info"><span class="nm">build-01</span><span class="ag">gestern</span></span><span class="badge">SSH</span><span class="play">&#9654;</span></li><li class=""><span class="ico" style="--tint:#12908C"></span><span class="info"><span class="nm">vpn</span><span class="ag">vor 6 Tagen</span></span><span class="badge">SSH</span><span class="play">&#9654;</span></li></ul>
 					</div>
 				</div>
 			</section>
@@ -585,26 +579,22 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 			<div data-ui-id="UI-SERVERS-WELCOME" aria-label="Willkommen">
 				<section data-ui-state="empty">
 					<div class="welcome-wrap" style="padding: var(--space-6);">
-						<div class="welcome">
-							<h3>Guten Morgen, Marc. <span>Noch nichts verbunden.</span></h3>
-							<div class="welcome-empty">Sobald du dich zum ersten Mal verbindest, stehen die Ziele hier.</div>
-							<div class="ways">
-								<span class="w primary">Server anlegen</span><span class="w">SSH-Config importieren</span><span class="w">Direkt verbinden</span><span class="w">Ger&auml;t verbinden</span><span class="w">Apps laden</span>
-							</div>
-						</div>
+						<div class="welcome-left">
+						<h1>Hallo, <span>Marc Backes</span>!</h1>
+						<p>Verbinde dich mit einem deiner Server &mdash; oder lege einen neuen an.</p>
+						<div class="btns"><span class="btn primary">Schnellverbindung</span><span class="btn">Server anlegen</span><span class="btn">Ger&auml;t verbinden</span><span class="btn">Apps herunterladen</span></div>
+					</div>
+						<div class="welcome-right"><div class="welcome-empty">Noch nichts verbunden. Sobald du dich zum ersten Mal verbindest, stehen die Ziele hier.</div></div>
 					</div>
 				</section>
 				<section data-ui-state="loading">
 					<div class="welcome-wrap" style="padding: var(--space-6);">
-						<div class="welcome">
-							<h3>Guten Abend, Marc. <span>Wo geht&rsquo;s weiter?</span></h3>
-							<div class="targets" aria-busy="true">
-								<div class="card skeleton"></div><div class="card skeleton"></div><div class="card skeleton"></div>
-							</div>
-							<div class="ways">
-								<span class="w primary">Direkt verbinden</span><span class="w">Server anlegen</span><span class="w">SSH-Config importieren</span><span class="w">Ger&auml;t verbinden</span><span class="w">Apps laden</span>
-							</div>
-						</div>
+						<div class="welcome-left">
+						<h1>Hallo, <span>Marc Backes</span>!</h1>
+						<p>Verbinde dich mit einem deiner Server &mdash; oder lege einen neuen an.</p>
+						<div class="btns"><span class="btn primary">Schnellverbindung</span><span class="btn">Server anlegen</span><span class="btn">Ger&auml;t verbinden</span><span class="btn">Apps herunterladen</span></div>
+					</div>
+						<div class="welcome-right"><div class="sec-head"><b>Neueste Verbindungen</b></div><ul class="recent" aria-busy="true"><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li></ul></div>
 					</div>
 				</section>
 			</div>

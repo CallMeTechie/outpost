@@ -2,14 +2,17 @@ import "./styles.sass";
 import { useContext, useEffect, useState } from "react";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
-import { useLiveSessions } from "@/common/contexts/LiveSessionContext.jsx";
-import { mdiConnection, mdiFolderOpen, mdiCursorDefaultClick } from "@mdi/js";
+import Icon from "@mdi/react";
+import { mdiHistory, mdiPlay, mdiPower, mdiServerNetwork, mdiServerPlus, mdiConnection, mdiFolderOpen,
+    mdiCursorDefaultClick, mdiDownload, mdiLinkVariant } from "@mdi/js";
 import { getRequest } from "@/common/utils/RequestUtil";
 import { useTranslation } from "react-i18next";
 import { ContextMenu, ContextMenuItem, useContextMenu } from "@/common/components/ContextMenu";
+import { getIconPath } from "@/common/utils/iconUtils.js";
 import { formatTimeAgo } from "@/common/utils/timeAgo.js";
 import { getAvatarLabel } from "@/common/utils/avatar.js";
 import { entryColorFor } from "../ViewContainer/utils/paneColors.js";
+import Button from "@/common/components/Button";
 import DownloadAppsDialog from "@/common/components/DownloadAppsDialog";
 import { DeviceLinkDialog } from "@/common/components/DeviceLinkDialog/DeviceLinkDialog.jsx";
 
@@ -19,14 +22,6 @@ const PROTOCOL_LABELS = {
     "entry.demo_connect": "Demo", "entry.pve_connect": "PVE",
 };
 
-// Which greeting the hour falls under. Boundaries are the everyday ones, not astronomical:
-// the point is that the screen sounds like it noticed when you sat down.
-const greetingKey = (hour) => {
-    if (hour < 11) return "welcome.greeting.morning";
-    if (hour < 18) return "welcome.greeting.afternoon";
-    return "welcome.greeting.evening";
-};
-
 export const WelcomePanel = ({
                                  connectToServer,
                                  hibernatedSessions = [],
@@ -34,11 +29,9 @@ export const WelcomePanel = ({
                                  openSFTP,
                                  openDirectConnect,
                                  onCreateServer,
-                                 onImportSSHConfig,
                              }) => {
     const { user } = useContext(UserContext);
     const { getServerById } = useContext(ServerContext);
-    const { getLiveSessionsForEntry } = useLiveSessions();
     const { t } = useTranslation();
     const [recentConnections, setRecentConnections] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -47,21 +40,17 @@ export const WelcomePanel = ({
     const [deviceLinkDialogOpen, setDeviceLinkDialogOpen] = useState(false);
     const contextMenu = useContextMenu();
 
-    // Six, because the grid is three wide and two rows is what fits above the fold.
     useEffect(() => {
-        getRequest("/entries/recent?limit=6").then(data => setRecentConnections(data || [])).catch(() => {
+        getRequest("/entries/recent?limit=5").then(data => setRecentConnections(data || [])).catch(() => {
         }).finally(() => setLoading(false));
     }, []);
 
+    // Pinned at mount rather than read per render: every row on one screen then agrees about
+    // what "12 minutes ago" means, and the render body stays pure.
+    const [now] = useState(() => Date.now());
+
     const server = contextItem ? getServerById(contextItem.entryId) : null;
     const getHibernated = (entryId) => hibernatedSessions.find(s => s.server?.id === entryId);
-
-    // Pinned once when the panel mounts, not read per render: every card on one screen then
-    // agrees about what "12 minutes ago" means, and the render body stays pure -- reading the
-    // clock during render makes the output depend on when React happens to re-render.
-    const [now] = useState(() => Date.now());
-    const greeting = t(greetingKey(new Date(now).getHours()));
-    const name = getAvatarLabel(user, t("welcome.defaultName"));
 
     const handleClick = (item) => {
         const hibernated = getHibernated(item.entryId);
@@ -94,77 +83,96 @@ export const WelcomePanel = ({
         }
     };
 
-    // The artboard's .ways row. Small and in one line: after the first day nobody needs them
-    // prominent, but every one of them has to stay reachable -- this screen is the only place
-    // some of these dialogs can be opened from.
-    const hasTargets = recentConnections.length > 0;
-    const ways = [
-        openDirectConnect && { key: "direct", label: t("servers.contextMenu.quickConnect"),
-            primary: hasTargets, onClick: () => openDirectConnect() },
-        onCreateServer && { key: "create", label: t("welcome.emptyCreate"),
-            primary: !hasTargets, onClick: () => onCreateServer() },
-        onImportSSHConfig && { key: "import", label: t("servers.contextMenu.import"),
-            onClick: () => onImportSSHConfig() },
-        { key: "device", label: t("welcome.connectDevice"), onClick: () => setDeviceLinkDialogOpen(true) },
-        { key: "apps", label: t("welcome.downloadApps"), onClick: () => setDownloadDialogOpen(true) },
-    ].filter(Boolean);
+    const header = (
+        <div className="section-header">
+            <Icon path={mdiHistory} />
+            <h3>{t("welcome.recentConnections")}</h3>
+        </div>
+    );
 
     return (
         <div className="welcome-panel" data-ui-id="UI-SERVERS-WELCOME">
-            <div className="welcome">
-                <h3>
-                    {greeting}, {name}.{" "}
-                    <span>{loading || hasTargets ? t("welcome.whereNext") : t("welcome.noneYet")}</span>
-                </h3>
+            <div className="welcome-left">
+                <h1>{t("welcome.hello")}, <span>{getAvatarLabel(user, t("welcome.defaultName"))}</span>!</h1>
+                {/* What to do next, not what the product is: whoever reads this is already inside
+                    it. The old line -- "the open-source server manager for SSH, VNC and RDP" --
+                    was written for a visitor. */}
+                <p>{t("welcome.lead")}</p>
+                <div className="welcome-buttons">
+                    {openDirectConnect && (
+                        <Button icon={mdiCursorDefaultClick} text={t("servers.contextMenu.quickConnect")}
+                                onClick={() => openDirectConnect()} />
+                    )}
+                    {onCreateServer && (
+                        <Button type="secondary" icon={mdiServerPlus} text={t("servers.emptyCreate")}
+                                onClick={() => onCreateServer()} />
+                    )}
+                    {/* Kept although the artboard shows three buttons: the /link route this opens
+                        has no navigation entry anywhere, so this is its one findable way in. */}
+                    <Button type="secondary" icon={mdiLinkVariant} text={t("welcome.connectDevice")}
+                            onClick={() => setDeviceLinkDialogOpen(true)} />
+                    <Button type="secondary" icon={mdiDownload} text={t("welcome.downloadApps")}
+                            onClick={() => setDownloadDialogOpen(true)} />
+                </div>
+            </div>
 
+            <div className="welcome-right">
                 {loading ? (
-                    <div className="targets" aria-busy="true">
-                        {[0, 1, 2].map((i) => <div key={i} className="card skeleton" />)}
+                    <div className="recent-connections">
+                        {header}
+                        {/* Placeholder rows rather than a spinner, so the column keeps its height
+                            and nothing jumps when the answer arrives. */}
+                        <div className="recent-list" aria-busy="true">
+                            {[0, 1, 2].map((i) => <div key={i} className="recent-item skeleton" />)}
+                        </div>
                     </div>
-                ) : hasTargets ? (
-                    <div className="targets">
-                        {recentConnections.map((item, i) => {
-                            const hibernated = getHibernated(item.entryId);
-                            // The same meaning the list's dot carries: something is running on
-                            // this entry right now. /entries/recent returns no reachability
-                            // field, and a hibernated session is parked, not connected -- so
-                            // neither of those may light it.
-                            const online = getLiveSessionsForEntry(item.entryId).length > 0;
-                            return (
-                                <div key={`${item.entryId}-${i}`}
-                                     className={`card${hibernated ? " sleeping" : ""}`}
-                                     style={{ "--pane": entryColorFor(item.entryId) }}
-                                     role="button"
-                                     tabIndex={0}
-                                     title={item.name}
-                                     onClick={() => handleClick(item)}
-                                     onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), handleClick(item))}
-                                     onContextMenu={(e) => handleContextMenu(e, item)}>
-                                    <div className="top">
-                                        <span className={`dot${online ? " on" : ""}`} />
-                                        <span className="host">{item.name}</span>
-                                        <span className="kind">{PROTOCOL_LABELS[item.connectionType] || ""}</span>
+                ) : recentConnections.length > 0 ? (
+                    <div className="recent-connections">
+                        {header}
+                        <div className="recent-list">
+                            {recentConnections.map((item, i) => {
+                                const hibernated = getHibernated(item.entryId);
+                                const protocol = PROTOCOL_LABELS[item.connectionType];
+                                return (
+                                    <div key={`${item.entryId}-${i}`}
+                                         className={`recent-item${hibernated ? " hibernated" : ""}`}
+                                         role="button"
+                                         tabIndex={0}
+                                         onClick={() => handleClick(item)}
+                                         onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), handleClick(item))}
+                                         onContextMenu={(e) => handleContextMenu(e, item)}>
+                                        {/* One colour per target, derived from the entry id. It was
+                                            $primary on every row before and therefore said nothing
+                                            about which server you were looking at. */}
+                                        <div className="item-icon" style={{ backgroundColor: entryColorFor(item.entryId) }}>
+                                            <Icon path={getIconPath(item.icon)} />
+                                        </div>
+                                        <div className="item-info">
+                                            <span className="item-name">{item.name}</span>
+                                            <span className="item-meta">
+                                                {hibernated ? (
+                                                    <span className="hibernated-badge">
+                                                        <Icon path={mdiPower} />{t("welcome.resume")}
+                                                    </span>
+                                                ) : formatTimeAgo(item.timestamp, t, now)}
+                                            </span>
+                                        </div>
+                                        <div className="item-action">
+                                            {protocol && <span className="protocol-badge">{protocol}</span>}
+                                            <Icon path={mdiPlay} className="play-icon" />
+                                        </div>
                                     </div>
-                                    <span className="when">
-                                        {hibernated ? t("welcome.resume") : formatTimeAgo(item.timestamp, t, now)}
-                                    </span>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
                     </div>
                 ) : (
-                    <p className="welcome-empty">{t("welcome.emptyHint")}</p>
+                    <div className="empty-state">
+                        <Icon path={mdiServerNetwork} />
+                        <h3>{t("welcome.getStarted")}</h3>
+                        <p>{t("welcome.emptyHint")}</p>
+                    </div>
                 )}
-
-                <div className="ways">
-                    {ways.map((way) => (
-                        <button key={way.key} type="button"
-                                className={`w${way.primary ? " primary" : ""}`}
-                                onClick={way.onClick}>
-                            {way.label}
-                        </button>
-                    ))}
-                </div>
             </div>
 
             <ContextMenu isOpen={contextMenu.isOpen} position={contextMenu.position} onClose={contextMenu.close}

@@ -2108,15 +2108,9 @@
     }
   },
   "welcome": {
-    "whereNext": "¿A dónde vamos?",
-    "noneYet": "Aún no hay conexiones.",
+    "lead": "Conecta con uno de tus servidores — o añade uno nuevo.",
     "resume": "en reposo · reanudar",
     "emptyHint": "En cuanto te conectes por primera vez, tus destinos aparecerán aquí.",
-    "greeting": {
-      "morning": "Buenos días",
-      "afternoon": "Buenas tardes",
-      "evening": "Buenas noches"
-    },
     "hibernated": "En reposo",
     "hello": "Hola",
     "defaultName": "Usuario",

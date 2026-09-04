@@ -2290,15 +2290,9 @@
     }
   },
   "welcome": {
-    "whereNext": "Wo geht's weiter?",
-    "noneYet": "Noch nichts verbunden.",
+    "lead": "Verbinde dich mit einem deiner Server — oder lege einen neuen an.",
     "resume": "schläft · fortsetzen",
     "emptyHint": "Sobald du dich zum ersten Mal verbindest, stehen die Ziele hier.",
-    "greeting": {
-      "morning": "Guten Morgen",
-      "afternoon": "Guten Tag",
-      "evening": "Guten Abend"
-    },
     "hibernated": "Schläft",
     "hello": "Hallo",
     "defaultName": "Benutzer",
