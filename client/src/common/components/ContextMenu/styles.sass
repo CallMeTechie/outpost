@@ -129,15 +129,28 @@
         background-color: colors.$error-opacity
         color: colors.$error
 
+    // A custom item holds whatever the caller renders -- the tag editor with its own
+    // rows and buttons, for one. The fixed line height on .context-menu-item would cut
+    // that off, so here it becomes a floor rather than a ceiling.
     &.custom
       padding: 0
       cursor: default
+      height: auto
+      min-height: 1.875rem
 
       &:hover
         background-color: transparent
 
+    // On mobile the submenu opens INSIDE the item (position: relative, see
+    // ContextMenuItem's mobile branch) and wraps onto its own line. The fixed line
+    // height would clip it away entirely, so the item grows for as long as it is open.
     &.submenu-open-mobile
       background-color: colors.$gray
+      height: auto
+      min-height: 2.5rem
+      align-items: flex-start
+      padding-top: 0.5rem
+      padding-bottom: 0.5rem
       flex-direction: column
       align-items: stretch
 
