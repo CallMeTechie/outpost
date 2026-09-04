@@ -166,7 +166,9 @@
       display: flex
       gap: 0.5rem
       padding: 0 0.75rem
-      height: 100%
+      // A fixed height, not 100%: .server-tabs has no height of its own, so a
+      // percentage resolved to "as tall as the text" and squashed the strip.
+      height: 2.25rem
       align-items: center
       border-right: 1px solid colors.$gray
       position: relative
