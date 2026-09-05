@@ -127,7 +127,14 @@ body.tauri-mode
     height: 100%
 
 @media (max-width: breakpoints.$mobile)
-  .left-pane
+  // .collapsed too, and that is the whole point: a bare .left-pane loses to
+  // .left-pane.collapsed on specificity, so the pane stayed translated off-screen here
+  // and this rule did nothing. Collapsing is a desktop affordance -- the toggle that
+  // undoes it sits inside the pane, the hover bar is display: none at this width, and
+  // touch has no mousemove -- so a collapsed pane on a phone had no way back at all.
+  // Reported from a folding phone: closed, the server list was gone and unreachable.
+  .left-pane,
+  .left-pane.collapsed
     position: static
     transform: none
     box-shadow: none
