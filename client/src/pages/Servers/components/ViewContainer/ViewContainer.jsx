@@ -1,6 +1,7 @@
 import "./styles.sass";
 import ServerTabs from "./components/ServerTabs";
 import TerminalKeyBar from "./components/TerminalKeyBar";
+import PaneHead from "./components/PaneHead";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import GuacamoleRenderer from "@/pages/Servers/components/ViewContainer/renderer/GuacamoleRenderer.jsx";
@@ -91,6 +92,10 @@ export const ViewContainer = ({
     // below caps its length, so an entry that outlives its session (this map is never pruned,
     // same as sessionProgress) stays a small leak rather than an unbounded one.
     const [liveTitles, setLiveTitles] = useState({});
+    // What each pane currently is, keyed by session id: { cols, rows } from a terminal,
+    // { path } from a file pane. Same shape and same lifetime as liveTitles above -- never
+    // pruned, and bounded by what a renderer reports rather than by anything remote.
+    const [paneMeta, setPaneMeta] = useState({});
     const [fullscreenMode, setFullscreenMode] = useState(false);
     // Focus mode hides the same chrome as fullscreen (server list, tab bar) but
     // deliberately does NOT put the window into browser/app fullscreen - that is
@@ -188,6 +193,21 @@ export const ViewContainer = ({
             ...prev,
             [sessionId]: progress,
         }));
+    }, []);
+
+    // Merged rather than replaced: a terminal reports its size and a file pane its directory,
+    // and a pane that is both (an SFTP session with a terminal opened from it) must not have
+    // one erase the other.
+    const updatePaneMeta = useCallback((sessionId, patch) => {
+        setPaneMeta(prev => {
+            const before = prev[sessionId] || {};
+            const after = { ...before, ...patch };
+            // Bail out when nothing moved: a terminal reports its size on every fit, and a
+            // state update per resize frame would re-render every pane on the screen.
+            const same = Object.keys(after).every(k => before[k] === after[k])
+                && Object.keys(before).length === Object.keys(after).length;
+            return same ? prev : { ...prev, [sessionId]: after };
+        });
     }, []);
 
     const updateLiveTitle = useCallback((sessionId, title) => {
@@ -582,12 +602,14 @@ export const ViewContainer = ({
                                       modifierLatch={modifierLatch} onLatchConsumed={clearLatch}
                                       terminalRefs={terminalRefs} updateProgress={updateSessionProgress}
                                       updateTitle={updateLiveTitle}
+                                      onPaneMeta={(patch) => updatePaneMeta(session.id, patch)}
                                       layoutMode={layoutMode} onBroadcastToggle={toggleBroadcastMode}
                                       onFullscreenToggle={toggleFullscreenMode} />;
             case "sftp":
             case "onedrive":
                 return <FileRenderer session={session} disconnectFromServer={disconnectFromServer}
                                      setOpenFileEditors={setOpenFileEditors} isActive={session.id === activeSessionId}
+                                     onPaneMeta={(patch) => updatePaneMeta(session.id, patch)}
                                      onOpenTerminal={(path) => openTerminalFromFileManager?.(session.id, path)} />;
             default:
                 return <p>Unknown renderer: {renderer}</p>;
@@ -692,6 +714,7 @@ export const ViewContainer = ({
                  className={`session-renderer ${isVisible ? "visible" : "hidden"} ${isActive ? "active" : ""}`}
                  onClick={() => session.id !== activeSessionId && focusSession(session.id)}
                  style={{ ...getSessionStyle(session), ...(paneColor && { "--pane-color": paneColor }) }}>
+                <PaneHead session={session} meta={paneMeta[session.id]} paneColor={paneColor} />
                 {renderRenderer(session)}
             </div>
         );

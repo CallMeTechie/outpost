@@ -1527,6 +1527,9 @@
     }
   },
   "servers": {
+    "paneHead": {
+      "tmux": "tmux: {{name}}"
+    },
     "emptyList": "Aún no hay servidores. Añade uno, importa una config SSH o conecta directamente.",
     "emptyCreate": "Añadir servidor",
     "addServerNote": "Haz clic con el botón derecho para añadir un nuevo servidor",

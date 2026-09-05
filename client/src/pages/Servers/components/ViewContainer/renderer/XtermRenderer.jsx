@@ -34,7 +34,7 @@ const MODIFIER_KEYS = ["Shift", "Control", "Alt", "Meta", "AltGraph", "CapsLock"
 // cannot force a React render per escape sequence.
 const TITLE_UPDATE_THROTTLE_MS = 100;
 
-const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getSessionError, registerTerminalRef, onTerminalReady, broadcastMode, modifierLatch, onLatchConsumed, terminalRefs, updateProgress, updateTitle, layoutMode, onBroadcastToggle, onFullscreenToggle, isShared = false, onOpenSftp }) => {
+const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getSessionError, registerTerminalRef, onTerminalReady, broadcastMode, modifierLatch, onLatchConsumed, terminalRefs, updateProgress, updateTitle, onPaneMeta, layoutMode, onBroadcastToggle, onFullscreenToggle, isShared = false, onOpenSftp }) => {
     const ref = useRef(null);
     const termRef = useRef(null);
     const wsRef = useRef(null);
@@ -466,6 +466,10 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
 
         const handleResize = () => {
             fitAddon.fit();
+            // The pane head shows the size, and this is the only place that knows it.
+            // updatePaneMeta bails out when the numbers have not moved, so reporting on
+            // every fit does not turn a drag-resize into a re-render per frame.
+            onPaneMeta?.({ cols: term.cols, rows: term.rows });
             if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
                 wsRef.current.send(`\x01${term.cols},${term.rows}`);
             }
