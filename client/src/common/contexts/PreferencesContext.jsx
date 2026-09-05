@@ -43,7 +43,8 @@ const setVal = (obj, path, val) => {
     return res;
 };
 
-// See the note at isTouchOnly below: any-pointer, not pointer.
+// Only the opening guess for the key bar, overruled by the first pointer event --
+// see keyBarVisibility.js for why asking the device is not enough.
 const TOUCH_ONLY_QUERY = "not all and (any-pointer: fine)";
 
 const getSystemTheme = () => window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
