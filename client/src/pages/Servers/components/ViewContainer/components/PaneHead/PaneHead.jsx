@@ -36,8 +36,9 @@ export const PaneHead = ({ session, meta = {}, paneColor }) => {
     // Right-hand facts, in the order the artboard has them: what the session is attached to,
     // then how big it is. Each is left out when it does not apply rather than shown empty --
     // a pane head with "tmux: —" in it says less than one without the field.
+    // Only the size. tmux is already in the tab label -- buildTabLabel uses the session name
+    // as its discriminator ("nas · main") -- and showing it twice on one screen adds nothing.
     const facts = [
-        session?.tmuxSession && t("servers.paneHead.tmux", { name: session.tmuxSession }),
         meta.cols && meta.rows && `${meta.cols}×${meta.rows}`,
     ].filter(Boolean);
 

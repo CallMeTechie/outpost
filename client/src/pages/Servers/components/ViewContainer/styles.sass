@@ -93,6 +93,20 @@
 .view-layouter
   &.single
     .session-renderer
+      // A column since the pane head exists: the head keeps its own height and the renderer
+      // takes what is left. Before this the two stacked as blocks while the renderer still
+      // asked for 100%, so every pane overflowed by the head's height and a terminal lost
+      // its last line off the bottom.
+      display: flex
+      flex-direction: column
+
+      // Everything that is not the head fills the remainder. min-height: 0 is what lets it
+      // actually shrink -- a flex item's default min-height: auto refuses to go below its
+      // content, and a terminal's content is however many rows it currently has.
+      > *:not(.pane-head)
+        flex: 1 1 auto
+        min-height: 0
+
       &.visible
         opacity: 1
         pointer-events: auto
