@@ -279,7 +279,6 @@ const DraggableTab = ({
                 <ContextMenuItem
                     icon={mdiClose}
                     label={t("servers.tabs.contextMenu.closeSession")}
-                    shortcut="Ctrl+W"
                     onClick={() => closeSession(session.id)}
                     danger
                 />
