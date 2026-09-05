@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { patchRequest } from "@/common/utils/RequestUtil.js";
 import i18n from "@/i18n.js";
+import { shouldShowKeyBar } from "@/common/utils/keyBarVisibility.js";
 import { normalizeViewMode } from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/utils/viewModes.js";
 
 const PreferencesContext = createContext({});
@@ -484,19 +485,50 @@ export const PreferencesProvider = ({ children, user, refreshUser }) => {
     // a tablet answers yes, and someone with a mouse does not need a row of on-screen keys.
     // A phone answers no, which is the case the bar exists for. Not a width check either: a
     // narrow window on a desktop still has a keyboard.
-    const [isTouchOnly, setIsTouchOnly] = useState(() =>
+    const [mediaTouchOnly, setMediaTouchOnly] = useState(() =>
         typeof window !== "undefined" && !!window.matchMedia?.(TOUCH_ONLY_QUERY).matches);
 
-    // Kept live: plugging in a mouse changes the answer without a reload.
+    // Kept live: plugging in a mouse can change the answer without a reload.
     useEffect(() => {
         const query = window.matchMedia?.(TOUCH_ONLY_QUERY);
         if (!query) return;
-        const onChange = (event) => setIsTouchOnly(event.matches);
+        const onChange = (event) => setMediaTouchOnly(event.matches);
         query.addEventListener("change", onChange);
         return () => query.removeEventListener("change", onChange);
     }, []);
 
-    const showKeyBar = keyBarMode === "always" || (keyBarMode !== "never" && isTouchOnly);
+    // What the person is actually pointing with, once they point at anything.
+    //
+    // The media query above asks the device a question and the device answers about itself:
+    // a tablet reports no fine pointer even with a mouse plugged in, which is how the key bar
+    // kept appearing for someone working with mouse and keyboard. Reported twice from that
+    // setup, and the second report is why this exists -- the query was the wrong instrument,
+    // not the wrong query.
+    //
+    // A pointer event carries what was used, not what exists: the first mouse move settles it
+    // beyond argument. Until then the query's guess stands, so the bar is right on a phone
+    // from the first frame rather than after the first tap.
+    const [pointerKind, setPointerKind] = useState(null);
+
+    useEffect(() => {
+        const onPointer = (event) => {
+            // "pen" counts as precise: a stylus hits a 2mm target, which is the whole reason
+            // the bar exists.
+            const kind = event.pointerType === "touch" ? "touch" : "mouse";
+            setPointerKind(prev => (prev === kind ? prev : kind));
+        };
+        // Capture, so a handler that stops propagation cannot hide the input from this.
+        const options = { passive: true, capture: true };
+        window.addEventListener("pointerdown", onPointer, options);
+        window.addEventListener("pointermove", onPointer, options);
+        return () => {
+            window.removeEventListener("pointerdown", onPointer, options);
+            window.removeEventListener("pointermove", onPointer, options);
+        };
+    }, []);
+
+
+    const showKeyBar = shouldShowKeyBar(keyBarMode, pointerKind, mediaTouchOnly);
 
     // The layouter subtracts this from its own height, so it has to follow the same
     // decision the JSX makes -- see the note in main.sass.
