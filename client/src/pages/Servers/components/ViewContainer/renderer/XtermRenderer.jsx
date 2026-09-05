@@ -476,6 +476,30 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
 
         window.addEventListener("resize", handleResize);
 
+        // window.resize only fires when the WINDOW changes. It says nothing about the terminal
+        // being given less room by something inside the page -- the server list being pinned
+        // open, a split pane's divider moving, the on-screen key bar appearing. In all of those
+        // the container shrinks while xterm keeps rendering at its old column count, and the
+        // rows land where they no longer fit: on a narrow screen that reads as a shaking
+        // terminal with a second, offset copy of itself behind it. Reported from a folding
+        // phone with the sidebar pinned.
+        //
+        // An observer on the container catches every one of those, because it watches the box
+        // rather than the window.
+        let resizeFrame = 0;
+        const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => {
+            // Coalesced into one frame: an observer can fire several times during a single
+            // animated layout change, and fitting on each one is what actual thrashing looks
+            // like. fit() resizes the canvas inside the container and never the container
+            // itself, so this cannot feed itself.
+            if (resizeFrame) cancelAnimationFrame(resizeFrame);
+            resizeFrame = requestAnimationFrame(() => {
+                resizeFrame = 0;
+                handleResize();
+            });
+        });
+        if (observer && ref.current) observer.observe(ref.current);
+
         const handleNativePaste = (e) => {
             const text = e.clipboardData?.getData('text');
             if (text) {
@@ -835,6 +859,8 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
                 registerTerminalRef(session.id, null);
             }
             window.removeEventListener("resize", handleResize);
+            if (resizeFrame) cancelAnimationFrame(resizeFrame);
+            observer?.disconnect();
             ref.current?.removeEventListener('paste', handleNativePaste);
             ref.current?.removeEventListener('mousedown', handleSelectionReset, true);
             lastSelectionRef.current = "";
