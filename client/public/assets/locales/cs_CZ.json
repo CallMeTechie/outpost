@@ -1527,9 +1527,6 @@
     }
   },
   "servers": {
-    "paneHead": {
-      "tmux": "tmux: {{name}}"
-    },
     "emptyList": "Zatím žádné servery. Přidej server, importuj SSH config nebo se připoj přímo.",
     "emptyCreate": "Přidat server",
     "addServerNote": "Kliknutím pravým tlačítkem myši přidáte nový server",

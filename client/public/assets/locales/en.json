@@ -1571,9 +1571,6 @@
     }
   },
   "servers": {
-    "paneHead": {
-      "tmux": "tmux: {{name}}"
-    },
     "emptyList": "No servers yet. Add one, import an SSH config, or connect directly.",
     "emptyCreate": "Add server",
     "addServerNote": "Right-click to add a new server",

@@ -141,7 +141,15 @@ screens:
         verify: recommended
         data_source: static
         semantic_anchor:
-          means: Terminal-Sondertasten (Esc, Tab, Ctrl, Alt, Shift, Pfeile, Home, Ende, Bild auf/ab sowie die auf Touch-Tastaturen vergrabenen Zeichen | ~ - /) nur auf Touch-Geräten (pointer: coarse, kein Breitpunkt), und nur wenn das aktive Pane ein Terminal ist; am Desktop nie. Sie sitzt über der Arbeitsfläche, nicht darunter: unterhalb schneidet eine Kette aus vier height-100%-Containern sie ab.
+          means: >
+            Terminal-Sondertasten (Esc, Tab, Ctrl, Alt, Shift, Pfeile, Home, Ende, Bild auf/ab
+            sowie die auf Touch-Tastaturen vergrabenen Zeichen | ~ - /), und nur wenn das aktive
+            Pane ein Terminal ist. Sichtbar nach der Einstellung terminal.keyBar
+            (auto/always/never); auto heißt "es gibt gar keinen präzisen Zeiger" — die Frage ist
+            any-pointer, nicht pointer, denn ein Tablet meldet einen groben Primärzeiger auch mit
+            angeschlossener Maus, und wer eine Maus hat, braucht keine Tastenleiste. Sie sitzt
+            über der Arbeitsfläche, nicht darunter: unterhalb schneidet eine Kette aus vier
+            height-100%-Containern sie ab.
         states:
           - { id: default }
           - { id: disabled }

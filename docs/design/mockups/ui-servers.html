@@ -149,11 +149,6 @@
 	.split { display: grid; grid-template-columns: minmax(40rem, 1fr) minmax(22rem, 34%); flex: 1; min-height: 0; }
 	.pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; border-top: 2px solid var(--pane, transparent); }
 	.pane + .pane { border-left: 1px solid var(--gray); }
-	.pane-head { display: flex; align-items: center; gap: var(--space-2); height: 1.75rem; padding: 0 var(--space-3); font: var(--type-caption); color: var(--subtext); background: var(--lighter-background); border-bottom: 1px solid var(--gray); }
-	.pane-head .swatch { width: 0.5rem; height: 0.5rem; border-radius: 2px; background: var(--pane); }
-	.pane-head .path { font: var(--type-mono); font-size: 0.75rem; color: var(--subtext); }
-	.pane-head .right { margin-left: auto; display: flex; gap: var(--space-3); }
-	.pane.active-pane .pane-head { color: var(--text); }
 	.term { flex: 1; padding: var(--space-2) var(--space-3); font: var(--type-mono); color: var(--text); white-space: pre; overflow: hidden; background: var(--terminal); }
 	.term .p { color: var(--success); }
 	.term .d { color: var(--subtext); }
@@ -318,7 +313,6 @@
 			<section data-ui-state="default">
 				<div class="split">
 					<div class="pane active-pane" style="--pane:#2A72C9">
-						<div class="pane-head"><span class="swatch"></span>nas · Terminal<span class="right"><span>tmux: main</span><span>80×24</span></span></div>
 						<div class="term"><span class="p">nas:~$</span> uptime
  21:14:03 up 41 days,  3:12,  1 user,  load average: 0.42, 0.37, 0.31
 <span class="p">nas:~$</span> docker compose ls
@@ -327,7 +321,6 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <span class="p">nas:~$</span> <span class="cur"></span></div>
 					</div>
 					<div class="pane" style="--pane:#2A72C9">
-						<div class="pane-head"><span class="swatch"></span>nas · Dateien <span class="path">/volume1/docker</span><span class="right"><span>⇧⌘.</span></span></div>
 						<div class="files">
 							<div class="row head"><span class="name">Name</span><span class="size">Größe</span><span class="date">Geändert</span></div>
 							<div class="row dir"><span class="name">..</span><span class="size"></span><span class="date"></span></div>
@@ -367,7 +360,6 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 	<div class="frame workspace focus">
 		<div class="view">
 			<div class="pane active-pane" style="--pane:#2A72C9; flex:1;">
-				<div class="pane-head"><span class="swatch"></span>nas · Terminal<span class="right"><span>tmux: main</span><span>132×36</span></span></div>
 				<div class="term"><span class="p">nas:~$</span> docker compose -f /volume1/docker/outpost/compose.yaml logs --tail 3 server
 <span class="d">server-1  | [engine] tmux new-session -d -s main</span>
 <span class="d">server-1  | [engine] attached pty 0 → session main</span>
@@ -558,13 +550,11 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 			<div data-ui-id="UI-SERVERS-VIEW" aria-label="Arbeitsfläche">
 				<section data-ui-state="loading" style="height: 12rem; display:flex;">
 					<div class="pane active-pane" style="--pane:#2A72C9; flex:1;">
-						<div class="pane-head"><span class="swatch"></span>nas · Terminal</div>
 						<div class="center" aria-busy="true"><div class="spinner"></div><div>Verbinde …</div></div>
 					</div>
 				</section>
 				<section data-ui-state="error" style="height: 12rem; display:flex;">
 					<div class="pane active-pane" style="--pane:#2A72C9; flex:1;">
-						<div class="pane-head"><span class="swatch"></span>nas · Terminal</div>
 						<div class="center error">
 							<div class="msg">Verbindung fehlgeschlagen. Erneut versuchen oder Server bearbeiten.</div>
 							<div class="cta"><span class="btn primary">Erneut versuchen <kbd>↵</kbd></span><span class="btn">Server bearbeiten <kbd>E</kbd></span></div>

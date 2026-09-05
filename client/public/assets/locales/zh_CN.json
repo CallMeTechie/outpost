@@ -1527,9 +1527,6 @@
     }
   },
   "servers": {
-    "paneHead": {
-      "tmux": "tmux：{{name}}"
-    },
     "emptyList": "还没有服务器。添加一个、导入 SSH 配置，或直接连接。",
     "emptyCreate": "添加服务器",
     "addServerNote": "右键单击添加新服务器",

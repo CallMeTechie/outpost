@@ -88,7 +88,7 @@ const collectDroppedEntries = async (entries, targetDir) => {
     return { files, emptyDirs };
 };
 
-export const FileRenderer = ({ onPaneMeta, session, disconnectFromServer, setOpenFileEditors, isActive, onOpenTerminal }) => {
+export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors, isActive, onOpenTerminal }) => {
     const { t } = useTranslation();
     const { sessionToken } = useContext(UserContext);
     const { defaultViewMode, setDefaultViewMode } = usePreferences();
@@ -98,12 +98,6 @@ export const FileRenderer = ({ onPaneMeta, session, disconnectFromServer, setOpe
     const [uploadProgress, setUploadProgress] = useState(0);
     const [isUploading, setIsUploading] = useState(false);
     const [directory, setDirectory] = useState("/");
-
-    // The pane head shows which directory this pane is in -- the one fact about a file pane
-    // that changes while you work and is not in its tab.
-    useEffect(() => {
-        onPaneMeta?.({ path: directory });
-    }, [directory, onPaneMeta]);
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
