@@ -359,3 +359,5 @@ export const FileList = forwardRef(({
         </div>
     );
 });
+
+FileList.displayName = "FileList";

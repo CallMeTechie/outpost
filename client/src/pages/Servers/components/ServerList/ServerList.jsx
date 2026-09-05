@@ -260,6 +260,8 @@ export const ServerList = ({
         : (search || selectedTags.length > 0 ? filterEntries(servers, search, selectedTags) : servers);
     const renameStateServers = renameStateId ? filteredServers.map(applyRenameState(renameStateId)) : filteredServers;
 
+    const [menuOpenedAt, setMenuOpenedAt] = useState(() => Date.now());
+
     const handleContextMenu = (e) => {
         e.preventDefault();
         const targetElement = e.target.closest("[data-id]");
@@ -271,6 +273,9 @@ export const ServerList = ({
             setContextClickedType(null);
         }
 
+        // Pinned when the menu opens rather than read while rendering it: every "5 minutes ago"
+        // in one open menu then refers to the same instant, and the render body stays pure.
+        setMenuOpenedAt(Date.now());
         contextMenu.open(e, { x: e.clientX, y: e.clientY });
     };
 
@@ -304,9 +309,12 @@ export const ServerList = ({
 
     const hibernatedSessionsForServer = server ? hibernatedSessions.filter(s => s.server.id == server.id) : [];
     
-    const formatSessionDate = (session) => {
+    // The clock is read as an argument rather than inside: calling Date.now() during render
+    // makes the output depend on when React happens to re-render, which is what
+    // react-hooks/purity objects to. The caller passes the value it pinned at mount.
+    const formatSessionDate = (session, now) => {
         if (!session?.lastActivity) return '';
-        const diff = Date.now() - new Date(session.lastActivity);
+        const diff = now - new Date(session.lastActivity);
         const mins = Math.floor(diff / 60000), hrs = Math.floor(diff / 3600000), days = Math.floor(diff / 86400000);
         if (mins < 1) return t('servers.time.justNow');
         if (mins < 60) return t(mins === 1 ? 'servers.time.minuteAgo' : 'servers.time.minutesAgo', { count: mins });
@@ -781,7 +789,7 @@ export const ServerList = ({
                                                     <ContextMenuItem
                                                         key={session.id}
                                                         icon={mdiPlay}
-                                                        label={formatSessionDate(session)}
+                                                        label={formatSessionDate(session, menuOpenedAt)}
                                                         onClick={() => resumeSession(session.id)}
                                                     />
                                                 ))}
@@ -950,7 +958,7 @@ export const ServerList = ({
                                                     <ContextMenuItem
                                                         key={session.id}
                                                         icon={mdiPlay}
-                                                        label={formatSessionDate(session)}
+                                                        label={formatSessionDate(session, menuOpenedAt)}
                                                         onClick={() => resumeSession(session.id)}
                                                     />
                                                 ))}

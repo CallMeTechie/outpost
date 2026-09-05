@@ -305,11 +305,6 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
         };
     }, [open, handleSubmit, tabs.length]);
 
-    const refreshIdentities = () => {
-        if (!editServerId) return;
-        getRequest("servers/" + editServerId).then((server) => setIdentities(server.identities));
-    };
-
     const isDirty = name !== initialValues.current.name || 
                      icon !== initialValues.current.icon ||
                      JSON.stringify(config) !== initialValues.current.config ||
