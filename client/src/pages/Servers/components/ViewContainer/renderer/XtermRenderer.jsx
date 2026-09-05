@@ -465,10 +465,25 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
         };
 
         const handleResize = () => {
-            fitAddon.fit();
-            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-                wsRef.current.send(`\x01${term.cols},${term.rows}`);
+            // Nothing at all when the size has not moved. fit() otherwise rewrites the
+            // terminal's dimensions and sends them to the host on every call, and any layout
+            // that oscillates between two widths turns that into a loop that repaints
+            // forever. proposeDimensions is what fit() itself would compute, so asking first
+            // costs one measurement and cannot disagree with it.
+            const next = fitAddon.proposeDimensions();
+            const changed = next && next.cols && next.rows
+                && (next.cols !== term.cols || next.rows !== term.rows);
+
+            if (changed) {
+                fitAddon.fit();
+                if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                    wsRef.current.send(`\x01${term.cols},${term.rows}`);
+                }
             }
+
+            // The anchors below run either way: a pane can move without changing size -- a
+            // sibling closing, the key bar appearing above it -- and the password hint has to
+            // follow the cursor to wherever it now is.
             if (passwordPromptRef.current) movePasswordHint(computePasswordHintPosition());
             if (suggestionRef.current) setSuggestionAnchor(computePasswordHintPosition());
             syncCursorAnchor();
