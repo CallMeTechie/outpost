@@ -1,31 +1,40 @@
 import { memo } from "react";
 
+// Four posts of different heights, the last one lit. A palisade and a server list at once --
+// a pattern rather than a picture, which is what survives at 20px in a favicon and next to a
+// row of single-colour menu icons.
+//
+// Replaces the terminal chevron inherited from the fork, which said "terminal" rather than
+// "outpost" and, more practically, carried a Gaussian blur: at favicon size that turned the
+// whole mark into a smudge. There is no filter here and no gradient, one reason this renders
+// identically at every size it is used at (24, 36, 40, 48, 64).
+//
+// Colour comes from currentColor, so the mark carries whatever accent the user has chosen and
+// needs no second version for the light theme. The lit post is --success rather than the
+// accent: it is the one part that should not change when someone picks a green accent, since
+// then the mark would go flat.
 export const OutpostLogo = memo(({ size = 40, className = "" }) => {
     return (
         <svg
             width={size}
             height={size}
-            viewBox="-20 -20 570 552"
+            viewBox="0 0 32 32"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
             className={className}
-            style={{ overflow: "visible" }}
+            // The accent by default, since none of the five call sites sets a colour and the
+            // mark would otherwise inherit the surrounding text colour. A className can still
+            // override it -- that is why this is currentColor inside rather than a fixed fill.
+            style={{ color: "var(--primary)" }}
+            role="img"
+            aria-label="Outpost"
         >
-            <defs>
-                <filter id="glow_outpost" x="-50%" y="-50%" width="200%" height="200%" filterUnits="objectBoundingBox">
-                    <feGaussianBlur in="SourceGraphic" stdDeviation="15" result="blur" />
-                    <feMerge>
-                        <feMergeNode in="blur" />
-                        <feMergeNode in="blur" />
-                        <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                </filter>
-            </defs>
-            <path
-                d="M323.148 401.419C303.03 401.419 286.72 385.11 286.72 364.992C286.72 344.874 303.03 328.565 323.148 328.565H444.573C464.691 328.565 481 344.874 481 364.992C481 385.11 464.691 401.419 444.573 401.419H323.148ZM141.286 291.862C161.238 271.91 161.197 239.55 141.196 219.648L93.3467 172.037C70.3893 149.193 86.5666 110 118.953 110C128.568 110 137.791 113.815 144.597 120.607L254.421 230.211C268.507 244.539 268.507 267.852 254.421 281.695L145.359 390.757C138.532 397.584 129.272 401.419 119.617 401.419C87.1842 401.419 70.9416 362.206 93.8753 339.273L141.286 291.862Z"
-                fill="var(--primary)"
-                filter="url(#glow_outpost)"
-            />
+            <rect x="3.5" y="12" width="4.6" height="17" rx="2.3" fill="currentColor" opacity="0.55" />
+            <rect x="10.7" y="6" width="4.6" height="23" rx="2.3" fill="currentColor" />
+            <rect x="17.9" y="9" width="4.6" height="20" rx="2.3" fill="currentColor" opacity="0.8" />
+            <rect x="25.1" y="15" width="4.6" height="14" rx="2.3" fill="var(--success, #29C16A)" />
         </svg>
     );
 });
+
+OutpostLogo.displayName = "OutpostLogo";
