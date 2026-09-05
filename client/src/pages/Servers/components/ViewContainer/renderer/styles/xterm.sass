@@ -9,21 +9,6 @@
     box-sizing: border-box
     overflow: hidden
 
-    // Its own compositing layer, so the rows are rasterised once and moved as a unit
-    // instead of being re-snapped to the pixel grid on every repaint.
-    //
-    // xterm's DOM renderer positions each cell absolutely, and this container's width is
-    // fractional at exactly the device pixel ratios a folding phone reports: measured
-    // 722.29px at 2.625 and 722.18px at 2.75, against a clean 720.00 at 1, 2 and 3. On a
-    // fractional grid a repaint can land a row a subpixel off from where the last one put
-    // it, which reads as shaking with a faint second copy behind it -- reported from a
-    // Pixel Fold, and only with the sidebar pinned, which is precisely when this container
-    // stops being as wide as the viewport.
-    //
-    // translateZ(0) rather than will-change: the layer is wanted permanently, not hinted at
-    // ahead of an animation that never comes.
-    transform: translateZ(0)
-    backface-visibility: hidden
 
     .xterm
       height: 100% !important

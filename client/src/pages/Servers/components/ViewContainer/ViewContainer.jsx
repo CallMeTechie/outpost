@@ -36,6 +36,14 @@ const LIVE_TITLE_MAX_LENGTH = 80;
 // mode switches itself on (UI-SERVERS-FOCUS).
 const FOCUS_MIN_TERMINAL_REM = 40;
 const FOCUS_MIN_FILE_PANE_REM = 22;
+// How much wider the pane has to be before automatic focus mode lets go again. It must be
+// at least as wide as what focus mode hides: the icon sidebar plus the server list, about
+// 26rem together. Without that gap the decision feeds on its own effect -- the pane drops
+// under the minimum, focus mode hides the sidebar, the pane is now wider than the minimum,
+// focus mode shows the sidebar, the pane drops under the minimum. On a folding phone with
+// the sidebar pinned that ran at frame rate and read as a shaking terminal with a second,
+// offset copy of itself behind it.
+const FOCUS_AUTO_OFF_GAP_REM = 28;
 
 const getMinY = () => getTitleBarHeight() + 16;
 const clampPosition = (x, y) => ({
@@ -244,11 +252,13 @@ export const ViewContainer = ({
         setFullscreenMode(prev => !prev);
     }, []);
 
+    // A manual toggle is a decision in either direction. It used to record only "the user
+    // turned it on", so turning it OFF by hand handed control straight back to the width
+    // check -- which, on a phone whose pane is always under the minimum, switched it on again
+    // within the same frame. The floating exit button was there and did nothing.
     const toggleFocusMode = useCallback(() => {
-        setFocusMode(prev => {
-            focusManualRef.current = !prev;
-            return !prev;
-        });
+        focusManualRef.current = true;
+        setFocusMode(prev => !prev);
     }, []);
 
     // Ctrl+Shift+F. Captured on the window so it works while the terminal has
@@ -275,12 +285,16 @@ export const ViewContainer = ({
 
         const remInPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
         const minWidthPx = (hasFilePane ? FOCUS_MIN_FILE_PANE_REM : FOCUS_MIN_TERMINAL_REM) * remInPx;
+        const autoOffPx = minWidthPx + FOCUS_AUTO_OFF_GAP_REM * remInPx;
 
         const observer = new ResizeObserver(([entry]) => {
             const width = entry?.contentRect?.width ?? 0;
             if (width === 0) return;
+            // Once the user has decided, the width check stays out of it entirely.
+            if (focusManualRef.current) return;
+            // Two thresholds, far enough apart that hiding the sidebar cannot cross both.
             if (width < minWidthPx) setFocusMode(true);
-            else if (!focusManualRef.current) setFocusMode(false);
+            else if (width > autoOffPx) setFocusMode(false);
         });
         observer.observe(element);
         return () => observer.disconnect();
