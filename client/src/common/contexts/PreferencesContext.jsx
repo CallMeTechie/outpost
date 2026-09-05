@@ -42,6 +42,9 @@ const setVal = (obj, path, val) => {
     return res;
 };
 
+// See the note at isTouchOnly below: any-pointer, not pointer.
+const TOUCH_ONLY_QUERY = "not all and (any-pointer: fine)";
+
 const getSystemTheme = () => window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 
 const DEFAULT_TERMINAL_THEMES = {
@@ -470,14 +473,23 @@ export const PreferencesProvider = ({ children, user, refreshUser }) => {
     // touchscreen, and a narrow window on a desktop is not.
     const keyBarMode = get("terminal.keyBar", "auto");
 
-    // Whether this device has no precise pointer and no hover -- a touchscreen. Not a width
-    // check: a narrow window on a desktop still has a keyboard, and a tablet in landscape
-    // still has none. Kept live, because a convertible changes this without a reload.
+    // Whether this device has NO precise pointer at all -- any-pointer, not pointer.
+    //
+    // `pointer: coarse` describes the primary input the browser thinks the device has, and a
+    // tablet answers "coarse" even with a mouse attached: it is a statement about the
+    // hardware, not about how someone is working. Reported from exactly that setup -- a
+    // tablet driven with mouse and keyboard, where the bar kept appearing.
+    //
+    // `any-pointer: fine` asks whether a precise pointer exists at all. A mouse plugged into
+    // a tablet answers yes, and someone with a mouse does not need a row of on-screen keys.
+    // A phone answers no, which is the case the bar exists for. Not a width check either: a
+    // narrow window on a desktop still has a keyboard.
     const [isTouchOnly, setIsTouchOnly] = useState(() =>
-        typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse) and (hover: none)").matches);
+        typeof window !== "undefined" && !!window.matchMedia?.(TOUCH_ONLY_QUERY).matches);
 
+    // Kept live: plugging in a mouse changes the answer without a reload.
     useEffect(() => {
-        const query = window.matchMedia?.("(pointer: coarse) and (hover: none)");
+        const query = window.matchMedia?.(TOUCH_ONLY_QUERY);
         if (!query) return;
         const onChange = (event) => setIsTouchOnly(event.matches);
         query.addEventListener("change", onChange);
