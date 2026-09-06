@@ -150,6 +150,7 @@
       "account": "帳戶",
       "logout": "登出",
       "collapseTitle": "折疊側欄",
+      "expandTitle": "顯示側邊欄",
       "logoutConfirmText": "這會讓您登出 {{username}} 帳戶。您確定嗎？",
       "starOnGitHub": "GitHub 上的 Star",
       "support": "支援"

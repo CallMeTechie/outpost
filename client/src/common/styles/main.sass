@@ -107,9 +107,22 @@ body.tauri-mode
   opacity: 0.6
   transition: opacity 0.15s ease, background-color 0.15s ease
   display: none
+  align-items: center
+  justify-content: center
+  color: colors.$subtext
+
+  svg
+    width: 0.875rem
+    height: 0.875rem
 
   &.active
-    display: block
+    display: flex
+
+  // A finger needs a target; 10px is one for a mouse. Fully opaque as well, because
+  // there is no hover state to reveal it on touch.
+  @media (pointer: coarse)
+    width: 1.5rem
+    opacity: 1
 
   &:hover
     opacity: 1

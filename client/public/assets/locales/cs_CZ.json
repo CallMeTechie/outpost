@@ -150,6 +150,7 @@
       "account": "Účet",
       "logout": "Odhlásit se",
       "collapseTitle": "Sbalit postranní panel",
+      "expandTitle": "Zobrazit postranní panel",
       "logoutConfirmText": "Tímto se odhlásíte z účtu {{username}}. Jste si jisti?",
       "starOnGitHub": "Hvězda na GitHubu",
       "support": "Podpora"

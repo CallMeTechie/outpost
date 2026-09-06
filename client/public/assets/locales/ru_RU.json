@@ -150,6 +150,7 @@
       "account": "Учетная запись",
       "logout": "Выйти",
       "collapseTitle": "Свернуть боковую панель",
+      "expandTitle": "Показать боковую панель",
       "logoutConfirmText": "Вы выйдете из учетной записи {{username}} . Вы уверены?",
       "starOnGitHub": "Поставить звезду на GitHub",
       "support": "Поддержка"

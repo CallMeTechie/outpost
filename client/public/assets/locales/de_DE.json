@@ -150,6 +150,7 @@
       "account": "Konto",
       "logout": "Abmelden",
       "collapseTitle": "Seitenleiste ausblenden",
+      "expandTitle": "Seitenleiste einblenden",
       "logoutConfirmText": "Du wirst aus dem Account {{username}} ausgeloggt. Möchtest du fortfahren?",
       "starOnGitHub": "Stern auf GitHub",
       "support": "Unterstütze"

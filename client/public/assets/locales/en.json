@@ -150,6 +150,7 @@
       "account": "Account",
       "logout": "Logout",
       "collapseTitle": "Collapse Sidebar",
+      "expandTitle": "Show sidebar",
       "logoutConfirmText": "This will log you out of the {{username}} account. Are you sure?",
       "starOnGitHub": "Star on GitHub",
       "support": "Support"

@@ -150,6 +150,7 @@
       "account": "الحساب",
       "logout": "تسجيل الخروج",
       "collapseTitle": "طي الشريط الجانبي",
+      "expandTitle": "إظهار الشريط الجانبي",
       "logoutConfirmText": "سيتم تسجيل الخروج من حساب {{username}}. هل أنت متأكد؟",
       "starOnGitHub": "نجمة على GitHub",
       "support": "الدعم"

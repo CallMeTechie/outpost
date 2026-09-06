@@ -150,6 +150,7 @@
       "account": "Conta",
       "logout": "Fazer logout",
       "collapseTitle": "Alternar a Barra Lateral",
+      "expandTitle": "Mostrar barra lateral",
       "logoutConfirmText": "Isso irá encerrar sua sessão na conta {{username}}. Tem certeza?",
       "starOnGitHub": "Dê uma estrela no GitHub",
       "support": "Suporte"

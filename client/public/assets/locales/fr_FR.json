@@ -150,6 +150,7 @@
       "account": "Compte",
       "logout": "Déconnexion",
       "collapseTitle": "Réduire la barre latérale",
+      "expandTitle": "Afficher la barre latérale",
       "logoutConfirmText": "Cela vous déconnectera du compte {{username}} . Êtes-vous sûr(e) ?",
       "starOnGitHub": "Star sur GitHub",
       "support": "Soutien"

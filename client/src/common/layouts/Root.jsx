@@ -24,6 +24,9 @@ import ConnectionErrorBanner from "@/common/components/ConnectionErrorBanner";
 import { waitForTauri } from "@/common/utils/TauriUtil.js";
 import MobileNav from "@/common/components/MobileNav";
 import ThemeLoader from "@/common/components/ThemeLoader";
+import Icon from "@/common/components/Icon";
+import { ChevronRight as IconChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const Sidebar = lazy(() => import("@/common/components/Sidebar"));
 
@@ -38,6 +41,7 @@ const PreferencesWrapper = ({ children }) => {
 
 const AppContent = () => {
     const [tauriReady, setTauriReady] = useState(false);
+    const { t } = useTranslation();
     const [isLeftPaneCollapsed, setIsLeftPaneCollapsed] = useState(false);
     const [isLeftPaneHovering, setIsLeftPaneHovering] = useState(false);
     const leftPaneRef = useRef(null);
@@ -111,10 +115,22 @@ const AppContent = () => {
                                                                 </Suspense>
                                                                 <div className="left-pane-slot" id="left-pane-slot" />
                                                             </div>
+                                                            {/* Hovering slides the pane in for a look; a tap or click brings it back
+                                                                for good. The click is what makes a collapsed pane recoverable at all
+                                                                without a mouse: touch sends no mousemove, and on a folding phone this
+                                                                strip also shares the screen edge with the system's back gesture. */}
                                                             <div
                                                                 className={`left-pane-hover-bar${isLeftPaneCollapsed ? " active" : ""}`}
                                                                 ref={hoverBarRef}
-                                                            />
+                                                                role="button"
+                                                                tabIndex={isLeftPaneCollapsed ? 0 : -1}
+                                                                aria-label={t("common.sidebar.expandTitle")}
+                                                                title={t("common.sidebar.expandTitle")}
+                                                                onClick={() => setIsLeftPaneCollapsed(false)}
+                                                                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setIsLeftPaneCollapsed(false); } }}
+                                                            >
+                                                                <Icon icon={IconChevronRight} />
+                                                            </div>
                                                             <div className="main-content">
                                                                 <Suspense fallback={<Loading />}>
                                                                     <Outlet />
