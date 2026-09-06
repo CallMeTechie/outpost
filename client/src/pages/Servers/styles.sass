@@ -15,9 +15,16 @@ body.sidebar-resizing
 // .main-content that holds .server-page. A portal does not move the real DOM,
 // so :has() from .server-page can never reach the list. The body is the only
 // ancestor both subtrees share.
-body.session-focus
-  .left-pane-slot
-    display: none
+//
+// Desktop only. On a phone the server list is not a pane beside the terminal but a
+// drawer laid over it (.server-list.mobile, position: fixed) -- it takes no width, so
+// there is nothing for focus mode to reclaim. And the pane is always narrower than the
+// minimum there, so focus mode is always on: hiding the slot hid the drawer for good,
+// and the only way to see the list again was to leave the page and come back.
+@media (min-width: calc(#{breakpoints.$mobile} + 1px))
+  body.session-focus
+    .left-pane-slot
+      display: none
 
 .server-page
   display: flex

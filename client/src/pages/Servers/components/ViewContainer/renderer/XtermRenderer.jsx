@@ -19,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import ConnectionLoader from "./components/ConnectionLoader";
 import ConnectionError, { mapConnectionError } from "./components/ConnectionError";
 import { getWebSocketUrl } from "@/common/utils/ConnectionUtil.js";
+import { isImeBackspace } from "@/common/utils/imeKeys.js";
 import { postRequest } from "@/common/utils/RequestUtil.js";
 import { applyLatchedModifiers } from "@/common/utils/keyBarModifiers.js";
 import "@xterm/xterm/css/xterm.css";
@@ -433,6 +434,14 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
         term.loadAddon(fitAddon);
         term.open(ref.current);
 
+        // Whether the soft keyboard has a word open. xterm keeps the same flag but does not
+        // expose it, and the keydown handler below needs it before xterm acts on the event.
+        let composing = false;
+        const onCompositionStart = () => { composing = true; };
+        const onCompositionEnd = () => { composing = false; };
+        term.textarea?.addEventListener("compositionstart", onCompositionStart);
+        term.textarea?.addEventListener("compositionend", onCompositionEnd);
+
         // Only remember non-empty selections: the clearing event fires with an empty
         // selection and must not overwrite what the user just highlighted.
         const selectionDisposable = term.onSelectionChange(() => {
@@ -713,6 +722,11 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
         });
 
         term.attachCustomKeyEventHandler((event) => {
+            // Returning false here stops xterm before its composition helper sees the key,
+            // and leaves the browser default in place -- which is the IME shortening its
+            // word. See imeKeys.js for the chain of events this cuts.
+            if (isImeBackspace(event, composing)) return false;
+
             if (event.type === "keydown") {
                 if (passwordPromptRef.current) {
                     const hintItems = passwordIdentitiesRef.current;
@@ -876,6 +890,8 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
             window.removeEventListener("resize", handleResize);
             if (resizeFrame) cancelAnimationFrame(resizeFrame);
             observer?.disconnect();
+            term.textarea?.removeEventListener("compositionstart", onCompositionStart);
+            term.textarea?.removeEventListener("compositionend", onCompositionEnd);
             ref.current?.removeEventListener('paste', handleNativePaste);
             ref.current?.removeEventListener('mousedown', handleSelectionReset, true);
             lastSelectionRef.current = "";
