@@ -4,8 +4,8 @@ import { getRequest, postRequest, deleteRequest } from "@/common/utils/RequestUt
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { Permission } from "@/common/utils/permissions.js";
-import Icon from "@mdi/react";
-import { mdiCheckCircleOutline, mdiCloseCircleOutline, mdiDomain, mdiMonitorShare, mdiPlus, mdiShieldCheckOutline } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { CircleCheck as IconCircleCheck, CircleX as IconCircleX, Building2 as IconBuilding2, MonitorUp as IconMonitorUp, Plus as IconPlus, ShieldCheck as IconShieldCheck } from "lucide-react";
 import Button from "@/common/components/Button";
 import TabSwitcher from "@/common/components/TabSwitcher";
 import OrganizationDialog from "./components/OrganizationDialog";
@@ -148,14 +148,14 @@ export const Organizations = () => {
             <div className="org-header">
                 <h2>{t("settings.organizations.title")}</h2>
                 {hasPermission(Permission.ORGANIZATIONS_CREATE) && (
-                    <Button text={t("settings.organizations.createOrganization")} icon={mdiPlus} onClick={() => setCreateDialogOpen(true)} />
+                    <Button text={t("settings.organizations.createOrganization")} icon={IconPlus} onClick={() => setCreateDialogOpen(true)} />
                 )}
             </div>
 
             <div className="vertical-list">
                 {organizations.length === 0 ? (
                     <div className="no-organizations">
-                        <Icon path={mdiDomain} />
+                        <Icon icon={IconBuilding2} />
                         <h2>{t("settings.organizations.noOrganizations")}</h2>
                         <p>{t("settings.organizations.noOrganizationsDescription")}</p>
                     </div>
@@ -167,7 +167,7 @@ export const Organizations = () => {
                         >
                             <div className="left-section">
                                 <div className="icon primary">
-                                    <Icon path={mdiDomain} />
+                                    <Icon icon={IconBuilding2} />
                                 </div>
                                 <div className="details">
                                     <h3>{org.name}</h3>
@@ -191,9 +191,9 @@ export const Organizations = () => {
                                 <div className="organization-members">
                                     <TabSwitcher
                                         tabs={[
-                                            { key: "members", label: t("settings.organizations.members"), icon: mdiDomain },
-                                            ...(org.permissions?.includes(Permission.ORG_AUDIT_VIEW) ? [{ key: "audit", label: t("settings.organizations.auditSettings.auditSettingsTab"), icon: mdiShieldCheckOutline }] : []),
-                                            ...(org.permissions?.includes(Permission.ORG_MANAGE) ? [{ key: "sessions", label: t("settings.organizations.sessionSettings.sessionSettingsTab"), icon: mdiMonitorShare }] : [])
+                                            { key: "members", label: t("settings.organizations.members"), icon: IconBuilding2 },
+                                            ...(org.permissions?.includes(Permission.ORG_AUDIT_VIEW) ? [{ key: "audit", label: t("settings.organizations.auditSettings.auditSettingsTab"), icon: IconShieldCheck }] : []),
+                                            ...(org.permissions?.includes(Permission.ORG_MANAGE) ? [{ key: "sessions", label: t("settings.organizations.sessionSettings.sessionSettingsTab"), icon: IconMonitorUp }] : [])
                                         ]}
                                         activeTab={activeTab[org.id] || "members"}
                                         onTabChange={(tabKey) => setActiveTab(prev => ({ ...prev, [org.id]: tabKey }))}
@@ -231,7 +231,7 @@ export const Organizations = () => {
                             <div key={invite.id} className="item">
                                 <div className="left-section">
                                     <div className="icon warning">
-                                        <Icon path={mdiDomain} />
+                                        <Icon icon={IconBuilding2} />
                                     </div>
                                     <div className="details">
                                         <h3>{invite.organization.name}</h3>
@@ -240,9 +240,9 @@ export const Organizations = () => {
                                 </div>
                                 <div className="right-section">
                                     <Icon onClick={() => handleInvitationResponse(invite.organization.id, true)}
-                                          path={mdiCheckCircleOutline} className="accept-icon" />
+                                          icon={IconCircleCheck} className="accept-icon" />
                                     <Icon onClick={() => handleInvitationResponse(invite.organization.id, false)}
-                                          path={mdiCloseCircleOutline} className="decline-icon" />
+                                          icon={IconCircleX} className="decline-icon" />
                                 </div>
                             </div>
                         ))}

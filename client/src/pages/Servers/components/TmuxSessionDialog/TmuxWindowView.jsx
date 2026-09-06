@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import Icon from "@mdi/react";
-import { mdiArrowLeft, mdiViewSplitVertical, mdiPencil, mdiTrashCan, mdiCheck, mdiClose } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { ArrowLeft as IconArrowLeft, Columns2 as IconColumns2, Pencil as IconPencil, Trash as IconTrash, Check as IconCheck, X as IconX } from "lucide-react";
 import { postRequest, deleteRequest, patchRequest } from "@/common/utils/RequestUtil.js";
 import Button from "@/common/components/Button";
 import { sanitizeRemoteText } from "@/common/utils/remoteText.js";
@@ -154,7 +154,7 @@ const TmuxWindowView = ({ session, entryId, identityId, onBack, onConnect,
                         title={t('servers.tmuxDialog.windowsBack')}
                         aria-label={t('servers.tmuxDialog.windowsBack')}
                         onClick={onBack}>
-                    <Icon path={mdiArrowLeft} size={0.7} />
+                    <Icon icon={IconArrowLeft} size={0.7} />
                 </button>
                 <h3>{t('servers.tmuxDialog.windowsTitle', {
                     name: displayName(session.name),
@@ -185,13 +185,13 @@ const TmuxWindowView = ({ session, entryId, identityId, onBack, onConnect,
                                                     title={t('servers.tmuxDialog.actions.windowKill')}
                                                     aria-label={t('servers.tmuxDialog.actions.windowKill')}
                                                     onClick={() => kill(win)}>
-                                                <Icon path={mdiCheck} size={0.7} />
+                                                <Icon icon={IconCheck} size={0.7} />
                                             </button>
                                             <button className="tmux-icon-button" disabled={busy !== null}
                                                     title={t('servers.tmuxDialog.actions.cancelKill')}
                                                     aria-label={t('servers.tmuxDialog.actions.cancelKill')}
                                                     onClick={() => setPendingKill(null)}>
-                                                <Icon path={mdiClose} size={0.7} />
+                                                <Icon icon={IconX} size={0.7} />
                                             </button>
                                         </div>
                                     </div>
@@ -222,13 +222,13 @@ const TmuxWindowView = ({ session, entryId, identityId, onBack, onConnect,
                                                 title={t('servers.tmuxDialog.actions.confirmRename')}
                                                 aria-label={t('servers.tmuxDialog.actions.confirmRename')}
                                                 onClick={() => rename(win)}>
-                                            <Icon path={mdiCheck} size={0.7} />
+                                            <Icon icon={IconCheck} size={0.7} />
                                         </button>
                                         <button className="tmux-icon-button" disabled={busy !== null}
                                                 title={t('servers.tmuxDialog.actions.cancelRename')}
                                                 aria-label={t('servers.tmuxDialog.actions.cancelRename')}
                                                 onClick={() => setRenaming(null)}>
-                                            <Icon path={mdiClose} size={0.7} />
+                                            <Icon icon={IconX} size={0.7} />
                                         </button>
                                     </div>
                                     {!nameOk && <p className="tmux-hint">{t('servers.tmuxDialog.windowNameHint')}</p>}
@@ -250,7 +250,7 @@ const TmuxWindowView = ({ session, entryId, identityId, onBack, onConnect,
                                         {win.panes > 1 && (
                                             <span className="tmux-window-panes"
                                                   title={t('servers.tmuxDialog.windowPanes', { count: win.panes })}>
-                                                <Icon path={mdiViewSplitVertical} size={0.55} />{win.panes}
+                                                <Icon icon={IconColumns2} size={0.55} />{win.panes}
                                             </span>
                                         )}
                                         {win.active && t('servers.tmuxDialog.attachedLabel')}
@@ -268,13 +268,13 @@ const TmuxWindowView = ({ session, entryId, identityId, onBack, onConnect,
                                                 setRenameValue(win.name);
                                                 setPendingKill(null);
                                             }}>
-                                        <Icon path={mdiPencil} size={0.7} />
+                                        <Icon icon={IconPencil} size={0.7} />
                                     </button>
                                     <button className="tmux-icon-button" disabled={busy !== null}
                                             title={t('servers.tmuxDialog.actions.windowKill')}
                                             aria-label={t('servers.tmuxDialog.actions.windowKill')}
                                             onClick={() => requestKill(win)}>
-                                        <Icon path={mdiTrashCan} size={0.7} />
+                                        <Icon icon={IconTrash} size={0.7} />
                                     </button>
                                 </div>
                             </li>

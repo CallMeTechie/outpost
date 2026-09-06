@@ -6,7 +6,7 @@ import MonitoringGrid from "./components/MonitoringGrid";
 import ServerDetails from "./components/ServerDetails";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import PageHeader from "@/common/components/PageHeader";
-import { mdiArrowLeft, mdiChartBoxOutline, mdiMagnify } from "@mdi/js";
+import { ArrowLeft as IconArrowLeft, ChartColumn as IconChartColumn, Search as IconSearch } from "lucide-react";
 import IconInput from "@/common/components/IconInput";
 import { useTranslation } from "react-i18next";
 
@@ -80,13 +80,13 @@ export const Monitoring = () => {
     return (
         <div className="monitoring-page">
             <PageHeader
-                icon={selectedServer ? undefined : mdiChartBoxOutline}
+                icon={selectedServer ? undefined : IconChartColumn}
                 title={selectedServer ? selectedServer.name : t("monitoring.page.title")}
                 subtitle={selectedServer ? undefined : t("monitoring.page.subtitle")}
                 onBackClick={selectedServer ? handleBackToGrid : undefined}
-                backIcon={mdiArrowLeft}>
+                backIcon={IconArrowLeft}>
                 {!selectedServer && (
-                    <IconInput type="text" icon={mdiMagnify} placeholder={t("monitoring.page.searchPlaceholder")}
+                    <IconInput type="text" icon={IconSearch} placeholder={t("monitoring.page.searchPlaceholder")}
                         value={searchQuery} setValue={setSearchQuery} />
                 )}
             </PageHeader>

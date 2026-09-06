@@ -3,7 +3,7 @@ import OutpostLogo from "@/common/components/OutpostLogo";
 import "./styles.sass";
 import Button from "@/common/components/Button";
 import Input from "@/common/components/IconInput";
-import { mdiAccountCircleOutline, mdiKeyOutline, mdiFingerprint, mdiQrcode, mdiArrowLeft } from "@mdi/js";
+import { CircleUser as IconCircleUser, Key as IconKey, FingerprintPattern as IconFingerprintPattern, QrCode as IconQrCode, ArrowLeft as IconArrowLeft } from "lucide-react";
 import { useContext, useEffect, useRef, useState } from "react";
 import { getRequest, request } from "@/common/utils/RequestUtil.js";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
@@ -232,7 +232,7 @@ export const LoginDialog = ({ open }) => {
                         <div className="qr-device-code">{qrCode}</div>
                         <Button
                             type="secondary"
-                            icon={mdiArrowLeft}
+                            icon={IconArrowLeft}
                             text={t('common.loginDialog.backToLogin')}
                             onClick={exitQrMode}
                             buttonType="button"
@@ -244,13 +244,13 @@ export const LoginDialog = ({ open }) => {
                         <div className="register-name-row">
                             <div className="form-group">
                                 <label htmlFor="firstName">{t('common.labels.firstName')}</label>
-                                <Input type="text" id="firstName" required icon={mdiAccountCircleOutline}
+                                <Input type="text" id="firstName" required icon={IconCircleUser}
                                        placeholder={t('common.placeholders.firstName')} autoComplete="given-name"
                                        value={firstName} setValue={setFirstName} />
                             </div>
                             <div className="form-group">
                                 <label htmlFor="lastName">{t('common.labels.lastName')}</label>
-                                <Input type="text" id="lastName" required icon={mdiAccountCircleOutline}
+                                <Input type="text" id="lastName" required icon={IconCircleUser}
                                        placeholder={t('common.placeholders.lastName')} autoComplete="family-name"
                                        value={lastName} setValue={setLastName} />
                             </div>
@@ -261,14 +261,14 @@ export const LoginDialog = ({ open }) => {
                         <>
                             <div className="form-group">
                                 <label htmlFor="username">{t('common.labels.username')}</label>
-                                <Input type="text" id="username" required icon={mdiAccountCircleOutline}
+                                <Input type="text" id="username" required icon={IconCircleUser}
                                        placeholder={t('common.placeholders.username')} autoComplete="username"
                                        value={username} setValue={setUsername} />
                             </div>
 
                             <div className="form-group">
                                 <label htmlFor="password">{t('common.labels.password')}</label>
-                                <Input type="password" id="password" required icon={mdiKeyOutline}
+                                <Input type="password" id="password" required icon={IconKey}
                                        placeholder={t('common.placeholders.password')} autoComplete="current-password"
                                        value={password} setValue={setPassword} />
                             </div>
@@ -278,7 +278,7 @@ export const LoginDialog = ({ open }) => {
                     {totpRequired ? (
                         <div className="form-group">
                             <label htmlFor="code">{t('common.labels.twoFACode')}</label>
-                            <Input type="number" id="code" required icon={mdiKeyOutline}
+                            <Input type="number" id="code" required icon={IconKey}
                                    placeholder={t('common.placeholders.code')} autoComplete="one-time-code"
                                    value={code} setValue={setCode} />
                         </div>
@@ -305,7 +305,7 @@ export const LoginDialog = ({ open }) => {
                             <div className="sso-buttons">
                                 <Button
                                     type="secondary"
-                                    icon={mdiQrcode}
+                                    icon={IconQrCode}
                                     text={qrLoading ? t('common.loginDialog.authenticating') : t('common.loginDialog.signInWithQrCode')}
                                     onClick={startQrLogin}
                                     disabled={qrLoading}
@@ -313,7 +313,7 @@ export const LoginDialog = ({ open }) => {
                                 />
                                 <Button
                                     type="secondary"
-                                    icon={mdiFingerprint}
+                                    icon={IconFingerprintPattern}
                                     text={passkeyLoading ? t('common.loginDialog.authenticating') : t('common.loginDialog.signInWithPasskey')}
                                     onClick={handlePasskeyLogin}
                                     disabled={passkeyLoading}

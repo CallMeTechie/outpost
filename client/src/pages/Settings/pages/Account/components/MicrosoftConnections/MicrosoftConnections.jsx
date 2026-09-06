@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Icon from "@mdi/react";
-import { mdiMicrosoft, mdiPencil, mdiTrashCan, mdiAlertCircleOutline } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Pencil as IconPencil, Trash as IconTrash, CircleAlert as IconCircleAlert } from "lucide-react";
+import { mdiMicrosoft } from "@mdi/js";
 import Button from "@/common/components/Button";
 import Checkbox from "@/common/components/Checkbox";
 import ActionConfirmDialog from "@/common/components/ActionConfirmDialog";
@@ -138,7 +139,7 @@ export const MicrosoftConnections = () => {
 
             <div className="section-header">
                 <div className="header-content">
-                    <h2><Icon path={mdiMicrosoft} size={0.8} style={{ marginRight: "8px" }} />
+                    <h2><Icon icon={mdiMicrosoft} size={0.8} style={{ marginRight: "8px" }} />
                         {t("settings.account.microsoft.sectionTitle")}</h2>
                     <p>{t("settings.account.microsoft.sectionDescription")}</p>
                 </div>
@@ -159,7 +160,7 @@ export const MicrosoftConnections = () => {
                 {connections.length > 0 ? connections.map(connection => (
                     <div className="settings-list-item" key={connection.id}>
                         <div className="item-info">
-                            <Icon path={mdiMicrosoft} className="item-icon" />
+                            <Icon icon={mdiMicrosoft} className="item-icon" />
                             <div className="item-details">
                                 {editingId === connection.id ? (
                                     <input type="text" value={editingName} autoFocus className="ms-name-input"
@@ -193,7 +194,7 @@ export const MicrosoftConnections = () => {
                         </div>
                         <div className="item-actions">
                             {connection.status !== "connected" &&
-                                <Icon path={mdiAlertCircleOutline} size={0.8} className="ms-dead-icon" />}
+                                <Icon icon={IconCircleAlert} size={0.8} className="ms-dead-icon" />}
                             <button className="action-btn edit-btn"
                                     title={t("settings.account.microsoft.rename")}
                                     onClick={() => {
@@ -205,12 +206,12 @@ export const MicrosoftConnections = () => {
                                         // on a blur firing at all.
                                         cancelledRenameRef.current = false;
                                     }}>
-                                <Icon path={mdiPencil} size={0.8} />
+                                <Icon icon={IconPencil} size={0.8} />
                             </button>
                             <button className="action-btn delete-btn"
                                     title={t("settings.account.microsoft.disconnect")}
                                     onClick={() => confirmDelete(connection)}>
-                                <Icon path={mdiTrashCan} size={0.8} />
+                                <Icon icon={IconTrash} size={0.8} />
                             </button>
                         </div>
                     </div>

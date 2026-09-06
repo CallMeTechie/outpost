@@ -1,7 +1,7 @@
 import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
-import { mdiTable, mdiClose, mdiContentCopy, mdiFileExport } from "@mdi/js";
-import Icon from "@mdi/react";
+import { Table as IconTable, X as IconX, Copy as IconCopy, FileOutput as IconFileOutput } from "lucide-react";
+import Icon from "@/common/components/Icon";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import "./TableDialog.sass";
 
@@ -67,7 +67,7 @@ const TableDialog = ({ open, onClose, tableData }) => {
         <DialogProvider open={open} onClose={onClose} maxWidth="800px">
             <div className="table-dialog">
                 <div className="dialog-title">
-                    <Icon path={mdiTable} />
+                    <Icon icon={IconTable} />
                     <h2>{tableData.title}</h2>
                 </div>
 
@@ -105,13 +105,13 @@ const TableDialog = ({ open, onClose, tableData }) => {
                 <div className="dialog-actions">
                     {headers.length > 0 && rows.length > 0 && (
                         <>
-                            <Button onClick={copyTableAsText} text="Copy as Text" icon={mdiContentCopy}
+                            <Button onClick={copyTableAsText} text="Copy as Text" icon={IconCopy}
                                     type="secondary" />
-                            <Button onClick={copyTableAsCSV} text="Copy as CSV" icon={mdiFileExport}
+                            <Button onClick={copyTableAsCSV} text="Copy as CSV" icon={IconFileOutput}
                                     type="secondary" />
                         </>
                     )}
-                    <Button onClick={onClose} text="Close" icon={mdiClose} />
+                    <Button onClick={onClose} text="Close" icon={IconX} />
                 </div>
             </div>
         </DialogProvider>

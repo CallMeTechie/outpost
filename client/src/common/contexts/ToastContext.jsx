@@ -1,15 +1,15 @@
 import { createContext, useContext, useState, useCallback } from "react";
 import "@/common/styles/toast.sass";
-import Icon from "@mdi/react";
-import { mdiAlert, mdiAlertCircle, mdiCheckCircle, mdiClose, mdiInformation } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { TriangleAlert as IconTriangleAlert, CircleAlert as IconCircleAlert, CircleCheck as IconCircleCheck, X as IconX, Info as IconInfo } from "lucide-react";
 
 const ToastContext = createContext({});
 
 const DEFAULT_ICONS = {
-    Success: mdiCheckCircle,
-    Error: mdiAlertCircle,
-    Warning: mdiAlert,
-    Info: mdiInformation,
+    Success: IconCircleCheck,
+    Error: IconCircleAlert,
+    Warning: IconTriangleAlert,
+    Info: IconInfo,
 };
 
 export const useToast = () => useContext(ToastContext);
@@ -55,14 +55,14 @@ export const ToastProvider = ({ children }) => {
                 {toasts.map((toast) => (
                     <div key={toast.id} id={toast.id} className={`toast ${!toast.description ? 'no-description' : ''}`} data-type={toast.title}>
                         <div className="toast-icon">
-                            <Icon path={toast.icon} />
+                            <Icon icon={toast.icon} />
                         </div>
                         <div className="toast-content">
                             {toast.title && <div className="toast-title">{toast.title}</div>}
                             {toast.description && <div className="toast-description">{toast.description}</div>}
                         </div>
                         <button className="toast-close" onClick={() => removeToast(toast.id)}>
-                            <Icon path={mdiClose} />
+                            <Icon icon={IconX} />
                         </button>
                     </div>
                 ))}

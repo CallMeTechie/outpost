@@ -10,7 +10,7 @@ import Button from "@/common/components/Button";
 import PageHeader from "@/common/components/PageHeader";
 import SelectBox from "@/common/components/SelectBox";
 import TabSwitcher from "@/common/components/TabSwitcher";
-import { mdiCodeBraces, mdiPlus, mdiScriptText, mdiCloudDownloadOutline, mdiAccount, mdiDomain } from "@mdi/js";
+import { Braces as IconBraces, Plus as IconPlus, ScrollText as IconScrollText, CloudDownload as IconCloudDownload, User as IconUser, Building2 as IconBuilding2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getRequest } from "@/common/utils/RequestUtil.js";
 import { useContext } from "react";
@@ -107,19 +107,19 @@ export const Snippets = () => {
 
     const organizationOptions = useMemo(() => {
         const options = [
-            { value: null, label: t("snippets.page.personal"), icon: mdiAccount },
+            { value: null, label: t("snippets.page.personal"), icon: IconUser },
         ];
 
         // Add organizations
         organizations.forEach(org => {
-            options.push({ value: org.id, label: org.name, icon: mdiDomain });
+            options.push({ value: org.id, label: org.name, icon: IconBuilding2 });
         });
 
         sources.forEach(source => {
             options.push({
                 value: `source_${source.id}`,
                 label: source.name,
-                icon: mdiCloudDownloadOutline,
+                icon: IconCloudDownload,
             });
         });
 
@@ -187,13 +187,13 @@ export const Snippets = () => {
     return (
         <div className="snippets-page">
             <PageHeader
-                icon={activeTab === 0 ? mdiCodeBraces : mdiScriptText}
+                icon={activeTab === 0 ? IconBraces : IconScrollText}
                 title={activeTab === 0 ? t("snippets.page.title") : t("scripts.page.title")}
                 subtitle={activeTab === 0 ? t("snippets.page.subtitle") : t("scripts.page.subtitle")}>
                 {!isSourceSelected && canAdd && (
                     <Button
                         text={activeTab === 0 ? t("snippets.page.addSnippet") : t("scripts.page.addScript")}
-                        icon={mdiPlus}
+                        icon={IconPlus}
                         onClick={handleCreateClick}
                     />
                 )}
@@ -204,8 +204,8 @@ export const Snippets = () => {
                     <div className="snippets-tabs">
                         <TabSwitcher
                             tabs={[
-                                { key: "snippets", label: t("snippets.page.tabs.snippets"), icon: mdiCodeBraces },
-                                { key: "scripts", label: t("scripts.page.tabs.scripts"), icon: mdiScriptText }
+                                { key: "snippets", label: t("snippets.page.tabs.snippets"), icon: IconBraces },
+                                { key: "scripts", label: t("scripts.page.tabs.scripts"), icon: IconScrollText }
                             ]}
                             activeTab={activeTab === 0 ? "snippets" : "scripts"}
                             onTabChange={(tabKey) => setActiveTab(tabKey === "snippets" ? 0 : 1)}

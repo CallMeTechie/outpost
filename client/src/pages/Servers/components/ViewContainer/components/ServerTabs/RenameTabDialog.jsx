@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
 import IconInput from "@/common/components/IconInput";
-import Icon from "@mdi/react";
-import { mdiRenameBox, mdiCheck, mdiClose } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { SquarePen as IconSquarePen, Check as IconCheck, X as IconX } from "lucide-react";
 import "./RenameTabDialog.sass";
 
 // Built after ScriptRenderer/components/InputDialog.jsx, which already assembles
@@ -49,7 +49,7 @@ const RenameTabDialog = ({ open, initialValue, automaticText, onSubmit, onClose 
         <DialogProvider open={open} onClose={onClose}>
             <div className="rename-tab-dialog">
                 <div className="dialog-title">
-                    <Icon path={mdiRenameBox} />
+                    <Icon icon={IconSquarePen} />
                     <h2>{t("servers.tabs.renameDialog.title")}</h2>
                 </div>
 
@@ -57,7 +57,7 @@ const RenameTabDialog = ({ open, initialValue, automaticText, onSubmit, onClose 
                     <p className="dialog-description">{t("servers.tabs.renameDialog.description")}</p>
                     <IconInput
                         type="text"
-                        icon={mdiRenameBox}
+                        icon={IconSquarePen}
                         value={value}
                         setValue={setValue}
                         placeholder={automaticText || t("servers.tabs.renameDialog.placeholder")}
@@ -67,8 +67,8 @@ const RenameTabDialog = ({ open, initialValue, automaticText, onSubmit, onClose 
                 </div>
 
                 <div className="dialog-actions">
-                    <Button onClick={onClose} text={t("common.actions.cancel")} icon={mdiClose} type="secondary" />
-                    <Button onClick={handleSubmit} text={t("common.actions.save")} icon={mdiCheck} />
+                    <Button onClick={onClose} text={t("common.actions.cancel")} icon={IconX} type="secondary" />
+                    <Button onClick={handleSubmit} text={t("common.actions.save")} icon={IconCheck} />
                 </div>
             </div>
         </DialogProvider>

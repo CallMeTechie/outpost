@@ -1,7 +1,7 @@
 import "./styles.sass";
 import OutpostLogo from "@/common/components/OutpostLogo";
-import { mdiCog, mdiLogout, mdiAccountCogOutline, mdiStarOutline, mdiLifebuoy, mdiServerNetwork, mdiPlus, mdiClose } from "@mdi/js";
-import Icon from "@mdi/react";
+import { Cog as IconCog, LogOut as IconLogOut, UserCog as IconUserCog, Star as IconStar, LifeBuoy as IconLifeBuoy, Server as IconServer, Plus as IconPlus, X as IconX } from "lucide-react";
+import Icon from "@/common/components/Icon";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useContext, useState, useRef, useEffect } from "react";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
@@ -60,12 +60,12 @@ export const Sidebar = ({ onToggleCollapse }) => {
                 }} />}
             <div className="sidebar-top">
                 <Tooltip text={t('common.sidebar.collapseTitle')}>
-                    <div className="sidebar-logo outpost-logo" onClick={onToggleCollapse} title={t('common.sidebar.collapseTitle')}><OutpostLogo size={48 * uiScale} /></div>
+                    <div className="sidebar-logo outpost-logo" onClick={onToggleCollapse} title={t('common.sidebar.collapseTitle')}><OutpostLogo size={42 * uiScale} /></div>
                 </Tooltip>
                 <nav>
                     {navigation.map((item, i) => (
                         <Tooltip key={i} text={item.title}>
-                            <div onClick={() => navigate(item.path)} className={`nav-item${location.pathname.startsWith(item.path) ? " nav-item-active" : ""}`}><Icon path={item.icon} /></div>
+                            <div onClick={() => navigate(item.path)} className={`nav-item${location.pathname.startsWith(item.path) ? " nav-item-active" : ""}`}><Icon icon={item.icon} /></div>
                         </Tooltip>
                     ))}
                 </nav>
@@ -73,7 +73,7 @@ export const Sidebar = ({ onToggleCollapse }) => {
             <div className="sidebar-bottom">
                 <div className="user-account-area" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
                     <Tooltip text={user?.username || t('common.sidebar.account')} disabled={userMenuOpen}>
-                        <div className={`user-btn ${userMenuOpen ? 'active' : ''}`}><Icon path={mdiAccountCogOutline} /></div>
+                        <div className={`user-btn ${userMenuOpen ? 'active' : ''}`}><Icon icon={IconUserCog} /></div>
                     </Tooltip>
                     <div className={`user-menu ${userMenuOpen ? 'open' : ''}`}>
                         <div className="user-menu-header">
@@ -89,32 +89,32 @@ export const Sidebar = ({ onToggleCollapse }) => {
                             {servers.map(server => (
                                 <div key={server.id} className={`user-menu-item server-item ${server.id === activeServerId ? 'active' : ''}`}
                                      onClick={() => { if (server.id !== activeServerId) { setUserMenuOpen(false); switchServer(server.id); } }}>
-                                    <Icon path={mdiServerNetwork} className="menu-icon" />
+                                    <Icon icon={IconServer} className="menu-icon" />
                                     <span className="menu-label">{getServerDisplayName(server)}</span>
                                     <button className="server-remove-btn" onClick={(e) => { e.stopPropagation(); setServerToRemove(server); setRemoveServerDialogOpen(true); }}>
-                                        <Icon path={mdiClose} size={0.55} />
+                                        <Icon icon={IconX} size={0.55} />
                                     </button>
                                 </div>
                             ))}
                             <div className="user-menu-item add-server" onClick={() => { setUserMenuOpen(false); setAddingServer(true); }}>
-                                <Icon path={mdiPlus} className="menu-icon" />
+                                <Icon icon={IconPlus} className="menu-icon" />
                                 <span className="menu-label">{t('common.serverSwitcher.addServer')}</span>
                             </div>
                         </>)}
                         <div className="user-menu-separator" />
                         <div className={`user-menu-item ${settingsDialogOpen ? 'active' : ''}`} onClick={() => { setSettingsDialogOpen(true); setUserMenuOpen(false); }}>
-                            <Icon path={mdiCog} className="menu-icon" /><span className="menu-label">{t('common.sidebar.settings')}</span>
+                            <Icon icon={IconCog} className="menu-icon" /><span className="menu-label">{t('common.sidebar.settings')}</span>
                         </div>
                         <div className="user-menu-separator" />
                         <div className="user-menu-item star" onClick={() => { openExternalUrl(GITHUB_URL); setUserMenuOpen(false); }}>
-                            <Icon path={mdiStarOutline} className="menu-icon" /><span className="menu-label">{t('common.sidebar.starOnGitHub')}</span>
+                            <Icon icon={IconStar} className="menu-icon" /><span className="menu-label">{t('common.sidebar.starOnGitHub')}</span>
                         </div>
                         <div className={`user-menu-item support ${supportDialogOpen ? 'active' : ''}`} onClick={() => { setSupportDialogOpen(true); setUserMenuOpen(false); }}>
-                            <Icon path={mdiLifebuoy} className="menu-icon" /><span className="menu-label">{t('common.sidebar.support')}</span>
+                            <Icon icon={IconLifeBuoy} className="menu-icon" /><span className="menu-label">{t('common.sidebar.support')}</span>
                         </div>
                         <div className="user-menu-separator" />
                         <div className="user-menu-item danger" onClick={() => { setLogoutDialogOpen(true); setUserMenuOpen(false); }}>
-                            <Icon path={mdiLogout} className="menu-icon" /><span className="menu-label">{t('common.sidebar.logout')}</span>
+                            <Icon icon={IconLogOut} className="menu-icon" /><span className="menu-label">{t('common.sidebar.logout')}</span>
                         </div>
                     </div>
                 </div>

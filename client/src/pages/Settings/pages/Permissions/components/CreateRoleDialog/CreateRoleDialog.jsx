@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { DialogProvider } from "@/common/components/Dialog";
 import Input from "@/common/components/IconInput";
 import Button from "@/common/components/Button";
-import { mdiShieldAccountOutline } from "@mdi/js";
+import { ShieldUser as IconShieldUser } from "lucide-react";
 import { postRequest } from "@/common/utils/RequestUtil.js";
 import { useTranslation } from "react-i18next";
 import { PRESET_COLORS } from "../../constants";
@@ -40,7 +40,7 @@ export const CreateRoleDialog = ({ open, onClose, onCreated }) => {
 
                 <div className="form-group">
                     <label htmlFor="role-name">{t("settings.permissions.roleName")}</label>
-                    <Input id="role-name" icon={mdiShieldAccountOutline} autoFocus
+                    <Input id="role-name" icon={IconShieldUser} autoFocus
                            placeholder={t("settings.permissions.roleNamePlaceholder")}
                            value={name} setValue={setName} />
                 </div>

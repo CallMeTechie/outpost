@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import Icon from "@mdi/react";
-import { mdiMenu, mdiBroadcast, mdiKeyboard, mdiFullscreen, mdiCodeBraces } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Menu as IconMenu, Radio as IconRadio, Keyboard as IconKeyboard, Fullscreen as IconFullscreen, Braces as IconBraces } from "lucide-react";
 import SnippetsMenu from "../../renderer/components/SnippetsMenu";
 import KeyboardShortcutsMenu from "./components/KeyboardShortcutsMenu";
 import { useKeymaps, matchesKeybind } from "@/common/contexts/KeymapContext.jsx";
@@ -91,7 +91,7 @@ export const TerminalActionsMenu = ({ layoutMode, onBroadcastToggle, onSnippetSe
     return (
         <div className="terminal-actions-menu" ref={menuRef} data-ui-id="UI-SERVERS-ACTIONS">
             <Icon 
-                path={mdiMenu} 
+                icon={IconMenu} 
                 className={`actions-menu-btn ${menuOpen ? 'active' : ''}`}
                 title={t('servers.terminalActions.menuTitle')}
                 onClick={(e) => {
@@ -103,12 +103,12 @@ export const TerminalActionsMenu = ({ layoutMode, onBroadcastToggle, onSnippetSe
             {menuOpen && (
                 <div className="actions-menu-dropdown">
                     <div className="menu-item" onClick={() => handleMenuItemClick("snippets")}>
-                        <Icon path={mdiCodeBraces} />
+                        <Icon icon={IconBraces} />
                         <span>{t('servers.terminalActions.snippets')}</span>
                     </div>
                     {hasGuacamole && (
                         <div className="menu-item" onClick={() => handleMenuItemClick("keyboard")}>
-                            <Icon path={mdiKeyboard} />
+                            <Icon icon={IconKeyboard} />
                             <span>{t('servers.terminalActions.keyboardShortcuts')}</span>
                         </div>
                     )}
@@ -119,12 +119,12 @@ export const TerminalActionsMenu = ({ layoutMode, onBroadcastToggle, onSnippetSe
                          aria-disabled={layoutMode === "single"}
                          title={layoutMode === "single" ? t('servers.terminalActions.broadcastNeedsSplit') : undefined}
                          onClick={() => { if (layoutMode !== "single") handleMenuItemClick("broadcast"); }}>
-                        <Icon path={mdiBroadcast} />
+                        <Icon icon={IconRadio} />
                         <span>{t('servers.terminalActions.broadcasting')}</span>
                         {broadcastEnabled && <span className="badge">{t('servers.terminalActions.badgeOn')}</span>}
                     </div>
                     <div className={`menu-item ${fullscreenEnabled ? 'active' : ''}`} onClick={() => handleMenuItemClick("fullscreen")}>
-                        <Icon path={mdiFullscreen} />
+                        <Icon icon={IconFullscreen} />
                         <span>{t('servers.terminalActions.fullScreen')}</span>
                         {fullscreenEnabled && <span className="badge">{t('servers.terminalActions.badgeOn')}</span>}
                     </div>

@@ -1,7 +1,7 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Icon from "@mdi/react";
-import { mdiCheckCircleOutline, mdiNoteEditOutline, mdiSync } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { CircleCheck as IconCircleCheck, NotebookPen as IconNotebookPen, RefreshCcw as IconRefreshCcw } from "lucide-react";
 import { getRequest, patchRequest } from "@/common/utils/RequestUtil.js";
 import ToggleSwitch from "@/common/components/ToggleSwitch";
 import Tooltip from "@/common/components/Tooltip";
@@ -164,14 +164,14 @@ export const NotesRenderer = ({ session }) => {
             case STATUS.SAVING:
                 return (
                     <span className="notes-status saving">
-                        <Icon path={mdiSync} />
+                        <Icon icon={IconRefreshCcw} />
                         {t("servers.notesPanel.status.saving")}
                     </span>
                 );
             case STATUS.SAVED:
                 return (
                     <span className="notes-status saved">
-                        <Icon path={mdiCheckCircleOutline} />
+                        <Icon icon={IconCircleCheck} />
                         {t("servers.notesPanel.status.saved")}
                     </span>
                 );
@@ -198,7 +198,7 @@ export const NotesRenderer = ({ session }) => {
         <div className="notes-renderer">
             <div className="notes-header">
                 <div className="notes-title">
-                    <Icon path={mdiNoteEditOutline} />
+                    <Icon icon={IconNotebookPen} />
                     <h3>{t("servers.notesPanel.title")}</h3>
                 </div>
                 <div className="notes-actions">

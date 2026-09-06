@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
-import Icon from "@mdi/react";
-import { mdiPencil, mdiTrashCan, mdiCheck, mdiClose } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Pencil as IconPencil, Trash as IconTrash, Check as IconCheck, X as IconX } from "lucide-react";
 import { getRequest, deleteRequest, patchRequest } from "@/common/utils/RequestUtil.js";
 import TmuxWindowView, { displayName } from "./TmuxWindowView.jsx";
 import { emptyStateKey } from "./emptyState.js";
@@ -379,13 +379,13 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                                                         title={t('servers.tmuxDialog.actions.confirmRename')}
                                                         aria-label={t('servers.tmuxDialog.actions.confirmRename')}
                                                         onClick={() => renameSession(session.name)}>
-                                                    <Icon path={mdiCheck} size={0.7} />
+                                                    <Icon icon={IconCheck} size={0.7} />
                                                 </button>
                                                 <button className="tmux-icon-button" disabled={busyName !== null}
                                                         title={t('servers.tmuxDialog.actions.cancelRename')}
                                                         aria-label={t('servers.tmuxDialog.actions.cancelRename')}
                                                         onClick={() => setRenaming(null)}>
-                                                    <Icon path={mdiClose} size={0.7} />
+                                                    <Icon icon={IconX} size={0.7} />
                                                 </button>
                                             </div>
                                         ) : pendingKill === session.name ? (
@@ -427,14 +427,14 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                                                             title={t('servers.tmuxDialog.actions.rename')}
                                                             aria-label={t('servers.tmuxDialog.actions.rename')}
                                                             onClick={() => startRename(session.name)}>
-                                                        <Icon path={mdiPencil} size={0.7} />
+                                                        <Icon icon={IconPencil} size={0.7} />
                                                     </button>
                                                     <button className="tmux-icon-button"
                                                             disabled={busyName !== null}
                                                             title={t('servers.tmuxDialog.actions.kill')}
                                                             aria-label={t('servers.tmuxDialog.actions.kill')}
                                                             onClick={() => (session.attached ? setPendingKill(session.name) : killSession(session.name))}>
-                                                        <Icon path={mdiTrashCan} size={0.7} />
+                                                        <Icon icon={IconTrash} size={0.7} />
                                                     </button>
                                                 </div>
                                             </>

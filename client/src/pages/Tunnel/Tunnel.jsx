@@ -7,8 +7,8 @@ import { IdentityContext } from "@/common/contexts/IdentityContext.jsx";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { getActiveServerUrl } from "@/common/utils/TauriUtil.js";
-import Icon from "@mdi/react";
-import { mdiPlay, mdiStop, mdiTunnel, mdiLoading, mdiServer, mdiNumeric, mdiAccountCircle } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Play as IconPlay, Square as IconSquare, Waypoints as IconWaypoints, LoaderCircle as IconLoaderCircle, Server as IconServer, Binary as IconBinary, CircleUser as IconCircleUser } from "lucide-react";
 import SelectBox from "@/common/components/SelectBox";
 import IconInput from "@/common/components/IconInput";
 import Button from "@/common/components/Button";
@@ -63,7 +63,7 @@ export const Tunnel = () => {
 
     const identityOptions = server?.identities?.map((identityId) => {
         const identity = identities?.find(id => id.id === identityId);
-        return { value: identityId, label: identity?.name || `Identity ${identityId}`, icon: mdiAccountCircle };
+        return { value: identityId, label: identity?.name || `Identity ${identityId}`, icon: IconCircleUser };
     }) || [];
 
     const pollTunnelStatus = useCallback(async (id) => {
@@ -136,7 +136,7 @@ export const Tunnel = () => {
             <TitleBar title={`Port Forward - ${serverName}`} hideMaximize />
             <div className="tunnel-page">
                 <div className="tunnel-header">
-                    <Icon path={mdiTunnel} size={1} />
+                    <Icon icon={IconWaypoints} size={1} />
                     <h2>{t("tunnel.title")}</h2>
                 </div>
                 <div className="tunnel-form">
@@ -147,16 +147,16 @@ export const Tunnel = () => {
                     <div className="form-row">
                         <div className="form-group">
                             <label>{t("tunnel.remoteHost")}</label>
-                            <IconInput type="text" icon={mdiServer} value={remoteHost} setValue={setRemoteHost} placeholder="127.0.0.1" disabled={isActive} />
+                            <IconInput type="text" icon={IconServer} value={remoteHost} setValue={setRemoteHost} placeholder="127.0.0.1" disabled={isActive} />
                         </div>
                         <div className="form-group">
                             <label>{t("tunnel.remotePort")}</label>
-                            <IconInput type="number" icon={mdiNumeric} value={remotePort} setValue={setRemotePort} placeholder="3306" disabled={isActive} />
+                            <IconInput type="number" icon={IconBinary} value={remotePort} setValue={setRemotePort} placeholder="3306" disabled={isActive} />
                         </div>
                     </div>
                     <div className="form-group">
                         <label>{t("tunnel.localPort")}</label>
-                        <IconInput type="number" icon={mdiNumeric} value={localPort} setValue={setLocalPort} placeholder="3306" disabled={isActive} />
+                        <IconInput type="number" icon={IconBinary} value={localPort} setValue={setLocalPort} placeholder="3306" disabled={isActive} />
                     </div>
                     <div className="tunnel-status">
                         <span className={`status-indicator ${tunnelStatus}`}></span>
@@ -170,9 +170,9 @@ export const Tunnel = () => {
                     </div>
                     <div className="tunnel-actions">
                         {!isActive ? (
-                            <Button text={t("tunnel.start")} icon={mdiPlay} onClick={startTunnel} type="primary" />
+                            <Button text={t("tunnel.start")} icon={IconPlay} onClick={startTunnel} type="primary" />
                         ) : (
-                            <Button text={t("tunnel.stop")} icon={tunnelStatus === "starting" ? mdiLoading : mdiStop} onClick={stopTunnel} type="error" />
+                            <Button text={t("tunnel.stop")} icon={tunnelStatus === "starting" ? IconLoaderCircle : IconSquare} onClick={stopTunnel} type="error" />
                         )}
                     </div>
                 </div>

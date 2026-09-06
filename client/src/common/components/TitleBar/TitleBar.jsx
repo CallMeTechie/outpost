@@ -1,6 +1,6 @@
 import "./styles.sass";
-import Icon from "@mdi/react";
-import { mdiWindowMinimize, mdiWindowMaximize, mdiWindowClose, mdiWindowRestore } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Minus as IconMinus, Square as IconSquare, X as IconX, Copy as IconCopy } from "lucide-react";
 import { useEffect, useState } from "react";
 import OutpostLogo from "@/common/components/OutpostLogo";
 import { isTauri } from "@/common/utils/TauriUtil.js";
@@ -66,15 +66,15 @@ export const TitleBar = ({ title = "Outpost Connector", hideMaximize = false, sh
                 )}
                 <div className="title-bar-controls">
                     <button className="title-bar-btn" onClick={handleMinimize}>
-                        <Icon path={mdiWindowMinimize} size={0.8} />
+                        <Icon icon={IconMinus} size={0.8} />
                     </button>
                     {!hideMaximize && (
                         <button className="title-bar-btn" onClick={handleMaximize}>
-                            <Icon path={isMaximized || isFullscreen ? mdiWindowRestore : mdiWindowMaximize} size={0.8} />
+                            <Icon icon={isMaximized || isFullscreen ? IconCopy : IconSquare} size={0.8} />
                         </button>
                     )}
                     <button className="title-bar-btn close" onClick={handleClose}>
-                        <Icon path={mdiWindowClose} size={0.8} />
+                        <Icon icon={IconX} size={0.8} />
                     </button>
                 </div>
             </div>

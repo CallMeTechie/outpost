@@ -1,8 +1,8 @@
 import React, { createContext, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import Icon from "@mdi/react";
-import { mdiClose } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { X as IconX } from "lucide-react";
 import "./styles.sass";
 
 export const DialogContext = createContext({});
@@ -105,7 +105,7 @@ export const DialogProvider = ({ disableClosing, open, children, onClose, isDirt
                 onAnimationEnd={handleAnimationEnd}>
                 {!disableClosing && (
                     <button className="dialog-close-btn" onClick={tryClose} aria-label="Close dialog">
-                        <Icon path={mdiClose} size={0.9} />
+                        <Icon icon={IconX} size={0.9} />
                     </button>
                 )}
                 {children}

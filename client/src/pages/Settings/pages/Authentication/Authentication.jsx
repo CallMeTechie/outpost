@@ -5,8 +5,8 @@ import { deleteRequest, getRequest, patchRequest } from "@/common/utils/RequestU
 import Button from "@/common/components/Button";
 import ToggleSwitch from "@/common/components/ToggleSwitch";
 import { getProviderIcon } from "@/common/utils/iconUtils";
-import Icon from "@mdi/react";
-import { mdiPencil, mdiPlus, mdiTrashCan, mdiLock, mdiServer } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Pencil as IconPencil, Plus as IconPlus, Trash as IconTrash, Lock as IconLock, Server as IconServer } from "lucide-react";
 import ProviderDialog from "./components/ProviderDialog";
 import LDAPProviderDialog from "./components/LDAPProviderDialog";
 import { ActionConfirmDialog } from "@/common/components/ActionConfirmDialog/ActionConfirmDialog.jsx";
@@ -74,8 +74,8 @@ export const Authentication = () => {
             <div className="auth-header">
                 <h2>{t("settings.authentication.title", { count: providers.length + ldapProviders.length })}</h2>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <Button onClick={() => setLdapDialogOpen(true)} text={t("settings.authentication.addLdapProvider")} icon={mdiServer} type="secondary" />
-                    <Button onClick={() => setCreateDialogOpen(true)} text={t("settings.authentication.addProvider")} icon={mdiPlus} />
+                    <Button onClick={() => setLdapDialogOpen(true)} text={t("settings.authentication.addLdapProvider")} icon={IconServer} type="secondary" />
+                    <Button onClick={() => setCreateDialogOpen(true)} text={t("settings.authentication.addProvider")} icon={IconPlus} />
                 </div>
             </div>
 
@@ -85,7 +85,7 @@ export const Authentication = () => {
                         <>
                             <div className="left-section">
                                 <div className={`icon ${provider.isInternal ? "warning" : "primary"}`}>
-                                    <Icon path={provider.isInternal ? mdiLock : getProviderIcon(provider)} />
+                                    <Icon icon={provider.isInternal ? IconLock : getProviderIcon(provider)} />
                                 </div>
                                 <div className="details">
                                     <h3>
@@ -108,7 +108,7 @@ export const Authentication = () => {
                                 {!provider.isInternal && (
                                     <>
                                         <Icon
-                                            path={mdiPencil}
+                                            icon={IconPencil}
                                             className="action-icon"
                                             onClick={() => {
                                                 setEditProvider(provider);
@@ -116,7 +116,7 @@ export const Authentication = () => {
                                             }}
                                         />
                                         <Icon
-                                            path={mdiTrashCan}
+                                            icon={IconTrash}
                                             className="action-icon danger"
                                             onClick={() => {
                                                 setSelectedProviderId(provider.id);
@@ -158,7 +158,7 @@ export const Authentication = () => {
                     <div key={`ldap-${provider.id}`} className="item">
                         <div className="left-section">
                             <div className="icon primary">
-                                <Icon path={mdiServer} />
+                                <Icon icon={IconServer} />
                             </div>
                             <div className="details">
                                 <h3>
@@ -177,7 +177,7 @@ export const Authentication = () => {
                             />
 
                             <Icon 
-                                path={mdiPencil} 
+                                icon={IconPencil} 
                                 className="action-icon"
                                 onClick={() => {
                                     setEditLdapProvider(provider);
@@ -185,7 +185,7 @@ export const Authentication = () => {
                                 }}
                             />
                             <Icon 
-                                path={mdiTrashCan} 
+                                icon={IconTrash} 
                                 className="action-icon danger"
                                 onClick={() => {
                                     setSelectedProviderId(provider.id);

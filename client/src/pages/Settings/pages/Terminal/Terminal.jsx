@@ -4,7 +4,7 @@ import SelectBox from "@/common/components/SelectBox";
 import Button from "@/common/components/Button";
 import { useState, useContext } from "react";
 import { useTranslation } from "react-i18next";
-import { mdiCloudSync, mdiCloudOffOutline } from "@mdi/js";
+import { CloudSync as IconCloudSync, CloudOff as IconCloudOff } from "lucide-react";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 
@@ -37,7 +37,7 @@ export const Terminal = () => {
 
     const renderSyncButton = (group) => (
         <Button
-            icon={isGroupSynced(group) ? mdiCloudSync : mdiCloudOffOutline}
+            icon={isGroupSynced(group) ? IconCloudSync : IconCloudOff}
             onClick={() => handleSyncToggle(group, group.split(".")[1])}
             type={isGroupSynced(group) ? "primary" : undefined}
         />

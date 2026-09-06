@@ -176,9 +176,12 @@
                 align-items: center
                 gap: 0.3rem
 
+                // Lucide draws a ring and leaves it unfilled; at 8px that reads as a
+                // smudge rather than a status light, so this one is filled deliberately.
                 .status-dot
                   width: 0.5rem
                   height: 0.5rem
+                  fill: currentColor
 
                 &.connected
                   background-color: colors.$success-opacity

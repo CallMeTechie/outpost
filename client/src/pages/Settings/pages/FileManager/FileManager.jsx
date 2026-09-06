@@ -2,8 +2,8 @@ import "./styles.sass";
 import { usePreferences } from "@/common/contexts/PreferencesContext.jsx";
 import { useTranslation } from "react-i18next";
 import { useContext } from "react";
-import Icon from "@mdi/react";
-import { mdiViewGrid, mdiViewList, mdiViewCompact, mdiImage, mdiEyeOff, mdiShieldCheck, mdiCursorMove, mdiFileMove, mdiContentCopy, mdiHelpCircle, mdiCloudSync, mdiCloudOffOutline } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { LayoutGrid as IconLayoutGrid, List as IconList, Rows3 as IconRows3, Image as IconImage, EyeOff as IconEyeOff, ShieldCheck as IconShieldCheck, Move as IconMove, Scissors as IconScissors, Copy as IconCopy, CircleQuestionMark as IconCircleQuestionMark, CloudSync as IconCloudSync, CloudOff as IconCloudOff } from "lucide-react";
 import ToggleSwitch from "@/common/components/ToggleSwitch";
 import Button from "@/common/components/Button";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
@@ -13,9 +13,9 @@ import { VIEW_DETAILS, VIEW_COMPACT, VIEW_GRID, VIEW_MODES } from "@/pages/Serve
 // Same icon-per-mode map the action bar uses, so the two never end up drawing the
 // same view with two different symbols.
 const VIEW_MODE_ICONS = {
-    [VIEW_DETAILS]: mdiViewList,
-    [VIEW_COMPACT]: mdiViewCompact,
-    [VIEW_GRID]: mdiViewGrid,
+    [VIEW_DETAILS]: IconList,
+    [VIEW_COMPACT]: IconRows3,
+    [VIEW_GRID]: IconLayoutGrid,
 };
 
 const SettingItem = ({ icon, title, description, children }) => (
@@ -23,7 +23,7 @@ const SettingItem = ({ icon, title, description, children }) => (
         <div className="setting-info">
             {icon && (
                 <div className="setting-icon">
-                    <Icon path={icon} size={0.9} />
+                    <Icon icon={icon} size={0.9} />
                 </div>
             )}
             <div className="setting-label">
@@ -37,7 +37,7 @@ const SettingItem = ({ icon, title, description, children }) => (
 
 const ViewOption = ({ icon, label, selected, onClick }) => (
     <div className={`view-option ${selected ? "selected" : ""}`} onClick={onClick}>
-        <Icon path={icon} size={0.9} />
+        <Icon icon={icon} size={0.9} />
         <span>{label}</span>
     </div>
 );
@@ -75,7 +75,7 @@ export const FileManager = () => {
                 <div className="section-header">
                     <h2>{t("settings.fileManager.title")}</h2>
                     <Button
-                        icon={isFilesSynced ? mdiCloudSync : mdiCloudOffOutline}
+                        icon={isFilesSynced ? IconCloudSync : IconCloudOff}
                         onClick={handleSyncToggle}
                         type={isFilesSynced ? "primary" : undefined}
                     />
@@ -83,7 +83,7 @@ export const FileManager = () => {
                 <p>{t("settings.fileManager.description")}</p>
 
                 <SettingItem 
-                    icon={mdiViewGrid}
+                    icon={IconLayoutGrid}
                     title={t("settings.fileManager.defaultView.title")} 
                     description={t("settings.fileManager.defaultView.description")}
                 >
@@ -101,7 +101,7 @@ export const FileManager = () => {
                 </SettingItem>
 
                 <SettingItem 
-                    icon={mdiImage}
+                    icon={IconImage}
                     title={t("settings.fileManager.thumbnails.title")} 
                     description={t("settings.fileManager.thumbnails.description")}
                 >
@@ -113,7 +113,7 @@ export const FileManager = () => {
                 </SettingItem>
 
                 <SettingItem 
-                    icon={mdiEyeOff}
+                    icon={IconEyeOff}
                     title={t("settings.fileManager.hiddenFiles.title")} 
                     description={t("settings.fileManager.hiddenFiles.description")}
                 >
@@ -125,7 +125,7 @@ export const FileManager = () => {
                 </SettingItem>
 
                 <SettingItem 
-                    icon={mdiShieldCheck}
+                    icon={IconShieldCheck}
                     title={t("settings.fileManager.deleteConfirmation.title")} 
                     description={t("settings.fileManager.deleteConfirmation.description")}
                 >
@@ -137,25 +137,25 @@ export const FileManager = () => {
                 </SettingItem>
 
                 <SettingItem 
-                    icon={mdiCursorMove}
+                    icon={IconMove}
                     title={t("settings.fileManager.dragDropAction.title")} 
                     description={t("settings.fileManager.dragDropAction.description")}
                 >
                     <div className="view-options three-options">
                         <ViewOption 
-                            icon={mdiFileMove} 
+                            icon={IconScissors} 
                             label={t("settings.fileManager.dragDropAction.move")} 
                             selected={dragDropAction === "move"}
                             onClick={() => setDragDropAction("move")}
                         />
                         <ViewOption 
-                            icon={mdiContentCopy} 
+                            icon={IconCopy} 
                             label={t("settings.fileManager.dragDropAction.copy")} 
                             selected={dragDropAction === "copy"}
                             onClick={() => setDragDropAction("copy")}
                         />
                         <ViewOption 
-                            icon={mdiHelpCircle} 
+                            icon={IconCircleQuestionMark} 
                             label={t("settings.fileManager.dragDropAction.ask")} 
                             selected={dragDropAction === "ask"}
                             onClick={() => setDragDropAction("ask")}

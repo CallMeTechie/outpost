@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import Icon from "@mdi/react";
-import { mdiFile, mdiFolder, mdiLoading } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { File as IconFile, Folder as IconFolder, LoaderCircle as IconLoaderCircle } from "lucide-react";
 import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
 import TabSwitcher from "@/common/components/TabSwitcher";
@@ -117,7 +117,7 @@ export const PropertiesDialog = ({ open, onClose, item, path, sendOperation, OPE
             <div className="properties-dialog">
                 <div className="dialog-header">
                     <div className="file-icon">
-                        <Icon path={isFolder ? mdiFolder : mdiFile} />
+                        <Icon icon={isFolder ? IconFolder : IconFile} />
                     </div>
                     <div className="file-info">
                         <h2 title={displayName}>{displayName}</h2>
@@ -170,7 +170,7 @@ export const PropertiesDialog = ({ open, onClose, item, path, sendOperation, OPE
                             text={permissionsSaving ? t('common.saving') : t('servers.fileManager.permissions.apply')}
                             onClick={handleSavePermissions}
                             disabled={permissionsSaving}
-                            icon={permissionsSaving ? mdiLoading : undefined}
+                            icon={permissionsSaving ? IconLoaderCircle : undefined}
                         />
                     )}
                     <Button text={t("common.close")} onClick={onClose} type="primary" />

@@ -8,8 +8,8 @@ import XtermRenderer from "@/pages/Servers/components/ViewContainer/renderer/Xte
 import FileRenderer from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer";
 import ScriptRenderer from "@/pages/Servers/components/ViewContainer/renderer/ScriptRenderer";
 import NotesRenderer from "@/pages/Servers/components/ViewContainer/renderer/NotesRenderer";
-import Icon from "@mdi/react";
-import { mdiFullscreenExit } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Minimize as IconMinimize } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { usePreferences } from "@/common/contexts/PreferencesContext.jsx";
 import { getTitleBarHeight } from "@/common/utils/TauriUtil.js";
@@ -749,7 +749,7 @@ export const ViewContainer = ({
                 >
                     <button className="exit-fullscreen-btn"
                             {...(focusMode ? { "data-ui-id": "UI-SERVERS-FOCUS", role: "switch", "aria-checked": true } : {})}>
-                        <Icon path={mdiFullscreenExit} />
+                        <Icon icon={IconMinimize} />
                     </button>
                 </div>
             )}

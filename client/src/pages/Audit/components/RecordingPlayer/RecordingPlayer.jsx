@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import Icon from "@mdi/react";
-import { mdiPlay, mdiPause, mdiRewind, mdiFastForward, mdiLoading, mdiAlertCircleOutline, mdiFullscreen, mdiFullscreenExit } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Play as IconPlay, Pause as IconPause, Rewind as IconRewind, FastForward as IconFastForward, LoaderCircle as IconLoaderCircle, CircleAlert as IconCircleAlert, Fullscreen as IconFullscreen, Minimize as IconMinimize } from "lucide-react";
 import Guacamole from "guacamole-common-js";
 import * as AsciinemaPlayer from "asciinema-player";
 import "asciinema-player/dist/bundle/asciinema-player.css";
@@ -209,16 +209,16 @@ const RecordingPlayerContent = ({ auditLogId, recordingType }) => {
         <div className={`recording-player-content ${state.fullscreen ? "fullscreen" : ""}`} ref={playerContentRef}>
             <h2>Session Recording</h2>
             <div className="recording-display-area">
-                {state.loading && <div className="loading-state"><Icon path={mdiLoading} spin size={2} /><span>Loading recording...</span></div>}
-                {state.error && <div className="error-state"><Icon path={mdiAlertCircleOutline} size={2} /><span>{state.error}</span></div>}
+                {state.loading && <div className="loading-state"><Icon icon={IconLoaderCircle} spin size={2} /><span>Loading recording...</span></div>}
+                {state.error && <div className="error-state"><Icon icon={IconCircleAlert} size={2} /><span>{state.error}</span></div>}
                 <div className={`display-container ${recordingType}`} ref={containerRef} style={{ display: state.loading || state.error ? "none" : "block" }} />
             </div>
             {!state.loading && !state.error && (
                 <div className="recording-controls">
                     <div className="controls-left">
-                        <button className="control-btn" onClick={() => handleSkip(-10000)}><Icon path={mdiRewind} size={0.9} /></button>
-                        <button className="control-btn play-btn" onClick={handlePlayPause}><Icon path={state.playing ? mdiPause : mdiPlay} size={1.2} /></button>
-                        <button className="control-btn" onClick={() => handleSkip(10000)}><Icon path={mdiFastForward} size={0.9} /></button>
+                        <button className="control-btn" onClick={() => handleSkip(-10000)}><Icon icon={IconRewind} size={0.9} /></button>
+                        <button className="control-btn play-btn" onClick={handlePlayPause}><Icon icon={state.playing ? IconPause : IconPlay} size={1.2} /></button>
+                        <button className="control-btn" onClick={() => handleSkip(10000)}><Icon icon={IconFastForward} size={0.9} /></button>
                     </div>
                     <div className="controls-center">
                         <span className="time-display">{formatTime(state.position)}</span>
@@ -229,7 +229,7 @@ const RecordingPlayerContent = ({ auditLogId, recordingType }) => {
                     </div>
                     <div className="controls-right">
                         <button className="control-btn" onClick={handleFullscreen}>
-                            <Icon path={state.fullscreen ? mdiFullscreenExit : mdiFullscreen} size={0.9} />
+                            <Icon icon={state.fullscreen ? IconMinimize : IconFullscreen} size={0.9} />
                         </button>
                     </div>
                 </div>

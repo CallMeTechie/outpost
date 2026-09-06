@@ -1,12 +1,8 @@
 import "./styles.sass";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDrag, useDrop } from "react-dnd";
-import Icon from "@mdi/react";
-import {
-    mdiAccountMultipleOutline, mdiChevronDown, mdiPlus, mdiShieldAccount, mdiShieldKeyOutline,
-    mdiShieldCrownOutline, mdiTrashCanOutline, mdiCogOutline, mdiAccountGroup,
-    mdiDragVertical,
-} from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Users as IconUsers, ChevronDown as IconChevronDown, Plus as IconPlus, ShieldUser as IconShieldUser, ShieldHalf as IconShieldHalf, Crown as IconCrown, Trash as IconTrash, Cog as IconCog, GripVertical as IconGripVertical } from "lucide-react";
 import { getRequest, patchRequest, deleteRequest, putRequest } from "@/common/utils/RequestUtil.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useTranslation } from "react-i18next";
@@ -127,7 +123,7 @@ export const Permissions = () => {
         }
     };
 
-    const groupIcon = (group) => group.isAdmin ? mdiShieldCrownOutline : group.isDefault ? mdiAccountGroup : mdiShieldAccount;
+    const groupIcon = (group) => group.isAdmin ? IconCrown : group.isDefault ? IconUsers : IconShieldUser;
 
     const customGroups = useMemo(
         () => groups.filter((g) => !g.isAdmin && !g.isDefault).sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id),
@@ -170,7 +166,7 @@ export const Permissions = () => {
                     <h2>{t("settings.pages.permissions")}</h2>
                     <p>{t("settings.permissions.subtitle")}</p>
                 </div>
-                <Button text={t("settings.permissions.createRole")} icon={mdiPlus} onClick={() => setCreateOpen(true)} />
+                <Button text={t("settings.permissions.createRole")} icon={IconPlus} onClick={() => setCreateOpen(true)} />
             </div>
 
             <div className="vertical-list">
@@ -184,10 +180,10 @@ export const Permissions = () => {
                                 <div ref={draggable ? dragRef : undefined}
                                      className={`item clickable ${draggable ? "draggable" : ""} ${expandedId === group.id ? "expanded" : ""}`}
                                      onClick={() => toggleExpand(group)}>
-                                    {draggable && <span className="drag-handle"><Icon path={mdiDragVertical} /></span>}
+                                    {draggable && <span className="drag-handle"><Icon icon={IconGripVertical} /></span>}
                                     <div className="left-section">
                                         <div className="role-icon" style={{ backgroundColor: `${group.color}26`, color: group.color }}>
-                                            <Icon path={groupIcon(group)} />
+                                            <Icon icon={groupIcon(group)} />
                                         </div>
                                         <div className="details">
                                             <h3>{group.name}</h3>
@@ -195,7 +191,7 @@ export const Permissions = () => {
                                         </div>
                                     </div>
                                     <div className="right-section">
-                                        <Icon path={mdiChevronDown} className={`chevron ${expandedId === group.id ? "open" : ""}`} />
+                                        <Icon icon={IconChevronDown} className={`chevron ${expandedId === group.id ? "open" : ""}`} />
                                     </div>
                                 </div>
 
@@ -203,9 +199,9 @@ export const Permissions = () => {
                                     <div className="role-expanded">
                                         <TabSwitcher
                                             tabs={[
-                                                { key: "permissions", label: t("settings.permissions.permissionsTab"), icon: mdiShieldKeyOutline },
-                                                { key: "members", label: t("settings.permissions.membersTab"), icon: mdiAccountMultipleOutline },
-                                                ...(!group.isSystem ? [{ key: "settings", label: t("settings.permissions.settingsTab"), icon: mdiCogOutline }] : []),
+                                                { key: "permissions", label: t("settings.permissions.permissionsTab"), icon: IconShieldHalf },
+                                                { key: "members", label: t("settings.permissions.membersTab"), icon: IconUsers },
+                                                ...(!group.isSystem ? [{ key: "settings", label: t("settings.permissions.settingsTab"), icon: IconCog }] : []),
                                             ]}
                                             activeTab={subTab}
                                             onTabChange={(key) => setGroupTab((prev) => ({ ...prev, [group.id]: key }))}
@@ -247,7 +243,7 @@ export const Permissions = () => {
                                                         </div>
                                                     </div>
                                                     <div className="delete-row">
-                                                        <Button text={t("settings.permissions.deleteRole")} icon={mdiTrashCanOutline}
+                                                        <Button text={t("settings.permissions.deleteRole")} icon={IconTrash}
                                                                 type="danger" onClick={() => setDeleteTarget(group)} />
                                                     </div>
                                                 </div>

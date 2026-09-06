@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import Icon from "@mdi/react";
-import { mdiContentCopy, mdiCheck, mdiLoading, mdiCalculator } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Copy as IconCopy, Check as IconCheck, LoaderCircle as IconLoaderCircle, Calculator as IconCalculator } from "lucide-react";
 import Button from "@/common/components/Button/index.js";
 import { convertUnits } from "../../../utils/fileUtils.js";
 
@@ -30,7 +30,7 @@ export const GeneralTab = ({
                     <span className="label">{t("servers.fileManager.properties.path")}</span>
                     <span className="value path-value">
                         <code>{fullPath}</code>
-                        <Button icon={copied === "path" ? mdiCheck : mdiContentCopy} onClick={() => onCopy(fullPath, "path")} type="primary" />
+                        <Button icon={copied === "path" ? IconCheck : IconCopy} onClick={() => onCopy(fullPath, "path")} type="primary" />
                     </span>
                 </div>
             </div>
@@ -40,7 +40,7 @@ export const GeneralTab = ({
                     <span className="label">{t("servers.fileManager.properties.size")}</span>
                     <span className="value">
                         {loadingStats ? (
-                            <Icon path={mdiLoading} className="spinning" />
+                            <Icon icon={IconLoaderCircle} className="spinning" />
                         ) : isFolder ? (
                             folderSize !== null ? (
                                 <span className="size-display">
@@ -49,7 +49,7 @@ export const GeneralTab = ({
                                 </span>
                             ) : onCalculateFolderSize ? (
                                 <Button
-                                    icon={loadingFolderSize ? mdiLoading : mdiCalculator}
+                                    icon={loadingFolderSize ? IconLoaderCircle : IconCalculator}
                                     text={t("servers.fileManager.properties.calculateSize")}
                                     onClick={onCalculateFolderSize}
                                     disabled={loadingFolderSize}
@@ -73,22 +73,22 @@ export const GeneralTab = ({
             <div className="property-section">
                 <div className="property-row">
                     <span className="label">{t("servers.fileManager.properties.owner")}</span>
-                    <span className="value">{loadingStats ? <Icon path={mdiLoading} className="spinning" /> : stats?.owner || "-"}</span>
+                    <span className="value">{loadingStats ? <Icon icon={IconLoaderCircle} className="spinning" /> : stats?.owner || "-"}</span>
                 </div>
                 <div className="property-row">
                     <span className="label">{t("servers.fileManager.properties.group")}</span>
-                    <span className="value">{loadingStats ? <Icon path={mdiLoading} className="spinning" /> : stats?.group || "-"}</span>
+                    <span className="value">{loadingStats ? <Icon icon={IconLoaderCircle} className="spinning" /> : stats?.group || "-"}</span>
                 </div>
             </div>
 
             <div className="property-section">
                 <div className="property-row">
                     <span className="label">{t("servers.fileManager.properties.modified")}</span>
-                    <span className="value">{loadingStats ? <Icon path={mdiLoading} className="spinning" /> : formatDate(stats?.mtime || item?.last_modified)}</span>
+                    <span className="value">{loadingStats ? <Icon icon={IconLoaderCircle} className="spinning" /> : formatDate(stats?.mtime || item?.last_modified)}</span>
                 </div>
                 <div className="property-row">
                     <span className="label">{t("servers.fileManager.properties.accessed")}</span>
-                    <span className="value">{loadingStats ? <Icon path={mdiLoading} className="spinning" /> : formatDate(stats?.atime)}</span>
+                    <span className="value">{loadingStats ? <Icon icon={IconLoaderCircle} className="spinning" /> : formatDate(stats?.atime)}</span>
                 </div>
             </div>
         </div>

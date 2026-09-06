@@ -13,8 +13,8 @@ import OneDriveAccounts from "./components/OneDriveAccounts";
 import { isCredentiallessProtocol } from "@/common/utils/ConnectionUtil.js";
 import { useDevFeature } from "@/common/utils/devFeatures.js";
 import { useBodyClass } from "@/common/hooks/useBodyClass.js";
-import Icon from "@mdi/react";
-import { mdiAccountCircle, mdiAlertCircleOutline, mdiBroadcast, mdiCog, mdiConnection, mdiConsole, mdiContentCopy, mdiCursorDefaultClick, mdiDesktopClassic, mdiFileDocumentOutline, mdiFlaskOutline, mdiFolderNetwork, mdiFolderOpen, mdiFolderPlus, mdiFolderRemove, mdiFormTextbox, mdiImport, mdiMagnify, mdiMonitor, mdiNoteEditOutline, mdiPencil, mdiPlay, mdiPlusCircle, mdiPower, mdiPowerPlug, mdiScript, mdiServerMinus, mdiStop, mdiSync, mdiTag, mdiTunnel } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { CircleUser as IconCircleUser, CircleAlert as IconCircleAlert, Radio as IconRadio, Cog as IconCog, Cable as IconCable, SquareTerminal as IconSquareTerminal, Copy as IconCopy, MousePointerClick as IconMousePointerClick, Computer as IconComputer, FileText as IconFileText, FlaskConical as IconFlaskConical, FolderSymlink as IconFolderSymlink, FolderOpen as IconFolderOpen, FolderPlus as IconFolderPlus, FolderMinus as IconFolderMinus, TextCursorInput as IconTextCursorInput, Import as IconImport, Search as IconSearch, Monitor as IconMonitor, NotebookPen as IconNotebookPen, Pencil as IconPencil, Play as IconPlay, CirclePlus as IconCirclePlus, Power as IconPower, PlugZap as IconPlugZap, ScrollText as IconScrollText, ServerOff as IconServerOff, Square as IconSquare, RefreshCcw as IconRefreshCcw, Tag as IconTag, Waypoints as IconWaypoints } from "lucide-react";
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator, useContextMenu } from "@/common/components/ContextMenu";
 import { useDrop, useDragLayer } from "react-dnd";
 import { deleteRequest, patchRequest, postRequest, putRequest } from "@/common/utils/RequestUtil.js";
@@ -287,16 +287,16 @@ export const ServerList = ({
         <>
             {liveSessionsForServer.length === 1 ? (
                 <ContextMenuItem
-                    icon={mdiBroadcast}
+                    icon={IconRadio}
                     label={t("servers.contextMenu.joinSessionOf", { user: ownerLabel(liveSessionsForServer[0]) })}
                     onClick={() => joinLiveSession(liveSessionsForServer[0])}
                 />
             ) : (
-                <ContextMenuItem icon={mdiBroadcast} label={t("servers.contextMenu.joinSession")}>
+                <ContextMenuItem icon={IconRadio} label={t("servers.contextMenu.joinSession")}>
                     {liveSessionsForServer.map(session => (
                         <ContextMenuItem
                             key={session.id}
-                            icon={mdiBroadcast}
+                            icon={IconRadio}
                             label={ownerLabel(session)}
                             onClick={() => joinLiveSession(session)}
                         />
@@ -557,7 +557,7 @@ export const ServerList = ({
                             className={`tag-filter-button ${selectedTags.length > 0 ? "active" : ""}`}
                             onClick={() => setShowTagFilter(!showTagFilter)}
                             title={t("servers.tags.filterByTags")}>
-                            <Icon path={mdiTag} />
+                            <Icon icon={IconTag} />
                             {selectedTags.length > 0 && (
                                 <span className="tag-count">{selectedTags.length}</span>
                             )}
@@ -581,7 +581,7 @@ export const ServerList = ({
                     )}
                     {!servers && serversError && (
                         <div className="servers-error" role="alert">
-                            <Icon path={mdiAlertCircleOutline} />
+                            <Icon icon={IconCircleAlert} />
                             <p>{t("servers.listLoadFailed")}</p>
                             <Button type="secondary" text={t("servers.retry")} onClick={loadServers} />
                         </div>
@@ -596,7 +596,7 @@ export const ServerList = ({
                     )}
                     {servers && servers.length >= 1 && filteredServers.length === 0 && (
                         <div className="no-servers">
-                            <Icon path={mdiMagnify} />
+                            <Icon icon={IconSearch} />
                             <p>{t("servers.noSearchMatch")}</p>
                         </div>
                     )}
@@ -636,42 +636,42 @@ export const ServerList = ({
                             <>
                                 {canManageResources && !isIntegrationManaged && (contextClickedType === null || contextClickedType === "folder-object" || isOrgFolder) && (
                                     <ContextMenuItem
-                                        icon={mdiPlusCircle}
+                                        icon={IconCirclePlus}
                                         label={t("servers.contextMenu.new")}
                                     >
                                         <ContextMenuItem
-                                            icon={mdiConsole}
+                                            icon={IconSquareTerminal}
                                             label={t("servers.contextMenu.sshServer")}
                                             onClick={() => createServer("ssh")}
                                         />
                                         <ContextMenuItem
-                                            icon={mdiConsole}
+                                            icon={IconSquareTerminal}
                                             label={t("servers.contextMenu.telnetServer")}
                                             onClick={() => createServer("telnet")}
                                         />
                                         <ContextMenuItem
-                                            icon={mdiDesktopClassic}
+                                            icon={IconComputer}
                                             label={t("servers.contextMenu.rdpServer")}
                                             onClick={() => createServer("rdp")}
                                         />
                                         <ContextMenuItem
-                                            icon={mdiMonitor}
+                                            icon={IconMonitor}
                                             label={t("servers.contextMenu.vncServer")}
                                             onClick={() => createServer("vnc")}
                                         />
                                         <ContextMenuSeparator />
                                         <ContextMenuItem
-                                            icon={mdiFolderNetwork}
+                                            icon={IconFolderSymlink}
                                             label={t("servers.contextMenu.sftpServer")}
                                             onClick={() => createServer("sftp")}
                                         />
                                         <ContextMenuItem
-                                            icon={mdiFolderNetwork}
+                                            icon={IconFolderSymlink}
                                             label={t("servers.contextMenu.ftpServer")}
                                             onClick={() => createServer("ftp")}
                                         />
                                         <ContextMenuItem
-                                            icon={mdiFolderNetwork}
+                                            icon={IconFolderSymlink}
                                             label={t("servers.contextMenu.ftpsServer")}
                                             onClick={() => createServer("ftps")}
                                         />
@@ -685,7 +685,7 @@ export const ServerList = ({
                                             <>
                                                 <ContextMenuSeparator />
                                                 <ContextMenuItem
-                                                    icon={mdiFlaskOutline}
+                                                    icon={IconFlaskConical}
                                                     label={t("servers.contextMenu.demoServer")}
                                                     onClick={() => createServer("demo")}
                                                 />
@@ -695,11 +695,11 @@ export const ServerList = ({
                                 )}
                                 {canManageResources && contextClickedType === "folder-object" && !isOrgFolder && !isIntegrationManaged && (
                                     <ContextMenuItem
-                                        icon={mdiImport}
+                                        icon={IconImport}
                                         label={t("servers.contextMenu.import")}
                                     >
                                         <ContextMenuItem
-                                            icon={mdiFileDocumentOutline}
+                                            icon={IconFileText}
                                             label={t("servers.contextMenu.sshConfig")}
                                             onClick={openSSHConfigImport}
                                         />
@@ -711,20 +711,20 @@ export const ServerList = ({
                         {contextClickedType === "folder-object" && !isOrgFolder && isIntegrationManaged && (
                             <>
                                 <ContextMenuItem
-                                    icon={mdiSync}
+                                    icon={IconRefreshCcw}
                                     label={t("servers.contextMenu.syncIntegration")}
                                     onClick={syncIntegrationNow}
                                 />
                                 {isIntegrationRoot && canManageResources && (
                                     <>
                                         <ContextMenuItem
-                                            icon={mdiCog}
+                                            icon={IconCog}
                                             label={t("servers.contextMenu.editIntegration")}
                                             onClick={editIntegrationFolder}
                                         />
                                         <ContextMenuSeparator />
                                         <ContextMenuItem
-                                            icon={mdiServerMinus}
+                                            icon={IconServerOff}
                                             label={t("servers.contextMenu.removeIntegration")}
                                             onClick={removeIntegration}
                                             danger
@@ -739,7 +739,7 @@ export const ServerList = ({
                                 {canManageResources && (
                                     <>
                                         <ContextMenuItem
-                                            icon={mdiFolderPlus}
+                                            icon={IconFolderPlus}
                                             label={t("servers.contextMenu.createFolder")}
                                             onClick={createFolder}
                                         />
@@ -747,13 +747,13 @@ export const ServerList = ({
                                     </>
                                 )}
                                 <ContextMenuItem
-                                    icon={mdiFormTextbox}
+                                    icon={IconTextCursorInput}
                                     label={t("servers.contextMenu.renameFolder")}
                                     onClick={() => setRenameStateId(contextClickedId)}
                                 />
                                 <ContextMenuSeparator />
                                 <ContextMenuItem
-                                    icon={mdiFolderRemove}
+                                    icon={IconFolderMinus}
                                     label={t("servers.contextMenu.deleteFolder")}
                                     onClick={openDeleteConfirm}
                                     danger
@@ -763,7 +763,7 @@ export const ServerList = ({
 
                         {canManageResources && (contextClickedType === null || isOrgFolder) && (
                             <ContextMenuItem
-                                icon={mdiFolderPlus}
+                                icon={IconFolderPlus}
                                 label={t("servers.contextMenu.createFolder")}
                                 onClick={createFolder}
                             />
@@ -776,19 +776,19 @@ export const ServerList = ({
                                     <>
                                         {hibernatedSessionsForServer.length === 1 ? (
                                             <ContextMenuItem
-                                                icon={mdiPlay}
+                                                icon={IconPlay}
                                                 label="Resume session"
                                                 onClick={() => resumeSession(hibernatedSessionsForServer[0].id)}
                                             />
                                         ) : (
                                             <ContextMenuItem
-                                                icon={mdiPlay}
+                                                icon={IconPlay}
                                                 label="Resume session"
                                             >
                                                 {hibernatedSessionsForServer.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity)).map((session) => (
                                                     <ContextMenuItem
                                                         key={session.id}
-                                                        icon={mdiPlay}
+                                                        icon={IconPlay}
                                                         label={formatSessionDate(session, menuOpenedAt)}
                                                         onClick={() => resumeSession(session.id)}
                                                     />
@@ -802,27 +802,27 @@ export const ServerList = ({
                                     <>
                                         {isCredentiallessProtocol(server?.protocol) ? (
                                             <ContextMenuItem
-                                                icon={mdiConnection}
+                                                icon={IconCable}
                                                 label={t("servers.contextMenu.connect")}
                                                 shortcut="Enter"
                                                 onClick={() => connectToServer(server?.id)}
                                             />
                                         ) : server.identities.length === 1 ? (
                                             <ContextMenuItem
-                                                icon={mdiConnection}
+                                                icon={IconCable}
                                                 label={t("servers.contextMenu.connect")}
                                                 shortcut="Enter"
                                                 onClick={() => connect()}
                                             />
                                         ) : (
                                             <ContextMenuItem
-                                                icon={mdiConnection}
+                                                icon={IconCable}
                                                 label={t("servers.contextMenu.connect")}
                                             >
                                                 {server.identities.map((identityId) => (
                                                     <ContextMenuItem
                                                         key={identityId}
-                                                        icon={mdiAccountCircle}
+                                                        icon={IconCircleUser}
                                                         label={getIdentityName(identityId)}
                                                         onClick={() => connect(identityId)}
                                                     />
@@ -836,20 +836,20 @@ export const ServerList = ({
                                     <>
                                         {server.identities.length === 1 ? (
                                             <ContextMenuItem
-                                                icon={mdiFolderOpen}
+                                                icon={IconFolderOpen}
                                                 label={t("servers.contextMenu.openSFTP")}
                                                 shortcut="Shift+Enter"
                                                 onClick={() => connectSFTP()}
                                             />
                                         ) : (
                                             <ContextMenuItem
-                                                icon={mdiFolderOpen}
+                                                icon={IconFolderOpen}
                                                 label={t("servers.contextMenu.openSFTP")}
                                             >
                                                 {server.identities.map((identityId) => (
                                                     <ContextMenuItem
                                                         key={identityId}
-                                                        icon={mdiAccountCircle}
+                                                        icon={IconCircleUser}
                                                         label={getIdentityName(identityId)}
                                                         onClick={() => connectSFTP(identityId)}
                                                     />
@@ -861,7 +861,7 @@ export const ServerList = ({
 
                                 {server?.identities?.length > 0 && server?.protocol === "ssh" && openPortForward && (
                                     <ContextMenuItem
-                                        icon={mdiTunnel}
+                                        icon={IconWaypoints}
                                         label={t("servers.contextMenu.forwardPort")}
                                         onClick={() => openPortForward(server)}
                                     />
@@ -869,7 +869,7 @@ export const ServerList = ({
 
                                 {server?.identities?.length > 0 && server?.protocol === "ssh" && (scripts.length > 0 || sourceScripts.length > 0) && (
                                     <ContextMenuItem
-                                        icon={mdiScript}
+                                        icon={IconScrollText}
                                         label={t("servers.contextMenu.runScript")}
                                         onClick={openScriptsMenu}
                                     />
@@ -877,7 +877,7 @@ export const ServerList = ({
 
                                 {server?.type === "server" && (server?.protocol === "ssh" || server?.protocol === "telnet" || server?.protocol === "rdp" || server?.protocol === "vnc" || server?.protocol === "sftp" || server?.protocol === "ftp" || server?.protocol === "ftps") && (
                                     <ContextMenuItem
-                                        icon={mdiCursorDefaultClick}
+                                        icon={IconMousePointerClick}
                                         label={t("servers.contextMenu.quickConnect")}
                                         onClick={() => openDirectConnect(server)}
                                     />
@@ -888,7 +888,7 @@ export const ServerList = ({
                                     state disabled): hiding it gave no hint that
                                     the capability exists or where to enable it. */}
                                 <ContextMenuItem
-                                    icon={mdiPowerPlug}
+                                    icon={IconPlugZap}
                                     label={t("servers.contextMenu.wakeOnLan")}
                                     disabled={!(server?.wakeOnLanEnabled && server?.macAddress)}
                                     title={server?.wakeOnLanEnabled && server?.macAddress
@@ -900,7 +900,7 @@ export const ServerList = ({
                                 <ContextMenuSeparator />
 
                                 <ContextMenuItem
-                                    icon={mdiNoteEditOutline}
+                                    icon={IconNotebookPen}
                                     label={server?.notes
                                         ? t("servers.contextMenu.openNotes")
                                         : t("servers.contextMenu.addNotes")}
@@ -908,20 +908,20 @@ export const ServerList = ({
                                 />
 
                                 <ContextMenuItem
-                                    icon={mdiPencil}
+                                    icon={IconPencil}
                                     label={t("servers.contextMenu.editServer")}
                                     shortcut="E"
                                     onClick={editServer}
                                 />
 
                                 <ContextMenuItem
-                                    icon={mdiContentCopy}
+                                    icon={IconCopy}
                                     label={t("servers.contextMenu.duplicateServer")}
                                     onClick={duplicateServer}
                                 />
 
                                 <ContextMenuItem
-                                    icon={mdiTag}
+                                    icon={IconTag}
                                     label={t("servers.tags.title")}
                                 >
                                     <TagsSubmenu entryId={contextClickedId} entryTags={server?.tags || []} />
@@ -929,7 +929,7 @@ export const ServerList = ({
 
                                 <ContextMenuSeparator />
                                 <ContextMenuItem
-                                    icon={mdiServerMinus}
+                                    icon={IconServerOff}
                                     label={t("servers.contextMenu.deleteServer")}
                                     shortcut="Delete"
                                     onClick={openDeleteConfirm}
@@ -945,19 +945,19 @@ export const ServerList = ({
                                     <>
                                         {hibernatedSessionsForServer.length === 1 ? (
                                             <ContextMenuItem
-                                                icon={mdiPlay}
+                                                icon={IconPlay}
                                                 label="Resume session"
                                                 onClick={() => resumeSession(hibernatedSessionsForServer[0].id)}
                                             />
                                         ) : (
                                             <ContextMenuItem
-                                                icon={mdiPlay}
+                                                icon={IconPlay}
                                                 label="Resume session"
                                             >
                                                 {hibernatedSessionsForServer.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity)).map((session) => (
                                                     <ContextMenuItem
                                                         key={session.id}
-                                                        icon={mdiPlay}
+                                                        icon={IconPlay}
                                                         label={formatSessionDate(session, menuOpenedAt)}
                                                         onClick={() => resumeSession(session.id)}
                                                     />
@@ -970,7 +970,7 @@ export const ServerList = ({
                                 {(server?.status === "running" || server?.status === "online") && (
                                     <>
                                         <ContextMenuItem
-                                            icon={mdiConnection}
+                                            icon={IconCable}
                                             label={t("servers.contextMenu.connect")}
                                             onClick={() => connectToServer(server.id)}
                                         />
@@ -978,18 +978,18 @@ export const ServerList = ({
                                     </>
                                 )}
                                 <ContextMenuItem
-                                    icon={mdiPencil}
+                                    icon={IconPencil}
                                     label={t("servers.contextMenu.editServer")}
                                     shortcut="E"
                                     onClick={editServer}
                                 />
                                 <ContextMenuItem
-                                    icon={mdiCog}
+                                    icon={IconCog}
                                     label={t("servers.contextMenu.editIntegration")}
                                     onClick={editPVEServer}
                                 />
                                 <ContextMenuItem
-                                    icon={mdiTag}
+                                    icon={IconTag}
                                     label={t("servers.tags.title")}
                                 >
                                     <TagsSubmenu entryId={contextClickedId} entryTags={server?.tags || []} />
@@ -998,12 +998,12 @@ export const ServerList = ({
                                     <>
                                         <ContextMenuSeparator />
                                         <ContextMenuItem
-                                            icon={mdiPower}
+                                            icon={IconPower}
                                             label={t("servers.contextMenu.shutdown")}
                                             onClick={() => postPVEAction("shutdown")}
                                         />
                                         <ContextMenuItem
-                                            icon={mdiStop}
+                                            icon={IconSquare}
                                             label={t("servers.contextMenu.stop")}
                                             onClick={() => postPVEAction("stop")}
                                         />
@@ -1013,7 +1013,7 @@ export const ServerList = ({
                                     <>
                                         <ContextMenuSeparator />
                                         <ContextMenuItem
-                                            icon={mdiPower}
+                                            icon={IconPower}
                                             label={t("servers.contextMenu.start")}
                                             onClick={() => postPVEAction("start")}
                                         />
@@ -1021,7 +1021,7 @@ export const ServerList = ({
                                 )}
                                 <ContextMenuSeparator />
                                 <ContextMenuItem
-                                    icon={mdiServerMinus}
+                                    icon={IconServerOff}
                                     label={t("servers.contextMenu.deleteServer")}
                                     shortcut="Delete"
                                     onClick={openDeleteConfirm}

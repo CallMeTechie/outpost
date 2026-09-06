@@ -1,7 +1,7 @@
 import { useEffect, useRef, useContext, useState, useCallback } from "react";
 import Guacamole from "guacamole-common-js";
-import Icon from "@mdi/react";
-import { mdiCloudUpload } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { CloudUpload as IconCloudUpload } from "lucide-react";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { useKeymaps, matchesKeybind } from "@/common/contexts/KeymapContext.jsx";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
@@ -732,7 +732,7 @@ const GuacamoleRenderer = ({
             <div className={`guac-drop-overlay ${isDragOver ? "active" : ""}`}>
                 <div className="guac-drop-overlay__content">
                     <div className="guac-drop-overlay__icon">
-                        <Icon path={mdiCloudUpload} />
+                        <Icon icon={IconCloudUpload} />
                     </div>
                     <h2>{t("servers.remoteDesktop.dropOverlay")}</h2>
                 </div>

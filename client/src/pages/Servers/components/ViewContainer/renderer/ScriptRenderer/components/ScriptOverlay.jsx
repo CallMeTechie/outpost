@@ -1,16 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import Icon from "@mdi/react";
-import { 
-    mdiCheck, 
-    mdiClose, 
-    mdiLoading, 
-    mdiMinus, 
-    mdiStop, 
-    mdiChevronUp, 
-    mdiChevronDown,
-    mdiCheckCircle,
-    mdiAlertCircle
-} from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Check as IconCheck, X as IconX, LoaderCircle as IconLoaderCircle, Minus as IconMinus, Square as IconSquare, ChevronUp as IconChevronUp, ChevronDown as IconChevronDown, CircleCheck as IconCircleCheck, CircleAlert as IconCircleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import "./ScriptOverlay.sass";
 
@@ -21,10 +11,10 @@ const StepIndicator = ({ type, progressValue, stepNumber }) => {
     const progress = circumference - (progressValue / 100) * circumference;
 
     const iconMap = {
-        success: mdiCheck,
-        error: mdiClose,
-        loading: mdiLoading,
-        skip: mdiMinus,
+        success: IconCheck,
+        error: IconX,
+        loading: IconLoaderCircle,
+        skip: IconMinus,
     };
 
     if (type === "progress") {
@@ -57,7 +47,7 @@ const StepIndicator = ({ type, progressValue, stepNumber }) => {
     if (iconMap[type]) {
         return (
             <div className={`step-indicator ${type}`}>
-                <Icon path={iconMap[type]} spin={type === "loading"} />
+                <Icon icon={iconMap[type]} spin={type === "loading"} />
             </div>
         );
     }
@@ -87,9 +77,9 @@ const ScriptOverlay = ({
     const currentStepText = steps[currentStepIndex] || steps[steps.length - 1] || "Running...";
     
     const getStatus = () => {
-        if (failedStep) return { type: "error", icon: mdiAlertCircle, text: t("scripts.execution.status.error") };
-        if (isCompleted) return { type: "success", icon: mdiCheckCircle, text: t("scripts.execution.status.completed") };
-        return { type: "running", icon: mdiLoading, text: t("scripts.execution.status.running") };
+        if (failedStep) return { type: "error", icon: IconCircleAlert, text: t("scripts.execution.status.error") };
+        if (isCompleted) return { type: "success", icon: IconCircleCheck, text: t("scripts.execution.status.completed") };
+        return { type: "running", icon: IconLoaderCircle, text: t("scripts.execution.status.running") };
     };
 
     const status = getStatus();
@@ -116,7 +106,7 @@ const ScriptOverlay = ({
             <div className="overlay-main" onClick={() => setIsExpanded(!isExpanded)}>
                 <div className="overlay-left">
                     <div className={`status-indicator ${status.type}`}>
-                        <Icon path={status.icon} spin={status.type === "running"} />
+                        <Icon icon={status.icon} spin={status.type === "running"} />
                     </div>
                     <div className="overlay-info">
                         <span className="script-name">{scriptName}</span>
@@ -149,12 +139,12 @@ const ScriptOverlay = ({
                             onClick={(e) => { e.stopPropagation(); onCancel(); }}
                             title={t("common.actions.cancel")}
                         >
-                            <Icon path={mdiStop} />
+                            <Icon icon={IconSquare} />
                         </button>
                     )}
                     
                     <div className="expand-indicator">
-                        <Icon path={isExpanded ? mdiChevronDown : mdiChevronUp} />
+                        <Icon icon={isExpanded ? IconChevronDown : IconChevronUp} />
                     </div>
                 </div>
             </div>

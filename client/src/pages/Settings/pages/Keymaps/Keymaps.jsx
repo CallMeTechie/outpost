@@ -2,23 +2,23 @@ import "./styles.sass";
 import { useKeymaps } from "@/common/contexts/KeymapContext.jsx";
 import { useEffect, useState } from "react";
 import Button from "@/common/components/Button";
-import { mdiRestore, mdiMagnify, mdiRobotOutline, mdiCodeArray, mdiKeyboard, mdiBroadcast, mdiContentCopy, mdiFullscreen, mdiFlash, mdiKey, mdiCheckCircleOutline, mdiAutoFix } from "@mdi/js";
-import Icon from "@mdi/react";
+import { RotateCcw as IconRotateCcw, Search as IconSearch, Bot as IconBot, Brackets as IconBrackets, Keyboard as IconKeyboard, Radio as IconRadio, Copy as IconCopy, Fullscreen as IconFullscreen, Zap as IconZap, Key as IconKey, CircleCheck as IconCircleCheck, WandSparkles as IconWandSparkles } from "lucide-react";
+import Icon from "@/common/components/Icon";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 
 const KEYMAP_ICONS = {
-    "search": mdiMagnify,
-    "quick-action": mdiFlash,
-    "ai-menu": mdiRobotOutline,
-    "ai-accept-tool": mdiCheckCircleOutline,
-    "ai-command": mdiAutoFix,
-    "snippets": mdiCodeArray,
-    "keyboard-shortcuts": mdiKeyboard,
-    "broadcast": mdiBroadcast,
-    "copy": mdiContentCopy,
-    "fullscreen": mdiFullscreen,
-    "paste-identity-password": mdiKey,
+    "search": IconSearch,
+    "quick-action": IconZap,
+    "ai-menu": IconBot,
+    "ai-accept-tool": IconCircleCheck,
+    "ai-command": IconWandSparkles,
+    "snippets": IconBrackets,
+    "keyboard-shortcuts": IconKeyboard,
+    "broadcast": IconRadio,
+    "copy": IconCopy,
+    "fullscreen": IconFullscreen,
+    "paste-identity-password": IconKey,
 };
 
 const KeybindRecorder = ({ action, currentKey, onUpdate, onReset }) => {
@@ -89,7 +89,7 @@ const KeybindRecorder = ({ action, currentKey, onUpdate, onReset }) => {
                         <Button text={t("settings.keymaps.recorder.cancel")} onClick={cancelRecording} />
                     </>
                 ) : (
-                    <Button text={t("settings.keymaps.recorder.reset")} icon={mdiRestore} onClick={() => onReset(action)} />
+                    <Button text={t("settings.keymaps.recorder.reset")} icon={IconRotateCcw} onClick={() => onReset(action)} />
                 )}
             </div>
         </div>
@@ -139,18 +139,18 @@ export const Keymaps = () => {
                     <h2>{t("settings.keymaps.title")}</h2>
                     <p>{t("settings.keymaps.description")}</p>
                 </div>
-                <Button text={t("settings.keymaps.resetAll")} icon={mdiRestore} onClick={handleResetAll} />
+                <Button text={t("settings.keymaps.resetAll")} icon={IconRotateCcw} onClick={handleResetAll} />
             </div>
 
             <div className="vertical-list">
                 {keymaps.map((keymap) => {
                     const actionKey = keymap.action.replace(/-/g, "");
-                    const icon = KEYMAP_ICONS[keymap.action] || mdiKeyboard;
+                    const icon = KEYMAP_ICONS[keymap.action] || IconKeyboard;
                     return (
                         <div key={keymap.action} className="item">
                             <div className="left-section">
                                 <div className="icon primary">
-                                    <Icon path={icon} />
+                                    <Icon icon={icon} />
                                 </div>
                                 <div className="details">
                                     <h3>{t(`settings.keymaps.actions.${actionKey}.title`)}</h3>

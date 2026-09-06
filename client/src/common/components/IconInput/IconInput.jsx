@@ -1,5 +1,5 @@
 import "./styles.sass";
-import Icon from "@mdi/react";
+import Icon from "@/common/components/Icon";
 
 export const IconInput = ({ type, id, name, required, icon, placeholder, customClass,
                               autoComplete, value, setValue, onChange, onBlur, onKeyDown, autoFocus, disabled }) => {
@@ -14,7 +14,7 @@ export const IconInput = ({ type, id, name, required, icon, placeholder, customC
 
     return (
         <div className="input-container">
-            <Icon path={icon} className="input-icon" />
+            <Icon icon={icon} className="input-icon" />
             <input 
                 type={type} 
                 id={id} 

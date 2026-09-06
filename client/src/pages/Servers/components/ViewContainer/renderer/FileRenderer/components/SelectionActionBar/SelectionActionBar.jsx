@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { createPortal } from "react-dom";
 import "./styles.sass";
-import { mdiDownload, mdiTrashCan, mdiClose } from "@mdi/js";
+import { Download as IconDownload, Trash as IconTrash, X as IconX } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/common/components/Button/Button";
 
@@ -23,10 +23,10 @@ export const SelectionActionBar = ({ selectedItems, onClearSelection, onDownload
 
     return createPortal(
         <div className="selection-action-bar">
-            <Button icon={mdiClose} onClick={onClearSelection} />
+            <Button icon={IconX} onClick={onClearSelection} />
             <span className="selection-count">{label}</span>
-            {onDownload && <Button icon={mdiDownload} text={t("servers.fileManager.selection.download")} onClick={onDownload} />}
-            <Button icon={mdiTrashCan} text={t("servers.fileManager.selection.delete")} type="danger" onClick={onDelete} />
+            {onDownload && <Button icon={IconDownload} text={t("servers.fileManager.selection.download")} onClick={onDownload} />}
+            <Button icon={IconTrash} text={t("servers.fileManager.selection.delete")} type="danger" onClick={onDelete} />
         </div>,
         portalTarget
     );

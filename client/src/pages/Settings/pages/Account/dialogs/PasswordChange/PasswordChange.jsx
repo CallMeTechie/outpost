@@ -1,6 +1,6 @@
 import { DialogProvider } from "@/common/components/Dialog";
 import IconInput from "@/common/components/IconInput";
-import { mdiAccountCircleOutline } from "@mdi/js";
+import { CircleUser as IconCircleUser } from "lucide-react";
 import Button from "@/common/components/Button";
 import "./styles.sass";
 import { patchRequest } from "@/common/utils/RequestUtil.js";
@@ -59,12 +59,12 @@ export const PasswordChange = ({ open, onClose, accountId }) => {
                     {t("settings.passwordChange.description")}
                 </p>
                 <div className="form-group">
-                    <IconInput icon={mdiAccountCircleOutline} type="password" placeholder={t("settings.passwordChange.newPassword")}
+                    <IconInput icon={IconCircleUser} type="password" placeholder={t("settings.passwordChange.newPassword")}
                                autoComplete="new-password" customClass={passwordError ? "error" : ""}
                                value={password} setValue={setPassword} />
                 </div>
                 <div className="form-group">
-                    <IconInput icon={mdiAccountCircleOutline} type="password" placeholder={t("settings.passwordChange.confirmPassword")}
+                    <IconInput icon={IconCircleUser} type="password" placeholder={t("settings.passwordChange.confirmPassword")}
                                autoComplete="new-password" customClass={passwordError ? "error" : ""}
                                value={confirmPassword} setValue={setConfirmPassword} />
                 </div>

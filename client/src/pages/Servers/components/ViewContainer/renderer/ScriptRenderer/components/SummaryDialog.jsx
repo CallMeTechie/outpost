@@ -1,7 +1,7 @@
 import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
-import { mdiInformationOutline, mdiClose, mdiContentCopy, mdiFileDocumentOutline, mdiOpenInNew } from "@mdi/js";
-import Icon from "@mdi/react";
+import { Info as IconInfo, X as IconX, Copy as IconCopy, FileText as IconFileText, ExternalLink as IconExternalLink } from "lucide-react";
+import Icon from "@/common/components/Icon";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { openExternalUrl } from "@/common/utils/TauriUtil.js";
 import "./SummaryDialog.sass";
@@ -53,7 +53,7 @@ const SummaryDialog = ({ open, onClose, summaryData }) => {
         <DialogProvider open={open} onClose={onClose} maxWidth="500px">
             <div className="summary-dialog">
                 <div className="dialog-title">
-                    <Icon path={mdiInformationOutline} />
+                    <Icon icon={IconInfo} />
                     <h2>{summaryData.title}</h2>
                 </div>
 
@@ -74,13 +74,13 @@ const SummaryDialog = ({ open, onClose, summaryData }) => {
                                         {isURL(pair.value) && (
                                             <button className="open-button" onClick={() => openInNewTab(pair.value)}
                                                     title="Open in new tab">
-                                                <Icon path={mdiOpenInNew} />
+                                                <Icon icon={IconExternalLink} />
                                             </button>
                                         )}
                                         <button className="copy-button"
                                                 onClick={() => copyToClipboard(pair.value, pair.key)}
                                                 title={`Copy ${pair.key}`}>
-                                            <Icon path={mdiContentCopy} />
+                                            <Icon icon={IconCopy} />
                                         </button>
                                     </div>
                                 </div>
@@ -95,10 +95,10 @@ const SummaryDialog = ({ open, onClose, summaryData }) => {
 
                 <div className="dialog-actions">
                     {keyValuePairs.length > 0 && (
-                        <Button onClick={copyAllSummary} text="Copy All" icon={mdiFileDocumentOutline}
+                        <Button onClick={copyAllSummary} text="Copy All" icon={IconFileText}
                                 type="secondary" />
                     )}
-                    <Button onClick={onClose} text="Close" icon={mdiClose} />
+                    <Button onClick={onClose} text="Close" icon={IconX} />
                 </div>
             </div>
         </DialogProvider>

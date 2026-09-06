@@ -1,9 +1,9 @@
-import { mdiAccountCircleOutline, mdiFileUploadOutline, mdiLockOutline, mdiPlus, mdiTrashCan, mdiLinkOff, mdiLink, mdiAccountGroup, mdiAccount, mdiArrowRight } from "@mdi/js";
+import { CircleUser as IconCircleUser, FileUp as IconFileUp, Lock as IconLock, Plus as IconPlus, Trash as IconTrash, Link2Off as IconLink2Off, Link as IconLink, Users as IconUsers, User as IconUser, ArrowRight as IconArrowRight } from "lucide-react";
 import Input from "@/common/components/IconInput";
 import SelectBox from "@/common/components/SelectBox";
 import { useContext, useEffect, useState } from "react";
 import { IdentityContext } from "@/common/contexts/IdentityContext.jsx";
-import Icon from "@mdi/react";
+import Icon from "@/common/components/Icon";
 import Button from "@/common/components/Button";
 import { useTranslation } from "react-i18next";
 
@@ -54,19 +54,19 @@ const Identity = ({ identity, onUpdate, onDelete, onMoveToOrg, isOrgContext, org
         <div className={`identity identity-${isOrg ? 'organization' : 'personal'}`}>
             <div className="identity-header">
                 <div className="identity-scope-icon">
-                    <Icon path={isOrg ? mdiAccountGroup : mdiAccount} size={0.8} />
+                    <Icon icon={isOrg ? IconUsers : IconUser} size={0.8} />
                 </div>
                 <div className="identity-name-input">
-                    <Input icon={mdiAccountCircleOutline} value={name} setValue={setName} placeholder={t("servers.dialog.identities.identityName")} />
+                    <Input icon={IconCircleUser} value={name} setValue={setName} placeholder={t("servers.dialog.identities.identityName")} />
                 </div>
                 {isNew && <span className="new-badge">NEW</span>}
                 {!isOrg && !isNew && isOrgContext && orgId && (
                     <button className="move-to-org-btn" onClick={() => onMoveToOrg(identity.id, orgId)} title={t("servers.dialog.identities.moveToOrg")} type="button">
-                        <Icon path={mdiArrowRight} size={0.8} /><Icon path={mdiAccountGroup} size={0.8} />
+                        <Icon icon={IconArrowRight} size={0.8} /><Icon icon={IconUsers} size={0.8} />
                     </button>
                 )}
                 <button className="unlink-identity-btn" onClick={() => onDelete(identity.id)} title={t(isNew ? "servers.dialog.identities.removeIdentity" : "servers.dialog.identities.unlinkIdentity")} type="button">
-                    <Icon path={isNew ? mdiTrashCan : mdiLinkOff} size={1} />
+                    <Icon icon={isNew ? IconTrash : IconLink2Off} size={1} />
                 </button>
             </div>
             <div className="identity-fields">
@@ -74,7 +74,7 @@ const Identity = ({ identity, onUpdate, onDelete, onMoveToOrg, isOrgContext, org
                     {showUsername && (
                         <div className="form-group">
                             <label>{t("servers.dialog.identities.username")}</label>
-                            <Input icon={mdiAccountCircleOutline} type="text" placeholder={t("servers.dialog.identities.username")} autoComplete="off" value={username} setValue={setUsername} />
+                            <Input icon={IconCircleUser} type="text" placeholder={t("servers.dialog.identities.username")} autoComplete="off" value={username} setValue={setUsername} />
                         </div>
                     )}
                     <div className="form-group">
@@ -85,18 +85,18 @@ const Identity = ({ identity, onUpdate, onDelete, onMoveToOrg, isOrgContext, org
                 {(authType === "password" || authType === "password-only" || authType === "both") && (
                     <div className="form-group">
                         <label>{t("servers.dialog.identities.passwordField")}</label>
-                        <Input icon={mdiLockOutline} type="password" id={`identity-password-${identity.id}`} name="password" placeholder={t("servers.dialog.identities.passwordField")} autoComplete="new-password" value={password} setValue={(v) => { setPassword(v); setPwTouched(true); }} />
+                        <Input icon={IconLock} type="password" id={`identity-password-${identity.id}`} name="password" placeholder={t("servers.dialog.identities.passwordField")} autoComplete="new-password" value={password} setValue={(v) => { setPassword(v); setPwTouched(true); }} />
                     </div>
                 )}
                 {(authType === "ssh" || authType === "both") && (
                     <>
                         <div className="form-group">
                             <label>{t("servers.dialog.identities.sshPrivateKey")}</label>
-                            <Input icon={mdiFileUploadOutline} type="file" autoComplete="off" onChange={readFile} />
+                            <Input icon={IconFileUp} type="file" autoComplete="off" onChange={readFile} />
                         </div>
                         <div className="form-group">
                             <label>{t("servers.dialog.identities.passphrase")}</label>
-                            <Input icon={mdiLockOutline} type="password" id={`identity-passphrase-${identity.id}`} name="passphrase" placeholder={t("servers.dialog.identities.passphrase")} autoComplete="new-password" value={passphrase} setValue={(v) => { setPassphrase(v); setPpTouched(true); }} />
+                            <Input icon={IconLock} type="password" id={`identity-passphrase-${identity.id}`} name="passphrase" placeholder={t("servers.dialog.identities.passphrase")} autoComplete="new-password" value={passphrase} setValue={(v) => { setPassphrase(v); setPpTouched(true); }} />
                         </div>
                     </>
                 )}
@@ -117,8 +117,8 @@ const getAuthTypeLabel = (type, t) => {
 const IdentitySection = ({ title, icon, description, identities, available, onUpdate, onDelete, onMoveToOrg, onLink, onAdd, isOrgContext, orgId, emptyText, t, allowedAuthTypes }) => (
     <div className="identities-section">
         <div className="identities-header">
-            <div className="section-title"><Icon path={icon} size={0.9} /><h3>{title}</h3></div>
-            <Button text={t("servers.dialog.identities.new")} icon={mdiPlus} onClick={onAdd} />
+            <div className="section-title"><Icon icon={icon} size={0.9} /><h3>{title}</h3></div>
+            <Button text={t("servers.dialog.identities.new")} icon={IconPlus} onClick={onAdd} />
         </div>
         {(identities.length > 0 || available.length === 0) && <p className="section-description">{description}</p>}
         <div className="identities-list">
@@ -133,7 +133,7 @@ const IdentitySection = ({ title, icon, description, identities, available, onUp
                         {available.map((i) => (
                             <div key={i.id} className="available-identity" onClick={() => onLink(i.id)}>
                                 <div className="available-identity-info">
-                                    <div className="available-identity-name"><Icon path={mdiLink} size={0.7} />{i.name}</div>
+                                    <div className="available-identity-name"><Icon icon={IconLink} size={0.7} />{i.name}</div>
                                     <div className="available-identity-username">{i.username || t("servers.dialog.identities.noUsername")}</div>
                                 </div>
                                 <div className="available-identity-type">{getAuthTypeLabel(i.authType || i.type, t)}</div>
@@ -192,11 +192,11 @@ const IdentityPage = ({ serverIdentities, setIdentityUpdates, identityUpdates, s
         <div className="identities" data-ui-id="UI-SERVER-DIALOG-IDENTITY">
             {/* Personal first, as the artboard has it: the identities a user
                 owns come before the ones an organization lends them. */}
-            <IdentitySection title={t("servers.dialog.identities.personalIdentities")} icon={mdiAccount} description={t("servers.dialog.identities.personalDescription")}
+            <IdentitySection title={t("servers.dialog.identities.personalIdentities")} icon={IconUser} description={t("servers.dialog.identities.personalDescription")}
                 identities={linkedPersonal} available={availablePersonal} onUpdate={handleUpdate} onDelete={handleDelete} onMoveToOrg={handleMove} onLink={handleLink} onAdd={() => addNew(false)}
                 isOrgContext={!!currentOrganizationId} orgId={currentOrganizationId} emptyText={t("servers.dialog.identities.noPersonalIdentities")} t={t} allowedAuthTypes={allowedAuthTypes} />
             {currentOrganizationId && (
-                <IdentitySection title={t("servers.dialog.identities.organizationIdentities")} icon={mdiAccountGroup} description={t("servers.dialog.identities.orgDescription")}
+                <IdentitySection title={t("servers.dialog.identities.organizationIdentities")} icon={IconUsers} description={t("servers.dialog.identities.orgDescription")}
                     identities={linkedOrg} available={availableOrg} onUpdate={handleUpdate} onDelete={handleDelete} onMoveToOrg={handleMove} onLink={handleLink} onAdd={() => addNew(true)}
                     isOrgContext={true} orgId={currentOrganizationId} emptyText={t("servers.dialog.identities.noOrgIdentities")} t={t} allowedAuthTypes={allowedAuthTypes} />
             )}

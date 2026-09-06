@@ -1,5 +1,5 @@
 import "./styles.sass";
-import Icon from "@mdi/react";
+import Icon from "@/common/components/Icon";
 import { useEffect, useRef, useState, useCallback } from "react";
 
 export const TabSwitcher = ({ tabs, activeTab, onTabChange, variant = "default", iconOnly = false }) => {
@@ -39,7 +39,7 @@ export const TabSwitcher = ({ tabs, activeTab, onTabChange, variant = "default",
                         className={`tab-switcher-tab${activeTab === tab.key ? ' active' : ''}`}
                         onClick={() => onTabChange(tab.key)}
                     >
-                        {tab.icon && <Icon path={tab.icon} />}
+                        {tab.icon && <Icon icon={tab.icon} />}
                         {!iconOnly && <span>{tab.label}</span>}
                     </div>
                 ))}

@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
-import Icon from "@mdi/react";
-import { mdiDownload, mdiTrashCan, mdiLoading, mdiFileDocument, mdiVideo } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Download as IconDownload, Trash as IconTrash, LoaderCircle as IconLoaderCircle, FileText as IconFileText, Video as IconVideo } from "lucide-react";
 import { getRequest, deleteRequest, downloadFile } from "@/common/utils/RequestUtil.js";
 import { formatBytes, formatDate } from "@/common/utils/formatUtils.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
@@ -58,7 +58,7 @@ export const FileBrowserDialog = ({ open, onClose, type, onFilesChanged }) => {
         onClose();
     };
 
-    const icon = type === "recordings" ? mdiVideo : mdiFileDocument;
+    const icon = type === "recordings" ? IconVideo : IconFileText;
     const title = type === "recordings" ? t("settings.backup.storage.recordings") : t("settings.backup.storage.logs");
 
     return (
@@ -68,28 +68,28 @@ export const FileBrowserDialog = ({ open, onClose, type, onFilesChanged }) => {
                 <div className="fb-list">
                     {loading ? (
                         <div className="fb-loading">
-                            <Icon path={mdiLoading} spin size={1} />
+                            <Icon icon={IconLoaderCircle} spin size={1} />
                             <span>{t("settings.backup.loading")}</span>
                         </div>
                     ) : files.length === 0 ? (
                         <div className="fb-empty">
-                            <Icon path={icon} size={1.5} />
+                            <Icon icon={icon} size={1.5} />
                             <span>{t("settings.backup.noFiles")}</span>
                         </div>
                     ) : (
                         files.map((file) => (
                             <div key={file.name} className="fb-item">
                                 <div className="fb-info">
-                                    <Icon path={icon} className="fb-icon" />
+                                    <Icon icon={icon} className="fb-icon" />
                                     <div className="fb-details">
                                         <span className="fb-name">{file.name}</span>
                                         <span className="fb-meta">{formatBytes(file.size)} • {formatDate(file.modified)}</span>
                                     </div>
                                 </div>
                                 <div className="fb-actions">
-                                    <Button icon={mdiDownload} onClick={() => handleDownload(file.name)} type="secondary" />
+                                    <Button icon={IconDownload} onClick={() => handleDownload(file.name)} type="secondary" />
                                     <Button 
-                                        icon={deleting === file.name ? mdiLoading : mdiTrashCan} 
+                                        icon={deleting === file.name ? IconLoaderCircle : IconTrash} 
                                         onClick={() => handleDelete(file.name)} 
                                         type="secondary" 
                                         disabled={deleting === file.name}

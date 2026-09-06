@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import Icon from "@mdi/react";
-import { mdiChevronLeft, mdiChevronRight, mdiInformationOutline } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { ChevronLeft as IconChevronLeft, ChevronRight as IconChevronRight, Info as IconInfo } from "lucide-react";
 import Button from "@/common/components/Button";
 import { useTranslation } from "react-i18next";
 import "./styles.sass";
@@ -28,7 +28,7 @@ export const PaginatedTable = ({
         return (
             <div className={`paginated-table-container ${className}`}>
                 <div className="no-data">
-                    <Icon path={emptyState.icon || mdiInformationOutline} />
+                    <Icon icon={emptyState.icon || IconInfo} />
                     <h3>{emptyState.title || t("common.table.noData.title")}</h3>
                     <p>{emptyState.subtitle || t("common.table.noData.subtitle")}</p>
                 </div>
@@ -42,7 +42,7 @@ export const PaginatedTable = ({
                 <div className="table-header" style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr)` }}>
                     {columns.map((column) => (
                         <div key={column.key} className={`header-cell ${column.className || ""}`}>
-                            {column.icon && <Icon path={column.icon} />}
+                            {column.icon && <Icon icon={column.icon} />}
                             <span>{column.label}</span>
                         </div>
                     ))}
@@ -91,7 +91,7 @@ export const PaginatedTable = ({
                     <div className="pagination-controls">
                         <Button
                             text={t("common.table.pagination.previous")}
-                            icon={mdiChevronLeft}
+                            icon={IconChevronLeft}
                             onClick={() => onPageChange(pagination.currentPage - 1)}
                             disabled={pagination.currentPage <= 1}
                             type="secondary"
@@ -106,7 +106,7 @@ export const PaginatedTable = ({
 
                         <Button
                             text={t("common.table.pagination.next")}
-                            icon={mdiChevronRight}
+                            icon={IconChevronRight}
                             onClick={() => onPageChange(pagination.currentPage + 1)}
                             disabled={pagination.currentPage >= totalPages}
                             type="secondary"

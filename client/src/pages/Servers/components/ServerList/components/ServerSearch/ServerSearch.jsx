@@ -1,6 +1,6 @@
 import "./styles.sass";
-import Icon from "@mdi/react";
-import { mdiMagnify } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Search as IconSearch } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useKeymaps, matchesKeybind } from "@/common/contexts/KeymapContext.jsx";
@@ -27,7 +27,7 @@ export const ServerSearch = ({search, setSearch}) => {
 
     return (
         <div className="server-search" data-ui-id="UI-SERVERS-SEARCH">
-            <Icon path={mdiMagnify} className="search-icon" />
+            <Icon icon={IconSearch} className="search-icon" />
             <input className="search-input" placeholder={t("servers.searchPlaceholder")} ref={inputRef}
                 value={search} onChange={(e) => setSearch(e.target.value)} />
             <div className="info-container" onClick={() => inputRef.current.focus()}>

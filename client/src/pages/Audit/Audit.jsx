@@ -1,14 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { getRequest } from "@/common/utils/RequestUtil.js";
-import {
-    mdiShieldCheckOutline,
-    mdiDomain,
-    mdiAccountCircleOutline,
-    mdiServerNetworkOutline,
-    mdiFileDocumentOutline,
-    mdiKeyVariant,
-} from "@mdi/js";
+import { ShieldCheck as IconShieldCheck, Building2 as IconBuilding2, CircleUser as IconCircleUser, Server as IconServer, FileText as IconFileText, KeyRound as IconKeyRound } from "lucide-react";
 import PageHeader from "@/common/components/PageHeader";
 import AuditTable from "./components/AuditTable";
 import AuditFilters from "./components/AuditFilters";
@@ -88,17 +81,17 @@ export const Audit = () => {
     }, []);
 
     const getIconForAction = useCallback((action) => {
-        if (action.startsWith("user.")) return mdiAccountCircleOutline;
-        if (action.startsWith("server.")) return mdiServerNetworkOutline;
-        if (action.startsWith("file.")) return mdiFileDocumentOutline;
-        if (action.startsWith("identity.")) return mdiKeyVariant;
-        if (action.startsWith("organization.")) return mdiDomain;
-        return mdiShieldCheckOutline;
+        if (action.startsWith("user.")) return IconCircleUser;
+        if (action.startsWith("server.")) return IconServer;
+        if (action.startsWith("file.")) return IconFileText;
+        if (action.startsWith("identity.")) return IconKeyRound;
+        if (action.startsWith("organization.")) return IconBuilding2;
+        return IconShieldCheck;
     }, []);
 
     return (
         <div className="audit-page">
-            <PageHeader icon={mdiShieldCheckOutline} title={t('audit.page.title')}
+            <PageHeader icon={IconShieldCheck} title={t('audit.page.title')}
                         subtitle={t('audit.page.subtitle')} />
             <div className="audit-content">
                 <AuditFilters filters={filters} metadata={metadata} organizations={organizations}

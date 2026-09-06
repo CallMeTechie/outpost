@@ -1,6 +1,6 @@
-import Icon from "@mdi/react";
+import Icon from "@/common/components/Icon";
 import { useState } from "react";
-import { mdiShieldKeyOutline } from "@mdi/js";
+import { ShieldHalf as IconShieldHalf } from "lucide-react";
 import { deleteRequest } from "@/common/utils/RequestUtil.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useTranslation } from "react-i18next";
@@ -42,7 +42,7 @@ export const MemberList = ({ members, organizationId, isOwner, refreshMembers })
                     {isOwner && member.role !== "owner" && (
                         <div className="member-actions">
                             <Button text={t("settings.permissions.permissionsTab")} type="secondary"
-                                    icon={mdiShieldKeyOutline} onClick={() => setPermMember(member)} />
+                                    icon={IconShieldHalf} onClick={() => setPermMember(member)} />
                             <Button text="Remove" type="danger" onClick={() => handleRemoveMember(member.accountId)} />
                         </div>
                     )}

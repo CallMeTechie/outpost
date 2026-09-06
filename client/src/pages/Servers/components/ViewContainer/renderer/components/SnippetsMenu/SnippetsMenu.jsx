@@ -2,8 +2,9 @@ import { useSnippets } from "@/common/contexts/SnippetContext.jsx";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import "./styles.sass";
-import { mdiMagnify, mdiCloudDownloadOutline, mdiLinux } from "@mdi/js";
-import Icon from "@mdi/react";
+import { Search as IconSearch, CloudDownload as IconCloudDownload } from "lucide-react";
+import { mdiLinux } from "@mdi/js";
+import Icon from "@/common/components/Icon";
 import { parseOsFilter, matchesOsFilter, normalizeOsName } from "@/common/utils/osUtils.js";
 
 export const SnippetsMenu = ({ onSelect, onClose, visible, activeSession }) => {
@@ -147,7 +148,7 @@ export const SnippetsMenu = ({ onSelect, onClose, visible, activeSession }) => {
                 aria-orientation="vertical"
             >
                 <div className="snippets-menu__search">
-                    <Icon path={mdiMagnify} />
+                    <Icon icon={IconSearch} />
                     <input
                         ref={searchRef}
                         type="text"
@@ -189,12 +190,12 @@ export const SnippetsMenu = ({ onSelect, onClose, visible, activeSession }) => {
                                                 <div className="snippets-menu__item-badges">
                                                     {osFilter.length > 0 && (
                                                         <span className="snippets-menu__os-badge" title={osFilter.join(", ")}>
-                                                            <Icon path={mdiLinux} size={0.5} />
+                                                            <Icon icon={mdiLinux} size={0.5} />
                                                             {osFilter.length === 1 ? osFilter[0] : `${osFilter.length} OS`}
                                                         </span>
                                                     )}
                                                     {snippet.sourceId && (
-                                                        <Icon path={mdiCloudDownloadOutline} size={0.65}
+                                                        <Icon icon={IconCloudDownload} size={0.65}
                                                               className="snippets-menu__source-badge" />
                                                     )}
                                                 </div>

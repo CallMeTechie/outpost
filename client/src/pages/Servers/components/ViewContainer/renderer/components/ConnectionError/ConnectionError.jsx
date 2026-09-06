@@ -1,6 +1,6 @@
 import { memo } from "react";
-import Icon from "@mdi/react";
-import { mdiLaptop, mdiServer, mdiClose, mdiAlertCircle } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Laptop as IconLaptop, Server as IconServer, X as IconX, CircleAlert as IconCircleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import "./styles.sass";
 
@@ -43,17 +43,17 @@ export const ConnectionError = memo(({ message, onClose }) => {
             <div className="connection-error__bar" />
             <div className="connection-error__visual">
                 <div className="connection-error__device">
-                    <Icon path={mdiLaptop} className="connection-error__device-icon" />
+                    <Icon icon={IconLaptop} className="connection-error__device-icon" />
                 </div>
                 <div className="connection-error__link">
                     <span className="connection-error__link-line" />
                     <span className="connection-error__link-badge">
-                        <Icon path={mdiAlertCircle} />
+                        <Icon icon={IconCircleAlert} />
                     </span>
                     <span className="connection-error__link-line" />
                 </div>
                 <div className="connection-error__device connection-error__device--server">
-                    <Icon path={mdiServer} className="connection-error__device-icon" />
+                    <Icon icon={IconServer} className="connection-error__device-icon" />
                 </div>
             </div>
             <div className="connection-error__text">
@@ -62,7 +62,7 @@ export const ConnectionError = memo(({ message, onClose }) => {
             </div>
             {onClose && (
                 <button type="button" className="connection-error__action" onClick={onClose}>
-                    <Icon path={mdiClose} />
+                    <Icon icon={IconX} />
                     <span>{t("common.errors.connection.close")}</span>
                 </button>
             )}

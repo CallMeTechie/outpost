@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import Icon from "@mdi/react";
-import { mdiKeyboardTab, mdiUnfoldMoreHorizontal } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { ArrowRightToLine as IconArrowRightToLine, ChevronsUpDown as IconChevronsUpDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import "./styles.sass";
 
@@ -25,7 +25,7 @@ export const PasswordFillHint = ({ anchor, items, selectedIndex, onFill, onCycle
     return (
         <div ref={hintRef} className="password-fill-hint" style={hintStyle} role="status" aria-live="polite">
             <button type="button" className="password-fill-hint__fill" onClick={() => onFill(item.id)}>
-                <Icon path={mdiKeyboardTab} className="password-fill-hint__key" />
+                <Icon icon={IconArrowRightToLine} className="password-fill-hint__key" />
                 <span className="password-fill-hint__label">
                     {item.username
                         ? t("servers.passwordHint.pasteFor", { username: item.username })
@@ -35,7 +35,7 @@ export const PasswordFillHint = ({ anchor, items, selectedIndex, onFill, onCycle
             {items.length > 1 && (
                 <button type="button" className="password-fill-hint__cycle" onClick={() => onCycle(1)}
                         title={t("servers.passwordHint.cycle")} aria-label={t("servers.passwordHint.cycle")}>
-                    <Icon path={mdiUnfoldMoreHorizontal} className="password-fill-hint__cycle-icon" />
+                    <Icon icon={IconChevronsUpDown} className="password-fill-hint__cycle-icon" />
                     <span className="password-fill-hint__counter">{selectedIndex + 1}/{items.length}</span>
                 </button>
             )}

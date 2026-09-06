@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { DialogProvider } from "@/common/components/Dialog";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import IconInput from "@/common/components/IconInput";
-import { mdiDomain, mdiFormTextbox } from "@mdi/js";
+import { Building2 as IconBuilding2, TextCursorInput as IconTextCursorInput } from "lucide-react";
 import Button from "@/common/components/Button";
 import { putRequest } from "@/common/utils/RequestUtil.js";
 import "./styles.sass";
@@ -54,7 +54,7 @@ export const OrganizationDialog = ({ open, onClose, refreshOrganizations }) => {
                     <div className="form-group">
                         <label htmlFor="name">{t('settings.organizations.dialog.fields.name')}</label>
                         <IconInput
-                            icon={mdiDomain}
+                            icon={IconBuilding2}
                             id="name"
                             placeholder={t('settings.organizations.dialog.fields.namePlaceholder')}
                             value={name}
@@ -66,7 +66,7 @@ export const OrganizationDialog = ({ open, onClose, refreshOrganizations }) => {
                     <div className="form-group">
                         <label htmlFor="description">{t('settings.organizations.dialog.fields.description')}</label>
                         <IconInput
-                            icon={mdiFormTextbox}
+                            icon={IconTextCursorInput}
                             id="description"
                             placeholder={t('settings.organizations.dialog.fields.descriptionPlaceholder')}
                             value={description}

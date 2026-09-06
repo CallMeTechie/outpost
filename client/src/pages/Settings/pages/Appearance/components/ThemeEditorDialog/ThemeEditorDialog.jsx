@@ -8,7 +8,7 @@ import Button from "@/common/components/Button";
 import IconInput from "@/common/components/IconInput";
 import Editor, { loader } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
-import { mdiFormTextbox, mdiTextBoxOutline } from "@mdi/js";
+import { TextCursorInput as IconTextCursorInput, TextAlignStart as IconTextAlignStart } from "lucide-react";
 
 loader.config({ monaco });
 
@@ -95,7 +95,7 @@ export const ThemeEditorDialog = ({ open, onClose, editTheme, onSaved, actualThe
                     <div className="form-group">
                         <label>{t("settings.account.customThemes.name")}</label>
                         <IconInput
-                            icon={mdiFormTextbox}
+                            icon={IconTextCursorInput}
                             placeholder={t("settings.account.customThemes.themeName")}
                             value={editorName}
                             setValue={setEditorName}
@@ -104,7 +104,7 @@ export const ThemeEditorDialog = ({ open, onClose, editTheme, onSaved, actualThe
                     <div className="form-group">
                         <label>{t("settings.account.customThemes.descriptionLabel")}</label>
                         <IconInput
-                            icon={mdiTextBoxOutline}
+                            icon={IconTextAlignStart}
                             placeholder={t("settings.account.customThemes.optionalDescription")}
                             value={editorDescription}
                             setValue={setEditorDescription}

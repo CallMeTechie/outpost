@@ -1,6 +1,6 @@
 import { memo, useRef, useEffect, useCallback } from "react";
-import Icon from "@mdi/react";
-import { mdiLaptop, mdiServer } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Laptop as IconLaptop, Server as IconServer } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import "./styles.sass";
 
@@ -62,7 +62,7 @@ export const ConnectionLoader = memo(({ onReady }) => {
             <div ref={progressBarRef} className="connection-loader__progress-bar" />
             <div className="connection-loader__content">
                 <div className="connection-loader__device">
-                    <Icon path={mdiLaptop} className="connection-loader__device-icon" />
+                    <Icon icon={IconLaptop} className="connection-loader__device-icon" />
                 </div>
                 <div className="connection-loader__dots">
                     <span></span>
@@ -70,7 +70,7 @@ export const ConnectionLoader = memo(({ onReady }) => {
                     <span></span>
                 </div>
                 <div className="connection-loader__device connection-loader__device--server">
-                    <Icon path={mdiServer} className="connection-loader__device-icon" />
+                    <Icon icon={IconServer} className="connection-loader__device-icon" />
                 </div>
             </div>
         </div>

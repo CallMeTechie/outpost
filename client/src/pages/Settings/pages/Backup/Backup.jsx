@@ -8,22 +8,19 @@ import Chip from "@/common/components/Chip";
 import SelectBox from "@/common/components/SelectBox";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import ActionConfirmDialog from "@/common/components/ActionConfirmDialog";
-import Icon from "@mdi/react";
-import {
-    mdiPlus, mdiDatabase, mdiVideo, mdiFileDocument, mdiHarddisk, mdiLanConnect,
-    mdiCloud, mdiPencil, mdiTrashCan, mdiBackupRestore, mdiCloudUpload, mdiLoading, mdiContentSave, mdiRestore, mdiArchive, mdiDownload, mdiFolderOpen,
-} from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Plus as IconPlus, Database as IconDatabase, Video as IconVideo, FileText as IconFileText, HardDrive as IconHardDrive, Network as IconNetwork, Cloud as IconCloud, Pencil as IconPencil, Trash as IconTrash, DatabaseBackup as IconDatabaseBackup, CloudUpload as IconCloudUpload, LoaderCircle as IconLoaderCircle, Save as IconSave, RotateCcw as IconRotateCcw, Archive as IconArchive, Download as IconDownload, FolderOpen as IconFolderOpen } from "lucide-react";
 import ProviderDialog from "./components/ProviderDialog";
 import FileBrowserDialog from "./components/FileBrowserDialog";
 
 const StorageCard = ({ icon, title, size, onClick, actionIcon }) => (
     <div className={`storage-card ${onClick ? "clickable" : ""}`} onClick={onClick}>
-        <Icon path={icon} className="storage-icon" />
+        <Icon icon={icon} className="storage-icon" />
         <div className="storage-info">
             <h4>{title}</h4>
             <span className="storage-size">{formatBytes(size)}</span>
         </div>
-        {actionIcon && <Icon path={actionIcon} className="action-icon" />}
+        {actionIcon && <Icon icon={actionIcon} className="action-icon" />}
     </div>
 );
 
@@ -171,9 +168,9 @@ export const Backup = () => {
 
     const getProviderIcon = (type) => {
         switch (type) {
-            case "smb": return mdiLanConnect;
-            case "webdav": return mdiCloud;
-            default: return mdiHarddisk;
+            case "smb": return IconNetwork;
+            case "webdav": return IconCloud;
+            default: return IconHardDrive;
         }
     };
 
@@ -191,10 +188,10 @@ export const Backup = () => {
                     </div>
                 </div>
                 <div className="storage-grid">
-                    <StorageCard icon={mdiDatabase} title={t("settings.backup.storage.database")} size={storage.database} onClick={handleDatabaseExport} actionIcon={mdiDownload} />
-                    <StorageCard icon={mdiVideo} title={t("settings.backup.storage.recordings")} size={storage.recordings} onClick={() => setFileBrowser({ open: true, type: "recordings" })} actionIcon={mdiFolderOpen} />
-                    <StorageCard icon={mdiFileDocument} title={t("settings.backup.storage.logs")} size={storage.logs} onClick={() => setFileBrowser({ open: true, type: "logs" })} actionIcon={mdiFolderOpen} />
-                    <StorageCard icon={mdiHarddisk} title={t("settings.backup.storage.total")} size={storage.database + storage.recordings + storage.logs} />
+                    <StorageCard icon={IconDatabase} title={t("settings.backup.storage.database")} size={storage.database} onClick={handleDatabaseExport} actionIcon={IconDownload} />
+                    <StorageCard icon={IconVideo} title={t("settings.backup.storage.recordings")} size={storage.recordings} onClick={() => setFileBrowser({ open: true, type: "recordings" })} actionIcon={IconFolderOpen} />
+                    <StorageCard icon={IconFileText} title={t("settings.backup.storage.logs")} size={storage.logs} onClick={() => setFileBrowser({ open: true, type: "logs" })} actionIcon={IconFolderOpen} />
+                    <StorageCard icon={IconHardDrive} title={t("settings.backup.storage.total")} size={storage.database + storage.recordings + storage.logs} />
                 </div>
             </div>
 
@@ -204,7 +201,7 @@ export const Backup = () => {
                         <h2>{t("settings.backup.backupsSection.title")}</h2>
                         <p>{t("settings.backup.backupsSection.description")}</p>
                     </div>
-                    <Button text={t("settings.backup.addProvider")} icon={mdiPlus} onClick={openAddProvider} />
+                    <Button text={t("settings.backup.addProvider")} icon={IconPlus} onClick={openAddProvider} />
                 </div>
 
                 <div className="backup-options">
@@ -220,9 +217,9 @@ export const Backup = () => {
 
                 <div className="backup-includes">
                     <span className="includes-label">{t("settings.backup.includes.title")}</span>
-                    <Chip label={t("settings.backup.includes.database")} selected={settings.includeDatabase} onClick={(v) => handleInputChange("includeDatabase", v)} icon={mdiDatabase} />
-                    <Chip label={t("settings.backup.includes.recordings")} selected={settings.includeRecordings} onClick={(v) => handleInputChange("includeRecordings", v)} icon={mdiVideo} />
-                    <Chip label={t("settings.backup.includes.logs")} selected={settings.includeLogs} onClick={(v) => handleInputChange("includeLogs", v)} icon={mdiFileDocument} />
+                    <Chip label={t("settings.backup.includes.database")} selected={settings.includeDatabase} onClick={(v) => handleInputChange("includeDatabase", v)} icon={IconDatabase} />
+                    <Chip label={t("settings.backup.includes.recordings")} selected={settings.includeRecordings} onClick={(v) => handleInputChange("includeRecordings", v)} icon={IconVideo} />
+                    <Chip label={t("settings.backup.includes.logs")} selected={settings.includeLogs} onClick={(v) => handleInputChange("includeLogs", v)} icon={IconFileText} />
                 </div>
 
                 <h3>{t("settings.backup.providers")}</h3>
@@ -230,7 +227,7 @@ export const Backup = () => {
                 <div className="vertical-list">
                     {settings.providers.length === 0 ? (
                         <div className="no-providers">
-                            <Icon path={mdiBackupRestore} />
+                            <Icon icon={IconDatabaseBackup} />
                             <h3>{t("settings.backup.noProviders")}</h3>
                             <p>{t("settings.backup.noProvidersDescription")}</p>
                         </div>
@@ -240,7 +237,7 @@ export const Backup = () => {
                                 <div className={`item clickable ${expandedProviderId === provider.id ? "expanded" : ""}`} onClick={() => handleProviderClick(provider)}>
                                     <div className="left-section">
                                         <div className="icon primary">
-                                            <Icon path={getProviderIcon(provider.type)} />
+                                            <Icon icon={getProviderIcon(provider.type)} />
                                         </div>
                                         <div className="details">
                                             <h3>{provider.name}</h3>
@@ -248,9 +245,9 @@ export const Backup = () => {
                                         </div>
                                     </div>
                                     <div className="right-section">
-                                        <Button icon={creatingBackup[provider.id] ? mdiLoading : mdiCloudUpload} onClick={(e) => createBackup(provider, e)} disabled={creatingBackup[provider.id]} type="primary" />
-                                        <Button icon={mdiPencil} onClick={(e) => openEditProvider(provider, e)} />
-                                        <Button icon={mdiTrashCan} type="danger" onClick={(e) => { e.stopPropagation(); setDeleteDialog({ open: true, provider }); }} />
+                                        <Button icon={creatingBackup[provider.id] ? IconLoaderCircle : IconCloudUpload} onClick={(e) => createBackup(provider, e)} disabled={creatingBackup[provider.id]} type="primary" />
+                                        <Button icon={IconPencil} onClick={(e) => openEditProvider(provider, e)} />
+                                        <Button icon={IconTrash} type="danger" onClick={(e) => { e.stopPropagation(); setDeleteDialog({ open: true, provider }); }} />
                                     </div>
                                 </div>
                                 {expandedProviderId === provider.id && (
@@ -258,12 +255,12 @@ export const Backup = () => {
                                         <h4>{t("settings.backup.backupList", { name: provider.name })}</h4>
                                         {loadingBackups[provider.id] ? (
                                             <div className="backup-loading-inline">
-                                                <Icon path={mdiLoading} spin={1} />
+                                                <Icon icon={IconLoaderCircle} spin={1} />
                                                 <span>{t("settings.backup.loadingBackups")}</span>
                                             </div>
                                         ) : !backupsByProvider[provider.id]?.length ? (
                                             <div className="no-backups-inline">
-                                                <Icon path={mdiBackupRestore} />
+                                                <Icon icon={IconDatabaseBackup} />
                                                 <span>{t("settings.backup.noBackups")}</span>
                                             </div>
                                         ) : (
@@ -272,7 +269,7 @@ export const Backup = () => {
                                                     <div key={backup.name} className="backup-item">
                                                         <div className="backup-left">
                                                             <div className="backup-icon">
-                                                                <Icon path={mdiArchive} />
+                                                                <Icon icon={IconArchive} />
                                                             </div>
                                                             <div className="backup-info">
                                                                 <span className="backup-name">{backup.name}</span>
@@ -280,7 +277,7 @@ export const Backup = () => {
                                                             </div>
                                                         </div>
                                                         <Button
-                                                            icon={restoring === backup.name ? mdiLoading : mdiRestore}
+                                                            icon={restoring === backup.name ? IconLoaderCircle : IconRotateCcw}
                                                             onClick={() => setRestoreDialog({ open: true, provider, backup })}
                                                             disabled={restoring === backup.name}
                                                         />
@@ -297,7 +294,7 @@ export const Backup = () => {
             </div>
 
             <div className="settings-actions">
-                <Button text={t("settings.backup.saveSettings")} icon={mdiContentSave} onClick={saveSettings} disabled={saving} type="primary" />
+                <Button text={t("settings.backup.saveSettings")} icon={IconSave} onClick={saveSettings} disabled={saving} type="primary" />
             </div>
 
             <ProviderDialog open={providerDialogOpen} onClose={() => setProviderDialogOpen(false)} provider={editProvider} onSaved={handleProviderSaved} />

@@ -3,14 +3,14 @@ import "./styles.sass";
 import { useContext, useEffect, useState, useRef } from "react";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import IconInput from "@/common/components/IconInput";
-import { mdiAccountCircleOutline, mdiChartLine, mdiFormTextbox, mdiIp, mdiLockOutline } from "@mdi/js";
+import { CircleUser as IconCircleUser, ChartLine as IconChartLine, TextCursorInput as IconTextCursorInput, Globe as IconGlobe, Lock as IconLock } from "lucide-react";
 import Button from "@/common/components/Button";
 import Input from "@/common/components/IconInput";
 import { getRequest, patchRequest, putRequest } from "@/common/utils/RequestUtil.js";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import ToggleSwitch from "@/common/components/ToggleSwitch";
-import Icon from "@mdi/react";
+import Icon from "@/common/components/Icon";
 
 export const ProxmoxDialog = ({ open, onClose, currentFolderId, currentOrganizationId, editServerId }) => {
     const { t } = useTranslation();
@@ -113,14 +113,14 @@ export const ProxmoxDialog = ({ open, onClose, currentFolderId, currentOrganizat
                 <h2>{editServerId ? t("servers.proxmoxDialog.title.edit") : t("servers.proxmoxDialog.title.import")}</h2>
                 <div className="form-group">
                     <label htmlFor="name">{t("servers.proxmoxDialog.fields.name")}</label>
-                    <IconInput icon={mdiFormTextbox} value={name} setValue={setName} placeholder={t("servers.proxmoxDialog.placeholders.name")} id="name" />
+                    <IconInput icon={IconTextCursorInput} value={name} setValue={setName} placeholder={t("servers.proxmoxDialog.placeholders.name")} id="name" />
                 </div>
 
                 <div className="ip-row">
 
                     <div className="form-group">
                         <label htmlFor="ip">{t("servers.proxmoxDialog.fields.serverIp")}</label>
-                        <Input icon={mdiIp} type="text" placeholder={t("servers.proxmoxDialog.placeholders.serverIp")} id="ip"
+                        <Input icon={IconGlobe} type="text" placeholder={t("servers.proxmoxDialog.placeholders.serverIp")} id="ip"
                                autoComplete="off" value={ip} setValue={setIp} />
                     </div>
 
@@ -134,20 +134,20 @@ export const ProxmoxDialog = ({ open, onClose, currentFolderId, currentOrganizat
 
                 <div className="form-group">
                     <label htmlFor="username">{t("servers.proxmoxDialog.fields.username")}</label>
-                    <IconInput icon={mdiAccountCircleOutline} value={username} setValue={setUsername}
+                    <IconInput icon={IconCircleUser} value={username} setValue={setUsername}
                                placeholder={t("servers.proxmoxDialog.placeholders.username")} id="username" />
                 </div>
 
                 <div className="form-group">
                     <label htmlFor="password">{t("servers.proxmoxDialog.fields.password")}</label>
-                    <IconInput icon={mdiLockOutline} value={password} setValue={setPassword} placeholder={t("servers.proxmoxDialog.placeholders.password")}
+                    <IconInput icon={IconLock} value={password} setValue={setPassword} placeholder={t("servers.proxmoxDialog.placeholders.password")}
                                type="password" id="password" />
                 </div>
 
                 <div className="settings-toggle">
                     <div className="settings-toggle-info">
                         <span className="settings-toggle-label">
-                            <Icon path={mdiChartLine} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                            <Icon icon={IconChartLine} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
                             {t('servers.proxmoxDialog.fields.monitoring')}
                         </span>
                         <span className="settings-toggle-description">

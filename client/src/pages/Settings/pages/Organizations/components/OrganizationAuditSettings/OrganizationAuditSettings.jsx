@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { getRequest, patchRequest } from "@/common/utils/RequestUtil.js";
-import { mdiContentSave } from "@mdi/js";
+import { Save as IconSave } from "lucide-react";
 import Button from "@/common/components/Button";
 import ToggleSwitch from "@/common/components/ToggleSwitch";
 import { useTranslation } from "react-i18next";
@@ -250,7 +250,7 @@ export const OrganizationAuditSettings = ({ organizationId, isOwner, onClose }) 
 
             {isOwner && (
                 <div className="settings-actions">
-                    <Button text={t("settings.organizations.auditSettings.actions.save")} icon={mdiContentSave} onClick={saveSettings} />
+                    <Button text={t("settings.organizations.auditSettings.actions.save")} icon={IconSave} onClick={saveSettings} />
                 </div>
             )}
         </div>

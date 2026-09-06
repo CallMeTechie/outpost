@@ -10,8 +10,8 @@ import Button from "@/common/components/Button";
 import { paneContentUrl } from
     "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/utils/paneEndpoint.js";
 import Editor, { loader } from "@monaco-editor/react";
-import Icon from "@mdi/react";
-import { mdiContentSave, mdiTextBox } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Save as IconSave, TextAlignStart as IconTextAlignStart } from "lucide-react";
 import FloatingWindow, { FloatingWindowAction } from "@/common/components/FloatingWindow";
 import "./styles.sass";
 import * as monaco from "monaco-editor";
@@ -224,14 +224,14 @@ export const FileEditorWindow = ({ file, session, onClose }) => {
 
             <FloatingWindow
                 className="file-editor-window"
-                icon={mdiTextBox}
+                icon={IconTextAlignStart}
                 title={file.split("/").pop()}
                 titleExtra={fileContentChanged && <span className="modified-indicator">●</span>}
                 onClose={closeFile}
                 actions={
                     <FloatingWindowAction onClick={() => saveFile()}
                             disabled={!fileContentChanged || saving} title={t("common.save")}>
-                        <Icon path={mdiContentSave} />
+                        <Icon icon={IconSave} />
                     </FloatingWindowAction>
                 }
             >

@@ -1,9 +1,9 @@
 import { DialogProvider } from "@/common/components/Dialog";
 import IconInput from "@/common/components/IconInput";
-import { mdiKeyVariant, mdiContentCopy, mdiCheck } from "@mdi/js";
+import { KeyRound as IconKeyRound, Copy as IconCopy, Check as IconCheck } from "lucide-react";
 import Button from "@/common/components/Button";
 import SelectBox from "@/common/components/SelectBox";
-import Icon from "@mdi/react";
+import Icon from "@/common/components/Icon";
 import "./styles.sass";
 import { postRequest } from "@/common/utils/RequestUtil.js";
 import { useState, useEffect } from "react";
@@ -77,7 +77,7 @@ export const AddApiKeyDialog = ({ open, onClose, onCreated }) => {
 
                         <div className="form-group">
                             <label htmlFor="api-key-name">{t("settings.account.apiKeys.nameLabel")}</label>
-                            <IconInput id="api-key-name" icon={mdiKeyVariant} autoFocus
+                            <IconInput id="api-key-name" icon={IconKeyRound} autoFocus
                                        placeholder={t("settings.account.apiKeys.namePlaceholder")}
                                        value={name} setValue={setName} />
                         </div>
@@ -101,7 +101,7 @@ export const AddApiKeyDialog = ({ open, onClose, onCreated }) => {
                             <label>{t("settings.account.apiKeys.tokenLabel")}</label>
                             <button type="button" className="token-box" onClick={copyToken}>
                                 <code>{createdToken}</code>
-                                <Icon path={copied ? mdiCheck : mdiContentCopy} size={0.8} />
+                                <Icon icon={copied ? IconCheck : IconCopy} size={0.8} />
                             </button>
                         </div>
 

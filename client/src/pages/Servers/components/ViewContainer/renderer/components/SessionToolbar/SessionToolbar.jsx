@@ -1,16 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import Icon from "@mdi/react";
-import {
-    mdiDragVertical,
-    mdiFullscreen,
-    mdiFullscreenExit,
-    mdiKeyboardOutline,
-    mdiMagnifyMinusOutline,
-    mdiMagnifyPlusOutline,
-    mdiMonitorMultiple,
-    mdiPlus,
-    mdiMinus,
-} from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { GripVertical as IconGripVertical, Fullscreen as IconFullscreen, Minimize as IconMinimize, Keyboard as IconKeyboard, ZoomOut as IconZoomOut, ZoomIn as IconZoomIn, Layers as IconLayers, Plus as IconPlus, Minus as IconMinus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import KeyboardShortcutsMenu from "../../../components/TerminalActionsMenu/components/KeyboardShortcutsMenu";
 import "./styles.sass";
@@ -128,7 +118,7 @@ export const SessionToolbar = ({
                  className={`session-toolbar ${pinned ? "session-toolbar--pinned" : ""}`}>
 
                 <div className="session-toolbar__handle" onMouseDown={startDrag} title={t("servers.toolbar.drag")}>
-                    <Icon path={mdiDragVertical} size={0.8} />
+                    <Icon icon={IconGripVertical} size={0.8} />
                 </div>
 
                 <div className="session-toolbar__body">
@@ -148,7 +138,7 @@ export const SessionToolbar = ({
                         <button type="button" className="session-toolbar__action" title={t("servers.toolbar.shortcuts")}
                                 onMouseDown={(event) => event.preventDefault()}
                                 onClick={act(() => setShortcutsOpen(true))}>
-                            <Icon path={mdiKeyboardOutline} size={0.7} />
+                            <Icon icon={IconKeyboard} size={0.7} />
                         </button>
 
                         <div className="session-toolbar__group">
@@ -158,7 +148,7 @@ export const SessionToolbar = ({
                                     title={t("servers.toolbar.zoomOut")}
                                     onMouseDown={(event) => event.preventDefault()}
                                     onClick={act(onZoomOut)}>
-                                <Icon path={mdiMagnifyMinusOutline} size={0.7} />
+                                <Icon icon={IconZoomOut} size={0.7} />
                             </button>
 
                             <button type="button" className="session-toolbar__zoom"
@@ -172,7 +162,7 @@ export const SessionToolbar = ({
                                     title={t("servers.toolbar.zoomIn")}
                                     onMouseDown={(event) => event.preventDefault()}
                                     onClick={act(onZoomIn)}>
-                                <Icon path={mdiMagnifyPlusOutline} size={0.7} />
+                                <Icon icon={IconZoomIn} size={0.7} />
                             </button>
                         </div>
 
@@ -186,7 +176,7 @@ export const SessionToolbar = ({
                                             : t("servers.terminalActions.fullScreen")}
                                         onMouseDown={(event) => event.preventDefault()}
                                         onClick={act(onFullscreenToggle)}>
-                                    <Icon path={fullscreenEnabled ? mdiFullscreenExit : mdiFullscreen} size={0.7} />
+                                    <Icon icon={fullscreenEnabled ? IconMinimize : IconFullscreen} size={0.7} />
                                 </button>
                             </div>
                         )}
@@ -194,7 +184,7 @@ export const SessionToolbar = ({
                         {showsMonitors && (
                             <div className="session-toolbar__group">
                                 <div className="session-toolbar__divider" />
-                                <Icon path={mdiMonitorMultiple} size={0.8} className="session-toolbar__icon" />
+                                <Icon icon={IconLayers} size={0.8} className="session-toolbar__icon" />
 
                                 {monitors.map((index) => (
                                     <button key={index} type="button"
@@ -216,14 +206,14 @@ export const SessionToolbar = ({
                                                 title={t("servers.monitors.remove")}
                                                 onMouseDown={(event) => event.preventDefault()}
                                                 onClick={act(onRemoveMonitor)}>
-                                            <Icon path={mdiMinus} size={0.7} />
+                                            <Icon icon={IconMinus} size={0.7} />
                                         </button>
                                         <button type="button" className="session-toolbar__action"
                                                 disabled={monitorCount >= maxMonitors}
                                                 title={t("servers.monitors.add")}
                                                 onMouseDown={(event) => event.preventDefault()}
                                                 onClick={act(onAddMonitor)}>
-                                            <Icon path={mdiPlus} size={0.7} />
+                                            <Icon icon={IconPlus} size={0.7} />
                                         </button>
                                     </>
                                 )}

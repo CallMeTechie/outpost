@@ -1,5 +1,5 @@
-import Icon from "@mdi/react";
-import { mdiCheck } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Check as IconCheck } from "lucide-react";
 import "./styles.sass";
 
 export const Checkbox = ({ checked, onChange, id, disabled = false, size = "medium" }) => {
@@ -11,7 +11,7 @@ export const Checkbox = ({ checked, onChange, id, disabled = false, size = "medi
         <div className={`checkbox ${checked ? "checked" : ""} ${disabled ? "disabled" : ""} size-${size}`}>
             <input type="checkbox" checked={checked} onChange={handleChange} disabled={disabled} id={id} />
             <label htmlFor={id} className="checkbox-box">
-                <Icon path={mdiCheck} />
+                <Icon icon={IconCheck} />
             </label>
         </div>
     );

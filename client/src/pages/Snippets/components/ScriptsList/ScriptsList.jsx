@@ -1,6 +1,7 @@
 import "./styles.sass";
-import { mdiPencil, mdiTrashCan, mdiChevronLeft, mdiChevronRight, mdiCloudDownloadOutline, mdiLinux } from "@mdi/js";
-import Icon from "@mdi/react";
+import { Pencil as IconPencil, Trash as IconTrash, ChevronLeft as IconChevronLeft, ChevronRight as IconChevronRight, CloudDownload as IconCloudDownload } from "lucide-react";
+import { mdiLinux } from "@mdi/js";
+import Icon from "@/common/components/Icon";
 import { useScripts } from "@/common/contexts/ScriptContext.jsx";
 import { deleteRequest, patchRequest } from "@/common/utils/RequestUtil.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
@@ -23,11 +24,11 @@ const ScriptItem = ({ script, onEdit, onDelete, isReadOnly, onReposition, t }) =
                     <div className="script-badges">
                         {osFilter.length > 0 && (
                             <span className="os-badge" title={osFilter.join(", ")}>
-                                <Icon path={mdiLinux} size={0.5} />
+                                <Icon icon={mdiLinux} size={0.5} />
                                 {osFilter.length === 1 ? osFilter[0] : `${osFilter.length} OS`}
                             </span>
                         )}
-                        {script.sourceId && <Icon path={mdiCloudDownloadOutline} size={0.65} className="source-badge" />}
+                        {script.sourceId && <Icon icon={IconCloudDownload} size={0.65} className="source-badge" />}
                     </div>
                 </div>
                 {script.description && <p>{script.description}</p>}
@@ -35,8 +36,8 @@ const ScriptItem = ({ script, onEdit, onDelete, isReadOnly, onReposition, t }) =
             </div>
             {!isReadOnly && (
                 <div className="script-actions">
-                    <button className="action-button" onClick={e => { e.stopPropagation(); onEdit(script.id); }} title={t('scripts.list.actions.edit')}><Icon path={mdiPencil} /></button>
-                    <button className="action-button delete" onClick={e => { e.stopPropagation(); onDelete(script.id); }} title={t('scripts.list.actions.delete')}><Icon path={mdiTrashCan} /></button>
+                    <button className="action-button" onClick={e => { e.stopPropagation(); onEdit(script.id); }} title={t('scripts.list.actions.edit')}><Icon icon={IconPencil} /></button>
+                    <button className="action-button delete" onClick={e => { e.stopPropagation(); onDelete(script.id); }} title={t('scripts.list.actions.delete')}><Icon icon={IconTrash} /></button>
                 </div>
             )}
         </div>
@@ -80,9 +81,9 @@ export const ScriptsList = ({ scripts, onEdit, selectedOrganization, isReadOnly 
                 <div className="pagination">
                     <div className="pagination-info">{t('audit.pagination.showing', { start: (currentPage - 1) * itemsPerPage + 1, end: Math.min(currentPage * itemsPerPage, scripts.length), total: scripts.length })}</div>
                     <div className="pagination-controls">
-                        <Button text={t('audit.pagination.previous')} icon={mdiChevronLeft} onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)} disabled={currentPage <= 1} type="secondary" />
+                        <Button text={t('audit.pagination.previous')} icon={IconChevronLeft} onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)} disabled={currentPage <= 1} type="secondary" />
                         <span className="page-info">{t('audit.pagination.pageInfo', { current: currentPage, total: totalPages })}</span>
-                        <Button text={t('audit.pagination.next')} icon={mdiChevronRight} onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)} disabled={currentPage >= totalPages} type="secondary" />
+                        <Button text={t('audit.pagination.next')} icon={IconChevronRight} onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)} disabled={currentPage >= totalPages} type="secondary" />
                     </div>
                 </div>
             )}

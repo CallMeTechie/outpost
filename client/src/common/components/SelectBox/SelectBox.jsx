@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import "./styles.sass";
-import Icon from "@mdi/react";
-import { mdiChevronDown, mdiMagnify, mdiClose } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { ChevronDown as IconChevronDown, Search as IconSearch, X as IconX } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export const SelectBox = ({ options, selected, setSelected, id, disabled = false, searchable = false, multiple = false, placeholder }) => {
@@ -193,7 +193,7 @@ export const SelectBox = ({ options, selected, setSelected, id, disabled = false
                     {selectedArray.slice(0, 3).map(value => (
                         <span key={value} className="select-box__chip">
                             {options.find(o => o.value === value)?.label || value}
-                            <button type="button" className="select-box__chip-remove" onClick={(e) => removeChip(value, e)}><Icon path={mdiClose} /></button>
+                            <button type="button" className="select-box__chip-remove" onClick={(e) => removeChip(value, e)}><Icon icon={IconX} /></button>
                         </span>
                     ))}
                     {selectedArray.length > 3 && <span className="select-box__chip select-box__chip--more">+{selectedArray.length - 3}</span>}
@@ -202,7 +202,7 @@ export const SelectBox = ({ options, selected, setSelected, id, disabled = false
         }
         return (
             <>
-                {hasIconProperty && <Icon className="select-box__option-icon" path={selectedOption.icon} />}
+                {hasIconProperty && <Icon className="select-box__option-icon" icon={selectedOption.icon} />}
                 {selectedOption ? selectedOption.label : t('common.selectBox.defaultOption')}
             </>
         );
@@ -217,10 +217,10 @@ export const SelectBox = ({ options, selected, setSelected, id, disabled = false
                 <div className="select-box__actions">
                     {multiple && selectedArray.length > 0 && (
                         <button type="button" className="select-box__clear" onClick={clearAll}>
-                            <Icon path={mdiClose} />
+                            <Icon icon={IconX} />
                         </button>
                     )}
-                    <Icon className={`select-box__arrow ${isOpen ? "open" : ""}`} path={mdiChevronDown} />
+                    <Icon className={`select-box__arrow ${isOpen ? "open" : ""}`} icon={IconChevronDown} />
                 </div>
             </div>
             {isVisible && createPortal(
@@ -240,7 +240,7 @@ export const SelectBox = ({ options, selected, setSelected, id, disabled = false
                 >
                     {searchable && (
                         <div className="select-box__search">
-                            <Icon path={mdiMagnify} />
+                            <Icon icon={IconSearch} />
                             <input
                                 ref={searchInputRef}
                                 type="text"
@@ -267,7 +267,7 @@ export const SelectBox = ({ options, selected, setSelected, id, disabled = false
                                         <svg viewBox="0 0 24 24"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
                                     </div>
                                 )}
-                                {option.icon && <Icon className="select-box__option-icon" path={option.icon} />}
+                                {option.icon && <Icon className="select-box__option-icon" icon={option.icon} />}
                                 <span className="select-box__option-label">{option.label}</span>
                             </div>
                         )) : (

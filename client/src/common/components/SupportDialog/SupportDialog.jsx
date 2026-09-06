@@ -1,7 +1,7 @@
 import "./styles.sass";
 import { DialogProvider } from "@/common/components/Dialog";
-import Icon from "@mdi/react";
-import { mdiBugOutline, mdiOpenInNew } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Bug as IconBug, ExternalLink as IconExternalLink } from "lucide-react";
 import { siDiscord, siGithub } from "simple-icons";
 import { DISCORD_URL, GITHUB_URL } from "@/App.jsx";
 import { useTranslation } from "react-i18next";
@@ -24,35 +24,35 @@ export const SupportDialog = ({ open, onClose }) => {
                 <div className="support-options">
                     <div className="support-option" onClick={() => openUrl(`${GITHUB_URL}/issues`)}>
                         <div className="option-icon">
-                            <Icon path={mdiBugOutline} />
+                            <Icon icon={IconBug} />
                         </div>
                         <div className="option-text">
                             <span className="option-title">{t("support.issues.title")}</span>
                             <span className="option-desc">{t("support.issues.description")}</span>
                         </div>
-                        <Icon path={mdiOpenInNew} className="option-arrow" />
+                        <Icon icon={IconExternalLink} className="option-arrow" />
                     </div>
 
                     <div className="support-option" onClick={() => openUrl(DISCORD_URL)}>
                         <div className="option-icon">
-                            <Icon path={siDiscord.path} />
+                            <Icon icon={siDiscord.path} />
                         </div>
                         <div className="option-text">
                             <span className="option-title">{t("support.discord.title")}</span>
                             <span className="option-desc">{t("support.discord.description")}</span>
                         </div>
-                        <Icon path={mdiOpenInNew} className="option-arrow" />
+                        <Icon icon={IconExternalLink} className="option-arrow" />
                     </div>
 
                     <div className="support-option" onClick={() => openUrl(GITHUB_URL)}>
                         <div className="option-icon">
-                            <Icon path={siGithub.path} />
+                            <Icon icon={siGithub.path} />
                         </div>
                         <div className="option-text">
                             <span className="option-title">{t("support.github.title")}</span>
                             <span className="option-desc">{t("support.github.description")}</span>
                         </div>
-                        <Icon path={mdiOpenInNew} className="option-arrow" />
+                        <Icon icon={IconExternalLink} className="option-arrow" />
                     </div>
                 </div>
 

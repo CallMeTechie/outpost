@@ -1,14 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
-import Icon from "@mdi/react";
-import {
-    mdiChevronRight,
-    mdiInformationOutline,
-    mdiCalendarClock,
-    mdiAccountCircleOutline,
-    mdiDomain,
-    mdiWeb,
-    mdiPlayCircleOutline,
-} from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { ChevronRight as IconChevronRight, Info as IconInfo, CalendarClock as IconCalendarClock, CircleUser as IconCircleUser, Building2 as IconBuilding2, Globe as IconGlobe, CirclePlay as IconCirclePlay } from "lucide-react";
 import PaginatedTable from "@/common/components/PaginatedTable";
 import RecordingPlayer from "../RecordingPlayer";
 import { useTranslation } from "react-i18next";
@@ -97,7 +89,7 @@ export const AuditTable = ({ logs, loading, pagination, onPageChange, getIconFor
         {
             key: "timestamp",
             label: t('audit.table.headers.timestamp'),
-            icon: mdiCalendarClock,
+            icon: IconCalendarClock,
             className: "timestamp",
         },
         {
@@ -108,7 +100,7 @@ export const AuditTable = ({ logs, loading, pagination, onPageChange, getIconFor
         {
             key: "actor",
             label: t('audit.table.headers.actor'),
-            icon: mdiAccountCircleOutline,
+            icon: IconCircleUser,
             className: "actor",
         },
         {
@@ -119,13 +111,13 @@ export const AuditTable = ({ logs, loading, pagination, onPageChange, getIconFor
         {
             key: "organization",
             label: t('audit.table.headers.organization'),
-            icon: mdiDomain,
+            icon: IconBuilding2,
             className: "organization",
         },
         {
             key: "details",
             label: t('audit.table.headers.details'),
-            icon: mdiInformationOutline,
+            icon: IconInfo,
             className: "details",
         },
     ], [t]);
@@ -146,7 +138,7 @@ export const AuditTable = ({ logs, loading, pagination, onPageChange, getIconFor
 
                     <div className="cell action" data-label="Action">
                         <div className="action-content">
-                            <Icon path={getIconForAction(log.action)} />
+                            <Icon icon={getIconForAction(log.action)} />
                             <span className={`action-badge ${getActionBadgeColor(log.action)}`}>
                                 {formatAction(log.action)}
                             </span>
@@ -191,10 +183,10 @@ export const AuditTable = ({ logs, loading, pagination, onPageChange, getIconFor
                                 className="play-recording-btn"
                                 onClick={(e) => handlePlayRecording(e, log)}
                             >
-                                <Icon path={mdiPlayCircleOutline} size={0.9} />
+                                <Icon icon={IconCirclePlay} size={0.9} />
                             </button>
                         )}
-                        <Icon path={mdiChevronRight}
+                        <Icon icon={IconChevronRight}
                               className={`expand-icon ${isExpanded ? "expanded" : ""}`} />
                     </div>
                 </div>
@@ -212,7 +204,7 @@ export const AuditTable = ({ logs, loading, pagination, onPageChange, getIconFor
                             {log.userAgent && (
                                 <div className="user-agent-section">
                                     <h4>{t('audit.table.expandedDetails.userAgent')}</h4>
-                                    <p><Icon path={mdiWeb} /> {log.userAgent}</p>
+                                    <p><Icon icon={IconGlobe} /> {log.userAgent}</p>
                                 </div>
                             )}
 
@@ -240,7 +232,7 @@ export const AuditTable = ({ logs, loading, pagination, onPageChange, getIconFor
                 getRowKey={(log) => log.id}
                 loading={loading}
                 emptyState={{
-                    icon: mdiInformationOutline,
+                    icon: IconInfo,
                     title: t('audit.table.noLogs.title'),
                     subtitle: t('audit.table.noLogs.subtitle'),
                 }}

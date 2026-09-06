@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import "./styles.sass";
-import { mdiMagnify, mdiScript, mdiAccountCircle, mdiCloudDownloadOutline, mdiEgg } from "@mdi/js";
-import Icon from "@mdi/react";
+import { Search as IconSearch, ScrollText as IconScrollText, CircleUser as IconCircleUser, CloudDownload as IconCloudDownload, Egg as IconEgg } from "lucide-react";
+import Icon from "@/common/components/Icon";
 import { useTranslation } from "react-i18next";
 import { getRequest } from "@/common/utils/RequestUtil.js";
 import { matchesOsFilter, normalizeOsName } from "@/common/utils/osUtils.js";
@@ -170,13 +170,13 @@ export const ScriptsMenu = ({ visible, onClose, scripts = [], server, serverOrga
                     <>
                         <div className="scripts-menu__header">
                             <div className="scripts-menu__title">
-                                <Icon path={mdiScript} />
+                                <Icon icon={IconScrollText} />
                                 <span>{t("servers.contextMenu.runScript")}</span>
                             </div>
                             <div className="scripts-menu__server-info">{server?.name}</div>
                         </div>
                         <div className="scripts-menu__search">
-                            <Icon path={mdiMagnify} />
+                            <Icon icon={IconSearch} />
                             <input
                                 ref={searchRef}
                                 type="text"
@@ -208,9 +208,9 @@ export const ScriptsMenu = ({ visible, onClose, scripts = [], server, serverOrga
                                             <div className="scripts-menu__item-header">
                                                 <h4 className="scripts-menu__item-name">{script.name}</h4>
                                                 {script.isSecret ? (
-                                                    <Icon path={mdiEgg} size={0.65} className="scripts-menu__source-badge scripts-menu__source-badge--secret" />
+                                                    <Icon icon={IconEgg} size={0.65} className="scripts-menu__source-badge scripts-menu__source-badge--secret" />
                                                 ) : script.sourceId && (
-                                                    <Icon path={mdiCloudDownloadOutline} size={0.65} className="scripts-menu__source-badge" />
+                                                    <Icon icon={IconCloudDownload} size={0.65} className="scripts-menu__source-badge" />
                                                 )}
                                             </div>
                                             {script.description && <p className="scripts-menu__item-description">{script.description}</p>}
@@ -224,7 +224,7 @@ export const ScriptsMenu = ({ visible, onClose, scripts = [], server, serverOrga
                     <>
                         <div className="scripts-menu__header">
                             <div className="scripts-menu__title">
-                                <Icon path={mdiAccountCircle} />
+                                <Icon icon={IconCircleUser} />
                                 <span>{t("scripts.menu.selectIdentity")}</span>
                             </div>
                             <div className="scripts-menu__script-info">
@@ -244,7 +244,7 @@ export const ScriptsMenu = ({ visible, onClose, scripts = [], server, serverOrga
                                         role="menuitem"
                                         tabIndex={-1}
                                     >
-                                        <Icon path={mdiAccountCircle} className="scripts-menu__item-icon" />
+                                        <Icon icon={IconCircleUser} className="scripts-menu__item-icon" />
                                         <span className="scripts-menu__item-name">{getIdentityName(identityId)}</span>
                                     </div>
                                 ))}

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import Icon from "@mdi/react";
-import { mdiMagnify, mdiConsole, mdiSortAscending, mdiSortDescending } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Search as IconSearch, SquareTerminal as IconSquareTerminal, ArrowUpNarrowWide as IconArrowUpNarrowWide, ArrowDownWideNarrow as IconArrowDownWideNarrow } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import "./styles.sass";
 
@@ -30,21 +30,21 @@ export const ProcessesTab = ({ processList = [] }) => {
     };
 
     if (!processList?.length) {
-        return <div className="processes-tab"><div className="processes-empty"><Icon path={mdiConsole} /><p>{t("monitoring.details.processes.noData")}</p></div></div>;
+        return <div className="processes-tab"><div className="processes-empty"><Icon icon={IconSquareTerminal} /><p>{t("monitoring.details.processes.noData")}</p></div></div>;
     }
 
     return (
         <div className="processes-tab">
             <div className="processes-controls">
                 <div className="processes-search">
-                    <Icon path={mdiMagnify} />
+                    <Icon icon={IconSearch} />
                     <input type="text" placeholder={t("monitoring.details.processes.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} />
                 </div>
                 <div className="processes-sort">
                     {SORT_FIELDS.map(f => (
                         <button key={f} className={`sort-btn ${sortBy === f ? "active" : ""}`} onClick={() => handleSort(f)}>
                             {f.toUpperCase()}
-                            {sortBy === f && <Icon path={sortOrder === "desc" ? mdiSortDescending : mdiSortAscending} />}
+                            {sortBy === f && <Icon icon={sortOrder === "desc" ? IconArrowDownWideNarrow : IconArrowUpNarrowWide} />}
                         </button>
                     ))}
                 </div>

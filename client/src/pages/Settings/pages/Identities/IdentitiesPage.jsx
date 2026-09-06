@@ -5,8 +5,8 @@ import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { Permission } from "@/common/utils/permissions.js";
 import { deleteRequest, getRequest } from "@/common/utils/RequestUtil.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
-import { mdiPlus, mdiTrashCan, mdiPencil, mdiKey, mdiAccount, mdiDomain } from "@mdi/js";
-import Icon from "@mdi/react";
+import { Plus as IconPlus, Trash as IconTrash, Pencil as IconPencil, Key as IconKey, User as IconUser, Building2 as IconBuilding2 } from "lucide-react";
+import Icon from "@/common/components/Icon";
 import Button from "@/common/components/Button";
 import SelectBox from "@/common/components/SelectBox";
 import { ActionConfirmDialog } from "@/common/components/ActionConfirmDialog/ActionConfirmDialog.jsx";
@@ -26,7 +26,7 @@ export const IdentityCard = ({ identity, onEdit, onDelete }) => {
     return (
         <div className="identity-card">
             <div className="identity-info">
-                <Icon path={mdiKey} className="identity-icon" />
+                <Icon icon={IconKey} className="identity-icon" />
                 <div className="identity-details">
                     <h3>{identity.name}</h3>
                     <p className="identity-username">{identity.username || t("settings.identities.noUsername")}</p>
@@ -35,10 +35,10 @@ export const IdentityCard = ({ identity, onEdit, onDelete }) => {
             </div>
             <div className="identity-actions">
                 <button className="action-btn edit-btn" onClick={() => onEdit(identity)} title={t("settings.identities.editIdentity")}>
-                    <Icon path={mdiPencil} size={0.8} />
+                    <Icon icon={IconPencil} size={0.8} />
                 </button>
                 <button className="action-btn delete-btn" onClick={() => onDelete(identity)} title={t("settings.identities.deleteIdentity")}>
-                    <Icon path={mdiTrashCan} size={0.8} />
+                    <Icon icon={IconTrash} size={0.8} />
                 </button>
             </div>
         </div>
@@ -72,10 +72,10 @@ export const IdentitiesPage = () => {
 
     const scopeOptions = useMemo(() => {
         const options = [
-            { value: null, label: t("settings.identities.personal"), icon: mdiAccount },
+            { value: null, label: t("settings.identities.personal"), icon: IconUser },
         ];
         organizations.forEach(org => {
-            options.push({ value: org.id, label: org.name, icon: mdiDomain });
+            options.push({ value: org.id, label: org.name, icon: IconBuilding2 });
         });
         return options;
     }, [organizations, t]);
@@ -139,7 +139,7 @@ export const IdentitiesPage = () => {
                             />
                         )}
                         {hasPermission(Permission.IDENTITIES_MANAGE) && (
-                            <Button text={t("settings.identities.createIdentity")} icon={mdiPlus} onClick={handleCreateNew} />
+                            <Button text={t("settings.identities.createIdentity")} icon={IconPlus} onClick={handleCreateNew} />
                         )}
                     </div>
                 </div>
@@ -151,7 +151,7 @@ export const IdentitiesPage = () => {
                                                                        onDelete={handleDeleteRequest} />)
                         ) :
                         <div className="no-identities">
-                            <Icon path={mdiKey} />
+                            <Icon icon={IconKey} />
                             <h2>{t("settings.identities.noIdentities")}</h2>
                             <p>{t("settings.identities.noIdentitiesDescription")}</p>
                         </div>

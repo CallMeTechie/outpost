@@ -3,8 +3,8 @@ import { useContext, useEffect, useState } from "react";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { deleteRequest, getRequest } from "@/common/utils/RequestUtil.js";
 import { UAParser } from "ua-parser-js";
-import Icon from "@mdi/react";
-import { mdiCellphone, mdiMonitor, mdiTablet, mdiApplication, mdiCellphoneLink } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Smartphone as IconSmartphone, Monitor as IconMonitor, Tablet as IconTablet, AppWindow as IconAppWindow, MonitorSmartphone as IconMonitorSmartphone } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Button from "@/common/components/Button";
 
@@ -25,11 +25,11 @@ export const Sessions = () => {
     const parser = new UAParser();
 
     const getIconFromDevice = (device, outpostApp) => {
-        if (outpostApp === 'connector') return mdiApplication;
-        if (outpostApp === 'mobile') return mdiCellphoneLink;
-        if (device === 'wearable' || device === 'mobile') return mdiCellphone;
-        if (device === 'tablet') return mdiTablet;
-        return mdiMonitor;
+        if (outpostApp === 'connector') return IconAppWindow;
+        if (outpostApp === 'mobile') return IconMonitorSmartphone;
+        if (device === 'wearable' || device === 'mobile') return IconSmartphone;
+        if (device === 'tablet') return IconTablet;
+        return IconMonitor;
     };
 
     const getSessionDisplay = (ua) => {
@@ -69,7 +69,7 @@ export const Sessions = () => {
                     <div className="item" key={session.id}>
                         <div className="left-section">
                             <div className={`icon ${session.current ? "success" : "primary"}`}>
-                                <Icon path={getIconFromDevice(parser.setUA(session.userAgent).getDevice().type, sessionInfo.icon)} />
+                                <Icon icon={getIconFromDevice(parser.setUA(session.userAgent).getDevice().type, sessionInfo.icon)} />
                             </div>
                             <div className="details">
                                 <h3>

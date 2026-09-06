@@ -2,8 +2,8 @@ import { useContext, useEffect, useState } from "react";
 import SelectBox from "@/common/components/SelectBox";
 import ToggleSwitch from "@/common/components/ToggleSwitch";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
-import Icon from "@mdi/react";
-import { mdiServerNetwork, mdiClose, mdiPlus, mdiChartLine, mdiMonitor, mdiPalette, mdiVolumeHigh, mdiPowerPlug, mdiKeyboardOutline, mdiShieldLock, mdiConsoleLine, mdiViewSplitVertical } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Server as IconServer, X as IconX, Plus as IconPlus, ChartLine as IconChartLine, Monitor as IconMonitor, Palette as IconPalette, Volume2 as IconVolume2, PlugZap as IconPlugZap, Keyboard as IconKeyboard, ShieldLock as IconShieldLock, Terminal as IconTerminal, Columns2 as IconColumns2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const COLOR_DEPTHS = [
@@ -200,7 +200,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
                     <div className="jump-hosts-header">
                         <div className="jump-hosts-info">
                             <span className="jump-hosts-label">
-                                <Icon path={mdiServerNetwork} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                                <Icon icon={IconServer} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
                                 {t('servers.dialog.settings.jumpHosts.title')}
                             </span>
                             <span className="jump-hosts-description">
@@ -234,7 +234,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
                                             onClick={() => removeJumpHost(index)}
                                             title={t('servers.dialog.settings.jumpHosts.removeTooltip')}
                                         >
-                                            <Icon path={mdiClose} size={0.8} />
+                                            <Icon icon={IconX} size={0.8} />
                                         </button>
                                     </div>
                                 );
@@ -244,7 +244,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
                     
                     {availableJumpHosts.length > jumpHosts.length && (
                         <button className="add-jump-host-btn" onClick={addJumpHost}>
-                            <Icon path={mdiPlus} size={0.8} />
+                            <Icon icon={IconPlus} size={0.8} />
                             {t('servers.dialog.settings.jumpHosts.addButton')}
                         </button>
                     )}
@@ -261,7 +261,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
                 <div className="settings-toggle settings-field">
                     <div className="settings-toggle-info">
                         <span className="settings-toggle-label">
-                            <Icon path={mdiConsoleLine} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                            <Icon icon={IconTerminal} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
                             {t('servers.dialog.settings.initialCommand.title')}
                         </span>
                         <span className="settings-toggle-description">
@@ -278,7 +278,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
                 <div className="settings-toggle">
                     <div className="settings-toggle-info">
                         <span className="settings-toggle-label">
-                            <Icon path={mdiViewSplitVertical} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                            <Icon icon={IconColumns2} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
                             {t('servers.dialog.settings.tmux.title')}
                         </span>
                         <span className="settings-toggle-description">
@@ -293,7 +293,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
                 <div className="settings-toggle">
                     <div className="settings-toggle-info">
                         <span className="settings-toggle-label">
-                            <Icon path={mdiChartLine} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                            <Icon icon={IconChartLine} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
                             {t('servers.dialog.settings.monitoring.title')}
                         </span>
                         <span className="settings-toggle-description">
@@ -308,7 +308,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
                 <div className="settings-toggle">
                     <div className="settings-toggle-info">
                         <span className="settings-toggle-label">
-                            <Icon path={mdiPowerPlug} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                            <Icon icon={IconPlugZap} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
                             {t('servers.dialog.settings.wakeOnLan.title')}
                         </span>
                         <span className="settings-toggle-description">
@@ -324,7 +324,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
                     <div className="jump-hosts-header">
                         <div className="jump-hosts-info">
                             <span className="jump-hosts-label">
-                                <Icon path={mdiKeyboardOutline} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                                <Icon icon={IconKeyboard} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
                                 {t('servers.dialog.settings.terminal.title')}
                             </span>
                             <span className="jump-hosts-description">
@@ -367,7 +367,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
                     <div className="jump-hosts-header">
                         <div className="jump-hosts-info">
                             <span className="jump-hosts-label">
-                                <Icon path={mdiShieldLock} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                                <Icon icon={IconShieldLock} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
                                 {t('servers.dialog.settings.rdpSecurity.title')}
                             </span>
                             <span className="jump-hosts-description">
@@ -401,7 +401,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
                     <div className="jump-hosts-header">
                         <div className="jump-hosts-info">
                             <span className="jump-hosts-label">
-                                <Icon path={mdiMonitor} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                                <Icon icon={IconMonitor} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
                                 {t('servers.dialog.settings.display.title')}
                             </span>
                             <span className="jump-hosts-description">
@@ -434,7 +434,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
                 <div className="settings-toggle">
                     <div className="settings-toggle-info">
                         <span className="settings-toggle-label">
-                            <Icon path={mdiVolumeHigh} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                            <Icon icon={IconVolume2} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
                             {t('servers.dialog.settings.audio.enableAudio')}
                         </span>
                         <span className="settings-toggle-description">{t('servers.dialog.settings.audio.enableAudioDesc')}</span>
@@ -448,7 +448,7 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
                     <div className="jump-hosts-header">
                         <div className="jump-hosts-info">
                             <span className="jump-hosts-label">
-                                <Icon path={mdiPalette} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                                <Icon icon={IconPalette} size={0.8} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
                                 {t('servers.dialog.settings.performance.title')}
                             </span>
                             <span className="jump-hosts-description">

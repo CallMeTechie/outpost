@@ -6,7 +6,7 @@ import IconInput from "@/common/components/IconInput";
 import SelectBox from "@/common/components/SelectBox";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { postRequest, patchRequest } from "@/common/utils/RequestUtil.js";
-import { mdiHarddisk, mdiLanConnect, mdiFormTextbox, mdiFolderOpen, mdiAccount, mdiLock, mdiWeb, mdiCloud } from "@mdi/js";
+import { HardDrive as IconHardDrive, Network as IconNetwork, TextCursorInput as IconTextCursorInput, FolderOpen as IconFolderOpen, User as IconUser, Lock as IconLock, Globe as IconGlobe, Cloud as IconCloud } from "lucide-react";
 
 export const ProviderDialog = ({ open, onClose, provider, onSaved }) => {
     const { t } = useTranslation();
@@ -23,9 +23,9 @@ export const ProviderDialog = ({ open, onClose, provider, onSaved }) => {
     const [saving, setSaving] = useState(false);
 
     const typeOptions = [
-        { value: "local", label: t("settings.backup.providerTypes.local"), icon: mdiHarddisk },
-        { value: "smb", label: t("settings.backup.providerTypes.smb"), icon: mdiLanConnect },
-        { value: "webdav", label: t("settings.backup.providerTypes.webdav"), icon: mdiCloud },
+        { value: "local", label: t("settings.backup.providerTypes.local"), icon: IconHardDrive },
+        { value: "smb", label: t("settings.backup.providerTypes.smb"), icon: IconNetwork },
+        { value: "webdav", label: t("settings.backup.providerTypes.webdav"), icon: IconCloud },
     ];
 
     useEffect(() => {
@@ -68,7 +68,7 @@ export const ProviderDialog = ({ open, onClose, provider, onSaved }) => {
                 <div className="dialog-content">
                     <div className="form-group">
                         <label>{t("settings.backup.providerName")}</label>
-                        <IconInput icon={mdiFormTextbox} value={name} setValue={setName} placeholder={t("settings.backup.providerNamePlaceholder")} />
+                        <IconInput icon={IconTextCursorInput} value={name} setValue={setName} placeholder={t("settings.backup.providerNamePlaceholder")} />
                     </div>
                     <div className="form-group">
                         <label>{t("settings.backup.providerType")}</label>
@@ -77,30 +77,30 @@ export const ProviderDialog = ({ open, onClose, provider, onSaved }) => {
                     {type === "local" && (
                         <div className="form-group">
                             <label>{t("settings.backup.localPath")}</label>
-                            <IconInput icon={mdiFolderOpen} value={path} setValue={setPath} placeholder={t("settings.backup.localPathPlaceholder")} />
+                            <IconInput icon={IconFolderOpen} value={path} setValue={setPath} placeholder={t("settings.backup.localPathPlaceholder")} />
                         </div>
                     )}
                     {type === "smb" && (
                         <>
                             <div className="form-group">
                                 <label>{t("settings.backup.smbShare")}</label>
-                                <IconInput icon={mdiWeb} value={share} setValue={setShare} placeholder={t("settings.backup.smbSharePlaceholder")} />
+                                <IconInput icon={IconGlobe} value={share} setValue={setShare} placeholder={t("settings.backup.smbSharePlaceholder")} />
                             </div>
                             <div className="form-group">
                                 <label>{t("settings.backup.smbFolder")}</label>
-                                <IconInput icon={mdiFolderOpen} value={folder} setValue={setFolder} placeholder={t("settings.backup.smbFolderPlaceholder")} />
+                                <IconInput icon={IconFolderOpen} value={folder} setValue={setFolder} placeholder={t("settings.backup.smbFolderPlaceholder")} />
                             </div>
                             <div className="form-group">
                                 <label>{t("settings.backup.smbUsername")}</label>
-                                <IconInput icon={mdiAccount} value={username} setValue={setUsername} placeholder={t("settings.backup.smbUsernamePlaceholder")} />
+                                <IconInput icon={IconUser} value={username} setValue={setUsername} placeholder={t("settings.backup.smbUsernamePlaceholder")} />
                             </div>
                             <div className="form-group">
                                 <label>{t("settings.backup.smbPassword")}</label>
-                                <IconInput type="password" icon={mdiLock} value={password} setValue={setPassword} placeholder={provider?.hasPassword ? t("settings.backup.passwordUnchanged") : t("settings.backup.smbPasswordPlaceholder")} />
+                                <IconInput type="password" icon={IconLock} value={password} setValue={setPassword} placeholder={provider?.hasPassword ? t("settings.backup.passwordUnchanged") : t("settings.backup.smbPasswordPlaceholder")} />
                             </div>
                             <div className="form-group">
                                 <label>{t("settings.backup.smbDomain")}</label>
-                                <IconInput icon={mdiWeb} value={domain} setValue={setDomain} placeholder={t("settings.backup.smbDomainPlaceholder")} />
+                                <IconInput icon={IconGlobe} value={domain} setValue={setDomain} placeholder={t("settings.backup.smbDomainPlaceholder")} />
                             </div>
                         </>
                     )}
@@ -108,19 +108,19 @@ export const ProviderDialog = ({ open, onClose, provider, onSaved }) => {
                         <>
                             <div className="form-group">
                                 <label>{t("settings.backup.webdavUrl")}</label>
-                                <IconInput icon={mdiWeb} value={url} setValue={setUrl} placeholder={t("settings.backup.webdavUrlPlaceholder")} />
+                                <IconInput icon={IconGlobe} value={url} setValue={setUrl} placeholder={t("settings.backup.webdavUrlPlaceholder")} />
                             </div>
                             <div className="form-group">
                                 <label>{t("settings.backup.webdavFolder")}</label>
-                                <IconInput icon={mdiFolderOpen} value={folder} setValue={setFolder} placeholder={t("settings.backup.webdavFolderPlaceholder")} />
+                                <IconInput icon={IconFolderOpen} value={folder} setValue={setFolder} placeholder={t("settings.backup.webdavFolderPlaceholder")} />
                             </div>
                             <div className="form-group">
                                 <label>{t("settings.backup.webdavUsername")}</label>
-                                <IconInput icon={mdiAccount} value={username} setValue={setUsername} placeholder={t("settings.backup.webdavUsernamePlaceholder")} />
+                                <IconInput icon={IconUser} value={username} setValue={setUsername} placeholder={t("settings.backup.webdavUsernamePlaceholder")} />
                             </div>
                             <div className="form-group">
                                 <label>{t("settings.backup.webdavPassword")}</label>
-                                <IconInput type="password" icon={mdiLock} value={password} setValue={setPassword} placeholder={provider?.hasPassword ? t("settings.backup.passwordUnchanged") : t("settings.backup.webdavPasswordPlaceholder")} />
+                                <IconInput type="password" icon={IconLock} value={password} setValue={setPassword} placeholder={provider?.hasPassword ? t("settings.backup.passwordUnchanged") : t("settings.backup.webdavPasswordPlaceholder")} />
                             </div>
                         </>
                     )}

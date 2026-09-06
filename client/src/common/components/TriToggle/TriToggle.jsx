@@ -1,11 +1,11 @@
 import "./styles.sass";
-import Icon from "@mdi/react";
-import { mdiCheck, mdiClose, mdiMinus } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Check as IconCheck, X as IconX, Minus as IconMinus } from "lucide-react";
 
 const STATES = [
-    { key: "deny", icon: mdiClose },
-    { key: "neutral", icon: mdiMinus },
-    { key: "allow", icon: mdiCheck },
+    { key: "deny", icon: IconX },
+    { key: "neutral", icon: IconMinus },
+    { key: "allow", icon: IconCheck },
 ];
 
 export const TriToggle = ({ value = "neutral", onChange, disabled = false, inherited = null, inheritedHint }) => {
@@ -27,7 +27,7 @@ export const TriToggle = ({ value = "neutral", onChange, disabled = false, inher
                         disabled={disabled}
                         onClick={() => !disabled && onChange && onChange(state.key)}
                     >
-                        <Icon path={state.icon} />
+                        <Icon icon={state.icon} />
                     </button>
                 );
             })}

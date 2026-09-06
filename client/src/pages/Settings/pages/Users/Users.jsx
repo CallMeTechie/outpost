@@ -4,20 +4,8 @@ import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { getRequest, deleteRequest, postRequest } from "@/common/utils/RequestUtil.js";
 import Button from "@/common/components/Button";
 import PaginatedTable from "@/common/components/PaginatedTable";
-import Icon from "@mdi/react";
-import {
-    mdiAccount,
-    mdiDotsVertical,
-    mdiLock,
-    mdiKey,
-    mdiShieldKeyOutline,
-    mdiAccountRemove,
-    mdiLogin,
-    mdiPlus,
-    mdiMagnify,
-    mdiAccountCircleOutline,
-    mdiAccountGroupOutline,
-} from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { User as IconUser, EllipsisVertical as IconEllipsisVertical, Lock as IconLock, Key as IconKey, ShieldHalf as IconShieldHalf, UserMinus as IconUserMinus, LogIn as IconLogIn, Plus as IconPlus, Search as IconSearch, CircleUser as IconCircleUser, Users as IconUsers } from "lucide-react";
 import CreateUserDialog from "./components/CreateUserDialog";
 import UserPermissionsDialog from "@/pages/Settings/pages/Permissions/components/UserPermissionsDialog";
 import { ContextMenu, ContextMenuItem, useContextMenu } from "@/common/components/ContextMenu";
@@ -127,7 +115,7 @@ export const Users = () => {
         {
             key: "user",
             label: t("settings.users.table.user"),
-            icon: mdiAccountCircleOutline,
+            icon: IconCircleUser,
             className: "user-cell-wrapper",
             render: (currentUser) => (
                 <div className="user-cell">
@@ -142,7 +130,7 @@ export const Users = () => {
         {
             key: "groups",
             label: t("settings.users.table.roles"),
-            icon: mdiAccountGroupOutline,
+            icon: IconUsers,
             mobileLabel: t("settings.users.table.roles"),
             render: (currentUser) => (
                 <div className="group-badges">
@@ -157,11 +145,11 @@ export const Users = () => {
         {
             key: "totp",
             label: t("settings.users.table.twoFactor"),
-            icon: mdiLock,
+            icon: IconLock,
             mobileLabel: t("settings.users.table.twoFactor"),
             render: (currentUser) => (
                 <div className={`totp-badge ${currentUser.totpEnabled ? "enabled" : "disabled"}`}>
-                    <Icon path={mdiLock} />
+                    <Icon icon={IconLock} />
                     <span>{currentUser.totpEnabled ? t("settings.users.twoFactorEnabled") : t("settings.users.twoFactorDisabled")}</span>
                 </div>
             ),
@@ -172,7 +160,7 @@ export const Users = () => {
             className: "actions-cell",
             render: (currentUser) => (
                 <Icon
-                    path={mdiDotsVertical}
+                    icon={IconEllipsisVertical}
                     className="menu-trigger"
                     onClick={(e) => openContextMenu(e, currentUser.id)}
                 />
@@ -200,7 +188,7 @@ export const Users = () => {
                 <h2>{t("settings.users.title", { count: total })}</h2>
                 <div className="header-actions">
                     <div className="search-box">
-                        <Icon path={mdiMagnify} />
+                        <Icon icon={IconSearch} />
                         <input
                             type="text"
                             placeholder={t("settings.users.searchPlaceholder")}
@@ -208,7 +196,7 @@ export const Users = () => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <Button onClick={() => setCreateUserDialogOpen(true)} text={t("settings.users.createNewUser")} icon={mdiPlus} />
+                    <Button onClick={() => setCreateUserDialogOpen(true)} text={t("settings.users.createNewUser")} icon={IconPlus} />
                 </div>
             </div>
 
@@ -220,7 +208,7 @@ export const Users = () => {
                 getRowKey={(user) => user.id}
                 loading={loading}
                 emptyState={{
-                    icon: mdiAccount,
+                    icon: IconUser,
                     title: debouncedSearch ? t("settings.users.noSearchResults") : t("settings.users.noUsers"),
                     subtitle: debouncedSearch ? t("settings.users.noSearchResultsDescription") : t("settings.users.noUsersDescription"),
                 }}
@@ -233,14 +221,14 @@ export const Users = () => {
                 trigger={contextMenu.triggerRef}
             >
                 <ContextMenuItem
-                    icon={mdiKey}
+                    icon={IconKey}
                     label={t("settings.users.contextMenu.changePassword")}
                     onClick={() => setPasswordChangeDialogOpen(true)}
                 />
 
                 {canManagePermissions && (
                     <ContextMenuItem
-                        icon={mdiShieldKeyOutline}
+                        icon={IconShieldHalf}
                         label={t("settings.users.contextMenu.managePermissions")}
                         onClick={() => setPermDialogOpen(true)}
                     />
@@ -249,12 +237,12 @@ export const Users = () => {
                 {user?.id !== contextUserId && (
                     <>
                         <ContextMenuItem
-                            icon={mdiLogin}
+                            icon={IconLogIn}
                             label={t("settings.users.contextMenu.loginAsUser")}
                             onClick={() => loginAsUser(contextUserId)}
                         />
                         <ContextMenuItem
-                            icon={mdiAccountRemove}
+                            icon={IconUserMinus}
                             label={t("settings.users.contextMenu.deleteUser")}
                             onClick={() => setConfirmDeleteDialogOpen(true)}
                             danger

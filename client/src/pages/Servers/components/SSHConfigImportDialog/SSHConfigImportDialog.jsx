@@ -4,11 +4,11 @@ import { useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import { IdentityContext } from "@/common/contexts/IdentityContext.jsx";
-import { mdiFileDocumentOutline, mdiKey, mdiFileUploadOutline } from "@mdi/js";
+import { FileText as IconFileText, Key as IconKey, FileUp as IconFileUp } from "lucide-react";
 import Button from "@/common/components/Button";
 import { postRequest, putRequest } from "@/common/utils/RequestUtil.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
-import Icon from "@mdi/react";
+import Icon from "@/common/components/Icon";
 
 export const SSHConfigImportDialog = ({ open, onClose, currentFolderId, currentOrganizationId }) => {
     const { t } = useTranslation();
@@ -235,7 +235,7 @@ export const SSHConfigImportDialog = ({ open, onClose, currentFolderId, currentO
                             {Object.entries(keyFiles).map(([uniqueKey, keyInfo]) => (
                                 <div key={uniqueKey} className="key-file-item">
                                     <div className="key-info">
-                                        <Icon path={mdiKey} size={0.8} />
+                                        <Icon icon={IconKey} size={0.8} />
                                         <div className="key-details">
                                             <span className="key-name">{keyInfo.name}</span>
                                             <span className="key-path">{keyInfo.path}</span>
@@ -250,7 +250,7 @@ export const SSHConfigImportDialog = ({ open, onClose, currentFolderId, currentO
                                         ) : (
                                             <Button
                                                 text={t('servers.sshConfigImport.keyFiles.uploadButton')}
-                                                icon={mdiFileUploadOutline}
+                                                icon={IconFileUp}
                                                 onClick={() => handleKeyUpload(uniqueKey)}
                                                 variant="primary"
                                                 size="small"
@@ -272,7 +272,7 @@ export const SSHConfigImportDialog = ({ open, onClose, currentFolderId, currentO
                     <Button 
                         text={isImporting ? t('servers.sshConfigImport.actions.importing') : t('servers.sshConfigImport.actions.import')} 
                         onClick={importConfig} 
-                        icon={mdiFileDocumentOutline} 
+                        icon={IconFileText} 
                         disabled={isImporting || !configContent.trim()}
                     />
                 </div>

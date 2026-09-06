@@ -1,5 +1,5 @@
-import Icon from "@mdi/react";
-import { mdiDomain, mdiDomainOff } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Building2 as IconBuilding2, Building as IconBuilding } from "lucide-react";
 import ServerEntries from "../ServerEntries.jsx";
 import { useContext, useState } from "react";
 import { getFolderState, setFolderState } from "@/common/utils/folderState";
@@ -56,7 +56,7 @@ const OrganizationFolder = ({ id, name, entries, nestedLevel, connectToServer, c
             <div className={"folder-object" + (isOver ? " folder-is-over" : "")} onClick={toggleFolder} data-id={id}
                  style={{ paddingLeft: `${10 + (nestedLevel * 15)}px` }}
                  ref={dropRef}>
-                <Icon path={isOpen ? mdiDomain : mdiDomainOff} />
+                <Icon icon={isOpen ? IconBuilding2 : IconBuilding} />
                 <p className="truncate-text">{name}</p>
             </div>
             {isOpen && (

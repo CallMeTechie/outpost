@@ -2,8 +2,8 @@ import "./styles.sass";
 import { useEffect, useState } from "react";
 import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
-import Icon from "@mdi/react";
-import { mdiShieldAccount, mdiAccountKeyOutline, mdiShieldCrownOutline } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { ShieldUser as IconShieldUser, UserLock as IconUserLock, Crown as IconCrown } from "lucide-react";
 import { getRequest, putRequest } from "@/common/utils/RequestUtil.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import TabSwitcher from "@/common/components/TabSwitcher";
@@ -67,8 +67,8 @@ export const UserPermissionsDialog = ({ open, onClose, accountId, groups = [], c
 
                 <TabSwitcher
                     tabs={[
-                        { key: "roles", label: t("settings.permissions.rolesTab"), icon: mdiShieldAccount },
-                        { key: "overrides", label: t("settings.permissions.overridesTab"), icon: mdiAccountKeyOutline },
+                        { key: "roles", label: t("settings.permissions.rolesTab"), icon: IconShieldUser },
+                        { key: "overrides", label: t("settings.permissions.overridesTab"), icon: IconUserLock },
                     ]}
                     activeTab={tab}
                     onTabChange={setTab}
@@ -90,7 +90,7 @@ export const UserPermissionsDialog = ({ open, onClose, accountId, groups = [], c
                                         onClick={() => toggleGroup(group.id)}
                                     >
                                         <span className="role-icon" style={{ backgroundColor: `${group.color}26`, color: group.color }}>
-                                            <Icon path={group.isAdmin ? mdiShieldCrownOutline : mdiShieldAccount} />
+                                            <Icon icon={group.isAdmin ? IconCrown : IconShieldUser} />
                                         </span>
                                         <span className="role-name">{group.name}</span>
                                         <span className="role-check-wrap" onClick={(e) => e.stopPropagation()}>

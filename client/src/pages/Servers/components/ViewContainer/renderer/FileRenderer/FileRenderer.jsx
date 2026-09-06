@@ -9,8 +9,8 @@ import FileList from "@/pages/Servers/components/ViewContainer/renderer/FileRend
 import TransferList from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/components/TransferList";
 import ConflictDialog from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/components/ConflictDialog";
 import "./styles.sass";
-import Icon from "@mdi/react";
-import { mdiCloudUpload } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { CloudUpload as IconCloudUpload } from "lucide-react";
 import { getWebSocketUrl, getBaseUrl } from "@/common/utils/ConnectionUtil.js";
 import { uploadFile as uploadFileRequest, tauriDownload } from "@/common/utils/RequestUtil.js";
 import { isTauri } from "@/common/utils/TauriUtil.js";
@@ -625,7 +625,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
         <div className="file-renderer" ref={dropZoneRef} onDragOver={handleDrag} onDragLeave={handleDrag} onDrop={handleDrag}>
             <div className={`drag-overlay ${dragging ? "active" : ""}`}>
                 <div className="drag-item">
-                    <Icon path={mdiCloudUpload} />
+                    <Icon icon={IconCloudUpload} />
                     <h2>{t("servers.fileManager.dropOverlay")}</h2>
                 </div>
             </div>

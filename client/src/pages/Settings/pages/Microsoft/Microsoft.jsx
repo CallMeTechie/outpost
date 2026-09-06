@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Icon from "@mdi/react";
-import { mdiMicrosoft, mdiKeyVariant, mdiIdentifier, mdiLinkVariant } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { KeyRound as IconKeyRound, Hash as IconHash, Link as IconLink } from "lucide-react";
+import { mdiMicrosoft } from "@mdi/js";
 import IconInput from "@/common/components/IconInput";
 import Button from "@/common/components/Button";
 import ToggleSwitch from "@/common/components/ToggleSwitch";
@@ -86,7 +87,7 @@ export const Microsoft = () => {
             <div className="account-section">
                 <div className="section-header">
                     <div className="header-content">
-                        <h2><Icon path={mdiMicrosoft} size={0.8} style={{ marginRight: "8px" }} />
+                        <h2><Icon icon={mdiMicrosoft} size={0.8} style={{ marginRight: "8px" }} />
                             {t("settings.microsoft.title")}</h2>
                         <p>{t("settings.microsoft.description")}</p>
                     </div>
@@ -107,13 +108,13 @@ export const Microsoft = () => {
                             treatment as DirectConnectDialog: its own name, and "new-password" on the
                             secret below — "off" is ignored on password-type inputs. */}
                         <IconInput id="ms-client-id" name="ms-client-id" autoComplete="off"
-                                   icon={mdiIdentifier} value={clientId} setValue={setClientId} />
+                                   icon={IconHash} value={clientId} setValue={setClientId} />
                     </div>
 
                     <div className="form-group">
                         <label htmlFor="ms-client-secret">{t("settings.microsoft.clientSecret")}</label>
                         <IconInput id="ms-client-secret" name="ms-client-secret" autoComplete="new-password"
-                                   icon={mdiKeyVariant} type="password"
+                                   icon={IconKeyRound} type="password"
                                    value={clientSecret} setValue={setClientSecret} />
                         <small>{t("settings.microsoft.clientSecretKeep")}</small>
                     </div>
@@ -121,7 +122,7 @@ export const Microsoft = () => {
                     <div className="form-group">
                         <label htmlFor="ms-redirect-uri">{t("settings.microsoft.redirectUri")}</label>
                         <IconInput id="ms-redirect-uri" name="ms-redirect-uri" autoComplete="off"
-                                   icon={mdiLinkVariant}
+                                   icon={IconLink}
                                    value={redirectUri} setValue={setRedirectUri} />
                         <small>{t("settings.microsoft.redirectUriHint")}</small>
                     </div>

@@ -14,7 +14,7 @@ import PasswordFillHint from "./components/PasswordFillHint";
 import TypingIndicators from "./components/TypingIndicators";
 import { useLiveSessions } from "@/common/contexts/LiveSessionContext.jsx";
 import { createProgressParser } from "../utils/progressParser";
-import { mdiContentCopy, mdiContentPaste, mdiCodeBrackets, mdiSelectAll, mdiDelete, mdiKeyboard, mdiKey, mdiFolderOpen, mdiRobotHappyOutline, mdiAutoFix } from "@mdi/js";
+import { Copy as IconCopy, ClipboardPaste as IconClipboardPaste, Brackets as IconBrackets, SquareDashed as IconSquareDashed, Trash as IconTrash, Keyboard as IconKeyboard, Key as IconKey, FolderOpen as IconFolderOpen, BotMessageSquare as IconBotMessageSquare, WandSparkles as IconWandSparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import ConnectionLoader from "./components/ConnectionLoader";
 import ConnectionError, { mapConnectionError } from "./components/ConnectionError";
@@ -947,56 +947,56 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
                     trigger={contextMenu.triggerRef}
                 >
                     <ContextMenuItem
-                        icon={mdiContentCopy}
+                        icon={IconCopy}
                         label={t('servers.fileManager.contextMenu.copy')}
                         onClick={handleCopy}
                         disabled={!readSelection()}
                     />
                     <ContextMenuItem
-                        icon={mdiContentPaste}
+                        icon={IconClipboardPaste}
                         label={t('servers.fileManager.contextMenu.paste')}
                         onClick={handlePaste}
                     />
                     <ContextMenuItem
-                        icon={mdiSelectAll}
+                        icon={IconSquareDashed}
                         label={t('servers.fileManager.contextMenu.selectAll')}
                         onClick={handleSelectAll}
                     />
                     <ContextMenuSeparator />
                     <ContextMenuItem
-                        icon={mdiCodeBrackets}
+                        icon={IconBrackets}
                         label={t('servers.fileManager.contextMenu.insertSnippet')}
                         onClick={handleInsertSnippet}
                     />
                     {isAIAvailable() && (
                         <ContextMenuItem
-                            icon={mdiAutoFix}
+                            icon={IconWandSparkles}
                             label={t('servers.commandSuggestion.open')}
                             onClick={handleGenerateCommand}
                         />
                     )}
                     {isAIAvailable() && (
                         <ContextMenuItem
-                            icon={mdiRobotHappyOutline}
+                            icon={IconBotMessageSquare}
                             label={t('servers.aiAssistant.open')}
                             onClick={handleOpenAIAssistant}
                         />
                     )}
                     {passwordIdentities.length > 0 && (
                         <ContextMenuItem
-                            icon={mdiKey}
+                            icon={IconKey}
                             label={t('servers.contextMenu.pasteIdentityPassword')}
                             onClick={handlePasteIdentity}
                         />
                     )}
                     <ContextMenuSeparator />
                     <ContextMenuItem
-                        icon={mdiKeyboard}
+                        icon={IconKeyboard}
                         label={t('servers.fileManager.contextMenu.sendCtrlC')}
                         onClick={handleSendCtrlC}
                     />
                     <ContextMenuItem
-                        icon={mdiDelete}
+                        icon={IconTrash}
                         label={t('servers.fileManager.contextMenu.clearTerminal')}
                         onClick={handleClearTerminal}
                     />
@@ -1004,7 +1004,7 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
                         <>
                             <ContextMenuSeparator />
                             <ContextMenuItem
-                                icon={mdiFolderOpen}
+                                icon={IconFolderOpen}
                                 label={t('servers.tabs.contextMenu.openSftp')}
                                 onClick={() => { contextMenu.close(); onOpenSftp(); }}
                             />

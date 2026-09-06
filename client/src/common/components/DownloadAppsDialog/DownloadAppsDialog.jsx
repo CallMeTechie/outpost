@@ -1,7 +1,8 @@
 import "./styles.sass";
 import { DialogProvider } from "@/common/components/Dialog";
-import Icon from "@mdi/react";
-import { mdiMicrosoftWindows, mdiApple, mdiLinux, mdiAndroid, mdiDownload, mdiLoading, mdiGooglePlay, mdiAppleIos } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Download as IconDownload, LoaderCircle as IconLoaderCircle } from "lucide-react";
+import { mdiMicrosoftWindows, mdiApple, mdiLinux, mdiAndroid, mdiGooglePlay, mdiAppleIos } from "@mdi/js";
 import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { getRequest } from "@/common/utils/RequestUtil.js";
@@ -118,7 +119,7 @@ export const DownloadAppsDialog = ({ open, onClose }) => {
 
                 {loading ? (
                     <div className="loading-state">
-                        <Icon path={mdiLoading} spin />
+                        <Icon icon={IconLoaderCircle} spin />
                     </div>
                 ) : (
                     <>
@@ -130,7 +131,7 @@ export const DownloadAppsDialog = ({ open, onClose }) => {
                                     onClick={() => setSelectedPlatform(platform.id)}
                                 >
                                     <div className="platform-icon">
-                                        <Icon path={platform.icon} />
+                                        <Icon icon={platform.icon} />
                                     </div>
                                     <span className="platform-name">
                                         {t(`downloadApps.platforms.${platform.id}`)}
@@ -149,7 +150,7 @@ export const DownloadAppsDialog = ({ open, onClose }) => {
                                             onClick={() => !download.disabled && handleDownload(currentPlatform, download)}
                                             disabled={download.disabled}
                                         >
-                                            <Icon path={download.icon || mdiDownload} className="btn-icon" />
+                                            <Icon icon={download.icon || IconDownload} className="btn-icon" />
                                             <div className="btn-text">
                                                 <span className="btn-format">{download.label}</span>
                                                 <span className="btn-arch">{download.arch}</span>

@@ -1,16 +1,16 @@
 import { useTranslation } from "react-i18next";
-import Icon from "@mdi/react";
-import { mdiArrowUp, mdiArrowDown, mdiArrowLeft, mdiArrowRight } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { ArrowUp as IconArrowUp, ArrowDown as IconArrowDown, ArrowLeft as IconArrowLeft, ArrowRight as IconArrowRight } from "lucide-react";
 import "./styles.sass";
 
 // The translation keys are spelled out rather than built from the name: every
 // other t() call in this codebase uses a literal, and a literal is what a future
 // key extractor would be able to find.
 const ARROWS = [
-    { key: "left", path: mdiArrowLeft, label: "servers.keyBar.left" },
-    { key: "up", path: mdiArrowUp, label: "servers.keyBar.up" },
-    { key: "down", path: mdiArrowDown, label: "servers.keyBar.down" },
-    { key: "right", path: mdiArrowRight, label: "servers.keyBar.right" },
+    { key: "left", path: IconArrowLeft, label: "servers.keyBar.left" },
+    { key: "up", path: IconArrowUp, label: "servers.keyBar.up" },
+    { key: "down", path: IconArrowDown, label: "servers.keyBar.down" },
+    { key: "right", path: IconArrowRight, label: "servers.keyBar.right" },
 ];
 
 // The artboard's third and fourth groups: navigation keys and the characters a
@@ -65,7 +65,7 @@ export const TerminalKeyBar = ({ latch, onToggleModifier, onSendKey, disabled = 
             {ARROWS.map(({ key, path, label }) => (
                 <button key={key} type="button" className="key arrow" disabled={disabled} onPointerDown={keepFocus}
                         aria-label={t(label)}
-                        onClick={() => onSendKey(key)}><Icon path={path} /></button>
+                        onClick={() => onSendKey(key)}><Icon icon={path} /></button>
             ))}
 
             {NAVIGATION.map(({ key, label, aria }) => (

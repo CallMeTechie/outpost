@@ -3,18 +3,18 @@ import "./styles.sass";
 import Button from "@/common/components/Button";
 import Input from "@/common/components/IconInput";
 import TabSwitcher from "@/common/components/TabSwitcher";
-import { mdiLinkVariant, mdiCheck, mdiCellphone, mdiMonitor, mdiQrcode, mdiKeyboardVariant } from "@mdi/js";
+import { Link as IconLink, Check as IconCheck, Smartphone as IconSmartphone, Monitor as IconMonitor, QrCode as IconQrCode, Keyboard as IconKeyboard } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { postRequest } from "@/common/utils/RequestUtil.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useTranslation } from "react-i18next";
-import Icon from "@mdi/react";
+import Icon from "@/common/components/Icon";
 import OutpostLogo from "@/common/components/OutpostLogo";
 import { QRCodeCanvas } from "qrcode.react";
 
 const DeviceIcon = ({ type, connected }) => (
     <div className={`device-icon-wrapper${connected ? " connected" : ""}`}>
-        <Icon path={type === "mobile" ? mdiCellphone : mdiMonitor} size={1.2} />
+        <Icon icon={type === "mobile" ? IconSmartphone : IconMonitor} size={1.2} />
     </div>
 );
 
@@ -131,7 +131,7 @@ export const DeviceLinkContent = ({ prefillCode = "", onClose, isPage = false })
                     <p className="linking-description">{t("common.deviceLink.confirmDescription")}</p>
                     <div className="device-info">
                         <div className="device-info-row">
-                            <Icon path={deviceInfo.clientType === "mobile" ? mdiCellphone : mdiMonitor} size={0.9} />
+                            <Icon icon={deviceInfo.clientType === "mobile" ? IconSmartphone : IconMonitor} size={0.9} />
                             <span className="device-info-label">{t("common.deviceLink.type")}:</span>
                             <span className="device-info-value">{getTypeName(deviceInfo.clientType)}</span>
                         </div>
@@ -145,7 +145,7 @@ export const DeviceLinkContent = ({ prefillCode = "", onClose, isPage = false })
                         </div>
                     </div>
                     <Button text={loading ? t("common.deviceLink.authorizing") : t("common.deviceLink.authorize")} 
-                            icon={mdiCheck} onClick={handleAuthorize} disabled={loading} />
+                            icon={IconCheck} onClick={handleAuthorize} disabled={loading} />
                 </div>
             </div>
         );
@@ -159,8 +159,8 @@ export const DeviceLinkContent = ({ prefillCode = "", onClose, isPage = false })
                 {!prefillCode && (
                     <TabSwitcher
                         tabs={[
-                            { key: "code", label: t("common.deviceLink.codeTab"), icon: mdiKeyboardVariant },
-                            { key: "qr", label: t("common.deviceLink.qrTab"), icon: mdiQrcode },
+                            { key: "code", label: t("common.deviceLink.codeTab"), icon: IconKeyboard },
+                            { key: "qr", label: t("common.deviceLink.qrTab"), icon: IconQrCode },
                         ]}
                         activeTab={mode}
                         onTabChange={(key) => { if (key === "code") { stopQrPolling(); } setMode(key); }}
@@ -184,7 +184,7 @@ export const DeviceLinkContent = ({ prefillCode = "", onClose, isPage = false })
                         <p className="linking-description">{t("common.deviceLink.description")}</p>
                         <div className="form-group">
                             <label htmlFor="deviceCode">{t("common.deviceLink.codeLabel")}</label>
-                            <Input type="text" id="deviceCode" icon={mdiLinkVariant} placeholder="XXXX-XXXX" 
+                            <Input type="text" id="deviceCode" icon={IconLink} placeholder="XXXX-XXXX" 
                                    value={code} setValue={handleCodeChange} maxLength={9} autoComplete="off" onKeyDown={handleKeyDown} />
                         </div>
                         <Button text={loading ? t("common.deviceLink.verifying") : t("common.deviceLink.continue")} 

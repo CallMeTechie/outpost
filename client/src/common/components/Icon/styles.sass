@@ -1,0 +1,12 @@
+// @mdi/react animates a spinning icon from inside its own <svg>; Lucide has no such prop,
+// so the eight call sites that spin a loading icon are served by this class instead.
+.icon-spin
+  animation: icon-spin 2s linear infinite
+  transform-origin: center
+
+  @media (prefers-reduced-motion: reduce)
+    animation: none
+
+@keyframes icon-spin
+  to
+    transform: rotate(360deg)

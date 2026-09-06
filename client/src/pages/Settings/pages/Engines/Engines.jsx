@@ -7,24 +7,8 @@ import { DialogProvider } from "@/common/components/Dialog";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { ActionConfirmDialog } from "@/common/components/ActionConfirmDialog/ActionConfirmDialog.jsx";
 import Input from "@/common/components/IconInput";
-import Icon from "@mdi/react";
-import {
-    mdiPlus,
-    mdiTrashCan,
-    mdiEngine,
-    mdiFormTextbox,
-    mdiContentCopy,
-    mdiRefresh,
-    mdiCircle,
-    mdiClose,
-    mdiCheck,
-    mdiTagOutline,
-    mdiIpOutline,
-    mdiClockOutline,
-    mdiLanConnect,
-    mdiLock,
-    mdiLockOpenVariantOutline,
-} from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Plus as IconPlus, Trash as IconTrash, Engine as IconEngine, TextCursorInput as IconTextCursorInput, Copy as IconCopy, RefreshCw as IconRefreshCw, Circle as IconCircle, X as IconX, Check as IconCheck, Tag as IconTag, Globe as IconGlobe, Clock as IconClock, Network as IconNetwork, Lock as IconLock, LockOpen as IconLockOpen } from "lucide-react";
 
 export const Engines = () => {
     const { t } = useTranslation();
@@ -116,14 +100,14 @@ export const Engines = () => {
             {tokenBanner && (
                 <div className="token-banner">
                     <button className="action-btn close-btn" onClick={() => setTokenBanner(null)} title={t("settings.engines.dismiss")}>
-                        <Icon path={mdiClose} />
+                        <Icon icon={IconX} />
                     </button>
                     <p className="token-label"><Trans i18nKey="settings.engines.tokenLabel" values={{ name: tokenBanner.name }} components={{ strong: <strong /> }} /></p>
                     <p className="token-hint"><Trans i18nKey="settings.engines.tokenHint" components={{ code1: <code />, code2: <code /> }} /></p>
                     <div className="token-value">
                         <code>{tokenBanner.token}</code>
                         <button className="action-btn copy-btn" onClick={() => copyToken(tokenBanner.token)} title={t("settings.engines.copyToken")}>
-                            <Icon path={copied ? mdiCheck : mdiContentCopy} />
+                            <Icon icon={copied ? IconCheck : IconCopy} />
                         </button>
                     </div>
                 </div>
@@ -135,13 +119,13 @@ export const Engines = () => {
                         <h2>{t("settings.engines.title")}</h2>
                         <p>{t("settings.engines.description")}</p>
                     </div>
-                    <Button text={t("settings.engines.addEngine")} icon={mdiPlus} onClick={openCreateDialog} />
+                    <Button text={t("settings.engines.addEngine")} icon={IconPlus} onClick={openCreateDialog} />
                 </div>
 
                 <div className="engines-grid">
                     {engines.length === 0 ? (
                         <div className="no-engines">
-                            <Icon path={mdiEngine} />
+                            <Icon icon={IconEngine} />
                             <h2>{t("settings.engines.noEngines")}</h2>
                             <p>{t("settings.engines.noEnginesDescription")}</p>
                         </div>
@@ -149,12 +133,12 @@ export const Engines = () => {
                         engines.map(engine => (
                             <div key={engine.id} className="engine-card">
                                 <div className="engine-info">
-                                    <Icon path={engine.isLocal ? mdiLanConnect : mdiEngine} className="engine-icon" />
+                                    <Icon icon={engine.isLocal ? IconNetwork : IconEngine} className="engine-icon" />
                                     <div className="engine-details">
                                         <div className="engine-name-row">
                                             <h3>{engine.name}</h3>
                                             <span className={`engine-status ${engine.connected ? "connected" : "disconnected"}`}>
-                                                <Icon path={mdiCircle} className="status-dot" />
+                                                <Icon icon={IconCircle} className="status-dot" />
                                                 {engine.connected ? t("settings.engines.status.connected") : t("settings.engines.status.disconnected")}
                                             </span>
                                         </div>
@@ -162,28 +146,28 @@ export const Engines = () => {
                                             {engine.connected && engine.version && (
                                                 <>
                                                     <span className="meta-item">
-                                                        <Icon path={mdiTagOutline} />
+                                                        <Icon icon={IconTag} />
                                                         v{engine.version}
                                                     </span>
                                                     <span className="meta-item">
-                                                        <Icon path={mdiIpOutline} />
+                                                        <Icon icon={IconGlobe} />
                                                         {engine.remoteAddr}
                                                     </span>
                                                     <span className={`meta-item ${engine.encrypted ? "encrypted" : "unencrypted"}`}>
-                                                        <Icon path={engine.encrypted ? mdiLock : mdiLockOpenVariantOutline} />
+                                                        <Icon icon={engine.encrypted ? IconLock : IconLockOpen} />
                                                         {engine.encrypted ? t("settings.engines.transport.encrypted") : t("settings.engines.transport.unencrypted")}
                                                     </span>
                                                 </>
                                             )}
                                             {!engine.connected && engine.lastConnectedAt && (
                                                 <span className="meta-item">
-                                                    <Icon path={mdiClockOutline} />
+                                                    <Icon icon={IconClock} />
                                                     {t("settings.engines.lastSeen", { date: new Date(engine.lastConnectedAt).toLocaleString() })}
                                                 </span>
                                             )}
                                             {!engine.connected && !engine.lastConnectedAt && (
                                                 <span className="meta-item">
-                                                    <Icon path={mdiClockOutline} />
+                                                    <Icon icon={IconClock} />
                                                     {t("settings.engines.neverConnected")}
                                                 </span>
                                             )}
@@ -197,14 +181,14 @@ export const Engines = () => {
                                             onClick={() => handleRegenerateToken(engine.id)}
                                             title={t("settings.engines.regenerateToken")}
                                         >
-                                            <Icon path={mdiRefresh} />
+                                            <Icon icon={IconRefreshCw} />
                                         </button>
                                         <button
                                             className="action-btn delete-btn"
                                             onClick={() => handleDeleteRequest(engine)}
                                             title={t("settings.engines.deleteEngine")}
                                         >
-                                            <Icon path={mdiTrashCan} />
+                                            <Icon icon={IconTrash} />
                                         </button>
                                     </div>
                                 )}
@@ -221,7 +205,7 @@ export const Engines = () => {
                         <label>{t("settings.engines.dialog.engineName")}</label>
                         <Input
                             type="text"
-                            icon={mdiFormTextbox}
+                            icon={IconTextCursorInput}
                             value={engineName}
                             setValue={setEngineName}
                             placeholder={t("settings.engines.dialog.namePlaceholder")}

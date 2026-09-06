@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
-import Icon from "@mdi/react";
-import { mdiFilterVariantPlus, mdiFilterVariantMinus } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { FunnelPlus as IconFunnelPlus, FunnelX as IconFunnelX } from "lucide-react";
 import SelectBox from "@/common/components/SelectBox";
 import DateInput from "@/common/components/DateInput";
 import Button from "@/common/components/Button";
@@ -69,7 +69,7 @@ export const AuditFilters = ({ filters, metadata, organizations, onChange }) => 
         <div className="audit-filters">
             <div className={`filters-header ${expanded ? "expanded" : ""}`} onClick={() => setExpanded(!expanded)}>
                 <div className="filters-title">
-                    <Icon path={expanded ? mdiFilterVariantMinus : mdiFilterVariantPlus} />
+                    <Icon icon={expanded ? IconFunnelX : IconFunnelPlus} />
                     <span>{t('audit.filters.title')}</span>
                 </div>
                 {activeFilterCount > 0 && (

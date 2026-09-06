@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
-import { mdiPlus, mdiCheck, mdiDotsVertical, mdiPencil, mdiDelete } from "@mdi/js";
-import Icon from "@mdi/react";
+import { Plus as IconPlus, Check as IconCheck, EllipsisVertical as IconEllipsisVertical, Pencil as IconPencil, Trash as IconTrash } from "lucide-react";
+import Icon from "@/common/components/Icon";
 import { useTranslation } from "react-i18next";
 import { postRequest, deleteRequest, putRequest, patchRequest } from "@/common/utils/RequestUtil.js";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
@@ -186,7 +186,7 @@ export const TagsSubmenu = ({ entryId, entryTags = [], onClose }) => {
             ) : (
                 <>
                     <ContextMenuItem
-                        icon={mdiPlus}
+                        icon={IconPlus}
                         label={t("servers.tags.createNewTag")}
                         onClick={(e) => {
                             e?.stopPropagation();
@@ -268,7 +268,7 @@ export const TagsSubmenu = ({ entryId, entryTags = [], onClose }) => {
                                             <div className="tag-color" style={{ backgroundColor: tag.color }} />
                                             <p>{tag.name}</p>
                                             {isTagAssigned(tag.id) && (
-                                                <Icon path={mdiCheck} className="check-icon" />
+                                                <Icon icon={IconCheck} className="check-icon" />
                                             )}
                                         </div>
                                         <div
@@ -278,19 +278,19 @@ export const TagsSubmenu = ({ entryId, entryTags = [], onClose }) => {
                                                 setShowTagMenu(showTagMenu === tag.id ? null : tag.id);
                                             }}
                                         >
-                                            <Icon path={mdiDotsVertical} size={0.7} />
+                                            <Icon icon={IconEllipsisVertical} size={0.7} />
                                         </div>
                                         {showTagMenu === tag.id && (
                                             <div className="tag-dropdown-menu" onClick={(e) => e.stopPropagation()}>
                                                 <div className="dropdown-item" onClick={(e) => startEditTag(tag, e)}>
-                                                    <Icon path={mdiPencil} size={0.7} />
+                                                    <Icon icon={IconPencil} size={0.7} />
                                                     <span>{t("servers.tags.editTag")}</span>
                                                 </div>
                                                 <div className="dropdown-item delete" onClick={(e) => {
                                                     e.stopPropagation();
                                                     deleteTag(tag.id);
                                                 }}>
-                                                    <Icon path={mdiDelete} size={0.7} />
+                                                    <Icon icon={IconTrash} size={0.7} />
                                                     <span>{t("servers.tags.deleteTag")}</span>
                                                 </div>
                                             </div>

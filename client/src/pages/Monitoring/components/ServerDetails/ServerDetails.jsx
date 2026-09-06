@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import "./styles.sass";
 import { getRequest } from "@/common/utils/RequestUtil.js";
-import { mdiChartLine, mdiInformation, mdiHarddisk, mdiNetwork, mdiConsole, mdiServerNetwork } from "@mdi/js";
+import { ChartLine as IconChartLine, Info as IconInfo, HardDrive as IconHardDrive, Network as IconNetwork, SquareTerminal as IconSquareTerminal, Server as IconServer } from "lucide-react";
 import Button from "@/common/components/Button";
 import TabSwitcher from "@/common/components/TabSwitcher";
 import MonitoringChart from "./components/MonitoringChart";
@@ -10,16 +10,16 @@ import { useTranslation } from "react-i18next";
 
 const TABS = {
     server: [
-        { id: "overview", icon: mdiInformation, labelKey: "monitoring.details.tabs.overview" },
-        { id: "charts", icon: mdiChartLine, labelKey: "monitoring.details.tabs.charts" },
-        { id: "storage", icon: mdiHarddisk, labelKey: "monitoring.details.tabs.storage" },
-        { id: "network", icon: mdiNetwork, labelKey: "monitoring.details.tabs.network" },
-        { id: "processes", icon: mdiConsole, labelKey: "monitoring.details.tabs.processes" },
+        { id: "overview", icon: IconInfo, labelKey: "monitoring.details.tabs.overview" },
+        { id: "charts", icon: IconChartLine, labelKey: "monitoring.details.tabs.charts" },
+        { id: "storage", icon: IconHardDrive, labelKey: "monitoring.details.tabs.storage" },
+        { id: "network", icon: IconNetwork, labelKey: "monitoring.details.tabs.network" },
+        { id: "processes", icon: IconSquareTerminal, labelKey: "monitoring.details.tabs.processes" },
     ],
     pve: [
-        { id: "overview", icon: mdiInformation, labelKey: "monitoring.details.tabs.overview" },
-        { id: "charts", icon: mdiChartLine, labelKey: "monitoring.details.tabs.charts" },
-        { id: "nodes", icon: mdiServerNetwork, labelKey: "monitoring.details.tabs.nodes" },
+        { id: "overview", icon: IconInfo, labelKey: "monitoring.details.tabs.overview" },
+        { id: "charts", icon: IconChartLine, labelKey: "monitoring.details.tabs.charts" },
+        { id: "nodes", icon: IconServer, labelKey: "monitoring.details.tabs.nodes" },
     ],
 };
 

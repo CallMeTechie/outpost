@@ -1,11 +1,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
 import "./styles.sass";
-import Icon from "@mdi/react";
-import {
-    mdiFile, mdiFolder, mdiAlertCircle, mdiFormTextbox, mdiTextBoxEdit,
-    mdiFileDownload, mdiTrashCan, mdiEye, mdiFileMove, mdiContentCopy,
-    mdiInformationOutline, mdiConsole, mdiFileSearchOutline, mdiFilePlus, mdiFolderPlus,
-} from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { File as IconFile, Folder as IconFolder, CircleAlert as IconCircleAlert, TextCursorInput as IconTextCursorInput, PenLine as IconPenLine, FileDown as IconFileDown, Trash as IconTrash, Eye as IconEye, Scissors as IconScissors, Copy as IconCopy, Info as IconInfo, SquareTerminal as IconSquareTerminal, FileSearch as IconFileSearch, FilePlus as IconFilePlus, FolderPlus as IconFolderPlus } from "lucide-react";
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator, useContextMenu } from "@/common/components/ContextMenu";
 import { copyToClipboard } from "@/common/utils/clipboard.js";
 import { ActionConfirmDialog } from "@/common/components/ActionConfirmDialog/ActionConfirmDialog.jsx";
@@ -219,13 +215,13 @@ export const FileList = forwardRef(({
                 </div>
             ) : error ? (
                 <div className="error-state">
-                    <Icon path={mdiAlertCircle} />
+                    <Icon icon={IconCircleAlert} />
                     <h3>{t("servers.fileManager.states.accessDenied")}</h3>
                     <p>{error}</p>
                 </div>
             ) : filteredItems.length === 0 && !creatingFolder && !creatingFile ? (
                 <div className="empty-state" onContextMenu={handleEmptyContextMenu}>
-                    <Icon path={query ? mdiFileSearchOutline : mdiFolder} />
+                    <Icon icon={query ? IconFileSearch : IconFolder} />
                     <h3>{t(query ? "servers.fileManager.search.noResultsTitle" : "servers.fileManager.states.emptyFolder")}</h3>
                     <p>{query
                         ? t("servers.fileManager.search.noResults", { query: searchQuery.trim() })
@@ -250,7 +246,7 @@ export const FileList = forwardRef(({
                     {creatingFile && (
                         <div className={`file-item ${viewMode} new-file`} onMouseDown={(e) => e.stopPropagation()}>
                             <div className="file-name">
-                                <Icon path={mdiFile} />
+                                <Icon icon={IconFile} />
                                 <input type="text" className="rename-input" value={newFileName} onChange={(e) => setNewFileName(e.target.value)} onKeyDown={handleCreateFileKeyDown} onBlur={handleCreateFile} placeholder={t("servers.fileManager.createFile.placeholder")} autoFocus />
                             </div>
                             {showsColumns(viewMode) && <><p className="file-size"></p><p className="file-date"></p></>}
@@ -259,7 +255,7 @@ export const FileList = forwardRef(({
                     {creatingFolder && (
                         <div className={`file-item ${viewMode} new-folder`} onMouseDown={(e) => e.stopPropagation()}>
                             <div className="file-name">
-                                <Icon path={mdiFolder} />
+                                <Icon icon={IconFolder} />
                                 <input type="text" className="rename-input" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={handleCreateFolderKeyDown} onBlur={handleCreateFolder} placeholder={t("servers.fileManager.createFolder.placeholder")} autoFocus />
                             </div>
                             {showsColumns(viewMode) && <><p className="file-size"></p><p className="file-date"></p></>}
@@ -317,40 +313,40 @@ export const FileList = forwardRef(({
             />
 
             <ContextMenu isOpen={contextMenu.isOpen} position={contextMenu.position} onClose={contextMenu.close} trigger={contextMenu.triggerRef}>
-                <ContextMenuItem icon={mdiFormTextbox} label={t("servers.fileManager.contextMenu.rename")} onClick={() => startRename(selectedItem)} />
+                <ContextMenuItem icon={IconTextCursorInput} label={t("servers.fileManager.contextMenu.rename")} onClick={() => startRename(selectedItem)} />
                 {selectedItem?.type === "file" && capabilities.content && (
                     <>
-                        {isPreviewable(selectedItem.name) && <ContextMenuItem icon={mdiEye} label={t("servers.fileManager.contextMenu.preview")} onClick={() => setPreviewFile?.(`${path}/${selectedItem.name}`)} />}
-                        <ContextMenuItem icon={mdiTextBoxEdit} label={t("servers.fileManager.contextMenu.edit")} onClick={openFile} />
+                        {isPreviewable(selectedItem.name) && <ContextMenuItem icon={IconEye} label={t("servers.fileManager.contextMenu.preview")} onClick={() => setPreviewFile?.(`${path}/${selectedItem.name}`)} />}
+                        <ContextMenuItem icon={IconPenLine} label={t("servers.fileManager.contextMenu.edit")} onClick={openFile} />
                     </>
                 )}
-                {capabilities.content && <ContextMenuItem icon={mdiFileDownload} label={t("servers.fileManager.contextMenu.download")} onClick={() => downloadFile(`${path}/${selectedItem?.name}`)} />}
-                <ContextMenuItem icon={mdiContentCopy} label={t("servers.fileManager.contextMenu.copyPath")}
+                {capabilities.content && <ContextMenuItem icon={IconFileDown} label={t("servers.fileManager.contextMenu.download")} onClick={() => downloadFile(`${path}/${selectedItem?.name}`)} />}
+                <ContextMenuItem icon={IconCopy} label={t("servers.fileManager.contextMenu.copyPath")}
                                  onClick={() => handleCopyPath(selectedItem)} />
-                <ContextMenuItem icon={mdiInformationOutline} label={t("servers.fileManager.contextMenu.properties")} onClick={() => handlePropertiesClick(selectedItem)} />
+                <ContextMenuItem icon={IconInfo} label={t("servers.fileManager.contextMenu.properties")} onClick={() => handlePropertiesClick(selectedItem)} />
                 {selectedItem?.type === "folder" && capabilities.terminal && (
-                    <ContextMenuItem icon={mdiConsole} label={t("servers.fileManager.contextMenu.openTerminal")} onClick={() => handleOpenTerminal(`${path}/${selectedItem.name}`)} />
+                    <ContextMenuItem icon={IconSquareTerminal} label={t("servers.fileManager.contextMenu.openTerminal")} onClick={() => handleOpenTerminal(`${path}/${selectedItem.name}`)} />
                 )}
-                <ContextMenuItem icon={mdiTrashCan} label={t("servers.fileManager.contextMenu.delete")} onClick={handleDeleteClick} danger />
+                <ContextMenuItem icon={IconTrash} label={t("servers.fileManager.contextMenu.delete")} onClick={handleDeleteClick} danger />
             </ContextMenu>
 
             <ContextMenu isOpen={emptyContextMenu.isOpen} position={emptyContextMenu.position} onClose={emptyContextMenu.close} trigger={emptyContextMenu.triggerRef}>
-                {capabilities.nativeFs && <ContextMenuItem icon={mdiFilePlus} label={t("servers.fileManager.contextMenu.newFile")} onClick={startCreateFile} />}
-                <ContextMenuItem icon={mdiFolderPlus} label={t("servers.fileManager.contextMenu.newFolder")} onClick={startCreateFolder} />
+                {capabilities.nativeFs && <ContextMenuItem icon={IconFilePlus} label={t("servers.fileManager.contextMenu.newFile")} onClick={startCreateFile} />}
+                <ContextMenuItem icon={IconFolderPlus} label={t("servers.fileManager.contextMenu.newFolder")} onClick={startCreateFolder} />
                 <ContextMenuSeparator />
-                {capabilities.content && <ContextMenuItem icon={mdiFileDownload} label={t("servers.fileManager.contextMenu.downloadFolder")} onClick={() => downloadFile(path)} />}
-                <ContextMenuItem icon={mdiInformationOutline} label={t("servers.fileManager.contextMenu.properties")} onClick={() => handlePropertiesClick(null)} />
-                {capabilities.terminal && <ContextMenuItem icon={mdiConsole} label={t("servers.fileManager.contextMenu.openTerminal")} onClick={() => handleOpenTerminal()} />}
+                {capabilities.content && <ContextMenuItem icon={IconFileDown} label={t("servers.fileManager.contextMenu.downloadFolder")} onClick={() => downloadFile(path)} />}
+                <ContextMenuItem icon={IconInfo} label={t("servers.fileManager.contextMenu.properties")} onClick={() => handlePropertiesClick(null)} />
+                {capabilities.terminal && <ContextMenuItem icon={IconSquareTerminal} label={t("servers.fileManager.contextMenu.openTerminal")} onClick={() => handleOpenTerminal()} />}
             </ContextMenu>
 
             <ContextMenu isOpen={dropMenu.isOpen} position={dropMenu.position} onClose={() => { dropMenu.close(); setPendingDrop(null); }}>
-                <ContextMenuItem icon={mdiFileMove} label={t("servers.fileManager.contextMenu.moveHere")} onClick={() => handleDropAction("move", clearSelection, dropMenu.close)} />
+                <ContextMenuItem icon={IconScissors} label={t("servers.fileManager.contextMenu.moveHere")} onClick={() => handleDropAction("move", clearSelection, dropMenu.close)} />
                 {/* A copy within the session shells out to `cp -r` on a server and needs one, but
                     OneDrive does it with a Graph call — hence `copy` rather than `shell`. A copy
                     across pane boundaries streams over the transfer seam and needs neither.
                     Without the second half the same drop offered copying or not depending on the
                     drag-and-drop preference alone. */}
-                {(capabilities.copy || pendingDrop?.kind === "transfer") && <ContextMenuItem icon={mdiContentCopy} label={t("servers.fileManager.contextMenu.copyHere")} onClick={() => handleDropAction("copy", clearSelection, dropMenu.close)} />}
+                {(capabilities.copy || pendingDrop?.kind === "transfer") && <ContextMenuItem icon={IconCopy} label={t("servers.fileManager.contextMenu.copyHere")} onClick={() => handleDropAction("copy", clearSelection, dropMenu.close)} />}
             </ContextMenu>
 
             <div className="drag-preview" ref={dragImageRef}>

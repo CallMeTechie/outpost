@@ -5,7 +5,7 @@ import { getRequest, patchRequest } from "@/common/utils/RequestUtil.js";
 import Button from "@/common/components/Button";
 import ToggleSwitch from "@/common/components/ToggleSwitch";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
-import { mdiContentSave } from "@mdi/js";
+import { Save as IconSave } from "lucide-react";
 
 const NumberInput = ({ value, onChange, min, max, unit }) => (
     <div className="setting-input number-input">
@@ -99,7 +99,7 @@ export const Monitoring = () => {
             </div>
 
             <div className="settings-actions">
-                <Button text={s("saveSettings")} icon={mdiContentSave} onClick={saveSettings} disabled={saving} type="primary" />
+                <Button text={s("saveSettings")} icon={IconSave} onClick={saveSettings} disabled={saving} type="primary" />
             </div>
         </div>
     );

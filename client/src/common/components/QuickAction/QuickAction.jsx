@@ -2,8 +2,8 @@ import { useEffect, useRef, useState, useCallback, useMemo, useContext } from "r
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import Icon from "@mdi/react";
-import { mdiServer, mdiCodeTags } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Server as IconServer, Code as IconCode } from "lucide-react";
 import Fuse from "fuse.js";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import { SnippetContext } from "@/common/contexts/SnippetContext.jsx";
@@ -26,12 +26,12 @@ export const QuickAction = ({ isOpen, onClose }) => {
 
     const flattenServers = (entries, path = []) => (entries || []).flatMap(entry =>
         entry.type === "folder" || entry.type === "organization" ? flattenServers(entry.entries, [...path, entry.name])
-        : entry.type === "server" || entry.type?.startsWith("pve-") ? [{ id: `server-${entry.id}`, type: "server", name: entry.name, path: path.join(" / "), icon: mdiServer, data: entry, protocol: entry.protocol || entry.type }] : []
+        : entry.type === "server" || entry.type?.startsWith("pve-") ? [{ id: `server-${entry.id}`, type: "server", name: entry.name, path: path.join(" / "), icon: IconServer, data: entry, protocol: entry.protocol || entry.type }] : []
     );
 
     const allItems = useMemo(() => [
         ...flattenServers(servers),
-        ...(allSnippets || []).map(snippet => ({ id: `snippet-${snippet.id}`, type: "snippet", name: snippet.name, path: snippet.description || "", icon: mdiCodeTags, data: snippet })),
+        ...(allSnippets || []).map(snippet => ({ id: `snippet-${snippet.id}`, type: "snippet", name: snippet.name, path: snippet.description || "", icon: IconCode, data: snippet })),
         ...getSidebarNavigation(t).filter(nav => !nav.permission || hasPermission(nav.permission)).map(nav => ({ id: `nav-${nav.path.slice(1)}`, type: "navigation", name: nav.title, icon: nav.icon, route: nav.path, path: t("common.quickAction.navigation") })),
         ...getAllSettingsPages(t).filter(page => !page.permission || hasPermission(page.permission)).map(page => ({ id: `settings-${page.key}`, type: "settings", name: page.title, icon: page.icon, settingsTab: page.key, path: t("common.quickAction.settings") }))
     ], [servers, allSnippets, t, hasPermission]);
@@ -81,7 +81,7 @@ export const QuickAction = ({ isOpen, onClose }) => {
                 <div className="quick-action-results">
                     {filteredItems.length === 0 ? <div className="quick-action-empty">{t("common.quickAction.noResults")}</div> : filteredItems.map((item, index) => (
                         <div key={item.id} className={`quick-action-item ${index === selectedIndex ? 'selected' : ''}`} onClick={() => handleSelectItem(item)} onMouseEnter={() => handleMouseEnter(index)} onMouseMove={handleMouseMove}>
-                            <Icon path={item.icon} className="item-icon" />
+                            <Icon icon={item.icon} className="item-icon" />
                             <div className="item-content">
                                 <div className="item-name">{item.name}{item.type === "server" && <span className="protocol-badge">{(item.protocol || "SSH").toUpperCase()}</span>}</div>
                                 {item.path && <div className="item-path">{item.path}</div>}

@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { mdiContentCopy, mdiCheck } from "@mdi/js";
+import { Copy as IconCopy, Check as IconCheck } from "lucide-react";
 import Checkbox from "@/common/components/Checkbox/index.js";
 import Button from "@/common/components/Button/index.js";
 import { formatOctal, permissionsToMode, parsePermissions } from "../../../utils/fileUtils.js";
@@ -92,7 +92,7 @@ export const PermissionsTab = ({
                         maxLength={3}
                         placeholder="755"
                     />
-                    <Button icon={copied === "octal" ? mdiCheck : mdiContentCopy} onClick={() => onCopy(octalInput, "octal")} type="primary" />
+                    <Button icon={copied === "octal" ? IconCheck : IconCopy} onClick={() => onCopy(octalInput, "octal")} type="primary" />
                 </div>
             </div>
 

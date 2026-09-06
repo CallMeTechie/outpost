@@ -3,7 +3,7 @@ import "./styles.sass";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Input from "@/common/components/IconInput";
-import { mdiAccountMultiple, mdiCog, mdiFormTextbox, mdiKey, mdiServer, mdiNumeric, mdiFilter, mdiTestTube } from "@mdi/js";
+import { Users as IconUsers, Cog as IconCog, TextCursorInput as IconTextCursorInput, Key as IconKey, Server as IconServer, Binary as IconBinary, Funnel as IconFunnel, TestTube as IconTestTube } from "lucide-react";
 import Button from "@/common/components/Button";
 import ToggleSwitch from "@/common/components/ToggleSwitch";
 import { patchRequest, postRequest, putRequest } from "@/common/utils/RequestUtil.js";
@@ -63,38 +63,38 @@ export const LDAPProviderDialog = ({ open, onClose, provider, onSave }) => {
 
                 <div className="form-group">
                     <label>{T("fields.displayName")}</label>
-                    <Input icon={mdiFormTextbox} placeholder={T("fields.displayNamePlaceholder")} value={form.name} setValue={set("name")} />
+                    <Input icon={IconTextCursorInput} placeholder={T("fields.displayNamePlaceholder")} value={form.name} setValue={set("name")} />
                 </div>
 
                 <div className="form-row">
                     <div className="form-group">
                         <label>{T("fields.host")}</label>
-                        <Input icon={mdiServer} placeholder={T("fields.hostPlaceholder")} value={form.host} setValue={set("host")} />
+                        <Input icon={IconServer} placeholder={T("fields.hostPlaceholder")} value={form.host} setValue={set("host")} />
                     </div>
                     <div className="form-group port-field">
                         <label>{T("fields.port")}</label>
-                        <Input icon={mdiNumeric} type="number" placeholder="389" value={form.port} setValue={set("port")} />
+                        <Input icon={IconBinary} type="number" placeholder="389" value={form.port} setValue={set("port")} />
                     </div>
                 </div>
 
                 <div className="form-group">
                     <label>{T("fields.bindDN")}</label>
-                    <Input icon={mdiAccountMultiple} placeholder={T("fields.bindDNPlaceholder")} value={form.bindDN} setValue={set("bindDN")} autoComplete="off" />
+                    <Input icon={IconUsers} placeholder={T("fields.bindDNPlaceholder")} value={form.bindDN} setValue={set("bindDN")} autoComplete="off" />
                 </div>
 
                 <div className="form-group">
                     <label>{T("fields.bindPassword")}</label>
-                    <Input icon={mdiKey} type="password" placeholder={provider ? T("fields.bindPasswordPlaceholderEdit") : T("fields.bindPasswordPlaceholder")} value={form.bindPassword} setValue={set("bindPassword")} autoComplete="off" />
+                    <Input icon={IconKey} type="password" placeholder={provider ? T("fields.bindPasswordPlaceholderEdit") : T("fields.bindPasswordPlaceholder")} value={form.bindPassword} setValue={set("bindPassword")} autoComplete="off" />
                 </div>
 
                 <div className="form-group">
                     <label>{T("fields.baseDN")}</label>
-                    <Input icon={mdiFormTextbox} placeholder={T("fields.baseDNPlaceholder")} value={form.baseDN} setValue={set("baseDN")} />
+                    <Input icon={IconTextCursorInput} placeholder={T("fields.baseDNPlaceholder")} value={form.baseDN} setValue={set("baseDN")} />
                 </div>
 
                 <div className="form-group">
                     <label>{T("fields.userSearchFilter")}</label>
-                    <Input icon={mdiFilter} placeholder={T("fields.userSearchFilterPlaceholder")} value={form.userSearchFilter} setValue={set("userSearchFilter")} autoComplete="off" />
+                    <Input icon={IconFunnel} placeholder={T("fields.userSearchFilterPlaceholder")} value={form.userSearchFilter} setValue={set("userSearchFilter")} autoComplete="off" />
                 </div>
 
                 <div className="form-group toggle-group">
@@ -103,10 +103,10 @@ export const LDAPProviderDialog = ({ open, onClose, provider, onSave }) => {
                 </div>
 
                 <div className="advanced-settings">
-                    <Button type="secondary" icon={mdiCog} onClick={() => setShowAdvanced(!showAdvanced)} text={showAdvanced ? T("advanced.hide") : T("advanced.show")} />
+                    <Button type="secondary" icon={IconCog} onClick={() => setShowAdvanced(!showAdvanced)} text={showAdvanced ? T("advanced.hide") : T("advanced.show")} />
                     {showAdvanced && (
                         <div className="advanced-form">
-                            {[["usernameAttr", "usernameAttribute", mdiAccountMultiple], ["firstNameAttr", "firstNameAttribute", mdiFormTextbox], ["lastNameAttr", "lastNameAttribute", mdiFormTextbox]].map(([key, field, icon]) => (
+                            {[["usernameAttr", "usernameAttribute", IconUsers], ["firstNameAttr", "firstNameAttribute", IconTextCursorInput], ["lastNameAttr", "lastNameAttribute", IconTextCursorInput]].map(([key, field, icon]) => (
                                 <div className="form-group" key={key}>
                                     <label>{T(`fields.${field}`)}</label>
                                     <Input icon={icon} placeholder={T(`fields.${field}Placeholder`)} value={form[key]} setValue={set(key)} />
@@ -117,7 +117,7 @@ export const LDAPProviderDialog = ({ open, onClose, provider, onSave }) => {
                 </div>
 
                 <div className="button-row">
-                    {provider && <Button type="secondary" icon={mdiTestTube} onClick={handleTest} text={testing ? T("actions.testing") : T("actions.testConnection")} disabled={testing} />}
+                    {provider && <Button type="secondary" icon={IconTestTube} onClick={handleTest} text={testing ? T("actions.testing") : T("actions.testConnection")} disabled={testing} />}
                     <Button text={provider ? T("actions.saveChanges") : T("actions.addProvider")} onClick={handleSubmit} />
                 </div>
             </div>

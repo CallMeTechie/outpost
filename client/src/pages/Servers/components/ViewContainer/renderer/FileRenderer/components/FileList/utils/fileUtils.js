@@ -1,6 +1,4 @@
-import {
-    mdiArchive, mdiFile, mdiFileDocument, mdiImage, mdiMovie, mdiMusicNote,
-} from "@mdi/js";
+import { Archive as IconArchive, File as IconFile, FileText as IconFileText, Image as IconImage, Film as IconFilm, Music as IconMusic } from "lucide-react";
 
 export const THUMBNAIL_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];
 
@@ -13,11 +11,11 @@ export const PREVIEWABLE_EXTENSIONS = [
 ];
 
 export const FILE_ICONS = {
-    jpg: mdiImage, jpeg: mdiImage, png: mdiImage, gif: mdiImage, bmp: mdiImage, webp: mdiImage, svg: mdiImage,
-    mp3: mdiMusicNote, wav: mdiMusicNote, flac: mdiMusicNote, ogg: mdiMusicNote, m4a: mdiMusicNote,
-    mp4: mdiMovie, avi: mdiMovie, mov: mdiMovie, mkv: mdiMovie, webm: mdiMovie,
-    txt: mdiFileDocument, log: mdiFileDocument, md: mdiFileDocument, json: mdiFileDocument, xml: mdiFileDocument,
-    zip: mdiArchive, rar: mdiArchive, "7z": mdiArchive, tar: mdiArchive, gz: mdiArchive,
+    jpg: IconImage, jpeg: IconImage, png: IconImage, gif: IconImage, bmp: IconImage, webp: IconImage, svg: IconImage,
+    mp3: IconMusic, wav: IconMusic, flac: IconMusic, ogg: IconMusic, m4a: IconMusic,
+    mp4: IconFilm, avi: IconFilm, mov: IconFilm, mkv: IconFilm, webm: IconFilm,
+    txt: IconFileText, log: IconFileText, md: IconFileText, json: IconFileText, xml: IconFileText,
+    zip: IconArchive, rar: IconArchive, "7z": IconArchive, tar: IconArchive, gz: IconArchive,
 };
 
 export const FILE_COLORS = {
@@ -38,7 +36,7 @@ export const isThumbnailSupported = (filename) => THUMBNAIL_EXTENSIONS.includes(
 
 export const isPreviewable = (filename) => PREVIEWABLE_EXTENSIONS.includes(getExtension(filename));
 
-export const getIconByFileEnding = (ending) => FILE_ICONS[ending] || mdiFile;
+export const getIconByFileEnding = (ending) => FILE_ICONS[ending] || IconFile;
 
 export const getIconColor = (item) => item.type === "folder" ? "" : (FILE_COLORS[getExtension(item.name)] || "#adb5bd");
 

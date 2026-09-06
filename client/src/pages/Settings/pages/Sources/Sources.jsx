@@ -8,22 +8,8 @@ import ToggleSwitch from "@/common/components/ToggleSwitch";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import ActionConfirmDialog from "@/common/components/ActionConfirmDialog";
 import Input from "@/common/components/IconInput";
-import Icon from "@mdi/react";
-import {
-    mdiPlus,
-    mdiSync,
-    mdiPencil,
-    mdiTrashCan,
-    mdiCloudDownload,
-    mdiCodeBraces,
-    mdiScriptText,
-    mdiPalette,
-    mdiCheck,
-    mdiClose,
-    mdiLoading,
-    mdiFormTextbox,
-    mdiLink,
-} from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Plus as IconPlus, RefreshCcw as IconRefreshCcw, Pencil as IconPencil, Trash as IconTrash, CloudDownload as IconCloudDownload, Braces as IconBraces, ScrollText as IconScrollText, Palette as IconPalette, Check as IconCheck, X as IconX, LoaderCircle as IconLoaderCircle, TextCursorInput as IconTextCursorInput, Link as IconLink } from "lucide-react";
 
 export const Sources = () => {
     const { t } = useTranslation();
@@ -167,13 +153,13 @@ export const Sources = () => {
                         <h2>{t("settings.sources.title")}</h2>
                         <p>{t("settings.sources.description")}</p>
                     </div>
-                    <Button text={t("settings.sources.addSource")} icon={mdiPlus} onClick={openCreateDialog} />
+                    <Button text={t("settings.sources.addSource")} icon={IconPlus} onClick={openCreateDialog} />
                 </div>
 
                 <div className="sources-grid">
                     {sources.length === 0 ? (
                         <div className="no-sources">
-                            <Icon path={mdiCloudDownload} />
+                            <Icon icon={IconCloudDownload} />
                             <h2>{t("settings.sources.noSources")}</h2>
                             <p>{t("settings.sources.noSourcesDescription")}</p>
                         </div>
@@ -181,7 +167,7 @@ export const Sources = () => {
                         sources.map(source => (
                             <div key={source.id} className={`source-card ${!source.enabled ? "disabled" : ""}`}>
                                 <div className="source-info">
-                                    <Icon path={mdiCloudDownload} className="source-icon" />
+                                    <Icon icon={IconCloudDownload} className="source-icon" />
                                     <div className="source-details">
                                         <div className="source-header">
                                             <h3>{source.name}</h3>
@@ -192,15 +178,15 @@ export const Sources = () => {
                                         <p className="source-url">{source.url}</p>
                                         <div className="source-meta">
                                             <span className="meta-item">
-                                                <Icon path={mdiCodeBraces} />
+                                                <Icon icon={IconBraces} />
                                                 {source.snippetCount} {t("settings.sources.snippets")}
                                             </span>
                                             <span className="meta-item">
-                                                <Icon path={mdiScriptText} />
+                                                <Icon icon={IconScrollText} />
                                                 {source.scriptCount} {t("settings.sources.scripts")}
                                             </span>
                                             <span className="meta-item">
-                                                <Icon path={mdiPalette} />
+                                                <Icon icon={IconPalette} />
                                                 {source.themeCount} {t("settings.sources.themes")}
                                             </span>
                                         </div>
@@ -213,7 +199,7 @@ export const Sources = () => {
                                         disabled={syncing[source.id] || !source.enabled}
                                         title={t("settings.sources.sync")}
                                     >
-                                        <Icon path={syncing[source.id] ? mdiLoading : mdiSync}
+                                        <Icon icon={syncing[source.id] ? IconLoaderCircle : IconRefreshCcw}
                                               spin={syncing[source.id] ? 1 : 0} />
                                     </button>
                                     {!source.isDefault && (
@@ -222,7 +208,7 @@ export const Sources = () => {
                                             onClick={() => openEditDialog(source)}
                                             title={t("settings.sources.edit")}
                                         >
-                                            <Icon path={mdiPencil} />
+                                            <Icon icon={IconPencil} />
                                         </button>
                                     )}
                                     {!source.isDefault && (
@@ -231,7 +217,7 @@ export const Sources = () => {
                                             onClick={() => handleDeleteRequest(source)}
                                             title={t("settings.sources.delete")}
                                         >
-                                            <Icon path={mdiTrashCan} />
+                                            <Icon icon={IconTrash} />
                                         </button>
                                     )}
                                 </div>
@@ -249,7 +235,7 @@ export const Sources = () => {
                         <label>{t("settings.sources.dialog.name")}</label>
                         <Input
                             type="text"
-                            icon={mdiFormTextbox}
+                            icon={IconTextCursorInput}
                             value={formData.name}
                             setValue={(value) => setFormData({ ...formData, name: value })}
                             placeholder={t("settings.sources.dialog.namePlaceholder")}
@@ -260,7 +246,7 @@ export const Sources = () => {
                         <label>{t("settings.sources.dialog.url")}</label>
                         <Input
                             type="text"
-                            icon={mdiLink}
+                            icon={IconLink}
                             value={formData.url}
                             setValue={(value) => {
                                 setFormData({ ...formData, url: value });
@@ -273,14 +259,14 @@ export const Sources = () => {
 
                     {validating && (
                         <div className="validation-result loading">
-                            <Icon path={mdiLoading} spin={1} />
+                            <Icon icon={IconLoaderCircle} spin={1} />
                             {t("settings.sources.dialog.validating")}
                         </div>
                     )}
 
                     {validationResult && !validating && (
                         <div className={`validation-result ${validationResult.valid ? "success" : "error"}`}>
-                            <Icon path={validationResult.valid ? mdiCheck : mdiClose} />
+                            <Icon icon={validationResult.valid ? IconCheck : IconX} />
                             {validationResult.valid ? (
                                 t("settings.sources.dialog.validationSuccess", {
                                     snippets: validationResult.snippetCount,

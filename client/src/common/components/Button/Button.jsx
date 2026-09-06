@@ -1,5 +1,5 @@
 import "./styles.sass";
-import Icon from "@mdi/react";
+import Icon from "@/common/components/Icon";
 
 // dataUiId is additive and optional: it carries a design-manifest marker onto
 // the real DOM node. The component destructures its props, so a bare
@@ -15,7 +15,7 @@ import Icon from "@mdi/react";
 export const Button = ({onClick, text, icon, disabled, type, buttonType, title, dataUiId, ariaInvalid, kbd, loading}) => {
     return (
         <button className={"btn" + (type ? " type-" + type : "") + (!text ? " icon-only" : "") + (loading ? " is-loading" : "")} onClick={onClick} disabled={disabled} type={buttonType} data-ui-id={dataUiId} aria-invalid={ariaInvalid || undefined} aria-busy={loading || undefined} title={title}>
-            {loading ? <span className="btn-spinner" aria-hidden="true" /> : icon ? <Icon path={icon} /> : null}
+            {loading ? <span className="btn-spinner" aria-hidden="true" /> : icon ? <Icon icon={icon} /> : null}
             {text && <h3>{text}</h3>}
             {kbd && !disabled && !loading && <kbd>{kbd}</kbd>}
         </button>

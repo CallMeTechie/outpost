@@ -5,8 +5,8 @@ import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { getBaseUrl } from "@/common/utils/ConnectionUtil.js";
 import { isTauri } from "@/common/utils/TauriUtil.js";
 import { tauriDownload } from "@/common/utils/RequestUtil.js";
-import Icon from "@mdi/react";
-import { mdiImage, mdiFileDownload } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Image as IconImage, FileDown as IconFileDown } from "lucide-react";
 import FloatingWindow, { FloatingWindowAction } from "@/common/components/FloatingWindow";
 import { paneContentUrl, panePreviewUrl } from
     "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/utils/paneEndpoint.js";
@@ -121,7 +121,7 @@ export const FilePreviewWindow = ({ file, session, onClose }) => {
             case "audio":
                 return (
                     <div className="preview-content audio-preview">
-                        <Icon path={mdiImage} size={3} />
+                        <Icon icon={IconImage} size={3} />
                         <h3>{file.split("/").pop()}</h3>
                         <audio controls src={fileUrl}>
                             {t("servers.fileManager.filePreview.audioNotSupported")}
@@ -138,7 +138,7 @@ export const FilePreviewWindow = ({ file, session, onClose }) => {
                 if (!htmlUrl) {
                     return (
                         <div className="preview-content unknown-preview">
-                            <Icon path={mdiImage} size={3} />
+                            <Icon icon={IconImage} size={3} />
                             <h3>{t("servers.fileManager.filePreview.loading")}</h3>
                             <p>{file.split("/").pop()}</p>
                         </div>
@@ -155,7 +155,7 @@ export const FilePreviewWindow = ({ file, session, onClose }) => {
             default:
                 return (
                     <div className="preview-content unknown-preview">
-                        <Icon path={mdiImage} size={3} />
+                        <Icon icon={IconImage} size={3} />
                         <h3>{t("servers.fileManager.filePreview.cannotPreview")}</h3>
                         <p>{file.split("/").pop()}</p>
                     </div>
@@ -168,12 +168,12 @@ export const FilePreviewWindow = ({ file, session, onClose }) => {
     return (
         <FloatingWindow
             className="file-preview-window"
-            icon={mdiImage}
+            icon={IconImage}
             title={file.split("/").pop()}
             onClose={onClose}
             actions={
                 <FloatingWindowAction onClick={downloadFile} title={t("common.download")}>
-                    <Icon path={mdiFileDownload} />
+                    <Icon icon={IconFileDown} />
                 </FloatingWindowAction>
             }
         >

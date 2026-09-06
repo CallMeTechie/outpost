@@ -4,12 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import Button from "@/common/components/Button";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useTranslation } from "react-i18next";
-import {
-    mdiServerOutline,
-    mdiAccountCircleOutline,
-    mdiFileUploadOutline,
-    mdiLockOutline,
-} from "@mdi/js";
+import { Server as IconServer, CircleUser as IconCircleUser, FileUp as IconFileUp, Lock as IconLock } from "lucide-react";
 import Input from "@/common/components/IconInput";
 import { getFieldConfig } from "@/pages/Servers/components/ServerDialog/utils/fieldConfig.js";
 
@@ -203,7 +198,7 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
                             <Input
                                 id="direct-connect-host"
                                 name="direct-connect-host"
-                                icon={mdiServerOutline}
+                                icon={IconServer}
                                 type="text"
                                 placeholder={t("servers.dialog.placeholders.host")}
                                 autoComplete="off"
@@ -260,7 +255,7 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
                                 <Input
                                     id="direct-connect-username"
                                     name="direct-connect-username"
-                                    icon={mdiAccountCircleOutline}
+                                    icon={IconCircleUser}
                                     type="text"
                                     placeholder={t("servers.dialog.placeholders.username")}
                                     autoComplete="off"
@@ -278,7 +273,7 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
                                 <Input
                                     id="direct-connect-password"
                                     name="direct-connect-password"
-                                    icon={mdiLockOutline}
+                                    icon={IconLock}
                                     type="password"
                                     placeholder={t("servers.dialog.placeholders.password")}
                                     autoComplete="new-password"
@@ -294,7 +289,7 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
                                     <label htmlFor="direct-connect-keyfile">{t("servers.dialog.identities.sshPrivateKey")}</label>
                                     <Input
                                         id="direct-connect-keyfile"
-                                        icon={mdiFileUploadOutline}
+                                        icon={IconFileUp}
                                         type="file"
                                         autoComplete="off"
                                         onChange={readFile}
@@ -308,7 +303,7 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
                                     <Input
                                         id="direct-connect-passphrase"
                                         name="direct-connect-passphrase"
-                                        icon={mdiLockOutline}
+                                        icon={IconLock}
                                         type="password"
                                         placeholder={t("servers.dialog.identities.passphrase")}
                                         autoComplete="new-password"

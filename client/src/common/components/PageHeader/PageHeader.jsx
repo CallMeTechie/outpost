@@ -1,5 +1,5 @@
 import "./styles.sass";
-import Icon from "@mdi/react";
+import Icon from "@/common/components/Icon";
 
 const PageHeader = ({ icon, title, subtitle, children, onBackClick, backIcon }) => {
     return (
@@ -8,7 +8,7 @@ const PageHeader = ({ icon, title, subtitle, children, onBackClick, backIcon }) 
                 {onBackClick ? (
                     <div className="header-back" onClick={onBackClick}>
                         <div className="header-icon">
-                            <Icon path={backIcon} size={1} />
+                            <Icon icon={backIcon} size={1} />
                         </div>
                         <div className="header-content">
                             <h1>{title}</h1>
@@ -18,7 +18,7 @@ const PageHeader = ({ icon, title, subtitle, children, onBackClick, backIcon }) 
                 ) : (
                     <>
                         <div className="header-icon">
-                            <Icon path={icon} size={1} />
+                            <Icon icon={icon} size={1} />
                         </div>
                         <div className="header-content">
                             <h1>{title}</h1>

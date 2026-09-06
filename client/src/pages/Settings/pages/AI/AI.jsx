@@ -8,7 +8,7 @@ import IconInput from "@/common/components/IconInput";
 import SelectBox from "@/common/components/SelectBox";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useAI } from "@/common/contexts/AIContext.jsx";
-import { mdiRobot, mdiTestTube, mdiEye, mdiEyeOff } from "@mdi/js";
+import { Bot as IconBot, TestTube as IconTestTube, Eye as IconEye, EyeOff as IconEyeOff } from "lucide-react";
 
 export const AI = () => {
     const { t } = useTranslation();
@@ -246,7 +246,7 @@ export const AI = () => {
             </div>
             <div className="setting-input api-key-input">
                 <IconInput
-                    icon={showApiKey ? mdiEyeOff : mdiEye}
+                    icon={showApiKey ? IconEyeOff : IconEye}
                     type={showApiKey ? "text" : "password"}
                     value={settings.apiKey}
                     setValue={(value) => handleInputChange("apiKey", value)}
@@ -335,7 +335,7 @@ export const AI = () => {
                                                     <Button text={connecting ? t("settings.ai.subscription.connecting") : t("settings.ai.subscription.connect")}
                                                             type="primary" disabled={connecting} onClick={startSubscriptionConnect} />
                                                     <div className="code-row">
-                                                        <IconInput icon={mdiRobot} value={oauthCode}
+                                                        <IconInput icon={IconBot} value={oauthCode}
                                                                    setValue={setOauthCode}
                                                                    placeholder={isCodexProvider
                                                                        ? t("settings.ai.subscription.codePlaceholderUrl")
@@ -356,7 +356,7 @@ export const AI = () => {
                                                     <p>{t("settings.ai.baseUrl.description")}</p>
                                                 </div>
                                                 <div className="setting-input">
-                                                    <IconInput icon={mdiRobot} value={settings.apiUrl}
+                                                    <IconInput icon={IconBot} value={settings.apiUrl}
                                                                setValue={(value) => handleInputChange("apiUrl", value)}
                                                                placeholder={currentProvider.fields.baseUrl.default || t("settings.ai.baseUrl.placeholder")} />
                                                 </div>
@@ -382,10 +382,10 @@ export const AI = () => {
             </div>
 
             <div className="settings-actions">
-                <Button text={t("settings.ai.saveSettings")} icon={mdiRobot} onClick={saveSettings} disabled={saving} type="primary" />
+                <Button text={t("settings.ai.saveSettings")} icon={IconBot} onClick={saveSettings} disabled={saving} type="primary" />
 
                 {isConfigurationValid() && (
-                    <Button text={testing ? t("settings.ai.testing") : t("settings.ai.testConnection")} icon={mdiTestTube}
+                    <Button text={testing ? t("settings.ai.testing") : t("settings.ai.testConnection")} icon={IconTestTube}
                             onClick={testConnection} disabled={testing} type="secondary" />
                 )}
             </div>

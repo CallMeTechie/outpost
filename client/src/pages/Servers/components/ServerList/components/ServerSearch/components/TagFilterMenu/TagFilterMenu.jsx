@@ -1,5 +1,5 @@
-import { mdiCheck } from "@mdi/js";
-import Icon from "@mdi/react";
+import { Check as IconCheck } from "lucide-react";
+import Icon from "@/common/components/Icon";
 import { useTranslation } from "react-i18next";
 import { useTags } from "@/common/contexts/TagContext.jsx";
 import "./styles.sass";
@@ -45,7 +45,7 @@ export const TagFilterMenu = ({ selectedTags, setSelectedTags }) => {
                             <div className="tag-color" style={{ backgroundColor: tag.color }} />
                             <p>{tag.name}</p>
                             {selectedTags.includes(tag.id) && (
-                                <Icon path={mdiCheck} className="check-icon" />
+                                <Icon icon={IconCheck} className="check-icon" />
                             )}
                         </div>
                     ))}

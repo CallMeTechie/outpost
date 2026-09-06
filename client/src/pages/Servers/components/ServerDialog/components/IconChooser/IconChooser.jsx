@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import * as mdi from "@mdi/js";
-import Icon from "@mdi/react";
-import { mdiMagnify, mdiClose, mdiChevronDown } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Search as IconSearch, X as IconX, ChevronDown as IconChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import "./styles.sass";
 
@@ -122,8 +122,8 @@ export const IconChooser = ({ selected, setSelected }) => {
     return (
         <div className="icon-chooser" ref={chooserRef}>
             <div className="icon-chooser__trigger" onClick={() => setIsOpen(!isOpen)}>
-                <Icon path={selectedIcon?.path || mdi.mdiServerOutline} size={1} />
-                <Icon path={mdiChevronDown} size={0.8} className="icon-chooser__chevron" />
+                <Icon icon={selectedIcon?.path || mdi.mdiServerOutline} size={1} />
+                <Icon icon={IconChevronDown} size={0.8} className="icon-chooser__chevron" />
             </div>
 
             {isOpen && createPortal(
@@ -134,7 +134,7 @@ export const IconChooser = ({ selected, setSelected }) => {
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div className="icon-chooser__search">
-                        <Icon path={mdiMagnify} size={0.8} />
+                        <Icon icon={IconSearch} size={0.8} />
                         <input
                             ref={searchInputRef}
                             type="text"
@@ -144,7 +144,7 @@ export const IconChooser = ({ selected, setSelected }) => {
                         />
                         {searchTerm && (
                             <button className="icon-chooser__clear" onClick={() => setSearchTerm("")}>
-                                <Icon path={mdiClose} size={0.7} />
+                                <Icon icon={IconX} size={0.7} />
                             </button>
                         )}
                     </div>
@@ -165,7 +165,7 @@ export const IconChooser = ({ selected, setSelected }) => {
                                     onClick={() => handleIconSelect(icon)}
                                     title={icon.displayName}
                                 >
-                                    <Icon path={icon.path} size={1} />
+                                    <Icon icon={icon.path} size={1} />
                                 </div>
                             ))
                         ) : (

@@ -1,22 +1,6 @@
 import "./styles.sass";
-import Icon from "@mdi/react";
-import {
-    mdiChevronLeft,
-    mdiChevronRight,
-    mdiChevronUp,
-    mdiFileUpload,
-    mdiFolderUpload,
-    mdiFilePlus,
-    mdiFolderPlus,
-    mdiViewList,
-    mdiViewCompact,
-    mdiViewGrid,
-    mdiFileMove,
-    mdiContentCopy,
-    mdiMagnify,
-    mdiClose,
-    mdiRefresh,
-} from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { ChevronLeft as IconChevronLeft, ChevronRight as IconChevronRight, ChevronUp as IconChevronUp, FileUp as IconFileUp, FolderUp as IconFolderUp, FilePlus as IconFilePlus, FolderPlus as IconFolderPlus, List as IconList, Rows3 as IconRows3, LayoutGrid as IconLayoutGrid, Scissors as IconScissors, Copy as IconCopy, Search as IconSearch, X as IconX, RefreshCw as IconRefreshCw } from "lucide-react";
 import { Fragment, useState, useRef, useEffect, useCallback } from "react";
 import { ContextMenu, ContextMenuItem, useContextMenu } from "@/common/components/ContextMenu";
 import { useTranslation } from "react-i18next";
@@ -29,9 +13,9 @@ import { VIEW_DETAILS, VIEW_COMPACT, VIEW_GRID, nextViewMode } from "../../utils
 // points to - so a fourth view only needs an entry here rather than another branch of
 // conditional icon logic.
 const VIEW_MODE_ICONS = {
-    [VIEW_DETAILS]: mdiViewList,
-    [VIEW_COMPACT]: mdiViewCompact,
-    [VIEW_GRID]: mdiViewGrid,
+    [VIEW_DETAILS]: IconList,
+    [VIEW_COMPACT]: IconRows3,
+    [VIEW_GRID]: IconLayoutGrid,
 };
 
 export const ActionBar = ({
@@ -355,10 +339,10 @@ export const ActionBar = ({
 
     return (
         <div className="action-bar">
-            <Icon path={mdiChevronLeft} onClick={goBack} className={historyIndex === 0 ? " nav-disabled" : ""} />
-            <Icon path={mdiChevronRight} onClick={goForward}
+            <Icon icon={IconChevronLeft} onClick={goBack} className={historyIndex === 0 ? " nav-disabled" : ""} />
+            <Icon icon={IconChevronRight} onClick={goForward}
                   className={historyIndex === historyLength - 1 ? " nav-disabled" : ""} />
-            <Icon path={mdiChevronUp} onClick={goUp} className={path === "/" ? " nav-disabled" : ""} />
+            <Icon icon={IconChevronUp} onClick={goUp} className={path === "/" ? " nav-disabled" : ""} />
 
             <div className="address-bar" onClick={() => setIsEditing(true)}>
                 {isEditing ? (
@@ -399,34 +383,34 @@ export const ActionBar = ({
                     {searchQuery.trim() && (
                         <span className="search-count">{t("servers.fileManager.search.results", { count: searchResultCount })}</span>
                     )}
-                    <Icon path={mdiClose} className="search-close" onClick={closeSearch}
+                    <Icon icon={IconX} className="search-close" onClick={closeSearch}
                           title={t("servers.fileManager.actionBar.closeSearch")} />
                 </div>
             )}
 
             <div className="file-actions">
-                <Icon path={mdiMagnify} onClick={() => searchOpen ? closeSearch?.() : setSearchOpen?.(true)}
+                <Icon icon={IconSearch} onClick={() => searchOpen ? closeSearch?.() : setSearchOpen?.(true)}
                       className={searchOpen ? "active" : ""} title={t("servers.fileManager.actionBar.search")} />
-                <Icon path={VIEW_MODE_ICONS[nextViewMode(viewMode)]} onClick={() => setViewMode(nextViewMode(viewMode))}
+                <Icon icon={VIEW_MODE_ICONS[nextViewMode(viewMode)]} onClick={() => setViewMode(nextViewMode(viewMode))}
                       title={t("servers.fileManager.actionBar.switchTo",
                           { view: t(`servers.fileManager.viewMode.${nextViewMode(viewMode)}`) })} />
-                <Icon path={mdiRefresh} onClick={refreshFiles} title={t("servers.fileManager.actionBar.refresh")} />
+                <Icon icon={IconRefreshCw} onClick={refreshFiles} title={t("servers.fileManager.actionBar.refresh")} />
                 {capabilities.content && <>
-                    <Icon path={mdiFileUpload} onClick={uploadFile} title={t("servers.fileManager.actionBar.uploadFile")} />
-                    <Icon path={mdiFolderUpload} onClick={uploadFolder} title={t("servers.fileManager.actionBar.uploadFolder")} />
+                    <Icon icon={IconFileUp} onClick={uploadFile} title={t("servers.fileManager.actionBar.uploadFile")} />
+                    <Icon icon={IconFolderUp} onClick={uploadFolder} title={t("servers.fileManager.actionBar.uploadFolder")} />
                 </>}
-                {capabilities.nativeFs && <Icon path={mdiFilePlus} onClick={createFile} />}
-                <Icon path={mdiFolderPlus} onClick={createFolder} />
+                {capabilities.nativeFs && <Icon icon={IconFilePlus} onClick={createFile} />}
+                <Icon icon={IconFolderPlus} onClick={createFolder} />
             </div>
 
             <ContextMenu isOpen={dropMenu.isOpen} position={dropMenu.position} onClose={() => { dropMenu.close(); setPendingDrop(null); }}>
-                <ContextMenuItem icon={mdiFileMove} label={t("servers.fileManager.contextMenu.moveHere")} onClick={() => handleDropAction("move")} />
+                <ContextMenuItem icon={IconScissors} label={t("servers.fileManager.contextMenu.moveHere")} onClick={() => handleDropAction("move")} />
                 {/* A copy within the session shells out to `cp -r` on a server and needs one, but
                     OneDrive does it with a Graph call — hence `copy` rather than `shell`. A copy
                     across pane boundaries streams over the transfer seam and needs neither.
                     Without the second half the same drop offered copying or not depending on the
                     drag-and-drop preference alone. */}
-                {(capabilities.copy || pendingDrop?.kind === "transfer") && <ContextMenuItem icon={mdiContentCopy} label={t("servers.fileManager.contextMenu.copyHere")} onClick={() => handleDropAction("copy")} />}
+                {(capabilities.copy || pendingDrop?.kind === "transfer") && <ContextMenuItem icon={IconCopy} label={t("servers.fileManager.contextMenu.copyHere")} onClick={() => handleDropAction("copy")} />}
             </ContextMenu>
         </div>
     );

@@ -1,7 +1,7 @@
 import "./styles.sass";
 import { useState } from "react";
-import Icon from "@mdi/react";
-import { mdiClose } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { X as IconX } from "lucide-react";
 import UserSearch from "@/common/components/UserSearch";
 import { postRequest, deleteRequest } from "@/common/utils/RequestUtil.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
@@ -50,7 +50,7 @@ export const RoleMembers = ({ groupId, members = [], onChanged }) => {
                             {getFullName(member) && <span className="name">{getFullName(member)}</span>}
                             <span className="username">@{member.username}</span>
                         </div>
-                        <Icon path={mdiClose} className="remove" onClick={() => removeMember(member.id)} />
+                        <Icon icon={IconX} className="remove" onClick={() => removeMember(member.id)} />
                     </div>
                 ))}
             </div>

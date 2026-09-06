@@ -1,18 +1,26 @@
 import "./styles.sass";
-import Icon from "@mdi/react";
+import Icon from "@/common/components/Icon";
 import { useTranslation } from "react-i18next";
 import TriToggle from "@/common/components/TriToggle";
 import Tooltip from "@/common/components/Tooltip";
-import {
-    mdiAccountGroup, mdiShieldKeyOutline, mdiDomain, mdiCogOutline,
-    mdiAccountMultipleOutline, mdiServerOutline, mdiShieldCheckOutline, mdiCheckCircle, mdiAlertOutline,
-    mdiConsoleNetworkOutline, mdiFolderNetworkOutline, mdiMonitorShare,
-} from "@mdi/js";
+import { Users as IconUsers, ShieldHalf as IconShieldHalf, Building2 as IconBuilding2, Cog as IconCog, Server as IconServer, ShieldCheck as IconShieldCheck, CircleCheck as IconCircleCheck, TriangleAlert as IconTriangleAlert, Terminal as IconTerminal, FolderSymlink as IconFolderSymlink, MonitorUp as IconMonitorUp } from "lucide-react";
 
+// The keys are what the server puts on the wire (server/permissions/registry.js sends
+// `icon: "mdiAccountGroup"`), not names of anything in this file. They stay as they are:
+// an older connector talking to a newer server, or the reverse, would otherwise show a
+// permission catalogue with no icons at all. Two of them land on the same drawing --
+// Lucide has one Users icon where MDI had a group and a multiple.
 const ICONS = {
-    mdiAccountGroup, mdiShieldKeyOutline, mdiDomain, mdiCogOutline,
-    mdiAccountMultipleOutline, mdiServerOutline, mdiShieldCheckOutline,
-    mdiConsoleNetworkOutline, mdiFolderNetworkOutline, mdiMonitorShare,
+    mdiAccountGroup: IconUsers,
+    mdiAccountMultipleOutline: IconUsers,
+    mdiShieldKeyOutline: IconShieldHalf,
+    mdiDomain: IconBuilding2,
+    mdiCogOutline: IconCog,
+    mdiServerOutline: IconServer,
+    mdiShieldCheckOutline: IconShieldCheck,
+    mdiConsoleNetworkOutline: IconTerminal,
+    mdiFolderNetworkOutline: IconFolderSymlink,
+    mdiMonitorShare: IconMonitorUp,
 };
 
 export const PermissionMatrix = ({ catalog, values = {}, onChange, disabled = false, readOnly = false, granted = [], inherited = null }) => {
@@ -33,7 +41,7 @@ export const PermissionMatrix = ({ catalog, values = {}, onChange, disabled = fa
                 return (
                     <div className="perm-category" key={category.key}>
                         <div className="category-header">
-                            {ICONS[category.icon] && <Icon path={ICONS[category.icon]} />}
+                            {ICONS[category.icon] && <Icon icon={ICONS[category.icon]} />}
                             <span>{category.label}</span>
                         </div>
                         <div className="perm-rows">
@@ -44,7 +52,7 @@ export const PermissionMatrix = ({ catalog, values = {}, onChange, disabled = fa
                                             {perm.label}
                                             {perm.dangerous && (
                                                 <Tooltip text={t("settings.permissions.dangerousHint")}>
-                                                    <Icon path={mdiAlertOutline} className="danger-icon" />
+                                                    <Icon icon={IconTriangleAlert} className="danger-icon" />
                                                 </Tooltip>
                                             )}
                                         </span>
@@ -52,7 +60,7 @@ export const PermissionMatrix = ({ catalog, values = {}, onChange, disabled = fa
                                     </div>
                                     {readOnly ? (
                                         <span className={`perm-effective ${grantedSet.has(perm.id) ? "on" : "off"}`}>
-                                            {grantedSet.has(perm.id) && <Icon path={mdiCheckCircle} />}
+                                            {grantedSet.has(perm.id) && <Icon icon={IconCircleCheck} />}
                                         </span>
                                     ) : (
                                         <div className="perm-control">

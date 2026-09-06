@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import Icon from "@mdi/react";
-import { mdiChevronRight, mdiChevronDown } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { ChevronRight as IconChevronRight, ChevronDown as IconChevronDown } from "lucide-react";
 import { formatShortcut } from "./shortcuts.js";
 
 export const ContextMenuItem = ({
@@ -161,12 +161,12 @@ export const ContextMenuItem = ({
             aria-expanded={hasSubmenu ? isSubmenuOpen : undefined}
             data-shortcut={shortcut || undefined}
         >
-            {icon && (typeof icon === "string" ? <Icon path={icon} className="menu-icon" /> : <span className="menu-icon">{icon}</span>)}
+            {icon && (typeof icon === "string" ? <Icon icon={icon} className="menu-icon" /> : <span className="menu-icon">{icon}</span>)}
             <span className="menu-label">{label}</span>
             {shortcut && !hasSubmenu && <kbd className="menu-shortcut">{formatShortcut(shortcut)}</kbd>}
             {hasSubmenu && (
                 <>
-                    <Icon path={isMobile ? mdiChevronDown : mdiChevronRight} className={`submenu-arrow ${isSubmenuOpen ? "open" : ""}`} />
+                    <Icon icon={isMobile ? IconChevronDown : IconChevronRight} className={`submenu-arrow ${isSubmenuOpen ? "open" : ""}`} />
                     {isSubmenuOpen && (
                         <div ref={submenuRef} className={`context-menu-submenu ${isMobile ? "mobile" : ""}`}
                              style={!isMobile ? submenuPosition : undefined} role="menu" aria-orientation="vertical"

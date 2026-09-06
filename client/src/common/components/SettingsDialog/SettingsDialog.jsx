@@ -1,8 +1,8 @@
 import { createPortal } from "react-dom";
 import { useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import Icon from "@mdi/react";
-import { mdiClose, mdiLogout } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { X as IconX, LogOut as IconLogOut } from "lucide-react";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { ActionConfirmDialog } from "@/common/components/ActionConfirmDialog/ActionConfirmDialog.jsx";
 import { getSettingsUserPages, getSettingsAdminPages } from "@/common/utils/navigationConfig.jsx";
@@ -57,7 +57,7 @@ export const SettingsDialog = ({ open, onClose, initialTab = "account" }) => {
     const renderNavItem = (page) => (
         <div key={page.key} className={`nav-item ${activeTab === page.key ? "active" : ""}`}
              onClick={() => setActiveTab(page.key)}>
-            <Icon path={page.icon} className="nav-icon" />
+            <Icon icon={page.icon} className="nav-icon" />
             <span className="nav-label">{page.title}</span>
         </div>
     );
@@ -85,7 +85,7 @@ export const SettingsDialog = ({ open, onClose, initialTab = "account" }) => {
                             <div className="nav-separator" />
                             <div className="nav-group">
                                 <div className="nav-item danger" onClick={() => setLogoutDialogOpen(true)}>
-                                    <Icon path={mdiLogout} className="nav-icon" />
+                                    <Icon icon={IconLogOut} className="nav-icon" />
                                     <span className="nav-label">{t("common.sidebar.logout")}</span>
                                 </div>
                             </div>
@@ -93,13 +93,13 @@ export const SettingsDialog = ({ open, onClose, initialTab = "account" }) => {
                     </div>
                     <div className="settings-dialog-content">
                         <div className="settings-dialog-header">
-                            <Icon path={currentPage.icon} className="header-icon" />
+                            <Icon icon={currentPage.icon} className="header-icon" />
                             <h1>{currentPage.title}</h1>
                         </div>
                         <hr className="settings-dialog-header-line" />
                         <div className="settings-dialog-body">{currentPage.content}</div>
                     </div>
-                    <button className="settings-dialog-close" onClick={handleClose}><Icon path={mdiClose} /></button>
+                    <button className="settings-dialog-close" onClick={handleClose}><Icon icon={IconX} /></button>
                 </div>
             </div>
         </>,

@@ -12,7 +12,7 @@ import { IdentityContext } from "@/common/contexts/IdentityContext.jsx";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useTranslation } from "react-i18next";
 import { getAvailableTabs, validateRequiredFields, getFieldConfig } from "./utils/fieldConfig.js";
-import Icon from "@mdi/react";
+import Icon from "@/common/components/Icon";
 import * as mdiIcons from "@mdi/js";
 
 const PROTOCOL_DEFAULT_ICONS = { ssh: "mdiConsole", telnet: "mdiConsole", rdp: "mdiMicrosoftWindows", vnc: "mdiMonitor", sftp: "mdiFolderNetwork", ftp: "mdiFolderNetwork", ftps: "mdiFolderNetwork", demo: "mdiFlaskOutline" };
@@ -322,7 +322,7 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
             <div className="server-dialog">
                 <div className="server-dialog-header">
                     <div className="dialog-icon">
-                        <Icon path={mdiIcons[getProtocolIcon(config.protocol, entryType)] || mdiIcons.mdiServerNetwork} size={1} />
+                        <Icon icon={mdiIcons[getProtocolIcon(config.protocol, entryType)] || mdiIcons.mdiServerNetwork} size={1} />
                     </div>
                     <div className="server-dialog-title">
                         <h2>

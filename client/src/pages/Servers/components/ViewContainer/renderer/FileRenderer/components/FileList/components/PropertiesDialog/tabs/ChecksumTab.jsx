@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { mdiContentCopy, mdiCheck, mdiLoading, mdiCalculator } from "@mdi/js";
+import { Copy as IconCopy, Check as IconCheck, LoaderCircle as IconLoaderCircle, Calculator as IconCalculator } from "lucide-react";
 import Button from "@/common/components/Button/index.js";
 
 const CHECKSUM_ALGORITHMS = ["md5", "sha1", "sha256", "sha512"];
@@ -21,11 +21,11 @@ export const ChecksumTab = ({
                     {checksums[algo] ? (
                         <div className="checksum-value">
                             <code>{checksums[algo]}</code>
-                            <Button icon={copied === algo ? mdiCheck : mdiContentCopy} onClick={() => onCopy(checksums[algo], algo)} type="primary" />
+                            <Button icon={copied === algo ? IconCheck : IconCopy} onClick={() => onCopy(checksums[algo], algo)} type="primary" />
                         </div>
                     ) : (
                         <Button
-                            icon={loadingChecksum[algo] ? mdiLoading : mdiCalculator}
+                            icon={loadingChecksum[algo] ? IconLoaderCircle : IconCalculator}
                             text={loadingChecksum[algo] ? t("servers.fileManager.properties.calculating") : t("servers.fileManager.properties.calculate")}
                             onClick={() => onCalculate(algo)}
                             disabled={loadingChecksum[algo]}

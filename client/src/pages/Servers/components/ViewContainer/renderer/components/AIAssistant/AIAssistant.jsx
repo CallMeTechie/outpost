@@ -1,12 +1,7 @@
 import { memo, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Icon from "@mdi/react";
-import {
-    mdiRobotHappyOutline, mdiSend, mdiStop, mdiClose,
-    mdiCheck, mdiCancel, mdiConsoleLine, mdiFileDocumentOutline, mdiFileEditOutline, mdiFolderOutline,
-    mdiInformationOutline, mdiFolderPlusOutline, mdiTrashCanOutline, mdiFileMoveOutline, mdiLockOutline, mdiMagnify,
-    mdiPlay, mdiChevronDown, mdiChevronUp,
-} from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { BotMessageSquare as IconBotMessageSquare, Send as IconSend, Square as IconSquare, X as IconX, Check as IconCheck, Ban as IconBan, Terminal as IconTerminal, FileText as IconFileText, FilePen as IconFilePen, Folder as IconFolder, Info as IconInfo, FolderPlus as IconFolderPlus, Trash as IconTrash, Scissors as IconScissors, Lock as IconLock, Search as IconSearch, Play as IconPlay, ChevronDown as IconChevronDown, ChevronUp as IconChevronUp } from "lucide-react";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { useKeymaps, matchesKeybind } from "@/common/contexts/KeymapContext.jsx";
 import Button from "@/common/components/Button";
@@ -16,18 +11,18 @@ import MessageContent from "./components/MessageContent";
 import "./styles.sass";
 
 const TOOL_META = {
-    runCommand: { icon: mdiConsoleLine, summary: (a) => a.command },
-    readFile: { icon: mdiFileDocumentOutline, summary: (a) => a.path },
-    writeFile: { icon: mdiFileEditOutline, summary: (a) => a.path },
-    editFile: { icon: mdiFileEditOutline, summary: (a) => a.path },
-    listDirectory: { icon: mdiFolderOutline, summary: (a) => a.path },
-    statPath: { icon: mdiInformationOutline, summary: (a) => a.path },
-    makeDirectory: { icon: mdiFolderPlusOutline, summary: (a) => a.path },
-    deleteFile: { icon: mdiTrashCanOutline, summary: (a) => a.path },
-    removeDirectory: { icon: mdiTrashCanOutline, summary: (a) => (a.recursive ? `${a.path} (recursive)` : a.path) },
-    movePath: { icon: mdiFileMoveOutline, summary: (a) => `${a.source} → ${a.destination}` },
-    changePermissions: { icon: mdiLockOutline, summary: (a) => `${a.path} → ${a.mode}` },
-    findDirectories: { icon: mdiMagnify, summary: (a) => a.query },
+    runCommand: { icon: IconTerminal, summary: (a) => a.command },
+    readFile: { icon: IconFileText, summary: (a) => a.path },
+    writeFile: { icon: IconFilePen, summary: (a) => a.path },
+    editFile: { icon: IconFilePen, summary: (a) => a.path },
+    listDirectory: { icon: IconFolder, summary: (a) => a.path },
+    statPath: { icon: IconInfo, summary: (a) => a.path },
+    makeDirectory: { icon: IconFolderPlus, summary: (a) => a.path },
+    deleteFile: { icon: IconTrash, summary: (a) => a.path },
+    removeDirectory: { icon: IconTrash, summary: (a) => (a.recursive ? `${a.path} (recursive)` : a.path) },
+    movePath: { icon: IconScissors, summary: (a) => `${a.source} → ${a.destination}` },
+    changePermissions: { icon: IconLock, summary: (a) => `${a.path} → ${a.mode}` },
+    findDirectories: { icon: IconSearch, summary: (a) => a.query },
 };
 
 const newConversationId = () => globalThis.crypto?.randomUUID?.()
@@ -73,7 +68,7 @@ const ToolResult = ({ tool, result }) => {
 const ToolCard = memo(({ message, onConfirm, acceptHint }) => {
     const { t } = useTranslation();
     const [expanded, setExpanded] = useState(false);
-    const meta = TOOL_META[message.tool] || { icon: mdiConsoleLine, summary: () => "" };
+    const meta = TOOL_META[message.tool] || { icon: IconTerminal, summary: () => "" };
     const summary = meta.summary(message.args || {});
     const exitCode = message.tool === "runCommand" && message.status === "done" && message.result && !message.result.denied
         ? message.result.exitCode : null;
@@ -88,19 +83,19 @@ const ToolCard = memo(({ message, onConfirm, acceptHint }) => {
             <div className="tool-head" onClick={toggle} role={settled ? "button" : undefined}
                  tabIndex={settled ? 0 : undefined} aria-expanded={settled ? open : undefined}
                  onKeyDown={(e) => { if (settled && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(); } }}>
-                <Icon path={meta.icon} />
+                <Icon icon={meta.icon} />
                 <span className="tool-name">{t(`servers.aiAssistant.tools.${message.tool}`)}</span>
                 {!open && summary && <span className="tool-summary">{summary}</span>}
                 <span className="tool-status">
                     {message.status === "running" && <span className="ai-spinner" />}
                     {message.status === "done" && (failed
                         ? <span className="tool-exit fail">exit {exitCode}</span>
-                        : <Icon path={mdiCheck} />)}
-                    {message.status === "denied" && <Icon path={mdiCancel} />}
-                    {message.status === "aborted" && <Icon path={mdiStop} />}
-                    {message.status === "error" && <Icon path={mdiClose} />}
+                        : <Icon icon={IconCheck} />)}
+                    {message.status === "denied" && <Icon icon={IconBan} />}
+                    {message.status === "aborted" && <Icon icon={IconSquare} />}
+                    {message.status === "error" && <Icon icon={IconX} />}
                 </span>
-                {settled && <Icon className="tool-chevron" path={open ? mdiChevronUp : mdiChevronDown} />}
+                {settled && <Icon className="tool-chevron" icon={open ? IconChevronUp : IconChevronDown} />}
             </div>
 
             {open && summary && <div className="tool-target">{summary}</div>}
@@ -109,9 +104,9 @@ const ToolCard = memo(({ message, onConfirm, acceptHint }) => {
                 <div className="tool-confirm">
                     <span>{t("servers.aiAssistant.confirmPrompt")}</span>
                     <div className="confirm-actions">
-                        <Button type="danger" icon={mdiCancel} text={t("servers.aiAssistant.deny")}
+                        <Button type="danger" icon={IconBan} text={t("servers.aiAssistant.deny")}
                                 onClick={() => onConfirm(message.callId, false)} />
-                        <Button icon={mdiCheck} text={t("servers.aiAssistant.allow")}
+                        <Button icon={IconCheck} text={t("servers.aiAssistant.allow")}
                                 title={acceptHint ? t("servers.aiAssistant.allowShortcut", { key: acceptHint }) : undefined}
                                 onClick={() => onConfirm(message.callId, true)} />
                     </div>
@@ -343,7 +338,7 @@ export const AIAssistant = ({ session, onClose }) => {
     return (
         <FloatingWindow
             className="ai-assistant-window"
-            icon={mdiRobotHappyOutline}
+            icon={IconBotMessageSquare}
             title={t("servers.aiAssistant.title")}
             titleExtra={session.server?.name && <span className="target">{session.server.name}</span>}
             onClose={onClose}
@@ -352,7 +347,7 @@ export const AIAssistant = ({ session, onClose }) => {
             <div className="ai-assistant-messages" ref={messagesRef} onScroll={onScroll}>
                 {messages.length === 0 && !connectionError && (
                     <div className="ai-assistant-empty">
-                        <Icon path={mdiRobotHappyOutline} />
+                        <Icon icon={IconBotMessageSquare} />
                         <p>{t("servers.aiAssistant.empty")}</p>
                     </div>
                 )}
@@ -371,7 +366,7 @@ export const AIAssistant = ({ session, onClose }) => {
                 {needsContinue && !running && (
                     <div className="ai-continue">
                         <span>{t("servers.aiAssistant.continuePrompt")}</span>
-                        <Button icon={mdiPlay} text={t("servers.aiAssistant.continue")} onClick={continueRun}
+                        <Button icon={IconPlay} text={t("servers.aiAssistant.continue")} onClick={continueRun}
                                 disabled={!ready} />
                     </div>
                 )}
@@ -385,9 +380,9 @@ export const AIAssistant = ({ session, onClose }) => {
                           onKeyDown={handleKeyDown} rows={1} disabled={!ready}
                           placeholder={ready ? t("servers.aiAssistant.placeholder") : t("servers.aiAssistant.connecting")} />
                 {running ? (
-                    <Button type="danger" icon={mdiStop} onClick={stop} title={t("servers.aiAssistant.stop")} />
+                    <Button type="danger" icon={IconSquare} onClick={stop} title={t("servers.aiAssistant.stop")} />
                 ) : (
-                    <Button type="primary" icon={mdiSend} onClick={sendPrompt} disabled={!input.trim() || !ready}
+                    <Button type="primary" icon={IconSend} onClick={sendPrompt} disabled={!input.trim() || !ready}
                             title={t("servers.aiAssistant.send")} />
                 )}
             </div>

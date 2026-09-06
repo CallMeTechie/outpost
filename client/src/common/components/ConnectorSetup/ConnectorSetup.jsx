@@ -3,7 +3,7 @@ import OutpostLogo from "@/common/components/OutpostLogo";
 import "./styles.sass";
 import Button from "@/common/components/Button";
 import Input from "@/common/components/IconInput";
-import { mdiServerNetwork, mdiOpenInNew, mdiContentCopy, mdiMonitor, mdiArrowLeft } from "@mdi/js";
+import { Server as IconServer, ExternalLink as IconExternalLink, Copy as IconCopy, Monitor as IconMonitor, ArrowLeft as IconArrowLeft } from "lucide-react";
 import { useState, useEffect, useContext } from "react";
 import { request } from "@/common/utils/RequestUtil.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
@@ -12,11 +12,11 @@ import { tauriFetch } from "@/common/utils/RequestUtil.js";
 import { setActiveServerUrl, getActiveServerUrl, openExternalUrl } from "@/common/utils/TauriUtil.js";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { addServer, activateServer } from "@/common/utils/ConnectorServers.js";
-import Icon from "@mdi/react";
+import Icon from "@/common/components/Icon";
 
 const ConnectorIcon = ({ connected }) => (
     <div className={`device-icon-wrapper${connected ? " connected" : ""}`}>
-        <Icon path={mdiMonitor} size={1.2} />
+        <Icon icon={IconMonitor} size={1.2} />
     </div>
 );
 
@@ -158,7 +158,7 @@ export const ConnectorSetup = ({ open, isAddMode = false, onCancelAdd }) => {
                         <p className="linking-description">{t("common.connectorSetup.serverUrlDescription")}</p>
                         <div className="form-group">
                             <label htmlFor="serverUrl">{t("common.connectorSetup.serverUrl")}</label>
-                            <Input type="text" id="serverUrl" icon={mdiServerNetwork} placeholder="https://outpost.example.com" value={serverUrl} setValue={setServerUrl} />
+                            <Input type="text" id="serverUrl" icon={IconServer} placeholder="https://outpost.example.com" value={serverUrl} setValue={setServerUrl} />
                         </div>
                         <Button text={connecting ? t("common.connectorSetup.connecting") : t("common.connectorSetup.connect")} disabled={connecting} />
                         {isAddMode && <Button type="secondary" text={t("common.actions.cancel")} onClick={handleCancel} />}
@@ -171,12 +171,12 @@ export const ConnectorSetup = ({ open, isAddMode = false, onCancelAdd }) => {
                         <div className="code-display" onClick={copyCode}>
                             <span className="code-value">{deviceCode || "----"}</span>
                             <button className="code-copy" type="button" title={t("common.connectorSetup.copyCode")}>
-                                <Icon path={mdiContentCopy} size={0.8} />
+                                <Icon icon={IconCopy} size={0.8} />
                             </button>
                         </div>
                         <div className="linking-actions">
-                            <Button text={t("common.connectorSetup.openBrowser")} icon={mdiOpenInNew} onClick={handleOpenBrowser} />
-                            <Button type="secondary" text={t("common.actions.back")} icon={mdiArrowLeft} onClick={handleBack} />
+                            <Button text={t("common.connectorSetup.openBrowser")} icon={IconExternalLink} onClick={handleOpenBrowser} />
+                            <Button type="secondary" text={t("common.actions.back")} icon={IconArrowLeft} onClick={handleBack} />
                         </div>
                     </div>
                 )}

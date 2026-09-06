@@ -2,9 +2,8 @@ import "./styles.sass";
 import { useContext, useEffect, useState } from "react";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
-import Icon from "@mdi/react";
-import { mdiHistory, mdiPlay, mdiPower, mdiServerNetwork, mdiServerPlus, mdiConnection, mdiFolderOpen,
-    mdiCursorDefaultClick, mdiDownload, mdiLinkVariant } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { RotateCcwClock as IconRotateCcwClock, Play as IconPlay, Power as IconPower, Server as IconServer, ServerPlus as IconServerPlus, Cable as IconCable, FolderOpen as IconFolderOpen, MousePointerClick as IconMousePointerClick, Download as IconDownload, Link as IconLink } from "lucide-react";
 import { getRequest } from "@/common/utils/RequestUtil";
 import { useTranslation } from "react-i18next";
 import { ContextMenu, ContextMenuItem, useContextMenu } from "@/common/components/ContextMenu";
@@ -85,7 +84,7 @@ export const WelcomePanel = ({
 
     const header = (
         <div className="section-header">
-            <Icon path={mdiHistory} />
+            <Icon icon={IconRotateCcwClock} />
             <h3>{t("welcome.recentConnections")}</h3>
         </div>
     );
@@ -100,18 +99,18 @@ export const WelcomePanel = ({
                 <p>{t("welcome.lead")}</p>
                 <div className="welcome-buttons">
                     {openDirectConnect && (
-                        <Button type="primary" icon={mdiCursorDefaultClick} text={t("servers.contextMenu.quickConnect")}
+                        <Button type="primary" icon={IconMousePointerClick} text={t("servers.contextMenu.quickConnect")}
                                 onClick={() => openDirectConnect()} />
                     )}
                     {onCreateServer && (
-                        <Button type="secondary" icon={mdiServerPlus} text={t("servers.emptyCreate")}
+                        <Button type="secondary" icon={IconServerPlus} text={t("servers.emptyCreate")}
                                 onClick={() => onCreateServer()} />
                     )}
                     {/* Kept although the artboard shows three buttons: the /link route this opens
                         has no navigation entry anywhere, so this is its one findable way in. */}
-                    <Button type="secondary" icon={mdiLinkVariant} text={t("welcome.connectDevice")}
+                    <Button type="secondary" icon={IconLink} text={t("welcome.connectDevice")}
                             onClick={() => setDeviceLinkDialogOpen(true)} />
-                    <Button type="secondary" icon={mdiDownload} text={t("welcome.downloadApps")}
+                    <Button type="secondary" icon={IconDownload} text={t("welcome.downloadApps")}
                             onClick={() => setDownloadDialogOpen(true)} />
                 </div>
             </div>
@@ -145,21 +144,21 @@ export const WelcomePanel = ({
                                             $primary on every row before and therefore said nothing
                                             about which server you were looking at. */}
                                         <div className="item-icon" style={{ backgroundColor: entryColorFor(item.entryId) }}>
-                                            <Icon path={getIconPath(item.icon)} />
+                                            <Icon icon={getIconPath(item.icon)} />
                                         </div>
                                         <div className="item-info">
                                             <span className="item-name">{item.name}</span>
                                             <span className="item-meta">
                                                 {hibernated ? (
                                                     <span className="hibernated-badge">
-                                                        <Icon path={mdiPower} />{t("welcome.resume")}
+                                                        <Icon icon={IconPower} />{t("welcome.resume")}
                                                     </span>
                                                 ) : formatTimeAgo(item.timestamp, t, now)}
                                             </span>
                                         </div>
                                         <div className="item-action">
                                             {protocol && <span className="protocol-badge">{protocol}</span>}
-                                            <Icon path={mdiPlay} className="play-icon" />
+                                            <Icon icon={IconPlay} className="play-icon" />
                                         </div>
                                     </div>
                                 );
@@ -168,7 +167,7 @@ export const WelcomePanel = ({
                     </div>
                 ) : (
                     <div className="empty-state">
-                        <Icon path={mdiServerNetwork} />
+                        <Icon icon={IconServer} />
                         <h3>{t("welcome.getStarted")}</h3>
                         <p>{t("welcome.emptyHint")}</p>
                     </div>
@@ -179,14 +178,14 @@ export const WelcomePanel = ({
                          trigger={contextMenu.triggerRef}>
                 {server && (
                     <>
-                        <ContextMenuItem icon={mdiConnection} label={t("servers.contextMenu.connect")}
+                        <ContextMenuItem icon={IconCable} label={t("servers.contextMenu.connect")}
                                          shortcut="Enter" onClick={connect} />
                         {server.protocol === "ssh" && openSFTP && (
-                            <ContextMenuItem icon={mdiFolderOpen} label={t("servers.contextMenu.openSFTP")}
+                            <ContextMenuItem icon={IconFolderOpen} label={t("servers.contextMenu.openSFTP")}
                                              shortcut="Shift+Enter" onClick={connectSftp} />
                         )}
                         {openDirectConnect && (
-                            <ContextMenuItem icon={mdiCursorDefaultClick} label={t("servers.contextMenu.quickConnect")}
+                            <ContextMenuItem icon={IconMousePointerClick} label={t("servers.contextMenu.quickConnect")}
                                              onClick={quickConnect} />
                         )}
                     </>

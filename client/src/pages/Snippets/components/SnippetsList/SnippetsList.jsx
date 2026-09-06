@@ -1,6 +1,7 @@
 import "./styles.sass";
-import { mdiPencil, mdiTrashCan, mdiChevronLeft, mdiChevronRight, mdiCloudDownloadOutline, mdiLinux } from "@mdi/js";
-import Icon from "@mdi/react";
+import { Pencil as IconPencil, Trash as IconTrash, ChevronLeft as IconChevronLeft, ChevronRight as IconChevronRight, CloudDownload as IconCloudDownload } from "lucide-react";
+import { mdiLinux } from "@mdi/js";
+import Icon from "@/common/components/Icon";
 import { useSnippets } from "@/common/contexts/SnippetContext.jsx";
 import { deleteRequest, patchRequest } from "@/common/utils/RequestUtil.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
@@ -23,11 +24,11 @@ const SnippetItem = ({ snippet, onEdit, onDelete, isReadOnly, onReposition, t })
                     <div className="snippet-badges">
                         {osFilter.length > 0 && (
                             <span className="os-badge" title={osFilter.join(", ")}>
-                                <Icon path={mdiLinux} size={0.5} />
+                                <Icon icon={mdiLinux} size={0.5} />
                                 {osFilter.length === 1 ? osFilter[0] : `${osFilter.length} OS`}
                             </span>
                         )}
-                        {snippet.sourceId && <Icon path={mdiCloudDownloadOutline} size={0.65} className="source-badge" />}
+                        {snippet.sourceId && <Icon icon={IconCloudDownload} size={0.65} className="source-badge" />}
                     </div>
                 </div>
                 {snippet.description && <p>{snippet.description}</p>}
@@ -35,8 +36,8 @@ const SnippetItem = ({ snippet, onEdit, onDelete, isReadOnly, onReposition, t })
             </div>
             {!isReadOnly && (
                 <div className="snippet-actions">
-                    <button className="action-button" onClick={e => { e.stopPropagation(); onEdit(snippet.id); }} title={t('snippets.list.actions.edit')}><Icon path={mdiPencil} /></button>
-                    <button className="action-button delete" onClick={e => { e.stopPropagation(); onDelete(snippet.id); }} title={t('snippets.list.actions.delete')}><Icon path={mdiTrashCan} /></button>
+                    <button className="action-button" onClick={e => { e.stopPropagation(); onEdit(snippet.id); }} title={t('snippets.list.actions.edit')}><Icon icon={IconPencil} /></button>
+                    <button className="action-button delete" onClick={e => { e.stopPropagation(); onDelete(snippet.id); }} title={t('snippets.list.actions.delete')}><Icon icon={IconTrash} /></button>
                 </div>
             )}
         </div>
@@ -79,9 +80,9 @@ export const SnippetsList = ({ snippets, onEdit, selectedOrganization, isReadOnl
                 <div className="pagination">
                     <div className="pagination-info">{t('audit.pagination.showing', { start: (currentPage - 1) * itemsPerPage + 1, end: Math.min(currentPage * itemsPerPage, snippets.length), total: snippets.length })}</div>
                     <div className="pagination-controls">
-                        <Button text={t('audit.pagination.previous')} icon={mdiChevronLeft} onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)} disabled={currentPage <= 1} type="secondary" />
+                        <Button text={t('audit.pagination.previous')} icon={IconChevronLeft} onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)} disabled={currentPage <= 1} type="secondary" />
                         <span className="page-info">{t('audit.pagination.pageInfo', { current: currentPage, total: totalPages })}</span>
-                        <Button text={t('audit.pagination.next')} icon={mdiChevronRight} onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)} disabled={currentPage >= totalPages} type="secondary" />
+                        <Button text={t('audit.pagination.next')} icon={IconChevronRight} onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)} disabled={currentPage >= totalPages} type="secondary" />
                     </div>
                 </div>
             )}

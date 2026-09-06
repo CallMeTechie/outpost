@@ -1,6 +1,6 @@
 import { DialogProvider } from "@/common/components/Dialog";
 import IconInput from "@/common/components/IconInput";
-import { mdiKey } from "@mdi/js";
+import { Key as IconKey } from "lucide-react";
 import Button from "@/common/components/Button";
 import { useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -54,7 +54,7 @@ export const TwoFactorAuthentication = ({open, onClose}) => {
                     }} />
 
                     <div className="action-row">
-                        <IconInput icon={mdiKey} placeholder={t('settings.account.twoFactorDialog.codePlaceholder')} value={code} setValue={setCode}
+                        <IconInput icon={IconKey} placeholder={t('settings.account.twoFactorDialog.codePlaceholder')} value={code} setValue={setCode}
                                       customClass={setupFailed ? "setup-error" : ""} />
 
                         <Button text={t('settings.account.twoFactorDialog.enableButton')} onClick={() => enableTotp()} />

@@ -7,8 +7,8 @@ import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useSnippets } from "@/common/contexts/SnippetContext.jsx";
 import IconInput from "@/common/components/IconInput";
 import SelectBox from "@/common/components/SelectBox";
-import { mdiFormTextbox, mdiTextBox, mdiCodeBrackets } from "@mdi/js";
-import Icon from "@mdi/react";
+import { TextCursorInput as IconTextCursorInput, TextAlignStart as IconTextAlignStart, Brackets as IconBrackets } from "lucide-react";
+import Icon from "@/common/components/Icon";
 import { useTranslation } from "react-i18next";
 import { OS_OPTIONS, parseOsFilter } from "@/common/utils/osUtils.js";
 
@@ -115,7 +115,7 @@ export const SnippetDialog = ({ open, onClose, editSnippetId, selectedOrganizati
             <div className="snippet-dialog">
                 <div className="snippet-dialog-title">
                     <h2>
-                        <Icon path={mdiCodeBrackets} />
+                        <Icon icon={IconBrackets} />
                         {editSnippetId ? t('snippets.dialog.title.edit') : t('snippets.dialog.title.create')}
                     </h2>
                 </div>
@@ -124,13 +124,13 @@ export const SnippetDialog = ({ open, onClose, editSnippetId, selectedOrganizati
                     <div className="dialog-content">
                         <div className="form-group">
                             <label htmlFor="name">{t('snippets.dialog.fields.name')}</label>
-                            <IconInput icon={mdiFormTextbox} value={name} setValue={setName} 
+                            <IconInput icon={IconTextCursorInput} value={name} setValue={setName} 
                                        placeholder={t('snippets.dialog.placeholders.name')} id="name" />
                         </div>
 
                         <div className="form-group">
                             <label htmlFor="description">{t('snippets.dialog.fields.description')}</label>
-                            <IconInput icon={mdiTextBox} value={description} setValue={setDescription}
+                            <IconInput icon={IconTextAlignStart} value={description} setValue={setDescription}
                                        placeholder={t('snippets.dialog.placeholders.description')} id="description" />
                         </div>
 

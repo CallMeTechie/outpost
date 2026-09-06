@@ -1,7 +1,7 @@
 import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
-import { mdiAlertCircleOutline, mdiClose, mdiContentCopy } from "@mdi/js";
-import Icon from "@mdi/react";
+import { CircleAlert as IconCircleAlert, X as IconX, Copy as IconCopy } from "lucide-react";
+import Icon from "@/common/components/Icon";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import "./MessageBoxDialog.sass";
 
@@ -38,7 +38,7 @@ const MessageBoxDialog = ({ open, onClose, messageData }) => {
         <DialogProvider open={open} onClose={onClose} maxWidth="500px">
             <div className="msgbox-dialog">
                 <div className="dialog-title">
-                    <Icon path={mdiAlertCircleOutline} />
+                    <Icon icon={IconCircleAlert} />
                     <h2>{messageData.title}</h2>
                 </div>
 
@@ -49,8 +49,8 @@ const MessageBoxDialog = ({ open, onClose, messageData }) => {
                 </div>
 
                 <div className="dialog-actions">
-                    <Button onClick={copyMessage} text="Copy Message" icon={mdiContentCopy} type="secondary" />
-                    <Button onClick={onClose} text="OK" icon={mdiClose} />
+                    <Button onClick={copyMessage} text="Copy Message" icon={IconCopy} type="secondary" />
+                    <Button onClick={onClose} text="OK" icon={IconX} />
                 </div>
             </div>
         </DialogProvider>

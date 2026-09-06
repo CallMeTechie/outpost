@@ -5,8 +5,8 @@ import { getRequest, postRequest, putRequest } from "@/common/utils/RequestUtil.
 import Button from "@/common/components/Button";
 import IconInput from "@/common/components/IconInput";
 import SelectBox from "@/common/components/SelectBox";
-import { mdiFormTextbox, mdiFileDocument, mdiCheck, mdiClose, mdiCodeTags, mdiLightbulb, mdiScript } from "@mdi/js";
-import Icon from "@mdi/react";
+import { TextCursorInput as IconTextCursorInput, FileText as IconFileText, Check as IconCheck, X as IconX, Code as IconCode, Lightbulb as IconLightbulb, ScrollText as IconScrollText } from "lucide-react";
+import Icon from "@/common/components/Icon";
 import Editor, { loader } from "@monaco-editor/react";
 import { registerOutpostLanguage } from "@/common/monaco/outpost-lang.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
@@ -169,7 +169,7 @@ fi
             <div className="create-script-dialog">
                 <div className="dialog-header">
                     <h2>
-                        <Icon path={mdiScript} />
+                        <Icon icon={IconScrollText} />
                         {isEditing ? t("scripts.dialog.title.edit") : t("scripts.dialog.title.create")}
                     </h2>
                 </div>
@@ -177,7 +177,7 @@ fi
                 <div className="dialog-body">
                     <div className="form-section">
                         <h3>
-                            <Icon path={mdiFormTextbox} />
+                            <Icon icon={IconTextCursorInput} />
                             {t("scripts.dialog.scriptDetails")}
                         </h3>
 
@@ -185,7 +185,7 @@ fi
                             <div className="form-group">
                                 <label>{t("scripts.dialog.fields.name")}</label>
                                 <IconInput
-                                    icon={mdiFormTextbox}
+                                    icon={IconTextCursorInput}
                                     value={name}
                                     setValue={setName}
                                     placeholder={t("scripts.dialog.placeholders.name")}
@@ -195,7 +195,7 @@ fi
                             <div className="form-group">
                                 <label>{t("scripts.dialog.fields.description")}</label>
                                 <IconInput
-                                    icon={mdiFileDocument}
+                                    icon={IconFileText}
                                     value={description}
                                     setValue={setDescription}
                                     placeholder={t("scripts.dialog.placeholders.description")}
@@ -217,10 +217,10 @@ fi
 
                     <div className="form-section">
                         <h3>
-                            <Icon path={mdiCodeTags} />
+                            <Icon icon={IconCode} />
                             {t("scripts.dialog.scriptContent")}
                             <div className="help-tip">
-                                <Icon path={mdiLightbulb} />
+                                <Icon icon={IconLightbulb} />
                                 <span>{t("scripts.dialog.helpTip")}</span>
                             </div>
                         </h3>
@@ -258,13 +258,13 @@ fi
                         onClick={handleClose}
                         text={t("scripts.dialog.actions.cancel")}
                         type="secondary"
-                        icon={mdiClose}
+                        icon={IconX}
                         disabled={creating}
                     />
                     <Button
                         onClick={createScript}
                         text={creating ? t(`scripts.dialog.actions.${isEditing ? "updating" : "creating"}`) : t(`scripts.dialog.actions.${isEditing ? "update" : "create"}`)}
-                        icon={mdiCheck}
+                        icon={IconCheck}
                         disabled={creating}
                     />
                 </div>

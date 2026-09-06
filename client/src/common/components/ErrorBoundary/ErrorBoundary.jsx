@@ -1,7 +1,7 @@
 import { Component, useState } from "react";
 import { useRouteError } from "react-router-dom";
-import Icon from "@mdi/react";
-import { mdiAlertCircleOutline, mdiRefresh, mdiHome, mdiBug, mdiContentCopy, mdiCheck } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { CircleAlert as IconCircleAlert, RefreshCw as IconRefreshCw, House as IconHouse, Bug as IconBug, Copy as IconCopy, Check as IconCheck } from "lucide-react";
 import "./styles.sass";
 
 const ErrorDisplay = ({ error, errorInfo, is404 = false }) => {
@@ -30,7 +30,7 @@ const ErrorDisplay = ({ error, errorInfo, is404 = false }) => {
         <div className="error-boundary">
             <div className="error-boundary-content">
                 <div className="error-boundary-icon">
-                    <Icon path={mdiAlertCircleOutline} />
+                    <Icon icon={IconCircleAlert} />
                 </div>
                 
                 <h1>{is404 ? "Page Not Found" : "Something went wrong"}</h1>
@@ -44,7 +44,7 @@ const ErrorDisplay = ({ error, errorInfo, is404 = false }) => {
                 {!is404 && errorMessage && (
                     <div className="error-boundary-details">
                         <div className="error-boundary-message">
-                            <Icon path={mdiBug} />
+                            <Icon icon={IconBug} />
                             <span>{errorMessage}</span>
                         </div>
                     </div>
@@ -53,17 +53,17 @@ const ErrorDisplay = ({ error, errorInfo, is404 = false }) => {
                 <div className="error-boundary-actions">
                     {!is404 && (
                         <button className="error-btn primary" onClick={handleRefresh}>
-                            <Icon path={mdiRefresh} />
+                            <Icon icon={IconRefreshCw} />
                             <span>Refresh Page</span>
                         </button>
                     )}
                     <button className={`error-btn ${is404 ? "primary" : "secondary"}`} onClick={handleGoHome}>
-                        <Icon path={mdiHome} />
+                        <Icon icon={IconHouse} />
                         <span>Go Home</span>
                     </button>
                     {!is404 && (
                         <button className="error-btn secondary" onClick={handleCopyError}>
-                            <Icon path={copied ? mdiCheck : mdiContentCopy} />
+                            <Icon icon={copied ? IconCheck : IconCopy} />
                             <span>{copied ? "Copied!" : "Copy Error"}</span>
                         </button>
                     )}

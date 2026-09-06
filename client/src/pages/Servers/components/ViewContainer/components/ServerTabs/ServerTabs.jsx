@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback, useContext } from "react";
 import { useTranslation } from "react-i18next";
-import Icon from "@mdi/react";
-import { mdiArrowCollapseAll, mdiClose, mdiViewSplitVertical, mdiChevronLeft, mdiChevronRight, mdiSleep, mdiFolderOpen, mdiOpenInNew, mdiShareVariant, mdiLinkVariant, mdiPencil, mdiEye, mdiCloseCircle, mdiContentDuplicate, mdiNoteEditOutline, mdiRenameBox } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Shrink as IconShrink, X as IconX, Columns2 as IconColumns2, ChevronLeft as IconChevronLeft, ChevronRight as IconChevronRight, Moon as IconMoon, FolderOpen as IconFolderOpen, ExternalLink as IconExternalLink, Share2 as IconShare2, Link as IconLink, Pencil as IconPencil, Eye as IconEye, CircleX as IconCircleX, CopyPlus as IconCopyPlus, NotebookPen as IconNotebookPen, SquarePen as IconSquarePen } from "lucide-react";
 import { useDrag, useDrop } from "react-dnd";
 import TerminalActionsMenu from "../TerminalActionsMenu";
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator, useContextMenu } from "@/common/components/ContextMenu";
@@ -198,7 +198,7 @@ const DraggableTab = ({
                 <AvatarStack className="tab-participants" users={otherParticipants} max={2}
                              getKey={participant => participant.viewerId} />
                 <div className="tab-actions">
-                    <Icon path={mdiClose} className="close-btn" title="Close Session" onClick={(e) => {
+                    <Icon icon={IconX} className="close-btn" title="Close Session" onClick={(e) => {
                         e.stopPropagation();
                         closeSession(session.id);
                     }} />
@@ -215,7 +215,7 @@ const DraggableTab = ({
                     !isLocal && !isJoined guard here would silently take that away from exactly the
                     sessions (join-<liveSessionId> ids are deterministic) that most need it. */}
                 <ContextMenuItem
-                    icon={mdiRenameBox}
+                    icon={IconSquarePen}
                     label={t("servers.tabs.contextMenu.rename")}
                     shortcut="F2"
                     onClick={() => setRenameDialogOpen(true)}
@@ -224,7 +224,7 @@ const DraggableTab = ({
                 {canPopOut && (
                     <>
                         <ContextMenuItem
-                            icon={mdiOpenInNew}
+                            icon={IconExternalLink}
                             label={t("servers.tabs.contextMenu.popOut")}
                             onClick={() => popOutSession(session.id)}
                         />
@@ -232,52 +232,52 @@ const DraggableTab = ({
                     </>
                 )}
                 {canShare && !isSharing && (
-                    <ContextMenuItem icon={mdiShareVariant} label={t("servers.tabs.contextMenu.startSharing")}>
-                        <ContextMenuItem icon={mdiEye} label={t("servers.tabs.contextMenu.readOnly")} onClick={() => handleShare(false)} />
-                        <ContextMenuItem icon={mdiPencil} label={t("servers.tabs.contextMenu.readWrite")} onClick={() => handleShare(true)} />
+                    <ContextMenuItem icon={IconShare2} label={t("servers.tabs.contextMenu.startSharing")}>
+                        <ContextMenuItem icon={IconEye} label={t("servers.tabs.contextMenu.readOnly")} onClick={() => handleShare(false)} />
+                        <ContextMenuItem icon={IconPencil} label={t("servers.tabs.contextMenu.readWrite")} onClick={() => handleShare(true)} />
                     </ContextMenuItem>
                 )}
                 {canShare && isSharing && (
                     <>
-                        <ContextMenuItem icon={mdiLinkVariant} label={t("servers.tabs.contextMenu.copyShareLink")} onClick={handleCopyLink} />
-                        <ContextMenuItem icon={mdiShareVariant} label={t("servers.tabs.contextMenu.changePermissions")}>
-                            <ContextMenuItem icon={mdiEye} label={t("servers.tabs.contextMenu.readOnly")} onClick={() => handlePermissionChange(false)} disabled={!session.shareWritable} />
-                            <ContextMenuItem icon={mdiPencil} label={t("servers.tabs.contextMenu.readWrite")} onClick={() => handlePermissionChange(true)} disabled={session.shareWritable} />
+                        <ContextMenuItem icon={IconLink} label={t("servers.tabs.contextMenu.copyShareLink")} onClick={handleCopyLink} />
+                        <ContextMenuItem icon={IconShare2} label={t("servers.tabs.contextMenu.changePermissions")}>
+                            <ContextMenuItem icon={IconEye} label={t("servers.tabs.contextMenu.readOnly")} onClick={() => handlePermissionChange(false)} disabled={!session.shareWritable} />
+                            <ContextMenuItem icon={IconPencil} label={t("servers.tabs.contextMenu.readWrite")} onClick={() => handlePermissionChange(true)} disabled={session.shareWritable} />
                         </ContextMenuItem>
-                        <ContextMenuItem icon={mdiCloseCircle} label={t("servers.tabs.contextMenu.stopSharing")} onClick={handleStopSharing} danger />
+                        <ContextMenuItem icon={IconCircleX} label={t("servers.tabs.contextMenu.stopSharing")} onClick={handleStopSharing} danger />
                         <ContextMenuSeparator />
                     </>
                 )}
                 {canOpenSFTP && (
                     <ContextMenuItem
-                        icon={mdiFolderOpen}
+                        icon={IconFolderOpen}
                         label={t("servers.contextMenu.openSFTP")}
                         onClick={() => openSFTP(server.id, server.identities?.[0] ? { id: server.identities[0] } : null)}
                     />
                 )}
                 {canOpenNotes && (
                     <ContextMenuItem
-                        icon={mdiNoteEditOutline}
+                        icon={IconNotebookPen}
                         label={t("servers.tabs.contextMenu.openNotes")}
                         onClick={() => openNotes?.(server.id)}
                     />
                 )}
                 {canDuplicate && (
                     <ContextMenuItem
-                        icon={mdiContentDuplicate}
+                        icon={IconCopyPlus}
                         label={t("servers.tabs.contextMenu.duplicate")}
                         onClick={() => duplicateSession(session.id)}
                     />
                 )}
                 {canHibernate && (
                     <ContextMenuItem
-                        icon={mdiSleep}
+                        icon={IconMoon}
                         label={t("servers.tabs.contextMenu.hibernateSession")}
                         onClick={() => hibernateSession(session.id)}
                     />
                 )}
                 <ContextMenuItem
-                    icon={mdiClose}
+                    icon={IconX}
                     label={t("servers.tabs.contextMenu.closeSession")}
                     onClick={() => closeSession(session.id)}
                     danger
@@ -438,7 +438,7 @@ export const ServerTabs = ({
                 {showLeftArrow && (
                     <div className="scroll-indicator left">
                         <button type="button" aria-label="Scroll tabs left" onClick={() => scrollTabs('left')}>
-                            <Icon path={mdiChevronLeft} />
+                            <Icon icon={IconChevronLeft} />
                         </button>
                     </div>
                 )}
@@ -467,7 +467,7 @@ export const ServerTabs = ({
                 {showRightArrow && (
                     <div className="scroll-indicator right">
                         <button type="button" aria-label="Scroll tabs right" onClick={() => scrollTabs('right')}>
-                            <Icon path={mdiChevronRight} />
+                            <Icon icon={IconChevronRight} />
                         </button>
                     </div>
                 )}
@@ -484,11 +484,11 @@ export const ServerTabs = ({
                     onFullscreenToggle={onFullscreenToggle}
                     activeSession={activeSession}
                 />
-                <Icon path={mdiArrowCollapseAll} data-ui-id="UI-SERVERS-FOCUS"
+                <Icon icon={IconShrink} data-ui-id="UI-SERVERS-FOCUS"
                     className={`layout-btn ${focusEnabled ? "active" : ""}`}
                     title={t("servers.terminalActions.focusMode")}
                     onClick={onFocusToggle} />
-                <Icon path={mdiViewSplitVertical} className={`layout-btn ${layoutMode !== "single" ? "active" : ""}`}
+                <Icon icon={IconColumns2} className={`layout-btn ${layoutMode !== "single" ? "active" : ""}`}
                     title={layoutMode === "single" ? "Enable Split View" : "Disable Split View"}
                     onClick={onToggleSplit} />
             </div>

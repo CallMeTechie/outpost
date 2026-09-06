@@ -3,13 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { patchRequest, putRequest } from "@/common/utils/RequestUtil.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
-import {
-    mdiAccountCircleOutline,
-    mdiFileUploadOutline,
-    mdiLockOutline,
-    mdiKey,
-} from "@mdi/js";
-import Icon from "@mdi/react";
+import { CircleUser as IconCircleUser, FileUp as IconFileUp, Lock as IconLock, Key as IconKey } from "lucide-react";
+import Icon from "@/common/components/Icon";
 import Button from "@/common/components/Button";
 import IconInput from "@/common/components/IconInput";
 import SelectBox from "@/common/components/SelectBox";
@@ -149,7 +144,7 @@ export const IdentityDialog = ({ open, onClose, identity, organizationId }) => {
         <DialogProvider open={open} onClose={onClose} isDirty={isDirty}>
             <div className="identity-dialog">
                 <div className="dialog-title">
-                    <Icon path={mdiKey} />
+                    <Icon icon={IconKey} />
                     <h2>{isEditing ? t('settings.identities.dialog.editTitle') : t('settings.identities.dialog.createTitle')}</h2>
                 </div>
 
@@ -157,7 +152,7 @@ export const IdentityDialog = ({ open, onClose, identity, organizationId }) => {
                     <div className="dialog-content">
                         <div className="form-group">
                             <label htmlFor="name">{t('settings.identities.dialog.fields.name')}</label>
-                            <IconInput icon={mdiAccountCircleOutline} value={name} setValue={setName}
+                            <IconInput icon={IconCircleUser} value={name} setValue={setName}
                                        placeholder={t('settings.identities.dialog.fields.namePlaceholder')} id="name" required />
                         </div>
 
@@ -165,7 +160,7 @@ export const IdentityDialog = ({ open, onClose, identity, organizationId }) => {
                             {authType !== "password-only" && (
                                 <div className="form-group">
                                     <label htmlFor="username">{t('settings.identities.dialog.fields.username')}</label>
-                                    <IconInput icon={mdiAccountCircleOutline} value={username} setValue={setUsername}
+                                    <IconInput icon={IconCircleUser} value={username} setValue={setUsername}
                                                placeholder={t('settings.identities.dialog.fields.usernamePlaceholder')} id="username" />
                                 </div>
                             )}
@@ -185,7 +180,7 @@ export const IdentityDialog = ({ open, onClose, identity, organizationId }) => {
                         {(authType === "password" || authType === "password-only" || authType === "both") && (
                             <div className="form-group">
                                 <label htmlFor="password">{t('settings.identities.dialog.fields.password')}</label>
-                                <IconInput icon={mdiLockOutline} type="password" value={password} setValue={setPassword}
+                                <IconInput icon={IconLock} type="password" value={password} setValue={setPassword}
                                            placeholder={isEditing ? t('settings.identities.dialog.fields.passwordPlaceholderEdit') : t('settings.identities.dialog.fields.passwordPlaceholder')}
                                            id="password" name="password" required={!isEditing && authType === "password"} autoComplete="new-password" />
                             </div>
@@ -195,13 +190,13 @@ export const IdentityDialog = ({ open, onClose, identity, organizationId }) => {
                             <>
                                 <div className="form-group">
                                     <label htmlFor="sshKey">{t('settings.identities.dialog.fields.sshKey')}</label>
-                                    <IconInput icon={mdiFileUploadOutline} type="file" onChange={readFile} id="sshKey"
+                                    <IconInput icon={IconFileUp} type="file" onChange={readFile} id="sshKey"
                                                required={!isEditing} />
                                 </div>
 
                                 <div className="form-group">
                                     <label htmlFor="passphrase">{t('settings.identities.dialog.fields.passphrase')}</label>
-                                    <IconInput icon={mdiLockOutline} type="password" value={passphrase}
+                                    <IconInput icon={IconLock} type="password" value={passphrase}
                                                setValue={setPassphrase}
                                                placeholder={isEditing ? t('settings.identities.dialog.fields.passphrasePlaceholderEdit') : t('settings.identities.dialog.fields.passphrasePlaceholder')}
                                                id="passphrase" name="passphrase" autoComplete="new-password" />

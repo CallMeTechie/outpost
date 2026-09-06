@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import Icon from "@mdi/react";
-import { mdiMagnify } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Search as IconSearch } from "lucide-react";
 import "./styles.sass";
 
 const KEYBOARD_SHORTCUTS = [
@@ -105,7 +105,7 @@ export const KeyboardShortcutsMenu = ({ visible, onClose, onSelect }) => {
                 aria-orientation="vertical"
             >
                 <div className="keyboard-shortcuts-menu__search">
-                    <Icon path={mdiMagnify} />
+                    <Icon icon={IconSearch} />
                     <input 
                         ref={searchRef}
                         type="text" 

@@ -1,4 +1,4 @@
-import { mdiInformationOutline, mdiAccountKeyOutline, mdiCogOutline } from "@mdi/js";
+import { Info as IconInfo, UserLock as IconUserLock, Cog as IconCog } from "lucide-react";
 
 export const getFieldConfig = (type, protocol) => {
     if (type === "server") {
@@ -140,14 +140,14 @@ export const getAvailableTabs = (type, protocol) => {
     const config = getFieldConfig(type, protocol);
     const tabs = [];
 
-    tabs.push({ key: "details", label: "servers.dialog.tabs.details", icon: mdiInformationOutline });
+    tabs.push({ key: "details", label: "servers.dialog.tabs.details", icon: IconInfo });
 
     if (config.showIdentities) {
-        tabs.push({ key: "identities", label: "servers.dialog.tabs.identities", icon: mdiAccountKeyOutline });
+        tabs.push({ key: "identities", label: "servers.dialog.tabs.identities", icon: IconUserLock });
     }
 
     if (config.showSettings && (config.showMonitoring || config.showKeyboardLayout || config.showDisplaySettings || config.showAudioSettings || config.showWakeOnLan || config.showTerminalSettings)) {
-        tabs.push({ key: "settings", label: "servers.dialog.tabs.settings", icon: mdiCogOutline });
+        tabs.push({ key: "settings", label: "servers.dialog.tabs.settings", icon: IconCog });
     }
 
     return tabs;

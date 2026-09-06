@@ -9,11 +9,8 @@ import Button from "@/common/components/Button";
 import SelectBox from "@/common/components/SelectBox";
 import ActionConfirmDialog from "@/common/components/ActionConfirmDialog";
 import { applyActiveThemeCSS, removeActiveThemeCSS } from "@/common/components/ThemeLoader";
-import Icon from "@mdi/react";
-import {
-    mdiPalette, mdiWhiteBalanceSunny, mdiWeatherNight, mdiCheck, mdiCloudSync,
-    mdiCloudOffOutline, mdiPlus, mdiBrush,
-} from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Palette as IconPalette, Sun as IconSun, MoonStar as IconMoonStar, Check as IconCheck, CloudSync as IconCloudSync, CloudOff as IconCloudOff, Plus as IconPlus, Brush as IconBrush } from "lucide-react";
 import ThemeCard from "./components/ThemeCard";
 import ThemeEditorDialog from "./components/ThemeEditorDialog";
 import Tooltip from "@/common/components/Tooltip";
@@ -123,11 +120,11 @@ export const Appearance = () => {
             <div className="appearance-section">
                 <div className="section-header">
                     <h2>
-                        <Icon path={mdiPalette} size={0.8} />
+                        <Icon icon={IconPalette} size={0.8} />
                         {t("settings.account.appearance")}
                     </h2>
                     <Button
-                        icon={isGroupSynced("appearance") ? mdiCloudSync : mdiCloudOffOutline}
+                        icon={isGroupSynced("appearance") ? IconCloudSync : IconCloudOff}
                         onClick={() => {
                             if (!user) {
                                 sendToast(t("common.error"), t("settings.account.syncLoginRequired"));
@@ -156,7 +153,7 @@ export const Appearance = () => {
                                     onClick={() => setTheme("light")}
                                 >
                                     <div className="theme-icon">
-                                        <Icon path={mdiWhiteBalanceSunny} size={1} />
+                                        <Icon icon={IconSun} size={1} />
                                     </div>
                                     <span className="theme-name">{t("settings.account.themeLight")}</span>
                                 </div>
@@ -186,7 +183,7 @@ export const Appearance = () => {
                                     }}
                                 >
                                     <div className="theme-icon">
-                                        <Icon path={mdiWeatherNight} size={1} />
+                                        <Icon icon={IconMoonStar} size={1} />
                                     </div>
                                     <span className="theme-name">
                                         {themeMode === "oled" ? t("settings.account.themeOled") : t("settings.account.themeDark")}
@@ -199,10 +196,10 @@ export const Appearance = () => {
                                 >
                                     <div className="theme-icon auto-icon">
                                         <span className="light-half">
-                                            <Icon path={mdiWhiteBalanceSunny} size={0.4} />
+                                            <Icon icon={IconSun} size={0.4} />
                                         </span>
                                         <span className="dark-half">
-                                            <Icon path={mdiWeatherNight} size={0.4} />
+                                            <Icon icon={IconMoonStar} size={0.4} />
                                         </span>
                                     </div>
                                     <span className="theme-name">{t("settings.account.themeAuto")}</span>
@@ -221,7 +218,7 @@ export const Appearance = () => {
                                         title={color.name}
                                     >
                                         {accentColor === color.value && (
-                                            <Icon path={mdiCheck} size={0.6} className="check-icon" />
+                                            <Icon icon={IconCheck} size={0.6} className="check-icon" />
                                         )}
                                     </div>
                                 ))}
@@ -239,18 +236,18 @@ export const Appearance = () => {
                 <div className="section-header">
                     <div className="header-content">
                         <h2>
-                            <Icon path={mdiBrush} size={0.8} />
+                            <Icon icon={IconBrush} size={0.8} />
                             {t("settings.account.customThemes.title")}
                         </h2>
                         <p>{t("settings.account.customThemes.description")}</p>
                     </div>
-                    <Button text={t("settings.account.customThemes.newTheme")} icon={mdiPlus} onClick={openCreateEditor} />
+                    <Button text={t("settings.account.customThemes.newTheme")} icon={IconPlus} onClick={openCreateEditor} />
                 </div>
 
                 <div className="css-themes-grid">
                     {themes.length === 0 ? (
                         <div className="no-themes">
-                            <Icon path={mdiBrush} />
+                            <Icon icon={IconBrush} />
                             <h3>{t("settings.account.customThemes.noThemesYet")}</h3>
                             <p>{t("settings.account.customThemes.noThemesDescription")}</p>
                         </div>

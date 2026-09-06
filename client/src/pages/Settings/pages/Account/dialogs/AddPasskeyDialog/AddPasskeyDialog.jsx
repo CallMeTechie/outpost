@@ -1,6 +1,6 @@
 import { DialogProvider } from "@/common/components/Dialog";
 import IconInput from "@/common/components/IconInput";
-import { mdiKeyVariant } from "@mdi/js";
+import { KeyRound as IconKeyRound } from "lucide-react";
 import Button from "@/common/components/Button";
 import "./styles.sass";
 import { useState, useEffect } from "react";
@@ -30,7 +30,7 @@ export const AddPasskeyDialog = ({ open, onClose, onSubmit }) => {
                 <p>{t("settings.account.passkeys.addDialogDescription")}</p>
                 <div className="form-group">
                     <IconInput 
-                        icon={mdiKeyVariant} 
+                        icon={IconKeyRound} 
                         placeholder={t("settings.account.passkeys.namePlaceholder")}
                         value={name} 
                         setValue={setName} 

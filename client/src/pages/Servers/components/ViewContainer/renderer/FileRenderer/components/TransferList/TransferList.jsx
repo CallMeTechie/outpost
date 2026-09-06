@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import Icon from "@mdi/react";
-import { mdiClose } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { X as IconX } from "lucide-react";
 import { transferPercent } from "../../utils/transferProgress.js";
 import { transferDetailText } from "../../utils/transferDetail.js";
 import { AUTO_DISMISS_DELAY_MS, shouldAutoDismiss } from "../../utils/transferAutoDismiss.js";
@@ -52,7 +52,7 @@ const TransferRow = ({ transfer, onCancel, onDismiss }) => {
                         : t("servers.fileManager.transfers.dismiss")}
                 disabled={cancelling}
                 onClick={() => (active ? onCancel?.(transfer.id) : onDismiss?.(transfer.id))}>
-                <Icon path={mdiClose} size={0.7} />
+                <Icon icon={IconX} size={0.7} />
             </button>
         </div>
     );

@@ -1,6 +1,6 @@
 import IconInput from "@/common/components/IconInput";
 import "./styles.sass";
-import { mdiAccountCircleOutline, mdiAccountEdit, mdiCameraOutline, mdiClose, mdiShieldCheck, mdiLockReset, mdiTranslate, mdiSync, mdiCloudSync, mdiCloudOffOutline, mdiWeb, mdiTabUnselected, mdiFingerprint, mdiKeyVariant, mdiPencil, mdiTrashCan, mdiPlus, mdiApi } from "@mdi/js";
+import { CircleUser as IconCircleUser, UserPen as IconUserPen, Camera as IconCamera, X as IconX, ShieldCheck as IconShieldCheck, RotateCcwKey as IconRotateCcwKey, Languages as IconLanguages, RefreshCcw as IconRefreshCcw, CloudSync as IconCloudSync, CloudOff as IconCloudOff, Globe as IconGlobe, PanelTop as IconPanelTop, FingerprintPattern as IconFingerprintPattern, KeyRound as IconKeyRound, Pencil as IconPencil, Trash as IconTrash, Plus as IconPlus, Plug as IconPlug } from "lucide-react";
 import { useContext, useEffect, useRef, useState } from "react";
 import LetterAvatar from "@/common/components/LetterAvatar";
 import { createSquareAvatar, MAX_AVATAR_INPUT_SIZE } from "@/common/utils/imageUtils.js";
@@ -21,7 +21,7 @@ import { useTranslation } from "react-i18next";
 import SelectBox from "@/common/components/SelectBox";
 import { languages } from "@/i18n.js";
 import i18n from "@/i18n.js";
-import Icon from "@mdi/react";
+import Icon from "@/common/components/Icon";
 import { openExternalUrl } from "@/common/utils/TauriUtil.js";
 
 export const Account = () => {
@@ -88,9 +88,9 @@ export const Account = () => {
     const languageOptions = languages.map(lang => ({ label: lang.name, value: lang.code }));
 
     const sessionSyncOptions = [
-        { label: t("settings.account.sessionSyncAcrossDevices"), value: "across_devices", icon: mdiCloudSync },
-        { label: t("settings.account.sessionSyncSameBrowser"), value: "same_browser", icon: mdiWeb },
-        { label: t("settings.account.sessionSyncSameTab"), value: "same_tab", icon: mdiTabUnselected }
+        { label: t("settings.account.sessionSyncAcrossDevices"), value: "across_devices", icon: IconCloudSync },
+        { label: t("settings.account.sessionSyncSameBrowser"), value: "same_browser", icon: IconGlobe },
+        { label: t("settings.account.sessionSyncSameTab"), value: "same_tab", icon: IconPanelTop }
     ];
 
     const changeLanguage = (languageCode) => setLanguage(languageCode);
@@ -260,7 +260,7 @@ export const Account = () => {
                 text={t("settings.account.apiKeys.confirmDelete")}
             />
             <div className="account-section">
-                <h2><Icon path={mdiAccountEdit} size={0.8} style={{marginRight: '8px'}} />{t("settings.account.accountDetails")}</h2>
+                <h2><Icon icon={IconUserPen} size={0.8} style={{marginRight: '8px'}} />{t("settings.account.accountDetails")}</h2>
                 <div className="section-inner">
                     <div className="form-group avatar-group">
                         <label htmlFor="avatar">{t("settings.account.avatar.label")}</label>
@@ -269,12 +269,12 @@ export const Account = () => {
                                     onClick={() => avatarInputRef.current?.click()}
                                     disabled={avatarUploading} title={t("settings.account.avatar.upload")}>
                                 <LetterAvatar user={user} size="lg" showTooltip={false} />
-                                <span className="avatar-overlay"><Icon path={mdiCameraOutline} size={0.9} /></span>
+                                <span className="avatar-overlay"><Icon icon={IconCamera} size={0.9} /></span>
                             </button>
                             {user?.avatarHash && <button type="button" className="avatar-remove" onClick={removeAvatar}
                                                          disabled={avatarUploading}
                                                          title={t("settings.account.avatar.remove")}>
-                                <Icon path={mdiClose} size={0.6} />
+                                <Icon icon={IconX} size={0.6} />
                             </button>}
                             <input type="file" ref={avatarInputRef} accept="image/png,image/jpeg,image/webp,image/gif"
                                    style={{ display: "none" }} onChange={uploadAvatar} />
@@ -283,7 +283,7 @@ export const Account = () => {
 
                     <div className="form-group">
                         <label htmlFor="firstName">{t("settings.account.firstName")}</label>
-                        <IconInput icon={mdiAccountCircleOutline} placeholder={t("settings.account.firstName")}
+                        <IconInput icon={IconCircleUser} placeholder={t("settings.account.firstName")}
                                    id="firstName" customClass={updatedField === "firstName" ? " fd-updated" : ""}
                                    value={firstName} setValue={setFirstName}
                                    onBlur={(event) => updateName({ firstName: event.target.value })} />
@@ -291,7 +291,7 @@ export const Account = () => {
 
                     <div className="form-group">
                         <label htmlFor="lastName">{t("settings.account.lastName")}</label>
-                        <IconInput icon={mdiAccountCircleOutline} placeholder={t("settings.account.lastName")}
+                        <IconInput icon={IconCircleUser} placeholder={t("settings.account.lastName")}
                                    id="lastName"
                                    value={lastName} setValue={setLastName}
                                    customClass={updatedField === "lastName" ? " fd-updated" : ""}
@@ -302,7 +302,7 @@ export const Account = () => {
 
             <div className="account-section">
                 <div className="tfa-title">
-                    <h2><Icon path={mdiShieldCheck} size={0.8} style={{marginRight: '8px'}} />{t("settings.account.twoFactor")}</h2>
+                    <h2><Icon icon={IconShieldCheck} size={0.8} style={{marginRight: '8px'}} />{t("settings.account.twoFactor")}</h2>
                     {user?.totpEnabled ? <p className="active">{t("settings.account.twoFactorActive")}</p> :
                         <p className="inactive">{t("settings.account.twoFactorInactive")}</p>}
                 </div>
@@ -315,7 +315,7 @@ export const Account = () => {
             </div>
 
             <div className="account-section">
-                <h2><Icon path={mdiLockReset} size={0.8} style={{marginRight: '8px'}} />{t("settings.account.changePassword")}</h2>
+                <h2><Icon icon={IconRotateCcwKey} size={0.8} style={{marginRight: '8px'}} />{t("settings.account.changePassword")}</h2>
                 <div className="section-inner">
                     <p style={{ maxWidth: "25rem" }}>{t("settings.account.changePasswordDescription")}</p>
 
@@ -326,9 +326,9 @@ export const Account = () => {
 
             <div className="account-section">
                 <div className="section-header">
-                    <h2><Icon path={mdiTranslate} size={0.8} style={{marginRight: '8px'}} />{t("settings.account.language")}</h2>
+                    <h2><Icon icon={IconLanguages} size={0.8} style={{marginRight: '8px'}} />{t("settings.account.language")}</h2>
                     <Button
-                        icon={isGroupSynced("general") ? mdiCloudSync : mdiCloudOffOutline}
+                        icon={isGroupSynced("general") ? IconCloudSync : IconCloudOff}
                         onClick={() => {
                             if (!user) {
                                 sendToast(t("common.error"), t("settings.account.syncLoginRequired"));
@@ -360,7 +360,7 @@ export const Account = () => {
             </div>
 
             <div className="account-section">
-                <h2><Icon path={mdiSync} size={0.8} style={{marginRight: '8px'}} />{t("settings.account.sessionSynchronization")}</h2>
+                <h2><Icon icon={IconRefreshCcw} size={0.8} style={{marginRight: '8px'}} />{t("settings.account.sessionSynchronization")}</h2>
                 <div className="section-inner">
                     <p style={{ maxWidth: "25rem" }}>
                         {sessionSync === "across_devices" && t("settings.account.sessionSyncAcrossDevicesDesc")}
@@ -374,17 +374,17 @@ export const Account = () => {
             <div className="account-section">
                 <div className="section-header">
                     <div className="header-content">
-                        <h2><Icon path={mdiFingerprint} size={0.8} style={{marginRight: '8px'}} />{t("settings.account.passkeys.sectionTitle")}</h2>
+                        <h2><Icon icon={IconFingerprintPattern} size={0.8} style={{marginRight: '8px'}} />{t("settings.account.passkeys.sectionTitle")}</h2>
                         <p>{t("settings.account.passkeys.sectionDescription")}</p>
                     </div>
-                    <Button text={t("settings.account.passkeys.addButton")} icon={mdiPlus} onClick={() => setAddPasskeyOpen(true)} />
+                    <Button text={t("settings.account.passkeys.addButton")} icon={IconPlus} onClick={() => setAddPasskeyOpen(true)} />
                 </div>
                 <div className="settings-list">
                     {passkeys.length > 0 ? (
                         passkeys.map(passkey => (
                             <div className="settings-list-item" key={passkey.id}>
                                 <div className="item-info">
-                                    <Icon path={mdiKeyVariant} className="item-icon" />
+                                    <Icon icon={IconKeyRound} className="item-icon" />
                                     <div className="item-details">
                                         {editingPasskeyId === passkey.id ? (
                                             <input 
@@ -412,10 +412,10 @@ export const Account = () => {
                                 </div>
                                 <div className="item-actions">
                                     <button className="action-btn edit-btn" onClick={() => startEditPasskey(passkey)} title={t("settings.account.passkeys.rename")}>
-                                        <Icon path={mdiPencil} size={0.8} />
+                                        <Icon icon={IconPencil} size={0.8} />
                                     </button>
                                     <button className="action-btn delete-btn" onClick={() => confirmDeletePasskey(passkey)} title={t("settings.account.passkeys.delete")}>
-                                        <Icon path={mdiTrashCan} size={0.8} />
+                                        <Icon icon={IconTrash} size={0.8} />
                                     </button>
                                 </div>
                             </div>
@@ -431,17 +431,17 @@ export const Account = () => {
             <div className="account-section">
                 <div className="section-header">
                     <div className="header-content">
-                        <h2><Icon path={mdiApi} size={0.8} style={{marginRight: '8px'}} />{t("settings.account.apiKeys.sectionTitle")}</h2>
+                        <h2><Icon icon={IconPlug} size={0.8} style={{marginRight: '8px'}} />{t("settings.account.apiKeys.sectionTitle")}</h2>
                         <p>{t("settings.account.apiKeys.sectionDescription")}</p>
                     </div>
-                    <Button text={t("settings.account.apiKeys.addButton")} icon={mdiPlus} onClick={() => setAddApiKeyOpen(true)} />
+                    <Button text={t("settings.account.apiKeys.addButton")} icon={IconPlus} onClick={() => setAddApiKeyOpen(true)} />
                 </div>
                 <div className="settings-list">
                     {apiKeys.length > 0 ? (
                         apiKeys.map(apiKey => (
                             <div className="settings-list-item" key={apiKey.id}>
                                 <div className="item-info">
-                                    <Icon path={mdiKeyVariant} className="item-icon" />
+                                    <Icon icon={IconKeyRound} className="item-icon" />
                                     <div className="item-details">
                                         <h3>{apiKey.name}</h3>
                                         <p className="item-meta api-key-meta">
@@ -459,7 +459,7 @@ export const Account = () => {
                                 </div>
                                 <div className="item-actions">
                                     <button className="action-btn delete-btn" onClick={() => confirmDeleteApiKey(apiKey)} title={t("settings.account.apiKeys.delete")}>
-                                        <Icon path={mdiTrashCan} size={0.8} />
+                                        <Icon icon={IconTrash} size={0.8} />
                                     </button>
                                 </div>
                             </div>

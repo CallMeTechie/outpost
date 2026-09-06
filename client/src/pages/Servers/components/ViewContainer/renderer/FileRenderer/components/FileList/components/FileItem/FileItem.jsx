@@ -1,7 +1,7 @@
 import React, { memo, useState, useContext } from "react";
 import { useTranslation } from "react-i18next";
-import Icon from "@mdi/react";
-import { mdiDotsVertical, mdiFolder, mdiLinkVariant } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { EllipsisVertical as IconEllipsisVertical, Folder as IconFolder, Link as IconLink } from "lucide-react";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { getBaseUrl } from "@/common/utils/ConnectionUtil.js";
 import {
@@ -107,7 +107,7 @@ export const FileItem = memo(({
                     />
                 ) : (
                     <Icon
-                        path={item.type === "folder" ? mdiFolder : getIconByFileEnding(getExtension(item.name))}
+                        icon={item.type === "folder" ? IconFolder : getIconByFileEnding(getExtension(item.name))}
                         style={{ color: getIconColor(item) }}
                     />
                 )}
@@ -125,7 +125,7 @@ export const FileItem = memo(({
                 ) : (
                     <h2 title={item.name}>{renderName()}</h2>
                 )}
-                {item.isSymlink && <span className="symlink-badge"><Icon path={mdiLinkVariant} />{t("servers.fileManager.item.link")}</span>}
+                {item.isSymlink && <span className="symlink-badge"><Icon icon={IconLink} />{t("servers.fileManager.item.link")}</span>}
             </div>
             {showsColumns(viewMode) && (
                 <>
@@ -140,7 +140,7 @@ export const FileItem = memo(({
                 </>
             )}
             <Icon
-                path={mdiDotsVertical}
+                icon={IconEllipsisVertical}
                 className="dots-menu"
                 onClick={onDotsClick}
             />

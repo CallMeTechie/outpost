@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Icon from "@mdi/react";
-import { mdiMicrosoft, mdiAlertCircleOutline } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { CircleAlert as IconCircleAlert } from "lucide-react";
+import { mdiMicrosoft } from "@mdi/js";
 import { getRequest } from "@/common/utils/RequestUtil.js";
 import "./styles.sass";
 
@@ -30,7 +31,7 @@ export const OneDriveAccounts = ({ openOneDrive }) => {
                          className={`onedrive-account${connected ? "" : " is-disconnected"}`}
                          title={connected ? connection.microsoftEmail : t("servers.oneDrive.reconnectHint")}
                          onClick={() => connected && openOneDrive?.(connection)}>
-                        <Icon path={connected ? mdiMicrosoft : mdiAlertCircleOutline} />
+                        <Icon icon={connected ? mdiMicrosoft : IconCircleAlert} />
                         <span className="onedrive-account-name">{connection.displayName}</span>
                         {!connected && <span className="onedrive-account-state">{t("servers.oneDrive.disconnected")}</span>}
                     </div>

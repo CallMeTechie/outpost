@@ -1,7 +1,7 @@
 import "./styles.sass";
 import { DialogProvider } from "@/common/components/Dialog";
 import Input from "@/common/components/IconInput";
-import { mdiAccountCircleOutline, mdiKeyOutline } from "@mdi/js";
+import { CircleUser as IconCircleUser, Key as IconKey } from "lucide-react";
 import { useEffect, useState } from "react";
 import Button from "@/common/components/Button";
 import { putRequest } from "@/common/utils/RequestUtil.js";
@@ -64,13 +64,13 @@ export const CreateUserDialog = ({open, onClose, loadUsers}) => {
                 <div className="register-name-row">
                     <div className="form-group">
                         <label htmlFor="firstName">{t("settings.userDialog.firstName")}</label>
-                        <Input type="text" id="firstName" required icon={mdiAccountCircleOutline}
+                        <Input type="text" id="firstName" required icon={IconCircleUser}
                                placeholder={t("settings.userDialog.firstNamePlaceholder")} autoComplete="given-name"
                                value={firstName} setValue={setFirstName} />
                     </div>
                     <div className="form-group">
                         <label htmlFor="lastName">{t("settings.userDialog.lastName")}</label>
-                        <Input type="text" id="lastName" required icon={mdiAccountCircleOutline}
+                        <Input type="text" id="lastName" required icon={IconCircleUser}
                                placeholder={t("settings.userDialog.lastNamePlaceholder")} autoComplete="family-name"
                                value={lastName} setValue={setLastName} />
                     </div>
@@ -78,14 +78,14 @@ export const CreateUserDialog = ({open, onClose, loadUsers}) => {
 
                 <div className="form-group">
                     <label htmlFor="username">{t("settings.userDialog.username")}</label>
-                    <Input type="text" id="username" required icon={mdiAccountCircleOutline}
+                    <Input type="text" id="username" required icon={IconCircleUser}
                            placeholder={t("settings.userDialog.usernamePlaceholder")} autoComplete="username"
                            value={username} setValue={setUsername} />
                 </div>
 
                 <div className="form-group">
                     <label htmlFor="password">{t("settings.userDialog.password")}</label>
-                    <Input type="password" id="password" required icon={mdiKeyOutline}
+                    <Input type="password" id="password" required icon={IconKey}
                            placeholder={t("settings.userDialog.passwordPlaceholder")} autoComplete="current-password"
                            value={password} setValue={setPassword} />
                 </div>

@@ -2,8 +2,8 @@ import "./styles.sass";
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import Icon from "@mdi/react";
-import { mdiLinkOff, mdiAlertCircle } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Link2Off as IconLink2Off, CircleAlert as IconCircleAlert } from "lucide-react";
 import GuacamoleRenderer from "@/pages/Servers/components/ViewContainer/renderer/GuacamoleRenderer.jsx";
 import XtermRenderer from "@/pages/Servers/components/ViewContainer/renderer/XtermRenderer.jsx";
 import Loading from "@/common/components/Loading";
@@ -40,7 +40,7 @@ export const Share = () => {
     
     if (error) return (
         <div className="share-state">
-            <Icon path={mdiAlertCircle} />
+            <Icon icon={IconCircleAlert} />
             <h3>{t("share.errors.unableToConnect")}</h3>
             <p>{error}</p>
         </div>
@@ -48,7 +48,7 @@ export const Share = () => {
     
     if (disconnected) return (
         <div className="share-state">
-            <Icon path={mdiLinkOff} />
+            <Icon icon={IconLink2Off} />
             <h3>{t("share.sessionEnded.title")}</h3>
             <p>{t("share.sessionEnded.description")}</p>
         </div>

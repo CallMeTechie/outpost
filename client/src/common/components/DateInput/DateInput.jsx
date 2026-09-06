@@ -1,6 +1,6 @@
 import { useRef } from "react";
-import Icon from "@mdi/react";
-import { mdiCalendarBlankOutline, mdiClose } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Calendar as IconCalendar, X as IconX } from "lucide-react";
 import "./styles.sass";
 
 export const DateInput = ({ value, setValue, onChange, id, disabled = false, includeTime = true,
@@ -27,7 +27,7 @@ export const DateInput = ({ value, setValue, onChange, id, disabled = false, inc
     return (
         <div className={`date-input ${disabled ? "disabled" : ""} ${value ? "has-value" : ""}`}
              onClick={openPicker}>
-            <Icon className="date-input__icon" path={mdiCalendarBlankOutline} />
+            <Icon className="date-input__icon" icon={IconCalendar} />
             <input
                 ref={inputRef}
                 id={id}
@@ -44,7 +44,7 @@ export const DateInput = ({ value, setValue, onChange, id, disabled = false, inc
             {value && !disabled && (
                 <button type="button" className="date-input__clear" onClick={handleClear}
                         aria-label="Clear date">
-                    <Icon path={mdiClose} />
+                    <Icon icon={IconX} />
                 </button>
             )}
         </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
-import Icon from "@mdi/react";
-import { mdiMagnify, mdiClose } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { Search as IconSearch, X as IconX } from "lucide-react";
 import { getRequest } from "@/common/utils/RequestUtil.js";
 import { useTranslation } from "react-i18next";
 import "./styles.sass";
@@ -167,7 +167,7 @@ export const UserSearch = ({
     return (
         <div className="user-search" ref={containerRef}>
             <div className="user-search__input-container">
-                <Icon path={mdiMagnify} className="user-search__icon" />
+                <Icon icon={IconSearch} className="user-search__icon" />
                 <input
                     ref={inputRef}
                     type="text"
@@ -190,7 +190,7 @@ export const UserSearch = ({
                 />
                 {value && !disabled && (
                     <button type="button" className="user-search__clear" onClick={handleClear} tabIndex={-1}>
-                        <Icon path={mdiClose} />
+                        <Icon icon={IconX} />
                     </button>
                 )}
             </div>

@@ -1,9 +1,9 @@
-import Icon from "@mdi/react";
-import { mdiServerOff, mdiAlertCircle, mdiClockOutline, mdiServerNetwork } from "@mdi/js";
+import Icon from "@/common/components/Icon";
+import { ServerOff as IconServerOff, CircleAlert as IconCircleAlert, Clock as IconClock, Server as IconServer } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getIconPath } from "@/common/utils/iconUtils.js";
 
-const STATUS_ICONS = { offline: mdiServerOff, error: mdiAlertCircle, unknown: mdiClockOutline };
+const STATUS_ICONS = { offline: IconServerOff, error: IconCircleAlert, unknown: IconClock };
 
 export const MonitoringGrid = ({ servers, onServerSelect }) => {
     const { t } = useTranslation();
@@ -22,7 +22,7 @@ export const MonitoringGrid = ({ servers, onServerSelect }) => {
         return (
             <div className="monitoring-grid empty">
                 <div className="no-servers">
-                    <Icon path={mdiServerOff} />
+                    <Icon icon={IconServerOff} />
                     <h2>{t("monitoring.grid.noServers.title")}</h2>
                     <p>{t("monitoring.grid.noServers.subtitle")}</p>
                 </div>
@@ -31,7 +31,7 @@ export const MonitoringGrid = ({ servers, onServerSelect }) => {
     }
 
     const getServerIcon = (server) => {
-        if (server.type === "proxmox") return mdiServerNetwork;
+        if (server.type === "proxmox") return IconServer;
         return getIconPath(server.icon);
     };
 
@@ -62,7 +62,7 @@ export const MonitoringGrid = ({ servers, onServerSelect }) => {
                     <div className={`status-indicator ${server.monitoring?.status || "unknown"}`}></div>
                     <div className="server-header">
                         <div className="server-icon">
-                            <Icon path={getServerIcon(server)} />
+                            <Icon icon={getServerIcon(server)} />
                         </div>
                         <div className="server-info">
                             <h3>{server.name}</h3>
@@ -86,7 +86,7 @@ export const MonitoringGrid = ({ servers, onServerSelect }) => {
                     ) : (
                         <div className="offline-state">
                             <div className="offline-icon">
-                                <Icon path={STATUS_ICONS[server.status] || mdiClockOutline} />
+                                <Icon icon={STATUS_ICONS[server.status] || IconClock} />
                             </div>
                             <div className="offline-info">
                                 <h4>{t(`monitoring.grid.status.${server.status === "offline" ? "serverOffline" : server.status === "error" ? "connectionError" : "statusUnknown"}`)}</h4>
