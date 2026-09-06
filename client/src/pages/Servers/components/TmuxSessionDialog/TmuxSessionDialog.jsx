@@ -404,11 +404,15 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                                                         onClick={() => { setSelectedSession(session.name); setSelectedWindow(null); }}
                                                         onDoubleClick={() => onSelect(session.name, false)}>
                                                     <span className="tmux-session-name">{session.name}</span>
-                                                    <span className="tmux-session-meta">
-                                                        {session.attached
-                                                            ? t('servers.tmuxDialog.attachedLabel')
-                                                            : t('servers.tmuxDialog.windowsOpen', { count: session.windows })}
-                                                    </span>
+                                                    {/* Only "attached". The window count is what the
+                                                        grid icon draws -- saying it again in words took
+                                                        room from the name, which is the one thing a row
+                                                        has to show in full. */}
+                                                    {session.attached && (
+                                                        <span className="tmux-session-meta">
+                                                            {t('servers.tmuxDialog.attachedLabel')}
+                                                        </span>
+                                                    )}
                                                 </button>
                                                 <div className="tmux-session-actions">
                                                     <button className="tmux-icon-button tmux-window-grid"

@@ -312,12 +312,17 @@ screens:
         verify: required
         data_source: "tmux list-sessions auf dem verbundenen Server"
         semantic_anchor:
-          means: Die tmux-Sessions des Servers — nicht Outposts eigene Tabs.
+          means: >
+            Die tmux-Sessions des Servers — nicht Outposts eigene Tabs. Eine Zeile je Session:
+            der Name in voller Länge, rechts die drei Aktionen (Fenster anzeigen, Umbenennen,
+            Beenden), die über dem Zeilenende liegen und nur auf der Zeile erscheinen, auf der
+            man ist. Die Fensterzahl steht nicht als Text da — sie ist im Fenster-Icon
+            gezeichnet; der Name braucht den Platz.
           concept: tmux_session
           aliases: [session, tmux]
           not: [tab, server_entry, window]
           cardinality: many
-          example: "main (3 Fenster) · deploy (1 Fenster)"
+          example: "outpost-browser · nexterm-refork · preflight (aktiv)"
           empty_means: Kein tmux-Socket oder keine Session — leerer Picker, kein Fehler.
         states:
           - { id: default }

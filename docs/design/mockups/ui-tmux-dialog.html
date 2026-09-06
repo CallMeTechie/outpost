@@ -65,7 +65,18 @@
 		border-left: 2px solid transparent; min-height: 2.25rem;
 	}
 	.sessions .name { font: var(--type-mono); }
-	.sessions .meta { font: var(--type-caption); color: var(--subtext); white-space: nowrap; }
+	.sessions .meta { font: var(--type-caption); color: var(--subtext); white-space: nowrap; flex: none; }
+	.sessions .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	/* Open the window view, rename, kill. They lie over the row's right end rather than beside
+	   it, so the name keeps the whole row until you reach for one -- a name is what a row has
+	   to show in full, and the window count is already drawn by the grid icon. */
+	.sessions .row-actions { position: absolute; right: var(--space-2); top: 50%; transform: translateY(-50%);
+		display: flex; align-items: center; gap: 2px; padding-left: var(--space-3);
+		background: linear-gradient(to right, transparent, var(--gray-full) var(--space-3)); opacity: 0; }
+	.sessions li { position: relative; }
+	.sessions li[aria-selected="true"] .row-actions,
+	.sessions li.hover .row-actions { opacity: 1; }
+	.sessions .ico { width: .75rem; height: .75rem; fill: var(--subtext); }
 	.sessions li[aria-selected="true"] { background: var(--primary-opacity); border-left-color: var(--primary); }
 
 	/* Fenster-Raster */
@@ -149,8 +160,8 @@
 					<div class="pane">
 						<div class="pane-label" id="lbl-sessions">Sessions</div>
 						<ul class="sessions" role="listbox" aria-labelledby="lbl-sessions" data-ui-id="UI-TMUX-DIALOG-SESSIONS">
-							<li role="option" aria-selected="true"><span class="name">main</span><span class="meta">3 Fenster</span></li>
-							<li role="option" aria-selected="false"><span class="name">deploy</span><span class="meta">1 Fenster</span></li>
+							<li role="option" aria-selected="true"><span class="name">main</span><span class="row-actions"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12.5V14h1.5l8-8L10 4.5l-8 8zM13.7 4.3a.8.8 0 000-1.1l-.9-.9a.8.8 0 00-1.1 0l-.9.9L12.8 5.2l.9-.9z"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2h6v1h3v1.5H2V3h3V2zm-2 4h10l-.8 8.2A1 1 0 0111.2 15H4.8a1 1 0 01-1-.8L3 6z"/></svg></span></li>
+							<li role="option" aria-selected="false"><span class="name">deploy</span><span class="row-actions"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12.5V14h1.5l8-8L10 4.5l-8 8zM13.7 4.3a.8.8 0 000-1.1l-.9-.9a.8.8 0 00-1.1 0l-.9.9L12.8 5.2l.9-.9z"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2h6v1h3v1.5H2V3h3V2zm-2 4h10l-.8 8.2A1 1 0 0111.2 15H4.8a1 1 0 01-1-.8L3 6z"/></svg></span></li>
 						</ul>
 					</div>
 					<div class="pane">
@@ -185,8 +196,8 @@
 				<div class="frame">
 					<div class="pane-label">Sessions</div>
 					<ul class="sessions" role="listbox" data-ui-id="UI-TMUX-DIALOG-SESSIONS">
-						<li role="option" aria-selected="false"><span class="name">main</span><span class="meta">3 Fenster</span></li>
-						<li role="option" aria-selected="false"><span class="name">deploy</span><span class="meta">1 Fenster</span></li>
+						<li role="option" aria-selected="false"><span class="name">main</span><span class="row-actions"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12.5V14h1.5l8-8L10 4.5l-8 8zM13.7 4.3a.8.8 0 000-1.1l-.9-.9a.8.8 0 00-1.1 0l-.9.9L12.8 5.2l.9-.9z"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2h6v1h3v1.5H2V3h3V2zm-2 4h10l-.8 8.2A1 1 0 0111.2 15H4.8a1 1 0 01-1-.8L3 6z"/></svg></span></li>
+						<li role="option" aria-selected="false"><span class="name">deploy</span><span class="row-actions"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12.5V14h1.5l8-8L10 4.5l-8 8zM13.7 4.3a.8.8 0 000-1.1l-.9-.9a.8.8 0 00-1.1 0l-.9.9L12.8 5.2l.9-.9z"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2h6v1h3v1.5H2V3h3V2zm-2 4h10l-.8 8.2A1 1 0 0111.2 15H4.8a1 1 0 01-1-.8L3 6z"/></svg></span></li>
 					</ul>
 				</div>
 			</section>
@@ -227,8 +238,8 @@
 				<div class="frame">
 					<div class="pane-label">Sessions</div>
 					<ul class="sessions" role="listbox" data-ui-id="UI-TMUX-DIALOG-SESSIONS">
-						<li role="option" aria-selected="true"><span class="name">main</span><span class="meta">3 Fenster</span></li>
-						<li role="option" aria-selected="false"><span class="name">deploy</span><span class="meta">1 Fenster</span></li>
+						<li role="option" aria-selected="true"><span class="name">main</span><span class="row-actions"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12.5V14h1.5l8-8L10 4.5l-8 8zM13.7 4.3a.8.8 0 000-1.1l-.9-.9a.8.8 0 00-1.1 0l-.9.9L12.8 5.2l.9-.9z"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2h6v1h3v1.5H2V3h3V2zm-2 4h10l-.8 8.2A1 1 0 0111.2 15H4.8a1 1 0 01-1-.8L3 6z"/></svg></span></li>
+						<li role="option" aria-selected="false"><span class="name">deploy</span><span class="row-actions"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12.5V14h1.5l8-8L10 4.5l-8 8zM13.7 4.3a.8.8 0 000-1.1l-.9-.9a.8.8 0 00-1.1 0l-.9.9L12.8 5.2l.9-.9z"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2h6v1h3v1.5H2V3h3V2zm-2 4h10l-.8 8.2A1 1 0 0111.2 15H4.8a1 1 0 01-1-.8L3 6z"/></svg></span></li>
 					</ul>
 				</div>
 			</section>
