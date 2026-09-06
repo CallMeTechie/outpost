@@ -154,3 +154,8 @@ cli/target/
 
 # mockingbird run state (per machine, per run)
 .claude/.mockingbird-*
+
+# Screenshots dropped in the repo root to be looked at during a session. They are
+# conversation material, not part of the project, and four of them rode in on a
+# `git add -A` before this line existed.
+/Screenshot*.png
