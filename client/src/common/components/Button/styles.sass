@@ -43,6 +43,33 @@
     @media (max-width: 480px)
       font-size: 0.85rem
 
+  // The key that fires the same action, per the artboard. Sized down from the
+  // label so it reads as an annotation rather than a second word.
+  kbd
+    font-size: 0.75rem
+    line-height: 1.6
+    padding: 0 0.3rem
+    border: 1px solid colors.$gray
+    border-radius: 0.35rem
+    color: colors.$white
+    opacity: 0.8
+
+  // Takes the icon's place, so the label does not shift when the state flips.
+  .btn-spinner
+    width: 1rem
+    height: 1rem
+    flex: none
+    border: 2px solid colors.$gray
+    border-top-color: colors.$primary
+    border-radius: 50%
+    animation: btn-spin 0.8s linear infinite
+
+    @media (prefers-reduced-motion: reduce)
+      animation: none
+
+  &.is-loading
+    cursor: progress
+
   // :not(:disabled) so a disabled button does not light up under the
   // cursor and promise a click it will not accept.
   &:hover:not(:disabled)
@@ -93,3 +120,7 @@
 
       svg
         color: colors.$error
+
+@keyframes btn-spin
+  to
+    transform: rotate(360deg)

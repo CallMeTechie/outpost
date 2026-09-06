@@ -11,7 +11,6 @@ import {
     mdiLockOutline,
 } from "@mdi/js";
 import Input from "@/common/components/IconInput";
-import SelectBox from "@/common/components/SelectBox";
 import { getFieldConfig } from "@/pages/Servers/components/ServerDialog/utils/fieldConfig.js";
 
 export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
@@ -193,6 +192,7 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
             <div className="direct-connect-dialog">
                 <div className="direct-connect-header">
                     <h2>{t("servers.contextMenu.quickConnect")}</h2>
+                    <p className="direct-connect-subtitle">{t("servers.directConnect.subtitle")}</p>
                 </div>
 
                 <div className="direct-connect-content">
@@ -229,32 +229,46 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
 
                     <div className="identity-section" data-ui-id="UI-DIRECT-CONNECT-AUTH">
                         {authError && <p className="direct-connect-error" role="alert">{authError}</p>}
-                        <div className={`name-row ${!showUsername ? 'single-column' : ''}`}>
-                            {showUsername && (
-                                <div className="form-group">
-                                    <label htmlFor="direct-connect-username">{t("servers.dialog.fields.username")}</label>
-                                    <Input
-                                        id="direct-connect-username"
-                                        name="direct-connect-username"
-                                        icon={mdiAccountCircleOutline}
-                                        type="text"
-                                        placeholder={t("servers.dialog.placeholders.username")}
-                                        autoComplete="off"
-                                        value={username}
-                                        setValue={setUsername}
-                                    />
-                                </div>
-                            )}
+                        <div className="form-group auth-choice">
+                            <label id="direct-connect-auth-label">
+                                {t("servers.dialog.identities.authentication")}
+                            </label>
+                            {/* Segmented, not a dropdown: this choice decides which fields
+                                appear below it, and a dropdown puts that behind a click and
+                                a list. Never more than four options, so they fit across.
 
+                                A group of aria-pressed toggles rather than a radiogroup, as
+                                in the artboard: a real radiogroup owes the user arrow-key
+                                navigation and a single tab stop, and one that only renames
+                                the roles is less accessible than the buttons it replaced. */}
+                            <div className="auth-segments" role="group"
+                                 aria-labelledby="direct-connect-auth-label">
+                                {authOptions.map((option) => (
+                                    <button key={option.value} type="button"
+                                            aria-pressed={authType === option.value}
+                                            className={`auth-segment${authType === option.value ? " active" : ""}`}
+                                            onClick={() => setAuthType(option.value)}>
+                                        {option.label}
+                                    </button>
+                                ))}
+                            </div>
+                    </div>
+
+                        {showUsername && (
                             <div className="form-group">
-                                <label>{t("servers.dialog.identities.authentication")}</label>
-                                <SelectBox
-                                    options={authOptions}
-                                    selected={authType}
-                                    setSelected={setAuthType}
+                                <label htmlFor="direct-connect-username">{t("servers.dialog.fields.username")}</label>
+                                <Input
+                                    id="direct-connect-username"
+                                    name="direct-connect-username"
+                                    icon={mdiAccountCircleOutline}
+                                    type="text"
+                                    placeholder={t("servers.dialog.placeholders.username")}
+                                    autoComplete="off"
+                                    value={username}
+                                    setValue={setUsername}
                                 />
                             </div>
-                        </div>
+                        )}
 
                         {(authType === "password" || authType === "password-only" || authType === "both") && (
                             <div className="form-group">
@@ -307,11 +321,17 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
                     </div>
                 </div>
 
+                <p className="direct-connect-note">{t("servers.directConnect.notStored")}</p>
+
+                {/* The Enter hint is the artboard's, and it is honest here: the same
+                    key really does submit (see the keydown effect above), under the
+                    same condition that enables the button. */}
                 <Button
-                    className="direct-connect-button"
                     dataUiId="UI-DIRECT-CONNECT-GO"
                     onClick={handleConnect}
                     disabled={!canConnect || connecting}
+                    loading={connecting}
+                    kbd="↵"
                     text={connecting ? t("servers.dialog.connecting") : t("servers.contextMenu.connect")}
                 />
             </div>

@@ -4,7 +4,8 @@
   display: flex
   flex-direction: column
   gap: 1rem
-  width: 420px
+  // 26rem, per the artboard.
+  width: 26rem
   max-width: 90vw
 
   .direct-connect-header
@@ -13,6 +14,11 @@
       font-size: 1.3rem
       font-weight: 700
       color: colors.$white
+
+    .direct-connect-subtitle
+      margin: 0.25rem 0 0
+      font-size: 0.875rem
+      color: colors.$subtext
 
   .direct-connect-content
     display: flex
@@ -27,18 +33,15 @@
       grid-template-columns: 3fr 1fr
       gap: 1rem
 
+    // One field per row, as in the artboard. The authentication choice steers
+    // which of the rows below it exist, so it goes first and gets the full
+    // width -- squeezed into a half-row beside the username, its three labels
+    // ("Passwort", "SSH-Schlüssel", "Schlüssel+Pass") all truncated to two
+    // characters.
     .identity-section
       display: flex
       flex-direction: column
       gap: 1rem
-
-      .name-row
-        display: grid
-        grid-template-columns: 3fr 2fr
-        gap: 1rem
-
-        &.single-column
-          grid-template-columns: 1fr
 
     // One level up from .identity-section so it covers the host row too. Same
     // elements as before plus the new ones; nothing loses its styling.
@@ -51,9 +54,6 @@
         font-size: 0.85rem
         font-weight: 600
         color: colors.$subtext
-  .direct-connect-button
-    width: 100%
-
   // UI-DIRECT-CONNECT-AUTH, state error: in place, above the fields it concerns.
   .direct-connect-error
     margin: 0 0 0.5rem
@@ -64,3 +64,56 @@
   // port field's width.
   .direct-connect-error.host-error
     grid-column: 1 / -1
+
+  // The artboard's segmented control: equal shares of one row, the chosen one filled.
+  // A dropdown hid a choice that steers which fields appear underneath it.
+  .auth-choice
+    // A track holding equal segments, per the artboard: 2px of padding and gap
+    // so the chosen segment sits as a tile inside the frame rather than
+    // touching it. auto-fit rather than a fixed count -- the option list is
+    // filtered by protocol, so it is two segments for telnet and four for ssh.
+    .auth-segments
+      display: grid
+      grid-auto-flow: column
+      grid-auto-columns: 1fr
+      gap: 2px
+      padding: 2px
+      background: colors.$background
+      border: 1px solid colors.$gray
+      border-radius: 0.5rem
+
+    .auth-segment
+      min-width: 0
+      min-height: 2rem
+      padding: 0.35rem 0.5rem
+      background: transparent
+      border: 0
+      border-radius: 0.35rem
+      color: colors.$subtext
+      font-family: inherit
+      font-size: 0.875rem
+      font-weight: 500
+      cursor: pointer
+      white-space: nowrap
+      overflow: hidden
+      text-overflow: ellipsis
+      transition: background-color 0.12s ease, color 0.12s ease
+
+      &:hover
+        background: colors.$dark-gray
+        color: colors.$white
+
+      &.active
+        background: colors.$primary-opacity
+        color: colors.$white
+        box-shadow: inset 0 0 0 1px colors.$primary
+
+      &:focus-visible
+        outline: 2px solid colors.$primary
+        outline-offset: 1px
+
+  // Credentials typed here are not kept, and this dialog is the only place that can say so.
+  .direct-connect-note
+    margin: 0
+    font-size: 0.75rem
+    color: colors.$subtext

@@ -1527,6 +1527,10 @@
     }
   },
   "servers": {
+    "directConnect": {
+      "subtitle": "Connessione singola, senza server salvato.",
+      "notStored": "Solo per questa connessione — non viene salvato."
+    },
     "emptyList": "Ancora nessun server. Aggiungine uno, importa una config SSH o connettiti direttamente.",
     "emptyCreate": "Aggiungi server",
     "addServerNote": "Clicca con il tasto destro del mouse per aggiungere un nuovo server",

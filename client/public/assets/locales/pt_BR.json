@@ -1527,6 +1527,10 @@
     }
   },
   "servers": {
+    "directConnect": {
+      "subtitle": "Conexão única, sem servidor salvo.",
+      "notStored": "Apenas para esta conexão — não é armazenado."
+    },
     "emptyList": "Nenhum servidor ainda. Adicione um, importe uma config SSH ou conecte diretamente.",
     "emptyCreate": "Adicionar servidor",
     "addServerNote": "Clique com o botão direito do mouse para adicionar um novo servidor",
