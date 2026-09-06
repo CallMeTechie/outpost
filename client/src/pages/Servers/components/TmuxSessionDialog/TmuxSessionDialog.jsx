@@ -284,7 +284,21 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
             <div className="tmux-session-dialog">
                 <h2>{t('servers.tmuxDialog.title')}</h2>
 
-                {state.status === "loading" && <p className="tmux-status">{t('servers.tmuxDialog.loading')}</p>}
+                {/* Placeholder rows rather than a line of text, per the artboard: the dialog
+                    keeps the height it will have, so nothing jumps when the sessions arrive.
+                    aria-busy carries the same news to a screen reader that the shapes carry
+                    visually. */}
+                {state.status === "loading" && (
+                    <div className="tmux-skeleton" aria-busy="true" aria-live="polite"
+                         aria-label={t('servers.tmuxDialog.loading')}>
+                        {[0, 1, 2].map((i) => (
+                            <div key={i} className="tmux-skeleton-row">
+                                <span className="tmux-skel" style={{ width: `${[52, 38, 46][i]}%` }} />
+                                <span className="tmux-skel tmux-skel-meta" />
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 {state.status === "error" && <p className="tmux-status tmux-error">{state.error}</p>}
 
@@ -448,8 +462,10 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                                                 onClick={() => setSelectedWindow(win.id)}
                                                 onDoubleClick={() => onSelect(selectedSession, false, win.id)}>
                                             <span className="tmux-window-index">{win.index}</span>
-                                            <span className="tmux-window-name">{displayName(win.name)}</span>
-                                            {win.active && <span className="tmux-window-current">*</span>}
+                                            <span className="tmux-window-name">
+                                                {displayName(win.name)}
+                                                {win.active && <span className="tmux-window-current">*</span>}
+                                            </span>
                                         </button>
                                     </li>
                                 ))}
@@ -466,16 +482,23 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                     </div>
                 )}
 
-                <div className="dialog-actions">
-                    <Button type="secondary" text={t('servers.tmuxDialog.actions.cancel')} onClick={onClose} />
-                    <Button type="secondary" text={t('servers.tmuxDialog.actions.connectRaw')} disabled={busyName !== null}
-                            onClick={onConnectRaw} />
-                    <Button type="secondary" dataUiId="UI-TMUX-DIALOG-NEW"
-                            text={t('servers.tmuxDialog.actions.newSession')} disabled={busyName !== null}
-                            onClick={() => onSelect(newName && canCreate ? newName : DEFAULT_SESSION_NAME, true)} />
-                    <Button dataUiId="UI-TMUX-DIALOG-ATTACH"
-                            text={t('servers.tmuxDialog.actions.attach')} disabled={!canAttach}
-                            onClick={() => onSelect(selectedSession, false, selectedWindow ?? undefined)} />
+                {/* The artboard's .dialog-foot: what starts something on the left, what you
+                    came here to do on the right. As one right-hand row of four, "Beitreten"
+                    was the fourth equal of four and read as the least of them. */}
+                <div className="tmux-foot">
+                    <div className="tmux-foot-left">
+                        <Button type="secondary" dataUiId="UI-TMUX-DIALOG-NEW"
+                                text={t('servers.tmuxDialog.actions.newSession')} disabled={busyName !== null}
+                                onClick={() => onSelect(newName && canCreate ? newName : DEFAULT_SESSION_NAME, true)} />
+                        <Button type="secondary" text={t('servers.tmuxDialog.actions.connectRaw')}
+                                disabled={busyName !== null} onClick={onConnectRaw} />
+                    </div>
+                    <div className="tmux-foot-right">
+                        <Button type="secondary" text={t('servers.tmuxDialog.actions.cancel')} onClick={onClose} />
+                        <Button type="primary" dataUiId="UI-TMUX-DIALOG-ATTACH"
+                                text={t('servers.tmuxDialog.actions.attach')} disabled={!canAttach}
+                                onClick={() => onSelect(selectedSession, false, selectedWindow ?? undefined)} />
+                    </div>
                 </div>
             </div>
         </DialogProvider>

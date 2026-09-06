@@ -4,13 +4,62 @@
   display: flex
   flex-direction: column
   gap: 1rem
-  min-width: 24rem
+  // 42rem, per the artboard's .dialog. The old min-width alone let the dialog take
+  // whatever the content asked for, so the window grid changed the dialog's width as
+  // sessions were picked.
+  width: 42rem
+  max-width: 100%
+
+  h2
+    margin: 0
+
+  // Split foot: the ways to start something on the left, the way in on the right.
+  .tmux-foot
+    display: flex
+    justify-content: space-between
+    align-items: center
+    gap: 0.75rem
+    flex-wrap: wrap
+
+  .tmux-foot-left,
+  .tmux-foot-right
+    display: flex
+    align-items: center
+    gap: 0.5rem
 
   .tmux-status
     opacity: 0.7
 
+  // The artboard's .skeleton: rows the size of the session rows they stand in for.
+  .tmux-skeleton
+    display: grid
+    gap: 2px
+
+  .tmux-skeleton-row
+    display: flex
+    justify-content: space-between
+    align-items: center
+    gap: 0.5rem
+    min-height: 2.25rem
+    padding: 0.5rem 0.75rem
+
+  .tmux-skel
+    height: 0.75rem
+    border-radius: 0.25rem
+    background: colors.$gray
+
+  .tmux-skel-meta
+    width: 4rem
+    flex: none
+
+  // The artboard's .copy-error: tinted ground and an edge, so a failure does not read
+  // as an ordinary line that happens to be red.
   .tmux-error
     color: colors.$error
+    background: colors.$error-opacity
+    border-left: 2px solid colors.$error
+    border-radius: 0.25rem
+    padding: 0.5rem 0.75rem
 
   .tmux-notice
     opacity: 0.85
@@ -72,66 +121,98 @@
   // Two panes side by side (UI-TMUX-DIALOG-SESSIONS left, -WINDOWS right), per
   // the artboard. Below the dialog's own width they stack, so the picker stays
   // usable on a narrow window.
+  // Per the artboard (.dialog-body): 15rem for the session column, the rest for the
+  // window grid, and a rule between them instead of a gap -- the two are one surface,
+  // not two cards.
   .tmux-panes
     display: grid
-    grid-template-columns: 18rem 1fr
-    gap: 1rem
-    align-items: start
+    grid-template-columns: 15rem 1fr
+    align-items: stretch
+    min-height: 16rem
+    margin: 0 -1rem
+    border-top: 1px solid colors.$gray
+    border-bottom: 1px solid colors.$gray
 
     @media (max-width: 40rem)
       grid-template-columns: 1fr
+      min-height: 0
 
   .tmux-pane
     display: flex
     flex-direction: column
     gap: 0.5rem
     min-width: 0
+    padding: 0.75rem
+    align-content: start
+
+    + .tmux-pane
+      border-left: 1px solid colors.$gray
+
+      @media (max-width: 40rem)
+        border-left: none
+        border-top: 1px solid colors.$gray
 
   .tmux-pane-label
-    font-size: 0.8rem
-    opacity: 0.7
+    font-size: 0.75rem
+    font-weight: 500
+    text-transform: uppercase
+    letter-spacing: 0.06em
+    color: colors.$subtext
 
+  // A grid of tiles, per the artboard (.windows): windows are short labels with an
+  // index, and a column of full-width rows wasted the space while making four of them
+  // look like a long list.
   .tmux-window-list
     list-style: none
     margin: 0
     padding: 0
-    display: flex
-    flex-direction: column
-    gap: 0.25rem
+    display: grid
+    grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr))
+    gap: 0.5rem
+    align-content: start
 
   .tmux-window-row
     display: flex
 
+  // A tile, per the artboard (.windows li): index above, name below, both in mono.
+  // Two lines rather than one row, which is what lets several fit side by side.
   .tmux-window-item
     width: 100%
-    display: flex
-    align-items: center
-    gap: 0.5rem
-    padding: 0.4rem 0.75rem
-    background: none
+    display: grid
+    gap: 2px
+    min-height: 3.5rem
+    align-content: start
+    padding: 0.5rem 0.75rem
+    background: colors.$dark-gray
     border: 1px solid colors.$gray
-    border-radius: 0.5rem
+    border-radius: 0.25rem
     color: inherit
     cursor: pointer
     text-align: left
 
     &:hover
-      background: colors.$dark-gray
+      background: colors.$gray
 
   .tmux-window-name
     min-width: 0
+    font-family: var(--font-mono)
     overflow: hidden
     text-overflow: ellipsis
     white-space: nowrap
 
-  // The current tmux window, as the artboard marks it.
+  // The current tmux window, marked the way tmux itself writes it: an asterisk on the
+  // name, not a separate column.
   .tmux-window-current
-    margin-left: auto
     color: colors.$primary
 
   // One selection style for both listboxes: the row is chosen, not yet acted on.
   [role="option"][aria-selected="true"]
-    > .tmux-session-item,
+    // A window tile is a box and gets an accent border; a session is a list row and gets
+    // an accent edge -- per the artboard, which draws the two differently on purpose.
+    > .tmux-session-item
+      border-left-color: colors.$primary
+      background: colors.$primary-opacity
+
     > .tmux-window-item
       border-color: colors.$primary
       background: colors.$primary-opacity
@@ -148,12 +229,16 @@
     width: 100%
     display: flex
     justify-content: space-between
-    align-items: center
-    gap: 1rem
+    align-items: baseline
+    gap: 0.5rem
+    min-height: 2.25rem
     padding: 0.5rem 0.75rem
     background: none
-    border: 1px solid colors.$gray
-    border-radius: 0.5rem
+    border: 0
+    // The accent edge lives here as a transparent one, so choosing a session colours it
+    // instead of adding 2px and shifting the text.
+    border-left: 2px solid transparent
+    border-radius: 0.25rem
     color: inherit
     cursor: pointer
 
@@ -161,11 +246,13 @@
       background: colors.$dark-gray
 
   .tmux-session-name
+    font-family: var(--font-mono)
     font-weight: 500
 
   .tmux-session-meta
-    opacity: 0.7
-    font-size: 0.85em
+    color: colors.$subtext
+    font-size: 0.75rem
+    white-space: nowrap
 
   .tmux-session-row
     display: flex
@@ -253,11 +340,9 @@
       white-space: nowrap
 
   .tmux-window-index
-    display: inline-block
-    min-width: 1.2em
-    margin-right: 0.5rem
-    opacity: 0.55
-    font-variant-numeric: tabular-nums
+    font-family: var(--font-mono)
+    font-size: 0.75rem
+    color: colors.$subtext
 
   .tmux-window-unnamed
     opacity: 0.55
