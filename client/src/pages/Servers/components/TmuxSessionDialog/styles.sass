@@ -126,7 +126,7 @@
   // not two cards.
   .tmux-panes
     display: grid
-    grid-template-columns: 15rem 1fr
+    grid-template-columns: 16rem 1fr
     align-items: stretch
     min-height: 16rem
     margin: 0 -1rem
@@ -248,6 +248,10 @@
   .tmux-session-name
     font-family: var(--font-mono)
     font-weight: 500
+    min-width: 0
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
 
   .tmux-session-meta
     color: colors.$subtext
@@ -256,12 +260,49 @@
 
   .tmux-session-row
     display: flex
-    align-items: stretch
-    flex-wrap: wrap
+    align-items: center
+    // Never wraps. It used to, and a name plus three icon buttons does not fit across the
+    // artboard's 15rem column -- so every session became two lines with its icons stranded
+    // below it, which is what made the list unreadable.
+    flex-wrap: nowrap
     gap: 0.25rem
+    border-radius: 0.25rem
+
+    // The actions lie OVER the row's right end rather than beside it. Beside it they took
+    // their width even while invisible, which left the name a stub -- "outpost-browser"
+    // became "out…". Over it, the name has the whole row until you reach for an action,
+    // and the row does not jump when they appear. Shown on hover, on keyboard focus, and on
+    // the selected row -- that last one is what makes them reachable by touch.
+    position: relative
+
+    .tmux-session-actions
+      position: absolute
+      right: 0.25rem
+      top: 50%
+      transform: translateY(-50%)
+      display: flex
+      align-items: center
+      gap: 0.125rem
+      padding-left: 0.75rem
+      // The row's own ground, so covered text does not show through behind the icons.
+      background: linear-gradient(to right, transparent, colors.$gray-full 0.75rem)
+      opacity: 0
+      pointer-events: none
+      transition: opacity 0.12s ease
+
+    &:hover,
+    &:focus-within
+      background: colors.$gray-full
+
+    &:hover .tmux-session-actions,
+    &:focus-within .tmux-session-actions,
+    &[aria-selected="true"] .tmux-session-actions
+      opacity: 1
+      pointer-events: auto
 
     .tmux-session-item
       flex: 1
+      min-width: 0
 
       &:disabled
         opacity: 0.5

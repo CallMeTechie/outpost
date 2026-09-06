@@ -405,7 +405,9 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
                                                         onDoubleClick={() => onSelect(session.name, false)}>
                                                     <span className="tmux-session-name">{session.name}</span>
                                                     <span className="tmux-session-meta">
-                                                        {session.attached && t('servers.tmuxDialog.attachedLabel')}
+                                                        {session.attached
+                                                            ? t('servers.tmuxDialog.attachedLabel')
+                                                            : t('servers.tmuxDialog.windowsOpen', { count: session.windows })}
                                                     </span>
                                                 </button>
                                                 <div className="tmux-session-actions">
