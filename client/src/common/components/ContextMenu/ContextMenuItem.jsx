@@ -161,7 +161,12 @@ export const ContextMenuItem = ({
             aria-expanded={hasSubmenu ? isSubmenuOpen : undefined}
             data-shortcut={shortcut || undefined}
         >
-            {icon && (typeof icon === "string" ? <Icon icon={icon} className="menu-icon" /> : <span className="menu-icon">{icon}</span>)}
+            {/* An already rendered element (ServerList hands in <ProxmoxLogo />) is placed as
+                it is; anything else -- a Lucide component or an MDI path -- goes through Icon.
+                The old test was "string or not", and a Lucide component is not a string: it
+                went into the span as a bare object, which React refuses (error #31) the
+                moment a menu opens. */}
+            {icon && (React.isValidElement(icon) ? <span className="menu-icon">{icon}</span> : <Icon icon={icon} className="menu-icon" />)}
             <span className="menu-label">{label}</span>
             {shortcut && !hasSubmenu && <kbd className="menu-shortcut">{formatShortcut(shortcut)}</kbd>}
             {hasSubmenu && (
