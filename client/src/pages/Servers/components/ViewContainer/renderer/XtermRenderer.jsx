@@ -20,6 +20,7 @@ import ConnectionLoader from "./components/ConnectionLoader";
 import ConnectionError, { mapConnectionError } from "./components/ConnectionError";
 import { getWebSocketUrl } from "@/common/utils/ConnectionUtil.js";
 import { isImeBackspace } from "@/common/utils/imeKeys.js";
+import { shouldFit, shouldSendSize } from "@/common/utils/terminalResize.js";
 import { postRequest } from "@/common/utils/RequestUtil.js";
 import { applyLatchedModifiers } from "@/common/utils/keyBarModifiers.js";
 import "@xterm/xterm/css/xterm.css";
@@ -473,21 +474,30 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
             if (suggestionRef.current) setSuggestionAnchor(anchor);
         };
 
-        const handleResize = () => {
-            // Nothing at all when the size has not moved. fit() otherwise rewrites the
-            // terminal's dimensions and sends them to the host on every call, and any layout
-            // that oscillates between two widths turns that into a loop that repaints
-            // forever. proposeDimensions is what fit() itself would compute, so asking first
-            // costs one measurement and cannot disagree with it.
-            const next = fitAddon.proposeDimensions();
-            const changed = next && next.cols && next.rows
-                && (next.cols !== term.cols || next.rows !== term.rows);
+        // Per terminal instance, so a re-created session starts out having told the host
+        // nothing. Plain locals rather than refs: the effect that owns them owns the socket
+        // and the terminal too, and all three die together.
+        let lastSentSize = null;
+        let hostSpoke = false;
 
-            if (changed) {
-                fitAddon.fit();
-                if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-                    wsRef.current.send(`\x01${term.cols},${term.rows}`);
-                }
+        const handleResize = () => {
+            // Refit only when the size has moved. fit() otherwise rewrites the terminal's
+            // dimensions on every call, and any layout that oscillates between two widths
+            // turns that into a loop that repaints forever. proposeDimensions is what fit()
+            // itself would compute, so asking first costs one measurement and cannot
+            // disagree with it.
+            if (shouldFit(fitAddon.proposeDimensions(), term)) fitAddon.fit();
+
+            // Telling the host is tracked separately, against what it was last told rather
+            // than against the last local change. A send skipped because the socket was
+            // still connecting is retried by the next poll -- folded into the fit above, it
+            // was skipped once and never repeated, and the shell went on wrapping at column
+            // 80 behind a terminal that looked right. See terminalResize.js.
+            const size = { cols: term.cols, rows: term.rows };
+            const open = wsRef.current?.readyState === WebSocket.OPEN;
+            if (shouldSendSize(size, lastSentSize, open)) {
+                wsRef.current.send(`\x01${size.cols},${size.rows}`);
+                lastSentSize = size;
             }
 
             // The anchors below run either way: a pane can move without changing size -- a
@@ -565,6 +575,7 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
 
         ws.onopen = () => {
             ws.send(`\x01${term.cols},${term.rows}`);
+            lastSentSize = { cols: term.cols, rows: term.rows };
             // Not when the socket is constructed but when it is open: only from
             // here does a key press actually reach the host (UI-SERVERS-KEYBAR,
             // state disabled).
@@ -662,6 +673,15 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
             const data = event.data;
 
             connectionLoaderRef.current?.hide();
+
+            // The first byte from the host proves the channel is up and its bridge loop is
+            // running, which is not true of the moment the websocket opened -- a size sent
+            // before that has nobody to apply it. Dropping the record makes the next poll
+            // state it once more; after that lastSentSize matches and the poll goes quiet.
+            if (!hostSpoke) {
+                hostSpoke = true;
+                lastSentSize = null;
+            }
 
             if (data.startsWith("\x02")) {
                 const prompt = data.substring(1);
