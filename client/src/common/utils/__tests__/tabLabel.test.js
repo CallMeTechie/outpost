@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert";
-import { buildTabLabel, assignNumbers, diffAssignments, tabGroupKey, tabIdentitySignature } from "../tabLabel.js";
+import { buildTabLabel, assignNumbers, diffAssignments, tabGroupKey, tabIdentitySignature, idsNeedingNumber } from "../tabLabel.js";
 
 // buildTabLabel only ever calls t() for the notes suffix and the tooltip's type value - both
 // static label keys with no interpolation - so a small stub is enough, in the style
@@ -359,4 +359,53 @@ test("an added session reports a difference", () => {
 
 test("a removed session reports a difference", () => {
     assert.strictEqual(diffAssignments({ a: 1, b: 2 }, { a: 1 }), true);
+});
+
+// --- Nummer nur bei echter Verwechslungsgefahr -------------------------------------------
+
+const s = (id, name, extra = {}) => ({ id, server: { name }, ...extra });
+
+test("idsNeedingNumber: a tab standing alone in its group needs no number", () => {
+    // The reported confusion: one open tab reading "nas (11)" looks like eleven of them.
+    const ids = idsNeedingNumber([s("a", "nas")], { a: { number: 11 } });
+    assert.equal(ids.size, 0);
+});
+
+test("idsNeedingNumber: two tabs that would read the same both get one", () => {
+    const ids = idsNeedingNumber([s("a", "nas"), s("b", "nas")], { a: { number: 1 }, b: { number: 11 } });
+    assert.deepEqual([...ids].sort(), ["a", "b"]);
+});
+
+test("idsNeedingNumber: tabs that already read differently are left alone", () => {
+    const ids = idsNeedingNumber([s("a", "nas"), s("b", "pve")], { a: { number: 4 }, b: { number: 7 } });
+    assert.equal(ids.size, 0);
+});
+
+test("idsNeedingNumber: the kind separates groups, as it does for numbering", () => {
+    // Same server, but "nas" and "nas (SFTP)" already read differently.
+    const ids = idsNeedingNumber([s("a", "nas"), s("b", "nas", { type: "sftp" })], {});
+    assert.equal(ids.size, 0);
+});
+
+test("idsNeedingNumber: a custom name that collides counts as a collision", () => {
+    const ids = idsNeedingNumber([s("a", "nas"), s("b", "pve")], { a: { name: "Backup" }, b: { name: "Backup" } });
+    assert.deepEqual([...ids].sort(), ["a", "b"]);
+});
+
+test("buildTabLabel: numbered=false hides the number without touching it", () => {
+    const session = s("a", "nas");
+    const identity = { number: 11 };
+    const hidden = buildTabLabel(session, identity, k => k, { numbered: false });
+    assert.equal(hidden.text, "nas");
+    assert.equal(hidden.number, null);
+    // The stored number is untouched -- nothing renumbers, it is only not drawn.
+    assert.equal(identity.number, 11);
+
+    const shown = buildTabLabel(session, identity, k => k, { numbered: true });
+    assert.equal(shown.text, "nas (11)");
+    assert.equal(shown.number, 11);
+});
+
+test("buildTabLabel: without the option a number still shows, as every other caller expects", () => {
+    assert.equal(buildTabLabel(s("a", "nas"), { number: 3 }, k => k).text, "nas (3)");
 });

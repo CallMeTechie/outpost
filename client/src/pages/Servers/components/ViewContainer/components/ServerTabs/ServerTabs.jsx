@@ -12,7 +12,7 @@ import AvatarStack from "@/common/components/AvatarStack";
 import { postRequest, deleteRequest, patchRequest } from "@/common/utils/RequestUtil";
 import { getBaseUrl } from "@/common/utils/ConnectionUtil.js";
 import { paneColorFor } from "../../utils/paneColors.js";
-import { buildTabLabel } from "@/common/utils/tabLabel.js";
+import { buildTabLabel, idsNeedingNumber } from "@/common/utils/tabLabel.js";
 import RenameTabDialog from "./RenameTabDialog.jsx";
 import "./styles.sass";
 
@@ -33,6 +33,7 @@ const DraggableTab = ({
     paneColorSessions,
     identity,
     liveTitle,
+    numbered = false,
 }) => {
     const contextMenu = useContextMenu();
     const { popOutSession } = useActiveSessions();
@@ -72,7 +73,7 @@ const DraggableTab = ({
     // liveTitle is mixed in here rather than carried on `session` itself - it lives in
     // ViewContainer's own state, keyed by session id, precisely so it never becomes part of the
     // session objects that drive tab numbering (see tabLabel.js and task-7-brief.md).
-    const tabLabel = buildTabLabel({ ...session, liveTitle }, identity, t);
+    const tabLabel = buildTabLabel({ ...session, liveTitle }, identity, t, { numbered });
     const tabTooltip = tabLabel.tooltip.map(({ key, value }) => `${t(key)}: ${value}`).join("\n");
     // What the rename dialog prefills with, and what it shows as a fallback hint - deliberately
     // not tabLabel.text: that carries the type suffix and the group number baked in, so
@@ -432,6 +433,11 @@ export const ServerTabs = ({
 
     const orderedSessions = tabOrder.map(sessionId => activeSessions.find(session => session.id === sessionId)).filter(Boolean);
 
+    // Computed over exactly the tabs this strip draws, so a number appears only where two of
+    // them would otherwise read the same. The numbers themselves are assigned elsewhere and
+    // never change here -- this only decides which of them are worth showing.
+    const numberedIds = idsNeedingNumber(orderedSessions, tabIdentities);
+
     return (
         <div className="server-tabs" data-ui-id="UI-SERVERS-TABS">
             <div className="tabs-container">
@@ -452,6 +458,7 @@ export const ServerTabs = ({
                                 progress={sessionProgress[session.id] || 0}
                                 paneColorSessions={paneColorSessions}
                                 identity={tabIdentities[session.id]}
+                                numbered={numberedIds.has(session.id)}
                                 liveTitle={liveTitles[session.id]} />
                         );
                     })}

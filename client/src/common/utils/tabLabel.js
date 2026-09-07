@@ -81,7 +81,14 @@ const field = (key, value) => (value ? { key, value } : null);
 // neither carries the escaping concern above: the notes suffix, which mirrors ServerTabs.jsx's own
 // suffix construction verbatim (SFTP's hardcoded literal included; that literal is a pre-existing
 // choice and not this task's to fix), and the tooltip's type value.
-export const buildTabLabel = (session, identity = {}, t) => {
+//
+// `numbered` says whether this tab currently has a sibling it must be told apart from. The
+// number is assigned and reserved for good (see assignNumbers), but showing it on a tab that
+// stands alone answers a question nobody asked: it reads as "eleven of these are open" when
+// it only records that this server has been opened eleven times in this browser. Hiding it
+// changes nothing about the bookkeeping, so no tab is ever renumbered while it is on screen --
+// a number only appears or disappears at the moment a sibling opens or closes.
+export const buildTabLabel = (session, identity = {}, t, { numbered = true } = {}) => {
     const hasCustomName = Boolean(identity?.name);
     const parts = discriminatorParts(session);
     const base = discriminatedBase(session, parts);
@@ -95,7 +102,8 @@ export const buildTabLabel = (session, identity = {}, t) => {
     // Type first, number last: the type says what the tab is, the number says which of several.
     // Number 1 needs no suffix - it's the common case, and marking it would be noise on every tab
     // that never had a same-named sibling.
-    const text = identity?.number > 1 ? `${body} (${identity.number})` : body;
+    const showNumber = numbered && identity?.number > 1;
+    const text = showNumber ? `${body} (${identity.number})` : body;
 
     // The same three pieces the tab strip draws separately (docs/design/mockups/ui-servers.html,
     // .tab): the name, then the kind in caption type and subtext colour, then the number. `text`
@@ -105,7 +113,7 @@ export const buildTabLabel = (session, identity = {}, t) => {
     // once, next to the suffix it orders.
     const name = hasCustomName ? identity.name : base;
     const kind = typeSuffix.trim();
-    const number = identity?.number > 1 ? identity.number : null;
+    const number = showNumber ? identity.number : null;
 
     const tooltip = [
         field("servers.tabLabel.tooltip.server", baseName(session)),
@@ -126,6 +134,26 @@ export const buildTabLabel = (session, identity = {}, t) => {
     ].filter(Boolean);
 
     return { text, name, kind, number, tooltip };
+};
+
+// The sessions that currently have at least one sibling rendering the same text, by id. The
+// caller hands in exactly the list it is about to draw -- the tab strip, not the numbering's
+// wider list of active plus hibernated sessions: a hibernated tab is not on screen, so it
+// cannot be confused with anything, and counting it would put a number on a tab that stands
+// alone in the strip. Resuming it makes both numbers appear, which is the moment they start
+// being needed.
+export const idsNeedingNumber = (sessions, identities = {}) => {
+    const byGroup = new Map();
+    for (const session of sessions) {
+        const key = tabGroupKey(session, identities[session.id]);
+        byGroup.set(key, (byGroup.get(key) ?? []).concat(session.id));
+    }
+
+    const ids = new Set();
+    for (const members of byGroup.values()) {
+        if (members.length > 1) for (const id of members) ids.add(id);
+    }
+    return ids;
 };
 
 // Which suffix bucket a session's type falls into. Not the literal suffix text - notes needs
