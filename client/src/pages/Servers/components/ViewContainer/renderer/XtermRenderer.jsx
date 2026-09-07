@@ -22,6 +22,7 @@ import { getWebSocketUrl } from "@/common/utils/ConnectionUtil.js";
 import { isImeBackspace } from "@/common/utils/imeKeys.js";
 import { shouldFit, shouldSendSize } from "@/common/utils/terminalResize.js";
 import { parseContextToken } from "../utils/contextParser.js";
+import { recordResize } from "../utils/resizeDiagnostics.js";
 import { postRequest } from "@/common/utils/RequestUtil.js";
 import { applyLatchedModifiers } from "@/common/utils/keyBarModifiers.js";
 import "@xterm/xterm/css/xterm.css";
@@ -491,7 +492,9 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
             // turns that into a loop that repaints forever. proposeDimensions is what fit()
             // itself would compute, so asking first costs one measurement and cannot
             // disagree with it.
-            if (shouldFit(fitAddon.proposeDimensions(), term)) fitAddon.fit();
+            const proposed = fitAddon.proposeDimensions();
+            const didFit = shouldFit(proposed, term);
+            if (didFit) fitAddon.fit();
 
             // Telling the host is tracked separately, against what it was last told rather
             // than against the last local change. A send skipped because the socket was
@@ -500,10 +503,26 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
             // 80 behind a terminal that looked right. See terminalResize.js.
             const size = { cols: term.cols, rows: term.rows };
             const open = wsRef.current?.readyState === WebSocket.OPEN;
-            if (shouldSendSize(size, lastSentSize, open)) {
+            const didSend = shouldSendSize(size, lastSentSize, open);
+            if (didSend) {
                 wsRef.current.send(`\x01${size.cols},${size.rows}`);
                 lastSentSize = size;
             }
+
+            // Abgeschaltet kostet das einen Vergleich. Eingeschaltet ist es das Einzige, was
+            // die Frage beantwortet, welches Glied der Rückkopplung das andere treibt:
+            // pendelt die gemessene Breite, pendelt der Vorschlag, oder ist beides stabil und
+            // das Zittern kommt von der Gegenseite.
+            const box = ref.current?.getBoundingClientRect();
+            recordResize({
+                session: session.id,
+                width: box?.width ?? 0,
+                height: box?.height ?? 0,
+                proposed,
+                current: { cols: term.cols, rows: term.rows },
+                didFit,
+                didSend,
+            });
 
             // The anchors below run either way: a pane can move without changing size -- a
             // sibling closing, the key bar appearing above it -- and the password hint has to

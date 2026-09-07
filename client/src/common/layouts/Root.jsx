@@ -24,6 +24,7 @@ import ConnectionErrorBanner from "@/common/components/ConnectionErrorBanner";
 import { waitForTauri } from "@/common/utils/TauriUtil.js";
 import MobileNav from "@/common/components/MobileNav";
 import ThemeLoader from "@/common/components/ThemeLoader";
+import { initDiagnostics } from "@/pages/Servers/components/ViewContainer/utils/resizeDiagnostics.js";
 import Icon from "@/common/components/Icon";
 import { ChevronRight as IconChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -52,6 +53,10 @@ const AppContent = () => {
             setTauriReady(true);
         });
     }, []);
+
+    // Einmal je Seitenaufruf, nicht je Terminal: die Messung ist eine Eigenschaft der
+    // Sitzung im Browser, nicht eines einzelnen Tabs.
+    useEffect(() => { initDiagnostics(); }, []);
     useEffect(() => {
         if (!isLeftPaneCollapsed) return;
         const isPointInRect = (rect, x, y) => rect && x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
