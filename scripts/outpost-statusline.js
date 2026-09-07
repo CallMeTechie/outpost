@@ -42,7 +42,8 @@ const pick = (object, ...pathsToTry) => {
 };
 
 const main = () => {
-    let input = {};
+    // Ohne Anfangswert: der würde in jedem Zweig überschrieben und ist damit tote Zuweisung.
+    let input;
     try {
         input = JSON.parse(readStdin() || "{}");
     } catch {
