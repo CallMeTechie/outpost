@@ -36,10 +36,50 @@ export const Sidebar = ({ onToggleCollapse }) => {
     const servers = isConnectorMode ? getServers() : [];
     const activeServerId = isConnectorMode ? getActiveServerId() : null;
 
-    const handleMouseEnter = () => { clearTimeout(hoverTimeoutRef.current); setUserMenuOpen(true); };
-    const handleMouseLeave = () => { hoverTimeoutRef.current = setTimeout(() => setUserMenuOpen(false), 150); };
+    // Überfahren öffnet, aber nur mit der Maus. Ein Finger löst auf den meisten Browsern
+    // zusätzlich ein nachgebildetes Enter-Ereignis aus; zusammen mit dem Klick unten hätte
+    // das Menü sich im selben Tipp geöffnet und sofort wieder geschlossen.
+    const isMousePointer = (event) => !event.pointerType || event.pointerType === "mouse";
+    const handlePointerEnter = (event) => {
+        if (!isMousePointer(event)) return;
+        clearTimeout(hoverTimeoutRef.current);
+        setUserMenuOpen(true);
+    };
+    const handlePointerLeave = (event) => {
+        if (!isMousePointer(event)) return;
+        hoverTimeoutRef.current = setTimeout(() => setUserMenuOpen(false), 150);
+    };
+
+    // Der Weg ohne Maus. Ohne ihn war das Konto-Menü — Einstellungen, Unterstützung,
+    // Abmelden — per Finger und per Tastatur überhaupt nicht erreichbar: geöffnet wurde
+    // es allein vom Überfahren des Elternknotens. Auf einem Tablet oberhalb des
+    // Mobil-Breakpoints, wo die Seitenleiste sichtbar ist und die untere Leiste mit
+    // ihrem eigenen Konto-Eintrag fehlt, gab es gar keinen Zugang.
+    const toggleUserMenu = () => {
+        clearTimeout(hoverTimeoutRef.current);
+        setUserMenuOpen(open => !open);
+    };
+    const handleAccountKeyDown = (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            toggleUserMenu();
+        } else if (event.key === "Escape" && userMenuOpen) {
+            setUserMenuOpen(false);
+        }
+    };
 
     useEffect(() => () => clearTimeout(hoverTimeoutRef.current), []);
+
+    // Mit der Maus schließt das Verlassen des Bereichs das Menü. Ein Tipp hat kein
+    // Verlassen, also schließt hier der Tipp daneben — sonst bliebe es offen stehen.
+    useEffect(() => {
+        if (!userMenuOpen) return;
+        const closeOnOutside = (event) => {
+            if (!event.target.closest?.(".user-account-area")) setUserMenuOpen(false);
+        };
+        document.addEventListener("pointerdown", closeOnOutside, true);
+        return () => document.removeEventListener("pointerdown", closeOnOutside, true);
+    }, [userMenuOpen]);
     useEffect(() => {
         const handleOpenSettings = event => { setSettingsTab(event.detail?.tab || "account"); setSettingsDialogOpen(true); };
         window.addEventListener("openSettings", handleOpenSettings);
@@ -71,9 +111,13 @@ export const Sidebar = ({ onToggleCollapse }) => {
                 </nav>
             </div>
             <div className="sidebar-bottom">
-                <div className="user-account-area" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+                <div className="user-account-area" onPointerEnter={handlePointerEnter} onPointerLeave={handlePointerLeave}>
                     <Tooltip text={user?.username || t('common.sidebar.account')} disabled={userMenuOpen}>
-                        <div className={`user-btn ${userMenuOpen ? 'active' : ''}`} data-ui-id="UI-SHELL-ACCOUNT"><Icon icon={IconUserCog} /></div>
+                        <div className={`user-btn ${userMenuOpen ? 'active' : ''}`} data-ui-id="UI-SHELL-ACCOUNT"
+                             role="button" tabIndex={0}
+                             aria-haspopup="menu" aria-expanded={userMenuOpen}
+                             aria-label={user?.username || t('common.sidebar.account')}
+                             onClick={toggleUserMenu} onKeyDown={handleAccountKeyDown}><Icon icon={IconUserCog} /></div>
                     </Tooltip>
                     <div className={`user-menu ${userMenuOpen ? 'open' : ''}`}>
                         <div className="user-menu-header">
