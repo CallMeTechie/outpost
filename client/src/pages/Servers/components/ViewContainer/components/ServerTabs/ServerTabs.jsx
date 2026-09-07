@@ -161,9 +161,14 @@ const DraggableTab = ({
                     actually running, so nothing is lost and the strip stays calm the rest of
                     the time. */}
                 <span className="tab-stripe" aria-hidden="true" />
-                {showProgress ? (
-                <div className="progress-circle">
-                        <svg width="24" height="24" viewBox="0 0 24 24">
+                {/* One slot for both, sized in CSS. The ring used to bring its own 36px box
+                    where the swatch had 8px: it filled the tab's whole height, was clipped top
+                    and bottom, and pushed the name 28px to the right every time a command
+                    started printing a percentage. Sharing a fixed slot means the ring appears
+                    and goes without a single pixel moving. */}
+                <span className="tab-marker" aria-hidden="true">
+                    {showProgress ? (
+                        <svg viewBox="0 0 24 24">
                             <circle
                                 cx="12"
                                 cy="12"
@@ -179,7 +184,7 @@ const DraggableTab = ({
                                 r={radius}
                                 fill="none"
                                 stroke="currentColor"
-                                strokeWidth="2"
+                                strokeWidth="2.5"
                                 strokeDasharray={circumference}
                                 strokeDashoffset={offset}
                                 strokeLinecap="round"
@@ -187,10 +192,10 @@ const DraggableTab = ({
                                 transform="rotate(-90 12 12)"
                             />
                         </svg>
-                </div>
-                ) : (
-                    <span className="tab-swatch" aria-hidden="true" />
-                )}
+                    ) : (
+                        <span className="tab-swatch" />
+                    )}
+                </span>
                 <h2 title={tabTooltip}>
                     <span className="tab-name">{tabLabel.name}</span>
                     {tabLabel.kind && <span className="tab-kind">{tabLabel.kind}</span>}
