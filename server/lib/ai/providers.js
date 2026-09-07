@@ -166,7 +166,10 @@ const anthropicProvider = {
 
 const CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex";
 const CODEX_CLIENT_VERSION = "0.99.0";
-const CODEX_USER_AGENT = `codex_cli_rs/${CODEX_CLIENT_VERSION} (Nexterm)`;
+// Der User-Agent ahmt die offizielle Codex-CLI nach -- nur so nimmt der Abo-Endpunkt
+// die Anmeldung an. Verbindlich ist der Teil vor der Klammer; der Zusatz in Klammern
+// ist der freie Kommentar, der sagt, wer hier ruft.
+const CODEX_USER_AGENT = `codex_cli_rs/${CODEX_CLIENT_VERSION} (Outpost)`;
 const CODEX_FALLBACK_MODELS = ["gpt-5-codex", "gpt-5", "codex-mini-latest"];
 const codexOAuth = getOAuthClient("openai_codex");
 
