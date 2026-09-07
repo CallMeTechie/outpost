@@ -35,3 +35,31 @@ test("a size that measures to nothing is never sent", () => {
     assert.equal(shouldSendSize(undefined, null, true), false);
     assert.equal(shouldSendSize({ cols: 0, rows: 0 }, null, true), false);
 });
+
+// --- Zwei-Takt-Bremse ---------------------------------------------------------------------
+
+test("ein Vorschlag zurück auf die eben verlassene Größe wird kurz abgelehnt", () => {
+    // Der gemessene Fall: konstante Breite, Vorschlag kippt zwischen 104 und 105.
+    const current = { cols: 104, rows: 57 };
+    const previous = { cols: 105, rows: 57, at: 1000 };
+    assert.equal(shouldFit({ cols: 105, rows: 57 }, current, previous, 1300), false);
+});
+
+test("nach Ablauf der Sperre kommt derselbe Vorschlag durch", () => {
+    // Sonst bliebe ein Terminal für immer auf einer Größe stehen, die der Nutzer verlassen hat.
+    const current = { cols: 104, rows: 57 };
+    const previous = { cols: 105, rows: 57, at: 1000 };
+    assert.equal(shouldFit({ cols: 105, rows: 57 }, current, previous, 4000), true);
+});
+
+test("ein echter Größenwechsel kommt sofort durch", () => {
+    const current = { cols: 104, rows: 57 };
+    const previous = { cols: 105, rows: 57, at: 1000 };
+    assert.equal(shouldFit({ cols: 130, rows: 57 }, current, previous, 1100), true);
+    assert.equal(shouldFit({ cols: 105, rows: 40 }, current, previous, 1100), true);
+});
+
+test("ohne Vorgeschichte bleibt es beim einfachen Vergleich", () => {
+    assert.equal(shouldFit({ cols: 145, rows: 53 }, { cols: 80, rows: 24 }), true);
+    assert.equal(shouldFit({ cols: 80, rows: 24 }, { cols: 80, rows: 24 }), false);
+});

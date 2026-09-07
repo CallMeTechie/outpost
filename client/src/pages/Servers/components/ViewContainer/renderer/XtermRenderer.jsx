@@ -485,6 +485,10 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
         // and the terminal too, and all three die together.
         let lastSentSize = null;
         let hostSpoke = false;
+        // Die Größe, von der zuletzt weg-eingepasst wurde. Bremst den Zwei-Takt, den ein Pane
+        // auslöst, dessen Breite genau auf der Grenze zwischen zwei Spaltenzahlen liegt --
+        // siehe terminalResize.js.
+        let previousFitted = null;
 
         const handleResize = () => {
             // Refit only when the size has moved. fit() otherwise rewrites the terminal's
@@ -493,8 +497,11 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
             // itself would compute, so asking first costs one measurement and cannot
             // disagree with it.
             const proposed = fitAddon.proposeDimensions();
-            const didFit = shouldFit(proposed, term);
-            if (didFit) fitAddon.fit();
+            const didFit = shouldFit(proposed, term, previousFitted, performance.now());
+            if (didFit) {
+                previousFitted = { cols: term.cols, rows: term.rows, at: performance.now() };
+                fitAddon.fit();
+            }
 
             // Telling the host is tracked separately, against what it was last told rather
             // than against the last local change. A send skipped because the socket was
