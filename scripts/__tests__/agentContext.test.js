@@ -71,3 +71,40 @@ test("die Marke hat genau die Form, die der Client liest", () => {
     assert.equal(formatToken("claude", 42), "⟦ctx claude 42⟧");
     assert.equal(formatToken("qwen", 7), "⟦ctx qwen 7⟧");
 });
+
+// --- qwen-code ---------------------------------------------------------------------------
+
+const { qwenUsedTokens, qwenContextPercent, QWEN_DEFAULT_WINDOW } = require("../agentContext.js");
+
+const usage = (sessionId, inputTokens, cachedTokens = 0) =>
+    JSON.stringify({ sessionId, inputTokens, cachedTokens, outputTokens: 100, model: "qwen3.8-max" });
+
+test("qwen: belegt ist inputTokens allein, cached ist darin enthalten", () => {
+    // Echter Satz vom Host: input=130823, cached=129357. Beides zu addieren verdoppelte den
+    // Balken -- 129357 der 130823 kamen aus dem Cache, sie kommen nicht dazu.
+    assert.equal(qwenUsedTokens([usage("s1", 130823, 129357)], "s1"), 130823);
+});
+
+test("qwen: der letzte Satz der Sitzung gewinnt, fremde Sitzungen zählen nicht", () => {
+    const lines = [usage("s1", 1000), usage("s2", 999999), usage("s1", 2000)];
+    assert.equal(qwenUsedTokens(lines, "s1"), 2000);
+});
+
+test("qwen: ohne Satz zur Sitzung kommt null, nicht 0", () => {
+    // Eine Sitzung, die noch nichts gefragt hat, ist ungemessen -- nicht leer gemessen.
+    assert.equal(qwenUsedTokens([usage("andere", 5)], "s1"), null);
+    assert.equal(qwenUsedTokens([], "s1"), null);
+    assert.equal(qwenUsedTokens([usage("s1", 5)], null), null);
+});
+
+test("qwen: kaputte Zeilen werden übersprungen", () => {
+    assert.equal(qwenUsedTokens(['{"kaputt":', usage("s1", 42)], "s1"), 42);
+});
+
+test("qwen: Prozent aus Sitzungsdatei und Nutzung", () => {
+    const session = JSON.stringify({ pid: 2827598, sessionId: "s1", cwd: "/root" });
+    assert.equal(qwenContextPercent(session, [usage("s1", 131072)], QWEN_DEFAULT_WINDOW), 50);
+    assert.equal(qwenContextPercent(session, [usage("s1", 999999)], QWEN_DEFAULT_WINDOW), 100);
+    assert.equal(qwenContextPercent(session, [], QWEN_DEFAULT_WINDOW), null);
+    assert.equal(qwenContextPercent("kein json", [usage("s1", 1)], QWEN_DEFAULT_WINDOW), null);
+});

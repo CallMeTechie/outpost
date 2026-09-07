@@ -76,7 +76,64 @@ const windowForModel = (model) => {
     return DEFAULT_WINDOW;
 };
 
+// --- qwen-code -------------------------------------------------------------------------
+//
+// qwen kennt keine Statuszeile, dafür aber etwas, das Claude Code fehlt: es legt seine
+// laufenden Sitzungen unter ~/.qwen/sessions/<pid>.json ab. Damit ist die Zuordnung, die bei
+// Claude von außen unmöglich war, hier trivial -- die PID steht im tmux-Pane.
+//
+// Die Nutzung liegt getrennt davon in ~/.qwen/usage/token-usage-<monat>.jsonl, ein Satz je
+// Aufruf, verbunden über die sessionId.
+//
+// `cachedTokens` ist eine **Teilmenge** von `inputTokens`, nicht zusätzlich: ein Satz mit
+// input=130823, cached=129357 heißt "130823 Tokens gingen hinein, davon kamen 129357 aus dem
+// Cache". Beides zu addieren verdoppelte den Balken. Belegt ist allein `inputTokens`.
+const qwenUsedTokens = (usageLines, sessionId) => {
+    if (!Array.isArray(usageLines) || !sessionId) return null;
+    let used = null;
+    for (const line of usageLines) {
+        let entry;
+        try {
+            entry = JSON.parse(line);
+        } catch {
+            continue;
+        }
+        if (entry?.sessionId !== sessionId) continue;
+        const input = entry.inputTokens;
+        if (typeof input === "number" && Number.isFinite(input) && input >= 0) used = input;
+    }
+    return used;
+};
+
+/**
+ * Füllstand einer qwen-Sitzung. `sessionFile` ist der Inhalt von sessions/<pid>.json.
+ *
+ * Findet sich zur Sitzung kein Nutzungssatz, kommt null und nicht 0: eine Sitzung, die noch
+ * nichts gefragt hat, ist nicht leer gemessen, sondern ungemessen. Ein Balken auf 0 % würde
+ * behaupten, es sei gemessen worden.
+ */
+const qwenContextPercent = (sessionFile, usageLines, windowTokens) => {
+    if (!Number.isFinite(windowTokens) || windowTokens <= 0) return null;
+    let session;
+    try {
+        session = JSON.parse(sessionFile);
+    } catch {
+        return null;
+    }
+    const used = qwenUsedTokens(usageLines, session?.sessionId);
+    if (used === null) return null;
+    return Math.min(100, Math.round((used / windowTokens) * 100));
+};
+
+// Angenommen, nicht nachgeschlagen: qwen legt die Fenstergröße nirgends ab, die ich lesen
+// könnte. 256k ist der dokumentierte Wert für die Max-Modelle; wer ein anderes fährt, setzt
+// OUTPOST_CTX_WINDOW. Lieber eine benannte Annahme als eine stille.
+const QWEN_DEFAULT_WINDOW = 262_144;
+
 /** Die Marke, die das Werkzeug ins Terminal schreibt. Vertrag: siehe contextParser.js im Client. */
 const formatToken = (tool, percent) => `⟦ctx ${tool} ${percent}⟧`;
 
-module.exports = { usedTokens, lastUsedTokens, contextPercent, windowForModel, formatToken, DEFAULT_WINDOW };
+module.exports = {
+    usedTokens, lastUsedTokens, contextPercent, windowForModel, formatToken, DEFAULT_WINDOW,
+    qwenUsedTokens, qwenContextPercent, QWEN_DEFAULT_WINDOW,
+};
