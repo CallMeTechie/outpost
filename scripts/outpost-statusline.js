@@ -69,9 +69,15 @@ const main = () => {
         }
     }
 
-    if (percent !== null) parts.push(`ctx ${percent}%`, formatToken(TOOL, percent));
+    // Die Marke steht vorn, nicht hinten. Eine Statuszeile wird auf die Terminalbreite
+    // gekürzt, und beim Umschalten auf geteilte Ansicht wird das Terminal schmaler --
+    // am Ende steht, was als Erstes verschwindet. Für den Menschen daneben bleibt der
+    // lesbare Prozentwert.
+    const line = percent !== null
+        ? [formatToken(TOOL, percent), `ctx ${percent}%`, ...parts].join("  ")
+        : parts.join("  ");
 
-    process.stdout.write(parts.join("  ") || TOOL);
+    process.stdout.write(line || TOOL);
 };
 
 main();
