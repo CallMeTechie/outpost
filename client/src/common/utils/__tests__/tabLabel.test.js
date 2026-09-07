@@ -175,9 +175,12 @@ test("a stored number is kept even when its neighbour is gone", () => {
 // The gap is deliberate: closing a tab must never renumber the ones that stay. A closed session
 // reserves its number through the group stored next to it - without that group there is nothing
 // left to say which group the reservation belongs in.
-test("a new session takes the next free number, leaving gaps", () => {
+// Changed deliberately on 2026-09-07: a closed tab used to reserve its number for good, so the
+// counter climbed with every connection ever made in this browser and two open tabs could read
+// (12) and (13). A number nobody holds is free again; taking it moves no tab that is on screen.
+test("a new session takes the smallest number its group does not use", () => {
     const closed = { s9: { number: 2, group: tabGroupKey(ssh) } };
-    assert.strictEqual(assignNumbers([{ ...ssh, id: "s7" }], closed).s7, 3);
+    assert.strictEqual(assignNumbers([{ ...ssh, id: "s7" }], closed).s7, 1);
 });
 
 // The regression that made every tab after the first one carry a number: the reservation used to
@@ -213,11 +216,11 @@ test("opening tabs on different servers in turn numbers none of them", () => {
 
 // The reservation raises the floor for its own group and leaves every other group alone, in the
 // same call: the SFTP tab starts above the closed SFTP tab, the terminal tab still starts at one.
-test("a reservation raises its own group's floor and no other's", () => {
+test("a closed tab's number no longer holds a group's floor up", () => {
     const closed = { s9: { number: 4, group: tabGroupKey(sftp) } };
     const result = assignNumbers([ssh, sftp], closed);
     assert.strictEqual(result.s1, 1);
-    assert.strictEqual(result.s3, 5);
+    assert.strictEqual(result.s3, 1);
 });
 
 // Entries written before the group field existed keep a valid number but cannot say where it
@@ -408,4 +411,44 @@ test("buildTabLabel: numbered=false hides the number without touching it", () =>
 
 test("buildTabLabel: without the option a number still shows, as every other caller expects", () => {
     assert.equal(buildTabLabel(s("a", "nas"), { number: 3 }, k => k).text, "nas (3)");
+});
+
+// --- Zähler beginnt neu, sobald die Gruppe leer ist ---------------------------------------
+
+test("assignNumbers: a group with nothing open starts at 1 again", () => {
+    // Eleven tabs on this server have been opened and closed; none is open now. Reported as
+    // "two windows, numbered 12 and 13".
+    const closed = {};
+    for (let i = 1; i <= 11; i++) closed[`old${i}`] = { number: i, group: "nas|other" };
+
+    const first = assignNumbers([s("a", "nas")], closed);
+    assert.equal(first.a, 1);
+
+    const withFirst = { ...closed, a: { number: first.a, group: "nas|other" } };
+    const second = assignNumbers([s("a", "nas"), s("b", "nas")], withFirst);
+    assert.equal(second.a, 1);
+    assert.equal(second.b, 2);
+});
+
+test("assignNumbers: an open tab keeps its number when a sibling closes", () => {
+    // The property that must survive: nothing on screen is ever renumbered.
+    const identities = { a: { number: 1 }, b: { number: 2 } };
+    const afterClose = assignNumbers([s("b", "nas")], identities);
+    assert.equal(afterClose.b, 2);
+});
+
+test("assignNumbers: a new tab fills the gap a closed one left", () => {
+    // 1 is free because nothing holds it any more, and taking it moves no tab that is on
+    // screen -- b keeps 2 either way.
+    const identities = { b: { number: 2 } };
+    const result = assignNumbers([s("b", "nas"), s("c", "nas")], identities);
+    assert.equal(result.b, 2);
+    assert.equal(result.c, 1);
+});
+
+test("assignNumbers: groups are counted apart", () => {
+    const result = assignNumbers([s("a", "nas"), s("b", "nas"), s("c", "pve")], {});
+    assert.equal(result.a, 1);
+    assert.equal(result.b, 2);
+    assert.equal(result.c, 1);
 });

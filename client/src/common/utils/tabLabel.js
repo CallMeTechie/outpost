@@ -219,30 +219,17 @@ const isAssignedNumber = (value) => Number.isInteger(value) && value > 0;
 // name too: renaming two sessions to the same text has to be numbered exactly like two sessions
 // that already shared a base name.
 export const assignNumbers = (sessions, identities = {}) => {
-    // The highest number already reserved per group by an entry this call may not see a session
-    // for - a closed tab, or one simply left out of the list. Keeping that reservation is what
-    // makes the spec's own gap example hold: `pve-01` and `pve-01 (2)`, close the first, and the
-    // next tab on that server is `(3)` rather than silently taking the closed tab's number back.
+    // Numbers of tabs that are open never move. A tab that is gone reserves nothing: the
+    // reservation used to be kept so that closing one tab could not renumber the ones beside
+    // it, but a *new* tab taking a freed number renumbers nobody -- it only fills a gap. What
+    // the reservation did instead was let the counter climb with every connection ever made in
+    // this browser, so two windows on a often-used server came up as (12) and (13) and read as
+    // eleven more of them being open somewhere.
     //
-    // It is read per group, and that is the whole correction here: this used to be a single
-    // maximum over *all* entries regardless of group, feeding every fresh assignment. Every tab
-    // after the very first one therefore got a number, and each number it handed out raised the
-    // floor for the next - eight connections in a row and the eighth read `host-8 (8)`, where the
-    // spec says a number appears only where two open tabs would otherwise read identically.
-    //
-    // Knowing the group of a session that isn't here requires it to have been stored alongside
-    // the number (see tabGroupKey); an entry without one - written before this field existed, or
-    // hand-edited - reserves nothing. That direction is the safe one: a number gets reused by a
-    // later tab while the tab that held it is closed, which no one can see, rather than a live tab
-    // being pushed off its number. Entries that fail isAssignedNumber are ignored for the same
-    // reason they are everywhere else in this module.
-    const reservedByGroup = new Map();
-    for (const identity of Object.values(identities)) {
-        if (!isAssignedNumber(identity?.number) || typeof identity?.group !== "string") continue;
-        reservedByGroup.set(identity.group, Math.max(reservedByGroup.get(identity.group) ?? 0, identity.number));
-    }
+    // A fresh tab therefore takes the smallest number its group does not currently use. Open
+    // two tabs and they are 1 and 2, whatever happened before; close the first and the second
+    // stays 2, because assigned numbers are only ever carried forward, never recomputed.
 
-    const highestByGroup = new Map();
     const result = {};
 
     // First pass: carry forward every number that already exists and passes isAssignedNumber, and
@@ -254,8 +241,6 @@ export const assignNumbers = (sessions, identities = {}) => {
         if (!isAssignedNumber(existing)) continue;
 
         result[session.id] = existing;
-        const key = tabGroupKey(session, identities[session.id]);
-        highestByGroup.set(key, Math.max(highestByGroup.get(key) ?? 0, existing));
     }
 
     // Second pass: because the group key depends on identity.name, a rename can merge two groups
@@ -286,17 +271,21 @@ export const assignNumbers = (sessions, identities = {}) => {
         }
     }
 
-    // Third pass: hand out the next free number to whatever is left - anything that never had a
-    // stored number, plus anything the second pass just evicted. The gap is deliberate - closing
-    // a tab must never renumber the ones that stay, so a new session always takes the next free
-    // number rather than backfilling one a closed tab (or a losing rename) left behind.
+    // Third pass: hand out the smallest free number to whatever is left - anything that never
+    // had a stored number, plus anything the second pass just evicted. Free means "not held by
+    // another session in this group right now"; a number a closed tab used to have is free
+    // again, and taking it moves no tab that is on screen.
     for (const session of sessions) {
         if (result[session.id] != null) continue;
 
         const key = tabGroupKey(session, identities[session.id]);
-        const next = Math.max(highestByGroup.get(key) ?? 0, reservedByGroup.get(key) ?? 0) + 1;
+        const claimed = claimedByGroup.get(key) ?? new Set();
+        let next = 1;
+        while (claimed.has(next)) next++;
+
         result[session.id] = next;
-        highestByGroup.set(key, next);
+        claimed.add(next);
+        claimedByGroup.set(key, claimed);
     }
 
     return result;

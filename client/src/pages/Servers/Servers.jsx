@@ -316,11 +316,14 @@ export const Servers = () => {
         if (!diffAssignments(previousNumbers, nextNumbers)) return;
 
         // The group goes to storage with the number it belongs to, and only ever together with
-        // it. assignNumbers needs it to know which group a number reserves once the session is
-        // gone from the list - by then nothing is left to recompute the group from. Writing it
-        // only here, where the number itself is written, keeps the pair honest: an entry either
-        // has both or neither, and a group left behind by a session whose number was cleared
-        // (a rename) reserves nothing, because a reservation needs a valid number too.
+        // it. Writing it only here, where the number itself is written, keeps the pair honest:
+        // an entry either has both or neither.
+        //
+        // Since 2026-09-07 assignNumbers no longer reads it - a closed tab reserves nothing any
+        // more, so there is no reservation left that would need to know its group. It is still
+        // written because localStorage outlives the version that wrote it: rolling the client
+        // back to an older image hands that version entries it can still work with, rather than
+        // a numbering that silently starts over.
         const updates = {};
         for (const session of sessions) {
             if (previousNumbers[session.id] !== nextNumbers[session.id]) {
