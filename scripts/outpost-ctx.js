@@ -38,7 +38,7 @@ const descendants = (pid) => {
         }
         const found = [];
         const walk = (id, depth) => {
-            if (depth > 6) return;
+            if (depth > 8) return;
             for (const child of byParent.get(String(id)) ?? []) {
                 found.push(child);
                 walk(child.pid, depth + 1);
@@ -60,9 +60,15 @@ const readLines = (file) => {
 };
 
 // Je Werkzeug: woran man seinen Prozess erkennt, und wie sich daraus der Füllstand ergibt.
+//
+// `owns` bekommt einen Prozess und sagt, ob er zu diesem Werkzeug gehört. Ein Abgleich über
+// den Prozessnamen wäre naheliegend und falsch: qwen läuft als `node`, und die Sitzungsdatei
+// gehört nicht einmal dem Prozess im Pane, sondern einem Enkel davon (bash → node → node →
+// node). Verlässlich ist allein qwens eigene Buchführung -- gibt es zu einer PID eine
+// Sitzungsdatei, ist es diese Sitzung.
 const READERS = {
     qwen: {
-        matches: (comm) => comm === "qwen",
+        owns: (proc) => fs.existsSync(path.join(home(), ".qwen", "sessions", `${proc.pid}.json`)),
         percent: (pid) => {
             const sessionFile = path.join(home(), ".qwen", "sessions", `${pid}.json`);
             let session;
@@ -94,7 +100,7 @@ const main = () => {
 
     for (const proc of descendants(panePid)) {
         for (const [tool, reader] of Object.entries(READERS)) {
-            if (!reader.matches(proc.comm)) continue;
+            if (!reader.owns(proc)) continue;
             const percent = reader.percent(proc.pid);
             // Kein Messwert heißt: nichts ausgeben. Eine 0 würde behaupten, gemessen worden
             // zu sein.
