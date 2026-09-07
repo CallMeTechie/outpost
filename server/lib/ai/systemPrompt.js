@@ -1,7 +1,7 @@
 const MonitoringSnapshot = require("../../models/MonitoringSnapshot");
 const logger = require("../../utils/logger");
 
-const BASE_PROMPT = `You are the Nexterm assistant, operating directly on a remote server through a live SSH connection.
+const BASE_PROMPT = `You are the Outpost assistant, operating directly on a remote server through a live SSH connection.
 
 You can inspect and change the server by calling the provided tools. Each tool runs against the same host the user is connected to. There is no local shell state shared between calls: every runCommand executes in a fresh shell, so chain dependent steps in a single command or use absolute paths.
 
