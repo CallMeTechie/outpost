@@ -6,11 +6,11 @@ Bestehend: `client/src/pages/Servers/components/DirectConnectDialog/`.
 
 ## Wo im Code
 - `DirectConnectDialog.jsx` — Host/Port → `UI-DIRECT-CONNECT-HOST`; Auth-Block → `UI-DIRECT-CONNECT-AUTH`; Button → `UI-DIRECT-CONNECT-GO`
-- Wiederverwenden: `DialogProvider`, `Input`, `SelectBox` (`authOptions`), `Button`
+- Wiederverwenden: `DialogProvider`, `Input`, `Button`. Die Auth-Wahl ist eine **Segmentleiste** aus `<button aria-pressed>` (`authOptions`), keine `SelectBox`: sie entscheidet, welche Felder darunter erscheinen, und ein Aufklappmenü versteckt genau das.
 
 ## Darstellung
 - Art: Dialog, modal, über `UI-SERVERS`. Öffnen: Welcome › Schnellverbindung, Kontextmenü › Direkt verbinden, Taste `Ctrl+K`. Schließen: Esc, Backdrop; nach Verbinden automatisch.
-- Größe: mittig, 32 rem breit. Tastatur: Enter = Verbinden.
+- Größe: mittig, 26 rem breit. Tastatur: Enter = Verbinden.
 
 ## Elemente
 ### UI-DIRECT-CONNECT-HOST

@@ -60,9 +60,9 @@ export const Sidebar = ({ onToggleCollapse }) => {
                 }} />}
             <div className="sidebar-top">
                 <Tooltip text={t('common.sidebar.collapseTitle')}>
-                    <div className="sidebar-logo outpost-logo" onClick={onToggleCollapse} title={t('common.sidebar.collapseTitle')}><OutpostLogo size={42 * uiScale} /></div>
+                    <div className="sidebar-logo outpost-logo" data-ui-id="UI-SHELL-LOGO" onClick={onToggleCollapse} title={t('common.sidebar.collapseTitle')}><OutpostLogo size={42 * uiScale} /></div>
                 </Tooltip>
-                <nav>
+                <nav data-ui-id="UI-SHELL-NAV">
                     {navigation.map((item, i) => (
                         <Tooltip key={i} text={item.title}>
                             <div onClick={() => navigate(item.path)} className={`nav-item${location.pathname.startsWith(item.path) ? " nav-item-active" : ""}`}><Icon icon={item.icon} /></div>
@@ -73,7 +73,7 @@ export const Sidebar = ({ onToggleCollapse }) => {
             <div className="sidebar-bottom">
                 <div className="user-account-area" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
                     <Tooltip text={user?.username || t('common.sidebar.account')} disabled={userMenuOpen}>
-                        <div className={`user-btn ${userMenuOpen ? 'active' : ''}`}><Icon icon={IconUserCog} /></div>
+                        <div className={`user-btn ${userMenuOpen ? 'active' : ''}`} data-ui-id="UI-SHELL-ACCOUNT"><Icon icon={IconUserCog} /></div>
                     </Tooltip>
                     <div className={`user-menu ${userMenuOpen ? 'open' : ''}`}>
                         <div className="user-menu-header">

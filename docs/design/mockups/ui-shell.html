@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI-SHELL — Rahmen — Navigation</title>
+<link rel="stylesheet" href="./tokens.css">
+<style>
+	/* Artboard-Rahmen — nur Darstellungshilfen, keine Produkt-Styles */
+	* { box-sizing: border-box; }
+	html { font-size: calc(16px * var(--ui-scale)); }
+	body {
+		margin: 0; padding: var(--space-6);
+		background: var(--background); color: var(--text);
+		font: var(--type-body);
+	}
+	kbd { font: var(--type-caption); font-family: ui-monospace, "JetBrains Mono", monospace; color: var(--subtext); }
+	.art-head { display: flex; align-items: baseline; gap: var(--space-3); margin: 0 0 var(--space-4); }
+	.art-head h1 { font: var(--type-title); margin: 0; }
+	.art-head code { font: var(--type-mono); color: var(--subtext); }
+	.art-head a { color: var(--subtext); margin-left: auto; }
+	.block { margin: 0 0 var(--space-8); }
+	.block > h2 { font: var(--type-heading); color: var(--text); margin: 0 0 var(--space-1); }
+	.block > h2 code { font: var(--type-mono); font-size: 0.75rem; color: var(--subtext); margin-left: var(--space-2); }
+	.anchor { font: var(--type-body); color: var(--text); margin: 0 0 var(--space-1); max-width: 48rem; }
+	.anchor-example { font: var(--type-caption); color: var(--subtext); margin: 0 0 var(--space-3); }
+
+	/* Zustandsbeschriftung — wie UI-SERVERS */
+	section[data-ui-state] { position: relative; }
+	/* Jede Karte trägt ihre Zustandsbeschriftung bereits als .cap über dem Ausschnitt.
+	   Die eingeblendete Marke daneben lag hier auf dem gezeigten Element — beim Logo
+	   verdeckte sie genau die Bildmarke — und rutschte ohne positionierten Vorfahren
+	   in die Seitenecke. Sie bleibt für Abschnitte außerhalb einer Karte. */
+	section[data-ui-state] { position: relative; }
+	.demo-card section[data-ui-state]::before { content: none; }
+	section[data-ui-state]::before {
+		content: attr(data-ui-state);
+		position: absolute; top: 2px; right: 2px; z-index: 5;
+		font: var(--type-caption); font-family: ui-monospace, "JetBrains Mono", monospace;
+		color: var(--subtext); background: var(--background);
+		border: 1px dashed var(--gray-strong); border-radius: var(--radius-sm);
+		padding: 0 var(--space-1); line-height: 1.2; pointer-events: none;
+	}
+
+	.demo-row { display: flex; gap: var(--space-4); flex-wrap: wrap; align-items: flex-start; }
+	.demo-card { border: 1px solid var(--gray); border-radius: var(--radius-md); overflow: hidden; background: var(--background); }
+	.demo-card > .cap { font: var(--type-caption); color: var(--subtext); padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--gray); background: var(--lighter-background); }
+	.demo-card .body { padding: var(--space-4); display: flex; }
+	.demo-note { font: var(--type-caption); color: var(--subtext); padding: 0 var(--space-2) var(--space-2); max-width: 16rem; }
+
+	/* Element hervorheben, wo es in der Leiste sitzt */
+	.hl { outline: 2px dashed var(--accent-color); outline-offset: 3px; border-radius: var(--radius-md); }
+
+	/* Sichtbar für Menschen ausblenden, im DOM erhalten — visual_check ist im Manifest false */
+	.vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+	/* ---------- Leiste (5rem, links) ---------- */
+	.shell { width: 5rem; flex: none; display: flex; flex-direction: column; align-items: center;
+		background: var(--lighter-background); border-right: 2px solid var(--dark-gray);
+		padding: var(--space-3) 0; gap: var(--space-2); min-height: 22rem; }
+	.shell.collapsed { width: 1rem; padding: 0; border-right: 0; min-height: 22rem; }
+
+	.logo-wrap { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; }
+	.logo-wrap svg { width: 42px; height: 42px; display: block; }
+
+	.nav-list { display: flex; flex-direction: column; gap: 0.75rem; align-items: center; }
+	.nav-item { width: 52px; height: 52px; border-radius: 1rem; display: flex; align-items: center; justify-content: center; color: var(--white); border: 1px solid transparent; }
+	.nav-item svg { width: 32px; height: 32px; display: block; }
+	.nav-item.active { background: var(--dark-gray); border-color: var(--gray); color: var(--primary); }
+
+	.spacer { flex: 1; }
+
+	.account-btn { width: 52px; height: 52px; border-radius: 1rem; display: flex; align-items: center; justify-content: center; color: var(--white); border: 1px solid transparent; }
+	.account-btn svg { width: 32px; height: 32px; display: block; }
+	.account-btn.open { background: var(--dark-gray); border-color: var(--gray); color: var(--primary); }
+
+	.reveal-strip { width: 1rem; align-self: stretch; display: flex; align-items: center; justify-content: center; color: var(--subtext); background: var(--lighter-background); font: var(--type-body); }
+
+	/* Konto-Menü */
+	.acct-menu { min-width: 14rem; background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); font: var(--type-body); align-self: center; }
+	.acct-menu .head { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-bottom: 1px solid var(--gray); }
+	.acct-menu .avatar { width: 2rem; height: 2rem; border-radius: 50%; background: var(--primary); color: var(--on-accent); display: flex; align-items: center; justify-content: center; font: var(--type-caption); font-weight: 700; flex: none; }
+	.acct-menu .who b { display: block; color: var(--text); font-weight: 600; }
+	.acct-menu .who span { display: block; color: var(--subtext); font: var(--type-caption); }
+	.acct-menu .item { display: flex; align-items: center; height: 1.875rem; padding: 0 var(--space-3); color: var(--text); }
+	.acct-menu .item.danger { color: var(--error); }
+	.acct-menu .sep { height: 1px; background: var(--gray); margin: var(--space-1) 0; }
+
+	/* ---------- Mobile Leiste (unten, < 768px) ---------- */
+	.mobile-frame { width: 380px; max-width: 100%; border: 1px solid var(--gray); border-radius: var(--radius-md); overflow: hidden; background: var(--background); }
+	.mobile-screen { height: 11rem; position: relative; background: var(--background); }
+	.mobile-nav { position: absolute; left: 0; right: 0; bottom: 0; height: 3.5rem; background: var(--lighter-background); border-top: 1px solid var(--gray); display: flex; align-items: stretch; }
+	.mobile-nav .m-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem; color: var(--white); font: var(--type-caption); }
+	.mobile-nav .m-item svg { width: 20px; height: 20px; display: block; }
+	.mobile-nav .m-item.active { color: var(--primary); }
+	.mobile-nav .m-account { flex: 0 0 3.5rem; border-left: 1px solid var(--gray); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem; color: var(--white); font: var(--type-caption); }
+	.mobile-nav .m-account svg { width: 20px; height: 20px; display: block; }
+</style>
+</head>
+<body>
+
+<header class="mb-context" style="font:var(--type-caption);color:var(--subtext);background:var(--lighter-background);border:1px solid var(--gray);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin:0 0 var(--space-4);line-height:1.6">
+	<strong style="color:var(--text);font:var(--type-heading)">Darstellungskontext</strong><br>
+	<b style="color:var(--text)">Art:</b> Rahmenkomponente (shared) · umgibt jede Seite der Anwendung<br>
+	<b style="color:var(--text)">Größe:</b> Leiste links, 5rem breit, volle Höhe · unter 768px ersetzt sie eine Leiste am unteren Rand, 3,5rem hoch<br>
+	Tastatur: Tab-Reihenfolge Logo → Navigation → Konto; Enter und Leertaste holen die eingeklappte Leiste zurück
+</header>
+<header class="art-head">
+	<h1>UI-SHELL</h1>
+	<span>Rahmen — Navigation</span>
+	<code>shared</code>
+	<a href="./index.html">← Kontaktbogen</a>
+</header>
+
+<!-- ===================================================================
+     UI-SHELL-LOGO — Bildmarke & Einklapp-Schalter
+     =================================================================== -->
+<div class="block">
+	<h2>Logo — Bildmarke &amp; Einklapp-Schalter <code>UI-SHELL-LOGO</code></h2>
+	<p class="anchor">Die Bildmarke, zugleich der Schalter, der die Leiste ein- und ausklappt. Vier Pfosten unterschiedlicher Höhe, der letzte in der Erfolgsfarbe.</p>
+	<p class="anchor-example">Beispiel: 42px im Kopf der Leiste</p>
+
+	<div class="demo-row">
+		<div class="demo-card">
+			<div class="cap">default</div>
+			<div class="body">
+				<div class="shell">
+					<div class="logo-wrap hl" data-ui-id="UI-SHELL-LOGO">
+						<section data-ui-state="default">
+							<svg viewBox="0 0 32 32" aria-label="Outpost">
+								<rect x="3.5" y="12" width="4.6" height="17" rx="2.3" fill="var(--primary)" opacity="0.55"/>
+								<rect x="10.7" y="6" width="4.6" height="23" rx="2.3" fill="var(--primary)" opacity="1"/>
+								<rect x="17.9" y="9" width="4.6" height="20" rx="2.3" fill="var(--primary)" opacity="0.8"/>
+								<rect x="25.1" y="15" width="4.6" height="14" rx="2.3" fill="var(--success)"/>
+							</svg>
+						</section>
+					</div>
+					<nav class="nav-list" aria-hidden="true">
+						<div class="nav-item active">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="4"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.1 0-2 .9-2 2v3.5c0 1-.6 1.7-1.5 2 .9.3 1.5 1 1.5 2V16c0 1.1.9 2 2 2"/><path d="M16 3c1.1 0 2 .9 2 2v3.5c0 1 .6 1.7 1.5 2-.9.3-1.5 1-1.5 2V16c0 1.1-.9 2-2 2"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
+						</div>
+					</nav>
+					<div class="spacer"></div>
+					<div class="account-btn" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20v-1.2A4.3 4.3 0 0 1 7.8 14.5h2.4"/><circle cx="18" cy="17" r="2.4"/><path d="M18 13.6v1M18 19.4v1M14.6 17h1M20.4 17h1M15.6 14.6l.7.7M19.7 18.7l.7.7M20.4 14.6l-.7.7M16.3 18.7l-.7.7"/></svg>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="demo-card">
+			<div class="cap">selected — eingeklappt — die Leiste ist verborgen</div>
+			<div class="body">
+				<div class="shell collapsed">
+					<div class="reveal-strip" data-ui-id="UI-SHELL-REVEAL"><span>›</span></div>
+					<div class="vh" data-ui-id="UI-SHELL-LOGO">
+						<section data-ui-state="selected">eingeklappt — die Leiste ist verborgen</section>
+					</div>
+				</div>
+			</div>
+			<p class="demo-note">Nur noch der Streifen aus UI-SHELL-REVEAL ist zu sehen; Logo, Navigation und Konto sind nicht gerendert.</p>
+		</div>
+	</div>
+</div>
+
+<!-- ===================================================================
+     UI-SHELL-NAV — Bereiche
+     =================================================================== -->
+<div class="block">
+	<h2>Navigation — Bereiche <code>UI-SHELL-NAV</code></h2>
+	<p class="anchor">Die Bereiche der Anwendung — Server, Monitoring, Snippets, Audit. Ein Eintrag je Bereich, der aktive hervorgehoben; Audit nur mit dem Recht dafür.</p>
+	<p class="anchor-example">Beispiel: Server · Monitoring · Snippets · Audit</p>
+
+	<div class="demo-row">
+		<div class="demo-card">
+			<div class="cap">default — aktiv: Server</div>
+			<div class="body">
+				<div class="shell">
+					<div class="logo-wrap" aria-hidden="true">
+						<svg viewBox="0 0 32 32"><rect x="3.5" y="12" width="4.6" height="17" rx="2.3" fill="var(--primary)" opacity="0.55"/><rect x="10.7" y="6" width="4.6" height="23" rx="2.3" fill="var(--primary)"/><rect x="17.9" y="9" width="4.6" height="20" rx="2.3" fill="var(--primary)" opacity="0.8"/><rect x="25.1" y="15" width="4.6" height="14" rx="2.3" fill="var(--success)"/></svg>
+					</div>
+					<nav class="nav-list hl" data-ui-id="UI-SHELL-NAV" aria-label="Bereiche">
+						<section data-ui-state="default" style="display:contents">
+							<div class="nav-item active" title="Server">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+							</div>
+							<div class="nav-item" title="Monitoring">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="4"/></svg>
+							</div>
+							<div class="nav-item" title="Snippets">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.1 0-2 .9-2 2v3.5c0 1-.6 1.7-1.5 2 .9.3 1.5 1 1.5 2V16c0 1.1.9 2 2 2"/><path d="M16 3c1.1 0 2 .9 2 2v3.5c0 1 .6 1.7 1.5 2-.9.3-1.5 1-1.5 2V16c0 1.1-.9 2-2 2"/></svg>
+							</div>
+							<div class="nav-item" title="Audit">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
+							</div>
+						</section>
+					</nav>
+					<div class="spacer"></div>
+					<div class="account-btn" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20v-1.2A4.3 4.3 0 0 1 7.8 14.5h2.4"/><circle cx="18" cy="17" r="2.4"/><path d="M18 13.6v1M18 19.4v1M14.6 17h1M20.4 17h1M15.6 14.6l.7.7M19.7 18.7l.7.7M20.4 14.6l-.7.7M16.3 18.7l-.7.7"/></svg>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="demo-card">
+			<div class="cap">selected — aktiv: Monitoring</div>
+			<div class="body">
+				<div class="shell">
+					<div class="logo-wrap" aria-hidden="true">
+						<svg viewBox="0 0 32 32"><rect x="3.5" y="12" width="4.6" height="17" rx="2.3" fill="var(--primary)" opacity="0.55"/><rect x="10.7" y="6" width="4.6" height="23" rx="2.3" fill="var(--primary)"/><rect x="17.9" y="9" width="4.6" height="20" rx="2.3" fill="var(--primary)" opacity="0.8"/><rect x="25.1" y="15" width="4.6" height="14" rx="2.3" fill="var(--success)"/></svg>
+					</div>
+					<nav class="nav-list hl" data-ui-id="UI-SHELL-NAV" aria-label="Bereiche">
+						<section data-ui-state="selected" style="display:contents">
+							<div class="nav-item" title="Server">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+							</div>
+							<div class="nav-item active" title="Monitoring">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="4"/></svg>
+							</div>
+							<div class="nav-item" title="Snippets">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.1 0-2 .9-2 2v3.5c0 1-.6 1.7-1.5 2 .9.3 1.5 1 1.5 2V16c0 1.1.9 2 2 2"/><path d="M16 3c1.1 0 2 .9 2 2v3.5c0 1 .6 1.7 1.5 2-.9.3-1.5 1-1.5 2V16c0 1.1-.9 2-2 2"/></svg>
+							</div>
+							<div class="nav-item" title="Audit">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
+							</div>
+						</section>
+					</nav>
+					<div class="spacer"></div>
+					<div class="account-btn" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20v-1.2A4.3 4.3 0 0 1 7.8 14.5h2.4"/><circle cx="18" cy="17" r="2.4"/><path d="M18 13.6v1M18 19.4v1M14.6 17h1M20.4 17h1M15.6 14.6l.7.7M19.7 18.7l.7.7M20.4 14.6l-.7.7M16.3 18.7l-.7.7"/></svg>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- ===================================================================
+     UI-SHELL-ACCOUNT — Konto
+     =================================================================== -->
+<div class="block">
+	<h2>Konto <code>UI-SHELL-ACCOUNT</code></h2>
+	<p class="anchor">Das eigene Konto am Fuß der Leiste. Öffnet ein Menü mit Einstellungen, Unterstützung und Abmelden.</p>
+
+	<div class="demo-row">
+		<div class="demo-card">
+			<div class="cap">default</div>
+			<div class="body">
+				<div class="shell">
+					<div class="logo-wrap" aria-hidden="true">
+						<svg viewBox="0 0 32 32"><rect x="3.5" y="12" width="4.6" height="17" rx="2.3" fill="var(--primary)" opacity="0.55"/><rect x="10.7" y="6" width="4.6" height="23" rx="2.3" fill="var(--primary)"/><rect x="17.9" y="9" width="4.6" height="20" rx="2.3" fill="var(--primary)" opacity="0.8"/><rect x="25.1" y="15" width="4.6" height="14" rx="2.3" fill="var(--success)"/></svg>
+					</div>
+					<nav class="nav-list" aria-hidden="true">
+						<div class="nav-item active">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="4"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.1 0-2 .9-2 2v3.5c0 1-.6 1.7-1.5 2 .9.3 1.5 1 1.5 2V16c0 1.1.9 2 2 2"/><path d="M16 3c1.1 0 2 .9 2 2v3.5c0 1 .6 1.7 1.5 2-.9.3-1.5 1-1.5 2V16c0 1.1-.9 2-2 2"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
+						</div>
+					</nav>
+					<div class="spacer"></div>
+					<div class="account-btn hl" data-ui-id="UI-SHELL-ACCOUNT">
+						<section data-ui-state="default">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20v-1.2A4.3 4.3 0 0 1 7.8 14.5h2.4"/><circle cx="18" cy="17" r="2.4"/><path d="M18 13.6v1M18 19.4v1M14.6 17h1M20.4 17h1M15.6 14.6l.7.7M19.7 18.7l.7.7M20.4 14.6l-.7.7M16.3 18.7l-.7.7"/></svg>
+						</section>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="demo-card">
+			<div class="cap">selected — Menü offen</div>
+			<div class="body" style="align-items:flex-end; gap: var(--space-2);">
+				<div class="shell">
+					<div class="logo-wrap" aria-hidden="true">
+						<svg viewBox="0 0 32 32"><rect x="3.5" y="12" width="4.6" height="17" rx="2.3" fill="var(--primary)" opacity="0.55"/><rect x="10.7" y="6" width="4.6" height="23" rx="2.3" fill="var(--primary)"/><rect x="17.9" y="9" width="4.6" height="20" rx="2.3" fill="var(--primary)" opacity="0.8"/><rect x="25.1" y="15" width="4.6" height="14" rx="2.3" fill="var(--success)"/></svg>
+					</div>
+					<nav class="nav-list" aria-hidden="true">
+						<div class="nav-item active">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="4"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.1 0-2 .9-2 2v3.5c0 1-.6 1.7-1.5 2 .9.3 1.5 1 1.5 2V16c0 1.1.9 2 2 2"/><path d="M16 3c1.1 0 2 .9 2 2v3.5c0 1 .6 1.7 1.5 2-.9.3-1.5 1-1.5 2V16c0 1.1-.9 2-2 2"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
+						</div>
+					</nav>
+					<div class="spacer"></div>
+					<div class="account-btn open hl" data-ui-id="UI-SHELL-ACCOUNT">
+						<section data-ui-state="selected">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20v-1.2A4.3 4.3 0 0 1 7.8 14.5h2.4"/><circle cx="18" cy="17" r="2.4"/><path d="M18 13.6v1M18 19.4v1M14.6 17h1M20.4 17h1M15.6 14.6l.7.7M19.7 18.7l.7.7M20.4 14.6l-.7.7M16.3 18.7l-.7.7"/></svg>
+						</section>
+					</div>
+				</div>
+				<div class="acct-menu">
+					<div class="head">
+						<span class="avatar">MB</span>
+						<span class="who"><b>@ma.backes</b></span>
+					</div>
+					<div class="item">Einstellungen</div>
+					<div class="item">Auf GitHub bewerten</div>
+					<div class="item">Unterstützung</div>
+					<div class="sep"></div>
+					<div class="item danger">Abmelden</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- ===================================================================
+     UI-SHELL-REVEAL — Seitenleiste einblenden
+     =================================================================== -->
+<div class="block">
+	<h2>Zurückholen — Seitenleiste einblenden <code>UI-SHELL-REVEAL</code></h2>
+	<p class="anchor">Der schmale Streifen am linken Rand, solange die Leiste eingeklappt ist. Mit Maus fährt sie beim Überfahren vorübergehend ein, ein Tipp oder Klick holt sie dauerhaft zurück.</p>
+	<p class="anchor-example">Beispiel: 1rem breit; auf Geräten mit grobem Zeiger 1,5rem und voll deckend</p>
+
+	<div class="demo-row">
+		<div class="demo-card">
+			<div class="cap">default — Leiste eingeklappt</div>
+			<div class="body">
+				<div class="shell collapsed">
+					<div class="reveal-strip hl" data-ui-id="UI-SHELL-REVEAL">
+						<section data-ui-state="default"><span>›</span></section>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="demo-card">
+			<div class="cap">disabled — ausgeblendet, solange die Leiste offen ist</div>
+			<div class="body">
+				<div class="shell">
+					<div class="logo-wrap" aria-hidden="true">
+						<svg viewBox="0 0 32 32"><rect x="3.5" y="12" width="4.6" height="17" rx="2.3" fill="var(--primary)" opacity="0.55"/><rect x="10.7" y="6" width="4.6" height="23" rx="2.3" fill="var(--primary)"/><rect x="17.9" y="9" width="4.6" height="20" rx="2.3" fill="var(--primary)" opacity="0.8"/><rect x="25.1" y="15" width="4.6" height="14" rx="2.3" fill="var(--success)"/></svg>
+					</div>
+					<nav class="nav-list" aria-hidden="true">
+						<div class="nav-item active">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="4"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.1 0-2 .9-2 2v3.5c0 1-.6 1.7-1.5 2 .9.3 1.5 1 1.5 2V16c0 1.1.9 2 2 2"/><path d="M16 3c1.1 0 2 .9 2 2v3.5c0 1 .6 1.7 1.5 2-.9.3-1.5 1-1.5 2V16c0 1.1-.9 2-2 2"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
+						</div>
+					</nav>
+					<div class="spacer"></div>
+					<div class="account-btn" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20v-1.2A4.3 4.3 0 0 1 7.8 14.5h2.4"/><circle cx="18" cy="17" r="2.4"/><path d="M18 13.6v1M18 19.4v1M14.6 17h1M20.4 17h1M15.6 14.6l.7.7M19.7 18.7l.7.7M20.4 14.6l-.7.7M16.3 18.7l-.7.7"/></svg>
+					</div>
+					<div class="vh" data-ui-id="UI-SHELL-REVEAL">
+						<section data-ui-state="disabled">ausgeblendet, solange die Leiste offen ist</section>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- ===================================================================
+     UI-SHELL-MOBILE-NAV — Bereiche (schmaler Schirm)
+     =================================================================== -->
+<div class="block">
+	<h2>Mobil — Bereiche (schmaler Schirm) <code>UI-SHELL-MOBILE-NAV</code></h2>
+	<p class="anchor">Unter 768px ersetzt eine Leiste am unteren Rand die seitliche. Sie zeigt dieselben Bereiche mit Beschriftung; ein Tipp auf den bereits offenen Bereich klappt dort die Serverliste auf.</p>
+
+	<div class="demo-row">
+		<div class="demo-card mobile-frame">
+			<div class="cap">default — aktiv: Server</div>
+			<div class="mobile-screen">
+				<div class="mobile-nav hl" data-ui-id="UI-SHELL-MOBILE-NAV" aria-label="Bereiche">
+					<section data-ui-state="default" style="display:contents">
+						<div class="m-item active">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+							<span>Server</span>
+						</div>
+						<div class="m-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="4"/></svg>
+							<span>Monitoring</span>
+						</div>
+						<div class="m-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.1 0-2 .9-2 2v3.5c0 1-.6 1.7-1.5 2 .9.3 1.5 1 1.5 2V16c0 1.1.9 2 2 2"/><path d="M16 3c1.1 0 2 .9 2 2v3.5c0 1 .6 1.7 1.5 2-.9.3-1.5 1-1.5 2V16c0 1.1-.9 2-2 2"/></svg>
+							<span>Snippets</span>
+						</div>
+						<div class="m-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
+							<span>Audit</span>
+						</div>
+					</section>
+					<div class="m-account" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20v-1.2A4.3 4.3 0 0 1 7.8 14.5h2.4"/><circle cx="18" cy="17" r="2.4"/><path d="M18 13.6v1M18 19.4v1M14.6 17h1M20.4 17h1M15.6 14.6l.7.7M19.7 18.7l.7.7M20.4 14.6l-.7.7M16.3 18.7l-.7.7"/></svg>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="demo-card mobile-frame">
+			<div class="cap">selected — aktiv: Monitoring</div>
+			<div class="mobile-screen">
+				<div class="mobile-nav hl" data-ui-id="UI-SHELL-MOBILE-NAV" aria-label="Bereiche">
+					<section data-ui-state="selected" style="display:contents">
+						<div class="m-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+							<span>Server</span>
+						</div>
+						<div class="m-item active">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="4"/></svg>
+							<span>Monitoring</span>
+						</div>
+						<div class="m-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.1 0-2 .9-2 2v3.5c0 1-.6 1.7-1.5 2 .9.3 1.5 1 1.5 2V16c0 1.1.9 2 2 2"/><path d="M16 3c1.1 0 2 .9 2 2v3.5c0 1 .6 1.7 1.5 2-.9.3-1.5 1-1.5 2V16c0 1.1-.9 2-2 2"/></svg>
+							<span>Snippets</span>
+						</div>
+						<div class="m-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
+							<span>Audit</span>
+						</div>
+					</section>
+					<div class="m-account" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20v-1.2A4.3 4.3 0 0 1 7.8 14.5h2.4"/><circle cx="18" cy="17" r="2.4"/><path d="M18 13.6v1M18 19.4v1M14.6 17h1M20.4 17h1M15.6 14.6l.7.7M19.7 18.7l.7.7M20.4 14.6l-.7.7M16.3 18.7l-.7.7"/></svg>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+</body>
+</html>

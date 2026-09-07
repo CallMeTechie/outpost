@@ -1,6 +1,6 @@
 # Servers — Arbeitsfläche — Umsetzungsanleitung (UI-SERVERS)
 
-Artboard: docs/design/mockups/ui-servers.html · Manifest-Revision: 1
+Artboard: docs/design/mockups/ui-servers.html · Manifest-Revision: 2
 
 Diese Seite existiert bereits (`client/src/pages/Servers/Servers.jsx`). Die
 Anleitung schreibt den Bestand fest und fügt genau ein neues Verhalten hinzu:
@@ -68,12 +68,24 @@ den Fokus-Modus. Nichts wird neu gebaut, was es gibt.
 - `data-ui-id="UI-SERVERS-WELCOME"` an `WelcomePanel`. Datenquelle `GET /entries/recent?limit=5` — **die letzten fünf Verbindungen**, nicht alle Server.
 - Inhalte: Begrüßung (`welcome.hello`), letzte Verbindungen, Erste Schritte, Gerät verbinden, Apps. `empty` Copy „Noch keine Verbindungen. Lege einen Server an oder verbinde dich direkt."
 
+### UI-SERVERS-TAB-MARKER
+- `data-ui-id` an dem einen Platz links im Tab, den sich Punkt und Ring **teilen** (`.tab-marker`), nicht an einem der beiden.
+- `default`: ein Punkt von 0,5 rem in der Farbe des Split-Fensters. `loading`: ein Ring, der sich im Uhrzeigersinn nach dem gemeldeten Prozentsatz füllt, in `--success`.
+- Der Platz hat feste Größe — 1 rem, unter 768 px 0,875 rem. Das ist der Punkt: der Ring brachte einmal seine eigene 36-px-Fläche mit, füllte damit die ganze Tabhöhe und schob den Namen bei jedem Prozentwert zur Seite.
+- Fortschritt kommt aus `progressParser.js`, das die Terminalausgabe mitliest (Prozentangaben, ASCII-Balken, `x/y`, Byte-Angaben, docker/apt/git). Der Ring erscheint zwischen 1 und 99 und verschwindet bei 100 oder auf einer Abschlusszeile.
+
+### UI-SERVERS-TAB-LABEL
+- `data-ui-id` an der Beschriftung (`<h2>` im Tab). Reihenfolge: Name, Art, Nummer — die Art sagt, **was** der Tab ist, die Nummer, **welcher von mehreren**.
+- Die Nummer erscheint nur, solange in der Leiste tatsächlich ein zweiter Tab steht, der sonst gleich hieße (`idsNeedingNumber`). Ein einzelner Tab trägt nie eine.
+- Vergeben wird die kleinste Nummer, die die Gruppe gerade nicht benutzt; die 1 wird nie geschrieben. Eine bereits vergebene Nummer wird weitergereicht, nie neu berechnet — sonst würde das Schließen eines Tabs die übrigen umbenennen, während man sie ansieht.
+
 ## Ausdrücklich nicht
+- **Keine Nummer als Zähler.** Sie beantwortet „welcher von mehreren", nicht „wie oft schon geöffnet". Eine geschlossene Sitzung reserviert nichts.
 - Keine Aktivitätsleiste mit Icon-Spalte, keine Statusleiste, keine Panels-in-Panels (nicht wie eine IDE).
 - Keine zweite Akzentfarbe; keine Rohwerte, wo ein Token existiert.
 - Keine Aktion, die nur per Maus geht.
 - Kein Onboarding-Overlay im Leerzustand.
 
 ## Fertig, wenn
-- `mockingbird-scope.sh --locate <ID> --root /root/outpost` jedes der neun Elemente auf Tier A findet.
+- `mockingbird-scope.sh --locate <ID> --root /root/outpost` jedes der elf Elemente auf Tier A findet.
 - `/design-verify --screen UI-SERVERS` MATCH ergibt.

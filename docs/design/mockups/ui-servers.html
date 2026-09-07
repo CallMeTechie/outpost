@@ -219,6 +219,15 @@
 	.recent li.sleeping .ag { color: var(--primary); font-weight: 600; }
 	.recent li.skeleton { height: 3.5rem; opacity: 0.5; }
 	.welcome-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-2); padding: var(--space-8) var(--space-4); color: var(--subtext); }
+
+	/* Tab-Demos für UI-SERVERS-TAB-MARKER und UI-SERVERS-TAB-LABEL */
+	.tabdemo { display: flex; background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); overflow: hidden; width: max-content; margin-top: var(--space-2); }
+	.tabdemo .tab { display: flex; align-items: center; gap: .5rem; height: 2.25rem; padding: 0 .75rem; border-right: 1px solid var(--gray); color: var(--subtext); white-space: nowrap; }
+	.tabdemo .tab.active { background: var(--dark-gray); color: var(--text); }
+	.tabdemo .mark { width: 1rem; height: 1rem; flex: none; display: flex; align-items: center; justify-content: center; }
+	.tabdemo .mark svg { width: 100%; height: 100%; }
+	.tabdemo .dot { width: .5rem; height: .5rem; border-radius: 2px; display: block; }
+	.tabdemo .num { color: var(--subtext); }
 </style>
 </head>
 <body>
@@ -414,7 +423,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 			<section data-ui-state="default">
 				<div class="welcome-wrap">
 					<div class="welcome-left">
-						<h1>Hallo, <span>Marc Backes</span>!</h1>
+						<h1>Hallo, <span>CallMeTechie</span>!</h1>
 						<p>Verbinde dich mit einem deiner Server &mdash; oder lege einen neuen an.</p>
 						<div class="btns"><span class="btn primary">Schnellverbindung</span><span class="btn">Server anlegen</span><span class="btn">Ger&auml;t verbinden</span><span class="btn">Apps herunterladen</span></div>
 					</div>
@@ -547,7 +556,44 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 
 		<div class="wide">
 			<div class="gallery-caption">UI-SERVERS-VIEW · region · Arbeitsfläche</div>
-			<div data-ui-id="UI-SERVERS-VIEW" aria-label="Arbeitsfläche">
+	
+		<div data-ui-id="UI-SERVERS-TAB-MARKER" aria-label="Zustand eines Tabs">
+			<div class="gallery-caption">UI-SERVERS-TAB-MARKER · status · Zustand eines Tabs</div>
+			<section data-ui-state="default">
+				<p>Punkt in der Farbe des Split-Fensters, zu dem der Tab gehört.</p>
+				<div class="tabdemo">
+					<div class="tab active"><span class="mark"><i class="dot" style="background:#2A72C9"></i></span>nas</div>
+					<div class="tab"><span class="mark"><i class="dot" style="background:#1F9E6E"></i></span>pve-01</div>
+				</div>
+			</section>
+			<section data-ui-state="loading">
+				<p>Ring, gefüllt nach dem gemeldeten Prozentsatz — hier 42 %. Er sitzt auf demselben Platz wie der Punkt, damit der Name nicht wandert.</p>
+				<div class="tabdemo">
+					<div class="tab active"><span class="mark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="var(--subtext)" stroke-width="1.5" opacity=".15"/><circle cx="12" cy="12" r="10" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-dasharray="62.83" stroke-dashoffset="36.44" stroke-linecap="round" transform="rotate(-90 12 12)"/></svg></span>nas</div>
+					<div class="tab"><span class="mark"><i class="dot" style="background:#1F9E6E"></i></span>pve-01</div>
+				</div>
+			</section>
+		</div>
+
+		<div data-ui-id="UI-SERVERS-TAB-LABEL" aria-label="Beschriftung eines Tabs">
+			<div class="gallery-caption">UI-SERVERS-TAB-LABEL · text · Beschriftung eines Tabs</div>
+			<section data-ui-state="default">
+				<p>Allein in seiner Gruppe — keine Nummer.</p>
+				<div class="tabdemo">
+					<div class="tab active"><span class="mark"><i class="dot" style="background:#2A72C9"></i></span>nas</div>
+					<div class="tab"><span class="mark"><i class="dot" style="background:#1F9E6E"></i></span>pve-01</div>
+				</div>
+			</section>
+			<section data-ui-state="selected">
+				<p>Zwei Tabs hießen sonst gleich. Die 1 wird nie geschrieben; schließt einer, verschwindet die Nummer beim anderen.</p>
+				<div class="tabdemo">
+					<div class="tab active"><span class="mark"><i class="dot" style="background:#2A72C9"></i></span>nas <span class="kind">(SFTP)</span> <span class="num">(2)</span></div>
+					<div class="tab"><span class="mark"><i class="dot" style="background:#2A72C9"></i></span>nas <span class="kind">(SFTP)</span></div>
+				</div>
+			</section>
+		</div>
+
+		<div data-ui-id="UI-SERVERS-VIEW" aria-label="Arbeitsfläche">
 				<section data-ui-state="loading" style="height: 12rem; display:flex;">
 					<div class="pane active-pane" style="--pane:#2A72C9; flex:1;">
 						<div class="center" aria-busy="true"><div class="spinner"></div><div>Verbinde …</div></div>
@@ -570,7 +616,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 				<section data-ui-state="empty">
 					<div class="welcome-wrap" style="padding: var(--space-6);">
 						<div class="welcome-left">
-						<h1>Hallo, <span>Marc Backes</span>!</h1>
+						<h1>Hallo, <span>CallMeTechie</span>!</h1>
 						<p>Verbinde dich mit einem deiner Server &mdash; oder lege einen neuen an.</p>
 						<div class="btns"><span class="btn primary">Schnellverbindung</span><span class="btn">Server anlegen</span><span class="btn">Ger&auml;t verbinden</span><span class="btn">Apps herunterladen</span></div>
 					</div>
@@ -580,7 +626,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 				<section data-ui-state="loading">
 					<div class="welcome-wrap" style="padding: var(--space-6);">
 						<div class="welcome-left">
-						<h1>Hallo, <span>Marc Backes</span>!</h1>
+						<h1>Hallo, <span>CallMeTechie</span>!</h1>
 						<p>Verbinde dich mit einem deiner Server &mdash; oder lege einen neuen an.</p>
 						<div class="btns"><span class="btn primary">Schnellverbindung</span><span class="btn">Server anlegen</span><span class="btn">Ger&auml;t verbinden</span><span class="btn">Apps herunterladen</span></div>
 					</div>

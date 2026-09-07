@@ -20,7 +20,7 @@ export const MobileNav = () => {
     };
 
     return (
-        <nav className="mobile-nav">
+        <nav className="mobile-nav" data-ui-id="UI-SHELL-MOBILE-NAV">
             <div className="mobile-nav-scroll">
                 {navigation.map((item, i) => (
                     <div key={i} onClick={() => handleClick(item)} className={`mobile-nav-item${pathname.startsWith(item.path) ? " active" : ""}`}>

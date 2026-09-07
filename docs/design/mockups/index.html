@@ -2,7 +2,7 @@
 <html lang="de" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<title>outpost — Mockups (Revision 1)</title>
+<title>outpost — Mockups (Revision 2)</title>
 <link rel="stylesheet" href="./tokens.css">
 <style>
 .mb-page { font: var(--type-body, 500 0.875rem/1.45 system-ui, sans-serif); color: var(--text, #eee); background: var(--background, #111); margin: 0; padding: var(--space-8, 2rem); }
@@ -248,11 +248,6 @@
 #ab-ui-servers .split{ display: grid; grid-template-columns: minmax(40rem, 1fr) minmax(22rem, 34%); flex: 1; min-height: 0; }
 #ab-ui-servers .pane{ display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; border-top: 2px solid var(--pane, transparent); }
 #ab-ui-servers .pane + .pane{ border-left: 1px solid var(--gray); }
-#ab-ui-servers .pane-head{ display: flex; align-items: center; gap: var(--space-2); height: 1.75rem; padding: 0 var(--space-3); font: var(--type-caption); color: var(--subtext); background: var(--lighter-background); border-bottom: 1px solid var(--gray); }
-#ab-ui-servers .pane-head .swatch{ width: 0.5rem; height: 0.5rem; border-radius: 2px; background: var(--pane); }
-#ab-ui-servers .pane-head .path{ font: var(--type-mono); font-size: 0.75rem; color: var(--subtext); }
-#ab-ui-servers .pane-head .right{ margin-left: auto; display: flex; gap: var(--space-3); }
-#ab-ui-servers .pane.active-pane .pane-head{ color: var(--text); }
 #ab-ui-servers .term{ flex: 1; padding: var(--space-2) var(--space-3); font: var(--type-mono); color: var(--text); white-space: pre; overflow: hidden; background: var(--terminal); }
 #ab-ui-servers .term .p{ color: var(--success); }
 #ab-ui-servers .term .d{ color: var(--subtext); }
@@ -288,25 +283,96 @@
 #ab-ui-servers .keys .note{ display: flex; align-items: center; font: var(--type-caption); color: var(--subtext); padding: 0 var(--space-3); }
 #ab-ui-servers .focus-toggle-float{ position: absolute; top: var(--space-2); right: var(--space-2); z-index: 6; display: flex; }
 #ab-ui-servers .focus-toggle-float .tbtn{ border: 1px solid var(--accent-color); border-radius: var(--radius-sm); height: 2rem; background: var(--primary-opacity); color: var(--text); box-shadow: none; }
-#ab-ui-servers .welcome-wrap{ flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: var(--space-8) var(--space-6); background: var(--background); overflow: hidden; }
-#ab-ui-servers .welcome{ width: 100%; max-width: 44rem; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); }
-#ab-ui-servers .welcome h3{ grid-column: 1 / -1; margin: 0; font: var(--type-title); }
-#ab-ui-servers .welcome h3 small{ display: block; font: var(--type-body); color: var(--subtext); margin-top: var(--space-1); }
-#ab-ui-servers .welcome h4{ margin: 0 0 var(--space-2); font: var(--type-caption); color: var(--subtext); letter-spacing: 0.02em; }
-#ab-ui-servers .recent{ list-style: none; margin: 0; padding: 0; border: 1px solid var(--gray); border-radius: var(--radius-md); background: var(--lighter-background); overflow: hidden; }
-#ab-ui-servers .recent li{ display: flex; align-items: center; gap: var(--space-2); height: 2.25rem; padding: 0 var(--space-3); border-bottom: 1px solid var(--dark-gray); }
-#ab-ui-servers .recent li:last-child{ border-bottom: 0; }
-#ab-ui-servers .recent li .n{ font: var(--type-mono); color: var(--text); }
-#ab-ui-servers .recent li .m{ font: var(--type-caption); color: var(--subtext); }
-#ab-ui-servers .recent li kbd{ margin-left: auto; }
-#ab-ui-servers .recent li.focus-visible{ outline: 2px solid var(--accent-color); outline-offset: -2px; }
-#ab-ui-servers .starts{ list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
-#ab-ui-servers .starts li{ display: flex; align-items: center; gap: var(--space-3); height: 2.75rem; padding: 0 var(--space-3); border: 1px solid var(--gray); border-radius: var(--radius-md); background: var(--lighter-background); }
-#ab-ui-servers .starts li .t{ font: var(--type-body); color: var(--text); }
-#ab-ui-servers .starts li .s{ font: var(--type-caption); color: var(--subtext); }
-#ab-ui-servers .starts li kbd{ margin-left: auto; }
-#ab-ui-servers .welcome-empty{ grid-column: 1 / -1; padding: var(--space-4); border: 1px dashed var(--gray-strong); border-radius: var(--radius-md); color: var(--subtext); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
-#ab-ui-servers .welcome-empty .cta{ display: flex; gap: var(--space-2); margin-left: auto; }
+#ab-ui-servers .welcome-wrap{ flex: 1; display: flex; align-items: center; justify-content: space-around; gap: var(--space-6); padding: var(--space-8); background: var(--background); overflow: hidden; }
+#ab-ui-servers .welcome-left{ width: 32%; min-width: 17.5rem; }
+#ab-ui-servers .welcome-left h1{ margin: 0; font-size: 1.8rem; font-weight: 700; line-height: 1.2; }
+#ab-ui-servers .welcome-left h1 span{ color: var(--primary); }
+#ab-ui-servers .welcome-left p{ margin: var(--space-2) 0 var(--space-6); color: var(--subtext); font-size: 1rem; font-weight: 600; line-height: 1.5; }
+#ab-ui-servers .welcome-left .btns{ display: flex; gap: var(--space-3); flex-wrap: wrap; }
+#ab-ui-servers .welcome-right{ width: 42%; max-width: 30rem; min-width: 20rem; }
+#ab-ui-servers .sec-head{ display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-4); color: var(--subtext); }
+#ab-ui-servers .sec-head b{ font-size: 0.9rem; font-weight: 600; color: var(--text); }
+#ab-ui-servers .recent{ list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+#ab-ui-servers .recent li{ display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3);
+		background: var(--dark-gray); border: 1px solid transparent; border-radius: var(--radius-md); }
+#ab-ui-servers .recent li.hover{ background: var(--gray); border-color: var(--gray); }
+#ab-ui-servers .recent li.hover .play{ opacity: 1; }
+#ab-ui-servers .recent li .ico{ width: 2rem; height: 2rem; border-radius: 0.3rem; background: var(--tint); flex: none; }
+#ab-ui-servers .recent li .info{ flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+#ab-ui-servers .recent li .nm{ font-size: 0.9rem; font-weight: 600; color: var(--text); }
+#ab-ui-servers .recent li .ag{ font: var(--type-caption); color: var(--subtext); }
+#ab-ui-servers .recent li .badge{ font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.5rem; background: var(--gray); border-radius: var(--radius-sm); color: var(--subtext); }
+#ab-ui-servers .recent li .play{ color: var(--primary); opacity: 0; }
+#ab-ui-servers .recent li.sleeping{ border-color: var(--primary); background: var(--primary-opacity); }
+#ab-ui-servers .recent li.sleeping .ag{ color: var(--primary); font-weight: 600; }
+#ab-ui-servers .recent li.skeleton{ height: 3.5rem; opacity: 0.5; }
+#ab-ui-servers .welcome-empty{ display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-2); padding: var(--space-8) var(--space-4); color: var(--subtext); }
+#ab-ui-servers .tabdemo{ display: flex; background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); overflow: hidden; width: max-content; margin-top: var(--space-2); }
+#ab-ui-servers .tabdemo .tab{ display: flex; align-items: center; gap: .5rem; height: 2.25rem; padding: 0 .75rem; border-right: 1px solid var(--gray); color: var(--subtext); white-space: nowrap; }
+#ab-ui-servers .tabdemo .tab.active{ background: var(--dark-gray); color: var(--text); }
+#ab-ui-servers .tabdemo .mark{ width: 1rem; height: 1rem; flex: none; display: flex; align-items: center; justify-content: center; }
+#ab-ui-servers .tabdemo .mark svg{ width: 100%; height: 100%; }
+#ab-ui-servers .tabdemo .dot{ width: .5rem; height: .5rem; border-radius: 2px; display: block; }
+#ab-ui-servers .tabdemo .num{ color: var(--subtext); }
+
+</style>
+<style>
+/* ui-shell */
+#ab-ui-shell *{ box-sizing: border-box; }
+#ab-ui-shell{ font-size: calc(16px * var(--ui-scale)); }
+#ab-ui-shell{}
+#ab-ui-shell kbd{ font: var(--type-caption); font-family: ui-monospace, "JetBrains Mono", monospace; color: var(--subtext); }
+#ab-ui-shell .art-head{ display: flex; align-items: baseline; gap: var(--space-3); margin: 0 0 var(--space-4); }
+#ab-ui-shell .art-head h1{ font: var(--type-title); margin: 0; }
+#ab-ui-shell .art-head code{ font: var(--type-mono); color: var(--subtext); }
+#ab-ui-shell .art-head a{ color: var(--subtext); margin-left: auto; }
+#ab-ui-shell .block{ margin: 0 0 var(--space-8); }
+#ab-ui-shell .block > h2{ font: var(--type-heading); color: var(--text); margin: 0 0 var(--space-1); }
+#ab-ui-shell .block > h2 code{ font: var(--type-mono); font-size: 0.75rem; color: var(--subtext); margin-left: var(--space-2); }
+#ab-ui-shell .anchor{ font: var(--type-body); color: var(--text); margin: 0 0 var(--space-1); max-width: 48rem; }
+#ab-ui-shell .anchor-example{ font: var(--type-caption); color: var(--subtext); margin: 0 0 var(--space-3); }
+#ab-ui-shell section[data-ui-state]{ position: relative; }
+#ab-ui-shell section[data-ui-state]{ position: relative; }
+#ab-ui-shell .demo-card section[data-ui-state]::before{ content: none; }
+#ab-ui-shell section[data-ui-state]::before{}
+#ab-ui-shell .demo-row{ display: flex; gap: var(--space-4); flex-wrap: wrap; align-items: flex-start; }
+#ab-ui-shell .demo-card{ border: 1px solid var(--gray); border-radius: var(--radius-md); overflow: hidden; background: var(--background); }
+#ab-ui-shell .demo-card > .cap{ font: var(--type-caption); color: var(--subtext); padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--gray); background: var(--lighter-background); }
+#ab-ui-shell .demo-card .body{ padding: var(--space-4); display: flex; }
+#ab-ui-shell .demo-note{ font: var(--type-caption); color: var(--subtext); padding: 0 var(--space-2) var(--space-2); max-width: 16rem; }
+#ab-ui-shell .hl{ outline: 2px dashed var(--accent-color); outline-offset: 3px; border-radius: var(--radius-md); }
+#ab-ui-shell .vh{ position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+#ab-ui-shell .shell{ width: 5rem; flex: none; display: flex; flex-direction: column; align-items: center;
+		background: var(--lighter-background); border-right: 2px solid var(--dark-gray);
+		padding: var(--space-3) 0; gap: var(--space-2); min-height: 22rem; }
+#ab-ui-shell .shell.collapsed{ width: 1rem; padding: 0; border-right: 0; min-height: 22rem; }
+#ab-ui-shell .logo-wrap{ width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; }
+#ab-ui-shell .logo-wrap svg{ width: 42px; height: 42px; display: block; }
+#ab-ui-shell .nav-list{ display: flex; flex-direction: column; gap: 0.75rem; align-items: center; }
+#ab-ui-shell .nav-item{ width: 52px; height: 52px; border-radius: 1rem; display: flex; align-items: center; justify-content: center; color: var(--white); border: 1px solid transparent; }
+#ab-ui-shell .nav-item svg{ width: 32px; height: 32px; display: block; }
+#ab-ui-shell .nav-item.active{ background: var(--dark-gray); border-color: var(--gray); color: var(--primary); }
+#ab-ui-shell .spacer{ flex: 1; }
+#ab-ui-shell .account-btn{ width: 52px; height: 52px; border-radius: 1rem; display: flex; align-items: center; justify-content: center; color: var(--white); border: 1px solid transparent; }
+#ab-ui-shell .account-btn svg{ width: 32px; height: 32px; display: block; }
+#ab-ui-shell .account-btn.open{ background: var(--dark-gray); border-color: var(--gray); color: var(--primary); }
+#ab-ui-shell .reveal-strip{ width: 1rem; align-self: stretch; display: flex; align-items: center; justify-content: center; color: var(--subtext); background: var(--lighter-background); font: var(--type-body); }
+#ab-ui-shell .acct-menu{ min-width: 14rem; background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); font: var(--type-body); align-self: center; }
+#ab-ui-shell .acct-menu .head{ display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-bottom: 1px solid var(--gray); }
+#ab-ui-shell .acct-menu .avatar{ width: 2rem; height: 2rem; border-radius: 50%; background: var(--primary); color: var(--on-accent); display: flex; align-items: center; justify-content: center; font: var(--type-caption); font-weight: 700; flex: none; }
+#ab-ui-shell .acct-menu .who b{ display: block; color: var(--text); font-weight: 600; }
+#ab-ui-shell .acct-menu .who span{ display: block; color: var(--subtext); font: var(--type-caption); }
+#ab-ui-shell .acct-menu .item{ display: flex; align-items: center; height: 1.875rem; padding: 0 var(--space-3); color: var(--text); }
+#ab-ui-shell .acct-menu .item.danger{ color: var(--error); }
+#ab-ui-shell .acct-menu .sep{ height: 1px; background: var(--gray); margin: var(--space-1) 0; }
+#ab-ui-shell .mobile-frame{ width: 380px; max-width: 100%; border: 1px solid var(--gray); border-radius: var(--radius-md); overflow: hidden; background: var(--background); }
+#ab-ui-shell .mobile-screen{ height: 11rem; position: relative; background: var(--background); }
+#ab-ui-shell .mobile-nav{ position: absolute; left: 0; right: 0; bottom: 0; height: 3.5rem; background: var(--lighter-background); border-top: 1px solid var(--gray); display: flex; align-items: stretch; }
+#ab-ui-shell .mobile-nav .m-item{ flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem; color: var(--white); font: var(--type-caption); }
+#ab-ui-shell .mobile-nav .m-item svg{ width: 20px; height: 20px; display: block; }
+#ab-ui-shell .mobile-nav .m-item.active{ color: var(--primary); }
+#ab-ui-shell .mobile-nav .m-account{ flex: 0 0 3.5rem; border-left: 1px solid var(--gray); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem; color: var(--white); font: var(--type-caption); }
+#ab-ui-shell .mobile-nav .m-account svg{ width: 20px; height: 20px; display: block; }
 
 </style>
 <style>
@@ -334,7 +400,14 @@
 #ab-ui-tmux-dialog .sessions{ list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; align-content: start; }
 #ab-ui-tmux-dialog .sessions li{}
 #ab-ui-tmux-dialog .sessions .name{ font: var(--type-mono); }
-#ab-ui-tmux-dialog .sessions .meta{ font: var(--type-caption); color: var(--subtext); white-space: nowrap; }
+#ab-ui-tmux-dialog .sessions .meta{ font: var(--type-caption); color: var(--subtext); white-space: nowrap; flex: none; }
+#ab-ui-tmux-dialog .sessions .name{ min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#ab-ui-tmux-dialog .sessions .row-actions{ position: absolute; right: var(--space-2); top: 50%; transform: translateY(-50%);
+		display: flex; align-items: center; gap: 2px; padding-left: var(--space-3);
+		background: linear-gradient(to right, transparent, var(--gray-full) var(--space-3)); opacity: 0; }
+#ab-ui-tmux-dialog .sessions li{ position: relative; }
+#ab-ui-tmux-dialog .sessions li[aria-selected="true"] .row-actions, #ab-ui-tmux-dialog .sessions li.hover .row-actions{ opacity: 1; }
+#ab-ui-tmux-dialog .sessions .ico{ width: .75rem; height: .75rem; fill: var(--subtext); }
 #ab-ui-tmux-dialog .sessions li[aria-selected="true"]{ background: var(--primary-opacity); border-left-color: var(--primary); }
 #ab-ui-tmux-dialog .windows{}
 #ab-ui-tmux-dialog .windows li{}
@@ -370,27 +443,397 @@
 </head>
 <body class="mb-page">
 <h1>outpost — Mockups</h1>
-<p class="sub">Manifest-Revision 1 · 2026-09-03 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
+<p class="sub">Manifest-Revision 2 · 2026-09-07 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
 <ul class="mb-toc">
+<li><a href="#UI-SHELL">Rahmen — Navigation</a> <code>UI-SHELL</code></li>
 <li><a href="#UI-SERVERS">Servers — Arbeitsfläche</a> <code>UI-SERVERS</code></li>
 <li><a href="#UI-SERVER-DIALOG">Server anlegen / bearbeiten</a> <code>UI-SERVER-DIALOG</code></li>
 <li><a href="#UI-TMUX-DIALOG">tmux-Sessions</a> <code>UI-TMUX-DIALOG</code></li>
 <li><a href="#UI-DIRECT-CONNECT">Direkt verbinden</a> <code>UI-DIRECT-CONNECT</code></li>
 </ul>
+<h2 id="UI-SHELL">Rahmen — Navigation <code>UI-SHELL</code></h2>
+<p>Die Navigation, die jede Seite umgibt — als Leiste links, unter 768px als Leiste unten.</p>
+<div class="ctx"><b>Art:</b> Shell (auf jedem Screen)<br><b>Tastatur:</b> Tab-Reihenfolge Logo → Navigation → Konto; Enter und Leertaste holen die eingeklappte Leiste zurück" </div>
+<p class="meta">Artboard: <a href="./ui-shell.html">ui-shell.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-shell.md</code></p>
+<table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
+<tr><td><code>UI-SHELL-LOGO</code></td><td>Outpost</td><td>Die Bildmarke, zugleich der Schalter, der die Leiste ein- und ausklappt. Vier Pfosten unterschiedlicher Höhe, der letzte in der Erfolgsfarbe.</td><td><code>default · selected</code></td></tr>
+<tr><td><code>UI-SHELL-NAV</code></td><td>Bereiche</td><td>Die Bereiche der Anwendung — Server, Monitoring, Snippets, Audit. Ein Eintrag je Bereich, der aktive hervorgehoben; Audit nur mit dem Recht dafür. <b>Nicht:</b> server_entry, session.</td><td><code>default · selected</code></td></tr>
+<tr><td><code>UI-SHELL-ACCOUNT</code></td><td>Konto</td><td>Das eigene Konto am Fuß der Leiste. Öffnet ein Menü mit Einstellungen, Unterstützung und Abmelden. <b>Nicht:</b> server_entry, identity.</td><td><code>default · selected</code></td></tr>
+<tr><td><code>UI-SHELL-REVEAL</code></td><td>Seitenleiste einblenden</td><td>Der schmale Streifen am linken Rand, solange die Leiste eingeklappt ist. Mit Maus fährt sie beim Überfahren vorübergehend ein, ein Tipp oder Klick holt sie dauerhaft zurück.</td><td><code>default · disabled</code></td></tr>
+<tr><td><code>UI-SHELL-MOBILE-NAV</code></td><td>Bereiche (schmaler Schirm)</td><td>Unter 768px ersetzt eine Leiste am unteren Rand die seitliche. Sie zeigt dieselben Bereiche mit Beschriftung; ein Tipp auf den bereits offenen Bereich klappt dort die Serverliste auf. <b>Nicht:</b> server_entry, session.</td><td><code>default · selected</code></td></tr>
+</table>
+<div class="mb-embed"><div class="mb-embed-label">Auszug: ui-shell.html — alle Zustände, wie im Artboard</div><div id="ab-ui-shell">
+
+
+<header class="mb-context" style="font:var(--type-caption);color:var(--subtext);background:var(--lighter-background);border:1px solid var(--gray);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin:0 0 var(--space-4);line-height:1.6">
+	<strong style="color:var(--text);font:var(--type-heading)">Darstellungskontext</strong><br>
+	<b style="color:var(--text)">Art:</b> Rahmenkomponente (shared) · umgibt jede Seite der Anwendung<br>
+	<b style="color:var(--text)">Größe:</b> Leiste links, 5rem breit, volle Höhe · unter 768px ersetzt sie eine Leiste am unteren Rand, 3,5rem hoch<br>
+	Tastatur: Tab-Reihenfolge Logo → Navigation → Konto; Enter und Leertaste holen die eingeklappte Leiste zurück
+</header>
+<header class="art-head">
+	<h1>UI-SHELL</h1>
+	<span>Rahmen — Navigation</span>
+	<code>shared</code>
+	<a href="./index.html">← Kontaktbogen</a>
+</header>
+
+<!-- ===================================================================
+     UI-SHELL-LOGO — Bildmarke & Einklapp-Schalter
+     =================================================================== -->
+<div class="block">
+	<h2>Logo — Bildmarke &amp; Einklapp-Schalter <code>UI-SHELL-LOGO</code></h2>
+	<p class="anchor">Die Bildmarke, zugleich der Schalter, der die Leiste ein- und ausklappt. Vier Pfosten unterschiedlicher Höhe, der letzte in der Erfolgsfarbe.</p>
+	<p class="anchor-example">Beispiel: 42px im Kopf der Leiste</p>
+
+	<div class="demo-row">
+		<div class="demo-card">
+			<div class="cap">default</div>
+			<div class="body">
+				<div class="shell">
+					<div class="logo-wrap hl" data-ui-id="UI-SHELL-LOGO">
+						<section data-ui-state="default">
+							<svg viewBox="0 0 32 32" aria-label="Outpost">
+								<rect x="3.5" y="12" width="4.6" height="17" rx="2.3" fill="var(--primary)" opacity="0.55"/>
+								<rect x="10.7" y="6" width="4.6" height="23" rx="2.3" fill="var(--primary)" opacity="1"/>
+								<rect x="17.9" y="9" width="4.6" height="20" rx="2.3" fill="var(--primary)" opacity="0.8"/>
+								<rect x="25.1" y="15" width="4.6" height="14" rx="2.3" fill="var(--success)"/>
+							</svg>
+						</section>
+					</div>
+					<nav class="nav-list" aria-hidden="true">
+						<div class="nav-item active">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="4"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.1 0-2 .9-2 2v3.5c0 1-.6 1.7-1.5 2 .9.3 1.5 1 1.5 2V16c0 1.1.9 2 2 2"/><path d="M16 3c1.1 0 2 .9 2 2v3.5c0 1 .6 1.7 1.5 2-.9.3-1.5 1-1.5 2V16c0 1.1-.9 2-2 2"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
+						</div>
+					</nav>
+					<div class="spacer"></div>
+					<div class="account-btn" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20v-1.2A4.3 4.3 0 0 1 7.8 14.5h2.4"/><circle cx="18" cy="17" r="2.4"/><path d="M18 13.6v1M18 19.4v1M14.6 17h1M20.4 17h1M15.6 14.6l.7.7M19.7 18.7l.7.7M20.4 14.6l-.7.7M16.3 18.7l-.7.7"/></svg>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="demo-card">
+			<div class="cap">selected — eingeklappt — die Leiste ist verborgen</div>
+			<div class="body">
+				<div class="shell collapsed">
+					<div class="reveal-strip" data-ui-id="UI-SHELL-REVEAL"><span>›</span></div>
+					<div class="vh" data-ui-id="UI-SHELL-LOGO">
+						<section data-ui-state="selected">eingeklappt — die Leiste ist verborgen</section>
+					</div>
+				</div>
+			</div>
+			<p class="demo-note">Nur noch der Streifen aus UI-SHELL-REVEAL ist zu sehen; Logo, Navigation und Konto sind nicht gerendert.</p>
+		</div>
+	</div>
+</div>
+
+<!-- ===================================================================
+     UI-SHELL-NAV — Bereiche
+     =================================================================== -->
+<div class="block">
+	<h2>Navigation — Bereiche <code>UI-SHELL-NAV</code></h2>
+	<p class="anchor">Die Bereiche der Anwendung — Server, Monitoring, Snippets, Audit. Ein Eintrag je Bereich, der aktive hervorgehoben; Audit nur mit dem Recht dafür.</p>
+	<p class="anchor-example">Beispiel: Server · Monitoring · Snippets · Audit</p>
+
+	<div class="demo-row">
+		<div class="demo-card">
+			<div class="cap">default — aktiv: Server</div>
+			<div class="body">
+				<div class="shell">
+					<div class="logo-wrap" aria-hidden="true">
+						<svg viewBox="0 0 32 32"><rect x="3.5" y="12" width="4.6" height="17" rx="2.3" fill="var(--primary)" opacity="0.55"/><rect x="10.7" y="6" width="4.6" height="23" rx="2.3" fill="var(--primary)"/><rect x="17.9" y="9" width="4.6" height="20" rx="2.3" fill="var(--primary)" opacity="0.8"/><rect x="25.1" y="15" width="4.6" height="14" rx="2.3" fill="var(--success)"/></svg>
+					</div>
+					<nav class="nav-list hl" data-ui-id="UI-SHELL-NAV" aria-label="Bereiche">
+						<section data-ui-state="default" style="display:contents">
+							<div class="nav-item active" title="Server">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+							</div>
+							<div class="nav-item" title="Monitoring">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="4"/></svg>
+							</div>
+							<div class="nav-item" title="Snippets">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.1 0-2 .9-2 2v3.5c0 1-.6 1.7-1.5 2 .9.3 1.5 1 1.5 2V16c0 1.1.9 2 2 2"/><path d="M16 3c1.1 0 2 .9 2 2v3.5c0 1 .6 1.7 1.5 2-.9.3-1.5 1-1.5 2V16c0 1.1-.9 2-2 2"/></svg>
+							</div>
+							<div class="nav-item" title="Audit">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
+							</div>
+						</section>
+					</nav>
+					<div class="spacer"></div>
+					<div class="account-btn" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20v-1.2A4.3 4.3 0 0 1 7.8 14.5h2.4"/><circle cx="18" cy="17" r="2.4"/><path d="M18 13.6v1M18 19.4v1M14.6 17h1M20.4 17h1M15.6 14.6l.7.7M19.7 18.7l.7.7M20.4 14.6l-.7.7M16.3 18.7l-.7.7"/></svg>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="demo-card">
+			<div class="cap">selected — aktiv: Monitoring</div>
+			<div class="body">
+				<div class="shell">
+					<div class="logo-wrap" aria-hidden="true">
+						<svg viewBox="0 0 32 32"><rect x="3.5" y="12" width="4.6" height="17" rx="2.3" fill="var(--primary)" opacity="0.55"/><rect x="10.7" y="6" width="4.6" height="23" rx="2.3" fill="var(--primary)"/><rect x="17.9" y="9" width="4.6" height="20" rx="2.3" fill="var(--primary)" opacity="0.8"/><rect x="25.1" y="15" width="4.6" height="14" rx="2.3" fill="var(--success)"/></svg>
+					</div>
+					<nav class="nav-list hl" data-ui-id="UI-SHELL-NAV" aria-label="Bereiche">
+						<section data-ui-state="selected" style="display:contents">
+							<div class="nav-item" title="Server">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+							</div>
+							<div class="nav-item active" title="Monitoring">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="4"/></svg>
+							</div>
+							<div class="nav-item" title="Snippets">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.1 0-2 .9-2 2v3.5c0 1-.6 1.7-1.5 2 .9.3 1.5 1 1.5 2V16c0 1.1.9 2 2 2"/><path d="M16 3c1.1 0 2 .9 2 2v3.5c0 1 .6 1.7 1.5 2-.9.3-1.5 1-1.5 2V16c0 1.1-.9 2-2 2"/></svg>
+							</div>
+							<div class="nav-item" title="Audit">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
+							</div>
+						</section>
+					</nav>
+					<div class="spacer"></div>
+					<div class="account-btn" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20v-1.2A4.3 4.3 0 0 1 7.8 14.5h2.4"/><circle cx="18" cy="17" r="2.4"/><path d="M18 13.6v1M18 19.4v1M14.6 17h1M20.4 17h1M15.6 14.6l.7.7M19.7 18.7l.7.7M20.4 14.6l-.7.7M16.3 18.7l-.7.7"/></svg>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- ===================================================================
+     UI-SHELL-ACCOUNT — Konto
+     =================================================================== -->
+<div class="block">
+	<h2>Konto <code>UI-SHELL-ACCOUNT</code></h2>
+	<p class="anchor">Das eigene Konto am Fuß der Leiste. Öffnet ein Menü mit Einstellungen, Unterstützung und Abmelden.</p>
+
+	<div class="demo-row">
+		<div class="demo-card">
+			<div class="cap">default</div>
+			<div class="body">
+				<div class="shell">
+					<div class="logo-wrap" aria-hidden="true">
+						<svg viewBox="0 0 32 32"><rect x="3.5" y="12" width="4.6" height="17" rx="2.3" fill="var(--primary)" opacity="0.55"/><rect x="10.7" y="6" width="4.6" height="23" rx="2.3" fill="var(--primary)"/><rect x="17.9" y="9" width="4.6" height="20" rx="2.3" fill="var(--primary)" opacity="0.8"/><rect x="25.1" y="15" width="4.6" height="14" rx="2.3" fill="var(--success)"/></svg>
+					</div>
+					<nav class="nav-list" aria-hidden="true">
+						<div class="nav-item active">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="4"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.1 0-2 .9-2 2v3.5c0 1-.6 1.7-1.5 2 .9.3 1.5 1 1.5 2V16c0 1.1.9 2 2 2"/><path d="M16 3c1.1 0 2 .9 2 2v3.5c0 1 .6 1.7 1.5 2-.9.3-1.5 1-1.5 2V16c0 1.1-.9 2-2 2"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
+						</div>
+					</nav>
+					<div class="spacer"></div>
+					<div class="account-btn hl" data-ui-id="UI-SHELL-ACCOUNT">
+						<section data-ui-state="default">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20v-1.2A4.3 4.3 0 0 1 7.8 14.5h2.4"/><circle cx="18" cy="17" r="2.4"/><path d="M18 13.6v1M18 19.4v1M14.6 17h1M20.4 17h1M15.6 14.6l.7.7M19.7 18.7l.7.7M20.4 14.6l-.7.7M16.3 18.7l-.7.7"/></svg>
+						</section>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="demo-card">
+			<div class="cap">selected — Menü offen</div>
+			<div class="body" style="align-items:flex-end; gap: var(--space-2);">
+				<div class="shell">
+					<div class="logo-wrap" aria-hidden="true">
+						<svg viewBox="0 0 32 32"><rect x="3.5" y="12" width="4.6" height="17" rx="2.3" fill="var(--primary)" opacity="0.55"/><rect x="10.7" y="6" width="4.6" height="23" rx="2.3" fill="var(--primary)"/><rect x="17.9" y="9" width="4.6" height="20" rx="2.3" fill="var(--primary)" opacity="0.8"/><rect x="25.1" y="15" width="4.6" height="14" rx="2.3" fill="var(--success)"/></svg>
+					</div>
+					<nav class="nav-list" aria-hidden="true">
+						<div class="nav-item active">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="4"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.1 0-2 .9-2 2v3.5c0 1-.6 1.7-1.5 2 .9.3 1.5 1 1.5 2V16c0 1.1.9 2 2 2"/><path d="M16 3c1.1 0 2 .9 2 2v3.5c0 1 .6 1.7 1.5 2-.9.3-1.5 1-1.5 2V16c0 1.1-.9 2-2 2"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
+						</div>
+					</nav>
+					<div class="spacer"></div>
+					<div class="account-btn open hl" data-ui-id="UI-SHELL-ACCOUNT">
+						<section data-ui-state="selected">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20v-1.2A4.3 4.3 0 0 1 7.8 14.5h2.4"/><circle cx="18" cy="17" r="2.4"/><path d="M18 13.6v1M18 19.4v1M14.6 17h1M20.4 17h1M15.6 14.6l.7.7M19.7 18.7l.7.7M20.4 14.6l-.7.7M16.3 18.7l-.7.7"/></svg>
+						</section>
+					</div>
+				</div>
+				<div class="acct-menu">
+					<div class="head">
+						<span class="avatar">MB</span>
+						<span class="who"><b>@ma.backes</b></span>
+					</div>
+					<div class="item">Einstellungen</div>
+					<div class="item">Auf GitHub bewerten</div>
+					<div class="item">Unterstützung</div>
+					<div class="sep"></div>
+					<div class="item danger">Abmelden</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- ===================================================================
+     UI-SHELL-REVEAL — Seitenleiste einblenden
+     =================================================================== -->
+<div class="block">
+	<h2>Zurückholen — Seitenleiste einblenden <code>UI-SHELL-REVEAL</code></h2>
+	<p class="anchor">Der schmale Streifen am linken Rand, solange die Leiste eingeklappt ist. Mit Maus fährt sie beim Überfahren vorübergehend ein, ein Tipp oder Klick holt sie dauerhaft zurück.</p>
+	<p class="anchor-example">Beispiel: 1rem breit; auf Geräten mit grobem Zeiger 1,5rem und voll deckend</p>
+
+	<div class="demo-row">
+		<div class="demo-card">
+			<div class="cap">default — Leiste eingeklappt</div>
+			<div class="body">
+				<div class="shell collapsed">
+					<div class="reveal-strip hl" data-ui-id="UI-SHELL-REVEAL">
+						<section data-ui-state="default"><span>›</span></section>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="demo-card">
+			<div class="cap">disabled — ausgeblendet, solange die Leiste offen ist</div>
+			<div class="body">
+				<div class="shell">
+					<div class="logo-wrap" aria-hidden="true">
+						<svg viewBox="0 0 32 32"><rect x="3.5" y="12" width="4.6" height="17" rx="2.3" fill="var(--primary)" opacity="0.55"/><rect x="10.7" y="6" width="4.6" height="23" rx="2.3" fill="var(--primary)"/><rect x="17.9" y="9" width="4.6" height="20" rx="2.3" fill="var(--primary)" opacity="0.8"/><rect x="25.1" y="15" width="4.6" height="14" rx="2.3" fill="var(--success)"/></svg>
+					</div>
+					<nav class="nav-list" aria-hidden="true">
+						<div class="nav-item active">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="4"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.1 0-2 .9-2 2v3.5c0 1-.6 1.7-1.5 2 .9.3 1.5 1 1.5 2V16c0 1.1.9 2 2 2"/><path d="M16 3c1.1 0 2 .9 2 2v3.5c0 1 .6 1.7 1.5 2-.9.3-1.5 1-1.5 2V16c0 1.1-.9 2-2 2"/></svg>
+						</div>
+						<div class="nav-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
+						</div>
+					</nav>
+					<div class="spacer"></div>
+					<div class="account-btn" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20v-1.2A4.3 4.3 0 0 1 7.8 14.5h2.4"/><circle cx="18" cy="17" r="2.4"/><path d="M18 13.6v1M18 19.4v1M14.6 17h1M20.4 17h1M15.6 14.6l.7.7M19.7 18.7l.7.7M20.4 14.6l-.7.7M16.3 18.7l-.7.7"/></svg>
+					</div>
+					<div class="vh" data-ui-id="UI-SHELL-REVEAL">
+						<section data-ui-state="disabled">ausgeblendet, solange die Leiste offen ist</section>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- ===================================================================
+     UI-SHELL-MOBILE-NAV — Bereiche (schmaler Schirm)
+     =================================================================== -->
+<div class="block">
+	<h2>Mobil — Bereiche (schmaler Schirm) <code>UI-SHELL-MOBILE-NAV</code></h2>
+	<p class="anchor">Unter 768px ersetzt eine Leiste am unteren Rand die seitliche. Sie zeigt dieselben Bereiche mit Beschriftung; ein Tipp auf den bereits offenen Bereich klappt dort die Serverliste auf.</p>
+
+	<div class="demo-row">
+		<div class="demo-card mobile-frame">
+			<div class="cap">default — aktiv: Server</div>
+			<div class="mobile-screen">
+				<div class="mobile-nav hl" data-ui-id="UI-SHELL-MOBILE-NAV" aria-label="Bereiche">
+					<section data-ui-state="default" style="display:contents">
+						<div class="m-item active">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+							<span>Server</span>
+						</div>
+						<div class="m-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="4"/></svg>
+							<span>Monitoring</span>
+						</div>
+						<div class="m-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.1 0-2 .9-2 2v3.5c0 1-.6 1.7-1.5 2 .9.3 1.5 1 1.5 2V16c0 1.1.9 2 2 2"/><path d="M16 3c1.1 0 2 .9 2 2v3.5c0 1 .6 1.7 1.5 2-.9.3-1.5 1-1.5 2V16c0 1.1-.9 2-2 2"/></svg>
+							<span>Snippets</span>
+						</div>
+						<div class="m-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
+							<span>Audit</span>
+						</div>
+					</section>
+					<div class="m-account" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20v-1.2A4.3 4.3 0 0 1 7.8 14.5h2.4"/><circle cx="18" cy="17" r="2.4"/><path d="M18 13.6v1M18 19.4v1M14.6 17h1M20.4 17h1M15.6 14.6l.7.7M19.7 18.7l.7.7M20.4 14.6l-.7.7M16.3 18.7l-.7.7"/></svg>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="demo-card mobile-frame">
+			<div class="cap">selected — aktiv: Monitoring</div>
+			<div class="mobile-screen">
+				<div class="mobile-nav hl" data-ui-id="UI-SHELL-MOBILE-NAV" aria-label="Bereiche">
+					<section data-ui-state="selected" style="display:contents">
+						<div class="m-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+							<span>Server</span>
+						</div>
+						<div class="m-item active">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="4"/></svg>
+							<span>Monitoring</span>
+						</div>
+						<div class="m-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.1 0-2 .9-2 2v3.5c0 1-.6 1.7-1.5 2 .9.3 1.5 1 1.5 2V16c0 1.1.9 2 2 2"/><path d="M16 3c1.1 0 2 .9 2 2v3.5c0 1 .6 1.7 1.5 2-.9.3-1.5 1-1.5 2V16c0 1.1-.9 2-2 2"/></svg>
+							<span>Snippets</span>
+						</div>
+						<div class="m-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
+							<span>Audit</span>
+						</div>
+					</section>
+					<div class="m-account" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20v-1.2A4.3 4.3 0 0 1 7.8 14.5h2.4"/><circle cx="18" cy="17" r="2.4"/><path d="M18 13.6v1M18 19.4v1M14.6 17h1M20.4 17h1M15.6 14.6l.7.7M19.7 18.7l.7.7M20.4 14.6l-.7.7M16.3 18.7l-.7.7"/></svg>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+
+</div></div>
 <h2 id="UI-SERVERS">Servers — Arbeitsfläche <code>UI-SERVERS</code></h2>
 <p>Server-Liste, Session-Tabs, Terminal-/Datei-Fläche, Fokus-Modus, Leerzustand.</p>
 <div class="ctx"><b>Art:</b> Seite · Route <code>/servers</code><br><b>Tastatur:</b> Ctrl+Shift+F Fokus-Modus</div>
 <p class="meta">Artboard: <a href="./ui-servers.html">ui-servers.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-servers.md</code></p>
 <table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
 <tr><td><code>UI-SERVERS-LIST</code></td><td>Server</td><td>Die Verbindungsziele des Nutzers, gruppiert nach Ordner und Organisation, plus verknüpfte OneDrive-Konten. <b>Nicht:</b> session, tab, identity, snippet.</td><td><code>default · loading · empty · error · selected</code></td></tr>
-<tr><td><code>UI-SERVERS-SEARCH</code></td><td>Suche</td><td>Filtert die Server-Liste nach Name oder Tag, ohne die Gruppierung aufzulösen.</td><td><code>default · empty</code></td></tr>
-<tr><td><code>UI-SERVERS-LIST-MENU</code></td><td>Kontextmenü Server</td><td>Zweitweg für Aktionen auf einem Eintrag — Verbinden, SFTP öffnen, Notizen, Bearbeiten, Duplizieren, Port weiterleiten, Session beitreten, Löschen. <b>Nicht:</b> primary_navigation.</td><td><code>default · disabled</code></td></tr>
+<tr><td><code>UI-SERVERS-SEARCH</code></td><td>Suche</td><td>Filtert die Server-Liste nach Name, IP oder Tag, ohne die Gruppierung aufzulösen.</td><td><code>default · empty</code></td></tr>
+<tr><td><code>UI-SERVERS-LIST-MENU</code></td><td>Kontextmenü Server</td><td>Zweitweg für Aktionen auf einem Eintrag — Verbinden, SFTP öffnen, Notizen, Bearbeiten, Duplizieren, Session beitreten, Löschen. Port weiterleiten erscheint nur in der Desktop-App (Tauri), im Web-Build nie. <b>Nicht:</b> primary_navigation.</td><td><code>default · disabled</code></td></tr>
 <tr><td><code>UI-SERVERS-TABS</code></td><td>Sessions</td><td>Die aktuell offenen Sessions als Tabs, jede mit ihrer Split-View-Zuordnungsfarbe; Kontextmenü mit Umbenennen, Duplizieren, Teilen, Schlafen legen, Ausklinken, Schließen. <b>Nicht:</b> server_entry, folder.</td><td><code>default · selected · empty</code></td></tr>
+<tr><td><code>UI-SERVERS-TAB-MARKER</code></td><td>Zustand eines Tabs</td><td>Der Platz links im Tab. Im Ruhezustand ein Punkt in der Farbe des Split-Fensters, zu dem der Tab gehört. Läuft ein Befehl, der Prozente ausgibt, steht dort stattdessen ein Ring, der sich im Uhrzeigersinn füllt. <b>Nicht:</b> connection_state, session.</td><td><code>default · loading</code></td></tr>
+<tr><td><code>UI-SERVERS-TAB-LABEL</code></td><td>Beschriftung eines Tabs</td><td>Der Text eines Tabs. Name zuerst, dann die Art in Klammern, zuletzt die Nummer. Die Nummer unterscheidet Tabs, die sonst gleich hießen, und erscheint nur, solange in der Leiste tatsächlich ein zweiter solcher Tab steht. <b>Nicht:</b> server_entry, hostname.</td><td><code>default · selected</code></td></tr>
 <tr><td><code>UI-SERVERS-VIEW</code></td><td>Arbeitsfläche</td><td>Der Inhalt der aktiven Session, einzeln oder als Split; Terminal und Datei-Pane nebeneinander sind der Kernfall. <b>Nicht:</b> server_entry.</td><td><code>default · loading · error</code></td></tr>
 <tr><td><code>UI-SERVERS-FOCUS</code></td><td>Fokus-Modus</td><td>Blendet Server-Liste und Tab-Leiste aus, nur das aktive Pane bleibt; Taste Ctrl+Shift+F, greift automatisch unter den Mindestbreiten (Terminal 40 rem, Datei-Pane 22 rem). <b>Nicht:</b> fullscreen_browser.</td><td><code>default · selected</code></td></tr>
-<tr><td><code>UI-SERVERS-KEYBAR</code></td><td>Tastenleiste</td><td>Terminal-Sondertasten (Esc, Tab, Ctrl, Pfeile) nur auf Touch bzw. unter 768 px, und nur wenn das aktive Pane ein Terminal ist; am Desktop nie.</td><td><code>default · disabled</code></td></tr>
-<tr><td><code>UI-SERVERS-ACTIONS</code></td><td>Aktionen</td><td>Menü mit Aktionen auf die aktive Session (Fokus-Modus, Teilen, Ausklinken, Schließen).</td><td><code>default · disabled</code></td></tr>
-<tr><td><code>UI-SERVERS-WELCOME</code></td><td>Willkommen</td><td>Leerzustand ohne offene Session — Begrüßung, die fünf zuletzt genutzten Verbindungen, Erste Schritte, Gerät verbinden, Apps laden. Positiv, handlungsleitend, kein Marketing. <b>Nicht:</b> all_servers, marketing.</td><td><code>default · empty</code></td></tr>
+<tr><td><code>UI-SERVERS-KEYBAR</code></td><td>Tastenleiste</td><td>Terminal-Sondertasten (Esc, Tab, Ctrl, Alt, Shift, Pfeile, Home, Ende, Bild auf/ab sowie die auf Touch-Tastaturen vergrabenen Zeichen | ~ - /), und nur wenn das aktive Pane ein Terminal ist. Sichtbar nach der Einstellung terminal.keyBar (auto/always/never); auto heißt "es gibt gar keinen präzisen Zeiger" — die Frage ist any-pointer, nicht pointer, denn ein Tablet meldet einen groben Primärzeiger auch mit angeschlossener Maus, und wer eine Maus hat, braucht keine Tastenleiste. Sie sitzt über der Arbeitsfläche, nicht darunter: unterhalb schneidet eine Kette aus vier height-100%-Containern sie ab.</td><td><code>default · disabled</code></td></tr>
+<tr><td><code>UI-SERVERS-ACTIONS</code></td><td>Aktionen</td><td>Werkzeuge für das aktive Pane: Snippets, Broadcast an alle Panes (nur bei geteilter Ansicht bedienbar), Vollbild. Tastenkürzel nur bei Guacamole-Sitzungen, wo sie hingehören. Teilen, Ausklinken und Schließen liegen im Tab-Kontextmenü (UI-SERVERS-TABS), nicht hier — die Trennung ist beabsichtigt: hier Werkzeuge, dort Sitzungsverwaltung.</td><td><code>default · disabled</code></td></tr>
+<tr><td><code>UI-SERVERS-WELCOME</code></td><td>Willkommen</td><td>Leerzustand ohne offene Session — links die Begrüßung mit Namen und die Einstiege (Schnellverbindung, Server anlegen, Gerät verbinden, Apps herunterladen), rechts die zuletzt genutzten Verbindungen als Zeilen mit Farbfeld (Kennfarbe aus der Eintrags-ID, nicht die Pane-Farbe eines Tabs), Name, Alter und Protokoll-Badge. Schlafende Sitzungen erscheinen in der Liste und werden fortgesetzt statt neu verbunden. Positiv, handlungsorientiert, kein Marketing. <b>Nicht:</b> all_servers, marketing.</td><td><code>default · loading · empty</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-servers.html — alle Zustände, wie im Artboard</div><div id="ab-ui-servers">
 
@@ -421,7 +864,7 @@
 			<section data-ui-state="default">
 				<div class="search" data-ui-id="UI-SERVERS-SEARCH">
 					<section data-ui-state="default">
-						<div class="input" role="search"><span>Suche</span><kbd>/</kbd></div>
+						<div class="input" role="search"><span>Suche</span><kbd>CTRL + S</kbd></div>
 					</section>
 				</div>
 				<ul class="entries">
@@ -464,11 +907,11 @@
 						<section data-ui-state="default">
 							<div class="tbtn open" role="button" aria-haspopup="menu" aria-expanded="true" title="Aktionen">⋯</div>
 							<div class="menu" role="menu">
-								<div class="item hover">Fokus-Modus<kbd>⌃⇧F</kbd></div>
-								<div class="item">Teilen</div>
-								<div class="item">Ausklinken</div>
+								<div class="item hover">Snippets</div>
+								<div class="item">Tastenkürzel</div>
+								<div class="item">Broadcast</div>
 								<div class="sep"></div>
-								<div class="item">Schließen<kbd>⌃W</kbd></div>
+								<div class="item">Vollbild</div>
 							</div>
 						</section>
 					</div>
@@ -485,7 +928,6 @@
 			<section data-ui-state="default">
 				<div class="split">
 					<div class="pane active-pane" style="--pane:#2A72C9">
-						<div class="pane-head"><span class="swatch"></span>nas · Terminal<span class="right"><span>tmux: main</span><span>80×24</span></span></div>
 						<div class="term"><span class="p">nas:~$</span> uptime
  21:14:03 up 41 days,  3:12,  1 user,  load average: 0.42, 0.37, 0.31
 <span class="p">nas:~$</span> docker compose ls
@@ -494,7 +936,6 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <span class="p">nas:~$</span> <span class="cur"></span></div>
 					</div>
 					<div class="pane" style="--pane:#2A72C9">
-						<div class="pane-head"><span class="swatch"></span>nas · Dateien <span class="path">/volume1/docker</span><span class="right"><span>⇧⌘.</span></span></div>
 						<div class="files">
 							<div class="row head"><span class="name">Name</span><span class="size">Größe</span><span class="date">Geändert</span></div>
 							<div class="row dir"><span class="name">..</span><span class="size"></span><span class="date"></span></div>
@@ -534,7 +975,6 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 	<div class="frame workspace focus">
 		<div class="view">
 			<div class="pane active-pane" style="--pane:#2A72C9; flex:1;">
-				<div class="pane-head"><span class="swatch"></span>nas · Terminal<span class="right"><span>tmux: main</span><span>132×36</span></span></div>
 				<div class="term"><span class="p">nas:~$</span> docker compose -f /volume1/docker/outpost/compose.yaml logs --tail 3 server
 <span class="d">server-1  | [engine] tmux new-session -d -s main</span>
 <span class="d">server-1  | [engine] attached pty 0 → session main</span>
@@ -559,7 +999,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 	<div class="frame workspace welcome">
 
 		<aside class="list">
-			<div class="search"><div class="input" role="search"><span>Suche</span><kbd>/</kbd></div></div>
+			<div class="search"><div class="input" role="search"><span>Suche</span><kbd>CTRL + S</kbd></div></div>
 			<ul class="entries">
 				<li class="group">Homelab</li>
 				<li class="entry"><span class="dot"></span>nas</li>
@@ -588,26 +1028,14 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 		<main class="view" data-ui-id="UI-SERVERS-WELCOME" aria-label="Willkommen">
 			<section data-ui-state="default">
 				<div class="welcome-wrap">
-					<div class="welcome">
-						<h3>Willkommen<small>Wähle eine Verbindung oder lege los.</small></h3>
-						<div>
-							<h4>Zuletzt verbunden</h4>
-							<ul class="recent">
-								<li class="focus-visible"><span class="n">nas</span><span class="m">SSH · vor 12 min</span><kbd>↵</kbd></li>
-								<li><span class="n">pihole</span><span class="m">SFTP · heute</span></li>
-								<li><span class="n">proxmox</span><span class="m">SSH · gestern</span></li>
-								<li><span class="n">build-01</span><span class="m">SSH · vor 3 Tagen</span></li>
-								<li><span class="n">vpn</span><span class="m">SSH · vor 6 Tagen</span></li>
-							</ul>
-						</div>
-						<div>
-							<h4>Weiter</h4>
-							<ul class="starts">
-								<li><span><span class="t">Erste Schritte</span><br><span class="s">Server anlegen, SSH-Config importieren</span></span><kbd>1</kbd></li>
-								<li><span><span class="t">Gerät verbinden</span><br><span class="s">Direktverbindung ohne gespeicherten Eintrag</span></span><kbd>2</kbd></li>
-								<li><span><span class="t">Apps laden</span><br><span class="s">Desktop und Mobile</span></span><kbd>3</kbd></li>
-							</ul>
-						</div>
+					<div class="welcome-left">
+						<h1>Hallo, <span>CallMeTechie</span>!</h1>
+						<p>Verbinde dich mit einem deiner Server &mdash; oder lege einen neuen an.</p>
+						<div class="btns"><span class="btn primary">Schnellverbindung</span><span class="btn">Server anlegen</span><span class="btn">Ger&auml;t verbinden</span><span class="btn">Apps herunterladen</span></div>
+					</div>
+					<div class="welcome-right">
+						<div class="sec-head"><b>Neueste Verbindungen</b></div>
+						<ul class="recent"><li class=""><span class="ico" style="--tint:#2A72C9"></span><span class="info"><span class="nm">nas</span><span class="ag">vor 12 Minuten</span></span><span class="badge">SSH</span><span class="play">&#9654;</span></li><li class="hover"><span class="ico" style="--tint:#A8741A"></span><span class="info"><span class="nm">pihole</span><span class="ag">vor 3 Stunden</span></span><span class="badge">SFTP</span><span class="play">&#9654;</span></li><li class="sleeping"><span class="ico" style="--tint:#8E3FD4"></span><span class="info"><span class="nm">proxmox</span><span class="ag">schl&auml;ft &middot; fortsetzen</span></span><span class="badge">SSH</span><span class="play">&#9654;</span></li><li class=""><span class="ico" style="--tint:#C25218"></span><span class="info"><span class="nm">build-01</span><span class="ag">gestern</span></span><span class="badge">SSH</span><span class="play">&#9654;</span></li><li class=""><span class="ico" style="--tint:#12908C"></span><span class="info"><span class="nm">vpn</span><span class="ag">vor 6 Tagen</span></span><span class="badge">SSH</span><span class="play">&#9654;</span></li></ul>
 					</div>
 				</div>
 			</section>
@@ -626,25 +1054,25 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 		<div data-ui-id="UI-SERVERS-LIST" aria-label="Server">
 			<div class="gallery-caption">UI-SERVERS-LIST · list · Server</div>
 			<section data-ui-state="loading">
-				<div class="search"><div class="input"><span>Suche</span><kbd>/</kbd></div></div>
+				<div class="search"><div class="input"><span>Suche</span><kbd>CTRL + S</kbd></div></div>
 				<div class="skeleton" aria-busy="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
 			</section>
 			<section data-ui-state="empty">
-				<div class="search"><div class="input"><span>Suche</span><kbd>/</kbd></div></div>
+				<div class="search"><div class="input"><span>Suche</span><kbd>CTRL + S</kbd></div></div>
 				<div class="list-msg">
 					Noch keine Server. Server anlegen, SSH-Config importieren oder direkt verbinden.
-					<div class="cta"><span class="btn primary">Server anlegen <kbd>N</kbd></span><span class="btn">Importieren</span><span class="btn ghost">Direkt verbinden</span></div>
+					<div class="cta"><span class="btn primary">Server anlegen</span><span class="btn">Importieren</span><span class="btn ghost">Direkt verbinden</span></div>
 				</div>
 			</section>
 			<section data-ui-state="error">
-				<div class="search"><div class="input"><span>Suche</span><kbd>/</kbd></div></div>
+				<div class="search"><div class="input"><span>Suche</span><kbd>CTRL + S</kbd></div></div>
 				<div class="list-msg error">
 					Serverliste konnte nicht geladen werden.
-					<div class="cta"><span class="btn">Erneut laden <kbd>R</kbd></span></div>
+					<div class="cta"><span class="btn">Erneut laden</span></div>
 				</div>
 			</section>
 			<section data-ui-state="selected">
-				<div class="search"><div class="input"><span>Suche</span><kbd>/</kbd></div></div>
+				<div class="search"><div class="input"><span>Suche</span><kbd>CTRL + S</kbd></div></div>
 				<ul class="entries">
 					<li class="group">Homelab</li>
 					<li class="entry selected focus-visible"><span class="dot on"></span>nas<span class="meta">2 Sessions</span></li>
@@ -725,7 +1153,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 							<div class="item">Schlafen legen</div>
 							<div class="item">Ausklinken</div>
 							<div class="sep"></div>
-							<div class="item">Schließen<kbd>⌃W</kbd></div>
+							<div class="item">Schließen</div>
 						</div>
 					</div>
 				</section>
@@ -734,16 +1162,51 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 
 		<div class="wide">
 			<div class="gallery-caption">UI-SERVERS-VIEW · region · Arbeitsfläche</div>
-			<div data-ui-id="UI-SERVERS-VIEW" aria-label="Arbeitsfläche">
+	
+		<div data-ui-id="UI-SERVERS-TAB-MARKER" aria-label="Zustand eines Tabs">
+			<div class="gallery-caption">UI-SERVERS-TAB-MARKER · status · Zustand eines Tabs</div>
+			<section data-ui-state="default">
+				<p>Punkt in der Farbe des Split-Fensters, zu dem der Tab gehört.</p>
+				<div class="tabdemo">
+					<div class="tab active"><span class="mark"><i class="dot" style="background:#2A72C9"></i></span>nas</div>
+					<div class="tab"><span class="mark"><i class="dot" style="background:#1F9E6E"></i></span>pve-01</div>
+				</div>
+			</section>
+			<section data-ui-state="loading">
+				<p>Ring, gefüllt nach dem gemeldeten Prozentsatz — hier 42 %. Er sitzt auf demselben Platz wie der Punkt, damit der Name nicht wandert.</p>
+				<div class="tabdemo">
+					<div class="tab active"><span class="mark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="var(--subtext)" stroke-width="1.5" opacity=".15"/><circle cx="12" cy="12" r="10" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-dasharray="62.83" stroke-dashoffset="36.44" stroke-linecap="round" transform="rotate(-90 12 12)"/></svg></span>nas</div>
+					<div class="tab"><span class="mark"><i class="dot" style="background:#1F9E6E"></i></span>pve-01</div>
+				</div>
+			</section>
+		</div>
+
+		<div data-ui-id="UI-SERVERS-TAB-LABEL" aria-label="Beschriftung eines Tabs">
+			<div class="gallery-caption">UI-SERVERS-TAB-LABEL · text · Beschriftung eines Tabs</div>
+			<section data-ui-state="default">
+				<p>Allein in seiner Gruppe — keine Nummer.</p>
+				<div class="tabdemo">
+					<div class="tab active"><span class="mark"><i class="dot" style="background:#2A72C9"></i></span>nas</div>
+					<div class="tab"><span class="mark"><i class="dot" style="background:#1F9E6E"></i></span>pve-01</div>
+				</div>
+			</section>
+			<section data-ui-state="selected">
+				<p>Zwei Tabs hießen sonst gleich. Die 1 wird nie geschrieben; schließt einer, verschwindet die Nummer beim anderen.</p>
+				<div class="tabdemo">
+					<div class="tab active"><span class="mark"><i class="dot" style="background:#2A72C9"></i></span>nas <span class="kind">(SFTP)</span> <span class="num">(2)</span></div>
+					<div class="tab"><span class="mark"><i class="dot" style="background:#2A72C9"></i></span>nas <span class="kind">(SFTP)</span></div>
+				</div>
+			</section>
+		</div>
+
+		<div data-ui-id="UI-SERVERS-VIEW" aria-label="Arbeitsfläche">
 				<section data-ui-state="loading" style="height: 12rem; display:flex;">
 					<div class="pane active-pane" style="--pane:#2A72C9; flex:1;">
-						<div class="pane-head"><span class="swatch"></span>nas · Terminal</div>
 						<div class="center" aria-busy="true"><div class="spinner"></div><div>Verbinde …</div></div>
 					</div>
 				</section>
 				<section data-ui-state="error" style="height: 12rem; display:flex;">
 					<div class="pane active-pane" style="--pane:#2A72C9; flex:1;">
-						<div class="pane-head"><span class="swatch"></span>nas · Terminal</div>
 						<div class="center error">
 							<div class="msg">Verbindung fehlgeschlagen. Erneut versuchen oder Server bearbeiten.</div>
 							<div class="cta"><span class="btn primary">Erneut versuchen <kbd>↵</kbd></span><span class="btn">Server bearbeiten <kbd>E</kbd></span></div>
@@ -758,21 +1221,22 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 			<div data-ui-id="UI-SERVERS-WELCOME" aria-label="Willkommen">
 				<section data-ui-state="empty">
 					<div class="welcome-wrap" style="padding: var(--space-6);">
-						<div class="welcome">
-							<h3>Willkommen<small>Wähle eine Verbindung oder lege los.</small></h3>
-							<div class="welcome-empty">
-								<span>Noch keine Verbindungen. Lege einen Server an oder verbinde dich direkt.</span>
-								<span class="cta"><span class="btn primary">Server anlegen <kbd>N</kbd></span><span class="btn">Direkt verbinden</span></span>
-							</div>
-							<div style="grid-column: 1 / -1;">
-								<h4>Weiter</h4>
-								<ul class="starts">
-									<li><span><span class="t">Erste Schritte</span><br><span class="s">Server anlegen, SSH-Config importieren</span></span><kbd>1</kbd></li>
-									<li><span><span class="t">Gerät verbinden</span><br><span class="s">Direktverbindung ohne gespeicherten Eintrag</span></span><kbd>2</kbd></li>
-									<li><span><span class="t">Apps laden</span><br><span class="s">Desktop und Mobile</span></span><kbd>3</kbd></li>
-								</ul>
-							</div>
-						</div>
+						<div class="welcome-left">
+						<h1>Hallo, <span>CallMeTechie</span>!</h1>
+						<p>Verbinde dich mit einem deiner Server &mdash; oder lege einen neuen an.</p>
+						<div class="btns"><span class="btn primary">Schnellverbindung</span><span class="btn">Server anlegen</span><span class="btn">Ger&auml;t verbinden</span><span class="btn">Apps herunterladen</span></div>
+					</div>
+						<div class="welcome-right"><div class="welcome-empty">Noch nichts verbunden. Sobald du dich zum ersten Mal verbindest, stehen die Ziele hier.</div></div>
+					</div>
+				</section>
+				<section data-ui-state="loading">
+					<div class="welcome-wrap" style="padding: var(--space-6);">
+						<div class="welcome-left">
+						<h1>Hallo, <span>CallMeTechie</span>!</h1>
+						<p>Verbinde dich mit einem deiner Server &mdash; oder lege einen neuen an.</p>
+						<div class="btns"><span class="btn primary">Schnellverbindung</span><span class="btn">Server anlegen</span><span class="btn">Ger&auml;t verbinden</span><span class="btn">Apps herunterladen</span></div>
+					</div>
+						<div class="welcome-right"><div class="sec-head"><b>Neueste Verbindungen</b></div><ul class="recent" aria-busy="true"><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li></ul></div>
 					</div>
 				</section>
 			</div>
@@ -791,7 +1255,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <tr><td><code>UI-SERVER-DIALOG-TABS</code></td><td>Details · Identität · Einstellungen</td><td>Die drei Abschnitte des Dialogs in fester Reihenfolge.</td><td><code>default · selected</code></td></tr>
 <tr><td><code>UI-SERVER-DIALOG-DETAILS</code></td><td>Details</td><td>Name, Icon, Server-IP, Port, Protokoll, Engine, MAC-Adresse und WoL-Broadcast des Servers. <b>Nicht:</b> identity.</td><td><code>default · error</code></td></tr>
 <tr><td><code>UI-SERVER-DIALOG-IDENTITY</code></td><td>Identität</td><td>Zugangsdaten, mit denen dieser Server erreicht wird — persönliche und Organisations-Identitäten, verknüpfbar; Authentifizierung Passwort, SSH-Key oder beides. <b>Nicht:</b> server_entry, user_account.</td><td><code>default · empty</code></td></tr>
-<tr><td><code>UI-SERVER-DIALOG-SETTINGS</code></td><td>Einstellungen</td><td>Verhalten dieses Servers in drei Gruppen — Terminal (Schrift, Cursor, Scrollback, Bell), Verbindung (Keep-alive, Timeout, Jump-Host, Startbefehl), tmux (automatisch anhängen, Standard-Session). Keine Stammdaten. <b>Nicht:</b> server_entry.</td><td><code>default</code></td></tr>
+<tr><td><code>UI-SERVER-DIALOG-SETTINGS</code></td><td>Einstellungen</td><td>Verhalten dieses Servers, nicht seine Stammdaten: Jump-Hosts, Startbefehl, tmux ein/aus, Monitoring, Wake-on-LAN, Terminal-Tastenverhalten (Backspace, Entf, Funktionstasten) und für RDP zusätzlich Sicherheit, Tastaturlayout, Anzeige, Audio und Leistung. <b>Nicht:</b> server_entry.</td><td><code>default</code></td></tr>
 <tr><td><code>UI-SERVER-DIALOG-SAVE</code></td><td>Speichern</td><td>Legt den Server an bzw. speichert Änderungen und schließt den Dialog; Beschriftung „Erstellen" beim Anlegen, „Speichern" beim Bearbeiten.</td><td><code>default · disabled · error</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-server-dialog.html — alle Zustände, wie im Artboard</div><div id="ab-ui-server-dialog">
@@ -1039,7 +1503,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <div class="ctx"><b>Art:</b> Dialog (modal, mit Backdrop)<br><b>Erscheint über:</b> UI-SERVERS<br><b>Öffnen durch:</b> Kontextmenü › Session beitreten<br><b>Größe:</b> mittig<br><b>Schließen:</b> Esc<br><b>Tastatur:</b> ↑↓ Session</div>
 <p class="meta">Artboard: <a href="./ui-tmux-dialog.html">ui-tmux-dialog.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-tmux-dialog.md</code></p>
 <table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
-<tr><td><code>UI-TMUX-DIALOG-SESSIONS</code></td><td>Sessions</td><td>Die tmux-Sessions des Servers — nicht Outposts eigene Tabs. <b>Nicht:</b> tab, server_entry, window.</td><td><code>default · loading · empty · error · selected</code></td></tr>
+<tr><td><code>UI-TMUX-DIALOG-SESSIONS</code></td><td>Sessions</td><td>Die tmux-Sessions des Servers — nicht Outposts eigene Tabs. Eine Zeile je Session: der Name in voller Länge, rechts die drei Aktionen (Fenster anzeigen, Umbenennen, Beenden), die über dem Zeilenende liegen und nur auf der Zeile erscheinen, auf der man ist. Die Fensterzahl steht nicht als Text da — sie ist im Fenster-Icon gezeichnet; der Name braucht den Platz. <b>Nicht:</b> tab, server_entry, window.</td><td><code>default · loading · empty · error · selected</code></td></tr>
 <tr><td><code>UI-TMUX-DIALOG-WINDOWS</code></td><td>Fenster</td><td>Die Fenster der gewählten Session als Raster, aktives Fenster markiert. <b>Nicht:</b> tmux_session, tab.</td><td><code>default · empty · selected</code></td></tr>
 <tr><td><code>UI-TMUX-DIALOG-ATTACH</code></td><td>Beitreten</td><td>Hängt das Terminal an die gewählte Session und das gewählte Fenster.</td><td><code>default · disabled</code></td></tr>
 <tr><td><code>UI-TMUX-DIALOG-NEW</code></td><td>Neue Session</td><td>Startet eine neue tmux-Session auf dem Server und hängt sich an.</td><td><code>default</code></td></tr>
@@ -1071,8 +1535,8 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 					<div class="pane">
 						<div class="pane-label" id="lbl-sessions">Sessions</div>
 						<ul class="sessions" role="listbox" aria-labelledby="lbl-sessions" data-ui-id="UI-TMUX-DIALOG-SESSIONS">
-							<li role="option" aria-selected="true"><span class="name">main</span><span class="meta">3 Fenster</span></li>
-							<li role="option" aria-selected="false"><span class="name">deploy</span><span class="meta">1 Fenster</span></li>
+							<li role="option" aria-selected="true"><span class="name">main</span><span class="row-actions"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12.5V14h1.5l8-8L10 4.5l-8 8zM13.7 4.3a.8.8 0 000-1.1l-.9-.9a.8.8 0 00-1.1 0l-.9.9L12.8 5.2l.9-.9z"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2h6v1h3v1.5H2V3h3V2zm-2 4h10l-.8 8.2A1 1 0 0111.2 15H4.8a1 1 0 01-1-.8L3 6z"/></svg></span></li>
+							<li role="option" aria-selected="false"><span class="name">deploy</span><span class="row-actions"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12.5V14h1.5l8-8L10 4.5l-8 8zM13.7 4.3a.8.8 0 000-1.1l-.9-.9a.8.8 0 00-1.1 0l-.9.9L12.8 5.2l.9-.9z"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2h6v1h3v1.5H2V3h3V2zm-2 4h10l-.8 8.2A1 1 0 0111.2 15H4.8a1 1 0 01-1-.8L3 6z"/></svg></span></li>
 						</ul>
 					</div>
 					<div class="pane">
@@ -1107,8 +1571,8 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 				<div class="frame">
 					<div class="pane-label">Sessions</div>
 					<ul class="sessions" role="listbox" data-ui-id="UI-TMUX-DIALOG-SESSIONS">
-						<li role="option" aria-selected="false"><span class="name">main</span><span class="meta">3 Fenster</span></li>
-						<li role="option" aria-selected="false"><span class="name">deploy</span><span class="meta">1 Fenster</span></li>
+						<li role="option" aria-selected="false"><span class="name">main</span><span class="row-actions"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12.5V14h1.5l8-8L10 4.5l-8 8zM13.7 4.3a.8.8 0 000-1.1l-.9-.9a.8.8 0 00-1.1 0l-.9.9L12.8 5.2l.9-.9z"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2h6v1h3v1.5H2V3h3V2zm-2 4h10l-.8 8.2A1 1 0 0111.2 15H4.8a1 1 0 01-1-.8L3 6z"/></svg></span></li>
+						<li role="option" aria-selected="false"><span class="name">deploy</span><span class="row-actions"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12.5V14h1.5l8-8L10 4.5l-8 8zM13.7 4.3a.8.8 0 000-1.1l-.9-.9a.8.8 0 00-1.1 0l-.9.9L12.8 5.2l.9-.9z"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2h6v1h3v1.5H2V3h3V2zm-2 4h10l-.8 8.2A1 1 0 0111.2 15H4.8a1 1 0 01-1-.8L3 6z"/></svg></span></li>
 					</ul>
 				</div>
 			</section>
@@ -1149,8 +1613,8 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 				<div class="frame">
 					<div class="pane-label">Sessions</div>
 					<ul class="sessions" role="listbox" data-ui-id="UI-TMUX-DIALOG-SESSIONS">
-						<li role="option" aria-selected="true"><span class="name">main</span><span class="meta">3 Fenster</span></li>
-						<li role="option" aria-selected="false"><span class="name">deploy</span><span class="meta">1 Fenster</span></li>
+						<li role="option" aria-selected="true"><span class="name">main</span><span class="row-actions"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12.5V14h1.5l8-8L10 4.5l-8 8zM13.7 4.3a.8.8 0 000-1.1l-.9-.9a.8.8 0 00-1.1 0l-.9.9L12.8 5.2l.9-.9z"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2h6v1h3v1.5H2V3h3V2zm-2 4h10l-.8 8.2A1 1 0 0111.2 15H4.8a1 1 0 01-1-.8L3 6z"/></svg></span></li>
+						<li role="option" aria-selected="false"><span class="name">deploy</span><span class="row-actions"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12.5V14h1.5l8-8L10 4.5l-8 8zM13.7 4.3a.8.8 0 000-1.1l-.9-.9a.8.8 0 00-1.1 0l-.9.9L12.8 5.2l.9-.9z"/></svg><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2h6v1h3v1.5H2V3h3V2zm-2 4h10l-.8 8.2A1 1 0 0111.2 15H4.8a1 1 0 01-1-.8L3 6z"/></svg></span></li>
 					</ul>
 				</div>
 			</section>
@@ -1268,7 +1732,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <header class="mb-context" style="font:var(--type-caption);color:var(--subtext);background:var(--lighter-background);border:1px solid var(--gray);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin:0 0 var(--space-4);line-height:1.6">
 	<strong style="color:var(--text);font:var(--type-heading)">Darstellungskontext</strong><br>
 	<b style="color:var(--text)">Art:</b> Dialog, modal · erscheint über UI-SERVERS auf dem Backdrop<br>
-	Öffnen: Welcome › Schnellverbindung, Taste Ctrl+K · Schließen: Esc, Backdrop; nach Verbinden automatisch<br>Größe: mittig, 32 rem · Tastatur: Enter Verbinden
+	Öffnen: Welcome › Schnellverbindung, Taste Ctrl+K · Schließen: Esc, Backdrop; nach Verbinden automatisch<br>Größe: mittig, 26 rem · Tastatur: Enter Verbinden
 </header>
 <div class="artboard-head">
 	<code>UI-DIRECT-CONNECT</code>

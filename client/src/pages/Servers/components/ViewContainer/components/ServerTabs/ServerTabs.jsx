@@ -166,7 +166,7 @@ const DraggableTab = ({
                     and bottom, and pushed the name 28px to the right every time a command
                     started printing a percentage. Sharing a fixed slot means the ring appears
                     and goes without a single pixel moving. */}
-                <span className="tab-marker" aria-hidden="true">
+                <span className="tab-marker" data-ui-id="UI-SERVERS-TAB-MARKER" aria-hidden="true">
                     {showProgress ? (
                         <svg viewBox="0 0 24 24">
                             <circle
@@ -196,7 +196,7 @@ const DraggableTab = ({
                         <span className="tab-swatch" />
                     )}
                 </span>
-                <h2 title={tabTooltip}>
+                <h2 title={tabTooltip} data-ui-id="UI-SERVERS-TAB-LABEL">
                     <span className="tab-name">{tabLabel.name}</span>
                     {tabLabel.kind && <span className="tab-kind">{tabLabel.kind}</span>}
                     {tabLabel.number && <span className="tab-number">({tabLabel.number})</span>}

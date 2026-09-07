@@ -1,7 +1,7 @@
 schema: mockingbird/1
 project: outpost
-revision: 1
-updated: 2026-09-03
+revision: 2
+updated: 2026-09-07
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
 tokens_css: docs/design/mockups/tokens.css
@@ -13,12 +13,109 @@ changelog:
     date: 2026-09-03
     summary: Runde 1 — Servers-Arbeitsfläche und drei Dialoge, Bestand festgeschrieben, Fokus-Modus neu
     touched: [UI-SERVERS, UI-SERVER-DIALOG, UI-TMUX-DIALOG, UI-DIRECT-CONNECT]
+  - rev: 2
+    date: 2026-09-07
+    summary: Runde 2 — Shell-Navigation erstmals gestaltet; Tab-Markierung und Tab-Beschriftung nachgetragen, die im Code entstanden waren
+    touched: [UI-SHELL, UI-SERVERS-TAB-MARKER, UI-SERVERS-TAB-LABEL]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
 primary_adapter: web
 
 screens:
+  - id: UI-SHELL
+    kind: shared
+    title: Rahmen — Navigation
+    artboard: docs/design/mockups/ui-shell.html
+    guide: docs/design/guides/ui-shell.md
+    presentation: { keyboard: "Tab-Reihenfolge Logo → Navigation → Konto; Enter und Leertaste holen die eingeklappte Leiste zurück" }
+    description: Die Navigation, die jede Seite umgibt — als Leiste links, unter 768px als Leiste unten.
+    elements:
+      - id: UI-SHELL-LOGO
+        type: media
+        label: Outpost
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: Die Bildmarke, zugleich der Schalter, der die Leiste ein- und ausklappt. Vier Pfosten unterschiedlicher Höhe, der letzte in der Erfolgsfarbe.
+          example: "42px im Kopf der Leiste"
+        states:
+          - { id: default }
+          - { id: selected, copy: "eingeklappt — die Leiste ist verborgen" }
+        locators:
+          web: "[data-ui-id='UI-SHELL-LOGO']"
+
+      - id: UI-SHELL-NAV
+        type: nav
+        label: Bereiche
+        status: required
+        verify: required
+        data_source: "getSidebarNavigation(t), gefiltert nach den Rechten des Kontos"
+        semantic_anchor:
+          means: Die Bereiche der Anwendung — Server, Monitoring, Snippets, Audit. Ein Eintrag je Bereich, der aktive hervorgehoben; Audit nur mit dem Recht dafür.
+          concept: app_section
+          aliases: [area, page, route]
+          not: [server_entry, session]
+          cardinality: many
+          example: "Server · Monitoring · Snippets · Audit"
+        states:
+          - { id: default }
+          - { id: selected }
+        locators:
+          web: "[data-ui-id='UI-SHELL-NAV']"
+
+      - id: UI-SHELL-ACCOUNT
+        type: action
+        label: Konto
+        status: required
+        verify: required
+        data_source: "angemeldetes Konto; im Connector-Betrieb zusätzlich die hinterlegten Server"
+        semantic_anchor:
+          means: Das eigene Konto am Fuß der Leiste. Öffnet ein Menü mit Einstellungen, Unterstützung und Abmelden.
+          concept: user_account
+          aliases: [profile, me]
+          not: [server_entry, identity]
+          cardinality: one
+        states:
+          - { id: default }
+          - { id: selected, copy: "Menü offen" }
+        locators:
+          web: "[data-ui-id='UI-SHELL-ACCOUNT']"
+
+      - id: UI-SHELL-REVEAL
+        type: action
+        label: Seitenleiste einblenden
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: Der schmale Streifen am linken Rand, solange die Leiste eingeklappt ist. Mit Maus fährt sie beim Überfahren vorübergehend ein, ein Tipp oder Klick holt sie dauerhaft zurück.
+          example: "1rem breit; auf Geräten mit grobem Zeiger 1,5rem und voll deckend"
+        states:
+          - { id: default }
+          - { id: disabled, copy: "ausgeblendet, solange die Leiste offen ist" }
+        locators:
+          web: "[data-ui-id='UI-SHELL-REVEAL']"
+
+      - id: UI-SHELL-MOBILE-NAV
+        type: nav
+        label: Bereiche (schmaler Schirm)
+        status: required
+        verify: required
+        data_source: "dieselbe Liste wie UI-SHELL-NAV"
+        semantic_anchor:
+          means: Unter 768px ersetzt eine Leiste am unteren Rand die seitliche. Sie zeigt dieselben Bereiche mit Beschriftung; ein Tipp auf den bereits offenen Bereich klappt dort die Serverliste auf.
+          concept: app_section
+          aliases: [area, page, route]
+          not: [server_entry, session]
+          cardinality: many
+        states:
+          - { id: default }
+          - { id: selected }
+        locators:
+          web: "[data-ui-id='UI-SHELL-MOBILE-NAV']"
+
   - id: UI-SERVERS
     kind: page
     title: Servers — Arbeitsfläche
@@ -26,6 +123,7 @@ screens:
     guide: docs/design/guides/ui-servers.md
     route_hint: /servers
     presentation: { keyboard: "Ctrl+Shift+F Fokus-Modus, E Bearbeiten, T tmux, Ctrl+K Direkt verbinden" }
+    uses: [UI-SHELL-NAV, UI-SHELL-ACCOUNT, UI-SHELL-MOBILE-NAV]
     description: Server-Liste, Session-Tabs, Terminal-/Datei-Fläche, Fokus-Modus, Leerzustand.
     elements:
       - id: UI-SERVERS-LIST
@@ -99,6 +197,47 @@ screens:
           - { id: empty }
         locators:
           web: "[data-ui-id='UI-SERVERS-TABS']"
+
+      - id: UI-SERVERS-TAB-MARKER
+        type: status
+        label: Zustand eines Tabs
+        status: required
+        verify: required
+        data_source: "Split-View-Farbe der Session; Fortschritt aus der Terminalausgabe (progressParser)"
+        semantic_anchor:
+          means: Der Platz links im Tab. Im Ruhezustand ein Punkt in der Farbe des Split-Fensters, zu dem der Tab gehört. Läuft ein Befehl, der Prozente ausgibt, steht dort stattdessen ein Ring, der sich im Uhrzeigersinn füllt.
+          concept: session_activity
+          aliases: [progress, pane_color]
+          not: [connection_state, session]
+          cardinality: one
+          unit: percent
+          example: "grüner Ring bei 42%"
+          empty_means: Kein Befehl meldet Fortschritt — der Punkt steht, das ist kein Fehler.
+        states:
+          - { id: default, copy: "Punkt in der Farbe des Split-Fensters" }
+          - { id: loading, copy: "Ring, gefüllt nach dem gemeldeten Prozentsatz" }
+        locators:
+          web: "[data-ui-id='UI-SERVERS-TAB-MARKER']"
+
+      - id: UI-SERVERS-TAB-LABEL
+        type: text
+        label: Beschriftung eines Tabs
+        status: required
+        verify: required
+        data_source: "buildTabLabel: Servername, tmux-Sitzung oder Skriptname, eigener Name, Art, Nummer"
+        semantic_anchor:
+          means: Der Text eines Tabs. Name zuerst, dann die Art in Klammern, zuletzt die Nummer. Die Nummer unterscheidet Tabs, die sonst gleich hießen, und erscheint nur, solange in der Leiste tatsächlich ein zweiter solcher Tab steht.
+          concept: session_label
+          aliases: [tab_title, name]
+          not: [server_entry, hostname]
+          cardinality: one
+          example: "nas (SFTP) (2)"
+          empty_means: Ein Tab ohne Zusatz ist der einzige seiner Art — keine fehlende Angabe.
+        states:
+          - { id: default, copy: "nas" }
+          - { id: selected, copy: "nas (SFTP) (2)" }
+        locators:
+          web: "[data-ui-id='UI-SERVERS-TAB-LABEL']"
 
       - id: UI-SERVERS-VIEW
         type: region
@@ -385,7 +524,7 @@ screens:
     title: Direkt verbinden
     artboard: docs/design/mockups/ui-direct-connect.html
     guide: docs/design/guides/ui-direct-connect.md
-    presentation: { over: UI-SERVERS, trigger: "Welcome › Schnellverbindung, Taste Ctrl+K", size: "mittig, 32rem", dismiss: "Esc, Backdrop; nach Verbinden automatisch", keyboard: "Enter Verbinden" }
+    presentation: { over: UI-SERVERS, trigger: "Welcome › Schnellverbindung, Taste Ctrl+K", size: "mittig, 26rem", dismiss: "Esc, Backdrop; nach Verbinden automatisch", keyboard: "Enter Verbinden" }
     description: Einmalverbindung ohne gespeicherten Server.
     elements:
       - id: UI-DIRECT-CONNECT-HOST

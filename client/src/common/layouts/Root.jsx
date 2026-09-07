@@ -121,6 +121,7 @@ const AppContent = () => {
                                                                 strip also shares the screen edge with the system's back gesture. */}
                                                             <div
                                                                 className={`left-pane-hover-bar${isLeftPaneCollapsed ? " active" : ""}`}
+                                                                data-ui-id="UI-SHELL-REVEAL"
                                                                 ref={hoverBarRef}
                                                                 role="button"
                                                                 tabIndex={isLeftPaneCollapsed ? 0 : -1}
