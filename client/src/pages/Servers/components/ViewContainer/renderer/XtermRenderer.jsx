@@ -21,6 +21,7 @@ import ConnectionError, { mapConnectionError } from "./components/ConnectionErro
 import { getWebSocketUrl } from "@/common/utils/ConnectionUtil.js";
 import { isImeBackspace } from "@/common/utils/imeKeys.js";
 import { shouldFit, shouldSendSize } from "@/common/utils/terminalResize.js";
+import { parseContextToken } from "../utils/contextParser.js";
 import { postRequest } from "@/common/utils/RequestUtil.js";
 import { applyLatchedModifiers } from "@/common/utils/keyBarModifiers.js";
 import "@xterm/xterm/css/xterm.css";
@@ -36,7 +37,7 @@ const MODIFIER_KEYS = ["Shift", "Control", "Alt", "Meta", "AltGraph", "CapsLock"
 // cannot force a React render per escape sequence.
 const TITLE_UPDATE_THROTTLE_MS = 100;
 
-const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getSessionError, registerTerminalRef, onTerminalReady, broadcastMode, modifierLatch, onLatchConsumed, terminalRefs, updateProgress, updateTitle, layoutMode, onBroadcastToggle, onFullscreenToggle, isShared = false, onOpenSftp }) => {
+const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getSessionError, registerTerminalRef, onTerminalReady, broadcastMode, modifierLatch, onLatchConsumed, terminalRefs, updateProgress, updateContext, updateTitle, layoutMode, onBroadcastToggle, onFullscreenToggle, isShared = false, onOpenSftp }) => {
     const ref = useRef(null);
     const termRef = useRef(null);
     const wsRef = useRef(null);
@@ -92,6 +93,10 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
     const [passwordIdentities, setPasswordIdentities] = useState([]);
     const [cursorAnchor, setCursorAnchor] = useState(null);
     const passwordPromptRef = useRef(null);
+    // Wie die anderen Rückrufe hier über eine Ref: der Effekt, der das Terminal aufbaut, darf
+    // nicht neu laufen, nur weil der Elternteil eine neue Funktion gebildet hat.
+    const updateContextRef = useRef(updateContext);
+    useEffect(() => { updateContextRef.current = updateContext; }, [updateContext]);
     const passwordHintIndexRef = useRef(-1);
     const passwordIdentitiesRef = useRef([]);
     const passwordDetectionRef = useRef(passwordPromptDetection);
@@ -681,6 +686,14 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
             if (!hostSpoke) {
                 hostSpoke = true;
                 lastSentSize = null;
+            }
+
+            // Meldet die Sitzung ihre Kontextfüllung, steht sie als Marke im Strom. Vor der
+            // Weiterverarbeitung, damit sie auch aus einem Chunk kommt, den der Terminal-
+            // Schreibpfad unten sonst verschluckt.
+            if (updateContextRef.current) {
+                const context = parseContextToken(data);
+                if (context) updateContextRef.current(session.id, context);
             }
 
             if (data.startsWith("\x02")) {

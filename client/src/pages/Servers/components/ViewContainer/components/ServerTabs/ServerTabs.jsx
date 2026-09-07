@@ -34,6 +34,7 @@ const DraggableTab = ({
     identity,
     liveTitle,
     numbered = false,
+    context = null,
 }) => {
     const contextMenu = useContextMenu();
     const { popOutSession } = useActiveSessions();
@@ -74,7 +75,11 @@ const DraggableTab = ({
     // ViewContainer's own state, keyed by session id, precisely so it never becomes part of the
     // session objects that drive tab numbering (see tabLabel.js and task-7-brief.md).
     const tabLabel = buildTabLabel({ ...session, liveTitle }, identity, t, { numbered });
-    const tabTooltip = tabLabel.tooltip.map(({ key, value }) => `${t(key)}: ${value}`).join("\n");
+    const tabTooltip = [
+        ...tabLabel.tooltip.map(({ key, value }) => `${t(key)}: ${value}`),
+        // Ohne diese Zeile ist der Balken eine Farbe ohne Erklärung.
+        context ? t("servers.tabs.contextTooltip", { tool: context.tool, percent: context.percent }) : null,
+    ].filter(Boolean).join("\n");
     // What the rename dialog prefills with, and what it shows as a fallback hint - deliberately
     // not tabLabel.text: that carries the type suffix and the group number baked in, so
     // confirming it unedited would store them as if they were part of the name and, for the
@@ -160,7 +165,18 @@ const DraggableTab = ({
                     is not decoration either: it takes the swatch's place only while a script is
                     actually running, so nothing is lost and the strip stays calm the rest of
                     the time. */}
-                <span className="tab-stripe" aria-hidden="true" />
+                {/* Der Streifen am oberen Rand trägt zwei Dinge, nie gleichzeitig: ohne
+                    Agenten-Sitzung die Farbe des Split-Fensters über die volle Breite, mit
+                    Sitzung deren Kontextfüllung als Balken in derselben Farbe. Die Spur
+                    darunter ist nur im zweiten Fall da -- sonst sähe ein Tab ohne Sitzung
+                    aus wie einer mit randvollem Kontext. */}
+                {context ? (
+                    <span className="tab-stripe is-context" aria-hidden="true">
+                        <span className="tab-stripe-fill" style={{ width: `${context.percent}%` }} />
+                    </span>
+                ) : (
+                    <span className="tab-stripe" aria-hidden="true" />
+                )}
                 {/* One slot for both, sized in CSS. The ring used to bring its own 36px box
                     where the swatch had 8px: it filled the tab's whole height, was clipped top
                     and bottom, and pushed the name 28px to the right every time a command
@@ -328,6 +344,7 @@ export const ServerTabs = ({
     fullscreenEnabled,
     onFullscreenToggle,
     tabIdentities = {},
+    sessionContext = {},
 }) => {
 
     const { t } = useTranslation();
@@ -464,6 +481,7 @@ export const ServerTabs = ({
                                 paneColorSessions={paneColorSessions}
                                 identity={tabIdentities[session.id]}
                                 numbered={numberedIds.has(session.id)}
+                                context={sessionContext[session.id] || null}
                                 liveTitle={liveTitles[session.id]} />
                         );
                     })}

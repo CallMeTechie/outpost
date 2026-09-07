@@ -223,6 +223,18 @@
         height: 2px
         background: var(--pane-color, transparent)
 
+        // Mit Kontextfüllung wird derselbe Streifen zur Spur, in der ein Balken wächst. Die
+        // Spur ist sichtbar, damit „kein Agent" (voller Streifen, keine Spur) und „Kontext
+        // fast voll" (fast voller Balken über sichtbarer Spur) sich unterscheiden.
+        &.is-context
+          background: colors.$gray
+
+        .tab-stripe-fill
+          display: block
+          height: 100%
+          background: var(--pane-color, colors.$primary)
+          transition: width 0.3s ease
+
       // One slot, whatever is in it: the pane-colour dot at rest, the progress ring while a
       // command reports a percentage. Fixed size on the slot rather than on either child, so
       // swapping them moves nothing beside them.

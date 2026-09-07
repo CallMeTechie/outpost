@@ -87,6 +87,11 @@ export const ViewContainer = ({
     const [broadcastMode, setBroadcastMode] = useState(false);
     const [modifierLatch, setModifierLatch] = useState(EMPTY_LATCH);
     const [sessionProgress, setSessionProgress] = useState({});
+    // Die Kontextfüllung einer Agenten-Sitzung, je Session-Id. Kommt nicht aus Outpost,
+    // sondern aus dem Terminalstrom: das Werkzeug schreibt sie selbst hinein (siehe
+    // utils/contextParser.js). Ein Tab ohne Agent hat hier keinen Eintrag -- und bekommt
+    // deshalb keinen Balken, sondern den gewöhnlichen Streifen.
+    const [sessionContext, setSessionContext] = useState({});
     // A real state, not a ref: writing a ref schedules no re-render, so the key
     // bar would have entered its disabled state and never left it by its own
     // condition (UI-SERVERS-KEYBAR).
@@ -196,6 +201,17 @@ export const ViewContainer = ({
             ...prev,
             [sessionId]: progress,
         }));
+    }, []);
+
+    // Nur schreiben, wenn sich der Wert bewegt hat: die Marke steht in einer Statuszeile, die
+    // bei jeder Ausgabe neu gezeichnet wird, käme also viele Male pro Sekunde an. Ein
+    // setState je Neuzeichnung würde die ganze Tab-Leiste mitziehen.
+    const updateSessionContext = useCallback((sessionId, context) => {
+        setSessionContext(prev => {
+            const before = prev[sessionId];
+            if (before && context && before.percent === context.percent && before.tool === context.tool) return prev;
+            return { ...prev, [sessionId]: context };
+        });
     }, []);
 
     const updateLiveTitle = useCallback((sessionId, title) => {
@@ -570,7 +586,7 @@ export const ViewContainer = ({
                 disconnectFromServer={disconnectFromServer}
                 markSessionErrored={markSessionErrored}
                 getSessionError={getSessionError}
-                updateProgress={updateSessionProgress}
+                updateProgress={updateSessionProgress} updateContext={updateSessionContext}
                 savedState={getScriptState(session.id)}
                 saveState={(state) => updateScriptState(session.id, state)} />;
         }
@@ -594,7 +610,7 @@ export const ViewContainer = ({
                                       registerTerminalRef={registerTerminalRef} broadcastMode={broadcastMode}
                                       onTerminalReady={onTerminalReady}
                                       modifierLatch={modifierLatch} onLatchConsumed={clearLatch}
-                                      terminalRefs={terminalRefs} updateProgress={updateSessionProgress}
+                                      terminalRefs={terminalRefs} updateProgress={updateSessionProgress} updateContext={updateSessionContext}
                                       updateTitle={updateLiveTitle}
                                       layoutMode={layoutMode} onBroadcastToggle={toggleBroadcastMode}
                                       onFullscreenToggle={toggleFullscreenMode} />;
@@ -723,7 +739,7 @@ export const ViewContainer = ({
                     onSnippetSelected={handleSnippetSelected} broadcastEnabled={broadcastMode}
                     onKeyboardShortcut={handleKeyboardShortcut} hasGuacamole={hasGuacamole}
                     focusEnabled={focusMode} onFocusToggle={toggleFocusMode}
-                    sessionProgress={sessionProgress} liveTitles={liveTitles} fullscreenEnabled={fullscreenMode}
+                    sessionProgress={sessionProgress} sessionContext={sessionContext} liveTitles={liveTitles} fullscreenEnabled={fullscreenMode}
                     onFullscreenToggle={toggleFullscreenMode}
                     openNotes={openNotes} renameSession={renameSession}
                     hibernateSession={hibernateSession} duplicateSession={duplicateSession}
