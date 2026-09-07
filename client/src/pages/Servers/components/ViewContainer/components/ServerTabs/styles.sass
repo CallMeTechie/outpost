@@ -223,10 +223,16 @@
         height: 2px
         background: var(--pane-color, transparent)
 
-        // Mit Kontextfüllung wird derselbe Streifen zur Spur, in der ein Balken wächst. Die
-        // Spur ist sichtbar, damit „kein Agent" (voller Streifen, keine Spur) und „Kontext
-        // fast voll" (fast voller Balken über sichtbarer Spur) sich unterscheiden.
+        // Mit Kontextfüllung wird derselbe Streifen zur Spur, in der ein Balken wächst.
+        //
+        // Höher als der gewöhnliche Streifen, und das ist der Punkt: In der Einzelansicht hat
+        // ein Tab keine Fensterfarbe, der gewöhnliche Streifen ist dort also durchsichtig und
+        // fällt nicht auf. Beim Wechsel in die geteilte Ansicht bekommt jeder Tab eine Farbe --
+        // und ein Tab ohne Agenten zeigte plötzlich einen durchgehenden farbigen Streifen, der
+        // sich wie ein randvoller Balken liest. Über die Länge allein ist das nicht zu
+        // unterscheiden; über die Höhe auf einen Blick.
         &.is-context
+          height: 3px
           background: colors.$gray
 
         .tab-stripe-fill
