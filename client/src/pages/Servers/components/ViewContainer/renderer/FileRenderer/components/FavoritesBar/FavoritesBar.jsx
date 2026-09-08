@@ -11,10 +11,9 @@ import { patchRequest, putRequest, deleteRequest } from "@/common/utils/RequestU
 import { splitForOverflow } from "../../utils/favoritesOverflow.js";
 import { normalizeBookmarkPath } from "../../utils/bookmarkPath.js";
 import { publishBookmarksChanged } from "../../utils/bookmarkNotifier.js";
-import FavoriteChip from "./components/FavoriteChip";
-// The MIME type lives next to the setData call that writes it; the folder's index.js exports the
-// component alone, the way every other component folder here does.
-import { FAVORITE_CHIP_MIME } from "./components/FavoriteChip/FavoriteChip.jsx";
+// The MIME type lives next to the setData call that writes it and travels out through the folder's
+// index.js, so this file reaches into the folder exactly once.
+import FavoriteChip, { FAVORITE_CHIP_MIME } from "./components/FavoriteChip";
 import "./styles.sass";
 
 // The overflow button's width, in rem, exactly as styles.sass writes it. The other two lengths the
@@ -124,6 +123,10 @@ export const FavoritesBar = ({ entryId, directory, bookmarks, onNavigate, onRelo
     // and "/volume1/docker/" would otherwise never match the stored "/volume1/docker".
     const shownDirectory = normalizeBookmarkPath(directory);
 
+    // Every failing write reports the same way: the server's own message when it sent one, the
+    // generic string otherwise.
+    const reportError = (error) => sendToast(t("common.error"), error?.message ?? t("common.error"));
+
     const commitRename = async (id, name) => {
         const trimmed = name.trim();
         const bookmark = bookmarks.find((b) => b.id === id);
@@ -137,7 +140,7 @@ export const FavoritesBar = ({ entryId, directory, bookmarks, onNavigate, onRelo
             // A 404 means another tile removed it while this one was typing. The end state is not
             // what was asked for, but it is not a failure either: reload, no toast.
             if (error?.code !== 404) {
-                sendToast(t("common.error"), error?.message ?? t("common.error"));
+                reportError(error);
                 return;
             }
             await onReload().catch(() => {});
@@ -154,7 +157,7 @@ export const FavoritesBar = ({ entryId, directory, bookmarks, onNavigate, onRelo
         } catch (error) {
             // A 404 is the desired end state reached by somebody else, not an error.
             if (error?.code !== 404) {
-                sendToast(t("common.error"), error?.message ?? t("common.error"));
+                reportError(error);
                 return;
             }
         }
@@ -174,9 +177,7 @@ export const FavoritesBar = ({ entryId, directory, bookmarks, onNavigate, onRelo
             // guarded because it goes over the same wire that just failed; an unguarded rejection
             // from a keydown handler has no caller left to catch it.
             await onReload().catch(() => {});
-            if (error?.code !== 409 && error?.code !== 429) {
-                sendToast(t("common.error"), error?.message ?? t("common.error"));
-            }
+            if (error?.code !== 409 && error?.code !== 429) reportError(error);
         }
     };
 
@@ -245,7 +246,8 @@ export const FavoritesBar = ({ entryId, directory, bookmarks, onNavigate, onRelo
     const handleChipKeyDown = (e, index) => {
         // While this chip is being renamed the input owns every key; its own handler stops them here.
         if (renamingBookmarkId === bookmarks[index].id) return;
-        if (e.key === "Enter") {
+        // role="button" promises both keys. Space also scrolls the pane if it is not stopped here.
+        if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             onNavigate(bookmarks[index].path);
             return;
@@ -267,7 +269,10 @@ export const FavoritesBar = ({ entryId, directory, bookmarks, onNavigate, onRelo
         const chip = e.target.closest?.("[data-bookmark-id]");
         if (!chip) return setDropIndex(visible);
         const index = bookmarks.findIndex((b) => String(b.id) === chip.dataset.bookmarkId);
-        if (index === -1 || index >= visible) return;
+        // A chip the split has hidden, or one no longer in the list, names no position in the row.
+        // Falling through to the end of the visible run is the same answer the empty area gets -
+        // leaving the previous marker standing would point at a place the drop will not use.
+        if (index === -1 || index >= visible) return setDropIndex(visible);
         const rect = chip.getBoundingClientRect();
         setDropIndex(e.clientX > rect.left + rect.width / 2 ? index + 1 : index);
     };

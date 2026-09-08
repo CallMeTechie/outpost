@@ -32,7 +32,7 @@ Eine Akzentfarbe, sonst Grau-Stufen; Farbe nur als Bedeutung.
 | `--error` (+`-opacity`) | `#a44747` | `#d85959` | `#a44747` | Fehler, destruktive Aktion |
 | `--success` (+`-opacity`) | `#29C16A` | | | verbunden, erfolgreich |
 | `--warning` (+`-opacity`) | `#DC5600` | | | Warnung, Schreibschutz-Hinweis |
-| `--shadow-sm|md|lg|xl` | vierstufig | | | Elevation: Menü sm, Dialog lg, schwebendes Fenster xl |
+| `--shadow-sm|md|lg|xl` | vierstufig | | | Elevation, wie der Bestand sie tatsächlich vergibt: Tooltip `md`; Kontextmenü, SelectBox, Sidebar und Dialog-Fläche `lg`; Dialog-Rahmen, SettingsDialog, QuickAction und das fokussierte FloatingWindow `xl`; `sm` nur für Kleinteile (ToggleSwitch-Knauf, FilePreviewWindow) |
 
 Split-View-Zuordnungsfarben: verbindlich in
 `/root/docs/superpowers/specs/2026-08-15-split-view-colors-design.md`
@@ -105,8 +105,9 @@ Zeile Chips (Bestandskomponente Chip: Ordner-Icon + Name, `--type-body`,
 um. Der Chip des gerade offenen Verzeichnisses trägt `--primary-opacity` —
 dieselbe Sprache, in der die Oberfläche sonst „aktiv" sagt. Passt die Reihe
 nicht in die Breite, endet sie vor dem ersten nicht passenden Chip und ein
-Chevron öffnet den Rest als ContextMenu (Bestandskomponente, Elevation
-`--shadow-sm` wie jedes Menü). Ein- und ausgeschaltet wird der Streifen über
+Chevron öffnet den Rest als ContextMenu — die Bestandskomponente mit deren
+eigener Elevation `--shadow-lg`, die jedes Kontextmenü in dieser Oberfläche
+trägt. Ein- und ausgeschaltet wird der Streifen über
 einen Icon-Button in der Aktionsleiste mit dem gleichen `active`-Zustand, den
 der Suchen-Button schon hat.
 

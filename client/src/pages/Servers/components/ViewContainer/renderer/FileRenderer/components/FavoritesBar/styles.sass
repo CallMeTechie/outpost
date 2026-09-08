@@ -85,13 +85,28 @@
 
   // The insertion point while a chip is being dragged: a 2px line in the accent colour, exactly
   // where the chip would land.
+  //
+  // It takes no width in the row. A real 2px flex item would push the row 2px plus one gap wider
+  // for as long as the drag lasts, and under overflow: hidden that is enough to clip the last
+  // visible chip - the split measured the row without the marker in it. So the box is zero-wide,
+  // the negative side margins cancel the extra gap the row now lays out around it, and the line
+  // itself is drawn by the pseudo-element outside that box.
   .insert
-    width: 2px
+    width: 0
     align-self: stretch
-    margin: 0.375rem 0
-    background-color: colors.$primary
-    border-radius: 1px
+    margin: 0.375rem calc(#{tokens.$space-2} / -2)
     flex-shrink: 0
+    position: relative
+
+    &::after
+      content: ""
+      position: absolute
+      top: 0
+      bottom: 0
+      left: -1px
+      width: 2px
+      background-color: colors.$primary
+      border-radius: 1px
 
   .favorites-overflow
     margin-left: auto

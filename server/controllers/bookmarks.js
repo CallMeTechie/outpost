@@ -25,6 +25,17 @@ const withLockRetry = async (run) => {
     }
 };
 
+// Number.parseInt stops at the first character it cannot use: "101abc", " 101" and "1e3" all
+// become an integer that addresses a real row. Route parameters arrive as strings, so the digits
+// are checked before the value is converted, and the range is checked afterwards - past
+// MAX_SAFE_INTEGER two different ids compare equal (SEC-INPUT-01).
+const parseId = (raw) => (/^\d+$/.test(String(raw)) ? Number(raw) : Number.NaN);
+
+// The five routes answer with these four fields and nothing else. The stored row also carries
+// pathHash - an implementation detail of the unique index - plus the Sequelize timestamps, and
+// none of the three has a reader on the client.
+const toBookmarkResponse = ({ id, name, path, position }) => ({ id, name, path, position });
+
 // The second sort key is not cosmetic: two rows that ended up on the same position would otherwise
 // come back in a dialect-dependent order, and the bar would reshuffle itself between two reloads.
 const listBookmarks = (accountId, entryId) =>
@@ -126,8 +137,8 @@ const reorderBookmarks = async (accountId, entryId, ids) => {
 //
 // Every refusal is a 404, including "no access": a 403 would tell a caller which entry ids exist.
 const authorizeEntry = async (accountId, entryIdRaw) => {
-    const entryId = Number.parseInt(entryIdRaw, 10);
-    if (!Number.isInteger(entryId) || entryId < 1) return { code: 400, message: "Invalid entry id." };
+    const entryId = parseId(entryIdRaw);
+    if (!Number.isSafeInteger(entryId) || entryId < 1) return { code: 400, message: "Invalid entry id." };
 
     const entry = await Entry.findByPk(entryId);
     const access = await validateEntryAccess(accountId, entry, "Server not found.");
@@ -146,8 +157,8 @@ const authorizeEntry = async (accountId, entryIdRaw) => {
 // revoked could still rename and delete its old bookmarks - SEC-RBAC-01 asks for the check on every
 // route, not on three of five.
 const authorizeBookmark = async (accountId, idRaw) => {
-    const id = Number.parseInt(idRaw, 10);
-    if (!Number.isInteger(id) || id < 1) return { code: 400, message: "Invalid bookmark id." };
+    const id = parseId(idRaw);
+    if (!Number.isSafeInteger(id) || id < 1) return { code: 400, message: "Invalid bookmark id." };
 
     const bookmark = await FileBookmark.findOne({ where: { id, accountId } });
     if (!bookmark) return { code: 404, message: "Bookmark not found." };
@@ -164,5 +175,5 @@ const authorizeBookmark = async (accountId, idRaw) => {
 
 module.exports = {
     listBookmarks, createBookmark, renameBookmark, deleteBookmark, reorderBookmarks,
-    authorizeEntry, authorizeBookmark,
+    authorizeEntry, authorizeBookmark, toBookmarkResponse,
 };

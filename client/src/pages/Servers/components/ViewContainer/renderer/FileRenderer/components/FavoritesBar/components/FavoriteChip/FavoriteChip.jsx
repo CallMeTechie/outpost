@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Icon from "@/common/components/Icon";
 import { Folder as IconFolder } from "lucide-react";
 
@@ -12,6 +12,15 @@ export const FAVORITE_CHIP_MIME = "application/x-favorite-chip";
 // something - re-renders the chip without touching what has been typed.
 const RenameInput = ({ initialName, onCommit, onCancel }) => {
     const [value, setValue] = useState(initialName);
+    // The field has three ways out - Enter, Escape and losing focus - and exactly one of them may
+    // take effect. Today Escape happens to win because unmounting a focused node fires no blur
+    // event, but that is a browser detail, not a decision. This latch makes the decision.
+    const settledRef = useRef(false);
+    const settle = (finish) => {
+        if (settledRef.current) return;
+        settledRef.current = true;
+        finish();
+    };
 
     // Enter confirms, Escape discards - the same two keys handleRenameKeyDown binds for a file in
     // FileList.jsx. stopPropagation keeps them away from the chip's own Enter/arrow handling, which
@@ -20,10 +29,10 @@ const RenameInput = ({ initialName, onCommit, onCancel }) => {
         e.stopPropagation();
         if (e.key === "Enter") {
             e.preventDefault();
-            onCommit(value);
+            settle(() => onCommit(value));
         } else if (e.key === "Escape") {
             e.preventDefault();
-            onCancel();
+            settle(onCancel);
         }
     };
 
@@ -32,7 +41,7 @@ const RenameInput = ({ initialName, onCommit, onCancel }) => {
         // where it is typed rather than coming back as a 400.
         <input type="text" className="rename-input" value={value} autoFocus maxLength={255}
                onChange={(e) => setValue(e.target.value)} onKeyDown={handleKeyDown}
-               onBlur={() => onCommit(value)} onClick={(e) => e.stopPropagation()} />
+               onBlur={() => settle(() => onCommit(value))} onClick={(e) => e.stopPropagation()} />
     );
 };
 

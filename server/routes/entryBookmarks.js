@@ -5,7 +5,7 @@ const { sendError } = require("../utils/error");
 const logger = require("../utils/logger");
 const { bookmarkWriteLimiter } = require("../lib/bookmarkRateLimiter");
 const { createBookmarkValidation, orderBookmarksValidation } = require("../validations/bookmarks");
-const { listBookmarks, createBookmark, reorderBookmarks, authorizeEntry } = require("../controllers/bookmarks");
+const { listBookmarks, createBookmark, reorderBookmarks, authorizeEntry, toBookmarkResponse } = require("../controllers/bookmarks");
 
 const app = Router();
 
@@ -26,7 +26,7 @@ app.get("/:entryId/bookmarks", authenticate, async (req, res) => {
     if (!entry.valid) return sendError(res, entry.code, entry.code, entry.message);
 
     const bookmarks = await listBookmarks(req.user.id, entry.entry.id);
-    res.json(bookmarks);
+    res.json(bookmarks.map(toBookmarkResponse));
 });
 
 /**
@@ -52,7 +52,7 @@ app.post("/:entryId/bookmarks", authenticate, bookmarkWriteLimiter, async (req, 
 
     try {
         const bookmark = await createBookmark(req.user.id, entry.entry.id, req.body);
-        res.status(201).json(bookmark);
+        res.status(201).json(toBookmarkResponse(bookmark));
     } catch (error) {
         // The unique index is the single source of truth for "this folder is already bookmarked",
         // so hitting it is an ordinary outcome, not a fault. Nothing from the driver goes into the

@@ -30,6 +30,12 @@ const { bookmarkPathHash, normalizeBookmarkPath } = require("../bookmarkPath");
 // ./folder, ./identity, ./audit, ...) purely to define its own exports; faking the whole module
 // avoids needing fakes for all of those just to load it.
 
+// The one folder the fixtures need: it belongs to org2, so every entry inside it inherits org2's
+// scope no matter what the entry row itself says.
+const FOLDERS = new Map([
+    [9, { id: 9, organizationId: "org2", accountId: null }],
+]);
+
 const ORG_MEMBERS = {
     org1: new Set([1, 2]), // account 1 ("A") and account 2 ("B") share server 1
     org2: new Set([1]),    // A is a member, but (see hasResourcePermission fake) lacks FILES_VIEW there
@@ -40,11 +46,17 @@ require.cache[entryControllerPath] = {
     id: entryControllerPath, filename: entryControllerPath, loaded: true,
     exports: {
         resolveEntryScope: async (entry) => {
-            // Mirrors the real function: a folder's scope overrides the entry's own scope. Test
-            // entries that live in an organization folder carry a `folderScope` fixture field
-            // standing in for a real Folder lookup.
-            if (entry.folderScope) return { ...entry.folderScope };
-            return { organizationId: entry.organizationId ?? null, ownerAccountId: entry.accountId ?? null };
+            // Mirrors the real function (controllers/entry.js:35): the lookup hangs off
+            // entry.folderId, and a folder that exists overrides the entry's own scope. Keying it
+            // off folderId rather than an invented `folderScope` field keeps the fixtures in
+            // states the real resolver can actually produce - an entry cannot carry a folder scope
+            // and a null folderId at the same time.
+            let { organizationId, accountId: ownerAccountId } = entry;
+            if (entry.folderId) {
+                const folder = FOLDERS.get(entry.folderId);
+                if (folder) ({ organizationId, accountId: ownerAccountId } = folder);
+            }
+            return { organizationId: organizationId ?? null, ownerAccountId: ownerAccountId ?? null };
         },
         validateEntryAccess: async function validateEntryAccess(accountId, entry, errorMessage = "You don't have permission to access this entry") {
             if (!entry) return { code: 401, message: "Entry does not exist" };
@@ -81,8 +93,8 @@ require.cache[permissionPath] = {
 // Entry 102: org2, account 1 is a member but FILES_VIEW was taken away there.
 // Entry 103: account 2's PERSONAL entry (organizationId null) - the case the wrong
 //            validateEntryAccess signature would have let account 1 read and write.
-// Entry 104: organizationId null on the entry itself, but it sits in an org2 folder, where account
-//            1 is a member yet lacks FILES_VIEW (same denial as entry 102). A buggy authorizeEntry
+// Entry 104: organizationId null on the entry itself, but it sits in folder 9, which belongs to
+//            org2 - where account 1 is a member yet lacks FILES_VIEW (same denial as entry 102). A buggy authorizeEntry
 //            that checked entry.organizationId (null) instead of the resolved scope would treat
 //            this as a "personal, unowned" entry - ownerAccountId is also null, so
 //            validateEntryAccess's non-organization branch never rejects it either - and would
@@ -95,7 +107,7 @@ const ENTRIES = new Map([
     [101, { id: 101, organizationId: "org1", accountId: null, folderId: null }],
     [102, { id: 102, organizationId: "org2", accountId: null, folderId: null }],
     [103, { id: 103, organizationId: null, accountId: 2, folderId: null }],
-    [104, { id: 104, organizationId: null, accountId: null, folderId: null, folderScope: { organizationId: "org2", ownerAccountId: null } }],
+    [104, { id: 104, organizationId: null, accountId: null, folderId: 9 }],
     [105, { id: 105, organizationId: null, accountId: 1, folderId: null }],
     [106, { id: 106, organizationId: null, accountId: 1, folderId: null }],
     [107, { id: 107, organizationId: null, accountId: 99, folderId: null }],
@@ -545,4 +557,61 @@ test("two DELETEs at the same time on the same bookmark: neither ends in a 500; 
     assert.notStrictEqual(res1.status, 500);
     assert.notStrictEqual(res2.status, 500);
     assert.deepStrictEqual([res1.status, res2.status].sort(), [200, 404]);
+});
+
+test("an id with trailing junk is refused, not silently parsed down to the leading digits", async () => {
+    // Number.parseInt("101abc", 10) is 101, and 101 is a real entry that account A may read.
+    // Without a digits-only check the route would answer 200 with entry 101's bookmarks for a
+    // path that names no entry at all.
+    const listRes = await get("/entries/101abc/bookmarks", "token-A");
+    assert.strictEqual(listRes.status, 400);
+
+    const createRes = await post("/entries/101abc/bookmarks", "token-A", { name: "x", path: "/x" });
+    assert.strictEqual(createRes.status, 400);
+    assert.deepStrictEqual(rowsFor(1, 101).map((r) => r.id), [1, 2, 3], "no row may have been added");
+
+    const renameRes = await patch("/bookmarks/2abc", "token-A", { name: "renamed" });
+    assert.strictEqual(renameRes.status, 400);
+    assert.strictEqual(rows.find((r) => r.id === 2).name, "etc", "row 2 must be untouched");
+
+    const deleteRes = await del("/bookmarks/2abc", "token-A");
+    assert.strictEqual(deleteRes.status, 400);
+    assert.ok(rows.some((r) => r.id === 2), "row 2 must still exist");
+});
+
+test("an id beyond the safe integer range is refused rather than rounded onto a neighbouring row", async () => {
+    // 9007199254740993 rounds to 9007199254740992 as a double: two distinct ids that compare equal.
+    const res = await get("/entries/9007199254740993/bookmarks", "token-A");
+    assert.strictEqual(res.status, 400);
+});
+
+test("responses carry id, name, path and position - not pathHash and not the timestamps", async () => {
+    const listRes = await get("/entries/101/bookmarks", "token-A");
+    const listed = await listRes.json();
+    for (const bookmark of listed)
+        assert.deepStrictEqual(Object.keys(bookmark).sort(), ["id", "name", "path", "position"]);
+
+    const createRes = await post("/entries/101/bookmarks", "token-A", { name: "tmp", path: "/tmp" });
+    assert.strictEqual(createRes.status, 201);
+    assert.deepStrictEqual(Object.keys(await createRes.json()).sort(), ["id", "name", "path", "position"]);
+});
+
+test("an unexpected failure inside a route becomes a 500 that names nothing - the error middleware, not Express's stack-printing fallback", async () => {
+    // SEC-ERR-01 rested on inspection alone here: the middleware is only reachable when a handler
+    // rejects with something that is neither a lock conflict nor the unique-index violation, and
+    // no other test produces that. The fake's findAll is replaced for exactly one request.
+    const original = FileBookmarkFake.findAll;
+    FileBookmarkFake.findAll = async () => { throw new Error("SQLITE_CORRUPT: malformed database schema (file_bookmarks)"); };
+
+    try {
+        const res = await get("/entries/101/bookmarks", "token-A");
+        const text = await res.text();
+
+        assert.strictEqual(res.status, 500);
+        assertNoLeak(text);
+        assert.doesNotMatch(text, /SQLITE_CORRUPT/, "the driver's message must not reach the caller");
+        assert.match(text, /Could not complete the bookmark request/);
+    } finally {
+        FileBookmarkFake.findAll = original;
+    }
 });

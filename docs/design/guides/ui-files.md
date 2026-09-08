@@ -54,7 +54,7 @@ die Dateiliste.
 ### UI-FILES-FAVORITES — Favoriten (neu)
 - `data-ui-id="UI-FILES-FAVORITES"` an der Wurzel des Streifens.
 - Datenquelle: `GET /api/entries/:entryId/bookmarks`, sortiert nach `position`. Muss **gemerkte Verzeichnisse dieses Kontos auf diesem Server** liefern — nicht den Verlauf, nicht die zuletzt besuchten Ordner, nicht die offenen Tabs, nicht die Serverliste.
-- Chip (`FavoriteChip.jsx`): Ordner-Icon + Ordnername, `--type-body`, `--radius-md`, Innenabstand `--space-2`; voller Pfad als `title`. Klick navigiert die eigene Kachel. Klassen aus derselben `styles.sass`-Vorlage wie die Bestands-Chips, damit sie gleich aussehen.
+- Chip (`FavoriteChip.jsx`): Ordner-Icon + Ordnername, `--type-body`, `--radius-md`, Innenabstand `--space-2`, Grundfläche `--dark-gray` (Hover `--gray`); voller Pfad als `title`. Klick navigiert die eigene Kachel. Klassen aus derselben `styles.sass`-Vorlage wie die Bestands-Chips, damit sie gleich aussehen.
 - Höhe `var(--favorites-bar-height)`, Fläche `--lighter-background`, Trennlinie `--gray` nach unten. **Nicht scrollen, nicht umbrechen** (`overflow: hidden`, `flex-wrap: nowrap`).
 - Zustände: `selected` — der Chip, dessen Pfad dem angezeigten Verzeichnis entspricht, bekommt `--primary-opacity` · `partial` — abschneiden vor dem ersten nicht passenden Chip, Chevron ans Ende · `dragging` — gezogener Chip halbtransparent, Einfügestelle als 2 px Strich in `--primary` · `empty` — Copy wörtlich aus dem Manifest, in `--subtext`.
 - Umsortieren: Ziehen **oder** `Umschalt+←/→` auf dem fokussierten Chip. Beide schreiben über `PUT /api/entries/:entryId/bookmarks/order` mit der vollständigen ID-Liste — nicht n Einzeländerungen. Bei `409` (veralteter Stand) Liste neu laden, Sortierung verwerfen, kein Toast.
@@ -64,8 +64,15 @@ die Dateiliste.
 ### UI-FILES-FAVORITES-OVERFLOW — Weitere Favoriten (neu)
 - `data-ui-id="UI-FILES-FAVORITES-OVERFLOW"` am Chevron.
 - **Erscheint nur, wenn wirklich etwas verdeckt ist** — passen alle Chips, ist das Element abwesend, nicht ausgegraut. `favoritesOverflow.js` bekommt die Chevron-Breite als eigenen Parameter und muss null sichtbare Chips als gültiges Ergebnis liefern: eine Kachel in der Rasteransicht ist nur ein Drittel bis die Hälfte der Ansichtsfläche breit.
-- Menü über die Bestands-`ContextMenu`, Elevation `--shadow-sm`, gleiche Reihenfolge wie im Streifen, Ordner-Icon + Name je Eintrag.
-- Zustände: `default` (Menü zu) · `selected` (Menü offen).
+- Menü über die Bestands-`ContextMenu`, gleiche Reihenfolge wie im Streifen, Ordner-Icon + Name
+  je Eintrag. Die Elevation ist die der Bestandskomponente, `--shadow-lg`
+  (`ContextMenu/styles.sass:15`) — nicht `--shadow-sm`, wie diese Anleitung zuerst schrieb.
+  Das Menü hängt in einem Portal und nimmt keine eigene Klasse an; ein abweichender Schatten
+  wäre nur zu haben, indem man die von allen Kontextmenüs geteilte Komponente ändert. Das ist
+  für einen Überlauf-Knopf der falsche Preis.
+- Zustände: `default` (Menü zu) · `selected` (Menü offen). Offen und Hover teilen sich dieselbe
+  Behandlung: Fläche `--dark-gray`, Icon `--white` — bewusst kein Akzent, der gehört in dieser
+  Zeile allein dem Chip des angezeigten Verzeichnisses.
 
 ### UI-FILES-FAVORITE-MENU — Favoriten-Kontextmenü (neu)
 - `data-ui-id="UI-FILES-FAVORITE-MENU"` am `ContextMenu` des Chips.
