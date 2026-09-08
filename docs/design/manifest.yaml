@@ -1,6 +1,6 @@
 schema: mockingbird/1
 project: outpost
-revision: 3
+revision: 5
 updated: 2026-09-08
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
@@ -21,6 +21,14 @@ changelog:
     date: 2026-09-08
     summary: Runde 3 — der Streifen am Tab trägt die Kontextfüllung einer Agenten-Sitzung
     touched: [UI-SERVERS-TAB-CONTEXT]
+  - rev: 4
+    date: 2026-09-08
+    summary: Runde 4 — das Datei-Pane erstmals gezeichnet; Favoritenleiste mit Stern, Überlauf und Kontextmenüs neu, das Eröffnungsverzeichnis wird gemerkt
+    touched: [UI-FILES, UI-FILES-ACTIONBAR, UI-FILES-ADDRESS, UI-FILES-FAVORITES-TOGGLE, UI-FILES-FAVORITES, UI-FILES-FAVORITES-OVERFLOW, UI-FILES-FAVORITE-MENU, UI-FILES-LIST, UI-FILES-LIST-MENU, UI-FILES-EMPTY-MENU]
+  - rev: 5
+    date: 2026-09-08
+    summary: Das Eröffnungsverzeichnis zählt je Identität, nicht nur je Server — und es heißt Startverzeichnis, weil das Pane auch FTP bedient; die Bookmark-Herkunft nennt den Schlüssel, an dem „schon gemerkt" hängt
+    touched: [UI-FILES-ADDRESS, UI-FILES-FAVORITES]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -366,6 +374,235 @@ screens:
           - { id: empty, copy: "Noch nichts verbunden. Sobald du dich zum ersten Mal verbindest, stehen die Ziele hier." }
         locators:
           web: "[data-ui-id='UI-SERVERS-WELCOME']"
+
+  - id: UI-FILES
+    kind: panel
+    title: Datei-Pane — Aktionsleiste und Favoriten
+    artboard: docs/design/mockups/ui-files.html
+    guide: docs/design/guides/ui-files.md
+    presentation: { over: UI-SERVERS, trigger: "Datei-Sitzung (SFTP) eines Servers im Tab; in der geteilten Ansicht je Kachel einmal", size: "füllt die Kachel — Aktionsleiste oben, darunter der Favoritenstreifen (--favorites-bar-height), darunter die Dateiliste", dismiss: "Tab schließen", keyboard: "Strg+B Favoritenleiste, ←/→ zwischen den Chips, Umschalt+←/→ verschiebt einen Chip, Enter öffnet" }
+    description: Das Datei-Pane einer SFTP-Sitzung — die Aktionsleiste mit dem Stern, die Favoritenleiste mit Chips und Überlauf, und die beiden Kontextmenüs, über die Bookmarks entstehen.
+    elements:
+      - id: UI-FILES-ACTIONBAR
+        type: region
+        label: Aktionsleiste
+        status: required
+        verify: recommended
+        data_source: static
+        semantic_anchor:
+          means: >
+            Bestand: Zurück, Vorwärts, Hoch, die Adresszeile, und rechts die Icon-Gruppe
+            Suchen · Ansicht · Neu laden · Datei hochladen · Ordner hochladen · Neue Datei ·
+            Neuer Ordner. Diese Runde setzt genau ein Icon hinzu, den Stern, links neben
+            der Lupe — die Reihenfolge der übrigen Icons bleibt unangetastet.
+        states:
+          - { id: default }
+        locators:
+          web: "[data-ui-id='UI-FILES-ACTIONBAR']"
+
+      - id: UI-FILES-ADDRESS
+        type: nav
+        label: Adresszeile
+        status: required
+        verify: required
+        data_source: "das angezeigte Verzeichnis der Sitzung; beim Öffnen aus file_pane_states.lastPath, sonst realpath(\".\")"
+        semantic_anchor:
+          means: >
+            Der Pfad des gerade angezeigten Verzeichnisses als anklickbare Brotkrumen.
+            Beim Öffnen einer Datei-Sitzung steht hier das Verzeichnis, in dem dieses Konto
+            auf diesem Server mit diesem Benutzer zuletzt war. Gibt es keines, das
+            Startverzeichnis des verbundenen Benutzers — für root also /root, nicht /; über
+            FTP das PWD der Verbindung. Ist der gemerkte Pfad verschwunden oder nicht lesbar,
+            der nächste vorhandene übergeordnete Ordner; im Grenzfall das Startverzeichnis,
+            zuletzt /.
+          concept: directory_path
+          aliases: [cwd, path, breadcrumb, lastPath, currentDirectory]
+          not: [filesystem_root, home_directory, bookmark_path, transfer_destination]
+          cardinality: one
+          unit: text
+          example: "/volume1/docker"
+          source_of_truth: "READY.path aus server/routes/sftpWS.js; dauerhaft in file_pane_states.lastPath je (accountId, entryId, identityId), fortgeschrieben aus PATH_SYNC"
+        states:
+          - { id: default }
+          - { id: loading, copy: "Verbinde …" }
+          - { id: partial, copy: "Zuletzt geöffnet: {gemerkt} — nicht mehr vorhanden. Geöffnet wurde {ersatz}." }
+        locators:
+          web: "[data-ui-id='UI-FILES-ADDRESS']"
+
+      - id: UI-FILES-FAVORITES-TOGGLE
+        type: toggle
+        label: Favoriten
+        status: required
+        verify: required
+        data_source: "files.favoritesBarOpen aus den Kontoeinstellungen"
+        semantic_anchor:
+          means: >
+            Blendet die Favoritenleiste ein und aus — ein Stern in der Icon-Gruppe der
+            Aktionsleiste, unmittelbar links neben der Lupe. Er merkt sich nichts und legt
+            nichts an: er zeigt nur den Streifen. Solange der Streifen offen ist, ist der
+            Stern gefüllt und trägt die Akzentfarbe, wie der Suchen-Button es im Bestand
+            schon tut. Der Zustand gilt kontoweit, nicht je Sitzung, und überlebt das
+            Neuladen. Taste Strg+B.
+          concept: favorites_bar_visibility
+          aliases: [showFavorites, favoritesBarOpen, toggleBookmarks]
+          not: [add_bookmark, mark_folder_as_favorite, search, filter, rating]
+          cardinality: one
+          unit: enum
+          example: "offen / geschlossen"
+          source_of_truth: "Account.preferences.files.favoritesBarOpen"
+        states:
+          - { id: default }
+          - { id: selected, copy: "Leiste offen — Stern gefüllt, Akzentfarbe" }
+        locators:
+          web: "[data-ui-id='UI-FILES-FAVORITES-TOGGLE']"
+
+      - id: UI-FILES-FAVORITES
+        type: list
+        label: Favoriten
+        status: required
+        verify: required
+        data_source: "GET /api/entries/:entryId/bookmarks — die Bookmarks dieses Kontos für diesen Server, sortiert nach position"
+        semantic_anchor:
+          means: >
+            Die von diesem Konto auf diesem Server gemerkten Verzeichnisse, als eine Zeile
+            Chips mit Ordner-Icon und Ordnernamen; der volle Pfad steht im Tooltip. Ein Klick
+            springt in den Ordner. Der Chip des gerade angezeigten Verzeichnisses ist in der
+            Akzentfarbe hinterlegt. Die Zeile scrollt nicht und bricht nicht um; was nicht
+            passt, geht ins Überlauf-Menü. Umsortiert wird per Ziehen oder mit
+            Umschalt+Pfeil auf dem fokussierten Chip.
+          concept: directory_bookmark
+          aliases: [bookmark, favorite, pinnedDirectory, fileBookmark]
+          not: [navigation_history, recent_directory, open_tab, server_entry, tag, saved_search]
+          cardinality: many
+          unit: text
+          example: "docker · log · homes · scripts"
+          empty_means: "Dieses Konto hat auf diesem Server noch kein Verzeichnis gemerkt."
+          source_of_truth: "Tabelle file_bookmarks, eindeutig je (accountId, entryId, pathHash); Anzeige aus name und path, Reihenfolge aus position"
+        columns:
+          - { key: name, label: Name, anchor: "der Ordnername, standardmäßig der letzte Pfadbestandteil, umbenennbar" }
+          - { key: path, label: Pfad, anchor: "der vollständige absolute Pfad auf diesem Server, nur im Tooltip sichtbar" }
+        states:
+          - { id: default }
+          - { id: selected, copy: "der Chip des gerade angezeigten Verzeichnisses" }
+          - { id: partial, copy: "mehr Bookmarks als in die Zeile passen — abgeschnitten vor dem ersten nicht passenden Chip" }
+          - { id: dragging, copy: "gezogener Chip halbtransparent, Einfügestelle als Strich in der Akzentfarbe" }
+          - { id: empty, copy: "Noch keine Favoriten. Rechtsklick auf einen Ordner legt einen an." }
+        locators:
+          web: "[data-ui-id='UI-FILES-FAVORITES']"
+
+      - id: UI-FILES-FAVORITES-OVERFLOW
+        type: action
+        label: Weitere Favoriten
+        status: required
+        verify: required
+        data_source: "die Bookmarks aus UI-FILES-FAVORITES, die nicht in die Zeile passen"
+        semantic_anchor:
+          means: >
+            Ein Chevron am rechten Ende der Zeile, das die verdeckten Bookmarks als Menü
+            öffnet — in derselben Reihenfolge wie im Balken, mit Ordner-Icon und Namen.
+            Es erscheint nur, wenn wirklich etwas verdeckt ist, und verschwindet, sobald
+            die Kachel breit genug wird.
+          concept: directory_bookmark
+          aliases: [overflow, moreBookmarks, hiddenFavorites]
+          not: [more_actions_menu, chip_context_menu, pagination, sort_menu]
+          cardinality: many
+          unit: text
+          example: "backup · vm · media"
+          empty_means: "Alle Bookmarks passen in die Zeile — das Chevron fehlt dann ganz."
+          source_of_truth: "Ergebnis der Breitenmessung über file_bookmarks, keine eigene Abfrage"
+        states:
+          - { id: default, copy: "Chevron sichtbar, Menü zu" }
+          - { id: selected, copy: "Menü offen" }
+        locators:
+          web: "[data-ui-id='UI-FILES-FAVORITES-OVERFLOW']"
+
+      - id: UI-FILES-FAVORITE-MENU
+        type: overlay
+        label: Favoriten-Kontextmenü
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: >
+            Rechtsklick auf einen Chip: Umbenennen und Entfernen. Umbenennen ersetzt die
+            Beschriftung des Chips an Ort und Stelle durch ein Eingabefeld, wie die
+            Dateiliste es beim Umbenennen einer Datei schon tut. Entfernen fragt nicht nach —
+            ein Bookmark ist mit einem Rechtsklick wieder angelegt, und der Ordner selbst
+            bleibt unangetastet.
+          not: [delete_folder, file_context_menu, overflow_menu]
+        states:
+          - { id: default }
+          - { id: selected, copy: "Umbenennen aktiv — Eingabefeld im Chip, Enter bestätigt, Esc verwirft" }
+        locators:
+          web: "[data-ui-id='UI-FILES-FAVORITE-MENU']"
+
+      - id: UI-FILES-LIST
+        type: list
+        label: Dateien
+        status: required
+        verify: recommended
+        data_source: "LIST_FILES über den SFTP-WebSocket für das angezeigte Verzeichnis"
+        semantic_anchor:
+          means: >
+            Bestand: der Inhalt des angezeigten Verzeichnisses — Ordner zuerst, dann
+            Dateien, mit Name, Größe, Änderungsdatum und Rechten, in drei Ansichtsarten.
+            Diese Runde ändert daran nichts außer den beiden Kontextmenü-Einträgen.
+          concept: file_entry
+          aliases: [file, folder, directoryEntry, listing]
+          not: [directory_bookmark, server_entry, transfer, search_result]
+          cardinality: many
+          unit: text
+          example: "docker · homes · scripts · docker-compose.yml"
+          empty_means: "Das Verzeichnis ist leer."
+          source_of_truth: "SFTP-Listing der aktiven Sitzung"
+        states:
+          - { id: default }
+          - { id: loading }
+          - { id: empty }
+          - { id: error }
+        locators:
+          web: "[data-ui-id='UI-FILES-LIST']"
+
+      - id: UI-FILES-LIST-MENU
+        type: overlay
+        label: Kontextmenü der Dateiliste
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: >
+            Rechtsklick auf einen Eintrag. Bestand: Umbenennen, Vorschau und Bearbeiten
+            (nur Dateien), Herunterladen, Pfad kopieren, Eigenschaften, Terminal hier öffnen
+            (nur Ordner), Löschen. Neu und ausschließlich bei Ordnern: "Als Bookmark
+            anlegen", das den angeklickten Ordner merkt — nicht das angezeigte Verzeichnis.
+            Ist der Ordner schon gemerkt, steht an derselben Stelle "Bookmark entfernen".
+          not: [empty_area_menu, favorite_context_menu, drop_menu]
+        states:
+          - { id: default, copy: "Als Bookmark anlegen" }
+          - { id: selected, copy: "Bookmark entfernen" }
+          - { id: disabled, copy: "bei Dateien fehlt der Eintrag ganz" }
+        locators:
+          web: "[data-ui-id='UI-FILES-LIST-MENU']"
+
+      - id: UI-FILES-EMPTY-MENU
+        type: overlay
+        label: Kontextmenü der freien Fläche
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: >
+            Rechtsklick auf die freie Fläche unter den Einträgen. Bestand: Neue Datei,
+            Neuer Ordner, Trenner, Ordner herunterladen, Eigenschaften, Terminal hier öffnen.
+            Neu: "Diesen Ordner als Bookmark", das das gerade angezeigte Verzeichnis merkt —
+            nicht einen darin liegenden Ordner. Ist es schon gemerkt, steht dort
+            "Bookmark entfernen".
+          not: [item_context_menu, favorite_context_menu, drop_menu]
+        states:
+          - { id: default, copy: "Diesen Ordner als Bookmark" }
+          - { id: selected, copy: "Bookmark entfernen" }
+        locators:
+          web: "[data-ui-id='UI-FILES-EMPTY-MENU']"
 
   - id: UI-SERVER-DIALOG
     kind: dialog

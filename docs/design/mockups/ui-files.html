@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI-FILES — Datei-Pane — Aktionsleiste und Favoriten</title>
+<link rel="stylesheet" href="./tokens.css">
+<style>
+	/* Artboard-Rahmen — nur Darstellungshilfen, keine Produkt-Styles */
+	* { box-sizing: border-box; }
+	html { font-size: calc(16px * var(--ui-scale)); }
+	body {
+		margin: 0; padding: var(--space-6);
+		background: var(--background); color: var(--text);
+		font: var(--type-body);
+	}
+	kbd { font: var(--type-caption); font-family: ui-monospace, "JetBrains Mono", monospace; color: var(--subtext); }
+	.art-head { display: flex; align-items: baseline; gap: var(--space-3); margin: 0 0 var(--space-4); }
+	.art-head h1 { font: var(--type-title); margin: 0; }
+	.art-head code { font: var(--type-mono); color: var(--subtext); }
+	.art-head a { color: var(--subtext); margin-left: auto; }
+	.block { margin: 0 0 var(--space-8); }
+	.block > h2 { font: var(--type-heading); color: var(--subtext); margin: 0 0 var(--space-2); }
+	.block > h2 small { font: var(--type-caption); margin-left: var(--space-2); }
+	.note { font: var(--type-caption); color: var(--subtext); margin: var(--space-2) 0 0; }
+
+	/* Zustandsbeschriftung */
+	section[data-ui-state] { position: relative; }
+	section[data-ui-state]::before {
+		content: attr(data-ui-state);
+		position: absolute; top: 2px; right: 2px; z-index: 5;
+		font: var(--type-caption); font-family: ui-monospace, "JetBrains Mono", monospace;
+		color: var(--subtext); background: var(--background);
+		border: 1px dashed var(--gray-strong); border-radius: var(--radius-sm);
+		padding: 0 var(--space-1); line-height: 1.2; pointer-events: none;
+	}
+	.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); gap: var(--space-4); align-items: start; }
+	.gallery-caption { font: var(--type-caption); color: var(--subtext); margin: 0 0 var(--space-1); }
+	.card { border: 1px solid var(--gray); border-radius: var(--radius-md); overflow: hidden; background: var(--lighter-background); }
+
+	/* ---------- Datei-Pane-Ausschnitt: Aktionsleiste + Favoritenstreifen + Dateiliste ---------- */
+	.filepane { width: 32rem; max-width: 100%; border: 1px solid var(--gray); border-radius: var(--radius-md); overflow: hidden; background: var(--background); }
+	.filepane.wide { width: 38rem; }
+
+	.actionbar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--terminal); border-bottom: 1px solid var(--gray); }
+	.actionbar .ic { display: flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border-radius: var(--radius-sm); color: var(--white); opacity: 0.9; flex-shrink: 0; }
+	.actionbar .ic svg { width: 1.125rem; height: 1.125rem; }
+	.actionbar .ic.nav-disabled { color: var(--subtext); opacity: 0.4; }
+	.actionbar .ic.active { color: var(--primary); background: var(--gray); opacity: 1; }
+	.actionbar .icongroup { display: flex; gap: var(--space-1); flex-shrink: 0; margin-left: var(--space-1); }
+
+	.address { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-1); height: 1.75rem; padding: 0 var(--space-2); background: var(--dark-gray); border: 1px solid var(--gray); border-radius: var(--radius-sm); font: var(--type-mono); color: var(--text); overflow: hidden; }
+	.address .crumb { padding: 0.125rem 0.25rem; border-radius: var(--radius-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.address .sep { color: var(--subtext); }
+	.address.loading { color: var(--subtext); font: var(--type-body); gap: var(--space-2); }
+	.address .dot-spin { width: 0.75rem; height: 0.75rem; border-radius: 50%; border: 2px solid var(--gray); border-top-color: var(--accent-color); flex-shrink: 0; }
+
+	.hint-bar { padding: var(--space-1) var(--space-3); background: var(--warning-opacity); color: var(--warning); font: var(--type-caption); border-bottom: 1px solid var(--gray); }
+
+	.favbar { height: var(--favorites-bar-height); background: var(--lighter-background); border-bottom: 1px solid var(--gray); display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); position: relative; overflow: hidden; }
+	.favbar.empty-row { color: var(--subtext); font: var(--type-caption); }
+	.chip { display: flex; align-items: center; gap: var(--space-1); height: 1.875rem; padding: 0 var(--space-2); border-radius: var(--radius-md); font: var(--type-body); color: var(--text); background: var(--dark-gray); white-space: nowrap; flex-shrink: 0; }
+	.chip svg { width: 1rem; height: 1rem; flex-shrink: 0; color: var(--subtext); }
+	.chip.active { background: var(--primary-opacity); box-shadow: inset 0 0 0 1px var(--accent-color); }
+	.chip.active svg { color: var(--accent-color); }
+	.chip.dragging { opacity: 0.4; }
+	.favbar .insert { width: 2px; align-self: stretch; margin: 0.375rem 0; background: var(--accent-color); border-radius: 1px; flex-shrink: 0; }
+	.overflow-btn { margin-left: auto; display: flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.75rem; color: var(--subtext); border-radius: var(--radius-sm); flex-shrink: 0; position: relative; }
+	.overflow-btn svg { width: 1.125rem; height: 1.125rem; }
+	.overflow-btn.open { background: var(--dark-gray); color: var(--text); }
+
+	.chip-editing { display: flex; align-items: center; gap: var(--space-1); height: 1.875rem; padding: 0 var(--space-2); border-radius: var(--radius-md); background: var(--dark-gray); box-shadow: 0 0 0 1px var(--accent-color); flex-shrink: 0; }
+	.chip-editing svg { width: 1rem; height: 1rem; color: var(--subtext); flex-shrink: 0; }
+	.chip-editing .edit-val { background: transparent; border: none; outline: none; color: var(--text); font: var(--type-body); width: 4.5rem; }
+
+	.overflow-menu, .fav-menu, .menu-list { position: absolute; z-index: 10; min-width: 10rem; background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-1) 0; font: var(--type-body); }
+	.overflow-menu.static, .fav-menu.static, .menu-list.static { position: static; display: inline-block; margin-top: var(--space-2); }
+	.overflow-menu .item, .fav-menu .item, .menu-list .item { display: flex; align-items: center; gap: var(--space-3); height: 1.875rem; padding: 0 var(--space-3); white-space: nowrap; }
+	.overflow-menu .item svg, .fav-menu .item svg, .menu-list .item svg { width: 1rem; height: 1rem; flex-shrink: 0; color: var(--subtext); }
+	.overflow-menu .item.hover, .fav-menu .item.hover, .menu-list .item.hover { background: var(--dark-gray); }
+	.menu-list .item.danger { color: var(--error); }
+	.menu-list .item.danger svg { color: var(--error); }
+	.menu-list .sep { height: 1px; background: var(--gray); margin: var(--space-1) 0; }
+
+	.filelist-mini .row { display: flex; align-items: center; gap: var(--space-2); height: 1.75rem; padding: 0 var(--space-3); border-bottom: 1px solid var(--dark-gray); background: var(--lighter-background); }
+	.filelist-mini .row .name { flex: 1; min-width: 0; font: var(--type-mono); color: var(--text); display: flex; align-items: center; gap: var(--space-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.filelist-mini .row .name svg { width: 1rem; height: 1rem; color: var(--subtext); flex-shrink: 0; }
+	.filelist-mini .row .size, .filelist-mini .row .date { font: var(--type-caption); color: var(--subtext); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+	.filelist-mini .row .size { width: 3.5rem; text-align: right; }
+	.filelist-mini .row .date { width: 5.5rem; text-align: right; }
+	.filelist-mini .row.hover { background: var(--dark-gray); }
+	.filelist-mini .row.selected { background: var(--primary-opacity); box-shadow: inset 2px 0 0 var(--accent-color); }
+
+	.center-mini { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2); color: var(--subtext); font: var(--type-body); padding: var(--space-4); text-align: center; background: var(--lighter-background); }
+	.center-mini.error { color: var(--error); }
+	.center-mini svg { width: 1.5rem; height: 1.5rem; }
+	.center-mini h3 { margin: 0; font: var(--type-heading); color: var(--text); }
+	.center-mini.error h3 { color: var(--error); }
+	.spinner-mini { width: 1.25rem; height: 1.25rem; border-radius: 50%; border: 2px solid var(--gray); border-top-color: var(--accent-color); }
+</style>
+</head>
+<body>
+
+<header class="mb-context" style="font:var(--type-caption);color:var(--subtext);background:var(--lighter-background);border:1px solid var(--gray);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin:0 0 var(--space-4);line-height:1.6">
+	<strong style="color:var(--text);font:var(--type-heading)">Darstellungskontext</strong><br>
+	<b style="color:var(--text)">Art:</b> Panel — kein eigenes Fenster, füllt eine Kachel der Arbeitsfläche<br>
+	<b style="color:var(--text)">Erscheint über/in:</b> UI-SERVERS<br>
+	<b style="color:var(--text)">Auslöser:</b> Datei-Sitzung (SFTP) eines Servers im Tab; in der geteilten Ansicht je Kachel einmal<br>
+	<b style="color:var(--text)">Größe/Aufbau:</b> füllt die Kachel — Aktionsleiste oben, darunter der Favoritenstreifen (<code>--favorites-bar-height</code>), darunter die Dateiliste<br>
+	<b style="color:var(--text)">Schließen:</b> Tab schließen<br>
+	<b style="color:var(--text)">Tastatur:</b> Strg+B Favoritenleiste · ←/→ zwischen den Chips · Umschalt+←/→ verschiebt einen Chip · Enter öffnet
+</header>
+
+<main class="mb-artboard">
+
+<header class="art-head">
+	<h1>UI-FILES</h1>
+	<span>Datei-Pane — Aktionsleiste und Favoriten</span>
+	<code>über UI-SERVERS</code>
+	<a href="./index.html">← Kontaktbogen</a>
+</header>
+
+<!-- ===================================================================
+     1. UI-FILES-ACTIONBAR + 2. UI-FILES-ADDRESS (default) +
+     3. UI-FILES-FAVORITES-TOGGLE (selected) + 4. UI-FILES-FAVORITES (selected)
+     Zusammenspiel im Regelfall: Favoritenleiste offen, /volume1/docker geöffnet
+     =================================================================== -->
+<div class="block">
+	<h2>Zusammenspiel <small>Favoritenleiste offen · /volume1/docker geöffnet · Bestand + der neue Stern</small></h2>
+
+	<div class="filepane wide" data-ui-id="UI-FILES-ACTIONBAR">
+		<section data-ui-state="default">
+			<div class="actionbar">
+				<span class="ic nav-disabled" title="Zurück"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
+				<span class="ic" title="Vorwärts"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+				<span class="ic" title="Hoch"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></span>
+
+				<div class="address" data-ui-id="UI-FILES-ADDRESS">
+					<section data-ui-state="default" style="display:flex;align-items:center;gap:var(--space-1);overflow:hidden;">
+						<span class="crumb">/</span><span class="crumb">volume1</span><span class="sep">/</span><span class="crumb">docker</span><span class="sep">/</span>
+					</section>
+				</div>
+
+				<div class="icongroup">
+					<span class="ic active" title="Favoriten" data-ui-id="UI-FILES-FAVORITES-TOGGLE">
+						<section data-ui-state="selected"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg></section>
+					</span>
+					<span class="ic" title="Suchen"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+					<span class="ic" title="Ansicht"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg></span>
+					<span class="ic" title="Neu laden"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></span>
+					<span class="ic" title="Datei hochladen"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/></svg></span>
+					<span class="ic" title="Ordner hochladen"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="M12 10v6"/><path d="m9 13 3-3 3 3"/></svg></span>
+					<span class="ic" title="Neue Datei"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M9 15h6"/><path d="M12 18v-6"/></svg></span>
+					<span class="ic" title="Neuer Ordner"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10v6"/><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></span>
+				</div>
+			</div>
+		</section>
+
+		<div class="favbar" data-ui-id="UI-FILES-FAVORITES">
+			<section data-ui-state="selected" style="display:flex;align-items:center;gap:var(--space-2);width:100%;">
+				<span class="chip active" title="/volume1/docker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>docker</span>
+				<span class="chip" title="/volume1/log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>log</span>
+				<span class="chip" title="/volume1/homes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>homes</span>
+				<span class="chip" title="/volume1/scripts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>scripts</span>
+			</section>
+		</div>
+
+		<div class="filelist-mini">
+			<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>nexterm</span><span class="size">—</span><span class="date">02.09.2026</span></div>
+			<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>paperless</span><span class="size">—</span><span class="date">28.08.2026</span></div>
+			<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>@eaDir</span><span class="size">—</span><span class="date">14.08.2026</span></div>
+			<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>docker-compose.yml</span><span class="size">1,2 KB</span><span class="date">heute 20:41</span></div>
+			<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>.env</span><span class="size">318 B</span><span class="date">14.08.2026</span></div>
+		</div>
+	</div>
+	<p class="note">Der Stern steht unmittelbar links neben der Lupe; die übrige Reihenfolge (Suchen · Ansicht · Neu laden · Datei hochladen · Ordner hochladen · Neue Datei · Neuer Ordner) bleibt Bestand.</p>
+</div>
+
+<!-- ===================================================================
+     2. UI-FILES-ADDRESS — weitere Zustände: loading, partial
+     =================================================================== -->
+<div class="block">
+	<h2>UI-FILES-ADDRESS <small>nav · Adresszeile — loading, partial</small></h2>
+	<div class="gallery">
+
+		<div>
+			<div class="gallery-caption">loading</div>
+			<div class="card">
+				<div class="filepane" data-ui-id="UI-FILES-ADDRESS" style="border:0;border-radius:0;">
+					<section data-ui-state="loading">
+						<div class="actionbar">
+							<span class="ic nav-disabled"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
+							<span class="ic nav-disabled"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+							<span class="ic nav-disabled"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></span>
+							<div class="address loading"><span class="dot-spin"></span>Verbinde …</div>
+							<div class="icongroup">
+								<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg></span>
+								<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+							</div>
+						</div>
+					</section>
+				</div>
+				<div class="center-mini" style="padding:var(--space-6) var(--space-4);"><div class="spinner-mini"></div><div>Verbinde …</div></div>
+			</div>
+		</div>
+
+		<div>
+			<div class="gallery-caption">partial</div>
+			<div class="card">
+				<div class="filepane" data-ui-id="UI-FILES-ADDRESS" style="border:0;border-radius:0;">
+					<section data-ui-state="partial">
+						<div class="actionbar">
+							<span class="ic nav-disabled"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
+							<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+							<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></span>
+							<div class="address"><span class="crumb">/</span><span class="crumb">volume1</span><span class="sep">/</span><span class="crumb">docker</span><span class="sep">/</span></div>
+							<div class="icongroup">
+								<span class="ic active"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg></span>
+								<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+							</div>
+						</div>
+						<div class="hint-bar">Zuletzt geöffnet: /volume1/docker/alt — nicht mehr vorhanden. Geöffnet wurde /volume1/docker.</div>
+						<div class="favbar">
+							<span class="chip active" title="/volume1/docker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>docker</span>
+							<span class="chip" title="/volume1/log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>log</span>
+						</div>
+					</section>
+				</div>
+			</div>
+		</div>
+
+	</div>
+</div>
+
+<!-- ===================================================================
+     3. UI-FILES-FAVORITES-TOGGLE — default (geschlossen) und selected (offen)
+     =================================================================== -->
+<div class="block">
+	<h2>UI-FILES-FAVORITES-TOGGLE <small>toggle · Favoriten — default (Stern als Umriss) und selected (gefüllt, Akzentfarbe)</small></h2>
+	<div class="gallery">
+
+		<div>
+			<div class="gallery-caption">default — Leiste geschlossen</div>
+			<div class="card">
+				<div class="filepane" data-ui-id="UI-FILES-FAVORITES-TOGGLE" style="border:0;border-radius:0;">
+					<section data-ui-state="default">
+						<div class="actionbar">
+							<span class="ic nav-disabled"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
+							<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+							<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></span>
+							<div class="address"><span class="crumb">/</span><span class="crumb">volume1</span><span class="sep">/</span><span class="crumb">docker</span><span class="sep">/</span></div>
+							<div class="icongroup">
+								<span class="ic" title="Favoriten"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg></span>
+								<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+							</div>
+						</div>
+					</section>
+				</div>
+				<div class="filelist-mini">
+					<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>nexterm</span><span class="size">—</span><span class="date">02.09.2026</span></div>
+					<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>docker-compose.yml</span><span class="size">1,2 KB</span><span class="date">heute 20:41</span></div>
+				</div>
+			</div>
+			<p class="note">Keine Favoritenleiste — der Streifen entfällt vollständig, keine leere Fläche.</p>
+		</div>
+
+		<div>
+			<div class="gallery-caption">selected — Leiste offen</div>
+			<div class="card">
+				<div class="filepane" data-ui-id="UI-FILES-FAVORITES-TOGGLE" style="border:0;border-radius:0;">
+					<section data-ui-state="selected">
+						<div class="actionbar">
+							<span class="ic nav-disabled"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
+							<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+							<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></span>
+							<div class="address"><span class="crumb">/</span><span class="crumb">volume1</span><span class="sep">/</span><span class="crumb">docker</span><span class="sep">/</span></div>
+							<div class="icongroup">
+								<span class="ic active" title="Favoriten"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg></span>
+								<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+							</div>
+						</div>
+					</section>
+				</div>
+				<div class="favbar">
+					<span class="chip active" title="/volume1/docker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>docker</span>
+					<span class="chip" title="/volume1/log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>log</span>
+					<span class="chip" title="/volume1/homes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>homes</span>
+				</div>
+				<div class="filelist-mini">
+					<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>nexterm</span><span class="size">—</span><span class="date">02.09.2026</span></div>
+					<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>docker-compose.yml</span><span class="size">1,2 KB</span><span class="date">heute 20:41</span></div>
+				</div>
+			</div>
+			<p class="note">Zustand ist kontoweit — Account.preferences.files.favoritesBarOpen — nicht je Sitzung.</p>
+		</div>
+
+	</div>
+</div>
+
+<!-- ===================================================================
+     4. UI-FILES-FAVORITES — weitere Zustände: default, partial, dragging, empty
+     (selected bereits oben im Zusammenspiel gezeigt)
+     =================================================================== -->
+<div class="block">
+	<h2>UI-FILES-FAVORITES <small>list · Favoriten — default, partial, dragging, empty</small></h2>
+	<div class="gallery">
+
+		<div>
+			<div class="gallery-caption">default — kein Chip trifft das offene Verzeichnis</div>
+			<div class="card">
+				<div class="filepane" style="border:0;border-radius:0;">
+					<div class="actionbar">
+						<span class="ic nav-disabled"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
+						<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+						<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></span>
+						<div class="address"><span class="crumb">/</span><span class="crumb">volume1</span><span class="sep">/</span><span class="crumb">docker</span><span class="sep">/</span><span class="crumb">alt</span><span class="sep">/</span></div>
+						<div class="icongroup">
+							<span class="ic active"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg></span>
+							<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+						</div>
+					</div>
+					<div class="favbar" data-ui-id="UI-FILES-FAVORITES">
+						<section data-ui-state="default" style="display:flex;align-items:center;gap:var(--space-2);width:100%;">
+							<span class="chip" title="/volume1/docker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>docker</span>
+							<span class="chip" title="/volume1/log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>log</span>
+							<span class="chip" title="/volume1/homes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>homes</span>
+							<span class="chip" title="/volume1/scripts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>scripts</span>
+						</section>
+					</div>
+					<div class="filelist-mini">
+						<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>.env</span><span class="size">318 B</span><span class="date">14.08.2026</span></div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div>
+			<div class="gallery-caption">partial — abgeschnitten vor dem ersten nicht passenden Chip</div>
+			<div class="card">
+				<div class="filepane" style="border:0;border-radius:0;">
+					<div class="actionbar">
+						<span class="ic nav-disabled"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
+						<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+						<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></span>
+						<div class="address"><span class="crumb">/</span><span class="crumb">volume1</span><span class="sep">/</span><span class="crumb">docker</span><span class="sep">/</span></div>
+						<div class="icongroup">
+							<span class="ic active"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg></span>
+							<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+						</div>
+					</div>
+					<div class="favbar" data-ui-id="UI-FILES-FAVORITES">
+						<section data-ui-state="partial" style="display:flex;align-items:center;gap:var(--space-2);width:100%;">
+							<span class="chip active" title="/volume1/docker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>docker</span>
+							<span class="chip" title="/volume1/log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>log</span>
+							<span class="chip" title="/volume1/homes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>homes</span>
+							<span class="chip" title="/volume1/scripts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>scripts</span>
+							<span class="overflow-btn" data-ui-id="UI-FILES-FAVORITES-OVERFLOW" title="Weitere Favoriten">
+								<span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
+							</span>
+						</section>
+					</div>
+					<div class="filelist-mini">
+						<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>docker-compose.yml</span><span class="size">1,2 KB</span><span class="date">heute 20:41</span></div>
+					</div>
+				</div>
+			</div>
+			<p class="note">Sieben Bookmarks insgesamt — vier passen, drei (backup · vm · media) gehen ins Überlauf-Menü. Dieselbe Ansicht ist zugleich UI-FILES-FAVORITES-OVERFLOW im Zustand default.</p>
+		</div>
+
+		<div>
+			<div class="gallery-caption">dragging — Chip wird verschoben</div>
+			<div class="card">
+				<div class="filepane" style="border:0;border-radius:0;">
+					<div class="actionbar">
+						<span class="ic nav-disabled"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
+						<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+						<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></span>
+						<div class="address"><span class="crumb">/</span><span class="crumb">volume1</span><span class="sep">/</span><span class="crumb">docker</span><span class="sep">/</span></div>
+						<div class="icongroup">
+							<span class="ic active"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg></span>
+							<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+						</div>
+					</div>
+					<div class="favbar" data-ui-id="UI-FILES-FAVORITES">
+						<section data-ui-state="dragging" style="display:flex;align-items:center;gap:var(--space-2);width:100%;">
+							<span class="chip active" title="/volume1/docker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>docker</span>
+							<span class="insert"></span>
+							<span class="chip" title="/volume1/homes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>homes</span>
+							<span class="chip" title="/volume1/scripts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>scripts</span>
+							<span class="chip dragging" title="/volume1/log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>log</span>
+						</section>
+					</div>
+					<div class="filelist-mini">
+						<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>docker-compose.yml</span><span class="size">1,2 KB</span><span class="date">heute 20:41</span></div>
+					</div>
+				</div>
+			</div>
+			<p class="note">"log" wird an die zweite Stelle gezogen — halbtransparent, die Einfügestelle als 2px-Strich in der Akzentfarbe.</p>
+		</div>
+
+		<div>
+			<div class="gallery-caption">empty — noch keine Favoriten</div>
+			<div class="card">
+				<div class="filepane" style="border:0;border-radius:0;">
+					<div class="actionbar">
+						<span class="ic nav-disabled"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
+						<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+						<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></span>
+						<div class="address"><span class="crumb">/</span><span class="crumb">volume1</span><span class="sep">/</span><span class="crumb">docker</span><span class="sep">/</span></div>
+						<div class="icongroup">
+							<span class="ic active"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg></span>
+							<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+						</div>
+					</div>
+					<div class="favbar empty-row" data-ui-id="UI-FILES-FAVORITES">
+						<section data-ui-state="empty">Noch keine Favoriten. Rechtsklick auf einen Ordner legt einen an.</section>
+					</div>
+					<div class="filelist-mini">
+						<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>docker-compose.yml</span><span class="size">1,2 KB</span><span class="date">heute 20:41</span></div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+	</div>
+</div>
+
+<!-- ===================================================================
+     5. UI-FILES-FAVORITES-OVERFLOW — selected (Menü offen)
+     (default bereits oben als Teil von UI-FILES-FAVORITES/partial gezeigt)
+     =================================================================== -->
+<div class="block">
+	<h2>UI-FILES-FAVORITES-OVERFLOW <small>action · Weitere Favoriten — selected (Menü offen)</small></h2>
+	<div class="card" style="width:32rem;max-width:100%;">
+		<div class="filepane" style="border:0;border-radius:0;">
+			<div class="actionbar">
+				<span class="ic nav-disabled"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
+				<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+				<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></span>
+				<div class="address"><span class="crumb">/</span><span class="crumb">volume1</span><span class="sep">/</span><span class="crumb">docker</span><span class="sep">/</span></div>
+				<div class="icongroup">
+					<span class="ic active"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg></span>
+					<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+				</div>
+			</div>
+			<div class="favbar">
+				<span class="chip active" title="/volume1/docker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>docker</span>
+				<span class="chip" title="/volume1/log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>log</span>
+				<span class="chip" title="/volume1/homes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>homes</span>
+				<span class="chip" title="/volume1/scripts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>scripts</span>
+				<span class="overflow-btn open" data-ui-id="UI-FILES-FAVORITES-OVERFLOW" title="Weitere Favoriten">
+					<section data-ui-state="selected" style="display:flex;">
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+						<div class="overflow-menu" role="menu" style="top: calc(var(--favorites-bar-height) + 2px); right: var(--space-3);">
+							<div class="item hover"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>backup</div>
+							<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>vm</div>
+							<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>media</div>
+						</div>
+					</section>
+				</span>
+			</div>
+			<div class="filelist-mini">
+				<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>docker-compose.yml</span><span class="size">1,2 KB</span><span class="date">heute 20:41</span></div>
+			</div>
+		</div>
+	</div>
+	<p class="note">Gleiche Reihenfolge wie im Balken: backup · vm · media, Elevation --shadow-sm.</p>
+</div>
+
+<!-- ===================================================================
+     6. UI-FILES-FAVORITE-MENU — default (Umbenennen/Entfernen) und
+     selected (Umbenennen aktiv — Eingabefeld im Chip)
+     =================================================================== -->
+<div class="block">
+	<h2>UI-FILES-FAVORITE-MENU <small>overlay · Favoriten-Kontextmenü — default, selected</small></h2>
+	<div class="gallery">
+
+		<div>
+			<div class="gallery-caption">default — Rechtsklick auf einen Chip</div>
+			<div class="card">
+				<div class="filepane" style="border:0;border-radius:0;">
+					<div class="actionbar">
+						<span class="ic nav-disabled"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
+						<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+						<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></span>
+						<div class="address"><span class="crumb">/</span><span class="crumb">volume1</span><span class="sep">/</span><span class="crumb">docker</span><span class="sep">/</span></div>
+						<div class="icongroup">
+							<span class="ic active"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg></span>
+							<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+						</div>
+					</div>
+					<div class="favbar" style="position:relative;">
+						<span class="chip active" title="/volume1/docker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>docker</span>
+						<span class="chip" title="/volume1/log" data-ui-id="UI-FILES-FAVORITE-MENU">log</span>
+						<span class="chip" title="/volume1/homes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>homes</span>
+						<section data-ui-state="default" style="position:absolute; top: calc(100% + 2px); left: 5rem;">
+							<div class="fav-menu" role="menu">
+								<div class="item hover"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h-1a2 2 0 0 1-2-2 2 2 0 0 1-2 2H6"/><path d="M13 8h7a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-7"/><path d="M5 16H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1"/><path d="M6 4h1a2 2 0 0 1 2 2 2 2 0 0 1 2-2h1"/><path d="M9 6v12"/></svg>Umbenennen</div>
+								<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.344 4.688 1.181-2.393a.53.53 0 0 1 .95 0l2.31 4.679a2.12 2.12 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.237 3.152"/><path d="m17.945 17.945.43 2.505a.53.53 0 0 1-.771.56l-4.618-2.428a2.12 2.12 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.12 2.12 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a8 8 0 0 0 .4-.099"/><path d="m2 2 20 20"/></svg>Entfernen</div>
+							</div>
+						</section>
+					</div>
+					<div class="filelist-mini">
+						<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>docker-compose.yml</span><span class="size">1,2 KB</span><span class="date">heute 20:41</span></div>
+					</div>
+				</div>
+			</div>
+			<p class="note">Entfernen fragt nicht nach — der Ordner selbst bleibt unangetastet.</p>
+		</div>
+
+		<div>
+			<div class="gallery-caption">selected — Umbenennen aktiv</div>
+			<div class="card">
+				<div class="filepane" style="border:0;border-radius:0;">
+					<div class="actionbar">
+						<span class="ic nav-disabled"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span>
+						<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+						<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></span>
+						<div class="address"><span class="crumb">/</span><span class="crumb">volume1</span><span class="sep">/</span><span class="crumb">docker</span><span class="sep">/</span></div>
+						<div class="icongroup">
+							<span class="ic active"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg></span>
+							<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+						</div>
+					</div>
+					<div class="favbar">
+						<span class="chip active" title="/volume1/docker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>docker</span>
+						<span class="chip-editing" data-ui-id="UI-FILES-FAVORITE-MENU">
+							<section data-ui-state="selected" style="display:flex;align-items:center;gap:var(--space-1);">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+								<input class="edit-val" value="log" readonly>
+							</section>
+						</span>
+						<span class="chip" title="/volume1/homes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>homes</span>
+					</div>
+					<div class="filelist-mini">
+						<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>docker-compose.yml</span><span class="size">1,2 KB</span><span class="date">heute 20:41</span></div>
+					</div>
+				</div>
+			</div>
+			<p class="note">Enter bestätigt, Esc verwirft — wie beim Umbenennen einer Datei in der Dateiliste.</p>
+		</div>
+
+	</div>
+</div>
+
+<!-- ===================================================================
+     7. UI-FILES-LIST (Bestand, knapp) — default, loading, empty, error
+     =================================================================== -->
+<div class="block">
+	<h2>UI-FILES-LIST <small>list · Dateien — Bestand, hier nur die vier Zustände</small></h2>
+	<div class="gallery" data-ui-id="UI-FILES-LIST">
+
+		<div>
+			<div class="gallery-caption">default</div>
+			<div class="card filelist-mini">
+				<section data-ui-state="default">
+					<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>nexterm</span><span class="size">—</span><span class="date">02.09.2026</span></div>
+					<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>paperless</span><span class="size">—</span><span class="date">28.08.2026</span></div>
+					<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>@eaDir</span><span class="size">—</span><span class="date">14.08.2026</span></div>
+					<div class="row selected"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>docker-compose.yml</span><span class="size">1,2 KB</span><span class="date">heute 20:41</span></div>
+					<div class="row"><span class="name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>.env</span><span class="size">318 B</span><span class="date">14.08.2026</span></div>
+				</section>
+			</div>
+		</div>
+
+		<div>
+			<div class="gallery-caption">loading</div>
+			<div class="card">
+				<section data-ui-state="loading">
+					<div class="center-mini" aria-busy="true"><div class="spinner-mini"></div><div>Lädt …</div></div>
+				</section>
+			</div>
+		</div>
+
+		<div>
+			<div class="gallery-caption">empty</div>
+			<div class="card">
+				<section data-ui-state="empty">
+					<div class="center-mini">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+						<h3>Ordner ist leer</h3>
+						<p>Dateien hierher ziehen zum Hochladen.</p>
+					</div>
+				</section>
+			</div>
+		</div>
+
+		<div>
+			<div class="gallery-caption">error</div>
+			<div class="card">
+				<section data-ui-state="error">
+					<div class="center-mini error">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+						<h3>Zugriff verweigert</h3>
+						<p>Permission denied</p>
+					</div>
+				</section>
+			</div>
+		</div>
+
+	</div>
+</div>
+
+<!-- ===================================================================
+     8. UI-FILES-LIST-MENU (Bestand + neuer Eintrag) — default, selected, disabled
+     =================================================================== -->
+<div class="block">
+	<h2>UI-FILES-LIST-MENU <small>overlay · Kontextmenü der Dateiliste — default (Ordner, noch nicht gemerkt), selected (Ordner, schon gemerkt), disabled (Datei — Eintrag fehlt ganz)</small></h2>
+	<div class="gallery" data-ui-id="UI-FILES-LIST-MENU">
+
+		<div>
+			<div class="gallery-caption">default — Rechtsklick auf "nexterm" (Ordner)</div>
+			<section data-ui-state="default">
+				<div class="menu-list static">
+					<div class="item hover"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h-1a2 2 0 0 1-2-2 2 2 0 0 1-2 2H6"/><path d="M13 8h7a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-7"/><path d="M5 16H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1"/><path d="M6 4h1a2 2 0 0 1 2 2 2 2 0 0 1 2-2h1"/><path d="M9 6v12"/></svg>Umbenennen</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>Herunterladen</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>Pfad kopieren</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Eigenschaften</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/></svg>Terminal hier öffnen</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>Als Bookmark anlegen</div>
+					<div class="sep"></div>
+					<div class="item danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Löschen</div>
+				</div>
+			</section>
+		</div>
+
+		<div>
+			<div class="gallery-caption">selected — "docker" ist schon gemerkt</div>
+			<section data-ui-state="selected">
+				<div class="menu-list static">
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h-1a2 2 0 0 1-2-2 2 2 0 0 1-2 2H6"/><path d="M13 8h7a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-7"/><path d="M5 16H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1"/><path d="M6 4h1a2 2 0 0 1 2 2 2 2 0 0 1 2-2h1"/><path d="M9 6v12"/></svg>Umbenennen</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>Herunterladen</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>Pfad kopieren</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Eigenschaften</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/></svg>Terminal hier öffnen</div>
+					<div class="item hover"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.344 4.688 1.181-2.393a.53.53 0 0 1 .95 0l2.31 4.679a2.12 2.12 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.237 3.152"/><path d="m17.945 17.945.43 2.505a.53.53 0 0 1-.771.56l-4.618-2.428a2.12 2.12 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.12 2.12 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a8 8 0 0 0 .4-.099"/><path d="m2 2 20 20"/></svg>Bookmark entfernen</div>
+					<div class="sep"></div>
+					<div class="item danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Löschen</div>
+				</div>
+			</section>
+		</div>
+
+		<div>
+			<div class="gallery-caption">disabled — Rechtsklick auf "docker-compose.yml" (Datei)</div>
+			<section data-ui-state="disabled">
+				<div class="menu-list static">
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h-1a2 2 0 0 1-2-2 2 2 0 0 1-2 2H6"/><path d="M13 8h7a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-7"/><path d="M5 16H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1"/><path d="M6 4h1a2 2 0 0 1 2 2 2 2 0 0 1 2-2h1"/><path d="M9 6v12"/></svg>Umbenennen</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 21h8"/><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>Bearbeiten</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>Herunterladen</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>Pfad kopieren</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Eigenschaften</div>
+					<div class="sep"></div>
+					<div class="item danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Löschen</div>
+				</div>
+			</section>
+			<p class="note">Weder Terminal hier öffnen noch der Bookmark-Eintrag — beide sind ordnerspezifisch und fehlen bei Dateien ganz, nicht nur ausgegraut.</p>
+		</div>
+
+	</div>
+</div>
+
+<!-- ===================================================================
+     9. UI-FILES-EMPTY-MENU (Bestand + neuer Eintrag) — default, selected
+     =================================================================== -->
+<div class="block">
+	<h2>UI-FILES-EMPTY-MENU <small>overlay · Kontextmenü der freien Fläche — default (Verzeichnis noch nicht gemerkt), selected (schon gemerkt)</small></h2>
+	<div class="gallery" data-ui-id="UI-FILES-EMPTY-MENU">
+
+		<div>
+			<div class="gallery-caption">default — Rechtsklick auf die freie Fläche in /volume1/docker/alt</div>
+			<section data-ui-state="default">
+				<div class="menu-list static">
+					<div class="item hover"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M9 15h6"/><path d="M12 18v-6"/></svg>Neue Datei</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10v6"/><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>Neuer Ordner</div>
+					<div class="sep"></div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>Ordner herunterladen</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Eigenschaften</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/></svg>Terminal hier öffnen</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>Diesen Ordner als Bookmark</div>
+				</div>
+			</section>
+		</div>
+
+		<div>
+			<div class="gallery-caption">selected — /volume1/docker ist schon gemerkt</div>
+			<section data-ui-state="selected">
+				<div class="menu-list static">
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M9 15h6"/><path d="M12 18v-6"/></svg>Neue Datei</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10v6"/><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>Neuer Ordner</div>
+					<div class="sep"></div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>Ordner herunterladen</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Eigenschaften</div>
+					<div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/></svg>Terminal hier öffnen</div>
+					<div class="item hover"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.344 4.688 1.181-2.393a.53.53 0 0 1 .95 0l2.31 4.679a2.12 2.12 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.237 3.152"/><path d="m17.945 17.945.43 2.505a.53.53 0 0 1-.771.56l-4.618-2.428a2.12 2.12 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.12 2.12 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a8 8 0 0 0 .4-.099"/><path d="m2 2 20 20"/></svg>Bookmark entfernen</div>
+				</div>
+			</section>
+			<p class="note">Merkt das gerade angezeigte Verzeichnis selbst — nicht einen darin liegenden Ordner (das übernimmt UI-FILES-LIST-MENU).</p>
+		</div>
+
+	</div>
+</div>
+
+</main>
+
+</body>
+</html>

@@ -34,6 +34,10 @@
 	/* Bestand: Radien, Höhen, Breakpoints */
 	--radius-sm: 0.25rem; --radius-md: 0.5rem; --radius-lg: 0.75rem; --radius-xl: 1rem;
 	--title-bar-height: 40px; --key-bar-height: 2.75rem;
+	/* Runde 4: Favoritenleiste im Datei-Pane. Feste Pixel wie --title-bar-height,
+	   nicht rem: die Leiste trägt eine einzelne Chip-Zeile, deren Höhe sich aus
+	   Chip plus Innenabstand ergibt und nicht mit --ui-scale mitwachsen soll. */
+	--favorites-bar-height: 50px;
 }
 :root[data-theme="light"] {
 	--background: #FFFFFF; --terminal: #F5F5F5; --lighter-background: #F0F0F0;

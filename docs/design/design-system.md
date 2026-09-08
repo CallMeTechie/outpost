@@ -79,9 +79,14 @@ Bewegung: kurz (≤150 ms) für Hover/Fokus, keine dekorativen Animationen.
 ## Layout und Breakpoints
 
 `$mobile: 768px`, `$tablet: 1024px`. Höhen als Variablen: `--title-bar-height`
-(40 px Desktop), `--key-bar-height` (2.75 rem), `--mobile-nav-height`.
+(40 px Desktop), `--key-bar-height` (2.75 rem), `--mobile-nav-height`,
+`--favorites-bar-height` (50 px, Runde 4).
 **Mindestbreiten (neu, aus „13-Zoll-Laptop"):** Terminal-Pane ≥ 40 rem,
 Datei-Pane ≥ 22 rem; darunter greift automatisch der Fokus-Modus.
+
+Die Favoritenleiste ist in Pixeln festgelegt, nicht in `rem`: sie trägt eine
+einzelne Chip-Zeile, deren Höhe sich aus Chip plus Innenabstand ergibt.
+`--title-bar-height` hat denselben Grund und dieselbe Schreibweise.
 
 ## Komponenteninventar (Bestand, Auszug für die Arbeitsfläche)
 
@@ -91,6 +96,23 @@ Loading · Sidebar · TitleBar · PageHeader · FloatingWindow · ResizeHandle �
 ActionConfirmDialog · LetterAvatar/AvatarStack · PaginatedTable.
 Zustände je interaktiver Komponente: default · hover · focus-visible ·
 active/selected · disabled; datenführende zusätzlich loading · empty · error.
+
+**Neu in Runde 4 — Favoritenleiste (Datei-Pane).** Ein waagerechter Streifen
+unter der Aktionsleiste, `--favorites-bar-height` hoch, Fläche
+`--lighter-background`, Trennlinie `--gray` nach unten. Er trägt genau eine
+Zeile Chips (Bestandskomponente Chip: Ordner-Icon + Name, `--type-body`,
+`--radius-md`, Innenabstand `--space-2`), er scrollt nicht und er bricht nicht
+um. Der Chip des gerade offenen Verzeichnisses trägt `--primary-opacity` —
+dieselbe Sprache, in der die Oberfläche sonst „aktiv" sagt. Passt die Reihe
+nicht in die Breite, endet sie vor dem ersten nicht passenden Chip und ein
+Chevron öffnet den Rest als ContextMenu (Bestandskomponente, Elevation
+`--shadow-sm` wie jedes Menü). Ein- und ausgeschaltet wird der Streifen über
+einen Icon-Button in der Aktionsleiste mit dem gleichen `active`-Zustand, den
+der Suchen-Button schon hat.
+
+Der Streifen ist **kein** zweites Navigationsband: er wiederholt nicht die
+Brotkrumen, zeigt keine Schließen-Kreuze an den Chips (das Entfernen liegt im
+Kontextmenü) und bekommt keine eigene Überschrift.
 
 ## Copy und Ton
 
@@ -105,6 +127,13 @@ Sprache der Oberfläche über i18n (`t()`), Schlüssel unter `servers.*`,
 Jede häufige Aktion hat eine Taste; Kontextmenüs sind Zweitweg. Fokus-Modus
 (neu) per Tastenkürzel, sichtbar im Tab-Kontextmenü und im Aktionsmenü.
 
+**Favoritenleiste (Runde 4).** `Strg+B` blendet sie ein und aus, solange das
+Datei-Pane den Fokus hat — der Browser-Griff wird dabei abgefangen. Chips sind
+per Tab erreichbar und untereinander mit `←`/`→`; `Enter` springt in den
+Ordner, `Umschalt+←`/`Umschalt+→` verschiebt den fokussierten Chip um eine
+Stelle. Anlegen bleibt bewusst ohne Kürzel: man legt ein Bookmark einmal an
+und benutzt es hundertmal, und `Strg+D` gehört dem Browser.
+
 ## Accessibility-Untergrenze
 
 Kontrast ≥ 4.5:1 für Fließtext (beide Themen prüfen — `--subtext` hell
@@ -115,6 +144,9 @@ Trefferflächen ≥ 44×44 px in der Tastenleiste und auf Touch.
 
 - Nicht wie eine IDE: keine Aktivitätsleiste mit Icon-Spalte, keine Panels-in-
   Panels, keine Statusleiste voller Widgets.
+- Die Favoritenleiste scrollt nicht waagerecht und bricht nicht in eine zweite
+  Zeile um. Was nicht in die Zeile passt, geht ins Überlauf-Menü — eine
+  wachsende Leiste würde die Dateiliste unangekündigt verkleinern.
 - Nicht playful, nicht corporate (Logo-Prompt).
 - Nichts, was nur per Maus geht.
 - Keine zweite Akzentfarbe; Farbe nur als Bedeutung.

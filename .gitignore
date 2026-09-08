@@ -159,3 +159,6 @@ cli/target/
 # conversation material, not part of the project, and four of them rode in on a
 # `git add -A` before this line existed.
 /Screenshot*.png
+
+# Worktrees, die Claude Code unter .claude/worktrees/ anlegt
+.claude/worktrees/
