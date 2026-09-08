@@ -412,7 +412,7 @@ export const ActionBar = ({
                 {showFavorites && (
                     <Icon icon={IconStar} data-ui-id="UI-FILES-FAVORITES-TOGGLE"
                           onClick={onToggleFavorites}
-                          className={favoritesOpen ? "active" : ""}
+                          className={`favorites-toggle${favoritesOpen ? " active" : ""}`}
                           title={t("servers.fileManager.actionBar.favorites")} />
                 )}
                 <Icon icon={IconSearch} onClick={() => searchOpen ? closeSearch?.() : setSearchOpen?.(true)}

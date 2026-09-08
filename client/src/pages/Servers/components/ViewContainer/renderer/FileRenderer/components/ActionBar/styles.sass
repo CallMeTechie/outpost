@@ -263,6 +263,14 @@
       color: colors.$primary
       background-color: colors.$gray
 
+    // Lucide draws the star as an unfilled outline (fill="none" on the SVG itself, not
+    // reachable through `color`); the search icon's active state above only needed the
+    // outline tinted, but the manifest asks this one to read as filled too. Scoped to
+    // .favorites-toggle alone so the search icon, the view-mode icon and the rest of the
+    // group keep their outline-only active look.
+    svg.favorites-toggle.active
+      fill: colors.$primary
+
 @media (max-width: 768px)
   .action-bar
     padding: 0.75rem 1rem
