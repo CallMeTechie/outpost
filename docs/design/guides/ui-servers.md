@@ -1,6 +1,6 @@
 # Servers — Arbeitsfläche — Umsetzungsanleitung (UI-SERVERS)
 
-Artboard: docs/design/mockups/ui-servers.html · Manifest-Revision: 2
+Artboard: docs/design/mockups/ui-servers.html · Manifest-Revision: 3
 
 Diese Seite existiert bereits (`client/src/pages/Servers/Servers.jsx`). Die
 Anleitung schreibt den Bestand fest und fügt genau ein neues Verhalten hinzu:
@@ -74,6 +74,14 @@ den Fokus-Modus. Nichts wird neu gebaut, was es gibt.
 - Der Platz hat feste Größe — 1 rem, unter 768 px 0,875 rem. Das ist der Punkt: der Ring brachte einmal seine eigene 36-px-Fläche mit, füllte damit die ganze Tabhöhe und schob den Namen bei jedem Prozentwert zur Seite.
 - Fortschritt kommt aus `progressParser.js`, das die Terminalausgabe mitliest (Prozentangaben, ASCII-Balken, `x/y`, Byte-Angaben, docker/apt/git). Der Ring erscheint zwischen 1 und 99 und verschwindet bei 100 oder auf einer Abschlusszeile.
 
+### UI-SERVERS-TAB-CONTEXT
+- `data-ui-id` am Streifen am oberen Rand (`.tab-stripe`), in **beiden** Zuständen -- sonst wäre das Element nur auffindbar, solange gerade ein Agent läuft.
+- `default`: Fensterfarbe über die volle Breite, 2 px. `loading`: dieselbe Farbe als Balken auf einer sichtbaren Spur, **3 px**.
+- Der Höhenunterschied ist kein Zierrat. In der Einzelansicht hat kein Tab eine Fensterfarbe, der gewöhnliche Streifen ist dort durchsichtig; beim Wechsel in die geteilte Ansicht bekommt jeder Tab eine Farbe, und ein Tab ohne Agenten zeigte sonst einen durchgehenden Streifen, der sich wie ein randvoller Balken liest.
+- **Outpost misst nichts.** Der Wert kommt vom Agenten selbst als Marke im Terminalstrom: `⟦ctx <werkzeug> <prozent>⟧`, gelesen in `utils/contextParser.js`. Für Claude Code schreibt sie dessen eigene Statuszeile, für qwen die tmux-Statusleiste (`scripts/outpost-statusline.js` bzw. `scripts/outpost-ctx.js`).
+- Von innen gemessen und nicht von außen, weil mehrere Sitzungen desselben Werkzeugs im selben Verzeichnis laufen und der Prozess seine Verlaufsdatei nicht offen hält -- eine Zuordnung Terminal → Sitzung ist von außen nicht verlässlich.
+- Kein Wert heißt **kein Agent**, nicht „Kontext leer". Ein Balken auf 0 % würde behaupten, gemessen worden zu sein.
+
 ### UI-SERVERS-TAB-LABEL
 - `data-ui-id` an der Beschriftung (`<h2>` im Tab). Reihenfolge: Name, Art, Nummer — die Art sagt, **was** der Tab ist, die Nummer, **welcher von mehreren**.
 - Die Nummer erscheint nur, solange in der Leiste tatsächlich ein zweiter Tab steht, der sonst gleich hieße (`idsNeedingNumber`). Ein einzelner Tab trägt nie eine.
@@ -87,5 +95,5 @@ den Fokus-Modus. Nichts wird neu gebaut, was es gibt.
 - Kein Onboarding-Overlay im Leerzustand.
 
 ## Fertig, wenn
-- `mockingbird-scope.sh --locate <ID> --root /root/outpost` jedes der elf Elemente auf Tier A findet.
+- `mockingbird-scope.sh --locate <ID> --root /root/outpost` jedes der zwölf Elemente auf Tier A findet.
 - `/design-verify --screen UI-SERVERS` MATCH ergibt.

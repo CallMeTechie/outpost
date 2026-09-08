@@ -2,7 +2,7 @@
 <html lang="de" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<title>outpost — Mockups (Revision 2)</title>
+<title>outpost — Mockups (Revision 3)</title>
 <link rel="stylesheet" href="./tokens.css">
 <style>
 .mb-page { font: var(--type-body, 500 0.875rem/1.45 system-ui, sans-serif); color: var(--text, #eee); background: var(--background, #111); margin: 0; padding: var(--space-8, 2rem); }
@@ -314,6 +314,11 @@
 #ab-ui-servers .tabdemo .mark svg{ width: 100%; height: 100%; }
 #ab-ui-servers .tabdemo .dot{ width: .5rem; height: .5rem; border-radius: 2px; display: block; }
 #ab-ui-servers .tabdemo .num{ color: var(--subtext); }
+#ab-ui-servers .tabdemo .tab{ position: relative; }
+#ab-ui-servers .tabdemo .plainstripe{ position: absolute; left: 0; right: 0; top: 0; height: 2px; }
+#ab-ui-servers .tabdemo .ctxbar{ position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--gray); }
+#ab-ui-servers .tabdemo .ctxbar i{ display: block; height: 100%; }
+#ab-ui-servers .ctxnote{ margin-top: var(--space-2); font: var(--type-caption); color: var(--subtext); }
 
 </style>
 <style>
@@ -443,7 +448,7 @@
 </head>
 <body class="mb-page">
 <h1>outpost — Mockups</h1>
-<p class="sub">Manifest-Revision 2 · 2026-09-07 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
+<p class="sub">Manifest-Revision 3 · 2026-09-08 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
 <ul class="mb-toc">
 <li><a href="#UI-SHELL">Rahmen — Navigation</a> <code>UI-SHELL</code></li>
 <li><a href="#UI-SERVERS">Servers — Arbeitsfläche</a> <code>UI-SERVERS</code></li>
@@ -828,6 +833,7 @@
 <tr><td><code>UI-SERVERS-LIST-MENU</code></td><td>Kontextmenü Server</td><td>Zweitweg für Aktionen auf einem Eintrag — Verbinden, SFTP öffnen, Notizen, Bearbeiten, Duplizieren, Session beitreten, Löschen. Port weiterleiten erscheint nur in der Desktop-App (Tauri), im Web-Build nie. <b>Nicht:</b> primary_navigation.</td><td><code>default · disabled</code></td></tr>
 <tr><td><code>UI-SERVERS-TABS</code></td><td>Sessions</td><td>Die aktuell offenen Sessions als Tabs, jede mit ihrer Split-View-Zuordnungsfarbe; Kontextmenü mit Umbenennen, Duplizieren, Teilen, Schlafen legen, Ausklinken, Schließen. <b>Nicht:</b> server_entry, folder.</td><td><code>default · selected · empty</code></td></tr>
 <tr><td><code>UI-SERVERS-TAB-MARKER</code></td><td>Zustand eines Tabs</td><td>Der Platz links im Tab. Im Ruhezustand ein Punkt in der Farbe des Split-Fensters, zu dem der Tab gehört. Läuft ein Befehl, der Prozente ausgibt, steht dort stattdessen ein Ring, der sich im Uhrzeigersinn füllt. <b>Nicht:</b> connection_state, session.</td><td><code>default · loading</code></td></tr>
+<tr><td><code>UI-SERVERS-TAB-CONTEXT</code></td><td>Kontextfüllung</td><td>Der Streifen am oberen Rand eines Tabs. Ohne Agenten die Farbe des Split-Fensters über die volle Breite; meldet ein Agent seine Kontextfüllung, wird derselbe Streifen zur Spur, in der ein Balken dieser Länge wächst -- in derselben Farbe, aber höher, damit „kein Agent" und „randvoll" sich unterscheiden. <b>Nicht:</b> session_activity, connection_state, pane_color.</td><td><code>default · loading</code></td></tr>
 <tr><td><code>UI-SERVERS-TAB-LABEL</code></td><td>Beschriftung eines Tabs</td><td>Der Text eines Tabs. Name zuerst, dann die Art in Klammern, zuletzt die Nummer. Die Nummer unterscheidet Tabs, die sonst gleich hießen, und erscheint nur, solange in der Leiste tatsächlich ein zweiter solcher Tab steht. <b>Nicht:</b> server_entry, hostname.</td><td><code>default · selected</code></td></tr>
 <tr><td><code>UI-SERVERS-VIEW</code></td><td>Arbeitsfläche</td><td>Der Inhalt der aktiven Session, einzeln oder als Split; Terminal und Datei-Pane nebeneinander sind der Kernfall. <b>Nicht:</b> server_entry.</td><td><code>default · loading · error</code></td></tr>
 <tr><td><code>UI-SERVERS-FOCUS</code></td><td>Fokus-Modus</td><td>Blendet Server-Liste und Tab-Leiste aus, nur das aktive Pane bleibt; Taste Ctrl+Shift+F, greift automatisch unter den Mindestbreiten (Terminal 40 rem, Datei-Pane 22 rem). <b>Nicht:</b> fullscreen_browser.</td><td><code>default · selected</code></td></tr>
@@ -1163,6 +1169,26 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 		<div class="wide">
 			<div class="gallery-caption">UI-SERVERS-VIEW · region · Arbeitsfläche</div>
 	
+
+		<div data-ui-id="UI-SERVERS-TAB-CONTEXT" aria-label="Kontextfüllung">
+			<div class="gallery-caption">UI-SERVERS-TAB-CONTEXT · status · Kontextfüllung</div>
+			<section data-ui-state="default">
+				<p>Kein Agent in diesem Tab: die Farbe des Split-Fensters über die volle Breite, 2 px.</p>
+				<div class="tabdemo">
+					<div class="tab active"><span class="plainstripe" style="background:#2A72C9"></span><span class="mark"><i class="dot" style="background:#2A72C9"></i></span>nas</div>
+					<div class="tab"><span class="plainstripe" style="background:#1F9E6E"></span><span class="mark"><i class="dot" style="background:#1F9E6E"></i></span>Notizen</div>
+				</div>
+			</section>
+			<section data-ui-state="loading">
+				<p>Ein Agent meldet seine Kontextfüllung: derselbe Streifen wird zur Spur, der Balken wächst darin — 3 px hoch, damit „randvoll" und „kein Agent" sich unterscheiden lassen.</p>
+				<div class="tabdemo">
+					<div class="tab active"><span class="ctxbar"><i style="width:42%;background:#2A72C9"></i></span><span class="mark"><i class="dot" style="background:#2A72C9"></i></span>develop</div>
+					<div class="tab"><span class="ctxbar"><i style="width:91%;background:#1F9E6E"></i></span><span class="mark"><i class="dot" style="background:#1F9E6E"></i></span>qwen</div>
+				</div>
+				<p class="ctxnote">Der Wert kommt vom Agenten selbst, als Marke im Terminalstrom: <code>⟦ctx claude 42⟧</code>. Outpost misst nichts — es liest mit.</p>
+			</section>
+		</div>
+
 		<div data-ui-id="UI-SERVERS-TAB-MARKER" aria-label="Zustand eines Tabs">
 			<div class="gallery-caption">UI-SERVERS-TAB-MARKER · status · Zustand eines Tabs</div>
 			<section data-ui-state="default">

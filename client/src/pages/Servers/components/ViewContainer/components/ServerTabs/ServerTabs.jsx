@@ -171,11 +171,11 @@ const DraggableTab = ({
                     darunter ist nur im zweiten Fall da -- sonst sähe ein Tab ohne Sitzung
                     aus wie einer mit randvollem Kontext. */}
                 {context ? (
-                    <span className="tab-stripe is-context" aria-hidden="true">
+                    <span className="tab-stripe is-context" aria-hidden="true" data-ui-id="UI-SERVERS-TAB-CONTEXT">
                         <span className="tab-stripe-fill" style={{ width: `${context.percent}%` }} />
                     </span>
                 ) : (
-                    <span className="tab-stripe" aria-hidden="true" />
+                    <span className="tab-stripe" aria-hidden="true" data-ui-id="UI-SERVERS-TAB-CONTEXT" />
                 )}
                 {/* One slot for both, sized in CSS. The ring used to bring its own 36px box
                     where the swatch had 8px: it filled the tab's whole height, was clipped top

@@ -1,7 +1,7 @@
 schema: mockingbird/1
 project: outpost
-revision: 2
-updated: 2026-09-07
+revision: 3
+updated: 2026-09-08
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
 tokens_css: docs/design/mockups/tokens.css
@@ -17,6 +17,10 @@ changelog:
     date: 2026-09-07
     summary: Runde 2 — Shell-Navigation erstmals gestaltet; Tab-Markierung und Tab-Beschriftung nachgetragen, die im Code entstanden waren
     touched: [UI-SHELL, UI-SERVERS-TAB-MARKER, UI-SERVERS-TAB-LABEL]
+  - rev: 3
+    date: 2026-09-08
+    summary: Runde 3 — der Streifen am Tab trägt die Kontextfüllung einer Agenten-Sitzung
+    touched: [UI-SERVERS-TAB-CONTEXT]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -218,6 +222,28 @@ screens:
           - { id: loading, copy: "Ring, gefüllt nach dem gemeldeten Prozentsatz" }
         locators:
           web: "[data-ui-id='UI-SERVERS-TAB-MARKER']"
+
+      - id: UI-SERVERS-TAB-CONTEXT
+        type: status
+        label: Kontextfüllung
+        status: required
+        verify: required
+        data_source: "Marke im Terminalstrom, vom Agenten selbst geschrieben: ⟦ctx <werkzeug> <prozent>⟧"
+        semantic_anchor:
+          means: Der Streifen am oberen Rand eines Tabs. Ohne Agenten die Farbe des Split-Fensters über die volle Breite; meldet ein Agent seine Kontextfüllung, wird derselbe Streifen zur Spur, in der ein Balken dieser Länge wächst -- in derselben Farbe, aber höher, damit „kein Agent" und „randvoll" sich unterscheiden.
+          concept: agent_context
+          aliases: [context_window, token_usage]
+          not: [session_activity, connection_state, pane_color]
+          cardinality: one
+          unit: percent
+          example: "42 % bei einer Claude-Code-Sitzung"
+          source_of_truth: der Agent selbst; für Claude Code die eigene Statuszeile, für qwen die tmux-Statusleiste
+          empty_means: In diesem Tab läuft kein Agent, der etwas meldet — nicht, dass der Kontext leer wäre.
+        states:
+          - { id: default, copy: "Fensterfarbe über die volle Breite, 2px" }
+          - { id: loading, copy: "Balken nach dem gemeldeten Prozentsatz, 3px, über sichtbarer Spur" }
+        locators:
+          web: "[data-ui-id='UI-SERVERS-TAB-CONTEXT']"
 
       - id: UI-SERVERS-TAB-LABEL
         type: text
