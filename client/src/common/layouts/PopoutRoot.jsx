@@ -29,7 +29,7 @@ const PreferencesWrapper = ({ children }) => {
     );
 };
 
-export default () => {
+const PopoutRoot = () => {
     return (
         <ErrorBoundary>
             <DndProvider backend={HTML5Backend}>
@@ -67,3 +67,5 @@ export default () => {
         </ErrorBoundary>
     );
 }
+
+export default PopoutRoot;

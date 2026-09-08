@@ -148,30 +148,37 @@ export const ScriptRenderer = ({ session, disconnectFromServer, updateProgress, 
         const term = termRef.current;
         if (!term || typeof data !== 'string') return;
 
-        const magicIndex = data.indexOf(SCRIPT_MAGIC);
-        if (magicIndex === -1) {
-            term.write(data);
-            appendTerminalContent(data);
-            return;
+        // One chunk can carry several control messages back to back. Walking
+        // the rest in a loop instead of recursing keeps the callback from
+        // reading its own binding before it is assigned.
+        let rest = data;
+        for (;;) {
+            const magicIndex = rest.indexOf(SCRIPT_MAGIC);
+            if (magicIndex === -1) {
+                term.write(rest);
+                appendTerminalContent(rest);
+                return;
+            }
+
+            if (magicIndex > 0) {
+                const terminalData = rest.slice(0, magicIndex);
+                term.write(terminalData);
+                appendTerminalContent(terminalData);
+            }
+
+            const jsonStart = magicIndex + 1;
+            let jsonEnd = rest.indexOf(SCRIPT_MAGIC, jsonStart);
+            if (jsonEnd === -1) jsonEnd = rest.length;
+
+            try {
+                handleControlMessage(JSON.parse(rest.slice(jsonStart, jsonEnd)));
+            } catch (e) {
+                console.error("Failed to parse script control message:", e);
+            }
+
+            if (jsonEnd >= rest.length) return;
+            rest = rest.slice(jsonEnd);
         }
-
-        if (magicIndex > 0) {
-            const terminalData = data.slice(0, magicIndex);
-            term.write(terminalData);
-            appendTerminalContent(terminalData);
-        }
-
-        const jsonStart = magicIndex + 1;
-        let jsonEnd = data.indexOf(SCRIPT_MAGIC, jsonStart);
-        if (jsonEnd === -1) jsonEnd = data.length;
-
-        try {
-            handleControlMessage(JSON.parse(data.slice(jsonStart, jsonEnd)));
-        } catch (e) {
-            console.error("Failed to parse script control message:", e);
-        }
-
-        if (jsonEnd < data.length) processMessage(data.slice(jsonEnd));
     }, [handleControlMessage, appendTerminalContent]);
 
     useEffect(() => {

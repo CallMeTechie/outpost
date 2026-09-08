@@ -16,3 +16,4 @@ export const Loading = memo(() => {
         </div>
     );
 });
+Loading.displayName = "Loading";

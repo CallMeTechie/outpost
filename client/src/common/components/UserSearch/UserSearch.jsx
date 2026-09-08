@@ -115,6 +115,15 @@ export const UserSearch = ({
         return () => document.removeEventListener("mousedown", handleOutsideClick);
     }, []);
 
+    const handleSelect = (user) => {
+        onChange?.(user.username);
+        onSelect?.(user);
+        setIsOpen(false);
+        setResults([]);
+        setLastSearched(user.username);
+        setHighlightedIndex(-1);
+    };
+
     useEffect(() => {
         if (!isOpen) return;
 
@@ -145,15 +154,6 @@ export const UserSearch = ({
         document.addEventListener("keydown", handleKeyDown);
         return () => document.removeEventListener("keydown", handleKeyDown);
     }, [isOpen, highlightedIndex, results]);
-
-    const handleSelect = (user) => {
-        onChange?.(user.username);
-        onSelect?.(user);
-        setIsOpen(false);
-        setResults([]);
-        setLastSearched(user.username);
-        setHighlightedIndex(-1);
-    };
 
     const handleClear = () => {
         onChange?.("");

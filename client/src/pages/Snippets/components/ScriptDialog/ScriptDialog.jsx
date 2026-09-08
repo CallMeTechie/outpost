@@ -52,16 +52,6 @@ fi
 @OUTPOST:SUMMARY "System Information" "OS" "$(lsb_release -d | cut -f2)" "User" "$(whoami)" "Memory" "$(free -h | grep '^Mem:' | awk '{print $2}')"`;
     };
 
-    useEffect(() => {
-        if (open) {
-            if (editScriptId) {
-                loadScriptData();
-            } else {
-                resetForm();
-            }
-        }
-    }, [open, editScriptId]);
-
     const loadScriptData = async () => {
         try {
             const queryParams = selectedOrganization ? `?organizationId=${selectedOrganization}` : "";
@@ -148,6 +138,16 @@ fi
         setOsFilter([]);
         initialValues.current = { name: '', description: '', content: defaultContent, osFilter: [] };
     };
+
+    useEffect(() => {
+        if (open) {
+            if (editScriptId) {
+                loadScriptData();
+            } else {
+                resetForm();
+            }
+        }
+    }, [open, editScriptId]);
 
     const handleClose = () => {
         resetForm();

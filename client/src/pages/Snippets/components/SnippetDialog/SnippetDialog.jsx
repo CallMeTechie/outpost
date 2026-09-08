@@ -23,16 +23,6 @@ export const SnippetDialog = ({ open, onClose, editSnippetId, selectedOrganizati
 
     const initialValues = useRef({ name: '', command: '', description: '', osFilter: [] });
 
-    useEffect(() => {
-        if (open) {
-            if (editSnippetId) {
-                loadSnippetData();
-            } else {
-                resetForm();
-            }
-        }
-    }, [open, editSnippetId]);
-
     const loadSnippetData = async () => {
         try {
             const queryParams = selectedOrganization ? `?organizationId=${selectedOrganization}` : '';
@@ -57,6 +47,16 @@ export const SnippetDialog = ({ open, onClose, editSnippetId, selectedOrganizati
         setOsFilter([]);
         initialValues.current = { name: '', command: '', description: '', osFilter: [] };
     };
+
+    useEffect(() => {
+        if (open) {
+            if (editSnippetId) {
+                loadSnippetData();
+            } else {
+                resetForm();
+            }
+        }
+    }, [open, editSnippetId]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();

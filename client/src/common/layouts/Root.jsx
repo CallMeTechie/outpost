@@ -161,7 +161,7 @@ const AppContent = () => {
     );
 };
 
-export default () => {
+const Root = () => {
     return (
         <ErrorBoundary>
             <DndProvider backend={HTML5Backend}>
@@ -172,3 +172,4 @@ export default () => {
         </ErrorBoundary>
     );
 }
+export default Root;

@@ -45,6 +45,22 @@ export const LoginDialog = ({ open }) => {
         return internalAuthEnabled;
     };
 
+    const handleOIDCLogin = async (event, providerId) => {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        try {
+            const response = await request("auth/oidc/login/" + providerId, "POST");
+            if (response.url) {
+                window.location.href = response.url;
+            }
+        } catch (error) {
+            sendToast("Error", error.message || t('common.errors.ssoLoginFailed'));
+        }
+    };
+
     const loadProviders = async () => {
         try {
             const providers = await getRequest("auth/providers");
@@ -115,22 +131,6 @@ export const LoginDialog = ({ open }) => {
         if (resultObj.code === 403) sendToast("Error", t('common.errors.internalAuthDisabled'));
         if (resultObj.token) {
             updateSessionToken(resultObj.token);
-        }
-    };
-
-    const handleOIDCLogin = async (event, providerId) => {
-        if (event) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-
-        try {
-            const response = await request("auth/oidc/login/" + providerId, "POST");
-            if (response.url) {
-                window.location.href = response.url;
-            }
-        } catch (error) {
-            sendToast("Error", error.message || t('common.errors.ssoLoginFailed'));
         }
     };
 

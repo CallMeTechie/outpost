@@ -67,17 +67,24 @@ export const Tunnel = () => {
     }) || [];
 
     const pollTunnelStatus = useCallback(async (id) => {
-        try {
-            const invoke = await getInvoke();
-            const status = await invoke("get_tunnel_status", { id });
-            if (status) {
-                setTunnelStatus(status.status);
-                if (status.error) sendToast("Error", status.error);
-                if (status.status === "listening" || status.status === "starting") {
-                    pollRef.current = setTimeout(() => pollTunnelStatus(id), 2000);
+        // The next tick schedules itself. A hoisted function declaration keeps
+        // that reference inside the call instead of reaching back into the
+        // memoized binding while it is still being assigned.
+        async function poll() {
+            try {
+                const invoke = await getInvoke();
+                const status = await invoke("get_tunnel_status", { id });
+                if (status) {
+                    setTunnelStatus(status.status);
+                    if (status.error) sendToast("Error", status.error);
+                    if (status.status === "listening" || status.status === "starting") {
+                        pollRef.current = setTimeout(poll, 2000);
+                    }
                 }
-            }
-        } catch { setTunnelStatus("idle"); }
+            } catch { setTunnelStatus("idle"); }
+        }
+
+        await poll();
     }, [sendToast]);
 
     const startTunnel = async () => {

@@ -25,6 +25,16 @@ export const IdentityDialog = ({ open, onClose, identity, organizationId }) => {
     
     const initialValues = useRef({ name: '', username: '', authType: 'password', password: '', sshKey: null, passphrase: '' });
 
+    const resetForm = () => {
+        setName("");
+        setUsername("");
+        setAuthType("password");
+        setPassword("");
+        setSshKey(null);
+        setPassphrase("");
+        initialValues.current = { name: '', username: '', authType: 'password', password: '', sshKey: null, passphrase: '' };
+    };
+
     useEffect(() => {
         if (open) {
             if (isEditing) {
@@ -47,16 +57,6 @@ export const IdentityDialog = ({ open, onClose, identity, organizationId }) => {
             }
         }
     }, [open, identity, isEditing]);
-
-    const resetForm = () => {
-        setName("");
-        setUsername("");
-        setAuthType("password");
-        setPassword("");
-        setSshKey(null);
-        setPassphrase("");
-        initialValues.current = { name: '', username: '', authType: 'password', password: '', sshKey: null, passphrase: '' };
-    };
 
     const readFile = (event) => {
         const file = event.target.files[0];

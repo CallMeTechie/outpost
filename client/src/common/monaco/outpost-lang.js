@@ -37,7 +37,7 @@ export const registerOutpostLanguage = (monaco) => {
             },
             offSide: true,
         },
-        wordPattern: /(-?\d*\.\d\w*)|([^\`\~\!\@\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g,
+        wordPattern: /(-?\d*\.\d\w*)|([^`~!@#%^&*()\-=+[{\]}\\|;:'",.<>/?\s]+)/g,
         indentationRules: {
             increaseIndentPattern: /^.*(then|do|else|\{|\()$/,
             decreaseIndentPattern: /^.*(fi|done|esac|\}|\))$/,
@@ -112,10 +112,10 @@ export const registerOutpostLanguage = (monaco) => {
                 [/\$\{[A-Za-z_][A-Za-z0-9_]*\}/, "variable.other.bracket"],
                 [/\$[A-Za-z_][A-Za-z0-9_]*/, "variable.other"],
                 [/\$[0-9]+/, "variable.parameter"],
-                [/\$[*#?!$\-]/, "variable.special"],
+                [/\$[*#?!$-]/, "variable.special"],
                 [/\$@@/, "variable.special"],
 
-                [/[A-Z_][A-Z0-9_]*(?=\=)/, "variable.env"],
+                [/[A-Z_][A-Z0-9_]*(?==)/, "variable.env"],
 
                 [/function\s+([a-zA-Z_][a-zA-Z0-9_]*)/, ["keyword", "entity.name.function"]],
                 [/([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*\)/, "entity.name.function"],
@@ -126,17 +126,17 @@ export const registerOutpostLanguage = (monaco) => {
 
                 [/(&&|\|\||>>|<<|2>&1|&>|2>>|2>|&>>)/, "keyword.operator.logical"],
                 [/[|&;<>()]/, "keyword.operator"],
-                [/[\{\}\[\]]/, "delimiter.bracket"],
+                [/[{}[\]]/, "delimiter.bracket"],
 
                 [/\[{1,2}/, "keyword.operator.test", "test_expression"],
 
                 [/[0-9]*(&)?>>?/, "keyword.operator.redirect"],
 
-                [/[a-zA-Z_][\w.\-]*/, "identifier"],
+                [/[a-zA-Z_][\w.-]*/, "identifier"],
             ],
 
             string_double: [
-                [/\$\{[^\}]*\}/, "variable.other.bracket"],
+                [/\$\{[^}]*\}/, "variable.other.bracket"],
                 [/\$[A-Za-z_][A-Za-z0-9_]*/, "variable.other"],
                 [/\\./, "string.escape"],
                 [/"/, "string", "@pop"],
@@ -149,7 +149,7 @@ export const registerOutpostLanguage = (monaco) => {
             ],
 
             string_backtick: [
-                [/\$\{[^\}]*\}/, "variable.other.bracket"],
+                [/\$\{[^}]*\}/, "variable.other.bracket"],
                 [/\$[A-Za-z_][A-Za-z0-9_]*/, "variable.other"],
                 [/`/, "string.backtick", "@pop"],
                 [/./, "string.backtick"],
@@ -160,7 +160,7 @@ export const registerOutpostLanguage = (monaco) => {
                 [/-[a-z]+/, "keyword.operator.test"],
                 [/"/, "string", "string_double"],
                 [/'/, "string", "string_single"],
-                [/\$\{[^\}]*\}/, "variable.other.bracket"],
+                [/\$\{[^}]*\}/, "variable.other.bracket"],
                 [/\$[A-Za-z_][A-Za-z0-9_]*/, "variable.other"],
                 [/./, "white"],
             ],

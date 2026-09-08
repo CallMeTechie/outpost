@@ -6,7 +6,7 @@ import Loading from "@/common/components/Loading";
 import { ErrorBoundary } from "@/common/components/ErrorBoundary";
 import TitleBar from "@/common/components/TitleBar";
 
-export default () => {
+const LinkRoot = () => {
     return (
         <ErrorBoundary>
             <ToastProvider>
@@ -22,3 +22,5 @@ export default () => {
         </ErrorBoundary>
     );
 };
+
+export default LinkRoot;

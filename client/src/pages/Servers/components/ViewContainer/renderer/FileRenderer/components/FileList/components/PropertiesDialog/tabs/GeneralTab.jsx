@@ -18,6 +18,11 @@ export const GeneralTab = ({
 }) => {
     const { t } = useTranslation();
 
+    // Resolve once: the JSX below reads this three times, and reading the
+    // chain inline lets a null stats.size slip past the "is it there" guard
+    // into .toLocaleString().
+    const fileSize = stats?.size ?? item?.size;
+
     const formatDate = (timestamp) => {
         if (!timestamp) return "-";
         return new Date(timestamp * 1000).toLocaleString();
@@ -60,9 +65,9 @@ export const GeneralTab = ({
                             )
                         ) : (
                             <span className="size-display">
-                                {stats?.size !== undefined ? convertUnits(stats.size) : item?.size !== undefined ? convertUnits(item.size) : "-"}
-                                {(stats?.size !== undefined || item?.size !== undefined) && (
-                                    <span className="size-bytes">({(stats?.size ?? item?.size).toLocaleString()} bytes)</span>
+                                {fileSize !== undefined && fileSize !== null ? convertUnits(fileSize) : "-"}
+                                {fileSize !== undefined && fileSize !== null && (
+                                    <span className="size-bytes">({fileSize.toLocaleString()} bytes)</span>
                                 )}
                             </span>
                         )}

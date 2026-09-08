@@ -83,17 +83,17 @@ const PROGRESS_PATTERNS = [
         priority: 75
     },
     {
-        regex: /[\[\(]\s*(\d+)%\s*[\]\)]/,
+        regex: /[[(]\s*(\d+)%\s*[\])]/,
         extract: (match) => parseInt(match[1], 10),
         priority: 45
     },
     {
-        regex: /[\[|\(][\s=>#\-_.]+[\]|\)]\s*(\d+)%/i,
+        regex: /[[|(][\s=>#\-_.]+[\]|)]\s*(\d+)%/i,
         extract: (match) => parseInt(match[1], 10),
         priority: 55
     },
     {
-        regex: /(\d+)%\s*[\[|\(][\s=>#\-_.]+[\]|\)]/,
+        regex: /(\d+)%\s*[[|(][\s=>#\-_.]+[\]|)]/,
         extract: (match) => parseInt(match[1], 10),
         priority: 55
     },

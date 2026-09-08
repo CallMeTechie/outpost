@@ -1,4 +1,3 @@
-import Icon from "@/common/components/Icon";
 import { useState } from "react";
 import { ShieldHalf as IconShieldHalf } from "lucide-react";
 import { deleteRequest } from "@/common/utils/RequestUtil.js";

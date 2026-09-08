@@ -41,6 +41,17 @@ export const DeviceLinkContent = ({ prefillCode = "", onClose, isPage = false })
     const [qrLoading, setQrLoading] = useState(false);
     const qrPollRef = useRef(null);
 
+    const handleContinue = async (deviceCode = code) => {
+        if (deviceCode.length !== 9) return;
+        setLoading(true);
+        try {
+            const result = await postRequest("auth/device/info", { code: deviceCode });
+            if (result.code) sendToast("Error", result.message || t("common.deviceLink.invalidCode"));
+            else { setDeviceInfo(result); setStep("confirm"); }
+        } catch (err) { sendToast("Error", err.message || t("common.deviceLink.invalidCode")); }
+        finally { setLoading(false); }
+    };
+
     useEffect(() => { if (prefillCode) { setCode(prefillCode); setMode("code"); handleContinue(prefillCode); } }, [prefillCode]);
 
     const stopQrPolling = () => {
@@ -83,17 +94,6 @@ export const DeviceLinkContent = ({ prefillCode = "", onClose, isPage = false })
     const formatCode = (v) => { const c = v.toUpperCase().replace(/[^A-Z0-9]/g, ""); return c.length <= 4 ? c : `${c.slice(0, 4)}-${c.slice(4, 8)}`; };
 
     const handleCodeChange = (value) => { setCode(formatCode(value)); };
-
-    const handleContinue = async (deviceCode = code) => {
-        if (deviceCode.length !== 9) return;
-        setLoading(true);
-        try {
-            const result = await postRequest("auth/device/info", { code: deviceCode });
-            if (result.code) sendToast("Error", result.message || t("common.deviceLink.invalidCode"));
-            else { setDeviceInfo(result); setStep("confirm"); }
-        } catch (err) { sendToast("Error", err.message || t("common.deviceLink.invalidCode")); }
-        finally { setLoading(false); }
-    };
 
     const handleAuthorize = async () => {
         setLoading(true);

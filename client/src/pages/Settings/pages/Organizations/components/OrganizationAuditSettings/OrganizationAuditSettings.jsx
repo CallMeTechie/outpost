@@ -12,12 +12,6 @@ export const OrganizationAuditSettings = ({ organizationId, isOwner, onClose }) 
     const { sendToast } = useToast();
     const [settings, setSettings] = useState(null);
 
-    useEffect(() => {
-        if (organizationId) {
-            fetchAuditSettings();
-        }
-    }, [organizationId]);
-
     const fetchAuditSettings = async () => {
         try {
             const response = await getRequest(`audit/organizations/${organizationId}/settings`);
@@ -25,6 +19,12 @@ export const OrganizationAuditSettings = ({ organizationId, isOwner, onClose }) 
         } catch (error) {
         }
     };
+
+    useEffect(() => {
+        if (organizationId) {
+            fetchAuditSettings();
+        }
+    }, [organizationId]);
 
     const handleSettingChange = (key, value) => {
         setSettings(prev => ({ ...prev, [key]: value }));

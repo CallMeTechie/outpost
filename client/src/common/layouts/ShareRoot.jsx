@@ -6,7 +6,7 @@ import { Suspense } from "react";
 import Loading from "@/common/components/Loading";
 import { ErrorBoundary } from "@/common/components/ErrorBoundary";
 
-export default () => {
+const ShareRoot = () => {
     return (
         <ErrorBoundary>
             <PreferencesProvider>
@@ -23,3 +23,5 @@ export default () => {
         </ErrorBoundary>
     );
 };
+
+export default ShareRoot;

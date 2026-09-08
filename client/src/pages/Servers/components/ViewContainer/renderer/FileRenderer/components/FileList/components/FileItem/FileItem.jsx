@@ -1,4 +1,4 @@
-import React, { memo, useState, useContext } from "react";
+import { memo, useState, useContext } from "react";
 import { useTranslation } from "react-i18next";
 import Icon from "@/common/components/Icon";
 import { EllipsisVertical as IconEllipsisVertical, Folder as IconFolder, Link as IconLink } from "lucide-react";
@@ -147,3 +147,4 @@ export const FileItem = memo(({
         </div>
     );
 });
+FileItem.displayName = "FileItem";

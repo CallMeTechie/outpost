@@ -121,6 +121,7 @@ const ToolCard = memo(({ message, onConfirm, acceptHint }) => {
         </div>
     );
 });
+ToolCard.displayName = "ToolCard";
 
 export const AIAssistant = ({ session, onClose }) => {
     const { t } = useTranslation();

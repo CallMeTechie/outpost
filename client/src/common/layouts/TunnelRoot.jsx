@@ -8,7 +8,7 @@ import { Suspense } from "react";
 import Loading from "@/common/components/Loading";
 import { ErrorBoundary } from "@/common/components/ErrorBoundary";
 
-export default () => {
+const TunnelRoot = () => {
     return (
         <ErrorBoundary>
             <ToastProvider>
@@ -27,3 +27,5 @@ export default () => {
         </ErrorBoundary>
     );
 }
+
+export default TunnelRoot;

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { createPortal } from "react-dom";
 import "./styles.sass";
 import { Download as IconDownload, Trash as IconTrash, X as IconX } from "lucide-react";

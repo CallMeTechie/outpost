@@ -55,6 +55,15 @@ export const ConnectorSetup = ({ open, isAddMode = false, onCancelAdd }) => {
         }
     }, [isAddMode, open]);
 
+    const regenerateCode = async () => {
+        try {
+            const result = await request("auth/device/create", "POST", { clientType: "connector" });
+            if (result.code && typeof result.code === "number") { sendToast(t("common.error"), result.message); return; }
+            setDeviceCode(result.code);
+            setDeviceToken(result.token);
+        } catch (e) { sendToast(t("common.error"), e.message || t("common.connectorSetup.codeCreationFailed")); }
+    };
+
     useEffect(() => {
         if (!polling || !deviceToken) return;
         const poll = async () => {
@@ -77,15 +86,6 @@ export const ConnectorSetup = ({ open, isAddMode = false, onCancelAdd }) => {
         const id = setInterval(poll, 5000);
         return () => clearInterval(id);
     }, [polling, deviceToken]);
-
-    const regenerateCode = async () => {
-        try {
-            const result = await request("auth/device/create", "POST", { clientType: "connector" });
-            if (result.code && typeof result.code === "number") { sendToast(t("common.error"), result.message); return; }
-            setDeviceCode(result.code);
-            setDeviceToken(result.token);
-        } catch (e) { sendToast(t("common.error"), e.message || t("common.connectorSetup.codeCreationFailed")); }
-    };
 
     const validateServer = async () => {
         if (!serverUrl.trim()) { sendToast(t("common.error"), t("common.connectorSetup.enterServerUrl")); return; }

@@ -69,3 +69,4 @@ export const ConnectionError = memo(({ message, onClose }) => {
         </div>
     );
 });
+ConnectionError.displayName = "ConnectionError";

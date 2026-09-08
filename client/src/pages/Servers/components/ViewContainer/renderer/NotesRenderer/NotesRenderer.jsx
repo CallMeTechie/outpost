@@ -58,59 +58,67 @@ export const NotesRenderer = ({ session }) => {
         return () => { cancelled = true; };
     }, [entryId]);
 
-    const persist = useCallback(async (patch) => {
-        if (!entryId) return;
-        if (inFlightRef.current) {
-            pendingPatchRef.current = { ...(pendingPatchRef.current || {}), ...patch };
-            return;
-        }
+    const persist = useCallback(async (initialPatch) => {
+        // Draining the queued patch re-enters this routine. A hoisted
+        // function declaration keeps that reference inside the call instead
+        // of reaching back into the memoized binding while it is still
+        // being assigned.
+        async function run(patch) {
+            if (!entryId) return;
+            if (inFlightRef.current) {
+                pendingPatchRef.current = { ...(pendingPatchRef.current || {}), ...patch };
+                return;
+            }
 
-        if (!entrySnapshotRef.current) {
-            try {
-                const entry = await getRequest("entries/" + entryId);
-                entrySnapshotRef.current = entry;
-            } catch {
+            if (!entrySnapshotRef.current) {
+                try {
+                    const entry = await getRequest("entries/" + entryId);
+                    entrySnapshotRef.current = entry;
+                } catch {
+                    setStatus(STATUS.ERROR);
+                    return;
+                }
+            }
+
+            const entry = entrySnapshotRef.current;
+            if (!entry) {
                 setStatus(STATUS.ERROR);
                 return;
             }
-        }
 
-        const entry = entrySnapshotRef.current;
-        if (!entry) {
-            setStatus(STATUS.ERROR);
-            return;
-        }
+            inFlightRef.current = true;
+            setStatus(STATUS.SAVING);
 
-        inFlightRef.current = true;
-        setStatus(STATUS.SAVING);
+            const nextConfig = { ...(entry.config || {}), ...patch };
 
-        const nextConfig = { ...(entry.config || {}), ...patch };
-
-        try {
-            await patchRequest("entries/" + entryId, {
-                name: entry.name,
-                icon: entry.icon,
-                config: nextConfig,
-                identities: entry.identities || [],
-            });
-            entrySnapshotRef.current = { ...entry, config: nextConfig };
-            if ("notes" in patch) lastSavedRef.current.notes = patch.notes;
-            if ("showNoteInList" in patch) lastSavedRef.current.showNoteInList = patch.showNoteInList;
-            setStatus(STATUS.SAVED);
-        } catch (err) {
-            console.error("Failed to save notes", err);
-            setStatus(STATUS.ERROR);
-        } finally {
-            inFlightRef.current = false;
-            const queued = pendingPatchRef.current;
-            pendingPatchRef.current = null;
-            if (queued) {
-                const drained = {};
-                if ("notes" in queued && queued.notes !== lastSavedRef.current.notes) drained.notes = queued.notes;
-                if ("showNoteInList" in queued && queued.showNoteInList !== lastSavedRef.current.showNoteInList) drained.showNoteInList = queued.showNoteInList;
-                if (Object.keys(drained).length > 0) persist(drained);
+            try {
+                await patchRequest("entries/" + entryId, {
+                    name: entry.name,
+                    icon: entry.icon,
+                    config: nextConfig,
+                    identities: entry.identities || [],
+                });
+                entrySnapshotRef.current = { ...entry, config: nextConfig };
+                if ("notes" in patch) lastSavedRef.current.notes = patch.notes;
+                if ("showNoteInList" in patch) lastSavedRef.current.showNoteInList = patch.showNoteInList;
+                setStatus(STATUS.SAVED);
+            } catch (err) {
+                console.error("Failed to save notes", err);
+                setStatus(STATUS.ERROR);
+            } finally {
+                inFlightRef.current = false;
+                const queued = pendingPatchRef.current;
+                pendingPatchRef.current = null;
+                if (queued) {
+                    const drained = {};
+                    if ("notes" in queued && queued.notes !== lastSavedRef.current.notes) drained.notes = queued.notes;
+                    if ("showNoteInList" in queued && queued.showNoteInList !== lastSavedRef.current.showNoteInList) drained.showNoteInList = queued.showNoteInList;
+                    if (Object.keys(drained).length > 0) run(drained);
+                }
             }
         }
+
+        await run(initialPatch);
     }, [entryId]);
 
     const scheduleNotesSave = useCallback((next) => {
