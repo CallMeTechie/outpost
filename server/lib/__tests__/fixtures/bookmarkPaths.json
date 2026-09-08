@@ -1,0 +1,16 @@
+[
+  { "in": "/volume1/docker",           "out": "/volume1/docker" },
+  { "in": "/volume1/docker/",          "out": "/volume1/docker" },
+  { "in": "/volume1//docker",          "out": "/volume1/docker" },
+  { "in": "/volume1/docker/../docker", "out": "/volume1/docker" },
+  { "in": "/volume1/./docker",         "out": "/volume1/docker" },
+  { "in": "/",                         "out": "/" },
+  { "in": "//",                        "out": "/" },
+  { "in": "/..",                       "out": "/" },
+  { "in": "/volume1/../..",            "out": "/" },
+  { "in": "volume1/docker",            "out": "/volume1/docker" },
+  { "in": "",                          "out": "/" },
+  { "in": "/volume1/docker/..",        "out": "/volume1" },
+  { "in": "/a/b/c/../../d",            "out": "/a/d" },
+  { "in": "/Ordner mit Leerzeichen/",  "out": "/Ordner mit Leerzeichen" }
+]
