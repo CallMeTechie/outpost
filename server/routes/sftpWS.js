@@ -30,7 +30,11 @@ const { graph } = require("../lib/microsoft/graphClient");
 const { createOneDriveAdapter } = require("../lib/microsoft/oneDriveAdapter");
 const { resolveOpeningDirectory } = require("../lib/parentChain");
 const { paneIdentityKey } = require("../lib/paneIdentityKey");
+const { normalizeBookmarkPath } = require("../lib/bookmarkPath");
+const { createPaneStateWriter, buildPaneStateKey } = require("../lib/paneStateStore");
 const FilePaneState = require("../models/FilePaneState");
+
+const FP_MAX_PATH = 4096; // engine/src/net/file_proto.h:9
 
 const OP = {
     READY: 0x0, LIST_FILES: 0x1, CREATE_FILE: 0x4, CREATE_FOLDER: 0x5, DELETE_FILE: 0x6,
@@ -95,9 +99,14 @@ const cancelAllTransfers = (transfers) => {
 // no-ops for an id nothing is registered under. Without a direct test on this exact wiring, a
 // mutation removing the whole close handler's cancelAllTransfers call leaves every other test green
 // — cancelAllTransfers itself would still be tested, just never proven to run when the socket closes.
-const handleClose = async ({ sftpClient, onSftpClose, ws, messageHandler, transfers, sessionId, auditLogId, startTime }) => {
+const handleClose = async ({ sftpClient, onSftpClose, ws, messageHandler, transfers, sessionId, auditLogId, startTime, paneStateWriter }) => {
     sftpClient.removeListener("close", onSftpClose);
     ws.removeListener("message", messageHandler);
+    // After the message listener is gone, and only then: a PATH_SYNC still sitting in the socket's
+    // queue would otherwise schedule a fresh write during the await below - one nothing flushes
+    // afterwards. Optional call because transferCleanup.test.js drives handleClose directly, with a
+    // dependency object that has no writer and no business growing one.
+    try { await paneStateWriter?.flush(); } catch {}
     cancelAllTransfers(transfers);
     SessionManager.removeWebSocket(sessionId, ws);
     try { await updateAuditLogWithSessionDuration(auditLogId, startTime); } catch {}
@@ -275,21 +284,23 @@ module.exports = async (ws, req) => {
         const handlerRef = { current: () => {} };
         const dispatch = (msg) => handlerRef.current(msg);
         ws.on("message", dispatch);
-        ws.on("close", () => handleClose({
-            sftpClient, onSftpClose, ws, messageHandler: dispatch,
-            transfers, sessionId, auditLogId, startTime,
-        }).catch((err) => logger.warn("Error while closing the SFTP socket", { sessionId, error: err.message })));
-
-        const capabilities = getCapabilities(entry);
 
         // Everything the close handler closes over must exist before ws.on("close") is registered
         // below: the listener may fire during the opening chain, and a const declared further down
         // is in the temporal dead zone until then.
-        // The debounced writer deliberately does NOT join here - it lives in
-        // server/lib/paneStateStore.js, which Task 4 creates. Referencing it now would leave
-        // sftpWS.js calling a function that does not exist yet, and the route's outer catch would
-        // answer every single connection with "Connection failed: ... is not defined".
         const identityKey = paneIdentityKey(serverSession);
+        const paneStateKey = buildPaneStateKey(serverSession, entryId, identityKey);
+        const paneStateWriter = createPaneStateWriter({
+            upsert: async (key, path) => { await FilePaneState.upsert({ ...key, lastPath: path }); },
+            onError: (error) => logger.warn("Could not remember the pane directory", { sessionId, error: error.message }),
+        });
+
+        ws.on("close", () => handleClose({
+            sftpClient, onSftpClose, ws, messageHandler: dispatch,
+            transfers, sessionId, auditLogId, startTime, paneStateWriter,
+        }).catch((err) => logger.warn("Error while closing the SFTP socket", { sessionId, error: err.message })));
+
+        const capabilities = getCapabilities(entry);
 
         // Wrapped like the realpath below: this is the only new database call in front of READY, and
         // the outer catch of this route answers the client with err.message verbatim - a Sequelize
@@ -328,10 +339,7 @@ module.exports = async (ws, req) => {
         // and destroy the memory for good.
         if (!opening.aborted && opening.restoredFrom && rememberedRow) {
             try {
-                await FilePaneState.upsert({
-                    accountId: serverSession.accountId, entryId,
-                    identityId: identityKey, lastPath: opening.path,
-                });
+                await FilePaneState.upsert({ ...paneStateKey, lastPath: opening.path });
             } catch (error) {
                 logger.warn("Could not update the remembered pane directory", { sessionId, error: error.message });
             }
@@ -385,13 +393,27 @@ module.exports = async (ws, req) => {
             if (opCode === OP.PATH_SYNC) {
                 let payload;
                 try { payload = JSON.parse(msg.slice(1).toString()); } catch {}
-                if (payload?.path) {
-                    SessionManager.setSftpPath(sessionId, payload.path);
+                // Two different limits on purpose. The outer one is the engine's own (FP_MAX_PATH,
+                // engine/src/net/file_proto.h:9): beyond it the path can never have come from this
+                // pane, so nothing is normalized or forwarded, and a hostile client cannot make the
+                // server chop up a megabyte-long string. The column width is NOT checked here -
+                // schedule() applies it itself, and the spec is explicit that SessionManager and the
+                // other sockets of this session keep getting the path as before.
+                // `length > 0`, nicht nur `typeof`: der Bestand prüft `if (payload?.path)`, und ein
+                // leerer String wurde stillschweigend verworfen. Ließe man ihn jetzt durch,
+                // normalisierte er zu "/", ginge als PATH_SYNC an alle anderen Sockets der Sitzung
+                // und würde dauerhaft gemerkt — genau der Verlust, den das aborted-Flag auf der
+                // Öffnungsseite mit Aufwand verhindert.
+                if (typeof payload?.path === "string" && payload.path.length > 0
+                    && Buffer.byteLength(payload.path, "utf8") <= FP_MAX_PATH) {
+                    const syncedPath = normalizeBookmarkPath(payload.path);
+                    SessionManager.setSftpPath(sessionId, syncedPath);
+                    paneStateWriter.schedule(paneStateKey, syncedPath);
                     const session = SessionManager.get(sessionId);
                     if (session) {
                         for (const other of session.connectedWs) {
                             if (other !== ws && other.readyState === 1) {
-                                sendResult(other, OP.PATH_SYNC, { path: payload.path });
+                                sendResult(other, OP.PATH_SYNC, { path: syncedPath });
                             }
                         }
                     }
