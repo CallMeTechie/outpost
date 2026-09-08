@@ -111,6 +111,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     const [searchOpen, setSearchOpen] = useState(false);
     const [searchResultCount, setSearchResultCount] = useState(0);
     const [capabilities, setCapabilities] = useState(DEFAULT_CAPABILITIES);
+    const [restoredFrom, setRestoredFrom] = useState(null);
     const [transferState, dispatchTransfer] = useReducer(transferReducer, initialTransferState);
 
     const directoryRef = useRef(directory);
@@ -124,6 +125,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     const uploadStatsRef = useRef(createUploadStats());
     const refreshTimerRef = useRef(null);
     const errorRefreshRef = useRef(createErrorRefreshGate());
+    const restoredAtRef = useRef(null);
 
     const provider = paneProvider(session);
     const source = paneEndpoint(session);
@@ -314,6 +316,12 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
 
             switch (operation) {
                 case OPERATIONS.READY:
+                    // Set before the path branch decides anything: that branch is only entered when
+                    // payload.path differs from the current directory, and a climb all the way to
+                    // the root produces "/" - which is exactly the initial value. The worst case
+                    // would otherwise be the one case with no hint at all.
+                    setRestoredFrom(payload?.restoredFrom ?? null);
+                    restoredAtRef.current = payload?.path ?? null;
                     setIsReady(true);
                     setConnectionError(null);
                     setCapabilities(payload?.capabilities ?? DEFAULT_CAPABILITIES);
@@ -591,6 +599,14 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
 
     useEffect(() => { setSearchQuery(""); }, [directory]);
 
+    // The partial hint names the directory that was opened instead of the remembered one; once the
+    // user navigates anywhere else that claim is no longer true. goBack, goForward and the
+    // PATH_SYNC branch all call setDirectory directly, so this has to key off the directory itself
+    // rather than sit inside changeDirectory alone.
+    useEffect(() => {
+        if (restoredAtRef.current && directory !== restoredAtRef.current) setRestoredFrom(null);
+    }, [directory]);
+
     useEffect(() => {
         if (!isActive) return;
         const handler = (e) => {
@@ -637,7 +653,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                     searchDirectories={searchDirectories} directorySuggestions={directorySuggestions} 
                     setDirectorySuggestions={setDirectorySuggestions} moveFiles={moveFiles} copyFiles={copyFiles}
                     startTransfer={startTransfer}
-                    capabilities={capabilities}
+                    capabilities={capabilities} isReady={isReady} restoredFrom={restoredFrom}
                     sessionId={session.id} searchQuery={searchQuery} setSearchQuery={setSearchQuery} searchOpen={searchOpen}
                     setSearchOpen={setSearchOpen} closeSearch={closeSearch} searchResultCount={searchResultCount} />
                 <FileList ref={fileListRef} items={items} path={directory} updatePath={changeDirectory} sendOperation={sendOperation}

@@ -1962,6 +1962,10 @@
     "fileManager": {
       "copiedPath": "Path copied: {{path}}",
       "dropOverlay": "Drop files or folders to upload",
+      "address": {
+        "connecting": "Connecting …",
+        "restoredFrom": "Last opened: {{remembered}} — no longer there. Opened {{opened}} instead."
+      },
       "createFile": {
         "title": "Create File",
         "placeholder": "File Name",

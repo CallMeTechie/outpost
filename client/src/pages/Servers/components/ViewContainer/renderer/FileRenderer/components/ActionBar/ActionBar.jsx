@@ -46,6 +46,8 @@ export const ActionBar = ({
                               closeSearch,
                               searchResultCount,
                               capabilities = DEFAULT_CAPABILITIES,
+                              isReady,
+                              restoredFrom,
                           }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editPath, setEditPath] = useState(path);
@@ -344,33 +346,48 @@ export const ActionBar = ({
                   className={historyIndex === historyLength - 1 ? " nav-disabled" : ""} />
             <Icon icon={IconChevronUp} onClick={goUp} className={path === "/" ? " nav-disabled" : ""} />
 
-            <div className="address-bar" onClick={() => setIsEditing(true)}>
-                {isEditing ? (
-                    <div className="path-input-container">
-                        <input ref={inputRef} className="path-input" type="text" value={editPath}
-                               onChange={(e) => setEditPath(e.target.value)} onKeyDown={handleInputKeyDown}
-                               onBlur={handleInputBlur} placeholder={t("servers.fileManager.actionBar.enterDirectory")} autoComplete="off"
-                               spellCheck="false" />
-                        {capabilities.nativeFs && showSuggestions && directorySuggestions.length > 0 && (
-                            <div className="suggestions-dropdown" ref={suggestionsRef}>
-                                {directorySuggestions.map((s, i) => (
-                                    <div className={`suggestion-item ${i === selectedSuggestion ? "selected" : ""}`}
-                                         key={s} onMouseEnter={() => setSelectedSuggestion(i)}
-                                         onMouseDown={(e) => {
-                                             e.preventDefault();
-                                             setEditPath(s);
-                                             updatePath(s);
-                                             resetInputState();
-                                         }}>
-                                        {s}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+            <div className="address-column">
+                <div className="address-bar" data-ui-id="UI-FILES-ADDRESS"
+                     data-ui-state={!isReady ? "loading" : restoredFrom ? "partial" : "default"}
+                     onClick={() => setIsEditing(true)}>
+                    {isEditing ? (
+                        <div className="path-input-container">
+                            <input ref={inputRef} className="path-input" type="text" value={editPath}
+                                   onChange={(e) => setEditPath(e.target.value)} onKeyDown={handleInputKeyDown}
+                                   onBlur={handleInputBlur} placeholder={t("servers.fileManager.actionBar.enterDirectory")} autoComplete="off"
+                                   spellCheck="false" />
+                            {capabilities.nativeFs && showSuggestions && directorySuggestions.length > 0 && (
+                                <div className="suggestions-dropdown" ref={suggestionsRef}>
+                                    {directorySuggestions.map((s, i) => (
+                                        <div className={`suggestion-item ${i === selectedSuggestion ? "selected" : ""}`}
+                                             key={s} onMouseEnter={() => setSelectedSuggestion(i)}
+                                             onMouseDown={(e) => {
+                                                 e.preventDefault();
+                                                 setEditPath(s);
+                                                 updatePath(s);
+                                                 resetInputState();
+                                             }}>
+                                            {s}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="breadcrumb-container" ref={breadcrumbRef}>
+                            {renderBreadcrumbs()}
+                        </div>
+                    )}
+                </div>
+                {!isReady && (
+                    <div className="address-connecting">
+                        {t("servers.fileManager.address.connecting")}
                     </div>
-                ) : (
-                    <div className="breadcrumb-container" ref={breadcrumbRef}>
-                        {renderBreadcrumbs()}
+                )}
+                {restoredFrom && (
+                    <div className="address-restored">
+                        {t("servers.fileManager.address.restoredFrom",
+                           { remembered: restoredFrom, opened: path })}
                     </div>
                 )}
             </div>

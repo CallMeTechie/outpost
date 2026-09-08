@@ -1,4 +1,5 @@
 @use "@/common/styles/colors"
+@use "@/common/styles/tokens"
 
 .action-bar
   display: flex
@@ -35,6 +36,24 @@
     &:hover
       color: colors.$subtext
       background-color: transparent
+
+  // The action bar is a single flex row; a hint rendered as its direct child would sit beside the
+  // address bar and squeeze it, not under it. This column is the only new box in the row, and it
+  // takes over the flex: 1 the address bar had.
+  .address-column
+    display: flex
+    flex-direction: column
+    gap: 0.25rem
+    flex: 1
+    min-width: 0
+
+    .address-bar
+      flex: initial
+
+  .address-restored,
+  .address-connecting
+    font: tokens.$type-caption
+    color: colors.$subtext
 
   .address-bar
     user-select: none

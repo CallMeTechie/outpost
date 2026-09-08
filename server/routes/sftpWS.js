@@ -28,6 +28,9 @@ const registry = require("../lib/fileTransfer/registry");
 const MicrosoftConnection = require("../models/MicrosoftConnection");
 const { graph } = require("../lib/microsoft/graphClient");
 const { createOneDriveAdapter } = require("../lib/microsoft/oneDriveAdapter");
+const { resolveOpeningDirectory } = require("../lib/parentChain");
+const { paneIdentityKey } = require("../lib/paneIdentityKey");
+const FilePaneState = require("../models/FilePaneState");
 
 const OP = {
     READY: 0x0, LIST_FILES: 0x1, CREATE_FILE: 0x4, CREATE_FOLDER: 0x5, DELETE_FILE: 0x6,
@@ -268,14 +271,77 @@ module.exports = async (ws, req) => {
         };
         sftpClient.on("close", onSftpClose);
 
+        const transfers = new Map();
+        const handlerRef = { current: () => {} };
+        const dispatch = (msg) => handlerRef.current(msg);
+        ws.on("message", dispatch);
+        ws.on("close", () => handleClose({
+            sftpClient, onSftpClose, ws, messageHandler: dispatch,
+            transfers, sessionId, auditLogId, startTime,
+        }).catch((err) => logger.warn("Error while closing the SFTP socket", { sessionId, error: err.message })));
+
         const capabilities = getCapabilities(entry);
-        const storedPath = SessionManager.getSftpPath(sessionId);
-        sendResult(ws, OP.READY, { path: storedPath, capabilities });
+
+        // Everything the close handler closes over must exist before ws.on("close") is registered
+        // below: the listener may fire during the opening chain, and a const declared further down
+        // is in the temporal dead zone until then.
+        // The debounced writer deliberately does NOT join here - it lives in
+        // server/lib/paneStateStore.js, which Task 4 creates. Referencing it now would leave
+        // sftpWS.js calling a function that does not exist yet, and the route's outer catch would
+        // answer every single connection with "Connection failed: ... is not defined".
+        const identityKey = paneIdentityKey(serverSession);
+
+        // Wrapped like the realpath below: this is the only new database call in front of READY, and
+        // the outer catch of this route answers the client with err.message verbatim - a Sequelize
+        // error would put the table and column names of file_pane_states on the wire. A pane that
+        // cannot read its memory opens in the start directory; that is a worse memory, not a failure.
+        // entryId is null for a direct connection (utils/directTarget.js) - such a session has no key
+        // to remember anything under and skips this entirely.
+        let rememberedRow = null;
+        if (serverSession?.entryId && serverSession?.accountId) {
+            try {
+                rememberedRow = await FilePaneState.findOne({
+                    where: { accountId: serverSession.accountId, entryId, identityId: identityKey },
+                });
+            } catch (error) {
+                logger.warn("Could not read the remembered pane directory", { sessionId, error: error.message });
+            }
+        }
+
+        let homePath = null;
+        try { homePath = await sftpClient.realpath("."); } catch { homePath = null; }
+
+        const opening = await resolveOpeningDirectory({
+            storedSessionPath: SessionManager.getSftpPath(sessionId),
+            storedRow: rememberedRow?.lastPath ?? null,
+            probe: async (p) => { await sftpClient.listDir(p); return true; },
+            homePath,
+        });
+
+        // Write the climb back. Nothing else will: the client takes the path from READY without
+        // sending a PATH_SYNC for it (skipNextPathSync in FileRenderer.jsx), so a remembered path
+        // that no longer holds would stay in the table forever - every later open would repeat the
+        // whole climb and show the hint again, which the spec says must not happen.
+        // `aborted` separates a completed climb from a torn-down connection: only the flag has to be
+        // carried, so the successful returns stay the two-field objects the tests compare against.
+        // Without the distinction a single dead socket during the chain would write lastPath: "/"
+        // and destroy the memory for good.
+        if (!opening.aborted && opening.restoredFrom && rememberedRow) {
+            try {
+                await FilePaneState.upsert({
+                    accountId: serverSession.accountId, entryId,
+                    identityId: identityKey, lastPath: opening.path,
+                });
+            } catch (error) {
+                logger.warn("Could not update the remembered pane directory", { sessionId, error: error.message });
+            }
+        }
+
+        sendResult(ws, OP.READY, { path: opening.path, restoredFrom: opening.restoredFrom, capabilities });
 
         const logAudit = (action, resource, details) => {
             createAuditLog({ accountId: user.id, organizationId: entry.organizationId, action, resource, details, ipAddress, userAgent });
         };
-        const transfers = new Map();
         const authDeps = {
             getSession: SessionManager.get,
             getConnection: SessionManager.getConnection,
@@ -345,14 +411,7 @@ module.exports = async (ws, req) => {
             catch (err) { sendError(ws, err.message || "Operation failed"); }
         };
 
-        ws.on("message", messageHandler);
-
-        // handleClose is async; an event emitter never awaits its listeners, so a rejection here
-        // (e.g. SessionManager.removeWebSocket throwing on malformed state) would otherwise surface
-        // as an unhandled rejection instead of a clean log line.
-        ws.on("close", () => handleClose({
-            sftpClient, onSftpClose, ws, messageHandler, transfers, sessionId, auditLogId, startTime,
-        }).catch((err) => logger.warn("Error while handling SFTP websocket close", { sessionId, error: err.message })));
+        handlerRef.current = messageHandler;
     } catch (err) {
         sendError(ws, "Connection failed: " + err.message);
         try { ws.close(4005); } catch {}
