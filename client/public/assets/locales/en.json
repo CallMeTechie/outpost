@@ -2085,7 +2085,8 @@
         "search": "Search files",
         "closeSearch": "Close search",
         "refresh": "Refresh",
-        "switchTo": "Switch to {{view}}"
+        "switchTo": "Switch to {{view}}",
+        "favorites": "Favorites"
       },
       "viewMode": {
         "details": "Details",

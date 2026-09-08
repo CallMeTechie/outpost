@@ -1,6 +1,6 @@
 import "./styles.sass";
 import Icon from "@/common/components/Icon";
-import { ChevronLeft as IconChevronLeft, ChevronRight as IconChevronRight, ChevronUp as IconChevronUp, FileUp as IconFileUp, FolderUp as IconFolderUp, FilePlus as IconFilePlus, FolderPlus as IconFolderPlus, List as IconList, Rows3 as IconRows3, LayoutGrid as IconLayoutGrid, Scissors as IconScissors, Copy as IconCopy, Search as IconSearch, X as IconX, RefreshCw as IconRefreshCw } from "lucide-react";
+import { ChevronLeft as IconChevronLeft, ChevronRight as IconChevronRight, ChevronUp as IconChevronUp, FileUp as IconFileUp, FolderUp as IconFolderUp, FilePlus as IconFilePlus, FolderPlus as IconFolderPlus, List as IconList, Rows3 as IconRows3, LayoutGrid as IconLayoutGrid, Scissors as IconScissors, Copy as IconCopy, Search as IconSearch, X as IconX, RefreshCw as IconRefreshCw, Star as IconStar } from "lucide-react";
 import { Fragment, useState, useRef, useEffect, useCallback } from "react";
 import { ContextMenu, ContextMenuItem, useContextMenu } from "@/common/components/ContextMenu";
 import { useTranslation } from "react-i18next";
@@ -48,6 +48,9 @@ export const ActionBar = ({
                               capabilities = DEFAULT_CAPABILITIES,
                               isReady,
                               restoredFrom,
+                              favoritesOpen,
+                              onToggleFavorites,
+                              showFavorites,
                           }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editPath, setEditPath] = useState(path);
@@ -340,7 +343,7 @@ export const ActionBar = ({
     };
 
     return (
-        <div className="action-bar">
+        <div className="action-bar" data-ui-id="UI-FILES-ACTIONBAR">
             <Icon icon={IconChevronLeft} onClick={goBack} className={historyIndex === 0 ? " nav-disabled" : ""} />
             <Icon icon={IconChevronRight} onClick={goForward}
                   className={historyIndex === historyLength - 1 ? " nav-disabled" : ""} />
@@ -406,6 +409,12 @@ export const ActionBar = ({
             )}
 
             <div className="file-actions">
+                {showFavorites && (
+                    <Icon icon={IconStar} data-ui-id="UI-FILES-FAVORITES-TOGGLE"
+                          onClick={onToggleFavorites}
+                          className={favoritesOpen ? "active" : ""}
+                          title={t("servers.fileManager.actionBar.favorites")} />
+                )}
                 <Icon icon={IconSearch} onClick={() => searchOpen ? closeSearch?.() : setSearchOpen?.(true)}
                       className={searchOpen ? "active" : ""} title={t("servers.fileManager.actionBar.search")} />
                 <Icon icon={VIEW_MODE_ICONS[nextViewMode(viewMode)]} onClick={() => setViewMode(nextViewMode(viewMode))}

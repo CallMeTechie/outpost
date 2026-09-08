@@ -24,6 +24,7 @@ const filesSchema = Joi.object({
     showHiddenFiles: Joi.boolean(),
     confirmBeforeDelete: Joi.boolean(),
     dragDropAction: Joi.string().valid('ask', 'copy', 'move'),
+    favoritesBarOpen: Joi.boolean(),
 }).unknown(false);
 
 const generalSchema = Joi.object({

@@ -9,6 +9,9 @@
   --content-height: 100dvh
   --mobile-nav-height: 0px
   --key-bar-height: 0px
+  // Fixed pixels like --title-bar-height, not rem: the strip carries a single row of chips whose
+  // height follows from chip plus padding and must not grow with --ui-scale.
+  --favorites-bar-height: 50px
   --safe-area-top: env(safe-area-inset-top, 0px)
   --ui-scale: 1
   font-size: calc(16px * var(--ui-scale))

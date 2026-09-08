@@ -18,7 +18,7 @@ import { OPERATIONS } from "./utils/operations.js";
 import { initialTransferState, transferReducer } from "./utils/transferState.js";
 import { MAX_TRANSFER_PATHS, exceedsTransferPathLimit } from "./utils/transferLimits.js";
 import { publishMoveCompleted, subscribeToMoveCompleted, paneAffectedByMove } from "./utils/moveNotifier.js";
-import { paneSocket, paneEndpoint, paneProvider, paneContentUrl } from "./utils/paneEndpoint.js";
+import { paneSocket, paneEndpoint, paneProvider, paneContentUrl, PROVIDER_SFTP } from "./utils/paneEndpoint.js";
 import { DEFAULT_CAPABILITIES } from "./utils/paneCapabilities.js";
 import { readErrorMessage, fileNameFromDisposition } from "./utils/downloadResponse.js";
 import {
@@ -91,7 +91,7 @@ const collectDroppedEntries = async (entries, targetDir) => {
 export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors, isActive, onOpenTerminal }) => {
     const { t } = useTranslation();
     const { sessionToken } = useContext(UserContext);
-    const { defaultViewMode, setDefaultViewMode } = usePreferences();
+    const { defaultViewMode, setDefaultViewMode, favoritesBarOpen, setFavoritesBarOpen } = usePreferences();
     const { sendToast } = useToast();
 
     const [dragging, setDragging] = useState(false);
@@ -129,6 +129,11 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
 
     const provider = paneProvider(session);
     const source = paneEndpoint(session);
+
+    // The star is absent, not disabled, on a provider that has no bookmark route behind it -
+    // OneDrive today. paneProvider is the one place that already knows which provider this is.
+    const showFavorites = provider === PROVIDER_SFTP;
+    const toggleFavoritesBar = useCallback(() => setFavoritesBarOpen(!favoritesBarOpen), [setFavoritesBarOpen, favoritesBarOpen]);
 
     // Which socket this pane opens is the one thing it needs to know about its provider, and
     // paneEndpoint is where that knowledge lives. A null means the session object is unusable —
@@ -619,6 +624,20 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
         return () => window.removeEventListener("keydown", handler);
     }, [isActive]);
 
+    // preventDefault is required here: Firefox opens its own bookmarks sidebar on Ctrl+B
+    // otherwise, which would fire alongside (or instead of) this toggle.
+    useEffect(() => {
+        if (!isActive || !showFavorites) return;
+        const handler = (e) => {
+            if ((e.ctrlKey || e.metaKey) && (e.key === "b" || e.key === "B")) {
+                e.preventDefault();
+                toggleFavoritesBar();
+            }
+        };
+        window.addEventListener("keydown", handler);
+        return () => window.removeEventListener("keydown", handler);
+    }, [isActive, showFavorites, toggleFavoritesBar]);
+
     const closeSearch = useCallback(() => { setSearchOpen(false); setSearchQuery(""); }, []);
 
     useEffect(() => {
@@ -655,7 +674,8 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                     startTransfer={startTransfer}
                     capabilities={capabilities} isReady={isReady} restoredFrom={restoredFrom}
                     sessionId={session.id} searchQuery={searchQuery} setSearchQuery={setSearchQuery} searchOpen={searchOpen}
-                    setSearchOpen={setSearchOpen} closeSearch={closeSearch} searchResultCount={searchResultCount} />
+                    setSearchOpen={setSearchOpen} closeSearch={closeSearch} searchResultCount={searchResultCount}
+                    favoritesOpen={favoritesBarOpen} onToggleFavorites={toggleFavoritesBar} showFavorites={showFavorites} />
                 <FileList ref={fileListRef} items={items} path={directory} updatePath={changeDirectory} sendOperation={sendOperation}
                     downloadFile={downloadFile} downloadMultipleFiles={downloadMultipleFiles} setCurrentFile={handleOpenFile} setPreviewFile={handleOpenPreview}
                     loading={loading && wsUrl !== null} viewMode={viewMode} error={unusableSessionError || error || connectionError} resolveSymlink={resolveSymlink} session={session}
