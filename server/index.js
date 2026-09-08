@@ -87,6 +87,12 @@ app.use("/api/ai", authenticate, require("./routes/ai"));
 app.use("/api/sessions", authenticate, require("./routes/session"));
 app.use("/api/connections", authenticate, require("./routes/serverSession"));
 app.use("/api/folders", authenticate, require("./routes/folder"));
+// Two concrete mounts. A bare app.use("/api", authenticate, ...) would put `authenticate` in front
+// of every later /api registration, and /api/backup/export and /api/share are deliberately
+// reachable without an authorization header - `authenticate` answers 400 without calling next(),
+// so both would simply stop working.
+app.use("/api/entries", authenticate, require("./routes/entryBookmarks"));
+app.use("/api/bookmarks", authenticate, require("./routes/bookmarks"));
 app.use("/api/entries", authenticate, require("./routes/entry"));
 app.use("/api/monitoring", authenticate, require("./routes/monitoring"));
 app.use("/api/integrations", authenticate, require("./routes/integration"));
