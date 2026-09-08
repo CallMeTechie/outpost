@@ -12,12 +12,14 @@ import "./styles.sass";
 import Icon from "@/common/components/Icon";
 import { CloudUpload as IconCloudUpload } from "lucide-react";
 import { getWebSocketUrl, getBaseUrl } from "@/common/utils/ConnectionUtil.js";
-import { uploadFile as uploadFileRequest, tauriDownload } from "@/common/utils/RequestUtil.js";
+import { uploadFile as uploadFileRequest, tauriDownload, getRequest, postRequest, deleteRequest } from "@/common/utils/RequestUtil.js";
 import { isTauri } from "@/common/utils/TauriUtil.js";
 import { OPERATIONS } from "./utils/operations.js";
 import { initialTransferState, transferReducer } from "./utils/transferState.js";
 import { MAX_TRANSFER_PATHS, exceedsTransferPathLimit } from "./utils/transferLimits.js";
 import { publishMoveCompleted, subscribeToMoveCompleted, paneAffectedByMove } from "./utils/moveNotifier.js";
+import { publishBookmarksChanged, subscribeToBookmarksChanged, paneAffectedByBookmarkChange } from "./utils/bookmarkNotifier.js";
+import { normalizeBookmarkPath } from "./utils/bookmarkPath.js";
 import { paneSocket, paneEndpoint, paneProvider, paneContentUrl, PROVIDER_SFTP } from "./utils/paneEndpoint.js";
 import { DEFAULT_CAPABILITIES } from "./utils/paneCapabilities.js";
 import { readErrorMessage, fileNameFromDisposition } from "./utils/downloadResponse.js";
@@ -113,6 +115,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     const [capabilities, setCapabilities] = useState(DEFAULT_CAPABILITIES);
     const [restoredFrom, setRestoredFrom] = useState(null);
     const [transferState, dispatchTransfer] = useReducer(transferReducer, initialTransferState);
+    const [bookmarks, setBookmarks] = useState([]);
 
     const directoryRef = useRef(directory);
     const skipNextPathSync = useRef(false);
@@ -126,6 +129,10 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     const refreshTimerRef = useRef(null);
     const errorRefreshRef = useRef(createErrorRefreshGate());
     const restoredAtRef = useRef(null);
+    // Paths with a request in flight. Without this a double-click either sends the same POST twice
+    // (409, silent reload) or a POST and immediately a DELETE - the user would have pinned the
+    // folder and unpinned it in the same breath.
+    const inFlight = useRef(new Set());
 
     const provider = paneProvider(session);
     const source = paneEndpoint(session);
@@ -134,6 +141,63 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     // OneDrive today. paneProvider is the one place that already knows which provider this is.
     const showFavorites = provider === PROVIDER_SFTP;
     const toggleFavoritesBar = useCallback(() => setFavoritesBarOpen(!favoritesBarOpen), [setFavoritesBarOpen, favoritesBarOpen]);
+
+    // The pane's entry id. session.id is the sessionId and is useless as a key: two tiles on the
+    // same server are two sessions with one bookmark list. Servers.jsx sends exactly this value as
+    // entryId when it opens the connection; a direct connection carries null there and has no
+    // bookmarks.
+    const entryId = session?.server?.id ?? null;
+
+    // Loaded whenever this pane is an SFTP pane with an entryId, independently of whether the
+    // favorites bar is open: both context menus decide "add" vs. "remove" from this same list, and
+    // an unloaded list with the bar closed - the default - would offer "Add bookmark" for an
+    // already-pinned folder, sending a POST that comes back a silent 409.
+    const reloadBookmarks = useCallback(() => {
+        if (!showFavorites || entryId === null) { setBookmarks([]); return; }
+        getRequest(`entries/${entryId}/bookmarks`).then(setBookmarks).catch(() => {});
+    }, [showFavorites, entryId]);
+
+    // Compared as normalized paths, never as raw strings - the server stores the normalized form,
+    // and "/volume1/docker/" would otherwise never match the stored "/volume1/docker".
+    const isBookmarked = useCallback((p) => {
+        const normalized = normalizeBookmarkPath(p);
+        return bookmarks.some((b) => normalizeBookmarkPath(b.path) === normalized);
+    }, [bookmarks]);
+
+    const toggleBookmark = async (rawPath, name) => {
+        // Keyed on the NORMALIZED path - "/x" and "/x/" are the same folder and must share one lock.
+        const path = normalizeBookmarkPath(rawPath);
+        if (inFlight.current.has(path)) return;
+        inFlight.current.add(path);
+        try {
+            const existing = bookmarks.find((b) => normalizeBookmarkPath(b.path) === path);
+            try {
+                if (existing) await deleteRequest(`bookmarks/${existing.id}`);
+                else await postRequest(`entries/${entryId}/bookmarks`, { name, path });
+                publishBookmarksChanged({ entryId });
+                reloadBookmarks();
+            } catch (error) {
+                // A 409 pinning an already-pinned folder, or a 404 unpinning an already-gone one,
+                // are not failures - the desired end state already holds, since both menus decide
+                // from a local list a second tile can make stale at any moment. Reload silently,
+                // no toast.
+                if ((!existing && error?.code === 409) || (existing && error?.code === 404)) {
+                    reloadBookmarks();
+                    return;
+                }
+                // The rate limiter is the one error the user must see - the list itself is fine.
+                if (error?.code === 429) {
+                    sendToast(t("common.error"), error.message);
+                    return;
+                }
+                // A real failure. The list is left alone rather than reloaded, so a stale entry
+                // does not read as if the click had actually done something.
+                sendToast(t("common.error"), error?.message || t("servers.fileManager.toast.error"));
+            }
+        } finally {
+            inFlight.current.delete(path);
+        }
+    };
 
     // Which socket this pane opens is the one thing it needs to know about its provider, and
     // paneEndpoint is where that knowledge lives. A null means the session object is unusable —
@@ -656,6 +720,14 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
         if (paneAffectedByMove({ sessionId: session.id, directory, sourceSessionId, paths })) listFiles(true);
     }), [session.id, directory, listFiles]);
 
+    useEffect(() => { reloadBookmarks(); }, [reloadBookmarks]);
+
+    // Another tile on the same server pinned or removed something. Only the bookmark list is
+    // reloaded - the directory contents did not change because somebody pinned a folder.
+    useEffect(() => subscribeToBookmarksChanged(({ entryId: changedEntryId }) => {
+        if (paneAffectedByBookmarkChange({ entryId, changedEntryId })) reloadBookmarks();
+    }), [entryId, reloadBookmarks]);
+
     return (
         <div className="file-renderer" ref={dropZoneRef} onDragOver={handleDrag} onDragLeave={handleDrag} onDrop={handleDrag}>
             <div className={`drag-overlay ${dragging ? "active" : ""}`}>
@@ -682,6 +754,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                     createFile={createFile} createFolder={createFolder} moveFiles={moveFiles} copyFiles={copyFiles} startTransfer={startTransfer} isActive={isActive}
                     capabilities={capabilities} provider={provider} source={source}
                     searchQuery={searchQuery} onSearchResults={setSearchResultCount}
+                    isBookmarked={isBookmarked} toggleBookmark={toggleBookmark}
                     onOpenTerminal={onOpenTerminal} onPropertiesMessage={(handler) => { propertiesHandlerRef.current = handler; }} />
             </div>
             <TransferList transfers={transferState.transfers} onCancel={cancelTransfer} onDismiss={dismissTransfer} />

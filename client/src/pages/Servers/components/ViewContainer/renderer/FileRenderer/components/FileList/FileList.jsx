@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
 import "./styles.sass";
 import Icon from "@/common/components/Icon";
-import { File as IconFile, Folder as IconFolder, CircleAlert as IconCircleAlert, TextCursorInput as IconTextCursorInput, PenLine as IconPenLine, FileDown as IconFileDown, Trash as IconTrash, Eye as IconEye, Scissors as IconScissors, Copy as IconCopy, Info as IconInfo, SquareTerminal as IconSquareTerminal, FileSearch as IconFileSearch, FilePlus as IconFilePlus, FolderPlus as IconFolderPlus } from "lucide-react";
+import { File as IconFile, Folder as IconFolder, CircleAlert as IconCircleAlert, TextCursorInput as IconTextCursorInput, PenLine as IconPenLine, FileDown as IconFileDown, Trash as IconTrash, Eye as IconEye, Scissors as IconScissors, Copy as IconCopy, Info as IconInfo, SquareTerminal as IconSquareTerminal, FileSearch as IconFileSearch, FilePlus as IconFilePlus, FolderPlus as IconFolderPlus, Star as IconStar, StarOff as IconStarOff } from "lucide-react";
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator, useContextMenu } from "@/common/components/ContextMenu";
 import { copyToClipboard } from "@/common/utils/clipboard.js";
 import { ActionConfirmDialog } from "@/common/components/ActionConfirmDialog/ActionConfirmDialog.jsx";
@@ -24,6 +24,7 @@ export const FileList = forwardRef(({
     onOpenTerminal, onPropertiesMessage, searchQuery = "", onSearchResults,
     capabilities = DEFAULT_CAPABILITIES,
     provider, source,
+    isBookmarked, toggleBookmark,
 }, ref) => {
     const { t } = useTranslation();
     const { showThumbnails, showHiddenFiles, confirmBeforeDelete, dragDropAction } = usePreferences();
@@ -230,6 +231,7 @@ export const FileList = forwardRef(({
             ) : (
                 <div
                     className="file-items-container"
+                    data-ui-id="UI-FILES-LIST"
                     ref={containerRef}
                     tabIndex={0}
                     onMouseDown={(event) => {
@@ -312,7 +314,7 @@ export const FileList = forwardRef(({
                 capabilities={capabilities}
             />
 
-            <ContextMenu isOpen={contextMenu.isOpen} position={contextMenu.position} onClose={contextMenu.close} trigger={contextMenu.triggerRef}>
+            <ContextMenu dataUiId="UI-FILES-LIST-MENU" isOpen={contextMenu.isOpen} position={contextMenu.position} onClose={contextMenu.close} trigger={contextMenu.triggerRef}>
                 <ContextMenuItem icon={IconTextCursorInput} label={t("servers.fileManager.contextMenu.rename")} onClick={() => startRename(selectedItem)} />
                 {selectedItem?.type === "file" && capabilities.content && (
                     <>
@@ -323,6 +325,13 @@ export const FileList = forwardRef(({
                 {capabilities.content && <ContextMenuItem icon={IconFileDown} label={t("servers.fileManager.contextMenu.download")} onClick={() => downloadFile(`${path}/${selectedItem?.name}`)} />}
                 <ContextMenuItem icon={IconCopy} label={t("servers.fileManager.contextMenu.copyPath")}
                                  onClick={() => handleCopyPath(selectedItem)} />
+                {selectedItem?.type === "folder" && (
+                    <ContextMenuItem icon={isBookmarked(`${path}/${selectedItem.name}`) ? IconStarOff : IconStar}
+                                     label={t(isBookmarked(`${path}/${selectedItem.name}`)
+                                         ? "servers.fileManager.contextMenu.removeBookmark"
+                                         : "servers.fileManager.contextMenu.addBookmark")}
+                                     onClick={() => toggleBookmark(`${path}/${selectedItem.name}`, selectedItem.name)} />
+                )}
                 <ContextMenuItem icon={IconInfo} label={t("servers.fileManager.contextMenu.properties")} onClick={() => handlePropertiesClick(selectedItem)} />
                 {selectedItem?.type === "folder" && capabilities.terminal && (
                     <ContextMenuItem icon={IconSquareTerminal} label={t("servers.fileManager.contextMenu.openTerminal")} onClick={() => handleOpenTerminal(`${path}/${selectedItem.name}`)} />
@@ -330,10 +339,15 @@ export const FileList = forwardRef(({
                 <ContextMenuItem icon={IconTrash} label={t("servers.fileManager.contextMenu.delete")} onClick={handleDeleteClick} danger />
             </ContextMenu>
 
-            <ContextMenu isOpen={emptyContextMenu.isOpen} position={emptyContextMenu.position} onClose={emptyContextMenu.close} trigger={emptyContextMenu.triggerRef}>
+            <ContextMenu dataUiId="UI-FILES-EMPTY-MENU" isOpen={emptyContextMenu.isOpen} position={emptyContextMenu.position} onClose={emptyContextMenu.close} trigger={emptyContextMenu.triggerRef}>
                 {capabilities.nativeFs && <ContextMenuItem icon={IconFilePlus} label={t("servers.fileManager.contextMenu.newFile")} onClick={startCreateFile} />}
                 <ContextMenuItem icon={IconFolderPlus} label={t("servers.fileManager.contextMenu.newFolder")} onClick={startCreateFolder} />
                 <ContextMenuSeparator />
+                <ContextMenuItem icon={isBookmarked(path) ? IconStarOff : IconStar}
+                                 label={t(isBookmarked(path)
+                                     ? "servers.fileManager.contextMenu.removeBookmark"
+                                     : "servers.fileManager.contextMenu.addBookmarkHere")}
+                                 onClick={() => toggleBookmark(path, path.split("/").filter(Boolean).pop() || "/")} />
                 {capabilities.content && <ContextMenuItem icon={IconFileDown} label={t("servers.fileManager.contextMenu.downloadFolder")} onClick={() => downloadFile(path)} />}
                 <ContextMenuItem icon={IconInfo} label={t("servers.fileManager.contextMenu.properties")} onClick={() => handlePropertiesClick(null)} />
                 {capabilities.terminal && <ContextMenuItem icon={IconSquareTerminal} label={t("servers.fileManager.contextMenu.openTerminal")} onClick={() => handleOpenTerminal()} />}

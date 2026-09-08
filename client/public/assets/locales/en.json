@@ -2021,7 +2021,16 @@
         "openTerminal": "Open Terminal Here",
         "downloadFolder": "Download Folder",
         "newFile": "New File",
-        "newFolder": "New Folder"
+        "newFolder": "New Folder",
+        "addBookmark": "Add bookmark",
+        "addBookmarkHere": "Bookmark this folder",
+        "removeBookmark": "Remove bookmark"
+      },
+      "favorites": {
+        "empty": "No favorites yet. Right-click a folder to add one.",
+        "overflow": "More favorites",
+        "rename": "Rename",
+        "remove": "Remove"
       },
       "properties": {
         "general": "General",
