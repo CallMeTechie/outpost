@@ -5,6 +5,7 @@ import { usePreferences } from "@/common/contexts/PreferencesContext.jsx";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import useWebSocket from "react-use-websocket";
 import ActionBar from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/components/ActionBar";
+import FavoritesBar from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/components/FavoritesBar";
 import FileList from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/components/FileList";
 import TransferList from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/components/TransferList";
 import ConflictDialog from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/components/ConflictDialog";
@@ -161,9 +162,12 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     // favorites bar is open: both context menus decide "add" vs. "remove" from this same list, and
     // an unloaded list with the bar closed - the default - would offer "Add bookmark" for an
     // already-pinned folder, sending a POST that comes back a silent 409.
+    //
+    // Returns the promise so a caller can wait for the fresh list: the favorites bar reorders
+    // optimistically and has to know when the server's own order has landed before it draws again.
     const reloadBookmarks = useCallback(() => {
-        if (!bookmarksAvailable) { setBookmarks([]); return; }
-        getRequest(`entries/${entryId}/bookmarks`).then(setBookmarks).catch(() => {});
+        if (!bookmarksAvailable) { setBookmarks([]); return Promise.resolve(); }
+        return getRequest(`entries/${entryId}/bookmarks`).then(setBookmarks).catch(() => {});
     }, [bookmarksAvailable, entryId]);
 
     // Compared as normalized paths, never as raw strings - the server stores the normalized form,
@@ -639,7 +643,13 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     };
 
     const handleDrag = (e) => {
-        if (e.dataTransfer.types.includes("application/x-sftp-files")) return;
+        // Internal drags - a file move inside the pane, a favorite chip being reordered - are not
+        // uploads. The Files check stays in front of both: a drag that really carries files must be
+        // preventDefault-ed either way, or dropping it navigates the whole application away.
+        if (!e.dataTransfer.types.includes("Files")) {
+            if (e.dataTransfer.types.includes("application/x-sftp-files")) return;
+            if (e.dataTransfer.types.includes("application/x-favorite-chip")) return;
+        }
         e.preventDefault();
         e.stopPropagation();
         // A drop onto a provider that cannot take an upload is swallowed rather than ignored: the
@@ -757,6 +767,12 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                     sessionId={session.id} searchQuery={searchQuery} setSearchQuery={setSearchQuery} searchOpen={searchOpen}
                     setSearchOpen={setSearchOpen} closeSearch={closeSearch} searchResultCount={searchResultCount}
                     favoritesOpen={favoritesBarOpen} onToggleFavorites={toggleFavoritesBar} showFavorites={showFavorites} />
+                {/* The bar draws nothing of its own about the list - FileRenderer owns the bookmark
+                    state, and onReorder/onReload are how the bar writes back into it. */}
+                {favoritesBarOpen && bookmarksAvailable && (
+                    <FavoritesBar entryId={entryId} directory={directory} bookmarks={bookmarks}
+                        onNavigate={changeDirectory} onReload={reloadBookmarks} onReorder={setBookmarks} />
+                )}
                 <FileList ref={fileListRef} items={items} path={directory} updatePath={changeDirectory} sendOperation={sendOperation}
                     downloadFile={downloadFile} downloadMultipleFiles={downloadMultipleFiles} setCurrentFile={handleOpenFile} setPreviewFile={handleOpenPreview}
                     loading={loading && wsUrl !== null} viewMode={viewMode} error={unusableSessionError || error || connectionError} resolveSymlink={resolveSymlink} session={session}
