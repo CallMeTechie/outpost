@@ -112,6 +112,26 @@ const handleClose = async ({ sftpClient, onSftpClose, ws, messageHandler, transf
     try { await updateAuditLogWithSessionDuration(auditLogId, startTime); } catch {}
 };
 
+// The one seam where the opening chain meets a real SFTP client, pulled out and exported for the
+// same reason as handleClose above: every other test of the chain injects `homePath` as a
+// ready-made string, so this is the only place its type could ever be wrong - and it was.
+// EngineSftpClient.realpath resolves { path, isDirectory } (see its RealpathResult handler), not a
+// string. Handing the whole object on as homePath made the probe call listDir(object), which
+// FlatBuffers' createString happily encodes as "[object Object]"; the engine's "no such file"
+// matches none of holds()'s abort patterns, so the chain silently fell through to "/" and a pane
+// with nothing remembered never opened in the SSH user's start directory.
+const openPaneDirectory = async ({ sftpClient, storedSessionPath, storedRow }) => {
+    let homePath;
+    try { homePath = (await sftpClient.realpath("."))?.path ?? null; } catch { homePath = null; }
+
+    return resolveOpeningDirectory({
+        storedSessionPath,
+        storedRow,
+        probe: async (p) => { await sftpClient.listDir(p); return true; },
+        homePath,
+    });
+};
+
 const requireShell = (capabilities) => {
     if (!capabilities.shell) throw new Error("This operation is not supported over FTP");
 };
@@ -319,14 +339,10 @@ module.exports = async (ws, req) => {
             }
         }
 
-        let homePath = null;
-        try { homePath = await sftpClient.realpath("."); } catch { homePath = null; }
-
-        const opening = await resolveOpeningDirectory({
+        const opening = await openPaneDirectory({
+            sftpClient,
             storedSessionPath: SessionManager.getSftpPath(sessionId),
             storedRow: rememberedRow?.lastPath ?? null,
-            probe: async (p) => { await sftpClient.listDir(p); return true; },
-            homePath,
         });
 
         // Write the climb back. Nothing else will: the client takes the path from READY without
@@ -345,7 +361,15 @@ module.exports = async (ws, req) => {
             }
         }
 
-        sendResult(ws, OP.READY, { path: opening.path, restoredFrom: opening.restoredFrom, capabilities });
+        // Gated on the same flag as the write-back above, and for the same reason: an aborted climb
+        // never established that the remembered directory is gone - it only established that the
+        // socket died mid-probe. Reporting restoredFrom anyway makes the pane claim "last opened X -
+        // no longer there" about a directory that is perfectly fine.
+        sendResult(ws, OP.READY, {
+            path: opening.path,
+            restoredFrom: opening.aborted ? null : opening.restoredFrom,
+            capabilities,
+        });
 
         const logAudit = (action, resource, details) => {
             createAuditLog({ accountId: user.id, organizationId: entry.organizationId, action, resource, details, ipAddress, userAgent });
@@ -442,3 +466,4 @@ module.exports = async (ws, req) => {
 module.exports.OP = OP;
 module.exports.cancelAllTransfers = cancelAllTransfers;
 module.exports.handleClose = handleClose;
+module.exports.openPaneDirectory = openPaneDirectory;

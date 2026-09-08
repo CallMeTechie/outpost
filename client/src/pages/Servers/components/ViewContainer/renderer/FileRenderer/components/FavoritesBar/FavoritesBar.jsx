@@ -17,11 +17,33 @@ import FavoriteChip from "./components/FavoriteChip";
 import { FAVORITE_CHIP_MIME } from "./components/FavoriteChip/FavoriteChip.jsx";
 import "./styles.sass";
 
-// The three lengths the split needs, in pixels, mirroring styles.sass: tokens.$space-4 of padding
-// at each end, tokens.$space-2 between two chips, and the 1.5rem overflow button.
-const PADDING_X = 16;
-const GAP = 8;
-const CHEVRON_WIDTH = 24;
+// The overflow button's width, in rem, exactly as styles.sass writes it. The other two lengths the
+// split needs - the bar's own horizontal padding and the gap between two chips - are read straight
+// off the bar's computed style; only the chevron cannot be, because it is not in the DOM until the
+// split has already decided that it is needed.
+const CHEVRON_REM = 1.5;
+
+// Hardcoding 16/8/24 was wrong: styles.sass expresses all three as tokens.$space-4, tokens.$space-2
+// and 1.5rem, and main.sass sets the root font size to calc(16px * var(--ui-scale)). The chip
+// widths are measured, so only these three would have stayed at their --ui-scale: 1 values - at
+// 1.5 the budget came out about 28px too generous and overflow: hidden cut the last chip in half,
+// which the spec forbids outright. rem is defined against the root element, so that is where the
+// scale is read from; the padding and the gap come from the bar itself.
+const measureLengths = (bar) => {
+    const style = getComputedStyle(bar);
+    const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    return {
+        paddingX: (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0),
+        gap: parseFloat(style.columnGap) || 0,
+        chevronWidth: CHEVRON_REM * rootFontSize,
+    };
+};
+
+// One keystroke is one PUT only if nothing coalesces them: the shared bookmark limiter allows 60
+// writes a minute across all four writing routes, so a held Shift+Arrow would spend that budget in
+// about two seconds and get a 429 for the rest. The row stays optimistic the whole time; only the
+// write waits for the key to come to rest.
+const ORDER_DEBOUNCE_MS = 300;
 
 export const FavoritesBar = ({ entryId, directory, bookmarks, onNavigate, onReload, onReorder }) => {
     const { t } = useTranslation();
@@ -31,8 +53,15 @@ export const FavoritesBar = ({ entryId, directory, bookmarks, onNavigate, onRelo
 
     const barRef = useRef(null);
     const chipRefs = useRef(new Map());
+    // The debounced order write: the pending timer and the call it will make. Refs rather than
+    // state - both have to survive the re-render the optimistic reorder triggers, and neither is
+    // ever read while rendering.
+    const orderTimerRef = useRef(null);
+    const flushOrderRef = useRef(null);
 
-    const [available, setAvailable] = useState(null);
+    // The available width and the three lengths it was measured against, kept together: they are
+    // read in one pass off the same computed style and are only ever used together.
+    const [metrics, setMetrics] = useState(null);
     const [widths, setWidths] = useState([]);
     // The bookmark ID, never an index: the list can be reordered or reloaded from another tile
     // while any of these is set, and an index would then name a different bookmark.
@@ -51,7 +80,13 @@ export const FavoritesBar = ({ entryId, directory, bookmarks, onNavigate, onRelo
         const measure = () => {
             const width = bar.clientWidth;
             if (width === 0) return;
-            setAvailable(width - PADDING_X * 2);
+            const { paddingX, gap, chevronWidth } = measureLengths(bar);
+            // clientWidth counts the padding, the chips do not sit in it. The previous object is
+            // kept when nothing moved: a fresh one every observer callback would be a new identity
+            // for the split's useMemo each time, for numbers that did not change.
+            const next = { available: width - paddingX, gap, chevronWidth };
+            setMetrics((prev) => (prev && prev.available === next.available && prev.gap === next.gap
+                && prev.chevronWidth === next.chevronWidth ? prev : next));
             // Keyed by bookmark id and rebuilt in bookmark order. A Map iterated by insertion order
             // drifts out of step with `bookmarks` after the first reorder, and the ref of a deleted chip
             // stays in it forever - both make the indices in `hidden` point at the wrong chips.
@@ -65,12 +100,14 @@ export const FavoritesBar = ({ entryId, directory, bookmarks, onNavigate, onRelo
 
     // Nothing measured yet is not "nothing fits": splitForOverflow answers {visible: 0} for an
     // unmeasured bar, which would blank the row for one frame and then pop every chip in.
-    const measured = available !== null && widths.length === bookmarks.length;
+    const measured = metrics !== null && widths.length === bookmarks.length;
     const { visible, hidden } = useMemo(
         () => (measured
-            ? splitForOverflow({ widths, available, gap: GAP, chevronWidth: CHEVRON_WIDTH })
+            ? splitForOverflow({
+                widths, available: metrics.available, gap: metrics.gap, chevronWidth: metrics.chevronWidth,
+            })
             : { visible: bookmarks.length, hidden: [] }),
-        [measured, widths, available, bookmarks.length],
+        [measured, widths, metrics, bookmarks.length],
     );
 
     // A reload from another tile can take the bookmark being renamed away while the field is open.
@@ -125,25 +162,60 @@ export const FavoritesBar = ({ entryId, directory, bookmarks, onNavigate, onRelo
         await onReload().catch(() => {});
     };
 
-    const commitOrder = async (ids) => {
+    const writeOrder = async (ids) => {
+        try {
+            await putRequest(`entries/${entryId}/bookmarks/order`, { ids });
+            publishBookmarksChanged({ entryId });
+        } catch (error) {
+            // 409 is the ordinary outcome: this tile sorted on a stale list. 429 is the other one:
+            // the shared bookmark limiter cut a burst of keyboard moves short. Neither is the user's
+            // mistake and neither deserves a toast - the reload puts the row back in step either
+            // way. Anything else is a real failure and must not masquerade as one. The reload is
+            // guarded because it goes over the same wire that just failed; an unguarded rejection
+            // from a keydown handler has no caller left to catch it.
+            await onReload().catch(() => {});
+            if (error?.code !== 409 && error?.code !== 429) {
+                sendToast(t("common.error"), error?.message ?? t("common.error"));
+            }
+        }
+    };
+
+    // `debounce` is the keyboard path's flag alone. A drag ends in one drop and writes at once; a
+    // held Shift+Arrow fires as fast as the key repeats, and every one of those keystrokes would
+    // otherwise be its own PUT.
+    const commitOrder = (ids, { debounce = false } = {}) => {
         // Optimistic: the row reorders immediately, the request only confirms it.
         const next = ids.map((id) => bookmarks.find((b) => b.id === id));
         // A reload from another tile may have landed between the drag and the drop. An id we can no
         // longer resolve means this list is stale - reload instead of drawing an undefined chip.
         if (next.some((b) => !b)) return onReload().catch(() => {});
         onReorder(next);
-        try {
-            await putRequest(`entries/${entryId}/bookmarks/order`, { ids });
-            publishBookmarksChanged({ entryId });
-        } catch (error) {
-            // 409 is the ordinary outcome: this tile sorted on a stale list. Anything else is a real
-            // failure and must not masquerade as one. The reload is guarded because it goes over the
-            // same wire that just failed; an unguarded rejection from a keydown handler has no caller
-            // left to catch it.
-            await onReload().catch(() => {});
-            if (error?.code !== 409) sendToast(t("common.error"), error?.message ?? t("common.error"));
-        }
+
+        // A write already scheduled is always superseded, never added to: `ids` is the complete
+        // order, so the newest one alone says everything the older ones did.
+        if (orderTimerRef.current) clearTimeout(orderTimerRef.current);
+        orderTimerRef.current = null;
+        flushOrderRef.current = null;
+        if (!debounce) return writeOrder(ids);
+
+        flushOrderRef.current = () => writeOrder(ids);
+        orderTimerRef.current = setTimeout(() => {
+            orderTimerRef.current = null;
+            const flush = flushOrderRef.current;
+            flushOrderRef.current = null;
+            flush?.();
+        }, ORDER_DEBOUNCE_MS);
     };
+
+    // Closing the strip or losing the tile must not swallow the write the row is already showing:
+    // the reorder was applied optimistically, so dropping the PUT would leave the server holding an
+    // order nobody can see any more. Nothing in writeOrder touches this component's own state.
+    useEffect(() => () => {
+        if (!orderTimerRef.current) return;
+        clearTimeout(orderTimerRef.current);
+        orderTimerRef.current = null;
+        flushOrderRef.current?.();
+    }, []);
 
     // Exactly one chip carries tabIndex 0, so the whole bar is a single tab stop and the arrow keys
     // do the rest of the walking. Falls back to the first chip whenever the remembered one is gone
@@ -167,7 +239,7 @@ export const FavoritesBar = ({ entryId, directory, bookmarks, onNavigate, onRelo
         const ids = bookmarks.map((b) => b.id);
         const [moved] = ids.splice(index, 1);
         ids.splice(target, 0, moved);
-        commitOrder(ids);
+        commitOrder(ids, { debounce: true });
     };
 
     const handleChipKeyDown = (e, index) => {
@@ -260,11 +332,14 @@ export const FavoritesBar = ({ entryId, directory, bookmarks, onNavigate, onRelo
                     </Fragment>
                 ))}
                 {dropIndex !== null && dropIndex >= visible && <span className="insert" aria-hidden="true" />}
+                {/* The chevron toggles, it does not only open: ContextMenu's outside-click handler
+                    exempts its own trigger, so a second click on an opened chevron would otherwise
+                    do nothing at all. */}
                 {hidden.length > 0 && (
                     <button type="button" className={`favorites-overflow${overflowOpen ? " open" : ""}`}
                             data-ui-id="UI-FILES-FAVORITES-OVERFLOW" aria-haspopup="menu"
                             aria-expanded={overflowOpen} title={t("servers.fileManager.favorites.overflow")}
-                            onClick={(e) => overflowMenu.open(e)}>
+                            onClick={(e) => overflowMenu.toggle(e)}>
                         <Icon icon={IconChevronDown} />
                     </button>
                 )}
