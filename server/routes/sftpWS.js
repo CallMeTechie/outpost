@@ -399,11 +399,10 @@ module.exports = async (ws, req) => {
                 // server chop up a megabyte-long string. The column width is NOT checked here -
                 // schedule() applies it itself, and the spec is explicit that SessionManager and the
                 // other sockets of this session keep getting the path as before.
-                // `length > 0`, nicht nur `typeof`: der Bestand prüft `if (payload?.path)`, und ein
-                // leerer String wurde stillschweigend verworfen. Ließe man ihn jetzt durch,
-                // normalisierte er zu "/", ginge als PATH_SYNC an alle anderen Sockets der Sitzung
-                // und würde dauerhaft gemerkt — genau der Verlust, den das aborted-Flag auf der
-                // Öffnungsseite mit Aufwand verhindert.
+                // `length > 0`, not just `typeof`: the existing guard was `if (payload?.path)`, which
+                // dropped the empty string silently. Letting it through now would normalize to "/",
+                // broadcast "/" to every other socket of this session and remember "/" for good - the
+                // exact loss the aborted flag guards against on the opening side.
                 if (typeof payload?.path === "string" && payload.path.length > 0
                     && Buffer.byteLength(payload.path, "utf8") <= FP_MAX_PATH) {
                     const syncedPath = normalizeBookmarkPath(payload.path);
