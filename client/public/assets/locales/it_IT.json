@@ -1609,6 +1609,7 @@
       "cycle": "Usa i tasti freccia per cambiare identità"
     },
     "tabs": {
+      "contextTooltip": "Contesto: {{tool}} al {{percent}} %",
       "newSession": "Nuova sessione",
       "contextMenu": {
         "popOut": "Stacca schermo",

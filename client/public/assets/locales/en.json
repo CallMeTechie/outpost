@@ -1655,6 +1655,7 @@
       "cycle": "Use the arrow keys to switch identity"
     },
     "tabs": {
+      "contextTooltip": "Context: {{tool}} at {{percent}}%",
       "newSession": "New session",
       "contextMenu": {
         "popOut": "Pop Out",

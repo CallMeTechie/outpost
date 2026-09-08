@@ -1609,6 +1609,7 @@
       "cycle": "使用方向键切换角色"
     },
     "tabs": {
+      "contextTooltip": "上下文：{{tool}} 已用 {{percent}}%",
       "newSession": "新会话",
       "contextMenu": {
         "popOut": "弹出",

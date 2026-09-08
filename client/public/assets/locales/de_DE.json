@@ -1653,6 +1653,7 @@
       "cycle": "Verwende die Pfeiltasten, um die Identität zu wechseln"
     },
     "tabs": {
+      "contextTooltip": "Kontext: {{tool}} bei {{percent}} %",
       "newSession": "Neue Sitzung",
       "contextMenu": {
         "popOut": "In eigenem Fenster öffnen",

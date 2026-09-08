@@ -1609,6 +1609,7 @@
       "cycle": "استخدم مفاتيح الأسهم لتغيير الهوية"
     },
     "tabs": {
+      "contextTooltip": "السياق: {{tool}} عند {{percent}}٪",
       "newSession": "جلسة جديدة",
       "contextMenu": {
         "popOut": "بوب آوت",

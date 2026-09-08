@@ -1609,6 +1609,7 @@
       "cycle": "Use as setas do teclado para trocar de identidade"
     },
     "tabs": {
+      "contextTooltip": "Contexto: {{tool}} em {{percent}} %",
       "newSession": "Nova sessão",
       "contextMenu": {
         "popOut": "Abrir em Janela Pop-Up",

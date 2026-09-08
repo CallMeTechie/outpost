@@ -1609,6 +1609,7 @@
       "cycle": "使用方向鍵切換角色"
     },
     "tabs": {
+      "contextTooltip": "脈絡：{{tool}} 已用 {{percent}}%",
       "newSession": "新工作階段",
       "contextMenu": {
         "popOut": "彈出",

@@ -1609,6 +1609,7 @@
       "cycle": "K přepínání identity použijte šipky"
     },
     "tabs": {
+      "contextTooltip": "Kontext: {{tool}} na {{percent}} %",
       "newSession": "Nová relace",
       "contextMenu": {
         "popOut": "Pop Out",

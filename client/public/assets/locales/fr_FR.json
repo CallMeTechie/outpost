@@ -1609,6 +1609,7 @@
       "cycle": "Utilise les touches fléchées pour changer d'identité"
     },
     "tabs": {
+      "contextTooltip": "Contexte : {{tool}} à {{percent}} %",
       "newSession": "Nouvelle session",
       "contextMenu": {
         "popOut": "Pop Out",
