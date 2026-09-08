@@ -225,10 +225,23 @@ require.cache[fileBookmarkPath] = { id: fileBookmarkPath, filename: fileBookmark
 // The fake database: one global lock, exactly like SQLite's database-wide write lock. A second
 // `transaction()` call while one is already open throws immediately, the same shape of error
 // isLockConflict (server/controllers/bookmarks.js) matches.
+//
+// lockConflictWaiters lets a test prove a conflict actually happened, rather than assuming one did
+// because it released the hold on the very next synchronous line. Firing request 2 and immediately
+// releasing the hold does NOT guarantee request 2's db.transaction() call runs before the release -
+// it has to clear authenticate, validateSchema and authorizeEntry first, all real awaits - so
+// without this signal a "concurrency" test can pass on a strictly sequential implementation with no
+// retry logic at all (see Fix round 1, Finding 1).
 let dbLocked = false;
+let lockConflictWaiters = [];
+const notifyLockConflict = () => { lockConflictWaiters.splice(0).forEach((w) => w()); };
+
 const dbFake = {
     transaction: async (run) => {
-        if (dbLocked) throw new Error("SQLITE_BUSY: database is locked");
+        if (dbLocked) {
+            notifyLockConflict();
+            throw new Error("SQLITE_BUSY: database is locked");
+        }
         dbLocked = true;
         try {
             return await run({ fake: true });
@@ -262,6 +275,12 @@ test.before(async () => {
 });
 
 test.after(async () => {
+    // A concurrency test that fails partway through can leave a held request's socket open
+    // (see Fix round 1, Finding 2): the assertion throws before releaseHold() runs, the paused
+    // request never completes, and server.close() alone waits forever for a connection that will
+    // never close on its own. closeAllConnections() forces the run to end with the failing test
+    // reported red, instead of hanging until the harness kills it.
+    server.closeAllConnections();
     await new Promise((resolve) => server.close(resolve));
 });
 
@@ -284,6 +303,7 @@ test.beforeEach(() => {
     ];
     nextId = 7;
     dbLocked = false;
+    lockConflictWaiters = [];
     holdArmed = false;
     holdRelease = null;
     holdWaiters = [];
@@ -308,6 +328,11 @@ const waitUntilHeld = () => new Promise((resolve) => {
     holdWaiters.push(resolve);
 });
 const releaseHold = () => { const r = holdRelease; holdRelease = null; if (r) r(); };
+
+// Resolves the next time db.transaction() throws because the fake lock was already held - proof
+// that a second request actually collided with the first, rather than just being fired and hoped
+// to collide (see Fix round 1, Finding 1).
+const waitForLockConflict = () => new Promise((resolve) => { lockConflictWaiters.push(resolve); });
 
 const assertNoLeak = (text) => {
     assert.doesNotMatch(text, /stack/i);
@@ -421,10 +446,16 @@ test("two PUT order requests at the same time on the same list: one wins complet
 
     await waitUntilHeld(); // p1 has acquired the fake DB lock and is paused on its first read
 
-    const res2 = await put("/entries/101/bookmarks/order", "token-A", { ids: [2, 1, 3] });
-    assert.strictEqual(res2.status, 409, "the second request must fail while the first still holds the lock");
+    let res2;
+    try {
+        res2 = await put("/entries/101/bookmarks/order", "token-A", { ids: [2, 1, 3] });
+        assert.strictEqual(res2.status, 409, "the second request must fail while the first still holds the lock");
+    } finally {
+        // Always release, even if the assertion above throws - otherwise p1 stays paused forever
+        // and its socket never closes (see Fix round 1, Finding 2).
+        releaseHold();
+    }
 
-    releaseHold();
     const res1 = await p1;
     assert.strictEqual(res1.status, 200);
 
@@ -456,9 +487,19 @@ test("two POSTs at the same time on two different folders get two different posi
     await waitUntilHeld(); // p1 holds the lock inside its MAX(position) read
 
     const p2 = post("/entries/106/bookmarks", "token-A", { name: "b", path: "/b" });
-    // p2's first attempt hits the lock and is now inside withLockRetry's 50ms backoff. Releasing
-    // p1 well within that window lets p2's retry see p1's already-written row.
-    releaseHold();
+    try {
+        // Proof that p2's first attempt actually collided with the still-held lock, rather than
+        // assuming it did because we release on the next synchronous line (see Fix round 1,
+        // Finding 1 - the earlier version of this test passed even with withLockRetry's retry
+        // removed entirely, because p1 always finished before p2's round trip ever reached
+        // db.transaction()).
+        await waitForLockConflict();
+    } finally {
+        // p2's first attempt is now inside withLockRetry's 50ms backoff. Releasing p1 well within
+        // that window lets p2's retry see p1's already-written row. In `finally` so a failure above
+        // still frees p1 instead of hanging the run (Finding 2).
+        releaseHold();
+    }
 
     const [res1, res2] = await Promise.all([p1, p2]);
     assert.strictEqual(res1.status, 201);
@@ -489,9 +530,16 @@ test("two DELETEs at the same time on the same bookmark: neither ends in a 500; 
     await waitUntilHeld(); // p1 holds the lock inside its findOne read
 
     const p2 = del("/bookmarks/2", "token-A");
-    // p2's first attempt hits the lock and enters withLockRetry's 50ms backoff. Releasing p1 well
-    // within that window means p2's retry finds the row already gone.
-    releaseHold();
+    try {
+        // Proof that p2's first attempt actually hit the still-held lock (see Fix round 1,
+        // Finding 1), not an assumption based on releasing on the next synchronous line.
+        await waitForLockConflict();
+    } finally {
+        // p2's first attempt is now inside withLockRetry's 50ms backoff. Releasing p1 well within
+        // that window means p2's retry finds the row already gone. In `finally` so a failure above
+        // still frees p1 instead of hanging the run (Finding 2).
+        releaseHold();
+    }
 
     const [res1, res2] = await Promise.all([p1, p2]);
     assert.notStrictEqual(res1.status, 500);
