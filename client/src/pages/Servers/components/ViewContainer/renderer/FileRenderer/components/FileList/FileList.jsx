@@ -24,7 +24,7 @@ export const FileList = forwardRef(({
     onOpenTerminal, onPropertiesMessage, searchQuery = "", onSearchResults,
     capabilities = DEFAULT_CAPABILITIES,
     provider, source,
-    isBookmarked, toggleBookmark,
+    isBookmarked, toggleBookmark, bookmarksAvailable,
 }, ref) => {
     const { t } = useTranslation();
     const { showThumbnails, showHiddenFiles, confirmBeforeDelete, dragDropAction } = usePreferences();
@@ -325,7 +325,7 @@ export const FileList = forwardRef(({
                 {capabilities.content && <ContextMenuItem icon={IconFileDown} label={t("servers.fileManager.contextMenu.download")} onClick={() => downloadFile(`${path}/${selectedItem?.name}`)} />}
                 <ContextMenuItem icon={IconCopy} label={t("servers.fileManager.contextMenu.copyPath")}
                                  onClick={() => handleCopyPath(selectedItem)} />
-                {selectedItem?.type === "folder" && (
+                {selectedItem?.type === "folder" && bookmarksAvailable && (
                     <ContextMenuItem icon={isBookmarked(`${path}/${selectedItem.name}`) ? IconStarOff : IconStar}
                                      label={t(isBookmarked(`${path}/${selectedItem.name}`)
                                          ? "servers.fileManager.contextMenu.removeBookmark"
@@ -343,11 +343,13 @@ export const FileList = forwardRef(({
                 {capabilities.nativeFs && <ContextMenuItem icon={IconFilePlus} label={t("servers.fileManager.contextMenu.newFile")} onClick={startCreateFile} />}
                 <ContextMenuItem icon={IconFolderPlus} label={t("servers.fileManager.contextMenu.newFolder")} onClick={startCreateFolder} />
                 <ContextMenuSeparator />
-                <ContextMenuItem icon={isBookmarked(path) ? IconStarOff : IconStar}
-                                 label={t(isBookmarked(path)
-                                     ? "servers.fileManager.contextMenu.removeBookmark"
-                                     : "servers.fileManager.contextMenu.addBookmarkHere")}
-                                 onClick={() => toggleBookmark(path, path.split("/").filter(Boolean).pop() || "/")} />
+                {bookmarksAvailable && (
+                    <ContextMenuItem icon={isBookmarked(path) ? IconStarOff : IconStar}
+                                     label={t(isBookmarked(path)
+                                         ? "servers.fileManager.contextMenu.removeBookmark"
+                                         : "servers.fileManager.contextMenu.addBookmarkHere")}
+                                     onClick={() => toggleBookmark(path, path.split("/").filter(Boolean).pop() || "/")} />
+                )}
                 {capabilities.content && <ContextMenuItem icon={IconFileDown} label={t("servers.fileManager.contextMenu.downloadFolder")} onClick={() => downloadFile(path)} />}
                 <ContextMenuItem icon={IconInfo} label={t("servers.fileManager.contextMenu.properties")} onClick={() => handlePropertiesClick(null)} />
                 {capabilities.terminal && <ContextMenuItem icon={IconSquareTerminal} label={t("servers.fileManager.contextMenu.openTerminal")} onClick={() => handleOpenTerminal()} />}

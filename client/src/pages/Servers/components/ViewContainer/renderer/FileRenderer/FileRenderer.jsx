@@ -148,14 +148,23 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     // bookmarks.
     const entryId = session?.server?.id ?? null;
 
+    // The one rule for whether bookmarks exist on this pane at all - reusing `showFavorites`
+    // (Task 6's own `provider === PROVIDER_SFTP`) rather than re-deriving the provider check a
+    // second way. OneDrive has no entryId to hang a bookmark on (the spec rules this out by name),
+    // and a direct SFTP connection carries `entryId === null` for the same reason a stored entry
+    // does not exist: there is nothing to hang a bookmark on either way. Passed down so the two
+    // menu entries in FileList.jsx are absent - not disabled - on a pane where they could only ever
+    // 400.
+    const bookmarksAvailable = showFavorites && entryId !== null;
+
     // Loaded whenever this pane is an SFTP pane with an entryId, independently of whether the
     // favorites bar is open: both context menus decide "add" vs. "remove" from this same list, and
     // an unloaded list with the bar closed - the default - would offer "Add bookmark" for an
     // already-pinned folder, sending a POST that comes back a silent 409.
     const reloadBookmarks = useCallback(() => {
-        if (!showFavorites || entryId === null) { setBookmarks([]); return; }
+        if (!bookmarksAvailable) { setBookmarks([]); return; }
         getRequest(`entries/${entryId}/bookmarks`).then(setBookmarks).catch(() => {});
-    }, [showFavorites, entryId]);
+    }, [bookmarksAvailable, entryId]);
 
     // Compared as normalized paths, never as raw strings - the server stores the normalized form,
     // and "/volume1/docker/" would otherwise never match the stored "/volume1/docker".
@@ -754,7 +763,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                     createFile={createFile} createFolder={createFolder} moveFiles={moveFiles} copyFiles={copyFiles} startTransfer={startTransfer} isActive={isActive}
                     capabilities={capabilities} provider={provider} source={source}
                     searchQuery={searchQuery} onSearchResults={setSearchResultCount}
-                    isBookmarked={isBookmarked} toggleBookmark={toggleBookmark}
+                    isBookmarked={isBookmarked} toggleBookmark={toggleBookmark} bookmarksAvailable={bookmarksAvailable}
                     onOpenTerminal={onOpenTerminal} onPropertiesMessage={(handler) => { propertiesHandlerRef.current = handler; }} />
             </div>
             <TransferList transfers={transferState.transfers} onCancel={cancelTransfer} onDismiss={dismissTransfer} />
