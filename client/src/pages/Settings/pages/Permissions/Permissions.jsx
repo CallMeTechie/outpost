@@ -55,7 +55,7 @@ export const Permissions = () => {
         } catch {
             sendToast("Error", t("settings.permissions.loadError"));
         }
-    }, []);
+    }, [sendToast, t]);
 
     useEffect(() => {
         getRequest("permissions/catalog").then((res) => setCatalog(res.system)).catch(() => {});

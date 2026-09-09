@@ -530,7 +530,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
             sendToast(t("common.error"), t("servers.fileManager.toast.connectionLost"));
             disconnectFromServer(session.id);
         }
-    }, [disconnectFromServer, session.id, t]);
+    }, [disconnectFromServer, session.id, t, sendToast]);
 
     const handleWsOpen = useCallback(() => { reconnectAttemptsRef.current = 0; setConnectionError(null); }, []);
 
@@ -731,7 +731,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
             }
             listFiles();
         }
-    }, [directory, isReady]);
+    }, [directory, isReady, listFiles]);
 
     // A move completed in another pane on this same session can empty out or repopulate the
     // directory this pane happens to be showing - unsubscribe on unmount/re-subscribe is required,

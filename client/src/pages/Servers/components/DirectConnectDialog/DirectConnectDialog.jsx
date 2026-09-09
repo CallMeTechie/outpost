@@ -159,7 +159,7 @@ export const DirectConnectDialog = ({ open, onClose, onConnect, server }) => {
         setConnecting(false);
         setAuthError(null);
         setHostError(null);
-    }, [open, defaultAuthType]);
+    }, [open, defaultAuthType, defaultPort, server?.config?.ip, server?.config?.port, server?.ip, server?.port]);
 
     useEffect(() => {
         if (!open) return;

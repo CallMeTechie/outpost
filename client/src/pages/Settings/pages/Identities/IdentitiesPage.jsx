@@ -68,7 +68,7 @@ export const IdentitiesPage = () => {
             }
         };
         fetchOrganizations();
-    }, []);
+    }, [loadIdentities]);
 
     const scopeOptions = useMemo(() => {
         const options = [

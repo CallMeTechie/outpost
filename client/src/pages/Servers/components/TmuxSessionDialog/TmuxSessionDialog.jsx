@@ -277,7 +277,7 @@ const TmuxSessionDialog = ({ isOpen, onClose, onSelect, onConnectRaw, entryId, i
         if (!openSession || state.status !== "ready" || openedSession) return;
         setNotice({ text: t('servers.tmuxDialog.sessionGone', { name: displayName(openSession) }), failed: true });
         setOpenSession(null);
-    }, [openSession, openedSession, state.status]);
+    }, [openSession, openedSession, state.status, t]);
 
     return (
         <DialogProvider open={isOpen} onClose={onClose}>

@@ -67,7 +67,7 @@ export const AuditTable = ({ logs, loading, pagination, onPageChange, getIconFor
                 ))}
             </div>
         );
-    }, [t]);
+    }, [t, formatSessionDuration]);
 
     const handleRowClick = useCallback((logId) => {
         setExpandedRow(prev => prev === logId ? null : logId);

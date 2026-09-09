@@ -25,7 +25,7 @@ export const MemberPermissionsDialog = ({ open, onClose, organizationId, member,
                 setInherited(res.inherited || []);
             })
             .catch(() => sendToast("Error", t("settings.permissions.loadError")));
-    }, [open, organizationId, member]);
+    }, [open, organizationId, member, sendToast, t]);
 
     const setOverride = (perm, value) => setOverrides((prev) => ({ ...prev, [perm]: value }));
 

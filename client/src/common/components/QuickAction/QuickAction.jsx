@@ -46,7 +46,7 @@ export const QuickAction = ({ isOpen, onClose }) => {
     }, [allItems, searchQuery]);
 
     useEffect(() => setSelectedIndex(0), [filteredItems]);
-    useEffect(() => { if (isOpen) { setIsVisible(true); setIsClosing(false); setSearchQuery(""); setSelectedIndex(0); setTimeout(() => inputRef.current?.focus(), 50); } else if (isVisible) setIsClosing(true); }, [isOpen]);
+    useEffect(() => { if (isOpen) { setIsVisible(true); setIsClosing(false); setSearchQuery(""); setSelectedIndex(0); setTimeout(() => inputRef.current?.focus(), 50); } else if (isVisible) setIsClosing(true); }, [isOpen, isVisible]);
 
     const handleSelectItem = useCallback(item => {
         if (item.type === "server") navigate(`/servers?connectId=${item.data.id}`);

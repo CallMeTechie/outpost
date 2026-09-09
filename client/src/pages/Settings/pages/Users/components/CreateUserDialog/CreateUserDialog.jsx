@@ -52,6 +52,9 @@ export const CreateUserDialog = ({open, onClose, loadUsers}) => {
         if (error) {
             setError("");
         }
+        // Deliberately keyed on the fields only: adding error would clear the message
+        // the submit handler just set.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [firstName, lastName, username, password]);
 
     const isDirty = firstName !== '' || lastName !== '' || username !== '' || password !== '';

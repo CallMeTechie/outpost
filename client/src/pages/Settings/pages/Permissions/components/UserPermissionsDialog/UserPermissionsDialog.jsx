@@ -30,7 +30,7 @@ export const UserPermissionsDialog = ({ open, onClose, accountId, groups = [], c
             setGroupIds(res.groupIds || []);
             setOverrides(res.overrides || {});
         }).catch(() => sendToast("Error", t("settings.permissions.loadError")));
-    }, [open, accountId]);
+    }, [open, accountId, sendToast, t]);
 
     const toggleGroup = (id) =>
         setGroupIds((prev) => (prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]));
