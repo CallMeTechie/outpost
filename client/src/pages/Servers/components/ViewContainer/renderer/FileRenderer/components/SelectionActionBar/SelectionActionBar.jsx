@@ -5,11 +5,9 @@ import { Download as IconDownload, Trash as IconTrash, X as IconX } from "lucide
 import { useTranslation } from "react-i18next";
 import { Button } from "@/common/components/Button/Button";
 
-export const SelectionActionBar = ({ selectedItems, onClearSelection, onDownload, onDelete, containerRef }) => {
+export const SelectionActionBar = ({ selectedItems, onClearSelection, onDownload, onDelete, portalTarget }) => {
     const { t } = useTranslation();
     const count = selectedItems.length;
-
-    const portalTarget = containerRef?.current?.closest('.file-manager');
 
     const label = useMemo(() => {
         if (count === 0) return "";

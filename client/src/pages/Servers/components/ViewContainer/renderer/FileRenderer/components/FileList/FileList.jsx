@@ -25,6 +25,7 @@ export const FileList = forwardRef(({
     capabilities = DEFAULT_CAPABILITIES,
     provider, source,
     isBookmarked, toggleBookmark, bookmarksAvailable,
+    portalTarget,
 }, ref) => {
     const { t } = useTranslation();
     const { showThumbnails, showHiddenFiles, confirmBeforeDelete, dragDropAction } = usePreferences();
@@ -164,6 +165,8 @@ export const FileList = forwardRef(({
         confirmBeforeDelete ? setMassDeleteDialogOpen(true) : executeMassDelete();
     }, [selectedItems, confirmBeforeDelete, executeMassDelete]);
 
+    const listVisible = !loading && !error && !(filteredItems.length === 0 && !creatingFolder && !creatingFile);
+
     const clearSelection = useCallback(() => setSelectedItems([]), []);
 
     const handleContextMenu = (event, item, fromDots = false) => {
@@ -220,7 +223,7 @@ export const FileList = forwardRef(({
                     <h3>{t("servers.fileManager.states.accessDenied")}</h3>
                     <p>{error}</p>
                 </div>
-            ) : filteredItems.length === 0 && !creatingFolder && !creatingFile ? (
+            ) : !listVisible ? (
                 <div className="empty-state" onContextMenu={handleEmptyContextMenu}>
                     <Icon icon={query ? IconFileSearch : IconFolder} />
                     <h3>{t(query ? "servers.fileManager.search.noResultsTitle" : "servers.fileManager.states.emptyFolder")}</h3>
@@ -297,7 +300,7 @@ export const FileList = forwardRef(({
                 </div>
             )}
 
-            <SelectionActionBar selectedItems={selectedItems} onClearSelection={clearSelection} onDownload={capabilities.content ? handleMassDownload : null} onDelete={handleMassDelete} containerRef={containerRef} />
+            <SelectionActionBar selectedItems={selectedItems} onClearSelection={clearSelection} onDownload={capabilities.content ? handleMassDownload : null} onDelete={handleMassDelete} portalTarget={listVisible ? portalTarget : null} />
 
             <ActionConfirmDialog open={bigFileDialogOpen} setOpen={setBigFileDialogOpen} onConfirm={() => setCurrentFile(`${path}/${selectedItem?.name}`)} text={t("servers.fileManager.contextMenu.bigFileConfirm", { size: Math.round(selectedItem?.size / 1024 / 1024) })} />
             <ActionConfirmDialog open={deleteDialogOpen} setOpen={setDeleteDialogOpen} onConfirm={handleDelete} text={t("servers.fileManager.contextMenu.deleteConfirm", { name: selectedItem?.name })} />

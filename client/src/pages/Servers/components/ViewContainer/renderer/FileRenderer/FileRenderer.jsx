@@ -117,6 +117,7 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
     const [restoredFrom, setRestoredFrom] = useState(null);
     const [transferState, dispatchTransfer] = useReducer(transferReducer, initialTransferState);
     const [bookmarks, setBookmarks] = useState([]);
+    const [fileManagerNode, setFileManagerNode] = useState(null);
 
     const directoryRef = useRef(directory);
     const skipNextPathSync = useRef(false);
@@ -755,7 +756,10 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                     <h2>{t("servers.fileManager.dropOverlay")}</h2>
                 </div>
             </div>
-            <div className="file-manager">
+            {/* setFileManagerNode itself, never an inline arrow: a fresh callback identity makes
+                React detach (null) and reattach the ref on every commit, and the state would
+                then alternate null/node forever. */}
+            <div className="file-manager" ref={setFileManagerNode}>
                 <ActionBar path={directory} updatePath={changeDirectory} createFile={() => fileListRef.current?.startCreateFile()}
                     createFolder={() => fileListRef.current?.startCreateFolder()} uploadFile={uploadFile} uploadFolder={uploadFolder}
                     refreshFiles={() => listFiles(true)} goBack={goBack} goForward={goForward} historyIndex={historyIndex}
@@ -780,7 +784,8 @@ export const FileRenderer = ({ session, disconnectFromServer, setOpenFileEditors
                     capabilities={capabilities} provider={provider} source={source}
                     searchQuery={searchQuery} onSearchResults={setSearchResultCount}
                     isBookmarked={isBookmarked} toggleBookmark={toggleBookmark} bookmarksAvailable={bookmarksAvailable}
-                    onOpenTerminal={onOpenTerminal} onPropertiesMessage={(handler) => { propertiesHandlerRef.current = handler; }} />
+                    onOpenTerminal={onOpenTerminal} onPropertiesMessage={(handler) => { propertiesHandlerRef.current = handler; }}
+                    portalTarget={fileManagerNode} />
             </div>
             <TransferList transfers={transferState.transfers} onCancel={cancelTransfer} onDismiss={dismissTransfer} />
             <ConflictDialog conflict={transferState.conflicts[0]} onResolve={resolveConflict}
