@@ -160,9 +160,9 @@ fi
     };
 
     const isDirty = () => name !== initialValues.current.name ||
-                     description !== initialValues.current.description ||
-                     content !== initialValues.current.content ||
-                     !arraysEqual(osFilter, initialValues.current.osFilter);
+                           description !== initialValues.current.description ||
+                           content !== initialValues.current.content ||
+                           !arraysEqual(osFilter, initialValues.current.osFilter);
 
     return (
         <DialogProvider open={open} onClose={handleClose} isDirty={isDirty}>

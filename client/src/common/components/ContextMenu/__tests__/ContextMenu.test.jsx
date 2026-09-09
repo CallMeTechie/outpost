@@ -14,7 +14,7 @@ const Harness = () => {
             <button onClick={contextMenu.toggle}>Open</button>
             <button>Outside</button>
             {/* The menu stays mounted until the closing transition ends
-                (ContextMenu.jsx:44-49, wired at :134 as onTransitionEnd), which jsdom
+                (handleAnimationEnd in ContextMenu.jsx, wired as onTransitionEnd), which jsdom
                 never fires, so isOpen is the observable, not the DOM. */}
             <span data-testid="state">{contextMenu.isOpen ? "open" : "closed"}</span>
             <ContextMenu isOpen={contextMenu.isOpen} position={contextMenu.position}
@@ -35,7 +35,7 @@ test("a mousedown on the trigger is exempt from the outside handler", async () =
     expect(state()).toBe("open");
 
     // fireEvent, not user.click: a click would also run toggle, and only the
-    // document mousedown handler (ContextMenu.jsx:64-71) reads `trigger`.
+    // document mousedown handler (handleClickOutside in ContextMenu.jsx) reads `trigger`.
     fireEvent.mouseDown(trigger);
     expect(state()).toBe("open");
 

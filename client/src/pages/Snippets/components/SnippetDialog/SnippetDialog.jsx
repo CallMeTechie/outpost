@@ -101,9 +101,9 @@ export const SnippetDialog = ({ open, onClose, editSnippetId, selectedOrganizati
     };
 
     const isDirty = () => name !== initialValues.current.name ||
-                     command !== initialValues.current.command ||
-                     description !== initialValues.current.description ||
-                     !arraysEqual(osFilter, initialValues.current.osFilter);
+                           command !== initialValues.current.command ||
+                           description !== initialValues.current.description ||
+                           !arraysEqual(osFilter, initialValues.current.osFilter);
 
     return (
         <DialogProvider open={open} onClose={onClose} isDirty={isDirty}>

@@ -306,10 +306,10 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
     }, [open, handleSubmit, tabs.length]);
 
     const isDirty = () => name !== initialValues.current.name ||
-                     icon !== initialValues.current.icon ||
-                     JSON.stringify(config) !== initialValues.current.config ||
-                     monitoringEnabled !== initialValues.current.monitoringEnabled ||
-                     Object.keys(identityUpdates).length > 0;
+                           icon !== initialValues.current.icon ||
+                           JSON.stringify(config) !== initialValues.current.config ||
+                           monitoringEnabled !== initialValues.current.monitoringEnabled ||
+                           Object.keys(identityUpdates).length > 0;
 
     const tabSwitcherTabs = useMemo(() => tabs.map((tab, index) => ({
         key: index.toString(),

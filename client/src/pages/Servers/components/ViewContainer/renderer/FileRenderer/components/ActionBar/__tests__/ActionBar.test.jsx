@@ -2,6 +2,8 @@ import { expect, test, vi } from "vitest";
 import { renderWithProviders } from "@/test/renderWithProviders.jsx";
 import { ActionBar } from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/components/ActionBar/ActionBar.jsx";
 
+// --- ActionBar ---
+
 const breadcrumbs = (container) =>
     [...container.querySelectorAll(".breadcrumb-container .path-part")].map((el) => el.textContent);
 
@@ -16,8 +18,8 @@ test("a short path shows every part and no ellipsis", () => {
     expect(breadcrumbs(container)).toEqual(["home", "user"]);
 });
 
-test("a long path renders the parts the width measurement yields", () => {
+test("a long path is shortened to first and last once the width is measured", () => {
     const { container } = renderBar("/home/user/projects/outpost/client/src");
 
-    expect(breadcrumbs(container)).toEqual(["home", "...", "user", "projects", "outpost", "client", "src"]);
+    expect(breadcrumbs(container)).toEqual(["home", "...", "src"]);
 });

@@ -129,11 +129,11 @@ export const IdentityDialog = ({ open, onClose, identity, organizationId }) => {
     };
 
     const isDirty = () => name !== initialValues.current.name ||
-                     username !== initialValues.current.username ||
-                     authType !== initialValues.current.authType ||
-                     password !== initialValues.current.password ||
-                     sshKey !== initialValues.current.sshKey ||
-                     passphrase !== initialValues.current.passphrase;
+                           username !== initialValues.current.username ||
+                           authType !== initialValues.current.authType ||
+                           password !== initialValues.current.password ||
+                           sshKey !== initialValues.current.sshKey ||
+                           passphrase !== initialValues.current.passphrase;
 
     return (
         <DialogProvider open={open} onClose={onClose} isDirty={isDirty}>

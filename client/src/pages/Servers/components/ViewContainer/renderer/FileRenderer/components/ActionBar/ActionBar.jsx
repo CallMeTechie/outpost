@@ -69,7 +69,7 @@ export const ActionBar = ({
     const hoverTimerRef = useRef(null);
 
     const [dropTarget, setDropTarget] = useState(null);
-    const [containerWidth, setContainerWidth] = useState(0);
+    const [containerWidth, setContainerWidth] = useState(null);
 
     const getPathArray = () => path.split("/").filter(Boolean);
 
@@ -89,7 +89,7 @@ export const ActionBar = ({
         const pathArray = getPathArray();
         const total = pathArray.length;
 
-        if (total <= 2 || !containerWidth) {
+        if (total <= 2 || containerWidth === null) {
             return { parts: pathArray, showEllipsis: total > 2, ellipsisIndex: 1, originalLength: total };
         }
 
@@ -116,7 +116,7 @@ export const ActionBar = ({
     // !isEditing branch, so it is a fresh node after every trip through the path input.
     useLayoutEffect(() => {
         if (isEditing) return;
-        setContainerWidth(breadcrumbRef.current?.offsetWidth ?? 0);
+        setContainerWidth(breadcrumbRef.current?.offsetWidth ?? null);
     }, [isEditing, path, searchOpen, capabilities.content, capabilities.nativeFs, showFavorites]);
 
     useEffect(() => {

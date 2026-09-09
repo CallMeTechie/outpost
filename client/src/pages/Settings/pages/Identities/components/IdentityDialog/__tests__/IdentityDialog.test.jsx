@@ -60,7 +60,7 @@ test("taking the input back makes the dialog clean again", async () => {
     await user.click(screen.getByRole("button", { name: "Close dialog" }));
 
     // "Cancel" appears twice while the confirm is up - once in the dialog's own
-    // footer (IdentityDialog.jsx:209) and once in the confirm (Dialog.jsx:119),
+    // footer (the DialogCancelButton) and once in the confirm overlay (Dialog.jsx),
     // which are siblings and therefore both in the document. An unscoped query
     // throws "Found multiple elements".
     const confirm = screen.getByText("Unsaved Changes").closest(".dialog-confirm");

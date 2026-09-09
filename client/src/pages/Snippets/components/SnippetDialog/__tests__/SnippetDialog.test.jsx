@@ -69,7 +69,7 @@ test("the footer cancel does not submit the form", async () => {
     const user = userEvent.setup();
     open();
 
-    // Both fields: handleSubmit (SnippetDialog.jsx:62-65) returns before any
+    // Both fields: the guard clause in SnippetDialog's handleSubmit returns before any
     // request while name or command is empty, so a name-only case would stay
     // green even if the click did submit.
     await user.type(screen.getByPlaceholderText("Snippet name"), "x");

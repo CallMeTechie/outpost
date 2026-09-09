@@ -32,6 +32,8 @@ export const DialogProvider = ({ disableClosing, open, children, onClose, isDirt
         if (disableClosing) return;
 
         const latest = isDirtyRef.current;
+        // Called, not read: a dialog hands in an arrow so the dirty flag is computed at
+        // close time, never during a render that a compiler may cache.
         const dirty = typeof latest === 'function' ? latest() : latest;
         if (dirty) {
             setShowConfirm(true);
