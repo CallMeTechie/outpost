@@ -110,8 +110,8 @@ const GuacamoleRenderer = ({
     useEffect(() => {
         if (registerGuacamoleRef && clientRef.current) registerGuacamoleRef(session.id, { client: clientRef.current });
         return () => registerGuacamoleRef?.(session.id, null);
-    // ready mirrors clientRef: set at :535 with the first blob, cleared at :688
-    // next to clientRef.current = null. It is the stable stand-in for the ref.
+    // ready mirrors clientRef: set in tunnel.oninstruction with the first blob,
+    // cleared next to clientRef.current = null in the connect cleanup.
     }, [session.id, registerGuacamoleRef, ready]);
 
     const applyDisplayStyles = (el, x, y, scale, width, height) => Object.assign(el.style, {
