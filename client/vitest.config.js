@@ -16,5 +16,6 @@ export default mergeConfig(viteConfig, defineConfig({
         // be no-undef - an error in this project, not a warning.
         globals: false,
         include: ["src/**/*.test.jsx"],
+        setupFiles: ["./src/test/setup.js"],
     },
 }));
