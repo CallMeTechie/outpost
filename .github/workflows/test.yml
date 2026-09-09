@@ -5,9 +5,12 @@ on:
     branches: ["**"]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
-    name: "Server tests"
+    name: "Tests"
     runs-on: ubuntu-latest
 
     steps:
@@ -19,8 +22,15 @@ jobs:
         with:
           node-version: 22
           cache: yarn
+          cache-dependency-path: |
+            yarn.lock
+            client/yarn.lock
 
       - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Install client dependencies
+        working-directory: client
         run: yarn install --frozen-lockfile
 
       - name: Install FlatBuffers compiler
