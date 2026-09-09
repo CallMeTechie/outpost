@@ -1,4 +1,4 @@
-import { DialogProvider } from "@/common/components/Dialog";
+import { DialogProvider, DialogCancelButton } from "@/common/components/Dialog";
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { patchRequest, putRequest } from "@/common/utils/RequestUtil.js";
@@ -128,17 +128,12 @@ export const IdentityDialog = ({ open, onClose, identity, organizationId }) => {
         }
     };
 
-    const handleClose = (event) => {
-        if (event) event.preventDefault();
-        onClose();
-    };
-
-    const isDirty = name !== initialValues.current.name || 
-                     username !== initialValues.current.username || 
-                     authType !== initialValues.current.authType ||
-                     password !== initialValues.current.password || 
-                     sshKey !== initialValues.current.sshKey || 
-                     passphrase !== initialValues.current.passphrase;
+    const isDirty = () => name !== initialValues.current.name ||
+                           username !== initialValues.current.username ||
+                           authType !== initialValues.current.authType ||
+                           password !== initialValues.current.password ||
+                           sshKey !== initialValues.current.sshKey ||
+                           passphrase !== initialValues.current.passphrase;
 
     return (
         <DialogProvider open={open} onClose={onClose} isDirty={isDirty}>
@@ -206,7 +201,7 @@ export const IdentityDialog = ({ open, onClose, identity, organizationId }) => {
                     </div>
 
                     <div className="dialog-actions">
-                        <Button text={t('settings.identities.dialog.actions.cancel')} onClick={handleClose} type="secondary" buttonType="button" />
+                        <DialogCancelButton text={t('settings.identities.dialog.actions.cancel')} />
                         <Button text={isEditing ? t('settings.identities.dialog.actions.update') : t('settings.identities.dialog.actions.create')} buttonType="submit"
                                 disabled={isLoading} />
                     </div>

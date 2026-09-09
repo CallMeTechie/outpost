@@ -318,9 +318,14 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
         };
     }, [openSuggestionPrompt, editSuggestionQuery, submitSuggestionQuery, acceptSuggestion, cycleSuggestion, hideSuggestion]);
 
+    const [hasSelection, setHasSelection] = useState(false);
+
     const handleContextMenu = (e) => {
         e.preventDefault();
         e.stopPropagation();
+        // Captured here, not read during render: the menu only opens through this
+        // handler, so the flag cannot be stale by the time the item is drawn.
+        setHasSelection(!!readSelection());
         contextMenu.open(e, { x: e.clientX, y: e.clientY });
     };
 
@@ -1025,7 +1030,7 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
                         icon={IconCopy}
                         label={t('servers.fileManager.contextMenu.copy')}
                         onClick={handleCopy}
-                        disabled={!readSelection()}
+                        disabled={!hasSelection}
                     />
                     <ContextMenuItem
                         icon={IconClipboardPaste}

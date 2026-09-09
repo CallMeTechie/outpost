@@ -1,11 +1,12 @@
-import { createContext, useCallback, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import Icon from "@/common/components/Icon";
 import { X as IconX } from "lucide-react";
+import Button from "@/common/components/Button";
 import "./styles.sass";
 
-export const DialogContext = createContext({});
+export const DialogContext = createContext(() => {});
 
 export const DialogProvider = ({ disableClosing, open, children, onClose, isDirty }) => {
     const { t } = useTranslation();
@@ -22,16 +23,24 @@ export const DialogProvider = ({ disableClosing, open, children, onClose, isDirt
         setIsClosing(true);
     }, []);
 
+    // Held in a ref so tryClose stays stable: the dialogs hand in an inline arrow,
+    // and the two document listeners re-subscribe on every identity change.
+    const isDirtyRef = useRef(isDirty);
+    useEffect(() => { isDirtyRef.current = isDirty; }, [isDirty]);
+
     const tryClose = useCallback(() => {
         if (disableClosing) return;
-        
-        const dirty = typeof isDirty === 'function' ? isDirty() : isDirty;
+
+        const latest = isDirtyRef.current;
+        // Called, not read: a dialog hands in an arrow so the dirty flag is computed at
+        // close time, never during a render that a compiler may cache.
+        const dirty = typeof latest === 'function' ? latest() : latest;
         if (dirty) {
             setShowConfirm(true);
             return;
         }
         closeInner();
-    }, [disableClosing, isDirty, closeInner]);
+    }, [disableClosing, closeInner]);
 
     const handleConfirmClose = useCallback(() => {
         closeInner();
@@ -130,8 +139,16 @@ export const DialogProvider = ({ disableClosing, open, children, onClose, isDirt
     ) : null;
 
     return (
-        <DialogContext.Provider value={closeInner}>
+        <DialogContext.Provider value={tryClose}>
             {createPortal(dialogContent, document.body)}
         </DialogContext.Provider>
     );
+};
+
+// A child component, not a hook in the dialogs: useContext resolves at the
+// caller's position, and the dialogs render this provider themselves.
+export const DialogCancelButton = ({ text, icon, disabled }) => {
+    const tryClose = useContext(DialogContext);
+    return <Button text={text} icon={icon} disabled={disabled} onClick={tryClose}
+                   type="secondary" buttonType="button" />;
 };

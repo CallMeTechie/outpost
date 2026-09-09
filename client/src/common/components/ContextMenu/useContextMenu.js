@@ -49,6 +49,6 @@ export const useContextMenu = () => {
         open,
         close,
         toggle,
-        triggerRef: triggerRef.current,
+        triggerRef,
     };
 };

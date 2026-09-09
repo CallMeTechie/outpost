@@ -60,7 +60,7 @@ test("taking the input back makes the dialog clean again", async () => {
     await user.click(screen.getByRole("button", { name: "Close dialog" }));
 
     // "Cancel" appears twice while the confirm is up - once in the dialog's own
-    // footer (IdentityDialog.jsx:209) and once in the confirm (Dialog.jsx:119),
+    // footer (the DialogCancelButton) and once in the confirm overlay (Dialog.jsx),
     // which are siblings and therefore both in the document. An unscoped query
     // throws "Found multiple elements".
     const confirm = screen.getByText("Unsaved Changes").closest(".dialog-confirm");
@@ -70,6 +70,16 @@ test("taking the input back makes the dialog clean again", async () => {
     await user.click(screen.getByRole("button", { name: "Close dialog" }));
 
     expect(screen.queryByText("Unsaved Changes")).not.toBeInTheDocument();
+});
+
+test("the footer cancel asks about unsaved changes", async () => {
+    const user = userEvent.setup();
+    open();
+
+    await user.type(screen.getByPlaceholderText(NAME_PLACEHOLDER), "ops");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.getByText("Unsaved Changes")).toBeInTheDocument();
 });
 
 test("submitting a blank name shows the error toast and sends no request", async () => {

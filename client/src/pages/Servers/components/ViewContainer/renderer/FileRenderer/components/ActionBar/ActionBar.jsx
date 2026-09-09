@@ -1,7 +1,7 @@
 import "./styles.sass";
 import Icon from "@/common/components/Icon";
 import { ChevronLeft as IconChevronLeft, ChevronRight as IconChevronRight, ChevronUp as IconChevronUp, FileUp as IconFileUp, FolderUp as IconFolderUp, FilePlus as IconFilePlus, FolderPlus as IconFolderPlus, List as IconList, Rows3 as IconRows3, LayoutGrid as IconLayoutGrid, Scissors as IconScissors, Copy as IconCopy, Search as IconSearch, X as IconX, RefreshCw as IconRefreshCw, Star as IconStar } from "lucide-react";
-import { Fragment, useState, useRef, useEffect, useCallback } from "react";
+import { Fragment, useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { ContextMenu, ContextMenuItem, useContextMenu } from "@/common/components/ContextMenu";
 import { useTranslation } from "react-i18next";
 import { usePreferences } from "@/common/contexts/PreferencesContext.jsx";
@@ -69,6 +69,7 @@ export const ActionBar = ({
     const hoverTimerRef = useRef(null);
 
     const [dropTarget, setDropTarget] = useState(null);
+    const [containerWidth, setContainerWidth] = useState(null);
 
     const getPathArray = () => path.split("/").filter(Boolean);
 
@@ -88,11 +89,10 @@ export const ActionBar = ({
         const pathArray = getPathArray();
         const total = pathArray.length;
 
-        if (total <= 2 || !breadcrumbRef.current) {
+        if (total <= 2 || containerWidth === null) {
             return { parts: pathArray, showEllipsis: total > 2, ellipsisIndex: 1, originalLength: total };
         }
 
-        const containerWidth = breadcrumbRef.current.offsetWidth;
         const avgWidth = 80;
         const ellipsisWidth = 50;
         const available = containerWidth - 20 - ellipsisWidth;
@@ -111,6 +111,13 @@ export const ActionBar = ({
             originalLength: total,
         };
     };
+
+    // Keyed on isEditing, not on []: the ref'd container only exists in the
+    // !isEditing branch, so it is a fresh node after every trip through the path input.
+    useLayoutEffect(() => {
+        if (isEditing) return;
+        setContainerWidth(breadcrumbRef.current?.offsetWidth ?? null);
+    }, [isEditing, path, searchOpen, capabilities.content, capabilities.nativeFs, showFavorites]);
 
     useEffect(() => {
         setEditPath(path);
