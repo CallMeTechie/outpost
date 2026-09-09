@@ -66,7 +66,7 @@ export const ContextMenu = ({
 
         const handleClickOutside = (e) => {
             if (menuRef.current && !menuRef.current.contains(e.target) && 
-                !(trigger?.contains?.(e.target))) {
+                !(trigger?.current?.contains?.(e.target))) {
                 onClose();
             }
         };
