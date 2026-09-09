@@ -305,7 +305,7 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
         };
     }, [open, handleSubmit, tabs.length]);
 
-    const isDirty = name !== initialValues.current.name || 
+    const isDirty = () => name !== initialValues.current.name ||
                      icon !== initialValues.current.icon ||
                      JSON.stringify(config) !== initialValues.current.config ||
                      monitoringEnabled !== initialValues.current.monitoringEnabled ||

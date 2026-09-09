@@ -105,8 +105,8 @@ export const SnippetDialog = ({ open, onClose, editSnippetId, selectedOrganizati
         return a.every((val, i) => val === b[i]);
     };
 
-    const isDirty = name !== initialValues.current.name || 
-                     command !== initialValues.current.command || 
+    const isDirty = () => name !== initialValues.current.name ||
+                     command !== initialValues.current.command ||
                      description !== initialValues.current.description ||
                      !arraysEqual(osFilter, initialValues.current.osFilter);
 

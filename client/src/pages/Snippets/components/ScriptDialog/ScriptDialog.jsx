@@ -159,8 +159,8 @@ fi
         return a.every((val, i) => val === b[i]);
     };
 
-    const isDirty = name !== initialValues.current.name || 
-                     description !== initialValues.current.description || 
+    const isDirty = () => name !== initialValues.current.name ||
+                     description !== initialValues.current.description ||
                      content !== initialValues.current.content ||
                      !arraysEqual(osFilter, initialValues.current.osFilter);
 

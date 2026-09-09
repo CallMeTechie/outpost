@@ -100,10 +100,10 @@ export const ProxmoxDialog = ({ open, onClose, currentFolderId, currentOrganizat
 
     const { loadServers } = useContext(ServerContext);
 
-    const isDirty = name !== initialValues.current.name || 
-                     ip !== initialValues.current.ip || 
+    const isDirty = () => name !== initialValues.current.name ||
+                     ip !== initialValues.current.ip ||
                      port !== initialValues.current.port ||
-                     username !== initialValues.current.username || 
+                     username !== initialValues.current.username ||
                      password !== initialValues.current.password ||
                      monitoringEnabled !== initialValues.current.monitoringEnabled;
 
