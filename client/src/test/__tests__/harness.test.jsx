@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
+import testI18n from "../i18n.js";
 
 // --- runner ---
 
@@ -59,4 +60,27 @@ test("jest-dom matchers are available on the imported expect", () => {
     expect(probe).toBeInTheDocument();
     probe.remove();
     expect(probe).not.toBeInTheDocument();
+});
+
+// --- i18n test instance ---
+
+test("translates a real key from the shipped en.json", () => {
+    // The real bundle, not a hand-kept test bundle: a missing key has to make the
+    // test red, and a test bundle would switch exactly that check off.
+    expect(testI18n.t("common.actions.cancel")).toBe("Cancel");
+    expect(testI18n.t("settings.identities.dialog.messages.nameRequired"))
+        .toBe("Identity name is required");
+});
+
+test("an invented key throws instead of rendering its own name", () => {
+    expect(() => testI18n.t("common.actions.thisKeyDoesNotExist"))
+        .toThrow(/missing key/);
+});
+
+test("a key that names a subtree throws as well", () => {
+    // The likelier of the two mix-ups: shortening a key path lands on an
+    // intermediate node. i18next answers that with a different placeholder
+    // string, not with the missing-key path, so parseMissingKeyHandler alone
+    // would let it pass.
+    expect(() => testI18n.t("common")).toThrow(/subtree/);
 });
