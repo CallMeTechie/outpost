@@ -784,6 +784,9 @@ export const ViewContainer = ({
             <div ref={layoutRef}
                  className={`view-layouter ${layoutMode} ${isResizing ? "resizing" : ""} ${isResizing && resizingDirection ? `resizing-${resizingDirection}` : ""}`}
                  style={{ position: "relative", width: "100%", height: "calc(100% - var(--key-bar-height))" }}>
+                {/* eslint-disable-next-line react-hooks/refs -- the only ref access in
+                    renderAllSessions is the callback ref at :721, which React invokes during
+                    commit, not during render */}
                 {renderAllSessions()}
                 {layoutMode !== "single" && renderFlexLayout()}
             </div>
