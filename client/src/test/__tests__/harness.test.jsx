@@ -1,6 +1,10 @@
 import { expect, test } from "vitest";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import testI18n from "../i18n.js";
+import { createContext, useContext } from "react";
+import { screen } from "@testing-library/react";
+import { useTranslation } from "react-i18next";
+import { renderWithProviders } from "../renderWithProviders.jsx";
 
 // --- runner ---
 
@@ -83,4 +87,31 @@ test("a key that names a subtree throws as well", () => {
     // string, not with the missing-key path, so parseMissingKeyHandler alone
     // would let it pass.
     expect(() => testI18n.t("common")).toThrow(/subtree/);
+});
+
+// --- renderWithProviders ---
+
+test("wraps in i18n without being asked, so t() yields text and not keys", () => {
+    const Probe = () => {
+        const { t } = useTranslation();
+        return <span>{t("common.actions.cancel")}</span>;
+    };
+
+    renderWithProviders(<Probe />);
+    expect(screen.getByText("Cancel")).toBeInTheDocument();
+});
+
+test("nests the named providers outermost first", () => {
+    // The order matters and has to be observable, otherwise a later change could
+    // reverse it without anything noticing.
+    const Trace = createContext("");
+    const Outer = ({ children }) => <Trace.Provider value="outer">{children}</Trace.Provider>;
+    const Inner = ({ children }) => {
+        const seen = useContext(Trace);
+        return <Trace.Provider value={`${seen}>inner`}>{children}</Trace.Provider>;
+    };
+    const Probe = () => <span>{useContext(Trace)}</span>;
+
+    renderWithProviders(<Probe />, { providers: [Outer, Inner] });
+    expect(screen.getByText("outer>inner")).toBeInTheDocument();
 });
