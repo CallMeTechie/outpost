@@ -139,7 +139,9 @@ export const ActionBar = ({
             inputRef.current.focus();
             inputRef.current.setSelectionRange(editPath.length, editPath.length);
         }
-    }, [isEditing, editPath.length]);
+        // Once on entering edit mode, not on every keystroke.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isEditing]);
 
     useEffect(() => {
         if (!isEditing) return;

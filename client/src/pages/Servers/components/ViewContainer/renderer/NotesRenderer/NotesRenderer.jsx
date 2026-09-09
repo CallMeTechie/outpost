@@ -56,7 +56,9 @@ export const NotesRenderer = ({ session }) => {
         }).catch(() => {});
 
         return () => { cancelled = true; };
-    }, [entryId, showInList]);
+        // Once per entry load.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [entryId]);
 
     const persist = useCallback(async (initialPatch) => {
         // Draining the queued patch re-enters this routine. A hoisted

@@ -98,7 +98,10 @@ export const DialogProvider = ({ disableClosing, open, children, onClose, isDirt
         } else if (!isClosing) {
             closeInner();
         }
-    }, [open, closeInner, isClosing]);
+        // Closing runs through closeInner, which sets isClosing itself - listing it here
+        // would let the open branch cancel the very close it just started.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open]);
 
     const handleAnimationEnd = () => {
         if (isClosing) {

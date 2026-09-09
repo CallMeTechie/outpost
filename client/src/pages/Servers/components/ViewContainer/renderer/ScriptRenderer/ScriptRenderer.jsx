@@ -33,9 +33,13 @@ export const ScriptRenderer = ({ session, disconnectFromServer, updateProgress, 
     const fitAddonRef = useRef(null);
     const isAnyDialogOpenRef = useRef(false);
     const handlersRef = useRef({});
+    const tRef = useRef(null);
 
     const { sendToast } = useToast();
     const { t } = useTranslation();
+    useEffect(() => {
+        tRef.current = t;
+    });
     const { sessionToken } = useContext(UserContext);
     const [connectionError, setConnectionError] = useState(() => getSessionError?.(session.id) || null);
     const { theme, getCurrentTheme, selectedFont, fontSize, cursorStyle, cursorBlink, selectedTheme } = usePreferences();
@@ -267,10 +271,10 @@ export const ScriptRenderer = ({ session, disconnectFromServer, updateProgress, 
             if (isCleaningUp) return;
 
             if (event.code >= 4000 && event.reason) {
-                reportError(mapConnectionError(event.reason, t));
+                reportError(mapConnectionError(event.reason, tRef.current));
                 setState(prev => ({ ...prev, failedStep: prev.currentStep, isCompleted: true }));
             } else if (event.code !== 1000 && event.code !== 1005) {
-                reportError(t("common.errors.connection.scriptClosedUnexpectedly"));
+                reportError(tRef.current("common.errors.connection.scriptClosedUnexpectedly"));
                 setState(prev => ({ ...prev, failedStep: prev.currentStep, isCompleted: true }));
             } else {
                 setState(prev => ({ ...prev, isCompleted: true }));
@@ -280,7 +284,7 @@ export const ScriptRenderer = ({ session, disconnectFromServer, updateProgress, 
         ws.onerror = (error) => {
             console.error("WebSocket error:", error);
             if (!isCleaningUp) {
-                reportError(t("common.errors.connection.scriptError"));
+                reportError(tRef.current("common.errors.connection.scriptError"));
                 setState(prev => ({ ...prev, failedStep: prev.currentStep }));
             }
         };
@@ -320,7 +324,9 @@ export const ScriptRenderer = ({ session, disconnectFromServer, updateProgress, 
             wsRef.current = null;
             fitAddonRef.current = null;
         };
-    }, [sessionToken, selectedFont, fontSize, cursorStyle, cursorBlink, selectedTheme, session.id, getCurrentTheme, theme, getSessionError, markSessionErrored, t]);
+        // t is read via tRef, not listed here: the cleanup below closes the socket and
+        // disposes the terminal, so a language change must not tear down the running session.
+    }, [sessionToken, selectedFont, fontSize, cursorStyle, cursorBlink, selectedTheme, session.id, getCurrentTheme, theme, getSessionError, markSessionErrored]);
 
     const sendInput = useCallback((value) => {
         if (dialogs.inputPrompt) {

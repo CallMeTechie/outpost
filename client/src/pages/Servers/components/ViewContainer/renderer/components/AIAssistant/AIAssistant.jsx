@@ -136,6 +136,10 @@ export const AIAssistant = ({ session, onClose }) => {
     const wsRef = useRef(null);
     const messagesRef = useRef(null);
     const inputRef = useRef(null);
+    const tRef = useRef(t);
+    useEffect(() => {
+        tRef.current = t;
+    });
 
     const appendAssistant = (delta) => {
         setMessages((prev) => {
@@ -213,7 +217,7 @@ export const AIAssistant = ({ session, onClose }) => {
                         break;
                     case "step-limit": stopStreaming(); setNeedsContinue(true); break;
                     case "compacted":
-                        setMessages((prev) => [...prev, { role: "system", text: t("servers.aiAssistant.compacted") }]);
+                        setMessages((prev) => [...prev, { role: "system", text: tRef.current("servers.aiAssistant.compacted") }]);
                         break;
                     case "done": stopStreaming(); setRunning(false); break;
                     case "aborted": stopStreaming(); finalizeRunningTools(); setRunning(false); setNeedsContinue(false); break;
@@ -233,17 +237,17 @@ export const AIAssistant = ({ session, onClose }) => {
                 finalizeRunningTools();
 
                 if (event.code >= 4000) {
-                    setConnectionError(event.reason || t("servers.aiAssistant.connectionError"));
+                    setConnectionError(event.reason || tRef.current("servers.aiAssistant.connectionError"));
                     return;
                 }
                 if (event.code === 1000 || event.code === 1005) return;
 
                 attempts += 1;
                 if (attempts <= 5) {
-                    setConnectionError(t("servers.aiAssistant.reconnecting"));
+                    setConnectionError(tRef.current("servers.aiAssistant.reconnecting"));
                     retryTimer = setTimeout(connect, Math.min(1000 * 2 ** attempts, 10000));
                 } else {
-                    setConnectionError(t("servers.aiAssistant.connectionError"));
+                    setConnectionError(tRef.current("servers.aiAssistant.connectionError"));
                 }
             };
             ws.onerror = () => {
@@ -265,7 +269,9 @@ export const AIAssistant = ({ session, onClose }) => {
                 ws.close();
             }
         };
-    }, [sessionToken, session.id, t, upsertTool]);
+        // t is read via tRef, not listed here: this effect starts a fresh conversationId and
+        // its cleanup sends {type:"close"} - a language change must not abort the running turn.
+    }, [sessionToken, session.id, upsertTool]);
 
     const stickToBottom = useRef(true);
     const onScroll = () => {
