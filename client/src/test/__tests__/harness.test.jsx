@@ -5,6 +5,7 @@ import { createContext, useContext } from "react";
 import { screen } from "@testing-library/react";
 import { useTranslation } from "react-i18next";
 import { renderWithProviders } from "../renderWithProviders.jsx";
+import { createRequestDouble } from "../requestDouble.js";
 
 // --- runner ---
 
@@ -114,4 +115,61 @@ test("nests the named providers outermost first", () => {
 
     renderWithProviders(<Probe />, { providers: [Outer, Inner] });
     expect(screen.getByText("outer>inner")).toBeInTheDocument();
+});
+
+// --- requestDouble ---
+
+test("a request with no stubbed answer throws instead of resolving undefined", async () => {
+    // A silent undefined would quietly send a test down the component's "the
+    // server sent nothing" branch, and the test would look green while proving
+    // the wrong thing.
+    const double = createRequestDouble();
+    const api = double.asModule();
+
+    await expect(api.getRequest("identities")).rejects.toThrow(/no answer stubbed/);
+});
+
+test("a stubbed answer comes back and the call is recorded", async () => {
+    const double = createRequestDouble();
+    const api = double.asModule();
+    double.stub("patchRequest", "identities/1", { id: 1, name: "renamed" });
+
+    await expect(api.patchRequest("identities/1", { name: "renamed" }))
+        .resolves.toEqual({ id: 1, name: "renamed" });
+    expect(double.calls).toEqual([
+        { method: "patchRequest", path: "identities/1", body: { name: "renamed" } },
+    ]);
+});
+
+test("an Error as the stubbed answer is thrown, so failure paths can be driven", async () => {
+    const double = createRequestDouble();
+    const api = double.asModule();
+    double.stub("postRequest", "identities", Object.assign(new Error("nope"), { code: 400 }));
+
+    await expect(api.postRequest("identities", {})).rejects.toThrow("nope");
+});
+
+test("a path that names an Object.prototype member is still unstubbed", async () => {
+    // Cannot fail while the store is a Map: Map.has does an exact lookup and never
+    // walks a prototype chain, whatever the key looks like. The case stays as the
+    // tripwire for anyone who later "simplifies" the store to an object literal -
+    // ("__proto__" in {}) is true, and has() would start lying about paths nobody
+    // stubbed. The composite key would mask that for these two paths, which is
+    // exactly why the guarantee must not be pinned on it.
+    const double = createRequestDouble();
+    const api = double.asModule();
+
+    await expect(api.getRequest("__proto__")).rejects.toThrow(/no answer stubbed/);
+    await expect(api.getRequest("constructor")).rejects.toThrow(/no answer stubbed/);
+});
+
+test("reset clears both the answers and the recorded calls", async () => {
+    const double = createRequestDouble();
+    const api = double.asModule();
+    double.stub("getRequest", "identities", []);
+    await api.getRequest("identities");
+
+    double.reset();
+    expect(double.calls).toEqual([]);
+    await expect(api.getRequest("identities")).rejects.toThrow(/no answer stubbed/);
 });
