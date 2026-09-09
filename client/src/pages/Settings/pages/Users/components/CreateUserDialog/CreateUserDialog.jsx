@@ -52,7 +52,7 @@ export const CreateUserDialog = ({open, onClose, loadUsers}) => {
         if (error) {
             setError("");
         }
-    }, [firstName, lastName, username, password]);
+    }, [firstName, lastName, username, password, error]);
 
     const isDirty = firstName !== '' || lastName !== '' || username !== '' || password !== '';
 

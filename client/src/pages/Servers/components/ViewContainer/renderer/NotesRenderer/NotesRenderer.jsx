@@ -56,7 +56,7 @@ export const NotesRenderer = ({ session }) => {
         }).catch(() => {});
 
         return () => { cancelled = true; };
-    }, [entryId]);
+    }, [entryId, showInList]);
 
     const persist = useCallback(async (initialPatch) => {
         // Draining the queued patch re-enters this routine. A hoisted
@@ -144,7 +144,7 @@ export const NotesRenderer = ({ session }) => {
         }
         const latest = valueRef.current;
         if (latest !== lastSavedRef.current.notes) persist({ notes: latest });
-    }, []);
+    }, [persist]);
 
     const handleChange = (e) => {
         const next = e.target.value;

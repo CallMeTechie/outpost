@@ -98,7 +98,7 @@ export const DialogProvider = ({ disableClosing, open, children, onClose, isDirt
         } else if (!isClosing) {
             closeInner();
         }
-    }, [open]);
+    }, [open, closeInner, isClosing]);
 
     const handleAnimationEnd = () => {
         if (isClosing) {

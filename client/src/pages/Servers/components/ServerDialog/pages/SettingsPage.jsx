@@ -132,13 +132,13 @@ const SettingsPage = ({ config, setConfig, monitoringEnabled, setMonitoringEnabl
         if (config?.functionKeyMode !== undefined) setFunctionKeyMode(config.functionKeyMode);
         if (config?.initialCommand !== undefined) setInitialCommand(config.initialCommand);
         if (config?.tmuxEnabled !== undefined) setTmuxEnabled(config.tmuxEnabled);
-    }, [config]);
+    }, [config, keyboardLayout]);
 
     useEffect(() => {
         if (config?.jumpHosts && JSON.stringify(config.jumpHosts) !== JSON.stringify(jumpHosts)) {
             setJumpHosts(config.jumpHosts);
         }
-    }, [config?.jumpHosts]);
+    }, [config?.jumpHosts, jumpHosts]);
 
     useEffect(() => {
         if (!servers) return;

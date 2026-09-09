@@ -320,7 +320,7 @@ export const ScriptRenderer = ({ session, disconnectFromServer, updateProgress, 
             wsRef.current = null;
             fitAddonRef.current = null;
         };
-    }, [sessionToken, selectedFont, fontSize, cursorStyle, cursorBlink, selectedTheme, session.id, getCurrentTheme, theme]);
+    }, [sessionToken, selectedFont, fontSize, cursorStyle, cursorBlink, selectedTheme, session.id, getCurrentTheme, theme, getSessionError, markSessionErrored, t]);
 
     const sendInput = useCallback((value) => {
         if (dialogs.inputPrompt) {

@@ -265,7 +265,7 @@ export const AIAssistant = ({ session, onClose }) => {
                 ws.close();
             }
         };
-    }, [sessionToken, session.id]);
+    }, [sessionToken, session.id, t, upsertTool]);
 
     const stickToBottom = useRef(true);
     const onScroll = () => {
@@ -327,7 +327,7 @@ export const AIAssistant = ({ session, onClose }) => {
 
         document.addEventListener("keydown", handleAcceptShortcut);
         return () => document.removeEventListener("keydown", handleAcceptShortcut);
-    }, [pendingConfirmId, acceptKeybind]);
+    }, [pendingConfirmId, acceptKeybind, confirmTool]);
 
     const handleKeyDown = (e) => {
         if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {

@@ -139,7 +139,7 @@ export const ActionBar = ({
             inputRef.current.focus();
             inputRef.current.setSelectionRange(editPath.length, editPath.length);
         }
-    }, [isEditing]);
+    }, [isEditing, editPath.length]);
 
     useEffect(() => {
         if (!isEditing) return;

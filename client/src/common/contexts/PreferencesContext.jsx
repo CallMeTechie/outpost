@@ -408,7 +408,7 @@ export const PreferencesProvider = ({ children, user, refreshUser }) => {
                 scheduleFlush();
             }
         }
-    }, [prefs, user, hasOverride, overrides, scheduleFlush]);
+    }, [user, hasOverride, overrides, scheduleFlush]);
 
     const enableGroupSync = useCallback(async (g) => {
         if (!user || !GROUPS.includes(g)) return false;

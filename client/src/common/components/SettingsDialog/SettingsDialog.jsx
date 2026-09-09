@@ -32,7 +32,7 @@ export const SettingsDialog = ({ open, onClose, initialTab = "account" }) => {
             setIsVisible(true);
             setIsClosing(false);
         } else if (isVisible) setIsClosing(true);
-    }, [open, initialTab]);
+    }, [open, initialTab, isVisible]);
 
     useEffect(() => {
         if (!open) return;

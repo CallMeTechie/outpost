@@ -43,7 +43,7 @@ export const PropertiesDialog = ({ open, onClose, item, path, sendOperation, OPE
         }
         setLoadingStats(true);
         sendOperation(OPERATIONS.STAT, statRequest(fullPath));
-    }, [open, fullPath]);
+    }, [open, fullPath, OPERATIONS.STAT, sendOperation]);
 
     useEffect(() => {
         if (stats?.mode !== undefined) {
