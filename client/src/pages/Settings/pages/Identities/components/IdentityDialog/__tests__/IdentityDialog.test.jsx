@@ -72,6 +72,16 @@ test("taking the input back makes the dialog clean again", async () => {
     expect(screen.queryByText("Unsaved Changes")).not.toBeInTheDocument();
 });
 
+test("the footer cancel asks about unsaved changes", async () => {
+    const user = userEvent.setup();
+    open();
+
+    await user.type(screen.getByPlaceholderText(NAME_PLACEHOLDER), "ops");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.getByText("Unsaved Changes")).toBeInTheDocument();
+});
+
 test("submitting a blank name shows the error toast and sends no request", async () => {
     const user = userEvent.setup();
     open();

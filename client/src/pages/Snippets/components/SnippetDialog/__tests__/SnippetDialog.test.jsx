@@ -54,3 +54,28 @@ test("undoing the change makes closing quiet again", async () => {
 
     expect(confirmTitle()).not.toBeInTheDocument();
 });
+
+test("the footer cancel asks about unsaved changes", async () => {
+    const user = userEvent.setup();
+    open();
+
+    await user.type(screen.getByPlaceholderText("Snippet name"), "x");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.getByText("Unsaved Changes")).toBeInTheDocument();
+});
+
+test("the footer cancel does not submit the form", async () => {
+    const user = userEvent.setup();
+    open();
+
+    // Both fields: handleSubmit (SnippetDialog.jsx:62-65) returns before any
+    // request while name or command is empty, so a name-only case would stay
+    // green even if the click did submit.
+    await user.type(screen.getByPlaceholderText("Snippet name"), "x");
+    await user.type(screen.getByPlaceholderText("Enter your command"), "echo x");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    // A submit would have gone through RequestUtil; the double records every call.
+    expect(requestDouble.calls).toEqual([]);
+});

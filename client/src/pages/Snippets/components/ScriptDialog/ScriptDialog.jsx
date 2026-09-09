@@ -1,5 +1,5 @@
 import "./styles.sass";
-import { DialogProvider } from "@/common/components/Dialog";
+import { DialogProvider, DialogCancelButton } from "@/common/components/Dialog";
 import { useState, useEffect, useRef } from "react";
 import { getRequest, postRequest, putRequest } from "@/common/utils/RequestUtil.js";
 import Button from "@/common/components/Button";
@@ -254,13 +254,7 @@ fi
                 </div>
 
                 <div className="dialog-actions">
-                    <Button
-                        onClick={handleClose}
-                        text={t("scripts.dialog.actions.cancel")}
-                        type="secondary"
-                        icon={IconX}
-                        disabled={creating}
-                    />
+                    <DialogCancelButton text={t("scripts.dialog.actions.cancel")} icon={IconX} disabled={creating} />
                     <Button
                         onClick={createScript}
                         text={creating ? t(`scripts.dialog.actions.${isEditing ? "updating" : "creating"}`) : t(`scripts.dialog.actions.${isEditing ? "update" : "create"}`)}

@@ -66,3 +66,13 @@ test("undoing the change makes closing quiet again", async () => {
 
     expect(confirmTitle()).not.toBeInTheDocument();
 });
+
+test("the footer cancel asks about unsaved changes", async () => {
+    const user = userEvent.setup();
+    open();
+
+    await user.type(screen.getByPlaceholderText("Script name"), "x");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.getByText("Unsaved Changes")).toBeInTheDocument();
+});

@@ -1,5 +1,5 @@
 import "./styles.sass";
-import { DialogProvider } from "@/common/components/Dialog";
+import { DialogProvider, DialogCancelButton } from "@/common/components/Dialog";
 import { useEffect, useState, useRef } from "react";
 import { getRequest, patchRequest, putRequest } from "@/common/utils/RequestUtil.js";
 import Button from "@/common/components/Button";
@@ -95,11 +95,6 @@ export const SnippetDialog = ({ open, onClose, editSnippetId, selectedOrganizati
         }
     };
 
-    const handleClose = (event) => {
-        event.preventDefault();
-        onClose();
-    };
-
     const arraysEqual = (a, b) => {
         if (a.length !== b.length) return false;
         return a.every((val, i) => val === b[i]);
@@ -155,7 +150,7 @@ export const SnippetDialog = ({ open, onClose, editSnippetId, selectedOrganizati
                     </div>
 
                     <div className="dialog-actions">
-                        <Button text={t('snippets.dialog.actions.cancel')} onClick={handleClose} type="secondary" />
+                        <DialogCancelButton text={t('snippets.dialog.actions.cancel')} />
                         <Button text={editSnippetId ? t('snippets.dialog.actions.save') : t('snippets.dialog.actions.create')} type="primary" />
                     </div>
                 </form>
