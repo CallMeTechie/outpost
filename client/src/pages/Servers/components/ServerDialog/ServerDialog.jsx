@@ -16,6 +16,10 @@ import Icon from "@/common/components/Icon";
 import * as mdiIcons from "@mdi/js";
 
 const PROTOCOL_DEFAULT_ICONS = { ssh: "mdiConsole", telnet: "mdiConsole", rdp: "mdiMicrosoftWindows", vnc: "mdiMonitor", sftp: "mdiFolderNetwork", ftp: "mdiFolderNetwork", ftps: "mdiFolderNetwork", demo: "mdiFlaskOutline" };
+const PROTOCOL_DEFAULT_PORTS = { ssh: "22", telnet: "23", rdp: "3389", vnc: "5900", sftp: "22", ftp: "21", ftps: "21" };
+
+const deriveDefaultPort = (protocol) =>
+    getFieldConfig("server", protocol).showIpPort ? (PROTOCOL_DEFAULT_PORTS[protocol] || "") : undefined;
 
 export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizationId, editServerId, initialProtocol }) => {
     const { t } = useTranslation();
@@ -248,25 +252,28 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
             setEntryType("server");
             
             if (initialProtocol) {
-                const portMap = { ssh: "22", telnet: "23", rdp: "3389", vnc: "5900", sftp: "22", ftp: "21", ftps: "21" };
-
                 let initialConfig = { protocol: initialProtocol };
-                if (getFieldConfig("server", initialProtocol).showIpPort) {
-                    initialConfig.port = portMap[initialProtocol] || "";
-                }
+                const defaultPort = deriveDefaultPort(initialProtocol);
+                if (defaultPort !== undefined) initialConfig.port = defaultPort;
 
                 setConfig(initialConfig);
                 const defaultIcon = PROTOCOL_DEFAULT_ICONS[initialProtocol] || null;
                 setIcon(defaultIcon);
-                initialValues.current = { 
-                    name: '', 
-                    icon: defaultIcon, 
-                    config: JSON.stringify(initialConfig), 
-                    monitoringEnabled: false 
+                initialValues.current = {
+                    name: '',
+                    icon: defaultIcon,
+                    config: JSON.stringify(initialConfig),
+                    monitoringEnabled: false
                 };
             } else {
-                setConfig({});
-                initialValues.current = { name: '', icon: null, config: '{}', monitoringEnabled: false };
+                // SelectBox picks the first option on mount when nothing is selected, so ssh is
+                // what this path yields anyway. Seeding it explicitly keeps initialValues in sync.
+                let initialConfig = { protocol: "ssh" };
+                const defaultPort = deriveDefaultPort("ssh");
+                if (defaultPort !== undefined) initialConfig.port = defaultPort;
+
+                setConfig(initialConfig);
+                initialValues.current = { name: '', icon: null, config: JSON.stringify(initialConfig), monitoringEnabled: false };
             }
             setMonitoringEnabled(false);
         }
