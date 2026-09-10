@@ -33,6 +33,8 @@ test("a freshly opened dialog closes without asking", async () => {
     const user = userEvent.setup();
     open();
 
+    expect(screen.getByPlaceholderText("Port")).toHaveValue("22");
+
     await user.click(screen.getByRole("button", { name: "Close dialog" }));
 
     expect(confirmTitle()).not.toBeInTheDocument();
