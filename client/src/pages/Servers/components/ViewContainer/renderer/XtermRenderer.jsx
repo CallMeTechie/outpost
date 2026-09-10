@@ -13,6 +13,7 @@ import SnippetsMenu from "./components/SnippetsMenu";
 import PasswordFillHint from "./components/PasswordFillHint";
 import TypingIndicators from "./components/TypingIndicators";
 import { useLiveSessions } from "@/common/contexts/LiveSessionContext.jsx";
+import { copyToClipboard } from "@/common/utils/clipboard.js";
 import { createProgressParser } from "../utils/progressParser";
 import { Copy as IconCopy, ClipboardPaste as IconClipboardPaste, Brackets as IconBrackets, SquareDashed as IconSquareDashed, Trash as IconTrash, Keyboard as IconKeyboard, Key as IconKey, FolderOpen as IconFolderOpen, BotMessageSquare as IconBotMessageSquare, WandSparkles as IconWandSparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -327,18 +328,6 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
         // handler, so the flag cannot be stale by the time the item is drawn.
         setHasSelection(!!readSelection());
         contextMenu.open(e, { x: e.clientX, y: e.clientY });
-    };
-
-    const copyToClipboard = (text) => {
-        navigator.clipboard.writeText(text).catch(() => {
-            const textArea = document.createElement('textarea');
-            textArea.value = text;
-            textArea.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-        });
     };
 
     const readSelection = () => termRef.current?.getSelection() || lastSelectionRef.current;

@@ -118,3 +118,21 @@ test("the copy entry is disabled without a selection and enabled with one", () =
     fireEvent.contextMenu(container);
     expect(screen.getByText("Copy").closest('[role="menuitem"]')).toHaveAttribute("aria-disabled", "false");
 });
+
+test("copy falls back to execCommand when navigator.clipboard is absent (insecure http context)", () => {
+    vi.stubGlobal("navigator", { clipboard: undefined });
+    const execCommand = vi.fn();
+    document.execCommand = execCommand;
+
+    renderWithProviders(
+        <XtermRenderer session={SESSION} terminalRefs={{ current: {} }} />,
+    );
+
+    Terminal.instances.at(-1)._selection = "kopiermich";
+
+    const container = document.querySelector(".xterm-container");
+    fireEvent.contextMenu(container);
+    fireEvent.click(screen.getByText("Copy"));
+
+    expect(execCommand).toHaveBeenCalledWith("copy");
+});
