@@ -265,8 +265,10 @@ export const ServerDialog = ({ open, onClose, currentFolderId, currentOrganizati
                     monitoringEnabled: false 
                 };
             } else {
-                setConfig({});
-                initialValues.current = { name: '', icon: null, config: '{}', monitoringEnabled: false };
+                // SelectBox picks the first option on mount when nothing is selected, so ssh is
+                // what this path yields anyway. Seeding it explicitly keeps initialValues in sync.
+                setConfig({ protocol: "ssh" });
+                initialValues.current = { name: '', icon: null, config: JSON.stringify({ protocol: "ssh" }), monitoringEnabled: false };
             }
             setMonitoringEnabled(false);
         }

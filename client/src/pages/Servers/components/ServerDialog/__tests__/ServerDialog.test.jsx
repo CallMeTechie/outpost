@@ -13,15 +13,8 @@ const requestDouble = await vi.hoisted(async () => {
 
 vi.mock("@/common/utils/RequestUtil.js", () => requestDouble.asModule());
 
-// initialProtocol="ssh": without it config.protocol starts undefined, and
-// DetailsPage's protocol SelectBox auto-selects its first option on mount
-// (SelectBox.jsx:90-92), changing `config` right after initialValues.current
-// was seeded and leaving the dialog permanently dirty - a pre-existing
-// SelectBox/ServerDialog interaction this task does not touch. "ssh" hides
-// the protocol picker (fieldConfig.showProtocol is false for it), which
-// sidesteps the interaction without masking the isDirty behavior under test.
 const open = () => renderWithProviders(
-    <ServerDialog open={true} onClose={() => {}} initialProtocol="ssh" />,
+    <ServerDialog open={true} onClose={() => {}} />,
     { providers: [ToastProvider] },
 );
 
