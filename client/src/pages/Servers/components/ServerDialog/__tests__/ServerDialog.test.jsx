@@ -18,6 +18,11 @@ const open = () => renderWithProviders(
     { providers: [ToastProvider] },
 );
 
+const openWithProtocol = (initialProtocol) => renderWithProviders(
+    <ServerDialog open={true} onClose={() => {}} initialProtocol={initialProtocol} />,
+    { providers: [ToastProvider] },
+);
+
 const confirmTitle = () => screen.queryByText("Unsaved Changes");
 
 beforeEach(() => { requestDouble.reset(); });
@@ -50,6 +55,17 @@ test("undoing the change makes closing quiet again", async () => {
     const nameField = screen.getByPlaceholderText("Server name");
     await user.type(nameField, "x");
     await user.clear(nameField);
+    await user.click(screen.getByRole("button", { name: "Close dialog" }));
+
+    expect(confirmTitle()).not.toBeInTheDocument();
+});
+
+test("opening with a quick-create protocol pre-fills the port and closes without asking", async () => {
+    const user = userEvent.setup();
+    openWithProtocol("ssh");
+
+    expect(screen.getByPlaceholderText("Port")).toHaveValue("22");
+
     await user.click(screen.getByRole("button", { name: "Close dialog" }));
 
     expect(confirmTitle()).not.toBeInTheDocument();
