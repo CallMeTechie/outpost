@@ -26,6 +26,7 @@ const controlPlane = require("./lib/controlPlane/ControlPlaneServer");
 const SessionManager = require("./lib/SessionManager");
 const { ensureLocalEngine } = require("./controllers/engine");
 const { ensureCPCerts } = require("./utils/controlPlaneCerts");
+const { mountStaticSite } = require("./lib/staticSite");
 require("./utils/folder");
 
 process.on("uncaughtException", (err) => require("./utils/errorHandling")(err));
@@ -115,11 +116,7 @@ app.use("/api/themes", authenticate, require("./routes/theme"));
 app.use("/api/share", require("./routes/share"));
 
 if (process.env.NODE_ENV === "production") {
-    app.use(express.static(path.join(__dirname, "../dist")));
-
-    app.get("*name", (req, res) =>
-        res.sendFile(path.join(__dirname, "../dist", "index.html"))
-    );
+    mountStaticSite(app, path.join(__dirname, "../dist"));
 } else {
     require("dotenv").config({ quiet: true });
     app.get("*name", (req, res) =>
