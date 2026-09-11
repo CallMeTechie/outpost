@@ -13,6 +13,7 @@ import { getWebSocketUrl } from "@/common/utils/ConnectionUtil.js";
 import { openPopout, onPopoutClosed } from "@/common/utils/PopoutUtil.js";
 import { createHostFsProvider } from "@/common/utils/HostFsProvider.js";
 import { createBrowserFsProvider } from "@/common/utils/BrowserFsProvider.js";
+import { copyToClipboard, canReadClipboard, readClipboard } from "@/common/utils/clipboard.js";
 import "./styles/guacamole.sass";
 
 const SIZE_RESEND_INTERVAL = 5000;
@@ -405,36 +406,31 @@ const GuacamoleRenderer = ({
     const startClipboardPolling = (initialValue = "") => {
         let cached = initialValue;
         clipboardIntervalRef.current = setInterval(async () => {
-            try {
-                const t = await navigator.clipboard.readText();
-                if (t !== cached) {
-                    cached = t;
-                    sendClipboardToServer(t);
-                }
-            } catch {
+            const t = await readClipboard();
+            // null means unreadable, not an empty clipboard — must not overwrite cached or be sent
+            if (t !== null && t !== cached) {
+                cached = t;
+                sendClipboardToServer(t);
             }
         }, 500);
     };
 
     const initClipboardPolling = async () => {
+        if (!canReadClipboard()) return;
         try {
             const status = await navigator.permissions.query({ name: "clipboard-read" });
             if (status.state === "granted") {
                 startClipboardPolling();
             } else if (status.state === "prompt") {
-                // Calling readText() triggers the browser permission dialog
-                try {
-                    startClipboardPolling(await navigator.clipboard.readText());
-                } catch {
-                    // User denied or unsupported
-                }
+                // Reading triggers the browser permission dialog. A refusal answers null, and
+                // polling on refused permission would run the interval forever for nothing.
+                const initial = await readClipboard();
+                if (initial !== null) startClipboardPolling(initial);
             }
         } catch {
-            // permissions API not supported — try readText() directly to prompt
-            try {
-                startClipboardPolling(await navigator.clipboard.readText());
-            } catch {
-            }
+            // permissions API not supported — read directly to prompt
+            const initial = await readClipboard();
+            if (initial !== null) startClipboardPolling(initial);
         }
     };
 
@@ -446,11 +442,7 @@ const GuacamoleRenderer = ({
             let data = "";
             reader.ontext = (t) => data += t;
             reader.onend = async () => {
-                try {
-                    await navigator.clipboard.writeText(data);
-                } catch (e) {
-                    console.warn("Clipboard write failed (requires HTTPS and browser permission):", e.message);
-                }
+                await copyToClipboard(data);
             };
         };
 

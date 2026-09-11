@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { copyToClipboard } from "../clipboard.js";
+import { copyToClipboard, canReadClipboard, readClipboard } from "../clipboard.js";
 
 // A DOM small enough for what the fallback touches: create a textarea, append it, select it,
 // execCommand, remove it. node:test has no DOM, so the few pieces are stubbed here.
@@ -92,4 +92,29 @@ test("refuses empty and non-string input without touching the DOM", async () => 
         assert.equal(result, false, String(value));
         assert.equal(appended.length, 0, String(value));
     }
+});
+
+test("reading answers null instead of throwing when the API is absent", async () => {
+    const { result } = await withDom({ navigator: {} }, async () => {
+        assert.equal(canReadClipboard(), false);
+        return readClipboard();
+    });
+    assert.equal(result, null);
+});
+
+test("reading answers null when the browser exposes the API but refuses", async () => {
+    const { result } = await withDom(
+        { navigator: { clipboard: { readText: async () => { throw new Error("denied"); } } } },
+        async () => {
+            assert.equal(canReadClipboard(), true);
+            return readClipboard();
+        });
+    assert.equal(result, null);
+});
+
+test("reading hands back the clipboard text in a secure context", async () => {
+    const { result } = await withDom(
+        { navigator: { clipboard: { readText: async () => "geheim" } } },
+        () => readClipboard());
+    assert.equal(result, "geheim");
 });

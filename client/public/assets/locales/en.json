@@ -2005,6 +2005,7 @@
         "copy": "Copy",
         "cut": "Cut",
         "paste": "Paste",
+        "pasteNeedsSecureContext": "Paste needs HTTPS - use Ctrl+V instead",
         "createFolder": "Create Folder",
         "upload": "Upload File",
         "edit": "Edit",

@@ -4,6 +4,7 @@ import { Info as IconInfo, X as IconX, Copy as IconCopy, FileText as IconFileTex
 import Icon from "@/common/components/Icon";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { openExternalUrl } from "@/common/utils/TauriUtil.js";
+import { copyToClipboard as copyToClipboardUtil } from "@/common/utils/clipboard.js";
 import "./SummaryDialog.sass";
 
 const SummaryDialog = ({ open, onClose, summaryData }) => {
@@ -34,8 +35,12 @@ const SummaryDialog = ({ open, onClose, summaryData }) => {
 
     const copyToClipboard = async (text, label) => {
         try {
-            await navigator.clipboard.writeText(text);
-            sendToast("Copied", `${label} copied to clipboard`);
+            const ok = await copyToClipboardUtil(text);
+            if (ok) {
+                sendToast("Copied", `${label} copied to clipboard`);
+            } else {
+                sendToast("Error", `Failed to copy ${label} to clipboard`);
+            }
         } catch (err) {
             sendToast("Error", `Failed to copy ${label} to clipboard`);
         }

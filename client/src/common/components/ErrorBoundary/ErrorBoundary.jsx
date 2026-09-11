@@ -3,6 +3,7 @@ import { useRouteError } from "react-router-dom";
 import Icon from "@/common/components/Icon";
 import { CircleAlert as IconCircleAlert, RefreshCw as IconRefreshCw, House as IconHouse, Bug as IconBug, Copy as IconCopy, Check as IconCheck } from "lucide-react";
 import "./styles.sass";
+import { copyToClipboard } from "@/common/utils/clipboard.js";
 
 const ErrorDisplay = ({ error, errorInfo, is404 = false }) => {
     const [copied, setCopied] = useState(false);
@@ -15,13 +16,14 @@ const ErrorDisplay = ({ error, errorInfo, is404 = false }) => {
         window.location.href = "/servers";
     };
 
-    const handleCopyError = () => {
+    const handleCopyError = async () => {
         const errorText = `Error: ${error?.message || "Unknown error"}\n\nStack: ${error?.stack || "No stack trace"}${errorInfo?.componentStack ? `\n\nComponent Stack: ${errorInfo.componentStack}` : ""}`;
-        
-        navigator.clipboard.writeText(errorText).then(() => {
+
+        const ok = await copyToClipboard(errorText);
+        if (ok) {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        });
+        }
     };
 
     const errorMessage = error?.message || error?.statusText || "An unexpected error occurred";

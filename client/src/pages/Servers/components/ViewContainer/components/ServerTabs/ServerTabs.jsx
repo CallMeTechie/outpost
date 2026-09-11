@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useCallback, useContext } from "react";
 import { useTranslation } from "react-i18next";
 import Icon from "@/common/components/Icon";
+import { copyToClipboard } from "@/common/utils/clipboard.js";
 import { Shrink as IconShrink, X as IconX, Columns2 as IconColumns2, ChevronLeft as IconChevronLeft, ChevronRight as IconChevronRight, Moon as IconMoon, FolderOpen as IconFolderOpen, ExternalLink as IconExternalLink, Share2 as IconShare2, Link as IconLink, Pencil as IconPencil, Eye as IconEye, CircleX as IconCircleX, CopyPlus as IconCopyPlus, NotebookPen as IconNotebookPen, SquarePen as IconSquarePen } from "lucide-react";
 import { useDrag, useDrop } from "react-dnd";
 import TerminalActionsMenu from "../TerminalActionsMenu";
@@ -93,7 +94,7 @@ const DraggableTab = ({
         const result = await postRequest(`connections/${session.id}/share`, { writable });
         if (result?.shareId) {
             const baseUrl = getBaseUrl() || window.location.origin;
-            navigator.clipboard.writeText(`${baseUrl}/share/${result.shareId}`);
+            await copyToClipboard(`${baseUrl}/share/${result.shareId}`);
         }
     }, [session.id]);
 
@@ -101,9 +102,9 @@ const DraggableTab = ({
         await deleteRequest(`connections/${session.id}/share`);
     }, [session.id]);
 
-    const handleCopyLink = useCallback(() => {
+    const handleCopyLink = useCallback(async () => {
         const baseUrl = getBaseUrl() || window.location.origin;
-        navigator.clipboard.writeText(`${baseUrl}/share/${session.shareId}`);
+        await copyToClipboard(`${baseUrl}/share/${session.shareId}`);
     }, [session.shareId]);
 
     const handlePermissionChange = useCallback(async (writable) => {

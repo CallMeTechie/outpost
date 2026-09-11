@@ -6,6 +6,7 @@ import SelectBox from "@/common/components/SelectBox";
 import Icon from "@/common/components/Icon";
 import "./styles.sass";
 import { postRequest } from "@/common/utils/RequestUtil.js";
+import { copyToClipboard } from "@/common/utils/clipboard.js";
 import { useState, useEffect } from "react";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useTranslation } from "react-i18next";
@@ -57,11 +58,11 @@ export const AddApiKeyDialog = ({ open, onClose, onCreated }) => {
     };
 
     const copyToken = async () => {
-        try {
-            await navigator.clipboard.writeText(createdToken);
+        const ok = await copyToClipboard(createdToken);
+        if (ok) {
             setCopied(true);
             setTimeout(() => setCopied(false), 1500);
-        } catch {
+        } else {
             sendToast(t("common.error"), t("settings.account.apiKeys.copyError"));
         }
     };

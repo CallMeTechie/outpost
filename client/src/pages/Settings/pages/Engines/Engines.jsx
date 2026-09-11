@@ -2,6 +2,7 @@ import "./styles.sass";
 import { useEffect, useState, useCallback } from "react";
 import { useTranslation, Trans } from "react-i18next";
 import { getRequest, putRequest, deleteRequest, postRequest } from "@/common/utils/RequestUtil.js";
+import { copyToClipboard } from "@/common/utils/clipboard.js";
 import Button from "@/common/components/Button";
 import { DialogProvider } from "@/common/components/Dialog";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
@@ -89,10 +90,12 @@ export const Engines = () => {
         }
     };
 
-    const copyToken = (token) => {
-        navigator.clipboard.writeText(token);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+    const copyToken = async (token) => {
+        const ok = await copyToClipboard(token);
+        if (ok) {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
     };
 
     return (

@@ -42,3 +42,21 @@ export const copyToClipboard = async (text) => {
 
     return legacyCopy(text);
 };
+
+// Reading has no counterpart to legacyCopy: every current browser refuses execCommand("paste"),
+// so without a secure context the page cannot see the clipboard at all. Callers use this to
+// disable a paste affordance rather than offer one that silently does nothing.
+export const canReadClipboard = () =>
+    typeof navigator !== "undefined" && Boolean(navigator.clipboard?.readText);
+
+// Resolves to the clipboard text, or null when it cannot be read -- absent API, denied
+// permission, or a browser that exposes it but blocks it here.
+export const readClipboard = async () => {
+    if (!canReadClipboard()) return null;
+
+    try {
+        return await navigator.clipboard.readText();
+    } catch {
+        return null;
+    }
+};

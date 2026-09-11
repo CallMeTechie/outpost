@@ -136,3 +136,39 @@ test("copy falls back to execCommand when navigator.clipboard is absent (insecur
 
     expect(execCommand).toHaveBeenCalledWith("copy");
 });
+
+test("the paste entry is disabled and explains why when the clipboard cannot be read (insecure http context)", () => {
+    vi.stubGlobal("navigator", { clipboard: undefined });
+
+    renderWithProviders(
+        <XtermRenderer session={SESSION} terminalRefs={{ current: {} }} />,
+    );
+
+    const container = document.querySelector(".xterm-container");
+    fireEvent.contextMenu(container);
+
+    const item = screen.getByText("Paste").closest('[role="menuitem"]');
+    expect(item).toHaveAttribute("aria-disabled", "true");
+    expect(item).toHaveAttribute("title", "Paste needs HTTPS - use Ctrl+V instead");
+});
+
+test("the paste entry reads the clipboard and pastes it into the terminal", () => {
+    vi.stubGlobal("navigator", { clipboard: { readText: () => Promise.resolve("eingefuegt") } });
+
+    renderWithProviders(
+        <XtermRenderer session={SESSION} terminalRefs={{ current: {} }} />,
+    );
+
+    const term = Terminal.instances.at(-1);
+    term.paste = vi.fn();
+
+    const container = document.querySelector(".xterm-container");
+    fireEvent.contextMenu(container);
+
+    const item = screen.getByText("Paste").closest('[role="menuitem"]');
+    expect(item).toHaveAttribute("aria-disabled", "false");
+
+    fireEvent.click(item);
+
+    return vi.waitFor(() => expect(term.paste).toHaveBeenCalledWith("eingefuegt"));
+});

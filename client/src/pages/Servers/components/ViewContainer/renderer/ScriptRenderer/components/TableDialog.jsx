@@ -3,6 +3,7 @@ import Button from "@/common/components/Button";
 import { Table as IconTable, X as IconX, Copy as IconCopy, FileOutput as IconFileOutput } from "lucide-react";
 import Icon from "@/common/components/Icon";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
+import { copyToClipboard as copyToClipboardUtil } from "@/common/utils/clipboard.js";
 import "./TableDialog.sass";
 
 const TableDialog = ({ open, onClose, tableData }) => {
@@ -30,8 +31,12 @@ const TableDialog = ({ open, onClose, tableData }) => {
 
     const copyToClipboard = async (text, label) => {
         try {
-            await navigator.clipboard.writeText(text);
-            sendToast("Copied", `${label} copied to clipboard`);
+            const ok = await copyToClipboardUtil(text);
+            if (ok) {
+                sendToast("Copied", `${label} copied to clipboard`);
+            } else {
+                sendToast("Error", `Failed to copy ${label} to clipboard`);
+            }
         } catch (err) {
             sendToast("Error", `Failed to copy ${label} to clipboard`);
         }

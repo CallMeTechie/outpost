@@ -13,7 +13,7 @@ import SnippetsMenu from "./components/SnippetsMenu";
 import PasswordFillHint from "./components/PasswordFillHint";
 import TypingIndicators from "./components/TypingIndicators";
 import { useLiveSessions } from "@/common/contexts/LiveSessionContext.jsx";
-import { copyToClipboard } from "@/common/utils/clipboard.js";
+import { canReadClipboard, copyToClipboard, readClipboard } from "@/common/utils/clipboard.js";
 import { createProgressParser } from "../utils/progressParser";
 import { Copy as IconCopy, ClipboardPaste as IconClipboardPaste, Brackets as IconBrackets, SquareDashed as IconSquareDashed, Trash as IconTrash, Keyboard as IconKeyboard, Key as IconKey, FolderOpen as IconFolderOpen, BotMessageSquare as IconBotMessageSquare, WandSparkles as IconWandSparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -320,6 +320,7 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
     }, [openSuggestionPrompt, editSuggestionQuery, submitSuggestionQuery, acceptSuggestion, cycleSuggestion, hideSuggestion]);
 
     const [hasSelection, setHasSelection] = useState(false);
+    const canPaste = canReadClipboard();
 
     const handleContextMenu = (e) => {
         e.preventDefault();
@@ -343,12 +344,8 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
     };
 
     const handlePaste = async () => {
-        try {
-            const text = await navigator.clipboard.readText();
-            if (text) termRef.current?.paste(text);
-        } catch (err) {
-            console.error('Failed to paste:', err);
-        }
+        const text = await readClipboard();
+        if (text) termRef.current?.paste(text);
         contextMenu.close();
         termRef.current?.focus();
     };
@@ -1025,6 +1022,8 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
                         icon={IconClipboardPaste}
                         label={t('servers.fileManager.contextMenu.paste')}
                         onClick={handlePaste}
+                        disabled={!canPaste}
+                        title={canPaste ? undefined : t('servers.fileManager.contextMenu.pasteNeedsSecureContext')}
                     />
                     <ContextMenuItem
                         icon={IconSquareDashed}

@@ -6,6 +6,7 @@ import Input from "@/common/components/IconInput";
 import { Server as IconServer, ExternalLink as IconExternalLink, Copy as IconCopy, Monitor as IconMonitor, ArrowLeft as IconArrowLeft } from "lucide-react";
 import { useState, useEffect, useContext } from "react";
 import { request } from "@/common/utils/RequestUtil.js";
+import { copyToClipboard } from "@/common/utils/clipboard.js";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useTranslation } from "react-i18next";
 import { tauriFetch } from "@/common/utils/RequestUtil.js";
@@ -123,8 +124,12 @@ export const ConnectorSetup = ({ open, isAddMode = false, onCancelAdd }) => {
 
     const copyCode = async () => {
         if (!deviceCode) return;
-        try { await navigator.clipboard.writeText(deviceCode); sendToast(t("common.success"), t("common.connectorSetup.codeCopied")); }
-        catch { sendToast(t("common.error"), t("common.connectorSetup.copyFailed")); }
+        const ok = await copyToClipboard(deviceCode);
+        if (ok) {
+            sendToast(t("common.success"), t("common.connectorSetup.codeCopied"));
+        } else {
+            sendToast(t("common.error"), t("common.connectorSetup.copyFailed"));
+        }
     };
 
     const resetFlow = () => {

@@ -1952,6 +1952,7 @@
         "copy": "Kopieren",
         "cut": "Ausschneiden",
         "paste": "Einfügen",
+        "pasteNeedsSecureContext": "Einfügen benötigt HTTPS - stattdessen Strg+V benutzen",
         "createFolder": "Ordner erstellen",
         "upload": "Datei hochladen",
         "edit": "Bearbeiten",

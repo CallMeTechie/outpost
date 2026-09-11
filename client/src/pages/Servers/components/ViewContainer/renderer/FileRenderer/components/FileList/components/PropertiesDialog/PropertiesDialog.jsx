@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import Icon from "@/common/components/Icon";
+import { copyToClipboard } from "@/common/utils/clipboard.js";
 import { File as IconFile, Folder as IconFolder, LoaderCircle as IconLoaderCircle } from "lucide-react";
 import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
@@ -87,10 +88,12 @@ export const PropertiesDialog = ({ open, onClose, item, path, sendOperation, OPE
         sendOperation(OPERATIONS.FOLDER_SIZE, { path: fullPath });
     };
 
-    const copyToClipboard = (text, key) => {
-        navigator.clipboard.writeText(text);
-        setCopied(key);
-        setTimeout(() => setCopied(null), 1500);
+    const handleCopyToClipboard = async (text, key) => {
+        const ok = await copyToClipboard(text);
+        if (ok) {
+            setCopied(key);
+            setTimeout(() => setCopied(null), 1500);
+        }
     };
 
     const handleSavePermissions = useCallback(() => {
@@ -137,7 +140,7 @@ export const PropertiesDialog = ({ open, onClose, item, path, sendOperation, OPE
                         loadingFolderSize={loadingFolderSize}
                         item={item}
                         copied={copied}
-                        onCopy={copyToClipboard}
+                        onCopy={handleCopyToClipboard}
                         onCalculateFolderSize={capabilities.shell ? calculateFolderSize : null}
                     />
                 )}
@@ -150,7 +153,7 @@ export const PropertiesDialog = ({ open, onClose, item, path, sendOperation, OPE
                         octalInput={octalInput}
                         setOctalInput={setOctalInput}
                         copied={copied}
-                        onCopy={copyToClipboard}
+                        onCopy={handleCopyToClipboard}
                     />
                 )}
 
@@ -159,7 +162,7 @@ export const PropertiesDialog = ({ open, onClose, item, path, sendOperation, OPE
                         checksums={checksums}
                         loadingChecksum={loadingChecksum}
                         copied={copied}
-                        onCopy={copyToClipboard}
+                        onCopy={handleCopyToClipboard}
                         onCalculate={calculateChecksum}
                     />
                 )}
