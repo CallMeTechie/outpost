@@ -18,3 +18,8 @@ test("defaultViewMode: accepts all four known values", () => {
 test("defaultViewMode: rejects an unknown value", () => {
     assert.ok(preferencesValidation.validate(files("thumbnails")).error, "expected a validation error");
 });
+
+test("terminal: accepts the input settings the client syncs", () => {
+    const payload = { terminal: { passwordPromptDetection: false, keyBar: "always" } };
+    assert.strictEqual(preferencesValidation.validate(payload).error, undefined);
+});
