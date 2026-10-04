@@ -196,7 +196,10 @@
         "closedUnexpectedly": "Verbindung unerwartet geschlossen",
         "error": "Verbindungsfehler aufgetreten",
         "scriptClosedUnexpectedly": "Unerwartetes Schließen der Skriptverbindung",
-        "scriptError": "Skript-Verbindungsfehler aufgetreten"
+        "scriptError": "Skript-Verbindungsfehler aufgetreten",
+        "rdpSessionConflict": "Die Sitzung wurde vom Server getrennt, weil eine andere Verbindung geöffnet wurde.",
+        "rdpSessionTimeout": "Die RDP-Sitzung wurde getrennt, weil ihr Zeitlimit erreicht wurde.",
+        "rdpSessionClosed": "Die RDP-Sitzung wurde vom entfernten Server oder einem Administrator beendet."
       }
     },
     "messages": {
