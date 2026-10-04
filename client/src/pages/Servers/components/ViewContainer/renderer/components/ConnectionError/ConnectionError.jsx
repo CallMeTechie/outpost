@@ -10,6 +10,15 @@ export const mapConnectionError = (rawMessage, t) => {
     const cleaned = rawMessage.replace(/^error:\s*/i, "").trim();
     const msg = cleaned.toLowerCase();
 
+    if (msg.includes("disconnected by other connection")) {
+        return t("common.errors.connection.rdpSessionConflict");
+    }
+    if (msg.includes("session time limit exceeded")) {
+        return t("common.errors.connection.rdpSessionTimeout");
+    }
+    if (["logged off.", "manually logged off.", "manually disconnected.", "forcibly disconnected."].includes(msg)) {
+        return t("common.errors.connection.rdpSessionClosed");
+    }
     if (msg.includes("connection not available") || msg.includes("not available")) {
         return t("common.errors.connection.hostUnreachable");
     }
