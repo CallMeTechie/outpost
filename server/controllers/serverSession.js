@@ -393,7 +393,7 @@ const duplicateSession = async (accountId, sessionId, tabId = null, browserId = 
     );
 };
 
-const pasteIdentityPassword = async (accountId, sessionId, ipAddress = null, userAgent = null, requestedIdentityId = null) => {
+const pasteIdentityPassword = async (accountId, sessionId, ipAddress = null, userAgent = null, requestedIdentityId = null, submit = false) => {
     const { session, error } = validateSessionOwnership(accountId, sessionId);
     if (error) return error;
 
@@ -418,7 +418,7 @@ const pasteIdentityPassword = async (accountId, sessionId, ipAddress = null, use
     const entry = await Entry.findByPk(session.entryId);
 
     try {
-        connection.dataSocket.write(password);
+        connection.dataSocket.write(`${password}${submit ? '\r' : ''}`);
 
         await createAuditLog({
             accountId,
