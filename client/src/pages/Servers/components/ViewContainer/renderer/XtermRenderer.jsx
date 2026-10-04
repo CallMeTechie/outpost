@@ -142,8 +142,8 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
         updatePasswordHintIndex(-1);
     }, [updatePasswordHintIndex]);
 
-    const fillIdentityPassword = useCallback(async (identityId) => {
-        const shouldSubmit = Boolean(passwordPromptRef.current);
+    const fillIdentityPassword = useCallback(async (identityId, submit = false) => {
+        const shouldSubmit = submit && Boolean(passwordPromptRef.current);
         hidePasswordHint();
         try {
             await postRequest(`connections/${session.id}/paste-password`, {
@@ -789,7 +789,7 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
                     if (event.key === "Tab" || event.key === "Enter" || event.code === "NumpadEnter") {
                         event.preventDefault();
                         event.stopPropagation();
-                        fillIdentityPasswordRef.current(hintItems[hintIndex]?.id);
+                        fillIdentityPasswordRef.current(hintItems[hintIndex]?.id, event.key !== "Tab");
                         return false;
                     }
                     if (event.key === "Escape") {

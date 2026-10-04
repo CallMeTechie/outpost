@@ -16,7 +16,7 @@ export const mapConnectionError = (rawMessage, t) => {
     if (msg.includes("session time limit exceeded")) {
         return t("common.errors.connection.rdpSessionTimeout");
     }
-    if (["logged off.", "manually logged off.", "manually disconnected.", "forcibly disconnected."].includes(msg)) {
+    if (["disconnected.", "logged off.", "manually logged off.", "manually disconnected.", "forcibly disconnected."].includes(msg)) {
         return t("common.errors.connection.rdpSessionClosed");
     }
     if (msg.includes("connection not available") || msg.includes("not available")) {
