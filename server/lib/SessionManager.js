@@ -8,7 +8,7 @@ const stateBroadcaster = require("./StateBroadcaster");
 const MAX_LOG_BUFFER_SIZE = 200 * 1024;
 const sessions = new Map();
 const shareIndex = new Map();
-const CONTROL_PLANE_TYPES = new Set(["ssh", "sftp", "guac", "pve-lxc"]);
+const CONTROL_PLANE_TYPES = new Set(["ssh", "telnet", "sftp", "guac", "pve-lxc"]);
 
 const TYPING_DURATION_MS = 1500;
 const PRESENCE_THROTTLE_MS = 250;
