@@ -610,7 +610,7 @@ const createTelnetConnectionForSession = async (sessionId, entry, organizationId
     if (!ip) throw new Error("Missing host configuration");
 
     const dataSocket = await openEngineSession(
-        sessionId, SessionType.Telnet, ip, port, {}, entry.config?.engineId
+        sessionId, SessionType.Telnet, ip, port, {}, [], entry.config?.engineId
     );
 
     await SessionManager.initRecording(sessionId, organizationId);
