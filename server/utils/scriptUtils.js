@@ -25,7 +25,7 @@ const checkSudoPrompt = (output) => {
 
 const transformScript = (content) => {
     const esc = (t) => t.replace(/:/g, "\\x3A");
-    let t = content
+    let t = content.replace(/\r\n?/g, "\n")
         .replace(/^(\s*)sudo(?!\s+-S)(\s+)/gm, "$1sudo -S$2")
         .replace(/^(\s*)@OUTPOST:STEP\s+"((?:\\.|[^"\\])*)"/gm, "$1echo \"OUTPOST_STEP:$2\"")
         .replace(/^(\s*)@OUTPOST:INPUT\s+(\S+)\s+"((?:\\.|[^"\\])*)"(?:\s+"((?:\\.|[^"\\]*)*)")?/gm, (_, i, v, p, d) =>
