@@ -26,6 +26,7 @@ import { parseContextToken } from "../utils/contextParser.js";
 import { recordResize } from "../utils/resizeDiagnostics.js";
 import { postRequest } from "@/common/utils/RequestUtil.js";
 import { applyLatchedModifiers } from "@/common/utils/keyBarModifiers.js";
+import { attachTouchScroll } from "@/common/utils/touchScroll.js";
 import "@xterm/xterm/css/xterm.css";
 import "./styles/xterm.sass";
 
@@ -435,6 +436,7 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
         const fitAddon = new FitAddon();
         term.loadAddon(fitAddon);
         term.open(ref.current);
+        const detachTouchScroll = attachTouchScroll(term, ref.current);
 
         // Whether the soft keyboard has a word open. xterm keeps the same flag but does not
         // expose it, and the keydown handler below needs it before xterm acts on the event.
@@ -964,6 +966,7 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
             titleDisposable.dispose();
             if (titleThrottleTimer) clearTimeout(titleThrottleTimer);
             selectionDisposable.dispose();
+            detachTouchScroll();
             term.dispose();
             clearInterval(interval);
             termRef.current = null;
