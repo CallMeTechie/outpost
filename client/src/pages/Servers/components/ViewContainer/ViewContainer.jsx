@@ -17,6 +17,8 @@ import { useTauriWindow } from "@/common/hooks/useTauriWindow.js";
 import { useBodyClass } from "@/common/hooks/useBodyClass.js";
 import { paneColorFor } from "./utils/paneColors.js";
 import { barKeySequence } from "@/common/utils/keyBarSequences.js";
+import ConnectionError from "@/pages/Servers/components/ViewContainer/renderer/components/ConnectionError";
+import { isReconnectEligible } from "@/common/utils/ReconnectPolicy.js";
 
 const BTN_SIZE = 44;
 const BTN_STORAGE_KEY = "fullscreen-btn-position";
@@ -73,6 +75,11 @@ export const ViewContainer = ({
                                   renameSession,
                                   markSessionErrored,
                                   getSessionError,
+                                  sessionErrors = {},
+                                  reconnectStates = {},
+                                  reconnecting = {},
+                                  reconnectSession,
+                                  markSessionConnected,
                                   setOpenFileEditors,
                                   openTerminalFromFileManager,
                                   tabIdentities,
@@ -118,6 +125,22 @@ export const ViewContainer = ({
     const appWindow = useTauriWindow();
     const { t } = useTranslation();
     const { showKeyBar } = usePreferences();
+    const hasCountdown = Object.keys(reconnectStates).length > 0;
+    const [now, setNow] = useState(() => Date.now());
+    useEffect(() => {
+        if (!hasCountdown) return;
+        const tick = () => setNow(Date.now());
+        tick();
+        const timer = setInterval(tick, 1000);
+        return () => clearInterval(timer);
+    }, [hasCountdown]);
+
+    const connectionStates = {};
+    for (const id of Object.keys(sessionErrors)) connectionStates[id] = "error";
+    for (const id of Object.keys(reconnecting)) connectionStates[id] = "loading";
+    const reconnectable = {};
+    for (const [id, error] of Object.entries(sessionErrors)) if (!error.expired && error.reconnectable !== false) reconnectable[id] = true;
+    for (const id of Object.keys(reconnecting)) reconnectable[id] = true;
 
     useEffect(() => {
         setTitleBarTabsSlot(document.getElementById("titlebar-tabs-slot"));
@@ -598,6 +621,8 @@ export const ViewContainer = ({
                 return <GuacamoleRenderer session={session} disconnectFromServer={disconnectFromServer}
                                           markSessionErrored={markSessionErrored}
                                           getSessionError={getSessionError}
+                                          key={`${session.id}-${session.generation ?? 1}-${session.attachNonce ?? 0}`}
+                                          markSessionConnected={markSessionConnected}
                                           registerGuacamoleRef={registerGuacamoleRef}
                                           isShared={!!session.isJoined}
                                           fullscreenEnabled={fullscreenMode}
@@ -607,6 +632,8 @@ export const ViewContainer = ({
                                       isShared={!!session.isJoined}
                                       markSessionErrored={markSessionErrored}
                                       getSessionError={getSessionError}
+                                      key={`${session.id}-${session.generation ?? 1}-${session.attachNonce ?? 0}`}
+                                      markSessionConnected={markSessionConnected}
                                       registerTerminalRef={registerTerminalRef} broadcastMode={broadcastMode}
                                       onTerminalReady={onTerminalReady}
                                       modifierLatch={modifierLatch} onLatchConsumed={clearLatch}
@@ -723,6 +750,17 @@ export const ViewContainer = ({
                  onClick={() => session.id !== activeSessionId && focusSession(session.id)}
                  style={{ ...getSessionStyle(session), ...(paneColor && { "--pane-color": paneColor }) }}>
                 {renderRenderer(session)}
+                {sessionErrors[session.id] && !session.scriptId && (
+                    <ConnectionError message={sessionErrors[session.id].message}
+                                     retryable={sessionErrors[session.id].retryable}
+                                     expired={sessionErrors[session.id].expired}
+                                     reconnectable={sessionErrors[session.id].reconnectable}
+                                     reconnecting={!!reconnecting[session.id]}
+                                     reconnect={reconnectStates[session.id] || null}
+                                     now={now}
+                                     onReconnect={isReconnectEligible(session) ? () => reconnectSession(session.id) : undefined}
+                                     onClose={() => closeSession(session.id)} />
+                )}
             </div>
         );
     });
@@ -743,7 +781,8 @@ export const ViewContainer = ({
                     onFullscreenToggle={toggleFullscreenMode}
                     openNotes={openNotes} renameSession={renameSession}
                     hibernateSession={hibernateSession} duplicateSession={duplicateSession}
-                    onNewSession={onNewSession} openSFTP={openSFTP} />
+                    onNewSession={onNewSession} openSFTP={openSFTP}
+                    connectionStates={connectionStates} reconnectable={reconnectable} onReconnect={reconnectSession} />
     );
 
     return (
