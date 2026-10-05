@@ -4,46 +4,6 @@ import { Laptop as IconLaptop, Server as IconServer, X as IconX, CircleAlert as 
 import { useTranslation } from "react-i18next";
 import "./styles.sass";
 
-export const mapConnectionError = (rawMessage, t) => {
-    if (!rawMessage) return t("common.errors.connection.failed");
-
-    const cleaned = rawMessage.replace(/^error:\s*/i, "").trim();
-    const msg = cleaned.toLowerCase();
-
-    if (msg.includes("disconnected by other connection")) {
-        return t("common.errors.connection.rdpSessionConflict");
-    }
-    if (msg.includes("session time limit exceeded")) {
-        return t("common.errors.connection.rdpSessionTimeout");
-    }
-    if (["disconnected.", "logged off.", "manually logged off.", "manually disconnected.", "forcibly disconnected."].includes(msg)) {
-        return t("common.errors.connection.rdpSessionClosed");
-    }
-    if (msg.includes("connection not available") || msg.includes("not available")) {
-        return t("common.errors.connection.hostUnreachable");
-    }
-    if (msg.includes("no route to host") || msg.includes("unreachable")) {
-        return t("common.errors.connection.hostUnreachable");
-    }
-    if (msg.includes("connection refused") || msg.includes("refused")) {
-        return t("common.errors.connection.refused");
-    }
-    if (msg.includes("timeout") || msg.includes("timed out")) {
-        return t("common.errors.connection.timeout");
-    }
-    if (msg.includes("authentication") || msg.includes("auth")) {
-        return t("common.errors.connection.authenticationFailed");
-    }
-    if (msg.includes("permission denied")) {
-        return t("common.errors.connection.permissionDenied");
-    }
-    if (msg.includes("aborted") || msg.includes("see logs")) {
-        return t("common.errors.connection.hostUnreachable");
-    }
-
-    return cleaned.replace(/\(see logs\)/gi, "").trim() || t("common.errors.connection.failed");
-};
-
 export const ConnectionError = memo(({ message, onClose }) => {
     const { t } = useTranslation();
 

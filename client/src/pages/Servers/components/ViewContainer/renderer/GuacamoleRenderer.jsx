@@ -7,7 +7,8 @@ import { useKeymaps, matchesKeybind } from "@/common/contexts/KeymapContext.jsx"
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useTranslation } from "react-i18next";
 import ConnectionLoader from "./components/ConnectionLoader";
-import ConnectionError, { mapConnectionError } from "./components/ConnectionError";
+import ConnectionError from "./components/ConnectionError";
+import { mapConnectionError } from "@/common/utils/ConnectionErrorUtil.js";
 import SessionToolbar from "./components/SessionToolbar";
 import { getWebSocketUrl } from "@/common/utils/ConnectionUtil.js";
 import { openPopout, onPopoutClosed } from "@/common/utils/PopoutUtil.js";
