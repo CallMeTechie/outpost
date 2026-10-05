@@ -58,3 +58,7 @@ module.exports.duplicateSessionValidation = Joi.object({
     tabId: Joi.string().allow(null).optional(),
     browserId: Joi.string().allow(null).optional()
 });
+
+module.exports.reconnectSessionValidation = Joi.object({
+    displayDpi: Joi.number().integer().min(48).max(480).optional(),
+});
