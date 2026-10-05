@@ -1,14 +1,31 @@
 import { memo } from "react";
 import Icon from "@/common/components/Icon";
-import { Laptop as IconLaptop, Server as IconServer, X as IconX, CircleAlert as IconCircleAlert } from "lucide-react";
+import Button from "@/common/components/Button";
+import { Laptop as IconLaptop, Server as IconServer, X as IconX, CircleAlert as IconCircleAlert, RotateCw as IconRotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import "./styles.sass";
 
-export const ConnectionError = memo(({ message, onClose }) => {
+const stateOf = ({ expired, reconnecting, reconnect, retryable }) => {
+    if (expired) return "expired";
+    if (reconnecting) return "loading";
+    if (reconnect) return "countdown";
+    return retryable ? "default" : "final";
+};
+
+export const ConnectionError = memo(({ message, retryable = false, expired = false, reconnecting = false, reconnect = null, now = null, reconnectable = true, onReconnect, onClose }) => {
     const { t } = useTranslation();
+    const state = stateOf({ expired, reconnecting, reconnect, retryable });
+
+    const title = state === "expired" ? t("common.errors.connection.expiredTitle")
+        : state === "final" ? t("common.errors.connection.title")
+        : t("common.errors.connection.lostTitle");
+    const text = state === "expired" ? t("common.errors.connection.expired")
+        : state === "loading" ? t("common.errors.connection.reconnecting")
+        : message;
+    const seconds = reconnect ? Math.max(0, Math.ceil((reconnect.nextAttemptAt - now) / 1000)) : 0;
 
     return (
-        <div className="connection-error">
+        <div className="connection-error" data-ui-id="UI-SERVERS-VIEW-ERROR" data-ui-state={state} role="alert">
             <div className="connection-error__bar" />
             <div className="connection-error__visual">
                 <div className="connection-error__device">
@@ -26,15 +43,24 @@ export const ConnectionError = memo(({ message, onClose }) => {
                 </div>
             </div>
             <div className="connection-error__text">
-                <h2 className="connection-error__title">{t("common.errors.connection.title")}</h2>
-                <p className="connection-error__message">{message}</p>
+                <h2 className="connection-error__title">{title}</h2>
+                <p className="connection-error__message">{text}</p>
+                {state === "countdown" && (
+                    <p className="connection-error__countdown">
+                        {t("common.errors.connection.countdown", { seconds, attempt: reconnect.attempt, max: reconnect.maxAttempts })}
+                    </p>
+                )}
             </div>
-            {onClose && (
-                <button type="button" className="connection-error__action" onClick={onClose}>
-                    <Icon icon={IconX} />
-                    <span>{t("common.errors.connection.close")}</span>
-                </button>
-            )}
+            <div className="connection-error__actions">
+                {onReconnect && state !== "expired" && reconnectable !== false && (
+                    <Button type="primary" icon={IconRotateCw}
+                            text={t(state === "countdown" ? "common.errors.connection.reconnectNow" : "common.errors.connection.reconnect")}
+                            onClick={onReconnect} loading={state === "loading"} disabled={state === "loading"} />
+                )}
+                {onClose && (
+                    <Button type="secondary" icon={IconX} text={t("common.close")} onClick={onClose} />
+                )}
+            </div>
         </div>
     );
 });

@@ -18,6 +18,7 @@ export const Terminal = () => {
         smartCopyPaste, setSmartCopyPaste,
         keyBarMode, setKeyBarMode,
         passwordPromptDetection, setPasswordPromptDetection,
+        autoReconnect, setAutoReconnect,
         getAvailableThemes, getAvailableFonts, getTerminalTheme, getCursorStyles,
         isGroupSynced, toggleGroupSync,
     } = usePreferences();
@@ -140,6 +141,7 @@ export const Terminal = () => {
                 <div className="input-settings">
                     {renderFontOption(t("settings.terminal.input.smartCopyPaste"), toggleOptions, smartCopyPaste.toString(), (value) => setSmartCopyPaste(value === "true"))}
                     {renderFontOption(t("settings.terminal.input.passwordPromptDetection"), toggleOptions, passwordPromptDetection.toString(), (value) => setPasswordPromptDetection(value === "true"))}
+                    {renderFontOption(t("settings.terminal.input.autoReconnect"), toggleOptions, autoReconnect.toString(), (value) => setAutoReconnect(value === "true"))}
                     {renderFontOption(t("settings.terminal.input.keyBar"), keyBarOptions, keyBarMode, setKeyBarMode)}
                 </div>
             ))}

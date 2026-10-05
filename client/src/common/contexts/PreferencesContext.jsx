@@ -16,6 +16,7 @@ const PATH_TO_GROUP = {
     "terminal.smartCopyPaste": "terminal.input",
     "terminal.passwordPromptDetection": "terminal.input",
     "terminal.keyBar": "terminal.input",
+    "terminal.autoReconnect": "terminal.input",
     "terminal.theme": "terminal.theme",
     "theme.mode": "appearance", "theme.accentColor": "appearance", "theme.uiScale": "appearance",
     "files.showThumbnails": "files", "files.defaultViewMode": "files", "files.showHiddenFiles": "files",
@@ -538,6 +539,7 @@ export const PreferencesProvider = ({ children, user, refreshUser }) => {
         document.documentElement.style.setProperty("--key-bar-height", showKeyBar ? "2.75rem" : "0px");
     }, [showKeyBar]);
     const passwordPromptDetection = get("terminal.passwordPromptDetection", true);
+    const autoReconnect = get("terminal.autoReconnect", true);
 
     const getTerminalTheme = useCallback((theme) => {
         const baseTheme = DEFAULT_TERMINAL_THEMES[theme] || DEFAULT_TERMINAL_THEMES.default;
@@ -575,6 +577,7 @@ export const PreferencesProvider = ({ children, user, refreshUser }) => {
     const setSmartCopyPaste = useCallback((enabled) => set("terminal.smartCopyPaste", enabled), [set]);
     const setKeyBarMode = useCallback((mode) => set("terminal.keyBar", mode), [set]);
     const setPasswordPromptDetection = useCallback((enabled) => set("terminal.passwordPromptDetection", enabled), [set]);
+    const setAutoReconnect = useCallback((enabled) => set("terminal.autoReconnect", enabled), [set]);
 
     const showThumbnails = get("files.showThumbnails", true);
     const defaultViewMode = normalizeViewMode(get("files.defaultViewMode", "list"));
@@ -613,6 +616,7 @@ export const PreferencesProvider = ({ children, user, refreshUser }) => {
             smartCopyPaste, setSmartCopyPaste,
             keyBarMode, setKeyBarMode, showKeyBar,
             passwordPromptDetection, setPasswordPromptDetection,
+            autoReconnect, setAutoReconnect,
             getCurrentTheme, getTerminalTheme, getAvailableThemes, getAvailableFonts, getCursorStyles,
             isOledMode: themeMode === "oled",
             showThumbnails, setShowThumbnails, toggleThumbnails,
