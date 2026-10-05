@@ -115,16 +115,28 @@ static int ws_write(ws_conn_t* c, const void* buf, size_t len) {
     return c->tls ? ssl_write_all(c->ssl, buf, len) : plain_write_all(c->fd, buf, len);
 }
 
+// A peer that closes without close_notify (Proxmox on exit) is a clean end, not a lost connection.
+static bool ssl_clean_end(int err) {
+    if (err == SSL_ERROR_ZERO_RETURN) return true;
+    if (err == SSL_ERROR_SYSCALL) return errno == 0;
+#ifdef SSL_R_UNEXPECTED_EOF_WHILE_READING
+    if (err == SSL_ERROR_SSL) return ERR_GET_REASON(ERR_peek_error()) == SSL_R_UNEXPECTED_EOF_WHILE_READING;
+#endif
+    return false;
+}
+
 static int ws_read(ws_conn_t* c, void* buf, size_t len) {
     if (c->tls) {
+        ERR_clear_error();
+        errno = 0;
         int n = SSL_read(c->ssl, buf, (int)len);
-        if (n <= 0) {
-            int err = SSL_get_error(c->ssl, n);
-            if (err == SSL_ERROR_SYSCALL || err == SSL_ERROR_SSL) c->transport_error = true;
-        }
+        if (n <= 0 && !ssl_clean_end(SSL_get_error(c->ssl, n))) c->transport_error = true;
         return n;
     }
-    ssize_t n = read(c->fd, buf, len);
+    ssize_t n;
+    do {
+        n = read(c->fd, buf, len);
+    } while (n < 0 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK));
     if (n < 0) c->transport_error = true;
     return (int)n;
 }
