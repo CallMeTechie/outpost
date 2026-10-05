@@ -16,7 +16,10 @@ const setup = (reconnectSession) => {
     return { hook, errors };
 };
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+});
 
 test("wartet 5, 10, 30 s zwischen den Versuchen und setzt den Zähler erst nach 10 s Stabilität zurück", async () => {
     vi.useFakeTimers({ now: 0 });
@@ -56,7 +59,7 @@ test("wird der Tab wieder sichtbar, versucht er es sofort statt den Countdown ab
     errors.set("s1", { retryable: true });
     act(() => hook.result.current.handleSessionErrored("s1"));
 
-    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
     await act(async () => { document.dispatchEvent(new Event("visibilitychange")); });
 
     expect(reconnectSession).toHaveBeenCalledWith("s1");

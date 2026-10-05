@@ -1,4 +1,5 @@
 const RDP_CLOSED_MESSAGES = ["disconnected.", "logged off.", "manually logged off.", "manually disconnected.", "forcibly disconnected."];
+const RDP_LOGOFF_MESSAGES = ["logged off.", "manually logged off.", "forcibly disconnected."];
 
 const STATUS_KEYS = new Map([
     [0x0209, "common.errors.connection.rdpSessionConflict"],
@@ -50,37 +51,36 @@ export const mapConnectionError = (rawMessage, t) => {
     return cleaned.replace(/\(see logs\)/gi, "").trim() || t("common.errors.connection.failed");
 };
 
-const NON_RECONNECTABLE_MESSAGES = ["logged off.", "manually logged off.", "forcibly disconnected."];
+const ENDED_BY_RDP_KEYS = new Set([
+    "common.errors.connection.rdpSessionConflict",
+    "common.errors.connection.rdpSessionTimeout",
+]);
 
-const isReconnectable = ({ message = null, statusCode = null }) => {
-    const status = toStatus(statusCode);
-    if (status !== null && (STATUS_KEYS.has(status) || (status >= 0x0300 && status <= 0x03FF))) return false;
-    if (!message) return true;
-    const msg = clean(message).toLowerCase();
-    return !(NON_RECONNECTABLE_MESSAGES.includes(msg)
-        || msg.includes("disconnected by other connection")
-        || msg.includes("session time limit exceeded"));
-};
-
-const classifyRetryable = ({ message = null, code = null, statusCode = null, httpStatus = null } = {}, t) => {
-    if (httpStatus === 410) return { text: t("common.errors.connection.expired"), retryable: false };
-    if (httpStatus === 403 || httpStatus === 404) return { text: t("common.errors.connection.accessRevoked"), retryable: false };
-
+export const classifyConnectionError = ({ message = null, code = null, statusCode = null, httpStatus = null } = {}, t) => {
     const status = toStatus(statusCode);
     const statusKey = STATUS_KEYS.get(status);
     const clientStatus = status !== null && status >= 0x0300 && status <= 0x03FF;
-    if (statusKey) return { text: t(statusKey), retryable: false };
+    const msg = message ? clean(message).toLowerCase() : null;
+    const key = msg === null ? null : errorKey(msg);
+    const reconnectable = !statusKey && !clientStatus
+        && (msg === null || (!ENDED_BY_RDP_KEYS.has(key) && !RDP_LOGOFF_MESSAGES.includes(msg)));
 
-    if (!message) {
+    if (httpStatus === 410) return { text: t("common.errors.connection.expired"), retryable: false, reconnectable };
+    if (httpStatus === 403 || httpStatus === 404) return { text: t("common.errors.connection.accessRevoked"), retryable: false, reconnectable };
+    if (statusKey) return { text: t(statusKey), retryable: false, reconnectable };
+
+    if (msg === null) {
         const unexpected = code !== null && code !== 1000 && code !== 1005;
         return {
             text: t(unexpected ? "common.errors.connection.closedUnexpectedly" : "common.errors.connection.error"),
-            retryable: !clientStatus,
+            retryable: unexpected && !clientStatus,
+            reconnectable,
         };
     }
 
-    const key = errorKey(clean(message).toLowerCase());
-    return { text: mapConnectionError(message, t), retryable: !clientStatus && !FINAL_KEYS.has(key) };
+    return {
+        text: key ? t(key) : mapConnectionError(message, t),
+        retryable: !clientStatus && !FINAL_KEYS.has(key),
+        reconnectable,
+    };
 };
-
-export const classifyConnectionError = (input = {}, t) => ({ ...classifyRetryable(input, t), reconnectable: isReconnectable(input) });

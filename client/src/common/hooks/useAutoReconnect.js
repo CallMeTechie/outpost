@@ -28,6 +28,7 @@ export const useAutoReconnect = ({ activeSessions, reconnectSession, getSessionE
     const lastAttemptById = useRef(new Map());
     const inFlightById = useRef(new Map());
     const scheduleRef = useRef(null);
+    const unmountedRef = useRef(false);
 
     const latest = useRef({ activeSessions, enabled, reconnectSession, getSessionErrorInfo });
     useEffect(() => {
@@ -53,22 +54,27 @@ export const useAutoReconnect = ({ activeSessions, reconnectSession, getSessionE
         });
     }, []);
 
+    const inCooldown = useCallback((id) => Date.now() - (lastAttemptById.current.get(id) ?? -Infinity) < RECONNECT_COOLDOWN_MS, []);
+
     const attempt = useCallback((id, { bypassCooldown = false } = {}) => {
         const running = inFlightById.current.get(id);
         if (running) return running;
-        const now = Date.now();
-        if (!bypassCooldown && now - (lastAttemptById.current.get(id) ?? -Infinity) < RECONNECT_COOLDOWN_MS) return Promise.resolve(null);
-        lastAttemptById.current.set(id, now);
+        if (!bypassCooldown && inCooldown(id)) return Promise.resolve(null);
+        lastAttemptById.current.set(id, Date.now());
         const run = Promise.resolve(latest.current.reconnectSession?.(id))
             .then(result => result?.connected === true)
             .catch(() => false)
             .finally(() => inFlightById.current.delete(id));
         inFlightById.current.set(id, run);
         return run;
+    }, [inCooldown]);
+
+    const scheduleAfterFailure = useCallback((id, connected) => {
+        if (connected === false && !unmountedRef.current) scheduleRef.current?.(id);
     }, []);
 
     const schedule = useCallback((id) => {
-        if (timersById.current.has(id)) return;
+        if (unmountedRef.current || timersById.current.has(id)) return;
         const attempts = attemptsById.current.get(id) || 0;
         if (!mayAttempt(id) || attempts >= MAX_ATTEMPTS) {
             clearState(id);
@@ -84,6 +90,7 @@ export const useAutoReconnect = ({ activeSessions, reconnectSession, getSessionE
                 return;
             }
             const connected = await attempt(id);
+            if (unmountedRef.current) return;
             if (connected === true) clearState(id);
             else scheduleRef.current?.(id);
         }, delay));
@@ -115,23 +122,22 @@ export const useAutoReconnect = ({ activeSessions, reconnectSession, getSessionE
         clearState(id);
         attemptsById.current.set(id, 0);
         const run = attempt(id, { bypassCooldown: true });
-        run.then(connected => { if (connected === false) scheduleRef.current?.(id); });
+        run.then(connected => scheduleAfterFailure(id, connected));
         return run;
-    }, [clearState, attempt]);
+    }, [clearState, attempt, scheduleAfterFailure]);
 
     const retryReachable = useCallback(() => {
         for (const session of latest.current.activeSessions) {
             const id = session.id;
-            if (!mayAttempt(id)) continue;
+            if (inFlightById.current.has(id) || !mayAttempt(id)) continue;
             const attempts = attemptsById.current.get(id) || 0;
-            if (attempts >= MAX_ATTEMPTS) continue;
-            if (Date.now() - (lastAttemptById.current.get(id) ?? -Infinity) < RECONNECT_COOLDOWN_MS) continue;
+            if (attempts >= MAX_ATTEMPTS || inCooldown(id)) continue;
             clearTimerOf(timersById.current, id);
             clearState(id);
             attemptsById.current.set(id, attempts + 1);
-            void attempt(id).then(connected => { if (connected === false) scheduleRef.current?.(id); });
+            void attempt(id).then(connected => scheduleAfterFailure(id, connected));
         }
-    }, [mayAttempt, attempt, clearState]);
+    }, [mayAttempt, inCooldown, attempt, clearState, scheduleAfterFailure]);
 
     const wasServerConnected = useRef(serverConnected);
     useEffect(() => {
@@ -171,7 +177,9 @@ export const useAutoReconnect = ({ activeSessions, reconnectSession, getSessionE
     useEffect(() => {
         const timers = timersById.current;
         const stableTimers = stableTimersById.current;
+        unmountedRef.current = false;
         return () => {
+            unmountedRef.current = true;
             for (const map of [timers, stableTimers]) {
                 for (const timer of map.values()) clearTimeout(timer);
                 map.clear();

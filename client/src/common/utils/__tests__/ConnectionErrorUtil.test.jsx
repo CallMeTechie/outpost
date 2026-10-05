@@ -21,6 +21,7 @@ test("Anmeldefehler, RDP-Abmeldung und Endpunkt-Absagen sind endgültig, Verbind
     expect(classifyConnectionError({ message: "Engine disconnected", code: 4017 }, t).retryable).toBe(true);
     expect(classifyConnectionError({ code: 1006 }, t))
         .toMatchObject({ text: "common.errors.connection.closedUnexpectedly", retryable: true });
+    expect(classifyConnectionError({ code: 1000 }, t).retryable).toBe(false);
     expect(classifyConnectionError({ message: "Server refused connection." }, t))
         .toMatchObject({ text: "common.errors.connection.refused", retryable: true });
     expect(classifyConnectionError({ message: "Aborted. See logs.", statusCode: "523" }, t))
