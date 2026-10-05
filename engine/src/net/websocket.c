@@ -108,6 +108,7 @@ typedef struct {
     SSL* ssl;
     int fd;
     bool tls;
+    bool transport_error;
 } ws_conn_t;
 
 static int ws_write(ws_conn_t* c, const void* buf, size_t len) {
@@ -115,12 +116,17 @@ static int ws_write(ws_conn_t* c, const void* buf, size_t len) {
 }
 
 static int ws_read(ws_conn_t* c, void* buf, size_t len) {
-    if (c->tls)
-        return SSL_read(c->ssl, buf, (int)len);
-    else {
-        ssize_t n = read(c->fd, buf, len);
-        return (int)n;
+    if (c->tls) {
+        int n = SSL_read(c->ssl, buf, (int)len);
+        if (n <= 0) {
+            int err = SSL_get_error(c->ssl, n);
+            if (err == SSL_ERROR_SYSCALL || err == SSL_ERROR_SSL) c->transport_error = true;
+        }
+        return n;
     }
+    ssize_t n = read(c->fd, buf, len);
+    if (n < 0) c->transport_error = true;
+    return (int)n;
 }
 
 static int ws_send_frame(ws_conn_t* c, int opcode, const uint8_t* data, size_t len, bool mask) {
@@ -337,7 +343,7 @@ static void* websocket_session_thread(void* arg) {
         return NULL;
     }
 
-    ws_conn_t conn = { .ssl = NULL, .fd = sock, .tls = use_tls };
+    ws_conn_t conn = { .ssl = NULL, .fd = sock, .tls = use_tls, .transport_error = false };
     SSL_CTX* ssl_ctx = NULL;
 
     if (use_tls) {
@@ -401,6 +407,7 @@ static void* websocket_session_thread(void* arg) {
 
     uint8_t buf[WS_BUF_SIZE];
     bool running = true;
+    bool lost = false;
 
     int ws_fd = sock;
     int ssl_pending;
@@ -424,13 +431,13 @@ static void* websocket_session_thread(void* arg) {
         if (fds[0].revents & POLLIN) {
             ssize_t n = read(data_fd, buf, sizeof(buf));
             if (n <= 0) break;
-            if (ws_send_frame(&conn, 0x01, buf, (size_t)n, true) != 0) break;
+            if (ws_send_frame(&conn, 0x01, buf, (size_t)n, true) != 0) { lost = true; break; }
         }
         if (fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) break;
 
         if ((fds[1].revents & POLLIN) || ssl_pending > 0) {
             ws_frame_t frame;
-            if (ws_read_frame(&conn, &frame) != 0) break;
+            if (ws_read_frame(&conn, &frame) != 0) { lost = conn.transport_error; break; }
 
             if (frame.opcode == 0x08) {
                 ws_send_frame(&conn, 0x08, NULL, 0, true);
@@ -448,10 +455,11 @@ static void* websocket_session_thread(void* arg) {
             }
             free(frame.payload);
         }
-        if (fds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) break;
+        if (fds[1].revents & POLLERR) { lost = true; break; }
+        if (fds[1].revents & (POLLHUP | POLLNVAL)) break;
     }
 
-    LOG_INFO("WebSocket session %s ending", session->session_id);
+    LOG_INFO("WebSocket session %s ending (reason=%s)", session->session_id, lost ? "lost" : "normal");
 
     ws_send_frame(&conn, 0x08, NULL, 0, true);
 
@@ -461,12 +469,13 @@ static void* websocket_session_thread(void* arg) {
         SSL_CTX_free(ssl_ctx);
     }
     close(sock);
-    close(data_fd);
-    session->data_fd = -1;
 
     char sid[MAX_SESSION_ID_LEN];
     snprintf(sid, sizeof(sid), "%s", session->session_id);
-    outpost_cp_send_session_closed(cp, sid, "websocket session ended");
+    outpost_cp_send_session_closed(cp, sid, lost ? "connection lost" : "websocket session ended");
+
+    close(data_fd);
+    session->data_fd = -1;
     outpost_sm_finish(&g_session_manager, sid);
 
     free(args);
