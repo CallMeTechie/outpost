@@ -1,6 +1,6 @@
 schema: mockingbird/1
 project: outpost
-revision: 6
+revision: 7
 updated: 2026-10-05
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
@@ -33,6 +33,10 @@ changelog:
     date: 2026-10-05
     summary: Runde 6 — Reconnect; die Fehlerkarte einer Session verbindet neu, der Tab zeigt den Verbindungszustand am Label statt im Marker
     touched: [UI-SERVERS-VIEW-ERROR, UI-SERVERS-TAB-CONNECTION, UI-SERVERS-TABS, UI-SERVERS-VIEW]
+  - rev: 7
+    date: 2026-10-05
+    summary: Fehlerkarte final — bei RDP-Abmelden oder -Trennung kein Neu verbinden, weil der Server diese Sitzung nicht zum Wiederaufbau aufhebt
+    touched: [UI-SERVERS-VIEW-ERROR]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -344,7 +348,7 @@ screens:
           - { id: default, copy: "Verbindung verloren. Neu verbinden oder schließen." }
           - { id: countdown, copy: "Neuer Versuch in 8 s · Versuch 2/5" }
           - { id: loading, copy: "Verbinde neu …" }
-          - { id: final, copy: "Anmeldung abgelehnt. Zugangsdaten prüfen, dann neu verbinden." }
+          - { id: final, copy: "Anmeldung abgelehnt. Zugangsdaten prüfen, dann neu verbinden. — Nach RDP-Abmelden oder -Trennung nur Schließen." }
           - { id: expired, copy: "Sitzung abgelaufen. Öffne den Server neu." }
         locators:
           web: "[data-ui-id='UI-SERVERS-VIEW-ERROR']"

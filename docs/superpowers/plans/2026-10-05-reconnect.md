@@ -8,15 +8,15 @@
 
 **Tech Stack:** Node.js ≥ 22 (Express 5, Joi, express-rate-limit 8, `node:test`), React 19 + Vite, vitest/jsdom/Testing Library (`*.test.jsx`), guacamole-common-js, Engine in C (OpenSSL, poll).
 
-**Spec:** `docs/superpowers/specs/2026-10-05-reconnect-design.md` (inkl. mockingbird-Block Manifest-Revision 6 und preflight-Sicherheitsblock). Die Spec ist maßgeblich; dieser Plan argumentiert aus ihr. Wo der Plan von ihr abweicht oder sie ergänzt, steht es ausdrücklich unter „Abweichungen und Ergänzungen zur Spec“.
+**Spec:** `docs/superpowers/specs/2026-10-05-reconnect-design.md` (inkl. mockingbird-Block Manifest-Revision 7 und preflight-Sicherheitsblock). Die Spec ist maßgeblich; dieser Plan argumentiert aus ihr. Wo der Plan von ihr abweicht oder sie ergänzt, steht es ausdrücklich unter „Abweichungen und Ergänzungen zur Spec“.
 
-**Design:** `docs/design/manifest.yaml` (rev 6) — Design-System: `docs/design/design-system.md` — Artboards: `docs/design/mockups/index.html`
+**Design:** `docs/design/manifest.yaml` (rev 7) — Design-System: `docs/design/design-system.md` — Artboards: `docs/design/mockups/index.html`
 
 **Design Scope:** UI-SERVERS (übernommen, nicht zu bauen: UI-SHELL-ACCOUNT, UI-SHELL-MOBILE-NAV, UI-SHELL-NAV)
 
 ## Global Constraints
 
-- Design-Quelle: `docs/design/manifest.yaml` (rev 6). Bei Konflikt zwischen Plan-Text und Manifest gilt das Manifest; melde den Konflikt, statt ihn still aufzulösen.
+- Design-Quelle: `docs/design/manifest.yaml` (rev 7). Bei Konflikt zwischen Plan-Text und Manifest gilt das Manifest; melde den Konflikt, statt ihn still aufzulösen.
 - Jedes gebaute UI-Element trägt seine Manifest-ID im Code: Web `data-ui-id="UI-…"`, andere Medien nach `adapters:` im Manifest. Ohne ID ist das Element nicht prüfbar.
 - Design-Tokens ausschließlich aus `docs/design/mockups/tokens.css` bzw. `docs/design/design-system.md`. Keine neuen Farben, Abstände, Radien oder Schriftgrößen.
 - Sichtbare Texte (Labels, Leer-, Lade- und Fehlerzustände) wörtlich aus dem Manifest (`label`, `states[].copy`). Keine eigenen Formulierungen.
@@ -30,20 +30,20 @@
 - Audit: `AUDIT_ACTIONS.RECONNECT = "entry.reconnect"`, Eintrag in `ACTION_LABELS`, unterliegt `enableServerConnectionAudit`, `details: { reconnectOf, generation, connectionReason }`; seine ID ist die `auditLogId` der neuen Generation.
 - Automatik: Wartezeiten `[5, 10, 30, 60, 120]` s, 5 Versuche, danach nur Knopf; pro Sitzung ein laufender Versuch, danach 3 s Sperre („Jetzt verbinden“ umgeht sie); Zähler-Reset erst nach 10 s stabiler Verbindung; sofortiger Versuch bei `online`, wiederkehrender Status-Verbindung und `visibilitychange` → sichtbar; nur bei `terminal.autoReconnect`, wiederholbarem Fehler und `wasConnected`.
 - Einstellung `terminal.autoReconnect: boolean`, Standard `true`, Gruppe `terminal.input`.
-- Design-Quelle: `docs/design/manifest.yaml` (`design_rev=6`, Screen `UI-SERVERS`), Artboard `docs/design/mockups/ui-servers.html`, Anleitung `docs/design/guides/ui-servers.md`, Design-System `docs/design/design-system.md`. Design ändern heißt Manifest ändern, nicht Code.
-- UI nach Manifest-Revision 6: `UI-SERVERS-VIEW-ERROR` (Zustände `default`, `countdown`, `loading`, `final`, `expired`), `UI-SERVERS-TAB-CONNECTION` (`default`, `loading`, `error`), Kontextmenüeintrag „Neu verbinden“ an erster Stelle nur bei getrennten Sessions; Wortlaut aus dem Manifest; Texte in `en.json` und `de_DE.json`. Alle übrigen Elemente von `UI-SERVERS` dürfen nicht regressieren.
+- Design-Quelle: `docs/design/manifest.yaml` (`design_rev=7`, Screen `UI-SERVERS`), Artboard `docs/design/mockups/ui-servers.html`, Anleitung `docs/design/guides/ui-servers.md`, Design-System `docs/design/design-system.md`. Design ändern heißt Manifest ändern, nicht Code.
+- UI nach Manifest-Revision 7: `UI-SERVERS-VIEW-ERROR` (Zustände `default`, `countdown`, `loading`, `final`, `expired`), `UI-SERVERS-TAB-CONNECTION` (`default`, `loading`, `error`), Kontextmenüeintrag „Neu verbinden“ an erster Stelle nur bei getrennten Sessions; Wortlaut aus dem Manifest; Texte in `en.json` und `de_DE.json`. Alle übrigen Elemente von `UI-SERVERS` dürfen nicht regressieren.
 - Keine neuen Abhängigkeiten (Server und Client).
 - Code-Kommentare: fast keine — nur nicht offensichtliches Warum, Fallstricke, externe Constraints. Bestehende Kommentardichte einer Datei wird nicht erhöht.
 - Tests: ein Test je Verhalten; Integration über die Naht vor Mocks; keine Tests für Weiterreichung, Konstanten, Getter, Framework-Zusagen, Logs. Je Task nur die betroffenen Tests, volle Suite einmal am Phasenende.
-- Client-Tests nur als `*.test.jsx` (vitest, `client/vitest.config.js`); Server-Tests unter `server/lib/__tests__/*.test.js` (`node --test`).
+- Client-Tests: DOM/React als `*.test.jsx` (vitest); reine Hilfsfunktionen dürfen wie die Nachbarn in `client/src/common/utils/__tests__` als `*.test.js` mit `node:test` laufen. Server-Tests unter `server/lib/__tests__/*.test.js` (`node --test`).
 - Commits: deutsche Betreffzeile im Stil des Repos („Reconnect: …“), **keine** `Co-Authored-By`-/KI-Zeilen (ein Commit-Hook lehnt sie ab).
 
 ## Review Focus
 
 1. **Reconnect während der 1-s-Karenz** (Knopf sofort nach dem Abbruch, `online`-Ereignis im selben Moment): erwartet wird, dass der Endpunkt den Ausgang der Karenz abwartet und `200` liefert, nicht `409` oder `410`. → Test in Task 4 („ein Reconnect während der Karenz wartet deren Ausgang ab“).
 2. **Sitzungssync `same_browser`/`same_tab`**: die neue Generation muss in `GET /connections` desselben Browsers/Tabs auftauchen, sonst verschwindet der Tab beim nächsten Broadcast. Die Spec führt `tabId`/`browserId` nicht im Tombstone. → Tombstone trägt beide (Task 2), Prüfung in Task 4, Test 2 (`tabId`/`browserId` der neuen Sitzung).
-3. **DELETE eines fremden Tombstones** (ein zweites Konto kennt die UUID): erwartet `404`, der Tombstone bleibt. → Test in Task 4 („DELETE verwirft nur den eigenen Tombstone“).
-4. **Verspätete Fehlermeldung des alten Renderers nach erfolgreichem Reconnect**: der frisch verbundene Tab darf nicht wieder als getrennt markiert werden. → Test in Task 7b (`shouldRecordError`).
+3. **DELETE eines fremden Tombstones** (ein zweites Konto kennt die UUID): erwartet `404`, der Tombstone bleibt. → Test in Task 4 („fremde Konten können weder löschen noch schlafen legen noch fortsetzen; DELETE gewinnt gegen laufenden Reconnect“).
+4. **Verspätete Fehlermeldung des alten Renderers nach erfolgreichem Reconnect**: der frisch verbundene Tab darf nicht wieder als getrennt markiert werden. → Test in Task 5 (`shouldRecordError`, `sessionErrors.test.jsx`).
 5. **Erstverbindung scheitert** (falsches Passwort, Host aus): keine Automatik, aber „Neu verbinden“ funktioniert. → Test in Task 5 (`useAutoReconnect`, dritter Test).
 
 ---
@@ -53,15 +53,17 @@
 Beim Lesen des Codes gefunden; im Plan so umgesetzt, beim Review bitte bestätigen:
 
 1. **Tombstone trägt zusätzlich `tabId` und `browserId`.** `getSessions` filtert nach `account.sessionSync` über genau diese Felder (`server/controllers/serverSession.js:211-216`); ohne sie wäre die neue Generation für den eigenen Browser unsichtbar.
-2. **Fehlerkörper des Endpunkts enthält `code`.** `RequestUtil.request` wirft bei Fehlern den geparsten Body, nicht den HTTP-Status (`client/src/common/utils/RequestUtil.js:136-143`). Damit der Client `409/410/403/404` unterscheiden kann, antwortet die Route mit `{ code, error }`.
+2. **Fehlerkörper des Endpunkts enthält `code`.** `RequestUtil.request` wirft bei Fehlern den geparsten Body, nicht den HTTP-Status (`client/src/common/utils/RequestUtil.js:136-143`). Damit der Client `409/410/403/404` unterscheiden kann, antwortet die Route mit `{ code, message }`.
 3. **`classifyConnectionError(input, t)`** bekommt `t` als zweiten Parameter (der Text muss übersetzt werden) und ein eigenes Feld `httpStatus` für die Endpunkt-Antworten, getrennt vom Guacamole-Status `statusCode`. `protocol` wird nicht gebraucht und entfällt.
 4. **Tombstone wird unmittelbar vor `SessionManager.create` entfernt** (Spec: nach Schritt 6). Sonst könnte ein sehr schnell scheiternder Verbindungsaufbau der neuen Generation seinen eigenen, neuen Tombstone anlegen, den Schritt 7 dann löscht.
-5. **`DELETE /connections/:id` prüft den Besitz auch für lebende Sitzungen** (heute fehlt die Prüfung, `server/routes/serverSession.js:128-137`, `deleteSession` ohne `accountId`) und wartet auf das Ende der Sitzung, bevor es einen Tombstone verwirft. Nebenbefund: `deleteSession` wertete bisher ein Promise als Erfolg (`server/controllers/serverSession.js:270-276`).
+5. **`DELETE /connections/:id` prüft den Besitz auch für lebende Sitzungen** (heute fehlt die Prüfung, `server/routes/serverSession.js:128-137`, `deleteSession` ohne `accountId`) und wartet auf das Ende der Sitzung, bevor es einen Tombstone verwirft. Nebenbefund: `deleteSession` wertete bisher ein Promise als Erfolg (`server/controllers/serverSession.js:270-276`). DELETE, hibernate, resume antworten bei fremden Sitzungen bewusst `404` statt `403` von `validateSessionOwnership` (keine Auskunft über fremde Sitzungen).
 6. **Fehlerkarte wird vom Besitzer gerendert, nicht vom Renderer.** `XtermRenderer`/`GuacamoleRenderer` melden nur noch; `ViewContainer`, `Popout` und `Share` zeigen `ConnectionError`. Grund: die Karte braucht Reconnect-Zustand, Countdown und Handler des Besitzers, und `Share.jsx` würde sonst seine Fehleranzeige verlieren. `ScriptRenderer` behält seine eigene Karte (keine Automatik, keine Änderung außer dem Import).
 7. **Countdown-Takt kommt aus `ViewContainer`** (Prop `now`), nicht aus der Karte — so verlangt es `docs/design/guides/ui-servers.md` („nicht aus einem eigenen Timer der Karte“), und `react-hooks/purity` verbietet `Date.now()` im Render.
 8. **Identität fehlt beim Reconnect → `404`** statt der `400` aus `createSession` (Spec: „Fehlend → 403 bzw. 404“; `400` würde der Client als wiederholbar werten).
 9. **Veraltete Verbindungsaufbauten werden verworfen.** Endet eine Generation, während ihr `openEngineSession` noch läuft, schließt `ConnectionService` den späten Daten-Socket und die Engine-Sitzung, statt sie verwaist liegen zu lassen (`setConnection` liefert `false`).
 10. **`"Session terminated"` gilt als endgültig.** `closeAllWebSockets` schließt mit Code 1000 *und* Grund (`server/lib/SessionManager.js:312-325`); `Guacamole.WebSocketTunnel` wertet jeden Grund als Fehlerstatus (`vendor/.../Tunnel.js:997-1006`). Ohne die Regel würde ein bewusst beendetes RDP automatisch neu verbunden.
+11. Ein Reconnect, der genau während des Audit-Schreibens per DELETE/Abmelden verworfen wird, kann einen `entry.reconnect`-Eintrag ohne Sitzung hinterlassen (Fenster = ein DB-Write).
+12. Absagen des Endpunkts (`403`/`404`/`410`) zeigen die Karte ohne „Neu verbinden“ (`reconnectable: false`): ein erneuter Versuch kann ohne Änderung der Rechte nicht gelingen; Wiederaufnahme über erneutes Öffnen.
 
 ---
 
@@ -70,18 +72,18 @@ Beim Lesen des Codes gefunden; im Plan so umgesetzt, beim Review bitte bestätig
 | Task | Phase | Dateien (Create/Modify) | Parallel zu |
 |---|---|---|---|
 | 1 Engine telnet/websocket | A | `engine/src/net/telnet.c`, `engine/src/net/websocket.c` | 2, 5 |
-| 2 SessionManager-Kern | A | `server/lib/SessionManager.js`, `server/lib/__tests__/sessionTombstone.test.js` | 1, 5 |
-| 5 Client-Logik | A | `client/src/common/utils/ConnectionErrorUtil.js`, `client/src/common/utils/ReconnectPolicy.js`, `client/src/common/hooks/useAutoReconnect.js`, `client/src/common/utils/ConnectionUtil.js`, `.../ConnectionError/ConnectionError.jsx`, `.../ConnectionError/index.js`, Importzeilen in `XtermRenderer.jsx`, `GuacamoleRenderer.jsx`, `ScriptRenderer/ScriptRenderer.jsx`, Tests | 1, 2 |
-| 3 Server-Engine-Naht | B | `server/lib/ConnectionService.js`, `server/lib/GuacdClient.js`, `server/lib/engineEvents.js` (neu), `server/index.js`, `server/hooks/guacamole.js`, `server/lib/__tests__/engineSessionLifecycle.test.js` (neu), `server/lib/__tests__/rdpDisplayDpi.test.js` | 6 |
-| 6 Client-Oberfläche | B | `.../ConnectionError/ConnectionError.jsx`, `.../ConnectionError/styles.sass`, `.../ConnectionError/__tests__/ConnectionError.test.jsx` (neu), `.../ServerTabs/ServerTabs.jsx`, `.../ServerTabs/styles.sass`, `client/public/assets/locales/en.json`, `client/public/assets/locales/de_DE.json`, `client/src/common/contexts/PreferencesContext.jsx`, `client/src/pages/Settings/pages/Terminal/Terminal.jsx` | 3 |
-| 4 Server-Endpunkt | C | `server/controllers/serverSession.js`, `server/routes/serverSession.js`, `server/validations/serverSession.js`, `server/validations/preferences.js`, `server/controllers/audit.js`, `server/lib/__tests__/reconnectSession.test.js` (neu), `server/lib/__tests__/preferencesValidation.test.js`, `server/lib/__tests__/validations.test.js` | 7a, 7b |
-| 7a Renderer/Popout/Share | C | `.../renderer/XtermRenderer.jsx`, `.../renderer/GuacamoleRenderer.jsx`, `client/src/pages/Popout/Popout.jsx`, `client/src/pages/Popout/styles.sass`, `client/src/pages/Share/Share.jsx` | 4, 7b |
-| 7b Servers/ViewContainer | C | `client/src/pages/Servers/Servers.jsx`, `.../ViewContainer/ViewContainer.jsx`, `client/src/pages/Servers/utils/sessionErrors.js` (neu), `client/src/pages/Servers/utils/__tests__/sessionErrors.test.jsx` (neu) | 4, 7a |
+| 2 SessionManager-Kern | A | `server/lib/SessionManager.js`, `server/lib/ConnectionService.js` (nur Export), `server/lib/__tests__/sessionTombstone.test.js` | 1, 5 |
+| 5 Client-Logik | A | `client/src/common/utils/ConnectionErrorUtil.js`, `client/src/common/utils/ReconnectPolicy.js`, `client/src/common/hooks/useAutoReconnect.js`, `client/src/common/utils/ConnectionUtil.js`, `.../ConnectionError/ConnectionError.jsx`, `.../ConnectionError/index.js`, Importzeilen in `XtermRenderer.jsx`, `GuacamoleRenderer.jsx`, `ScriptRenderer/ScriptRenderer.jsx`, `client/src/pages/Servers/utils/sessionErrors.js` (neu), `client/src/pages/Servers/utils/__tests__/sessionErrors.test.jsx` (neu), Tests | 1, 2 |
+| 3 Server-Engine-Naht | B | `server/lib/ConnectionService.js`, `server/lib/GuacdClient.js`, `server/lib/engineEvents.js` (neu), `server/index.js`, `server/hooks/guacamole.js`, `server/lib/__tests__/engineSessionLifecycle.test.js` (neu), `server/lib/__tests__/rdpDisplayDpi.test.js` | 4, 6 |
+| 6 Client-Oberfläche | B | `.../ConnectionError/ConnectionError.jsx`, `.../ConnectionError/styles.sass`, `.../ConnectionError/__tests__/ConnectionError.test.jsx` (neu), `.../ServerTabs/ServerTabs.jsx`, `.../ServerTabs/styles.sass`, `client/public/assets/locales/en.json`, `client/public/assets/locales/de_DE.json`, `client/src/common/contexts/PreferencesContext.jsx`, `client/src/pages/Settings/pages/Terminal/Terminal.jsx` | 3, 4 |
+| 4 Server-Endpunkt | B | `server/controllers/serverSession.js`, `server/routes/serverSession.js`, `server/validations/serverSession.js`, `server/validations/preferences.js`, `server/controllers/audit.js`, `server/lib/__tests__/reconnectSession.test.js` (neu), `server/lib/__tests__/validations.test.js` | 3, 6 |
+| 7a Renderer/Popout/Share | C | `.../renderer/XtermRenderer.jsx`, `.../renderer/GuacamoleRenderer.jsx`, `client/src/pages/Popout/Popout.jsx`, `client/src/pages/Popout/styles.sass`, `client/src/pages/Share/Share.jsx` | 7b |
+| 7b Servers/ViewContainer | C | `client/src/pages/Servers/Servers.jsx`, `.../ViewContainer/ViewContainer.jsx` | 7a |
 | 8 Abschluss | D | keine Code-Dateien | none |
 
 Abkürzungen: `.../ConnectionError` = `client/src/pages/Servers/components/ViewContainer/renderer/components/ConnectionError`, `.../ServerTabs` = `client/src/pages/Servers/components/ViewContainer/components/ServerTabs`, `.../ViewContainer` = `client/src/pages/Servers/components/ViewContainer`, `.../renderer` = `client/src/pages/Servers/components/ViewContainer/renderer`.
 
-Abhängigkeiten zwischen Phasen: Task 3 braucht Task 2 (Generation, Karenz, `engineSessionId`). Task 6 ändert `ConnectionError.jsx` nach Task 5 und importiert `ReconnectPolicy.js`. Task 4 braucht Task 2 und den Export `getEntryProtocol` aus Task 3. Task 7a/7b brauchen Task 5 und 6; untereinander und zu Task 4 nur die hier festgelegten Verträge (Props, HTTP-Antworten).
+Abhängigkeiten zwischen Phasen: Task 3 braucht Task 2 (Generation, Karenz, `engineSessionId`). Task 6 ändert `ConnectionError.jsx` nach Task 5 und importiert `ReconnectPolicy.js`. Task 4 braucht nur Task 2 (einschließlich des Exports `getEntryProtocol`) und läuft deshalb in Phase B neben Task 3 und 6. Task 7a/7b brauchen Task 5 und 6; untereinander nur die hier festgelegten Verträge (Props); die HTTP-Antworten von Task 4 sind dann bereits gemergt.
 
 **Ausführung:** Jede parallele Task läuft in einem eigenen Worktree (superpowers:using-git-worktrees), abgezweigt vom Stand nach der vorigen Phase; am Phasenende werden die Worktree-Branches in `feature/reconnect` gemergt (dateidisjunkt, Reihenfolge egal). Danach volle Suite, Review-Kette einmal, kurzer Zwischenstand.
 
@@ -96,7 +98,7 @@ Abhängigkeiten zwischen Phasen: Task 3 braucht Task 2 (Generation, Karenz, `eng
 - Modify: `engine/src/net/websocket.c:107-124` (`ws_conn_t`, `ws_read`), `:340` (Initialisierung), `:402-471` (Schleife und Abbau)
 
 **Interfaces:**
-- Consumes: `outpost_cp_send_session_closed(cp, sid, reason)` (unverändert), Vorbild `ssh_bridge_poll` in `engine/src/net/ssh.c:127-172` und Reihenfolge in `ssh.c:275-291`.
+- Consumes: `outpost_cp_send_session_closed(cp, sid, reason)` (unverändert), Vorbild `ssh_bridge_poll` in `engine/src/net/ssh.c:127-172` (enum 127-132, `ssh_bridge_poll` ab 134) und Reihenfolge in `ssh.c:275-291`.
 - Produces: Control-Plane-Meldung `SessionClosed` mit Grund `"connection lost"` bei Transportabbrüchen; sonst `"session ended"` (telnet) bzw. `"websocket session ended"` (pve-lxc/pve-shell). Der Server bildet `"connection lost"` auf 4017 ab (Task 3, `engineEvents.handleSessionClosed`).
 
 **Design:** kein UI-Anteil.
@@ -351,6 +353,7 @@ git commit -m "Engine: telnet und pve-lxc melden Verbindungsabbrüche als connec
 
 **Files:**
 - Modify: `server/lib/SessionManager.js` (`create` Z. 16-36, `setConnection` Z. 72-81, `onMasterConnectionClosed` Z. 113-123, `markFailed` Z. 330-335, `cleanupConnection` Z. 372-394, `remove` Z. 396-458, `removeAllByAccountId`/`removeAllByEntryId` Z. 533-549, neue Funktionen)
+- Modify: `server/lib/ConnectionService.js` Exporte (nur `getEntryProtocol` in `module.exports` aufnehmen; Funktion besteht seit Z. 117)
 - Create: `server/lib/__tests__/sessionTombstone.test.js`
 
 **Interfaces:**
@@ -367,6 +370,7 @@ git commit -m "Engine: telnet und pve-lxc melden Verbindungsabbrüche als connec
   - `getTombstone(sessionId) → Tombstone | null` (abgelaufene gelten als nicht vorhanden), `dropTombstone(sessionId) → boolean`; `TOMBSTONE_TTL_MS = 15 * 60 * 1000`
   - `Tombstone = { accountId, organizationId, entryId, directTarget, configuration, connectionReason, tabId, browserId, generation, reason, expiresAt }`
   - `removeAllByAccountId(accountId)`, `removeAllByEntryId(entryId)` verwerfen zusätzlich die passenden Tombstones.
+  - `ConnectionService.getEntryProtocol(entry) → string|undefined` (bestehend, nur exportiert; von Task 4 genutzt)
 
 **Design:** kein UI-Anteil.
 
@@ -448,7 +452,7 @@ test("Abmelden und Löschen eines Eintrags verwerfen auch die Tombstones", async
     assert.ok(SessionManager.getTombstone(otherEntry));
 });
 
-test("Aufrufe einer älteren Generation lassen die aktuelle Sitzung unberührt", async () => {
+test("Engine-ID-Format, belegte ID und Wächter für setConnection/markFailed/remove", async () => {
     const configuration = { protocol: "ssh" };
     const first = SessionManager.create(1, 2, configuration);
     const { sessionId } = first;
@@ -468,11 +472,9 @@ test("Aufrufe einer älteren Generation lassen die aktuelle Sitzung unberührt",
     assert.strictEqual(await SessionManager.remove(sessionId, { generation: 1 }), false);
     assert.strictEqual(SessionManager.setConnection(sessionId, { type: "ssh" }, 1), false);
     SessionManager.markFailed(sessionId, "stale", 1);
-    SessionManager.beginCloseGrace(sessionId, 1);
 
     assert.strictEqual(SessionManager.get(sessionId), second);
     assert.strictEqual(second.masterConnection, null);
-    assert.strictEqual(second._closeGrace, null);
     assert.strictEqual(SessionManager.consumeFailedReason(sessionId), null);
     await SessionManager.remove(sessionId);
 });
@@ -726,11 +728,24 @@ Z. 439:
 ```js
 module.exports.removeAllByAccountId = async (accountId) => {
     const numericId = Number(accountId);
-    const toRemove = [...sessions.entries()].filter(([, s]) => s.accountId === numericId).map(([id]) => id);
-    for (const id of toRemove) await module.exports.remove(id);
-    for (const [id, tombstone] of retired) if (Number(tombstone.accountId) === numericId) retired.delete(id);
-    logger.info(`Removed all sessions for account`, { accountId, count: toRemove.length });
-    return toRemove.length;
+    const dropTombstones = () => {
+        for (const [id, tombstone] of retired) if (Number(tombstone.accountId) === numericId) retired.delete(id);
+    };
+    // Repeated until nothing is left: a 4017 teardown still running retires its session in its finally,
+    // and a reconnect in flight can claim that tombstone while later sessions are still being torn down.
+    let count = 0;
+    for (;;) {
+        dropTombstones();
+        const toRemove = [...sessions.entries()].filter(([, s]) => s.accountId === numericId).map(([id]) => id);
+        if (toRemove.length === 0) break;
+        for (const id of toRemove) {
+            await module.exports.remove(id);
+            await module.exports.whenEnded(id);
+        }
+        count += toRemove.length;
+    }
+    logger.info(`Removed all sessions for account`, { accountId, count });
+    return count;
 };
 ```
 
@@ -739,13 +754,24 @@ module.exports.removeAllByAccountId = async (accountId) => {
 ```js
 module.exports.removeAllByEntryId = async (entryId) => {
     const numericId = Number(entryId);
-    const toRemove = [...sessions.entries()].filter(([, s]) => s.entryId === numericId).map(([id]) => id);
-    for (const id of toRemove) await module.exports.remove(id);
-    for (const [id, tombstone] of retired) if (Number(tombstone.entryId) === numericId) retired.delete(id);
-    if (toRemove.length > 0) {
-        logger.info(`Removed all sessions for entry`, { entryId, count: toRemove.length });
+    const dropTombstones = () => {
+        for (const [id, tombstone] of retired) if (Number(tombstone.entryId) === numericId) retired.delete(id);
+    };
+    let count = 0;
+    for (;;) {
+        dropTombstones();
+        const toRemove = [...sessions.entries()].filter(([, s]) => s.entryId === numericId).map(([id]) => id);
+        if (toRemove.length === 0) break;
+        for (const id of toRemove) {
+            await module.exports.remove(id);
+            await module.exports.whenEnded(id);
+        }
+        count += toRemove.length;
     }
-    return toRemove.length;
+    if (count > 0) {
+        logger.info(`Removed all sessions for entry`, { entryId, count });
+    }
+    return count;
 };
 ```
 
@@ -763,10 +789,17 @@ setInterval(() => {
 Run: `cd /root/outpost && node --test server/lib/__tests__/sessionTombstone.test.js server/lib/__tests__/sessionCleanup.test.js server/lib/__tests__/telnetSessionCleanup.test.js server/lib/__tests__/transferCleanup.test.js server/lib/__tests__/crossTransferClient.test.js`
 Expected: alle PASS (die vier neuen plus die bestehenden SessionManager-Tests, die `create`/`remove`/`setConnection` positionell ohne Generation aufrufen).
 
-- [ ] **Step 11: Commit**
+- [ ] **Step 11: `getEntryProtocol` exportieren**
+
+In `module.exports` von `server/lib/ConnectionService.js` (Z. 771-789) nach `createConnectionForSession,` ergänzen (die Funktion besteht seit Z. 117, nur der Export fehlt):
+```js
+    getEntryProtocol,
+```
+
+- [ ] **Step 12: Commit**
 
 ```bash
-git add server/lib/SessionManager.js server/lib/__tests__/sessionTombstone.test.js
+git add server/lib/SessionManager.js server/lib/ConnectionService.js server/lib/__tests__/sessionTombstone.test.js
 git commit -m "Reconnect: ruhende Sitzungen, Generationen und Karenz im SessionManager"
 ```
 
@@ -784,20 +817,24 @@ git commit -m "Reconnect: ruhende Sitzungen, Generationen und Karenz im SessionM
 - Modify (nur Importzeile): `client/src/pages/Servers/components/ViewContainer/renderer/XtermRenderer.jsx:21`, `.../renderer/GuacamoleRenderer.jsx:10`, `.../renderer/ScriptRenderer/ScriptRenderer.jsx:14`
 - Move: `.../ConnectionError/__tests__/mapConnectionError.test.jsx` → `client/src/common/utils/__tests__/ConnectionErrorUtil.test.jsx`
 - Create: `client/src/common/hooks/__tests__/useAutoReconnect.test.jsx`
+- Create: `client/src/pages/Servers/utils/sessionErrors.js`
+- Create: `client/src/pages/Servers/utils/__tests__/sessionErrors.test.jsx`
 
 **Interfaces:**
 - Consumes: nichts aus anderen Tasks.
 - Produces:
   - `mapConnectionError(rawMessage: string|null, t) → string` (wie bisher, um `connectionLost`, `engineDisconnected`, `hostKey`, `sessionEnded` erweitert)
-  - `classifyConnectionError({ message?, code?, statusCode?, httpStatus? } = {}, t) → { text: string, retryable: boolean }` — `code` = WebSocket-Close-Code, `statusCode` = Guacamole-Status, `httpStatus` = Antwort des Reconnect-Endpunkts.
+  - `classifyConnectionError({ message?, code?, statusCode?, httpStatus? } = {}, t) → { text: string, retryable: boolean, reconnectable: boolean }` — `code` = WebSocket-Close-Code, `statusCode` = Guacamole-Status, `httpStatus` = Antwort des Reconnect-Endpunkts. `reconnectable: false` bei Guacamole-Status `0x020B`, `0x0209`, `0x020A`, `0x03xx` und bei den RDP-Texten „Logged off.“, „Manually logged off.“, „Forcibly disconnected.“, „Disconnected by other connection.“, „Session time limit exceeded“; sonst `true`.
   - `sessionProtocol(session) → string|null`, `isReconnectEligible(session) → boolean`, `shouldAttemptAutoReconnect({ enabled, session, errorInfo, wasConnected }) → boolean` (`errorInfo.retryable !== false`)
   - `useAutoReconnect({ activeSessions, reconnectSession, getSessionErrorInfo, enabled, serverConnected }) → { reconnectStates: { [sessionId]: { attempt, maxAttempts, nextAttemptAt } }, markSessionConnected(id), handleSessionErrored(id), reconnectNow(id) → Promise<boolean|null> }`; erwartet `reconnectSession(id) → Promise<{ connected: boolean }>`.
   - `getDisplayDpi() → number` (96…480)
+  - `requestReconnect(sessionId, t) → Promise<{ outcome: "reconnected"|"reattach"|"ended"|"refused"|"failed", generation?, error? }>` — liest `error.code` und `error.message` des Fehlerkörpers `{ code, message }` (Task 4).
+  - `shouldRecordError(existing, incoming, currentGeneration) → boolean` und `isSuperseded(existing, serverGeneration) → boolean` aus `client/src/pages/Servers/utils/sessionErrors.js` (von Task 7a, 7b genutzt)
   - Neue i18n-Schlüssel, die erst Task 6 anlegt: `common.errors.connection.{connectionLost, engineDisconnected, hostKey, sessionEnded, accessRevoked, expired}` — die Tests hier nutzen `t = (key) => key` und brauchen sie nicht.
 
 **Design:** kein UI-Anteil.
 
-**Tests:** 4 neue Tests + 1 verschobener: `ConnectionErrorUtil.test.jsx` — der bestehende RDP-Mapping-Test (verschoben, Import angepasst) und 1 neuer Klassifizierungstest (Spec-Client-Test 1); `useAutoReconnect.test.jsx` — (a) Wartezeiten und Zähler-Reset mit Fake-Timern (Spec-Client-Test 2), (b) `visibilitychange` → sofortiger Versuch (Outpost-Abweichung von Nexterm), (c) Erstverbindung ohne Automatik, Knopf geht trotzdem (Review Focus 5). `ReconnectPolicy` wird über den Hook getestet, nicht separat. Test-first (Verhalten steht fest).
+**Tests:** 5 neue Tests + 1 verschobener: `ConnectionErrorUtil.test.jsx` — der bestehende RDP-Mapping-Test (verschoben, Import angepasst) und 1 neuer Klassifizierungstest (Spec-Client-Test 1); `useAutoReconnect.test.jsx` — (a) Wartezeiten und Zähler-Reset mit Fake-Timern (Spec-Client-Test 2), (b) `visibilitychange` → sofortiger Versuch (Outpost-Abweichung von Nexterm), (c) Erstverbindung ohne Automatik, Knopf geht trotzdem (Review Focus 5); `sessionErrors.test.jsx` — verspätete Meldung einer älteren Generation wird verworfen, erste Meldung je Generation gewinnt, überholter Fehler wird erkannt (Review Focus 4; gilt für Servers und Popout). `ReconnectPolicy` wird über den Hook getestet, nicht separat. Test-first (Verhalten steht fest).
 
 **Parallel:** Task 1, Task 2 (keine gemeinsamen Dateien).
 
@@ -827,20 +864,20 @@ test("RDP disconnect reasons from guacd map to their own messages", () => {
 
 test("Anmeldefehler, RDP-Abmeldung und Endpunkt-Absagen sind endgültig, Verbindungsabbrüche wiederholbar", () => {
     expect(classifyConnectionError({ message: "SSH authentication failed", code: 4017 }, t))
-        .toEqual({ text: "common.errors.connection.authenticationFailed", retryable: false });
+        .toMatchObject({ text: "common.errors.connection.authenticationFailed", retryable: false, reconnectable: true });
     expect(classifyConnectionError({ message: "Connection lost", code: 4017 }, t))
-        .toEqual({ text: "common.errors.connection.connectionLost", retryable: true });
+        .toMatchObject({ text: "common.errors.connection.connectionLost", retryable: true });
     expect(classifyConnectionError({ message: "Engine disconnected", code: 4017 }, t).retryable).toBe(true);
     expect(classifyConnectionError({ code: 1006 }, t))
-        .toEqual({ text: "common.errors.connection.closedUnexpectedly", retryable: true });
+        .toMatchObject({ text: "common.errors.connection.closedUnexpectedly", retryable: true });
     expect(classifyConnectionError({ message: "Server refused connection." }, t))
-        .toEqual({ text: "common.errors.connection.refused", retryable: true });
+        .toMatchObject({ text: "common.errors.connection.refused", retryable: true });
     expect(classifyConnectionError({ message: "Aborted. See logs.", statusCode: "523" }, t))
-        .toEqual({ text: "common.errors.connection.rdpSessionClosed", retryable: false });
-    expect(classifyConnectionError({ message: "Logged off." }, t).retryable).toBe(false);
+        .toMatchObject({ text: "common.errors.connection.rdpSessionClosed", retryable: false, reconnectable: false });
+    expect(classifyConnectionError({ message: "Logged off." }, t)).toMatchObject({ retryable: false, reconnectable: false });
     expect(classifyConnectionError({ message: "Session terminated" }, t).retryable).toBe(false);
     expect(classifyConnectionError({ httpStatus: 410 }, t))
-        .toEqual({ text: "common.errors.connection.expired", retryable: false });
+        .toMatchObject({ text: "common.errors.connection.expired", retryable: false });
     expect(classifyConnectionError({ httpStatus: 403 }, t).retryable).toBe(false);
     expect(classifyConnectionError({ httpStatus: 404 }, t).retryable).toBe(false);
 });
@@ -933,10 +970,25 @@ test("scheitert schon die Erstverbindung, plant die Automatik nichts, der Knopf 
 });
 ```
 
+`client/src/pages/Servers/utils/__tests__/sessionErrors.test.jsx`:
+
+```jsx
+import { expect, test } from "vitest";
+import { isSuperseded, shouldRecordError } from "../sessionErrors.js";
+
+test("eine verspätete Meldung des alten Renderers markiert die neue Generation nicht als getrennt", () => {
+    expect(shouldRecordError(undefined, { message: "Connection lost", generation: 1 }, 2)).toBe(false);
+    expect(shouldRecordError(undefined, { message: "Connection lost", generation: 2 }, 2)).toBe(true);
+    expect(shouldRecordError({ message: "first", generation: 2 }, { message: "second", generation: 2 }, 2)).toBe(false);
+    expect(shouldRecordError({ message: "old", generation: 1 }, { message: "new", generation: 2 }, 2)).toBe(true);
+    expect(isSuperseded({ message: "Connection lost", generation: 1 }, 2)).toBe(true);
+});
+```
+
 - [ ] **Step 3: Tests laufen lassen, Fehlschlag prüfen**
 
-Run: `cd /root/outpost/client && yarn vitest run src/common/utils/__tests__/ConnectionErrorUtil.test.jsx src/common/hooks/__tests__/useAutoReconnect.test.jsx`
-Expected: FAIL — Module `../ConnectionErrorUtil.js` und `../useAutoReconnect.js` nicht gefunden.
+Run: `cd /root/outpost/client && yarn vitest run src/common/utils/__tests__/ConnectionErrorUtil.test.jsx src/common/hooks/__tests__/useAutoReconnect.test.jsx src/pages/Servers/utils/__tests__/sessionErrors.test.jsx`
+Expected: FAIL — Module `../ConnectionErrorUtil.js`, `../useAutoReconnect.js` und `../sessionErrors.js` nicht gefunden.
 
 - [ ] **Step 4: `ConnectionErrorUtil.js` anlegen**
 
@@ -995,7 +1047,19 @@ export const mapConnectionError = (rawMessage, t) => {
     return cleaned.replace(/\(see logs\)/gi, "").trim() || t("common.errors.connection.failed");
 };
 
-export const classifyConnectionError = ({ message = null, code = null, statusCode = null, httpStatus = null } = {}, t) => {
+const NON_RECONNECTABLE_MESSAGES = ["logged off.", "manually logged off.", "forcibly disconnected."];
+
+const isReconnectable = ({ message = null, statusCode = null }) => {
+    const status = toStatus(statusCode);
+    if (status !== null && (STATUS_KEYS.has(status) || (status >= 0x0300 && status <= 0x03FF))) return false;
+    if (!message) return true;
+    const msg = clean(message).toLowerCase();
+    return !(NON_RECONNECTABLE_MESSAGES.includes(msg)
+        || msg.includes("disconnected by other connection")
+        || msg.includes("session time limit exceeded"));
+};
+
+const classifyRetryable = ({ message = null, code = null, statusCode = null, httpStatus = null } = {}, t) => {
     if (httpStatus === 410) return { text: t("common.errors.connection.expired"), retryable: false };
     if (httpStatus === 403 || httpStatus === 404) return { text: t("common.errors.connection.accessRevoked"), retryable: false };
 
@@ -1015,6 +1079,8 @@ export const classifyConnectionError = ({ message = null, code = null, statusCod
     const key = errorKey(clean(message).toLowerCase());
     return { text: mapConnectionError(message, t), retryable: !clientStatus && !FINAL_KEYS.has(key) };
 };
+
+export const classifyConnectionError = (input = {}, t) => ({ ...classifyRetryable(input, t), reconnectable: isReconnectable(input) });
 ```
 
 - [ ] **Step 5: `ReconnectPolicy.js` anlegen**
@@ -1022,6 +1088,10 @@ export const classifyConnectionError = ({ message = null, code = null, statusCod
 `client/src/common/utils/ReconnectPolicy.js`:
 
 ```js
+import { postRequest } from "@/common/utils/RequestUtil";
+import { getDisplayDpi } from "@/common/utils/ConnectionUtil.js";
+import { classifyConnectionError } from "@/common/utils/ConnectionErrorUtil.js";
+
 const RECONNECT_PROTOCOLS = new Set(["ssh", "telnet", "pve-lxc", "rdp", "vnc"]);
 const LOCAL_TYPES = new Set(["notes", "onedrive", "sftp"]);
 
@@ -1043,6 +1113,35 @@ export const shouldAttemptAutoReconnect = ({ enabled, session, errorInfo, wasCon
     && Boolean(errorInfo)
     && errorInfo.retryable !== false
 );
+
+// 409 means the session is still alive server-side (only the browser socket dropped): re-attach, no new generation.
+export const requestReconnect = async (sessionId, t) => {
+    try {
+        const { generation } = await postRequest(`/connections/${sessionId}/reconnect`, { displayDpi: getDisplayDpi() });
+        return { outcome: "reconnected", generation };
+    } catch (error) {
+        const status = error?.code;
+        if (status === 409) return { outcome: "reattach" };
+        if (status === 404 && error?.message === "Session ended") return { outcome: "ended" };
+        if (status === 403 || status === 404 || status === 410) {
+            const { text } = classifyConnectionError({ httpStatus: status }, t);
+            return { outcome: "refused", error: { message: text, retryable: false, reconnectable: false, expired: status === 410 } };
+        }
+        return { outcome: "failed" };
+    }
+};
+```
+
+`client/src/pages/Servers/utils/sessionErrors.js`:
+
+```js
+export const shouldRecordError = (existing, incoming, currentGeneration) => {
+    const generation = incoming.generation ?? currentGeneration;
+    if (generation < currentGeneration) return false;
+    return !existing || (existing.generation ?? 1) < generation;
+};
+
+export const isSuperseded = (existing, serverGeneration) => Boolean(existing) && (existing.generation ?? 1) < (serverGeneration ?? 1);
 ```
 
 - [ ] **Step 6: `useAutoReconnect.js` anlegen**
@@ -1067,6 +1166,11 @@ const clearTimerOf = (timers, id) => {
 
 export const useAutoReconnect = ({ activeSessions, reconnectSession, getSessionErrorInfo, enabled, serverConnected }) => {
     const [reconnectStates, setReconnectStates] = useState({});
+    const [prevEnabled, setPrevEnabled] = useState(enabled);
+    if (prevEnabled !== enabled) {
+        setPrevEnabled(enabled);
+        if (!enabled) setReconnectStates({});
+    }
 
     const connectedById = useRef(new Map());
     const attemptsById = useRef(new Map());
@@ -1104,7 +1208,7 @@ export const useAutoReconnect = ({ activeSessions, reconnectSession, getSessionE
         const running = inFlightById.current.get(id);
         if (running) return running;
         const now = Date.now();
-        if (!bypassCooldown && now - (lastAttemptById.current.get(id) || 0) < RECONNECT_COOLDOWN_MS) return Promise.resolve(null);
+        if (!bypassCooldown && now - (lastAttemptById.current.get(id) ?? -Infinity) < RECONNECT_COOLDOWN_MS) return Promise.resolve(null);
         lastAttemptById.current.set(id, now);
         const run = Promise.resolve(latest.current.reconnectSession?.(id))
             .then(result => result?.connected === true)
@@ -1131,7 +1235,8 @@ export const useAutoReconnect = ({ activeSessions, reconnectSession, getSessionE
                 return;
             }
             const connected = await attempt(id);
-            if (connected !== true) scheduleRef.current?.(id);
+            if (connected === true) clearState(id);
+            else scheduleRef.current?.(id);
         }, delay));
     }, [mayAttempt, attempt, clearState]);
 
@@ -1169,9 +1274,12 @@ export const useAutoReconnect = ({ activeSessions, reconnectSession, getSessionE
         for (const session of latest.current.activeSessions) {
             const id = session.id;
             if (!mayAttempt(id)) continue;
-            if (Date.now() - (lastAttemptById.current.get(id) || 0) < RECONNECT_COOLDOWN_MS) continue;
+            const attempts = attemptsById.current.get(id) || 0;
+            if (attempts >= MAX_ATTEMPTS) continue;
+            if (Date.now() - (lastAttemptById.current.get(id) ?? -Infinity) < RECONNECT_COOLDOWN_MS) continue;
             clearTimerOf(timersById.current, id);
             clearState(id);
+            attemptsById.current.set(id, attempts + 1);
             void attempt(id).then(connected => { if (connected === false) scheduleRef.current?.(id); });
         }
     }, [mayAttempt, attempt, clearState]);
@@ -1198,25 +1306,18 @@ export const useAutoReconnect = ({ activeSessions, reconnectSession, getSessionE
         const timers = timersById.current;
         for (const timer of timers.values()) clearTimeout(timer);
         timers.clear();
-        queueMicrotask(() => setReconnectStates({}));
     }, [enabled]);
 
+    const liveIds = useMemo(() => new Set(activeSessions.map(s => s.id)), [activeSessions]);
+
     useEffect(() => {
-        const live = new Set(activeSessions.map(s => s.id));
         for (const timers of [timersById.current, stableTimersById.current]) {
-            for (const id of [...timers.keys()]) if (!live.has(id)) clearTimerOf(timers, id);
+            for (const id of [...timers.keys()]) if (!liveIds.has(id)) clearTimerOf(timers, id);
         }
         for (const map of [connectedById.current, attemptsById.current, lastAttemptById.current, inFlightById.current]) {
-            for (const id of [...map.keys()]) if (!live.has(id)) map.delete(id);
+            for (const id of [...map.keys()]) if (!liveIds.has(id)) map.delete(id);
         }
-        queueMicrotask(() => setReconnectStates(prev => {
-            const stale = Object.keys(prev).filter(id => !live.has(id));
-            if (!stale.length) return prev;
-            const next = { ...prev };
-            stale.forEach(id => delete next[id]);
-            return next;
-        }));
-    }, [activeSessions]);
+    }, [liveIds]);
 
     useEffect(() => {
         const timers = timersById.current;
@@ -1230,11 +1331,11 @@ export const useAutoReconnect = ({ activeSessions, reconnectSession, getSessionE
     }, []);
 
     return useMemo(() => ({
-        reconnectStates,
+        reconnectStates: enabled ? Object.fromEntries(Object.entries(reconnectStates).filter(([id]) => liveIds.has(id))) : {},
         markSessionConnected,
         handleSessionErrored,
         reconnectNow,
-    }), [reconnectStates, markSessionConnected, handleSessionErrored, reconnectNow]);
+    }), [enabled, reconnectStates, liveIds, markSessionConnected, handleSessionErrored, reconnectNow]);
 };
 ```
 
@@ -1276,18 +1377,18 @@ import { mapConnectionError } from "@/common/utils/ConnectionErrorUtil.js";
 
 - [ ] **Step 9: Tests laufen lassen**
 
-Run: `cd /root/outpost/client && yarn vitest run src/common/utils/__tests__/ConnectionErrorUtil.test.jsx src/common/hooks/__tests__/useAutoReconnect.test.jsx src/pages/Servers/components/ViewContainer/renderer/__tests__/XtermRenderer.test.jsx`
-Expected: alle PASS (5 Tests in den beiden neuen Dateien, XtermRenderer-Test unverändert grün).
+Run: `cd /root/outpost/client && yarn vitest run src/common/utils/__tests__/ConnectionErrorUtil.test.jsx src/common/hooks/__tests__/useAutoReconnect.test.jsx src/pages/Servers/utils/__tests__/sessionErrors.test.jsx src/pages/Servers/components/ViewContainer/renderer/__tests__/XtermRenderer.test.jsx`
+Expected: alle PASS (6 Tests in den drei neuen Dateien, XtermRenderer-Test unverändert grün).
 
 - [ ] **Step 10: Lint der geänderten Dateien**
 
-Run: `cd /root/outpost/client && npx eslint src/common/utils/ConnectionErrorUtil.js src/common/utils/ReconnectPolicy.js src/common/hooks/useAutoReconnect.js src/common/utils/ConnectionUtil.js src/pages/Servers/components/ViewContainer/renderer/components/ConnectionError src/pages/Servers/components/ViewContainer/renderer/XtermRenderer.jsx src/pages/Servers/components/ViewContainer/renderer/GuacamoleRenderer.jsx src/pages/Servers/components/ViewContainer/renderer/ScriptRenderer/ScriptRenderer.jsx`
+Run: `cd /root/outpost/client && npx eslint src/common/utils/ConnectionErrorUtil.js src/common/utils/ReconnectPolicy.js src/common/hooks/useAutoReconnect.js src/common/utils/ConnectionUtil.js src/pages/Servers/utils src/pages/Servers/components/ViewContainer/renderer/components/ConnectionError src/pages/Servers/components/ViewContainer/renderer/XtermRenderer.jsx src/pages/Servers/components/ViewContainer/renderer/GuacamoleRenderer.jsx src/pages/Servers/components/ViewContainer/renderer/ScriptRenderer/ScriptRenderer.jsx`
 Expected: keine Errors (bestehende Warnungen in den Renderern bleiben unverändert).
 
 - [ ] **Step 11: Commit**
 
 ```bash
-git add client/src/common/utils/ConnectionErrorUtil.js client/src/common/utils/ReconnectPolicy.js client/src/common/hooks/useAutoReconnect.js client/src/common/utils/ConnectionUtil.js client/src/common/utils/__tests__/ConnectionErrorUtil.test.jsx client/src/common/hooks/__tests__/useAutoReconnect.test.jsx client/src/pages/Servers/components/ViewContainer/renderer
+git add client/src/common/utils/ConnectionErrorUtil.js client/src/common/utils/ReconnectPolicy.js client/src/common/hooks/useAutoReconnect.js client/src/common/utils/ConnectionUtil.js client/src/common/utils/__tests__/ConnectionErrorUtil.test.jsx client/src/common/hooks/__tests__/useAutoReconnect.test.jsx client/src/pages/Servers/utils client/src/pages/Servers/components/ViewContainer/renderer
 git commit -m "Reconnect: Fehlerklassifizierung und Automatik im Client"
 ```
 
@@ -1296,13 +1397,14 @@ git commit -m "Reconnect: Fehlerklassifizierung und Automatik im Client"
 ### Phasenende A
 
 - [ ] Worktree-Branches von Task 1, 2, 5 in `feature/reconnect` mergen.
+- [ ] Engine-Image früh bauen (blockiert Phase B nicht): Branch pushen, `gh workflow run container-image.yml --ref feature/reconnect -f tag=test`; Ergebnis spätestens vor Phasenende B prüfen (`gh run list --workflow container-image.yml -L 1`). Build-Fehler aus Task 1 werden hier behoben, nicht erst in Task 8.
 - [ ] Volle Suite: `cd /root/outpost && yarn test` → alle grün.
 - [ ] Review-Kette einmal: `/code-review` auf `git diff <Stand vor Phase A>..HEAD`; `footgun` auf `server/lib/SessionManager.js`, `client/src/common/hooks/useAutoReconnect.js`, `engine/src/net/telnet.c`, `engine/src/net/websocket.c`. Befunde in den betroffenen Dateien beheben, je Befundgruppe ein Commit.
 - [ ] Zwischenstand (3–5 Zeilen): was steht (Engine meldet Abbrüche, Tombstones/Generationen, Client-Logik), was offen ist (Server-Naht, Oberfläche, Endpunkt, Verdrahtung).
 
 ---
 
-## Phase B — Nähte (parallel: Task 3, Task 6)
+## Phase B — Nähte und Endpunkt (parallel: Task 3, Task 4, Task 6)
 
 ### Task 3: Server — Engine-IDs, Karenz am Daten-Socket, Engine-Ereignisse, Guacamole-Status
 
@@ -1318,7 +1420,6 @@ git commit -m "Reconnect: Fehlerklassifizierung und Automatik im Client"
 **Interfaces:**
 - Consumes (Task 2): `session.generation`, `session.engineSessionId`, `SessionManager.beginCloseGrace(sessionId, generation)`, `setConnection(sessionId, conn, generation) → boolean`, `markFailed(sessionId, reason, generation)`, `remove(sessionId, { code, reason, guacStatus, generation })`, `onMasterConnectionClosed(sessionId, reason, { guacStatus, generation })`, `resolveEngineSession(engineSessionId)`, `whenEnded`, `getTombstone`, `CLOSE_GRACE_MS`.
 - Produces:
-  - `ConnectionService.getEntryProtocol(entry) → string|undefined` (Export, von Task 4 genutzt)
   - `ConnectionService.bindDataSocketLifecycle(sessionId, generation, dataSocket, label, onEnd = null) → void`
   - `engineEvents.handleSessionClosed({ sessionId: engineSessionId, reason })`, `engineEvents.handleEngineDisconnected({ engineId, sessionIds })`
   - `new GuacdClient({ ..., generation, engineSessionId })`; `handleClose(reason, guacStatus = null)`
@@ -1328,7 +1429,7 @@ git commit -m "Reconnect: Fehlerklassifizierung und Automatik im Client"
 
 **Tests:** 4 Integrationstests über die Naht ConnectionService/GuacdClient → SessionManager → engineEvents in `engineSessionLifecycle.test.js` (Spec-Server-Tests 1 und 3): (1) Daten-Socket schließt vor der Engine-Meldung — „connection lost“ hinterlässt Tombstone, „session ended“ und stille Karenz nicht; (2) Guacamole-Status 0x020B ohne, 0x0202 mit Tombstone; (3) Engine-Abbruch nach geschlossenem Daten-Socket hinterlässt Tombstone; (4) verspätete Meldung und auslaufende Karenz der alten Generation lassen die neue leben. Exploratives Verdrahten zuerst, dann festnageln. `rdpDisplayDpi.test.js` wird nur an die neue Sitzungsform angepasst (kein neuer Test).
 
-**Parallel:** Task 6 (keine gemeinsamen Dateien).
+**Parallel:** Task 4, Task 6 (keine gemeinsamen Dateien).
 
 - [ ] **Step 1: `engineEvents.js` anlegen**
 
@@ -1391,7 +1492,8 @@ Nach `openEngineSession` (nach Z. 162) einfügen:
 ```js
 const isCurrentGeneration = (sessionId, generation) => SessionManager.get(sessionId)?.generation === generation;
 
-const discardStaleConnection = (engineSessionId, dataSocket) => {
+const discardStaleConnection = (engineSessionId, dataSocket, session = null) => {
+    try { session?.recording?.stream?.end(); } catch {}
     dataSocket.removeAllListeners();
     dataSocket.destroy();
     try { controlPlane.closeSession(engineSessionId); } catch {}
@@ -1445,7 +1547,7 @@ Z. 498-500 ersetzen durch:
         const dataSocket = await openEngineSession(
             engineSessionId, SessionType.SSH, host, port, params, jumpHosts, entry.config?.engineId
         );
-        if (!isCurrentGeneration(sessionId, generation)) return discardStaleConnection(engineSessionId, dataSocket);
+        if (!isCurrentGeneration(sessionId, generation)) return discardStaleConnection(engineSessionId, dataSocket, session);
 ```
 
 Z. 505-513 (die beiden `dataSocket.on("close"/"error")`) ersetzen durch:
@@ -1462,7 +1564,7 @@ Z. 521-527 ersetzen durch:
             auditLogId: session.auditLogId,
             scriptLayer,
         }, generation);
-        if (!attached) return discardStaleConnection(engineSessionId, dataSocket);
+        if (!attached) return discardStaleConnection(engineSessionId, dataSocket, session);
 ```
 
 - [ ] **Step 6: Telnet**
@@ -1481,7 +1583,7 @@ const createTelnetConnectionForSession = async (sessionId, entry, organizationId
     const dataSocket = await openEngineSession(
         engineSessionId, SessionType.Telnet, ip, port, {}, [], entry.config?.engineId
     );
-    if (!isCurrentGeneration(sessionId, generation)) return discardStaleConnection(engineSessionId, dataSocket);
+    if (!isCurrentGeneration(sessionId, generation)) return discardStaleConnection(engineSessionId, dataSocket, session);
 
     await SessionManager.initRecording(sessionId, organizationId);
 
@@ -1494,7 +1596,7 @@ const createTelnetConnectionForSession = async (sessionId, entry, organizationId
         type: "telnet",
         auditLogId: session.auditLogId,
     }, generation);
-    if (!attached) return discardStaleConnection(engineSessionId, dataSocket);
+    if (!attached) return discardStaleConnection(engineSessionId, dataSocket, session);
 
     logger.info("Telnet connected", { sessionId, ip, port });
     return { success: true };
@@ -1515,7 +1617,7 @@ Z. 666-668 ersetzen durch:
     const dataSocket = await openEngineSession(
         engineSessionId, SessionType.WebSocket, server.ip, Number(server.port) || 8006, params, [], entry.config?.engineId
     );
-    if (!isCurrentGeneration(sessionId, generation)) return discardStaleConnection(engineSessionId, dataSocket);
+    if (!isCurrentGeneration(sessionId, generation)) return discardStaleConnection(engineSessionId, dataSocket, session);
 ```
 
 Z. 683-693 (`dataSocket.on("close")` und `dataSocket.on("error")`) ersetzen durch:
@@ -1533,7 +1635,7 @@ Z. 695-700 ersetzen durch:
     }, generation);
     if (!attached) {
         clearInterval(keepAliveTimer);
-        return discardStaleConnection(engineSessionId, dataSocket);
+        return discardStaleConnection(engineSessionId, dataSocket, session);
     }
 ```
 
@@ -1551,7 +1653,7 @@ Z. 730-732 ersetzen durch:
     const dataSocket = await openEngineSession(
         engineSessionId, sessionType, host, port, params, jumpHosts, entry.config?.engineId
     );
-    if (!isCurrentGeneration(sessionId, generation)) return discardStaleConnection(engineSessionId, dataSocket);
+    if (!isCurrentGeneration(sessionId, generation)) return discardStaleConnection(engineSessionId, dataSocket, session);
 ```
 
 Z. 737:
@@ -1598,32 +1700,10 @@ Z. 758-765 ersetzen durch:
 
 In `module.exports` (Z. 771-789) nach `createConnectionForSession,` ergänzen:
 ```js
-    getEntryProtocol,
     bindDataSocketLifecycle,
 ```
 
 - [ ] **Step 10: `GuacdClient` — Generation, Engine-ID, Status, Karenz**
-
-Vor `class GuacdClient {` (Z. 22) einfügen:
-
-```js
-// Guacamole length prefixes count code points, JS slices count UTF-16 units; good enough for guacd's ASCII errors.
-const parseErrorInstruction = (data) => {
-    const start = /(?:^|;)5\.error,/.exec(data);
-    if (!start) return null;
-    const values = [];
-    let position = start.index + start[0].length;
-    while (values.length < 2) {
-        const dot = data.indexOf('.', position);
-        const length = Number.parseInt(data.slice(position, dot), 10);
-        if (dot === -1 || !Number.isInteger(length)) return null;
-        values.push(data.slice(dot + 1, dot + 1 + length));
-        position = dot + 2 + length;
-    }
-    const status = Number.parseInt(values[1], 10);
-    return { message: values[0], status: Number.isInteger(status) ? status : null };
-};
-```
 
 Im Konstruktor nach Z. 25 (`this.sessionId = options.sessionId;`) einfügen:
 ```js
@@ -1638,12 +1718,15 @@ Z. 95:
 
 In `processData` Z. 137-147 ersetzen durch:
 ```js
-        const guacError = parseErrorInstruction(dataToSend);
-        if (guacError) {
-            logger.error('Guacd error received', { sessionId: this.sessionId, error: guacError.message, status: guacError.status });
+        // Match error instructions only at instruction boundaries (start of string or after ';')
+        // to avoid false positives from filenames or clipboard text containing ".error,"
+        const errorMatch = /(?:^|;)\d+\.error,\d+\.([^,]+),\d+\.(\d+);/.exec(dataToSend);
+        if (errorMatch) {
+            const [, errorMessage, status] = errorMatch;
+            logger.error('Guacd error received', { sessionId: this.sessionId, error: errorMessage, status: Number(status) });
             // Forward data to client first so it can display the error message
             try { this.onDataCallback?.(dataToSend); } catch {}
-            this.handleClose(`error: ${guacError.message}`, guacError.status);
+            this.handleClose(`error: ${errorMessage}`, Number(status));
             return;
         }
 ```
@@ -1810,9 +1893,9 @@ git commit -m "Reconnect: Engine-Sitzung je Generation und Karenz zwischen Daten
 ### Task 6: Client-Oberfläche — Fehlerkarte, Tab-Zustand, Menüeintrag, Texte, Einstellung
 
 **Files:**
-- Modify: `.../ConnectionError/ConnectionError.jsx` (ganze Komponente), `.../ConnectionError/styles.sass:79-100` (`.connection-error__action`)
+- Modify: `.../ConnectionError/ConnectionError.jsx` (ganze Komponente), `.../ConnectionError/styles.sass:86-107` (`.connection-error__action`)
 - Create: `.../ConnectionError/__tests__/ConnectionError.test.jsx`
-- Modify: `.../ServerTabs/ServerTabs.jsx` (Import Z. 5, `DraggableTab`-Props Z. 19-39, `<h2>` Z. 216-220, Kontextmenü Z. 230-245, `ServerTabs`-Props Z. 320-349, `DraggableTab`-Aufruf Z. 471-480), `.../ServerTabs/styles.sass` (nach `.tab-participants`, Z. 315-316)
+- Modify: `.../ServerTabs/ServerTabs.jsx` (Import Z. 5, `DraggableTab`-Props Z. 19-39, `<h2>` Z. 216-220, Kontextmenü Z. 230-245, `ServerTabs`-Props Z. 320-349, `DraggableTab`-Aufruf Z. 477-486), `.../ServerTabs/styles.sass` (nach `.tab-participants`, Z. 315-316)
 - Modify: `client/public/assets/locales/en.json`, `client/public/assets/locales/de_DE.json`
 - Modify: `client/src/common/contexts/PreferencesContext.jsx:16-18, 540, 577, 615`
 - Modify: `client/src/pages/Settings/pages/Terminal/Terminal.jsx:18-20, 141-143`
@@ -1820,10 +1903,10 @@ git commit -m "Reconnect: Engine-Sitzung je Generation und Karenz zwischen Daten
 **Interfaces:**
 - Consumes (Task 5): `isReconnectEligible(session)` aus `@/common/utils/ReconnectPolicy.js`.
 - Produces:
-  - `<ConnectionError message retryable={true} expired={false} reconnecting={false} reconnect={null | { attempt, maxAttempts, nextAttemptAt }} now={number} onReconnect? onClose? />` — Zustand wird abgeleitet: `expired` > `loading` (`reconnecting`) > `countdown` (`reconnect`) > `default` (`retryable`) / `final`. Ohne `onReconnect` kein Primärknopf (Skripte, beigetretene Sitzungen, Share). `now` ist nur bei `reconnect` nötig.
-  - `<ServerTabs ... connectionStates={{ [sessionId]: "error" | "loading" }} onReconnect={(sessionId) => …} />`
+  - `<ConnectionError message retryable={false} expired={false} reconnecting={false} reconnect={null | { attempt, maxAttempts, nextAttemptAt }} now={number} reconnectable={true} onReconnect? onClose? />` — Zustand wird abgeleitet: `expired` > `loading` (`reconnecting`) > `countdown` (`reconnect`) > `default` (`retryable`) / `final`. Ohne `onReconnect` oder bei `reconnectable={false}` kein Primärknopf (Skripte, beigetretene Sitzungen, Share; endgültig beendetes RDP). `now` ist nur bei `reconnect` nötig.
+  - `<ServerTabs ... connectionStates={{ [sessionId]: "error" | "loading" }} reconnectable={{ [sessionId]: true }} onReconnect={(sessionId) => …} />`
   - `usePreferences()` liefert `autoReconnect: boolean` (Standard `true`) und `setAutoReconnect(enabled)`.
-  - i18n-Schlüssel: `common.errors.connection.{connectionLost, engineDisconnected, hostKey, sessionEnded, accessRevoked, lostTitle, expiredTitle, expired, reconnect, reconnectNow, reconnecting, countdown, dismiss}`, `servers.tabs.connection.{disconnected, reconnecting}`, `servers.tabs.contextMenu.reconnect`, `settings.terminal.input.autoReconnect`.
+  - i18n-Schlüssel: `common.errors.connection.{connectionLost, engineDisconnected, hostKey, sessionEnded, accessRevoked, lostTitle, expiredTitle, expired, reconnect, reconnectNow, reconnecting, countdown}` (der Schließen-Knopf nutzt `common.close`; `common.errors.connection.close` entfällt), `servers.tabs.connection.{disconnected, reconnecting}`, `servers.tabs.contextMenu.reconnect`, `settings.terminal.input.autoReconnect`.
 
 **Design:**
 - Screen: `UI-SERVERS` — Artboard `docs/design/mockups/ui-servers.html`
@@ -1831,7 +1914,7 @@ git commit -m "Reconnect: Engine-Sitzung je Generation und Karenz zwischen Daten
 
 | ID | Element | Fachlicher Anker | Zustände | Copy |
 |----|---------|------------------|----------|------|
-| UI-SERVERS-VIEW-ERROR | Verbindungsfehler | Die Karte, die in der Arbeitsfläche an die Stelle einer abgebrochenen Session tritt: Icon, Titel, Fehlertext im Klartext, darunter eine Knopfzeile. Primär Neu verbinden (während der Automatik Jetzt verbinden), sekundär Schließen. Läuft die Automatik, steht über den Knöpfen der Countdown mit Versuchszähler. Neu verbinden baut dieselbe Session im selben Tab und an derselben Stelle im Layout wieder auf; es öffnet keinen neuen Tab. Nicht: server_entry, server_dialog. | default, countdown, loading, final, expired | default „Verbindung verloren. Neu verbinden oder schließen.“ · countdown „Neuer Versuch in 8 s · Versuch 2/5“ · loading „Verbinde neu …“ · final „Anmeldung abgelehnt. Zugangsdaten prüfen, dann neu verbinden.“ · expired „Sitzung abgelaufen. Öffne den Server neu.“ |
+| UI-SERVERS-VIEW-ERROR | Verbindungsfehler | Die Karte, die in der Arbeitsfläche an die Stelle einer abgebrochenen Session tritt: Icon, Titel, Fehlertext im Klartext, darunter eine Knopfzeile. Primär Neu verbinden (während der Automatik Jetzt verbinden), sekundär Schließen. Läuft die Automatik, steht über den Knöpfen der Countdown mit Versuchszähler. Neu verbinden baut dieselbe Session im selben Tab und an derselben Stelle im Layout wieder auf; es öffnet keinen neuen Tab. Nicht: server_entry, server_dialog. | default, countdown, loading, final, expired | default „Verbindung verloren. Neu verbinden oder schließen.“ · countdown „Neuer Versuch in 8 s · Versuch 2/5“ · loading „Verbinde neu …“ · final „Anmeldung abgelehnt. Zugangsdaten prüfen, dann neu verbinden. — Nach RDP-Abmelden oder -Trennung nur Schließen.“ · expired „Sitzung abgelaufen. Öffne den Server neu.“ |
 | UI-SERVERS-TAB-CONNECTION | Verbindungszustand eines Tabs | Zeigt am Label, dass die Verbindung einer Session weg ist oder gerade neu aufgebaut wird: das Label wird in --subtext gedämpft, dahinter steht ein kleines Icon — Unplug bei getrennt, ein sich drehendes RotateCw beim Neuverbinden. Im Normalzustand ist nichts zu sehen. Marker und Kontextstreifen bleiben unberührt; ein Ring im Marker heißt weiterhin Fortschritt, nicht Verbindung. Nicht: session_activity, agent_context, pane_color. | default, loading, error | default „kein Zusatz“ · loading „Label gedämpft, RotateCw dreht sich“ · error „Label gedämpft, Unplug“ |
 | UI-SERVERS-TABS | Sessions | Die aktuell offenen Sessions als Tabs, jede mit ihrer Split-View-Zuordnungsfarbe; Kontextmenü mit Umbenennen, Duplizieren, Teilen, Schlafen legen, Ausklinken, Schließen — bei einer getrennten Session zusätzlich Neu verbinden, an erster Stelle. Nicht: server_entry, folder. | default, selected, empty (Bestand) | Menüeintrag „Neu verbinden“ |
 
@@ -1841,7 +1924,7 @@ git commit -m "Reconnect: Engine-Sitzung je Generation und Karenz zwischen Daten
 
 **Tests:** 1 Test `ConnectionError.test.jsx` (Spec-Client-Test 3: Countdown und „Jetzt verbinden“ löst den Reconnect aus). Er läuft mit den echten `en.json`-Texten (`client/src/test/i18n.js` wirft bei fehlenden Schlüsseln) und deckt damit auch die neuen Schlüssel ab. Keine Tests für `ServerTabs`-Darstellung (Prüfung über `/design-verify`), Einstellungsschalter und Präferenz-Getter (reine Weiterreichung).
 
-**Parallel:** Task 3 (keine gemeinsamen Dateien).
+**Parallel:** Task 3, Task 4 (keine gemeinsamen Dateien).
 
 - [ ] **Step 1: Failing test schreiben**
 
@@ -1893,9 +1976,10 @@ ersetzen durch:
         "reconnect": "Reconnect",
         "reconnectNow": "Connect now",
         "reconnecting": "Reconnecting …",
-        "countdown": "Retrying in {{seconds}} s · Attempt {{attempt}}/{{max}}",
-        "dismiss": "Close"
+        "countdown": "Retrying in {{seconds}} s · Attempt {{attempt}}/{{max}}"
 ```
+
+Im selben Block `common.errors.connection` die Zeile `"close": "Close tab",` löschen (der Schlüssel wird nach dem Umbau nicht mehr benutzt).
 
 Die Zeile `"contextTooltip": "Context: {{tool}} at {{percent}}%",` ersetzen durch:
 ```json
@@ -1934,9 +2018,10 @@ Die Zeile `"passwordPromptDetection": "Password input detection",` ersetzen durc
         "reconnect": "Neu verbinden",
         "reconnectNow": "Jetzt verbinden",
         "reconnecting": "Verbinde neu …",
-        "countdown": "Neuer Versuch in {{seconds}} s · Versuch {{attempt}}/{{max}}",
-        "dismiss": "Schließen"
+        "countdown": "Neuer Versuch in {{seconds}} s · Versuch {{attempt}}/{{max}}"
 ```
+
+Im selben Block `common.errors.connection` die Zeile `"close": "Registerkarte schließen",` löschen (der Schlüssel wird nach dem Umbau nicht mehr benutzt).
 
 `"contextTooltip": "Kontext: {{tool}} bei {{percent}} %",` ersetzen durch:
 ```json
@@ -1981,7 +2066,7 @@ const stateOf = ({ expired, reconnecting, reconnect, retryable }) => {
     return retryable ? "default" : "final";
 };
 
-export const ConnectionError = memo(({ message, retryable = true, expired = false, reconnecting = false, reconnect = null, now = null, onReconnect, onClose }) => {
+export const ConnectionError = memo(({ message, retryable = false, expired = false, reconnecting = false, reconnect = null, now = null, reconnectable = true, onReconnect, onClose }) => {
     const { t } = useTranslation();
     const state = stateOf({ expired, reconnecting, reconnect, retryable });
 
@@ -2021,13 +2106,13 @@ export const ConnectionError = memo(({ message, retryable = true, expired = fals
                 )}
             </div>
             <div className="connection-error__actions">
-                {onReconnect && state !== "expired" && (
+                {onReconnect && state !== "expired" && reconnectable !== false && (
                     <Button type="primary" icon={IconRotateCw}
                             text={t(state === "countdown" ? "common.errors.connection.reconnectNow" : "common.errors.connection.reconnect")}
-                            onClick={onReconnect} disabled={state === "loading"} />
+                            onClick={onReconnect} loading={state === "loading"} disabled={state === "loading"} />
                 )}
                 {onClose && (
-                    <Button type="secondary" icon={IconX} text={t("common.errors.connection.dismiss")} onClick={onClose} />
+                    <Button type="secondary" icon={IconX} text={t("common.close")} onClick={onClose} />
                 )}
             </div>
         </div>
@@ -2040,12 +2125,12 @@ Texte gehen ausschließlich als React-Kinder hinaus, nie über `dangerouslySetIn
 
 - [ ] **Step 6: Stile der Knopfzeile**
 
-In `.../ConnectionError/styles.sass` den Block `.connection-error__action` (Z. 79-100, bis zum Dateiende) ersetzen durch:
+In `.../ConnectionError/styles.sass` den Block `.connection-error__action` (Z. 86-107, bis zum Dateiende) ersetzen durch:
 
 ```sass
 .connection-error__countdown
   margin: 0
-  font-size: 0.85rem
+  font: tokens.$type-body
   color: colors.$subtext
   font-variant-numeric: tabular-nums
 
@@ -2053,11 +2138,16 @@ In `.../ConnectionError/styles.sass` den Block `.connection-error__action` (Z. 7
   display: flex
   flex-wrap: wrap
   justify-content: center
-  gap: 0.75rem
+  gap: tokens.$space-3
 
-  .btn.type-primary
+  .btn.type-primary:not(:disabled)
     background-color: colors.$primary
     border-color: colors.$primary
+```
+
+Am Kopf von `styles.sass` neben dem vorhandenen `@use` ergänzen:
+```sass
+@use "@/common/styles/tokens"
 ```
 
 - [ ] **Step 7: Test laufen lassen**
@@ -2114,12 +2204,13 @@ Im `<ContextMenu>` direkt vor dem Kommentar `{/* Unconditional, unlike every ite
 ```js
     connectionStates = {},
     onReconnect,
+    reconnectable = {},
 ```
 
-Im `DraggableTab`-Aufruf (Z. 471-480) nach `liveTitle={liveTitles[session.id]}` ergänzen:
+Im `DraggableTab`-Aufruf (Z. 477-486) die neuen Props vor dem schließenden `/>` in Z. 486 (`liveTitle={liveTitles[session.id]} />`) einfügen, nicht nach dieser Zeile:
 ```jsx
                                 connectionState={connectionStates[session.id] || null}
-                                onReconnect={onReconnect}
+                                onReconnect={reconnectable[session.id] ? onReconnect : undefined}
 ```
 
 - [ ] **Step 9: Stile für den Tab-Zustand**
@@ -2134,12 +2225,17 @@ In `.../ServerTabs/styles.sass` nach dem Block `.tab-participants` (Z. 315-316, 
         display: inline-flex
         align-items: center
         flex: none
-        margin-right: 0.25rem
+        margin-right: tokens.$space-1
         color: colors.$subtext
 
         svg
           width: 0.875rem
           height: 0.875rem
+```
+
+Am Kopf von `.../ServerTabs/styles.sass` neben dem vorhandenen `@use` ergänzen:
+```sass
+@use "@/common/styles/tokens"
 ```
 
 Das Drehen kommt aus `Icon spin` → Klasse `.icon-spin` (`client/src/common/components/Icon/styles.sass`), die unter `prefers-reduced-motion: reduce` bereits stillsteht.
@@ -2192,42 +2288,31 @@ git commit -m "Reconnect: Fehlerkarte mit Neu verbinden und Countdown, Verbindun
 
 ---
 
-### Phasenende B
-
-- [ ] Worktree-Branches von Task 3 und 6 mergen.
-- [ ] Volle Suite: `cd /root/outpost && yarn test` → alle grün.
-- [ ] Review-Kette einmal: `/code-review` auf den Phasen-Diff; `footgun` auf `server/lib/ConnectionService.js`, `server/lib/GuacdClient.js`, `server/lib/engineEvents.js`; `/design-verify --screen UI-SERVERS` (erwartet: `UI-SERVERS-VIEW-ERROR` und `UI-SERVERS-TAB-CONNECTION` auf Tier A auffindbar; die Verdrahtung folgt in Phase C, Befunde zum *Zeigen* der Karte daher erst dort werten).
-- [ ] Zwischenstand: Server erkennt Abbrüche korrekt und legt Tombstones an; Oberfläche steht; offen: Endpunkt, Verdrahtung.
-
----
-
-## Phase C — Endpunkt und Verdrahtung (parallel: Task 4, Task 7a, Task 7b)
-
 ### Task 4: Server — `POST /api/connections/:id/reconnect`, gemeinsamer Kern `openSession`, Audit, DELETE, Präferenz
 
 **Files:**
-- Modify: `server/controllers/serverSession.js` (Import Z. 2, `createSession` Z. 82-205 → `openSession` + Wrapper, `getSessions` Z. 237-250, `deleteSession` Z. 270-276, `getSession` Z. 314-326, neu `reconnectSession`, Exporte Z. 443)
-- Modify: `server/routes/serverSession.js` (Importe Z. 1-6, Limiter nach Z. 8, DELETE Z. 128-137, neue Route)
+- Modify: `server/controllers/serverSession.js` (Import Z. 2, `createSession` Z. 82-205 → `openSession` + Wrapper, `getSessions` Z. 237-250, `hibernateSession`/`resumeSession` Z. 254-268, `deleteSession` Z. 270-276, `getSession` Z. 314-326, neu `reconnectSession`, Exporte Z. 443)
+- Modify: `server/routes/serverSession.js` (Importe Z. 1-6, Limiter nach Z. 8, hibernate Z. 87, resume Z. 110, DELETE Z. 128-137, neue Route)
 - Modify: `server/validations/serverSession.js` (neu `reconnectSessionValidation`)
 - Modify: `server/validations/preferences.js:3-12`
 - Modify: `server/controllers/audit.js:23-36, 76-89`
 - Create: `server/lib/__tests__/reconnectSession.test.js`
-- Modify: `server/lib/__tests__/preferencesValidation.test.js` (1 Test anfügen), `server/lib/__tests__/validations.test.js` (Import + 1 Test)
+- Modify: `server/lib/__tests__/validations.test.js` (Import + 1 Test)
 
 **Interfaces:**
-- Consumes (Task 2): `SessionManager.create(..., { sessionId, generation })`, `getTombstone`, `dropTombstone`, `whenEnded`, `consumeFailedReason`, `markFailed(…, generation)`, `remove(…, { generation })`, `session._removing`, `session._closeGrace`, `session.generation`; (Task 3): `getEntryProtocol(entry)` aus `ConnectionService`.
+- Consumes (Task 2): `SessionManager.create(..., { sessionId, generation })`, `getTombstone`, `dropTombstone`, `whenEnded`, `consumeFailedReason`, `markFailed(…, generation)`, `remove(…, { generation })`, `session._removing`, `session._closeGrace`, `session.generation`; (Task 2): `getEntryProtocol(entry)` aus `ConnectionService`.
 - Produces (HTTP, von Task 7a/7b genutzt):
-  - `POST /api/connections/:id/reconnect`, Body `{ displayDpi? }` → `200 { sessionId, generation }`; Fehler `{ code, error }` mit `code ∈ {403, 404, 409, 410, 500}`; Validierungsfehler `400 { message }`; Limiter `429 { code: 429, message }`.
+  - `POST /api/connections/:id/reconnect`, Body `{ displayDpi? }` → `200 { sessionId, generation }`; Fehler `{ code, message }` mit `code ∈ {403, 404, 409, 410, 500}`; Validierungsfehler `400 { message }`; Limiter `429 { code: 429, message }`.
   - `GET /api/connections` und `GET /api/connections/:id` enthalten `generation`.
   - `DELETE /api/connections/:id`: fremde Sitzung oder fremder Tombstone → `404`; eigener Tombstone wird verworfen.
-  - Controller: `reconnectSession(accountId, sessionId, { displayDpi, ipAddress, userAgent }) → Promise<{ sessionId, generation } | { code, message }>`, `deleteSession(accountId, sessionId)`.
+  - Controller: `reconnectSession(accountId, sessionId, { displayDpi, ipAddress, userAgent }) → Promise<{ sessionId, generation } | { code, message }>`, `deleteSession(accountId, sessionId)`, `hibernateSession(accountId, sessionId)`, `resumeSession(accountId, sessionId, tabId, browserId)` (fremde Sitzung → `404`).
   - `AUDIT_ACTIONS.RECONNECT = "entry.reconnect"`; Präferenz `terminal.autoReconnect: boolean`.
 
 **Design:** kein UI-Anteil.
 
-**Tests:** 9 Tests. `reconnectSession.test.js` (7, Controller-Ebene mit echtem SessionManager, Fakes nur für DB/Rechte/Verbindungsaufbau): Spec 2 (gespeicherte Konfiguration inkl. Review Focus 2 `tabId`/`browserId`), Spec 4 (Gleichzeitigkeit), Spec 5 (+ Rechte entzogen → 403, SEC-IDOR-01/SEC-RBAC-01), Spec 6 (Audit), Spec 8 (409), Review Focus 1 (Karenz), Review Focus 3 (DELETE fremder Tombstone). `preferencesValidation.test.js` +1 (Spec 7), `validations.test.js` +1 (Reconnect-Body nur `displayDpi`, SEC-INPUT-01). Nicht getestet: Rate-Limiter (Framework-Zusage, Verdrahtung im Review), Route-Weiterreichung.
+**Tests:** 8 Tests. `reconnectSession.test.js` (7, Controller-Ebene mit echtem SessionManager, Fakes nur für DB/Rechte/Verbindungsaufbau): Spec 2 (gespeicherte Konfiguration inkl. Review Focus 2 `tabId`/`browserId`), Spec 4 (Gleichzeitigkeit), Spec 5 (+ Rechte entzogen → 403, SEC-IDOR-01/SEC-RBAC-01), Spec 6 (Audit), Spec 8 (409), Review Focus 1 (Karenz), Review Focus 3 (DELETE fremder Tombstone). `validations.test.js` +1 (Reconnect-Body nur `displayDpi`, SEC-INPUT-01). Nicht getestet: Rate-Limiter (Framework-Zusage), Route-Weiterreichung, `terminal.autoReconnect`-Schema (Joi-Zusage; Spec-Test 7 entfällt laut Entscheidung 2026-10-05).
 
-**Parallel:** Task 7a, Task 7b (keine gemeinsamen Dateien; Vertrag oben).
+**Parallel:** Task 3, Task 6 (keine gemeinsamen Dateien; braucht nur Task 2).
 
 - [ ] **Step 1: Failing tests schreiben**
 
@@ -2247,9 +2332,10 @@ const SessionManager = require("../SessionManager");
 
 // Patched before the controller is required: it destructures these at load time.
 let accessAllowed = true;
+let beforeAccessCheck = async () => {};
 const auditCalls = [];
 const connectCalls = [];
-entryController.validateEntryAccess = async () => ({ valid: accessAllowed });
+entryController.validateEntryAccess = async () => { await beforeAccessCheck(); return { valid: accessAllowed }; };
 identityResolver.resolveIdentity = async (entry, identityId, directIdentity) =>
     ({ identity: directIdentity ? { isDirect: true } : { id: identityId } });
 permission.hasAccountPermission = async () => true;
@@ -2258,7 +2344,7 @@ audit.getOrganizationAuditSettingsInternal = async () => null;
 ConnectionService.createConnectionForSession = async (sessionId) => { connectCalls.push(sessionId); return { success: true }; };
 stateBroadcaster.broadcast = () => {};
 
-const { reconnectSession, deleteSession } = require("../../controllers/serverSession");
+const { reconnectSession, deleteSession, hibernateSession, resumeSession } = require("../../controllers/serverSession");
 
 Entry.findByPk = async (id) => (id === 101
     ? { id: 101, type: "server", organizationId: null, renderer: "terminal", config: { protocol: "ssh", ip: "10.0.0.1" } }
@@ -2331,6 +2417,15 @@ test("Reconnect lehnt ab: fremdes Konto 404, Rechte entzogen 403, abgelaufen 410
     t.mock.timers.tick(SessionManager.TOMBSTONE_TTL_MS + 1);
     assert.strictEqual((await reconnectSession(ACCOUNT, id, request)).code, 410);
     assert.strictEqual((await reconnectSession(ACCOUNT, "00000000-0000-4000-8000-000000000000", request)).code, 410);
+
+    const raced = await retired();
+    beforeAccessCheck = () => SessionManager.removeAllByAccountId(ACCOUNT);
+    try {
+        assert.strictEqual((await reconnectSession(ACCOUNT, raced, request)).code, 410);
+    } finally {
+        beforeAccessCheck = async () => {};
+    }
+    assert.ok(!SessionManager.get(raced), "logout during a reconnect leaves no live generation");
 });
 
 test("Reconnect schreibt entry.reconnect ins Audit-Log und hängt die neue Generation daran", async () => {
@@ -2366,23 +2461,32 @@ test("ein Reconnect während der Karenz wartet deren Ausgang ab", async () => {
     await SessionManager.remove(session.sessionId, { code: 4017, reason: "Connection lost", generation: 1 });
     assert.deepStrictEqual(await pending, { sessionId: session.sessionId, generation: 2 });
     await SessionManager.remove(session.sessionId);
+
+    const ended = liveSession();
+    SessionManager.beginCloseGrace(ended.sessionId, 1);
+    const endedPending = reconnectSession(ACCOUNT, ended.sessionId, request);
+    await SessionManager.remove(ended.sessionId, { generation: 1 });
+    assert.deepStrictEqual(await endedPending, { code: 404, message: "Session ended" });
 });
 
-test("DELETE verwirft nur den eigenen Tombstone", async () => {
+test("fremde Konten können weder löschen noch schlafen legen noch fortsetzen; DELETE gewinnt gegen laufenden Reconnect", async () => {
     const id = await retired();
     assert.strictEqual((await deleteSession(8, id)).code, 404);
     assert.ok(SessionManager.getTombstone(id));
     assert.deepStrictEqual(await deleteSession(ACCOUNT, id), { message: "Session deleted" });
     assert.strictEqual(SessionManager.getTombstone(id), null);
-});
-```
 
-An `server/lib/__tests__/preferencesValidation.test.js` anfügen:
+    const racing = await retired();
+    const pending = reconnectSession(ACCOUNT, racing, request);
+    await deleteSession(ACCOUNT, racing);
+    assert.strictEqual((await pending).code, 410);
+    assert.strictEqual(SessionManager.get(racing), null);
 
-```js
-test("terminal: autoReconnect ist ein Schalter", () => {
-    assert.strictEqual(preferencesValidation.validate({ terminal: { autoReconnect: false } }).error, undefined);
-    assert.ok(preferencesValidation.validate({ terminal: { autoReconnect: "yes" } }).error, "expected a validation error");
+    const live = liveSession();
+    assert.strictEqual(hibernateSession(8, live.sessionId).code, 404);
+    assert.strictEqual(resumeSession(8, live.sessionId, "evil-tab", "evil-browser").code, 404);
+    assert.deepStrictEqual([live.isHibernated, live.tabId, live.browserId], [false, "tab-1", "browser-1"]);
+    await SessionManager.remove(live.sessionId);
 });
 ```
 
@@ -2403,8 +2507,8 @@ test("reconnect: der Body kennt nur displayDpi im erlaubten Bereich", () => {
 
 - [ ] **Step 2: Tests laufen lassen, Fehlschlag prüfen**
 
-Run: `cd /root/outpost && node --test server/lib/__tests__/reconnectSession.test.js server/lib/__tests__/preferencesValidation.test.js server/lib/__tests__/validations.test.js`
-Expected: FAIL — `reconnectSession is not a function`, `reconnectSessionValidation` undefined, `autoReconnect` nicht erlaubt.
+Run: `cd /root/outpost && node --test server/lib/__tests__/reconnectSession.test.js server/lib/__tests__/validations.test.js`
+Expected: FAIL — `reconnectSession is not a function`, `reconnectSessionValidation` undefined.
 
 - [ ] **Step 3: Validierungen und Audit**
 
@@ -2447,6 +2551,12 @@ const openSession = async ({
     reconnectOf = null,
 }) => {
     const reconnecting = reconnectOf !== null;
+
+    const stillClaimable = () => {
+        const claimed = SessionManager.getTombstone(reconnectOf.sessionId);
+        return claimed && claimed.accountId === accountId && claimed.generation + 1 === reconnectOf.generation
+            && !SessionManager.get(reconnectOf.sessionId);
+    };
 
     // Two ways in. The direct one has no entry behind it, so it cannot lean on
     // per-entry access rules and carries its own permission instead.
@@ -2516,29 +2626,22 @@ const openSession = async ({
         }
     }
 
-    // A direct connection has no entry to point at, so the target itself is
-    // the record. Without this the audit trail would show an account
-    // connecting somewhere with no way to learn where.
-    const targetDetails = directTarget ? { directTarget: `${directTarget.host}:${directTarget.port}`, protocol: directTarget.protocol } : {};
-    const auditLogId = await createAuditLog(reconnecting ? {
+    if (reconnecting && !stillClaimable()) return { code: 410, message: "Session expired" };
+
+    const auditLogId = await createAuditLog({
         accountId,
         organizationId: entry.organizationId,
-        action: AUDIT_ACTIONS.RECONNECT,
-        resource: RESOURCE_TYPES.ENTRY,
-        resourceId: entry.id,
-        details: { reconnectOf: reconnectOf.sessionId, generation: reconnectOf.generation, connectionReason, ...targetDetails },
-        ipAddress,
-        userAgent,
-    } : {
-        accountId,
-        organizationId: entry.organizationId,
-        action: getAuditAction(entry, scriptId),
+        action: reconnecting ? AUDIT_ACTIONS.RECONNECT : getAuditAction(entry, scriptId),
         resource: scriptId ? RESOURCE_TYPES.SCRIPT : RESOURCE_TYPES.ENTRY,
         resourceId: scriptId || entry.id,
+        // A direct connection has no entry to point at, so the target itself is
+        // the record. Without this the audit trail would show an account
+        // connecting somewhere with no way to learn where.
         details: {
+            ...(reconnecting && { reconnectOf: reconnectOf.sessionId, generation: reconnectOf.generation }),
             connectionReason,
             ...(scriptId && { serverId: entry.id }),
-            ...targetDetails,
+            ...(directTarget && { directTarget: `${directTarget.host}:${directTarget.port}`, protocol: directTarget.protocol }),
         },
         ipAddress,
         userAgent,
@@ -2561,9 +2664,11 @@ const openSession = async ({
         protocol: getEntryProtocol(entry),
     };
 
-    // Dropped right before create, not after it: a connection that fails fast would otherwise leave
-    // the new generation's tombstone behind for this line to delete.
+    // Claimed right before create, not after it: a connection that fails fast would otherwise leave
+    // the new generation's tombstone behind for this line to delete. Re-read here because DELETE,
+    // logout or entry deletion may have dropped it during the awaits above.
     if (reconnecting) {
+        if (!stillClaimable()) return { code: 410, message: "Session expired" };
         SessionManager.consumeFailedReason(reconnectOf.sessionId);
         SessionManager.dropTombstone(reconnectOf.sessionId);
     }
@@ -2609,6 +2714,7 @@ const runReconnect = async (accountId, sessionId, { displayDpi = null, ipAddress
         if (!live._removing && !live._closeGrace) return { code: 409, message: "Session is still connected" };
         await SessionManager.whenEnded(sessionId);
         if (SessionManager.get(sessionId)) return { code: 409, message: "Session is still connected" };
+        if (!SessionManager.getTombstone(sessionId)) return { code: 404, message: "Session ended" };
     }
 
     const tombstone = SessionManager.getTombstone(sessionId);
@@ -2663,6 +2769,21 @@ In `getSession` (Z. 314-326) nach `id: session.sessionId,`:
         generation: session.generation,
 ```
 
+`hibernateSession` und `resumeSession` (Z. 254-268) ersetzen durch:
+```js
+const hibernateSession = (accountId, sessionId) => {
+    if (SessionManager.get(sessionId)?.accountId !== accountId) return { code: 404, message: "Session not found" };
+    SessionManager.hibernate(sessionId);
+    return { message: "Session hibernated" };
+};
+
+const resumeSession = (accountId, sessionId, tabId = null, browserId = null) => {
+    if (SessionManager.get(sessionId)?.accountId !== accountId) return { code: 404, message: "Session not found" };
+    SessionManager.resume(sessionId, tabId, browserId);
+    return { message: "Session resumed" };
+};
+```
+
 `deleteSession` (Z. 270-276) ersetzen durch:
 ```js
 const deleteSession = async (accountId, sessionId) => {
@@ -2700,11 +2821,11 @@ const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
 ```
 Nach Z. 8 (`const app = Router();`) einfügen:
 ```js
-// Keyed on the account like bookmarkRateLimiter.js; ipKeyGenerator is required by express-rate-limit 8 for IPv6.
+// Keyed on account and session (bookmarkRateLimiter.js keys on the account); ipKeyGenerator is required by express-rate-limit 8 for IPv6.
 const reconnectLimiter = rateLimit({
     windowMs: 60 * 1000,
-    max: 30,
-    keyGenerator: (req) => (req.user ? `acc:${req.user.id}` : `ip:${ipKeyGenerator(req.ip)}`),
+    max: 10,
+    keyGenerator: (req) => (req.user ? `acc:${req.user.id}:${req.params.id}` : `ip:${ipKeyGenerator(req.ip)}`),
     message: { code: 429, message: "Too many reconnect attempts. Please try again in a moment." },
     standardHeaders: true,
     legacyHeaders: false,
@@ -2715,6 +2836,15 @@ DELETE (Z. 131):
 ```js
     const result = await deleteSession(req.user.id, req.params.id);
 ```
+
+hibernate- und resume-Route:
+```js
+    const result = await hibernateSession(req.user.id, req.params.id);
+```
+```js
+    const result = await resumeSession(req.user.id, req.params.id, tabId, browserId);
+```
+`result.code` wird wie in den übrigen Routen behandelt.
 
 Nach der DELETE-Route (nach Z. 137) einfügen:
 ```js
@@ -2738,11 +2868,11 @@ app.post("/:id/reconnect", reconnectLimiter, async (req, res) => {
             ipAddress: req.ip || req.socket?.remoteAddress || 'unknown',
             userAgent: req.headers['user-agent'] || 'unknown',
         });
-        if (result?.code) return res.status(result.code).json({ code: result.code, error: result.message });
+        if (result?.code) return res.status(result.code).json({ code: result.code, message: result.message });
         res.json(result);
     } catch (error) {
         console.error('Error reconnecting session:', error);
-        res.status(500).json({ code: 500, error: 'Internal server error' });
+        res.status(500).json({ code: 500, message: 'Internal server error' });
     }
 });
 ```
@@ -2751,7 +2881,7 @@ Die Route hängt unter `app.use("/api/connections", authenticate, …)` (`server
 
 - [ ] **Step 7: Tests laufen lassen**
 
-Run: `cd /root/outpost && node --test server/lib/__tests__/reconnectSession.test.js server/lib/__tests__/preferencesValidation.test.js server/lib/__tests__/validations.test.js server/lib/__tests__/directConnectReason.test.js server/lib/__tests__/directConnect.test.js server/lib/__tests__/identityAccessDenied.test.js`
+Run: `cd /root/outpost && node --test server/lib/__tests__/reconnectSession.test.js server/lib/__tests__/validations.test.js server/lib/__tests__/directConnectReason.test.js server/lib/__tests__/directConnect.test.js server/lib/__tests__/identityAccessDenied.test.js`
 Expected: alle PASS.
 
 - [ ] **Step 8: Lint**
@@ -2762,11 +2892,23 @@ Expected: keine Errors.
 - [ ] **Step 9: Commit**
 
 ```bash
-git add server/controllers/serverSession.js server/routes/serverSession.js server/validations/serverSession.js server/validations/preferences.js server/controllers/audit.js server/lib/__tests__/reconnectSession.test.js server/lib/__tests__/preferencesValidation.test.js server/lib/__tests__/validations.test.js
+git add server/controllers/serverSession.js server/routes/serverSession.js server/validations/serverSession.js server/validations/preferences.js server/controllers/audit.js server/lib/__tests__/reconnectSession.test.js server/lib/__tests__/validations.test.js
 git commit -m "Reconnect: Endpunkt baut die Sitzung aus dem Tombstone neu auf, DELETE prüft den Besitz"
 ```
 
 ---
+
+### Phasenende B
+
+- [ ] Worktree-Branches von Task 3, 4 und 6 mergen.
+- [ ] Volle Suite: `cd /root/outpost && yarn test` → alle grün.
+- [ ] Review-Kette einmal: `/code-review` auf den Phasen-Diff; `footgun` auf `server/lib/ConnectionService.js`, `server/lib/GuacdClient.js`, `server/lib/engineEvents.js`, `server/controllers/serverSession.js`, `server/routes/serverSession.js`; `/design-verify --screen UI-SERVERS` (erwartet: `UI-SERVERS-VIEW-ERROR` und `UI-SERVERS-TAB-CONNECTION` auf Tier A auffindbar; die Verdrahtung folgt in Phase C, Befunde zum *Zeigen* der Karte daher erst dort werten).
+- [ ] Nach dem Merge Image neu bauen: `gh workflow run container-image.yml --ref feature/reconnect -f tag=test`, abwarten (`gh run watch`), auf outpost-test einspielen. Früher Rauchtest: telnet- und pve-lxc-Sitzung je einmal mit `exit` beenden und einmal hart trennen; Reconnect per API auslösen (`curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{}' https://<outpost-test>/api/connections/<sessionId>/reconnect`) → nach `exit` `410` bzw. `404 Session ended`, nach hartem Trennen `200 { generation: 2 }`. Abweichung → Befund an Task 1/3/4, vor Phase C beheben.
+- [ ] Zwischenstand: Server erkennt Abbrüche korrekt, legt Tombstones an und baut per Endpunkt neu auf; Oberfläche steht; offen: Verdrahtung.
+
+---
+
+## Phase C — Verdrahtung (parallel: Task 7a, Task 7b)
 
 ### Task 7a: Client — Renderer melden nur noch, Popout und Share zeigen die Fehlerkarte
 
@@ -2777,9 +2919,9 @@ git commit -m "Reconnect: Endpunkt baut die Sitzung aus dem Tombstone neu auf, D
 - Modify: `client/src/pages/Share/Share.jsx`
 
 **Interfaces:**
-- Consumes (Task 5): `classifyConnectionError`, `isReconnectEligible`, `getDisplayDpi`; (Task 6): `ConnectionError`-Props; (Task 4, Vertrag): `POST /connections/:id/reconnect` → `200 { sessionId, generation }` oder Fehlerkörper `{ code }`; `GET /connections/:id` liefert `generation`.
+- Consumes (Task 5): `classifyConnectionError`, `isReconnectEligible`, `requestReconnect`, `shouldRecordError`; (Task 6): `ConnectionError`-Props; (Task 4, bereits gemergt): `POST /connections/:id/reconnect` → `200 { sessionId, generation }` oder Fehlerkörper `{ code, message }`; `GET /connections/:id` liefert `generation`.
 - Produces (Vertrag mit Task 7b): Renderer-Props
-  - `markSessionErrored(sessionId, { message, retryable, generation })`
+  - `markSessionErrored(sessionId, { message, retryable, reconnectable, generation })`
   - `markSessionConnected?(sessionId)` — Xterm beim ersten Datenpaket, Guacamole bei `CONNECTED`
   - `disconnectFromServer(sessionId, generation)`
   - `getSessionError(sessionId) → string|null` (unverändert, nur beim Mount gelesen)
@@ -2791,7 +2933,7 @@ git commit -m "Reconnect: Endpunkt baut die Sitzung aus dem Tombstone neu auf, D
 
 | ID | Element | Fachlicher Anker | Zustände | Copy |
 |----|---------|------------------|----------|------|
-| UI-SERVERS-VIEW-ERROR | Verbindungsfehler | Die Karte, die in der Arbeitsfläche an die Stelle einer abgebrochenen Session tritt: Icon, Titel, Fehlertext im Klartext, darunter eine Knopfzeile. Primär Neu verbinden (während der Automatik Jetzt verbinden), sekundär Schließen. Läuft die Automatik, steht über den Knöpfen der Countdown mit Versuchszähler. Neu verbinden baut dieselbe Session im selben Tab und an derselben Stelle im Layout wieder auf; es öffnet keinen neuen Tab. Nicht: server_entry, server_dialog. | default, countdown, loading, final, expired | default „Verbindung verloren. Neu verbinden oder schließen.“ · countdown „Neuer Versuch in 8 s · Versuch 2/5“ · loading „Verbinde neu …“ · final „Anmeldung abgelehnt. Zugangsdaten prüfen, dann neu verbinden.“ · expired „Sitzung abgelaufen. Öffne den Server neu.“ |
+| UI-SERVERS-VIEW-ERROR | Verbindungsfehler | Die Karte, die in der Arbeitsfläche an die Stelle einer abgebrochenen Session tritt: Icon, Titel, Fehlertext im Klartext, darunter eine Knopfzeile. Primär Neu verbinden (während der Automatik Jetzt verbinden), sekundär Schließen. Läuft die Automatik, steht über den Knöpfen der Countdown mit Versuchszähler. Neu verbinden baut dieselbe Session im selben Tab und an derselben Stelle im Layout wieder auf; es öffnet keinen neuen Tab. Nicht: server_entry, server_dialog. | default, countdown, loading, final, expired | default „Verbindung verloren. Neu verbinden oder schließen.“ · countdown „Neuer Versuch in 8 s · Versuch 2/5“ · loading „Verbinde neu …“ · final „Anmeldung abgelehnt. Zugangsdaten prüfen, dann neu verbinden. — Nach RDP-Abmelden oder -Trennung nur Schließen.“ · expired „Sitzung abgelaufen. Öffne den Server neu.“ |
 
 - Locator: jedes Element trägt `data-ui-id="<ID>"`.
 - Tokens: `--subtext`, `--primary`, `--error`, `--terminal` aus `docs/design/mockups/tokens.css` (im Code über `client/src/common/styles/_colors.sass`).
@@ -2799,7 +2941,7 @@ git commit -m "Reconnect: Endpunkt baut die Sitzung aus dem Tombstone neu auf, D
 
 **Tests:** keine neuen — reine Verdrahtung; Guacamole-Client in jsdom ist ohne großen Doppelaufwand nicht sinnvoll testbar. Abgesichert durch den bestehenden `XtermRenderer.test.jsx`, die Klassifizierungstests (Task 5) und die manuelle Prüfung (Task 8: RDP mit getrenntem VM-Netz, Popout, Share).
 
-**Parallel:** Task 4, Task 7b (keine gemeinsamen Dateien).
+**Parallel:** Task 7b (keine gemeinsamen Dateien; Vertrag zu Task 4 ist bereits gemergt).
 
 - [ ] **Step 1: XtermRenderer**
 
@@ -2815,8 +2957,8 @@ Z. 93 (`const [connectionError, setConnectionError] = useState(...)`) löschen. 
 `reportError` (Z. 613-616) ersetzen durch:
 ```js
         const reportError = (message, code = null) => {
-            const { text, retryable } = classifyConnectionError({ message, code }, t);
-            markSessionErrored?.(session.id, { message: text, retryable, generation: session.generation ?? 1 });
+            const { text, retryable, reconnectable } = classifyConnectionError({ message, code }, t);
+            markSessionErrored?.(session.id, { message: text, retryable, reconnectable, generation: session.generation ?? 1 });
         };
 ```
 
@@ -2863,8 +3005,8 @@ Z. 92-102 ersetzen durch:
     const reportError = (rawMessage, statusCode = null) => {
         if (errorShownRef.current) return;
         errorShownRef.current = true;
-        const { text, retryable } = classifyConnectionError({ message: rawMessage, statusCode }, t);
-        markSessionErrored?.(session.id, { message: text, retryable, generation: session.generation ?? 1 });
+        const { text, retryable, reconnectable } = classifyConnectionError({ message: rawMessage, statusCode }, t);
+        markSessionErrored?.(session.id, { message: text, retryable, reconnectable, generation: session.generation ?? 1 });
     };
 ```
 
@@ -2917,10 +3059,9 @@ import { useEffect, useState, useRef, useContext, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
-import { getRequest, postRequest } from "@/common/utils/RequestUtil";
-import { getDisplayDpi } from "@/common/utils/ConnectionUtil.js";
-import { classifyConnectionError } from "@/common/utils/ConnectionErrorUtil.js";
-import { isReconnectEligible } from "@/common/utils/ReconnectPolicy.js";
+import { getRequest } from "@/common/utils/RequestUtil";
+import { isReconnectEligible, requestReconnect } from "@/common/utils/ReconnectPolicy.js";
+import { shouldRecordError } from "@/pages/Servers/utils/sessionErrors.js";
 import GuacamoleRenderer from "@/pages/Servers/components/ViewContainer/renderer/GuacamoleRenderer.jsx";
 import XtermRenderer from "@/pages/Servers/components/ViewContainer/renderer/XtermRenderer.jsx";
 import ConnectionError from "@/pages/Servers/components/ViewContainer/renderer/components/ConnectionError";
@@ -2969,21 +3110,21 @@ export const Popout = () => {
     useEffect(() => onForceClose(() => window.close()), []);
 
     const markSessionErrored = useCallback((_id, error) => {
-        setConnection(prev => (prev.error || (error.generation ?? 1) < prev.generation ? prev : { ...prev, error }));
+        setConnection(prev => (shouldRecordError(prev.error, error, prev.generation) ? { ...prev, error } : prev));
     }, []);
 
     const reconnect = async () => {
         setReconnecting(true);
         try {
-            const result = await postRequest(`/connections/${sessionId}/reconnect`, { displayDpi: getDisplayDpi() });
-            setConnection(prev => ({ ...prev, error: null, generation: result.generation }));
-        } catch (error) {
-            const status = error?.code;
-            if (status === 409) {
+            const result = await requestReconnect(sessionId, t);
+            if (result.outcome === "reconnected") {
+                setConnection(prev => ({ ...prev, error: null, generation: result.generation }));
+            } else if (result.outcome === "reattach") {
                 setConnection(prev => ({ ...prev, error: null, attachNonce: prev.attachNonce + 1 }));
-            } else if (status === 403 || status === 404 || status === 410) {
-                const { text } = classifyConnectionError({ httpStatus: status }, t);
-                setConnection(prev => ({ ...prev, error: { message: text, retryable: false, expired: status === 410, generation: prev.generation } }));
+            } else if (result.outcome === "ended") {
+                window.close();
+            } else if (result.outcome === "refused") {
+                setConnection(prev => ({ ...prev, error: { ...result.error, generation: prev.generation } }));
             }
         } finally {
             setReconnecting(false);
@@ -3015,6 +3156,7 @@ export const Popout = () => {
             {connection.error && (
                 <ConnectionError message={connection.error.message} retryable={connection.error.retryable}
                                  expired={connection.error.expired} reconnecting={reconnecting}
+                                 reconnectable={connection.error.reconnectable}
                                  onReconnect={isReconnectEligible(session) ? reconnect : undefined}
                                  onClose={closeWindow} />
             )}
@@ -3040,14 +3182,14 @@ import ConnectionError from "@/pages/Servers/components/ViewContainer/renderer/c
 Nach Z. 20 (`const [disconnected, setDisconnected] = useState(false);`) einfügen:
 ```js
     const [connectionError, setConnectionError] = useState(null);
-    const markSessionErrored = useCallback((_id, error) => setConnectionError(prev => prev ?? error.message), []);
+    const markSessionErrored = useCallback((_id, error) => setConnectionError(prev => prev ?? error), []);
 ```
 
 Die beiden Renderer-Zeilen Z. 64-65 und das schließende `</div>` ersetzen durch:
 ```jsx
             {renderer === "guac" && <GuacamoleRenderer session={session} disconnectFromServer={handleDisconnect} markSessionErrored={markSessionErrored} registerGuacamoleRef={noop} onFullscreenToggle={fullscreen} isShared />}
             {renderer === "terminal" && <XtermRenderer session={session} disconnectFromServer={handleDisconnect} markSessionErrored={markSessionErrored} registerTerminalRef={noop} broadcastMode={false} terminalRefs={refs} updateProgress={noop} layoutMode="single" onBroadcastToggle={noop} onFullscreenToggle={fullscreen} isShared />}
-            {connectionError && <ConnectionError message={connectionError} retryable={false} onClose={handleDisconnect} />}
+            {connectionError && <ConnectionError message={connectionError.message} retryable={false} reconnectable={connectionError.reconnectable} onClose={handleDisconnect} />}
         </div>
 ```
 
@@ -3070,13 +3212,12 @@ git commit -m "Reconnect: Renderer melden Abbrüche mit Generation, Popout verbi
 ### Task 7b: Client — `Servers.jsx` und `ViewContainer` verdrahten
 
 **Files:**
-- Create: `client/src/pages/Servers/utils/sessionErrors.js`, `client/src/pages/Servers/utils/__tests__/sessionErrors.test.jsx`
 - Modify: `client/src/pages/Servers/Servers.jsx` (Importe Z. 16-23, Z. 68, Fehlerzustand Z. 95-102, `handleConnectionsUpdate` Z. 136-190, `performConnection` Z. 517, `disconnectFromServer` Z. 689-700, `ViewContainer`-Props Z. 1018-1031)
-- Modify: `client/src/pages/Servers/components/ViewContainer/ViewContainer.jsx` (Importe Z. 4-19, Props Z. 62-79, Takt nach Z. 117, Renderer-Props Z. 598-614, `renderAllSessions` Z. 712-728, `ServerTabs` Z. 730-746)
+- Modify: `client/src/pages/Servers/components/ViewContainer/ViewContainer.jsx` (Importe Z. 4-19, Props Z. 62-79, Takt nach Z. 120, Renderer-Props Z. 598-614, `renderAllSessions` Z. 709-728, `ServerTabs` Z. 730-746)
 
 **Interfaces:**
-- Consumes (Task 5): `useAutoReconnect`, `classifyConnectionError`, `isReconnectEligible`, `getDisplayDpi`; (Task 6): `ConnectionError`-Props, `ServerTabs`-Props `connectionStates`/`onReconnect`, `usePreferences().autoReconnect`; (Task 7a, Vertrag): Renderer-Props `markSessionErrored(id, { message, retryable, generation })`, `markSessionConnected(id)`, `disconnectFromServer(id, generation)`; (Task 4, Vertrag): HTTP-Antworten, `generation` in `GET /connections`.
-- Produces: `shouldRecordError(existing, incoming, currentGeneration) → boolean`. Session-Objekte in `activeSessions` tragen `generation` (vom Server) und `attachNonce` (lokal, Start `0`).
+- Consumes (Task 5): `useAutoReconnect`, `requestReconnect`, `shouldRecordError`, `isSuperseded`, `isReconnectEligible`, `getDisplayDpi`; (Task 6): `ConnectionError`-Props, `ServerTabs`-Props `connectionStates`/`onReconnect`, `usePreferences().autoReconnect`; (Task 7a, Vertrag): Renderer-Props `markSessionErrored(id, { message, retryable, reconnectable, generation })`, `markSessionConnected(id)`, `disconnectFromServer(id, generation)`; (Task 4, bereits gemergt): HTTP-Antworten, `generation` in `GET /connections`.
+- Produces: Session-Objekte in `activeSessions` tragen `generation` (vom Server) und `attachNonce` (lokal, Start `0`).
 
 **Design:**
 - Screen: `UI-SERVERS` — Artboard `docs/design/mockups/ui-servers.html`
@@ -3085,7 +3226,7 @@ git commit -m "Reconnect: Renderer melden Abbrüche mit Generation, Popout verbi
 | ID | Element | Fachlicher Anker | Zustände | Copy |
 |----|---------|------------------|----------|------|
 | UI-SERVERS-VIEW | Arbeitsfläche | Der Inhalt der aktiven Session, einzeln oder als Split; Terminal und Datei-Pane nebeneinander sind der Kernfall. Nicht: server_entry. | loading, error (Bestand; error zeigt UI-SERVERS-VIEW-ERROR) | – |
-| UI-SERVERS-VIEW-ERROR | Verbindungsfehler | Die Karte, die in der Arbeitsfläche an die Stelle einer abgebrochenen Session tritt: Icon, Titel, Fehlertext im Klartext, darunter eine Knopfzeile. Primär Neu verbinden (während der Automatik Jetzt verbinden), sekundär Schließen. Läuft die Automatik, steht über den Knöpfen der Countdown mit Versuchszähler. Neu verbinden baut dieselbe Session im selben Tab und an derselben Stelle im Layout wieder auf; es öffnet keinen neuen Tab. Nicht: server_entry, server_dialog. | default, countdown, loading, final, expired | default „Verbindung verloren. Neu verbinden oder schließen.“ · countdown „Neuer Versuch in 8 s · Versuch 2/5“ · loading „Verbinde neu …“ · final „Anmeldung abgelehnt. Zugangsdaten prüfen, dann neu verbinden.“ · expired „Sitzung abgelaufen. Öffne den Server neu.“ |
+| UI-SERVERS-VIEW-ERROR | Verbindungsfehler | Die Karte, die in der Arbeitsfläche an die Stelle einer abgebrochenen Session tritt: Icon, Titel, Fehlertext im Klartext, darunter eine Knopfzeile. Primär Neu verbinden (während der Automatik Jetzt verbinden), sekundär Schließen. Läuft die Automatik, steht über den Knöpfen der Countdown mit Versuchszähler. Neu verbinden baut dieselbe Session im selben Tab und an derselben Stelle im Layout wieder auf; es öffnet keinen neuen Tab. Nicht: server_entry, server_dialog. | default, countdown, loading, final, expired | default „Verbindung verloren. Neu verbinden oder schließen.“ · countdown „Neuer Versuch in 8 s · Versuch 2/5“ · loading „Verbinde neu …“ · final „Anmeldung abgelehnt. Zugangsdaten prüfen, dann neu verbinden. — Nach RDP-Abmelden oder -Trennung nur Schließen.“ · expired „Sitzung abgelaufen. Öffne den Server neu.“ |
 | UI-SERVERS-TAB-CONNECTION | Verbindungszustand eines Tabs | Zeigt am Label, dass die Verbindung einer Session weg ist oder gerade neu aufgebaut wird: das Label wird in --subtext gedämpft, dahinter steht ein kleines Icon — Unplug bei getrennt, ein sich drehendes RotateCw beim Neuverbinden. Im Normalzustand ist nichts zu sehen. Marker und Kontextstreifen bleiben unberührt; ein Ring im Marker heißt weiterhin Fortschritt, nicht Verbindung. Nicht: session_activity, agent_context, pane_color. | default, loading, error | default „kein Zusatz“ · loading „Label gedämpft, RotateCw dreht sich“ · error „Label gedämpft, Unplug“ |
 | UI-SERVERS-TABS | Sessions | Die aktuell offenen Sessions als Tabs, jede mit ihrer Split-View-Zuordnungsfarbe; Kontextmenü mit Umbenennen, Duplizieren, Teilen, Schlafen legen, Ausklinken, Schließen — bei einer getrennten Session zusätzlich Neu verbinden, an erster Stelle. Nicht: server_entry, folder. | default, selected, empty (Bestand) | Menüeintrag „Neu verbinden“ |
 
@@ -3093,52 +3234,18 @@ git commit -m "Reconnect: Renderer melden Abbrüche mit Generation, Popout verbi
 - Tokens: `--subtext`, `--primary`, `--error`, `--terminal` aus `docs/design/mockups/tokens.css` (im Code über `client/src/common/styles/_colors.sass`).
 - Dieser Task verdrahtet Zustände (`countdown`, `loading`, `expired`, Tab `loading`/`error`, Menüeintrag) mit echten Daten.
 
-**Tests:** 1 Test `sessionErrors.test.jsx` (Review Focus 4: verspätete Meldung einer älteren Generation wird verworfen; erste Meldung je Generation gewinnt). Der Rest ist Verdrahtung → manuelle Prüfung in Task 8.
+**Tests:** keine neuen — Verdrahtung; die Generationsregel testet Task 5 (`sessionErrors.test.jsx`), der Rest wird in Task 8 manuell geprüft.
 
-**Parallel:** Task 4, Task 7a (keine gemeinsamen Dateien).
+**Parallel:** Task 7a (keine gemeinsamen Dateien).
 
-- [ ] **Step 1: Failing test schreiben**
-
-`client/src/pages/Servers/utils/__tests__/sessionErrors.test.jsx`:
-
-```jsx
-import { expect, test } from "vitest";
-import { shouldRecordError } from "../sessionErrors.js";
-
-test("eine verspätete Meldung des alten Renderers markiert die neue Generation nicht als getrennt", () => {
-    expect(shouldRecordError(undefined, { message: "Connection lost", generation: 1 }, 2)).toBe(false);
-    expect(shouldRecordError(undefined, { message: "Connection lost", generation: 2 }, 2)).toBe(true);
-    expect(shouldRecordError({ message: "first", generation: 2 }, { message: "second", generation: 2 }, 2)).toBe(false);
-    expect(shouldRecordError({ message: "old", generation: 1 }, { message: "new", generation: 2 }, 2)).toBe(true);
-});
-```
-
-Run: `cd /root/outpost/client && yarn vitest run src/pages/Servers/utils/__tests__/sessionErrors.test.jsx`
-Expected: FAIL — Modul nicht gefunden.
-
-- [ ] **Step 2: `sessionErrors.js`**
-
-`client/src/pages/Servers/utils/sessionErrors.js`:
-
-```js
-export const shouldRecordError = (existing, incoming, currentGeneration) => {
-    const generation = incoming.generation ?? currentGeneration;
-    if (generation < currentGeneration) return false;
-    return !existing || (existing.generation ?? 1) < generation;
-};
-```
-
-Run: `cd /root/outpost/client && yarn vitest run src/pages/Servers/utils/__tests__/sessionErrors.test.jsx`
-Expected: PASS.
-
-- [ ] **Step 3: `Servers.jsx` — Importe und Kontexte**
+- [ ] **Step 1: `Servers.jsx` — Importe und Kontexte**
 
 Nach Z. 16 (`import { useActiveSessions } ...`) einfügen:
 ```js
 import { usePreferences } from "@/common/contexts/PreferencesContext.jsx";
 import { useAutoReconnect } from "@/common/hooks/useAutoReconnect.js";
-import { classifyConnectionError } from "@/common/utils/ConnectionErrorUtil.js";
-import { shouldRecordError } from "@/pages/Servers/utils/sessionErrors.js";
+import { requestReconnect } from "@/common/utils/ReconnectPolicy.js";
+import { shouldRecordError, isSuperseded } from "@/pages/Servers/utils/sessionErrors.js";
 ```
 Z. 23:
 ```js
@@ -3153,7 +3260,7 @@ Nach Z. 70 (`const { t } = useTranslation();`) einfügen:
     const { autoReconnect } = usePreferences();
 ```
 
-- [ ] **Step 4: `Servers.jsx` — Fehlerzustand, Reconnect, Automatik**
+- [ ] **Step 2: `Servers.jsx` — Fehlerzustand, Reconnect, Automatik**
 
 `markSessionErrored`/`getSessionError` (Z. 95-102) ersetzen durch:
 
@@ -3167,6 +3274,7 @@ Nach Z. 70 (`const { t } = useTranslation();`) einfügen:
     // A reconnected session is briefly missing from a CONNECTIONS broadcast computed before it existed.
     const pendingAttachRef = useRef(new Set());
     const handleSessionErroredRef = useRef(null);
+    const disconnectFromServerRef = useRef(null);
 
     const setSessionError = useCallback((sessionId, error) => {
         if (error) erroredSessionsRef.current.set(sessionId, error);
@@ -3188,24 +3296,29 @@ Nach Z. 70 (`const { t } = useTranslation();`) einfügen:
     const reconnectSession = useCallback(async (sessionId) => {
         setReconnecting(prev => ({ ...prev, [sessionId]: true }));
         try {
-            const result = await postRequest(`/connections/${sessionId}/reconnect`, { displayDpi: getDisplayDpi() });
-            pendingAttachRef.current.add(sessionId);
-            setSessionError(sessionId, null);
-            setActiveSessions(prev => prev.map(s => (s.id === sessionId ? { ...s, generation: result.generation } : s)));
-            return { connected: true };
-        } catch (error) {
-            const status = error?.code;
-            if (status === 409) {
-                setSessionError(sessionId, null);
-                setActiveSessions(prev => prev.map(s => (s.id === sessionId ? { ...s, attachNonce: (s.attachNonce ?? 0) + 1 } : s)));
-                return { connected: true };
+            const result = await requestReconnect(sessionId, t);
+            if (!activeSessionsRef.current.some(s => s.id === sessionId)) return { connected: false };
+            switch (result.outcome) {
+                case "reconnected":
+                    pendingAttachRef.current.add(sessionId);
+                    setSessionError(sessionId, null);
+                    setActiveSessions(prev => prev.map(s => (s.id === sessionId ? { ...s, generation: result.generation } : s)));
+                    return { connected: true };
+                case "reattach":
+                    setSessionError(sessionId, null);
+                    setActiveSessions(prev => prev.map(s => (s.id === sessionId ? { ...s, attachNonce: (s.attachNonce ?? 0) + 1 } : s)));
+                    return { connected: true };
+                case "ended":
+                    disconnectFromServerRef.current?.(sessionId);
+                    return { connected: false };
+                case "refused": {
+                    const generation = activeSessionsRef.current.find(s => s.id === sessionId)?.generation ?? 1;
+                    setSessionError(sessionId, { ...result.error, generation });
+                    return { connected: false };
+                }
+                default:
+                    return { connected: false };
             }
-            if (status === 403 || status === 404 || status === 410) {
-                const generation = activeSessionsRef.current.find(s => s.id === sessionId)?.generation ?? 1;
-                const { text } = classifyConnectionError({ httpStatus: status }, t);
-                setSessionError(sessionId, { message: text, retryable: false, expired: status === 410, generation });
-            }
-            return { connected: false };
         } finally {
             setReconnecting(prev => {
                 const next = { ...prev };
@@ -3227,19 +3340,31 @@ Nach Z. 70 (`const { t } = useTranslation();`) einfügen:
     }, [handleSessionErrored]);
 ```
 
-- [ ] **Step 5: `Servers.jsx` — `handleConnectionsUpdate`**
+- [ ] **Step 3: `Servers.jsx` — `handleConnectionsUpdate`**
 
-Im gemappten Objekt (Z. 136-152) nach `id: session.sessionId,` einfügen:
+Im gemappten Objekt (Z. 135-152) nach `id: session.sessionId,` einfügen:
 ```js
                 generation: session.generation ?? 1,
 ```
 
-Die Zusammenführung Z. 163-166 ersetzen durch:
+Die Zusammenführung Z. 170-173 ersetzen durch:
 ```js
             const merged = activeMapped.map(newSession => {
                 const existing = prevMap.get(newSession.id);
-                return existing ? { ...newSession, attachNonce: existing.attachNonce ?? 0, scriptId: existing.scriptId || newSession.scriptId, scriptName: existing.scriptName, osName: newSession.osName || existing.osName } : newSession;
+                return existing ? { ...newSession, generation: Math.max(newSession.generation ?? 1, existing.generation ?? 1), attachNonce: existing.attachNonce ?? 0, scriptId: existing.scriptId || newSession.scriptId, scriptName: existing.scriptName, osName: newSession.osName || existing.osName } : newSession;
             });
+```
+
+Vor `setActiveSessions(prev => {` in `handleConnectionsUpdate` einfügen:
+```js
+        let supersededErrors = false;
+        for (const s of activeMapped) {
+            if (isSuperseded(erroredSessionsRef.current.get(s.id), s.generation)) {
+                erroredSessionsRef.current.delete(s.id);
+                supersededErrors = true;
+            }
+        }
+        if (supersededErrors) setSessionErrors(Object.fromEntries(erroredSessionsRef.current));
 ```
 
 Z. 175-178 ersetzen durch:
@@ -3255,7 +3380,7 @@ Nach dem `setActiveSessions(prev => { … });`-Aufruf (nach Z. 180) einfügen:
         newActiveIds.forEach(id => pendingAttachRef.current.delete(id));
 ```
 
-- [ ] **Step 6: `Servers.jsx` — `performConnection`, `disconnectFromServer`, Props**
+- [ ] **Step 4: `Servers.jsx` — `performConnection`, `disconnectFromServer`, Props**
 
 Z. 517:
 ```js
@@ -3279,6 +3404,9 @@ Z. 517:
             return newSessions;
         });
     }, [setActiveSessions, setActiveSessionId, setSessionError]);
+    useEffect(() => {
+        disconnectFromServerRef.current = disconnectFromServer;
+    }, [disconnectFromServer]);
 ```
 
 Am `<ViewContainer …>` (Z. 1018-1031) nach `getSessionError={getSessionError}` ergänzen:
@@ -3292,11 +3420,11 @@ Am `<ViewContainer …>` (Z. 1018-1031) nach `getSessionError={getSessionError}`
 
 `closeSession` (Z. 702-711) bleibt: sie sendet für nicht-lokale Tabs `DELETE /connections/:id` (entfernt jetzt auch den Tombstone) und ruft `disconnectFromServer(sessionId)` ohne Generation.
 
-- [ ] **Step 7: `ViewContainer` — Karte, Keys, Takt, Tab-Zustand**
+- [ ] **Step 5: `ViewContainer` — Karte, Keys, Takt, Tab-Zustand**
 
 Z. 4:
 ```js
-import { Fragment, useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 ```
 Nach Z. 19 (`import { barKeySequence } ...`) einfügen:
 ```js
@@ -3313,14 +3441,14 @@ Props (Z. 62-79): nach `getSessionError,` ergänzen:
                                   markSessionConnected,
 ```
 
-Nach Z. 117 (`const { showKeyBar } = usePreferences();`) einfügen:
+Nach Z. 120 (`const { showKeyBar } = usePreferences();`) einfügen:
 ```js
     const hasCountdown = Object.keys(reconnectStates).length > 0;
     const [now, setNow] = useState(() => Date.now());
     useEffect(() => {
         if (!hasCountdown) return;
         const tick = () => setNow(Date.now());
-        queueMicrotask(tick);
+        tick();
         const timer = setInterval(tick, 1000);
         return () => clearInterval(timer);
     }, [hasCountdown]);
@@ -3328,22 +3456,24 @@ Nach Z. 117 (`const { showKeyBar } = usePreferences();`) einfügen:
     const connectionStates = {};
     for (const id of Object.keys(sessionErrors)) connectionStates[id] = "error";
     for (const id of Object.keys(reconnecting)) connectionStates[id] = "loading";
+    const reconnectable = {};
+    for (const [id, error] of Object.entries(sessionErrors)) if (!error.expired && error.reconnectable !== false) reconnectable[id] = true;
+    for (const id of Object.keys(reconnecting)) reconnectable[id] = true;
 ```
 
-In `renderRenderer`: beim `GuacamoleRenderer` (Z. 598-604) nach `getSessionError={getSessionError}` und beim `XtermRenderer` (Z. 606-614) nach `getSessionError={getSessionError}` jeweils ergänzen:
+In `renderRenderer`: beim `GuacamoleRenderer` (Z. 598-604) nach `getSessionError={getSessionError}` und beim `XtermRenderer` (Z. 606-614) nach `getSessionError={getSessionError}` jeweils ergänzen (der `key` steht direkt am Renderer-Element, nicht an einem Fragment):
 ```jsx
+                                          key={`${session.id}-${session.generation ?? 1}-${session.attachNonce ?? 0}`}
                                           markSessionConnected={markSessionConnected}
 ```
 
-In `renderAllSessions` (Z. 721-727) die Zeile `{renderRenderer(session)}` ersetzen durch:
+In `renderAllSessions` (Z. 721-727) hinter der Zeile `{renderRenderer(session)}` einfügen:
 ```jsx
-                <Fragment key={`${session.id}-${session.generation ?? 1}-${session.attachNonce ?? 0}`}>
-                    {renderRenderer(session)}
-                </Fragment>
                 {sessionErrors[session.id] && !session.scriptId && (
                     <ConnectionError message={sessionErrors[session.id].message}
                                      retryable={sessionErrors[session.id].retryable}
                                      expired={sessionErrors[session.id].expired}
+                                     reconnectable={sessionErrors[session.id].reconnectable}
                                      reconnecting={!!reconnecting[session.id]}
                                      reconnect={reconnectStates[session.id] || null}
                                      now={now}
@@ -3356,18 +3486,18 @@ In `renderAllSessions` (Z. 721-727) die Zeile `{renderRenderer(session)}` ersetz
 
 Am `<ServerTabs …>` (Z. 731-745) nach `onNewSession={onNewSession} openSFTP={openSFTP}` ergänzen:
 ```jsx
-                    connectionStates={connectionStates} onReconnect={reconnectSession}
+                    connectionStates={connectionStates} reconnectable={reconnectable} onReconnect={reconnectSession}
 ```
 
-- [ ] **Step 8: Tests und Lint**
+- [ ] **Step 6: Tests und Lint**
 
 Run: `cd /root/outpost/client && yarn vitest run src/pages/Servers && npx eslint src/pages/Servers/Servers.jsx src/pages/Servers/components/ViewContainer/ViewContainer.jsx src/pages/Servers/utils`
-Expected: alle Tests unter `src/pages/Servers` PASS; keine Lint-Errors (Warnungen `react-hooks/refs` nur an bereits bestehenden Stellen).
+Expected: alle Tests unter `src/pages/Servers` PASS; keine Lint-Errors; Warnungen nur `react-hooks/refs` an bestehenden Stellen und `react-hooks/set-state-in-effect` am Countdown-Takt (gewollt: sofortiger Takt beim Start des Countdowns).
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add client/src/pages/Servers/Servers.jsx client/src/pages/Servers/components/ViewContainer/ViewContainer.jsx client/src/pages/Servers/utils
+git add client/src/pages/Servers/Servers.jsx client/src/pages/Servers/components/ViewContainer/ViewContainer.jsx
 git commit -m "Reconnect: Tabs verbinden im selben Platz neu, automatisch oder per Knopf"
 ```
 
@@ -3375,9 +3505,9 @@ git commit -m "Reconnect: Tabs verbinden im selben Platz neu, automatisch oder p
 
 ### Phasenende C
 
-- [ ] Worktree-Branches von Task 4, 7a, 7b mergen.
+- [ ] Worktree-Branches von Task 7a, 7b mergen.
 - [ ] Volle Suite: `cd /root/outpost && yarn test` → alle grün.
-- [ ] Review-Kette einmal: `/code-review` auf den Phasen-Diff; `footgun` auf `server/controllers/serverSession.js`, `client/src/pages/Servers/Servers.jsx`, `client/src/pages/Servers/components/ViewContainer/ViewContainer.jsx`, `client/src/pages/Servers/components/ViewContainer/renderer/GuacamoleRenderer.jsx`; `/design-verify --screen UI-SERVERS`.
+- [ ] Review-Kette einmal: `/code-review` auf den Phasen-Diff; `footgun` auf `client/src/pages/Servers/Servers.jsx`, `client/src/pages/Servers/components/ViewContainer/ViewContainer.jsx`, `client/src/pages/Servers/components/ViewContainer/renderer/GuacamoleRenderer.jsx`; `/design-verify --screen UI-SERVERS`.
 - [ ] Zwischenstand: Funktion vollständig; offen: Abschlussprüfungen und manuelle Tests.
 
 ---
@@ -3424,8 +3554,9 @@ git diff main --stat -- package.json yarn.lock client/package.json client/yarn.l
 grep -n "logger\.\(info\|warn\|error\|debug\)" server/lib/SessionManager.js server/lib/engineEvents.js | grep -i "configuration\|directIdentity\|tombstone)"
 grep -rn "dangerouslySetInnerHTML" client/src/pages/Servers/components/ViewContainer/renderer/components/ConnectionError client/src/pages/Servers/components/ViewContainer/components/ServerTabs
 grep -n "reconnectLimiter" server/routes/serverSession.js
+yarn audit --groups dependencies --level high; yarn --cwd client audit --groups dependencies --level high
 ```
-Expected: erste Zeile leer (keine neuen Abhängigkeiten → SEC-DEP-01 ohne neue Angriffsfläche), zweite und dritte ohne Treffer, vierte zeigt Definition und Verwendung an der Route. Danach die Tabelle „Sicherheitsanforderungen → Tasks“ unten Zeile für Zeile abhaken.
+Expected: erste Zeile leer (keine neuen Abhängigkeiten → SEC-DEP-01 ohne neue Angriffsfläche), zweite und dritte ohne Treffer, vierte zeigt Definition und Verwendung an der Route, die beiden `yarn audit`-Läufe: keine neuen Befunde gegenüber `main`. Danach die Tabelle „Sicherheitsanforderungen → Tasks“ unten Zeile für Zeile abhaken.
 
 - [ ] **Step 6: Manuelle Prüfung auf outpost-test (DS918+)**
 
@@ -3434,7 +3565,7 @@ Branch-Image wie gewohnt auf outpost-test einspielen, dann:
 2. Netz zum SSH-Ziel kurz trennen → „connection lost“ → automatischer Neuaufbau. „Jetzt verbinden“ während des Countdowns verbindet sofort.
 3. telnet: `exit` → Tab schließt normal; Ziel hart trennen → Fehlerkarte, Reconnect.
 4. pve-lxc: `exit` → Tab schließt normal; Proxmox-Verbindung kappen → Fehlerkarte, Reconnect.
-5. RDP-Sitzung, VM-Netz kurz trennen → wiederholbarer Abbruch, Reconnect. RDP abmelden → endgültige Karte ohne Countdown, „Neu verbinden“ bleibt.
+5. RDP-Sitzung, VM-Netz kurz trennen → wiederholbarer Abbruch, Reconnect. RDP abmelden → endgültige Karte ohne Countdown und ohne „Neu verbinden“, nur „Schließen“.
 6. Handy in Standby, nach > 30 s zurück → `visibilitychange` → `409` → Terminal hängt sich ohne neue Generation wieder an (Log-Puffer erscheint).
 7. Tab während des Countdowns schließen → keine weiteren Reconnect-Requests (Netzwerk-Tab), `DELETE` gesendet.
 8. Server neu starten oder 15 min warten → „Sitzung abgelaufen. Öffne den Server neu.“ nur mit „Schließen“.
@@ -3442,6 +3573,7 @@ Branch-Image wie gewohnt auf outpost-test einspielen, dann:
 10. Popout einer SSH-Sitzung, Abbruch → Karte im Popout, „Neu verbinden“ baut im Popout neu auf.
 11. Zwei Browserfenster derselben Sitzung, beide klicken „Neu verbinden“ → genau eine neue Generation.
 12. Share-Link-Zuschauer bei Abbruch → Fehlerkarte mit „Schließen“ wie bisher.
+13. VNC-Sitzung, Netz zum VNC-Ziel kurz trennen → Fehlerkarte mit Countdown, Reconnect erfolgreich (nicht „Sitzung abgelaufen“). Erscheint 410: guacd schickte keine `error`-Instruktion — Befund melden, nicht still lösen.
 
 Befund → Fix in der betroffenen Datei, betroffene Tests laufen lassen, Commit `Reconnect: …`.
 
@@ -3455,17 +3587,17 @@ REQUIRED SUB-SKILL: superpowers:finishing-a-development-branch.
 
 | ID | Umsetzung | Task |
 |---|---|---|
-| SEC-INPUT-01 | `sessionIdValidation` (UUID) + `reconnectSessionValidation` (nur `displayDpi` 48–480, unbekannte Felder abgelehnt), `terminal.autoReconnect: Joi.boolean()`; Tests in `validations.test.js` und `preferencesValidation.test.js` | 4 |
-| SEC-ERR-01 | Route antwortet nur `{ code, error }` mit festen Texten; `500` generisch; Stacks nur im Server-Log | 4 |
+| SEC-INPUT-01 | `sessionIdValidation` (UUID) + `reconnectSessionValidation` (nur `displayDpi` 48–480, unbekannte Felder abgelehnt), `terminal.autoReconnect: Joi.boolean()`; Test in `validations.test.js` | 4 |
+| SEC-ERR-01 | Route antwortet nur `{ code, message }` mit festen Texten; `500` generisch; Stacks nur im Server-Log | 4 |
 | SEC-SECRET-01 | Tombstone (inkl. `directIdentity`) nur in einer Map im Speicher; Logs nennen nur ID/Generation; `getSessions` entfernt `directIdentity` weiterhin; Audit-Details ohne Zugangsdaten | 2, 4, Prüfung 8 |
 | SEC-DEP-01 | Keine neuen Abhängigkeiten; Nexterm-Bausteine als eigener Code übernommen; Lockfiles unverändert | 5, Prüfung 8 |
 | SEC-INJECT-01 | Engine-ID nur aus UUID und Ganzzahl-Generation; `resolveEngineSession` erkennt nur `<uuid>`/`<uuid>:<n>` (Test 4 in Task 2); `tmuxSession` nur aus dem Tombstone, weiter `isValidAttachName` + `quote` | 2, 3, 4 |
-| SEC-RATE-01 | `reconnectLimiter` (30/min je Konto) an `POST /:id/reconnect` | 4 |
+| SEC-RATE-01 | `reconnectLimiter` (10/min je Konto und Sitzung) an `POST /:id/reconnect` | 4 |
 | SEC-SQLI-01 | Audit über `createAuditLog` (Sequelize `create`), Rechte über bestehende ORM-Funktionen; kein Roh-SQL | 4 |
 | SEC-XSS-01 | `ConnectionError` und Tab-Zustand rendern Texte als React-Kinder, Icons ohne HTML-Strings | 6 |
-| SEC-IDOR-01 | Fremde lebende Sitzung/fremder Tombstone → `404`; `DELETE` mit Besitzprüfung; Tests in Task 4 | 4 |
+| SEC-IDOR-01 | Fremde lebende Sitzung/fremder Tombstone → `404`; `DELETE`, `hibernate`, `resume` mit Besitzprüfung; Tests in Task 4 | 4 |
 | SEC-RBAC-01 | `openSession` prüft wie `createSession`: `getRequiredConnectPermission`/`validateEntryAccess`, `CONNECT_DIRECT`, `resolveIdentity` (Test „Rechte entzogen → 403“) | 4 |
-| SEC-SESS-02 | Route hinter `authenticate`; `removeAllByAccountId` (Abmelden, Konto löschen) verwirft Tombstones (Test 3 in Task 2) | 2, 4 |
+| SEC-SESS-02 | Route hinter `authenticate`; `removeAllByAccountId`/`removeAllByEntryId` verwerfen Tombstones vor und nach dem Abbau und warten laufende Abbauten ab; `openSession` bricht mit `410` ab, wenn der Tombstone während der Prüfungen verschwand (Tests in Task 2 und Task 4) | 2, 4 |
 | SEC-TOKEN-01 | Keine neue Authentifizierung; Mount `/api/connections` mit `authenticate` (`server/index.js:89`) | 4 |
 
 ## Spec-Abdeckung
@@ -3482,17 +3614,17 @@ REQUIRED SUB-SKILL: superpowers:finishing-a-development-branch.
 | Fehlerklassifizierung | 5 |
 | `useAutoReconnect`, `ReconnectPolicy` | 5 |
 | Anbindung `Servers.jsx`, `ViewContainer`, Renderer, Popout | 7a, 7b |
-| Oberfläche (Manifest Rev. 6) | 6, Verdrahtung 7b |
+| Oberfläche (Manifest Rev. 7) | 6, Verdrahtung 7b |
 | Fehler- und Randfälle-Tabelle | 2–4 (Tests), 7b, manuell 8 |
-| Tests Server 1–8, Client 1–3 | 3 (1, 3), 4 (2, 4, 5, 6, 7, 8), 5 (Client 1, 2), 6 (Client 3) |
+| Tests Server 1–8, Client 1–3 | 3 (1, 3), 4 (2, 4, 5, 6, 8; 7 entfällt laut Entscheidung 2026-10-05), 5 (Client 1, 2), 6 (Client 3) |
 
 ## Design-Abdeckung
 
 DESIGN-COVERAGE
-UI-SERVERS-VIEW-ERROR | covered | Task 6, Schritt 5; Task 7b, Schritt 7; Task 7a, Schritt 3–4
-UI-SERVERS-TAB-CONNECTION | covered | Task 6, Schritt 8–9; Task 7b, Schritt 7
+UI-SERVERS-VIEW-ERROR | covered | Task 6, Schritt 5; Task 7b, Schritt 5; Task 7a, Schritt 3–4
+UI-SERVERS-TAB-CONNECTION | covered | Task 6, Schritt 8–9; Task 7b, Schritt 5
 UI-SERVERS-TABS | covered | Task 6, Schritt 8 (Menüeintrag Neu verbinden)
-UI-SERVERS-VIEW | covered | Task 7b, Schritt 7 (Zustand error zeigt UI-SERVERS-VIEW-ERROR)
+UI-SERVERS-VIEW | covered | Task 7b, Schritt 5 (Zustand error zeigt UI-SERVERS-VIEW-ERROR)
 UI-SERVERS-LIST | covered | Bestand, unverändert
 UI-SERVERS-SEARCH | covered | Bestand, unverändert
 UI-SERVERS-LIST-MENU | covered | Bestand, unverändert

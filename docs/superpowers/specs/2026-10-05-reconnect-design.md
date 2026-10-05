@@ -134,7 +134,10 @@ unterscheidet „connection lost“. Angeglichen an `ssh.c`:
      (`!session._removing && !session._closeGrace`) → `409 Conflict`. Läuft die Karenz oder der
      Abbau, wird deren Ende abgewartet (Karenz-Promise bzw. Removal-Promise an der Sitzung) und
      mit Schritt 4 fortgefahren.
-  4. Kein Tombstone oder abgelaufen → `410 Gone`.
+  4. Kein Tombstone oder abgelaufen → `410 Gone`. Ausnahme: Wurde in Schritt 3 eine Karenz
+     abgewartet und die Sitzung endete dabei normal (kein Tombstone entstand), antwortet der
+     Endpunkt `404 { message: "Session ended" }`; der Client schließt den Tab dann wie bei einem
+     normalen Ende statt „Sitzung abgelaufen“ zu zeigen.
   5. Rechte erneut prüfen wie in `createSession`: Zugriff auf Eintrag bzw. Direktziel und
      Identität. Fehlend → `403` bzw. `404`. Der Grund wird **nicht** erneut verlangt.
   6. Neue Sitzung anlegen mit **derselben ID**, `generation = tombstone.generation + 1` und
@@ -269,7 +272,10 @@ Anleitung `docs/design/guides/ui-servers.md`:
 
 - `UI-SERVERS-VIEW-ERROR` (`ConnectionError`): Knopfzeile „Neu verbinden“ / „Schließen“,
   Countdown „Neuer Versuch in 8 s · Versuch 2/5“ mit „Jetzt verbinden“, Zustände `default`,
-  `countdown`, `loading`, `final`, `expired`.
+  `countdown`, `loading`, `final`, `expired`. Bei RDP-Abmelden, -Trennung, -Verdrängung,
+  -Zeitlimit und abgelehnter RDP-Anmeldung (Guac-Status 0x0209/0x020A/0x020B/0x03xx) gibt es keinen
+  Tombstone; die Karte zeigt dann in `final` nur „Schließen“ (`reconnectable: false`). Bei
+  einem SSH-Anmeldefehler bleibt „Neu verbinden“.
 - `UI-SERVERS-TAB-CONNECTION` (`ServerTabs`): Label gedämpft, `Unplug` bei getrennt,
   drehendes `RotateCw` beim Neuverbinden; Marker und Streifen unverändert.
 - `UI-SERVERS-TABS`: Kontextmenüeintrag „Neu verbinden“ an erster Stelle, nur bei getrennten
@@ -319,7 +325,8 @@ Server (`server/lib/__tests__/`):
 4. Zwei gleichzeitige Reconnects ergeben genau eine neue Sitzung.
 5. Fremdes Konto → `404`, abgelaufener Tombstone → `410`.
 6. Reconnect schreibt `entry.reconnect` ins Audit-Log.
-7. `terminal.autoReconnect` wird validiert.
+7. (entfällt, Entscheidung 2026-10-05: reine Joi-Zusage; geprüft wird stattdessen der
+   Reconnect-Body, SEC-INPUT-01.)
 8. `409`-Pfad: lebt die Sitzung (nur Browser-Socket weg), antwortet Reconnect `409` und ändert
    nichts.
 
@@ -332,7 +339,7 @@ Manuell auf `outpost-test` (DS918+): SSH mit tmux und Claude Code, Engine-Prozes
 bzw. Netz kurz trennen; RDP-Sitzung mit kurz getrenntem VM-Netz; Handy in den Standby und zurück.
 
 <!-- mockingbird:design:begin -->
-<!-- design: manifest=docs/design/manifest.yaml design_rev=6 design_hash=sha256:9d73153572cc72608b1ccbfa9979cb0057c2c5b107e7b3b146401cec1aaee4a3 system=docs/design/design-system.md index=docs/design/mockups/index.html adapter=web screens=UI-SERVERS consumes=UI-SHELL-ACCOUNT,UI-SHELL-MOBILE-NAV,UI-SHELL-NAV -->
+<!-- design: manifest=docs/design/manifest.yaml design_rev=7 design_hash=sha256:e051f90d123e2a5f12b75afbd98327d8477e56b766c84c30660a8c86faf63e3e system=docs/design/design-system.md index=docs/design/mockups/index.html adapter=web screens=UI-SERVERS consumes=UI-SHELL-ACCOUNT,UI-SHELL-MOBILE-NAV,UI-SHELL-NAV -->
 <!-- Generiert aus docs/design/manifest.yaml. Nicht von Hand ändern —
      Änderungen hier werden beim nächsten mockingbird-Lauf überschrieben.
      Design ändern heißt Manifest ändern. -->

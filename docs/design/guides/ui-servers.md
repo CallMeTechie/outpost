@@ -1,6 +1,6 @@
 # Servers — Arbeitsfläche — Umsetzungsanleitung (UI-SERVERS)
 
-Artboard: docs/design/mockups/ui-servers.html · Manifest-Revision: 6
+Artboard: docs/design/mockups/ui-servers.html · Manifest-Revision: 7
 
 Diese Seite existiert bereits (`client/src/pages/Servers/Servers.jsx`). Die
 Anleitung schreibt den Bestand fest und fügt genau ein neues Verhalten hinzu:
@@ -92,7 +92,7 @@ den Fokus-Modus. Nichts wird neu gebaut, was es gibt.
 ### UI-SERVERS-VIEW-ERROR — Verbindungsfehler (Runde 6)
 - `data-ui-id="UI-SERVERS-VIEW-ERROR"` am Wurzelelement von `ConnectionError` (`.connection-error`).
 - Bestand bleibt: Balken, Geräte-Verbindungsgrafik, Titel, Text. Neu ist die Knopfzeile darunter: primär **Neu verbinden** (`--primary`, Lucide `RotateCw`), sekundär **Schließen**. Bestehende Button-Komponente verwenden.
-- Zustände und Wortlaut aus dem Manifest: `default` „Verbindung verloren. Neu verbinden oder schließen.“ · `countdown` Zeile in `--subtext` über den Knöpfen „Neuer Versuch in 8 s · Versuch 2/5“, Primärknopf heißt **Jetzt verbinden** · `loading` „Verbinde neu …“, Primärknopf deaktiviert · `final` (nicht wiederholbarer Fehler, z. B. „Anmeldung abgelehnt“) ohne Countdown, Knopf bleibt · `expired` „Sitzung abgelaufen. Öffne den Server neu.“, nur **Schließen**.
+- Zustände und Wortlaut aus dem Manifest: `default` „Verbindung verloren. Neu verbinden oder schließen.“ · `countdown` Zeile in `--subtext` über den Knöpfen „Neuer Versuch in 8 s · Versuch 2/5“, Primärknopf heißt **Jetzt verbinden** · `loading` „Verbinde neu …“, Primärknopf deaktiviert · `final` (nicht wiederholbarer Fehler, z. B. „Anmeldung abgelehnt“) ohne Countdown, Knopf bleibt — außer nach RDP-Abmelden/-Trennung/-Verdrängung/-Zeitlimit und abgelehnter RDP-Anmeldung: dort nur **Schließen**, weil der Server diese Sitzung nicht aufhebt · `expired` „Sitzung abgelaufen. Öffne den Server neu.“, nur **Schließen**.
 - Der Countdown kommt aus dem Reconnect-Zustand `{attempt, maxAttempts, nextAttemptAt}`, gerechnet im Sekundentakt, nicht aus einem eigenen Timer der Karte.
 - Neu verbinden öffnet **keinen** neuen Tab: es baut dieselbe Session an derselben Stelle wieder auf.
 
