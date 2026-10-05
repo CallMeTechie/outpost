@@ -1,6 +1,6 @@
 [package]
 name = "nt"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "CLI client for Outpost"
 authors = ["Mathias Wagner"]
