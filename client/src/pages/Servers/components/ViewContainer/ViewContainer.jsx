@@ -1,7 +1,7 @@
 import "./styles.sass";
 import ServerTabs from "./components/ServerTabs";
 import TerminalKeyBar from "./components/TerminalKeyBar";
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo, memo } from "react";
 import { createPortal } from "react-dom";
 import GuacamoleRenderer from "@/pages/Servers/components/ViewContainer/renderer/GuacamoleRenderer.jsx";
 import XtermRenderer from "@/pages/Servers/components/ViewContainer/renderer/XtermRenderer.jsx";
@@ -52,6 +52,22 @@ const clampPosition = (x, y) => ({
     x: Math.max(0, Math.min(window.innerWidth - BTN_SIZE, x)),
     y: Math.max(getMinY(), Math.min(window.innerHeight - BTN_SIZE, y))
 });
+
+// Owns the countdown tick so it re-renders only this card, not the workspace. The clock is tied to
+// the reconnect state it was taken for, so a fresh countdown never paints with a stale `now`.
+const ReconnectAwareError = memo(({ reconnect, ...props }) => {
+    const [clock, setClock] = useState({ reconnect: null, now: null });
+    useLayoutEffect(() => {
+        if (!reconnect) return;
+        const tick = () => setClock({ reconnect, now: Date.now() });
+        tick();
+        const timer = setInterval(tick, 1000);
+        return () => clearInterval(timer);
+    }, [reconnect]);
+    const now = reconnect && clock.reconnect === reconnect ? clock.now : null;
+    return <ConnectionError {...props} reconnect={reconnect} now={now} />;
+});
+ReconnectAwareError.displayName = "ReconnectAwareError";
 
 const loadBtnPosition = () => {
     try {
@@ -125,22 +141,18 @@ export const ViewContainer = ({
     const appWindow = useTauriWindow();
     const { t } = useTranslation();
     const { showKeyBar } = usePreferences();
-    const hasCountdown = Object.keys(reconnectStates).length > 0;
-    const [now, setNow] = useState(() => Date.now());
-    useEffect(() => {
-        if (!hasCountdown) return;
-        const tick = () => setNow(Date.now());
-        tick();
-        const timer = setInterval(tick, 1000);
-        return () => clearInterval(timer);
-    }, [hasCountdown]);
-
-    const connectionStates = {};
-    for (const id of Object.keys(sessionErrors)) connectionStates[id] = "error";
-    for (const id of Object.keys(reconnecting)) connectionStates[id] = "loading";
-    const reconnectable = {};
-    for (const [id, error] of Object.entries(sessionErrors)) if (!error.expired && error.reconnectable !== false) reconnectable[id] = true;
-    for (const id of Object.keys(reconnecting)) reconnectable[id] = true;
+    const connectionStates = useMemo(() => {
+        const states = {};
+        for (const id of Object.keys(sessionErrors)) states[id] = "error";
+        for (const id of Object.keys(reconnecting)) states[id] = "loading";
+        return states;
+    }, [sessionErrors, reconnecting]);
+    const reconnectable = useMemo(() => {
+        const result = {};
+        for (const [id, error] of Object.entries(sessionErrors)) if (!error.expired && error.reconnectable !== false) result[id] = true;
+        for (const id of Object.keys(reconnecting)) result[id] = true;
+        return result;
+    }, [sessionErrors, reconnecting]);
 
     useEffect(() => {
         setTitleBarTabsSlot(document.getElementById("titlebar-tabs-slot"));
@@ -751,13 +763,12 @@ export const ViewContainer = ({
                  style={{ ...getSessionStyle(session), ...(paneColor && { "--pane-color": paneColor }) }}>
                 {renderRenderer(session)}
                 {sessionErrors[session.id] && !session.scriptId && (
-                    <ConnectionError message={sessionErrors[session.id].message}
+                    <ReconnectAwareError message={sessionErrors[session.id].message}
                                      retryable={sessionErrors[session.id].retryable}
                                      expired={sessionErrors[session.id].expired}
                                      reconnectable={sessionErrors[session.id].reconnectable}
                                      reconnecting={!!reconnecting[session.id]}
                                      reconnect={reconnectStates[session.id] || null}
-                                     now={now}
                                      onReconnect={isReconnectEligible(session) ? () => reconnectSession(session.id) : undefined}
                                      onClose={() => closeSession(session.id)} />
                 )}

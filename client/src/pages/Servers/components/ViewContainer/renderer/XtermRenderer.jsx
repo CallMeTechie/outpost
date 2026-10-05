@@ -688,11 +688,9 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
             }
         };
 
+        // Not reported here: onclose always follows and carries the code that decides whether a retry makes sense.
         ws.onerror = (error) => {
             console.error("WebSocket error:", error);
-            if (!isCleaningUp) {
-                reportError(null);
-            }
         };
 
         ws.onmessage = (event) => {

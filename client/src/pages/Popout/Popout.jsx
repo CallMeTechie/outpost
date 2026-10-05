@@ -3,8 +3,9 @@ import { useEffect, useState, useRef, useContext, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
-import { getRequest } from "@/common/utils/RequestUtil";
-import { isReconnectEligible, requestReconnect } from "@/common/utils/ReconnectPolicy.js";
+import { getRequest, deleteRequest } from "@/common/utils/RequestUtil";
+import { useToast } from "@/common/contexts/ToastContext.jsx";
+import { isReconnectEligible, requestReconnect, applyReconnectOutcome } from "@/common/utils/ReconnectPolicy.js";
 import { shouldRecordError } from "@/pages/Servers/utils/sessionErrors.js";
 import GuacamoleRenderer from "@/pages/Servers/components/ViewContainer/renderer/GuacamoleRenderer.jsx";
 import XtermRenderer from "@/pages/Servers/components/ViewContainer/renderer/XtermRenderer.jsx";
@@ -20,6 +21,7 @@ export const Popout = () => {
     const { sessionId, monitor } = useParams();
     const { t } = useTranslation();
     const { user } = useContext(UserContext);
+    const { sendToast } = useToast();
     const [session, setSession] = useState(null);
     const [loading, setLoading] = useState(true);
     const [connection, setConnection] = useState({ error: null, generation: 1, attachNonce: 0 });
@@ -33,16 +35,23 @@ export const Popout = () => {
     const titleOf = (name) => pinnedMonitor === null
         ? name : `${name} - ${t("servers.monitors.title", { number: pinnedMonitor + 1 })}`;
 
+    const takeGeneration = useCallback((generation) => {
+        setConnection(prev => (generation > prev.generation ? { ...prev, generation } : prev));
+    }, []);
+
     useEffect(() => {
         if (!sessionId || !user) return;
+        let ignore = false;
         getRequest(`/connections/${sessionId}`)
             .then(data => {
+                if (ignore) return;
                 setSession(data);
-                setConnection(prev => ({ ...prev, generation: data.generation ?? 1 }));
+                takeGeneration(data.generation ?? 1);
                 if (data.server?.name) document.title = `${titleOf(data.server.name)} - Outpost`;
             })
-            .finally(() => setLoading(false));
-    }, [sessionId, user, pinnedMonitor]);
+            .finally(() => { if (!ignore) setLoading(false); });
+        return () => { ignore = true; };
+    }, [sessionId, user, pinnedMonitor, takeGeneration]);
 
     useEffect(() => {
         if (isConnectorMode) return;
@@ -61,18 +70,28 @@ export const Popout = () => {
         setReconnecting(true);
         try {
             const result = await requestReconnect(sessionId, t);
-            if (result.outcome === "reconnected") {
-                setConnection(prev => ({ ...prev, error: null, generation: result.generation }));
-            } else if (result.outcome === "reattach") {
-                setConnection(prev => ({ ...prev, error: null, attachNonce: prev.attachNonce + 1 }));
-            } else if (result.outcome === "ended") {
-                window.close();
-            } else if (result.outcome === "refused") {
-                setConnection(prev => ({ ...prev, error: { ...result.error, generation: prev.generation } }));
-            }
+            await applyReconnectOutcome(result, {
+                onReconnected: (generation) => setConnection(prev => ({ ...prev, error: null, generation: Math.max(prev.generation, generation) })),
+                onReattach: async () => {
+                    const data = await getRequest(`/connections/${sessionId}`).catch(() => null);
+                    setConnection(prev => ({
+                        ...prev, error: null, attachNonce: prev.attachNonce + 1,
+                        generation: Math.max(prev.generation, data?.generation ?? 1),
+                    }));
+                },
+                onEnded: () => window.close(),
+                onRefused: (error) => setConnection(prev => ({ ...prev, error: { ...error, generation: prev.generation } })),
+                onFailed: () => sendToast("Error", t("common.errors.connection.reconnectFailed")),
+            });
         } finally {
             setReconnecting(false);
         }
+    };
+
+    const closeSession = () => {
+        deleteRequest(`/connections/${sessionId}`)
+            .catch(error => console.debug("Session deletion request failed:", error))
+            .finally(() => window.close());
     };
 
     if (loading) return <Loading />;
@@ -102,7 +121,7 @@ export const Popout = () => {
                                  expired={connection.error.expired} reconnecting={reconnecting}
                                  reconnectable={connection.error.reconnectable}
                                  onReconnect={isReconnectEligible(session) ? reconnect : undefined}
-                                 onClose={closeWindow} />
+                                 onClose={closeSession} />
             )}
         </div>
     );

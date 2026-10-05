@@ -210,7 +210,8 @@
         "reconnect": "Reconnect",
         "reconnectNow": "Connect now",
         "reconnecting": "Reconnecting …",
-        "countdown": "Retrying in {{seconds}} s · Attempt {{attempt}}/{{max}}"
+        "countdown": "Retrying in {{seconds}} s · Attempt {{attempt}}/{{max}}",
+        "reconnectFailed": "Reconnecting failed"
       }
     },
     "messages": {

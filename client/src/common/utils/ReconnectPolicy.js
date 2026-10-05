@@ -40,3 +40,13 @@ export const requestReconnect = async (sessionId, t) => {
         return { outcome: "failed" };
     }
 };
+
+export const applyReconnectOutcome = (result, { onReconnected, onReattach, onEnded, onRefused, onFailed }) => {
+    switch (result?.outcome) {
+        case "reconnected": return onReconnected?.(result.generation);
+        case "reattach": return onReattach?.();
+        case "ended": return onEnded?.();
+        case "refused": return onRefused?.(result.error);
+        default: return onFailed?.();
+    }
+};

@@ -16,7 +16,7 @@ import FilePreviewWindow from "@/common/components/FilePreviewWindow";
 import { useActiveSessions } from "@/common/contexts/SessionContext.jsx";
 import { usePreferences } from "@/common/contexts/PreferencesContext.jsx";
 import { useAutoReconnect } from "@/common/hooks/useAutoReconnect.js";
-import { requestReconnect } from "@/common/utils/ReconnectPolicy.js";
+import { requestReconnect, applyReconnectOutcome } from "@/common/utils/ReconnectPolicy.js";
 import { shouldRecordError, isSuperseded } from "@/pages/Servers/utils/sessionErrors.js";
 import { useLiveSessions } from "@/common/contexts/LiveSessionContext.jsx";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
@@ -129,30 +129,43 @@ export const Servers = () => {
         setReconnecting(prev => ({ ...prev, [sessionId]: true }));
         try {
             const result = await requestReconnect(sessionId, t);
-            if (!activeSessionsRef.current.some(s => s.id === sessionId)) return { connected: false };
-            switch (result.outcome) {
-                case "reconnected":
+            if (!activeSessionsRef.current.some(s => s.id === sessionId)) {
+                if (result.outcome === "reconnected" || result.outcome === "reattach") {
+                    deleteRequest(`/connections/${sessionId}`).catch(error => {
+                        console.debug("Session deletion request failed:", error);
+                    });
+                }
+                return { connected: false };
+            }
+            const bump = (generation) => (sessions) => sessions.map(s => (s.id === sessionId ? { ...s, generation } : s));
+            return applyReconnectOutcome(result, {
+                onReconnected: (generation) => {
                     pendingAttachRef.current.add(sessionId);
                     setSessionError(sessionId, null);
-                    // Synchronous, so the old renderer's teardown already sees the new generation as current.
-                    activeSessionsRef.current = activeSessionsRef.current.map(s => (s.id === sessionId ? { ...s, generation: result.generation } : s));
-                    setActiveSessions(prev => prev.map(s => (s.id === sessionId ? { ...s, generation: result.generation } : s)));
+                    // Synchronous: a late error from the old socket, arriving before the commit, must already be stale.
+                    activeSessionsRef.current = bump(generation)(activeSessionsRef.current);
+                    setActiveSessions(bump(generation));
                     return { connected: true };
-                case "reattach":
+                },
+                onReattach: () => {
                     setSessionError(sessionId, null);
                     setActiveSessions(prev => prev.map(s => (s.id === sessionId ? { ...s, attachNonce: (s.attachNonce ?? 0) + 1 } : s)));
                     return { connected: true };
-                case "ended":
+                },
+                onEnded: () => {
                     disconnectFromServerRef.current?.(sessionId);
                     return { connected: false };
-                case "refused": {
+                },
+                onRefused: (error) => {
                     const generation = activeSessionsRef.current.find(s => s.id === sessionId)?.generation ?? 1;
-                    setSessionError(sessionId, { ...result.error, generation });
+                    setSessionError(sessionId, { ...error, generation });
                     return { connected: false };
-                }
-                default:
+                },
+                onFailed: () => {
+                    if (!autoReconnect) sendToast("Error", t("common.errors.connection.reconnectFailed"));
                     return { connected: false };
-            }
+                },
+            });
         } finally {
             setReconnecting(prev => {
                 const next = { ...prev };
@@ -160,7 +173,7 @@ export const Servers = () => {
                 return next;
             });
         }
-    }, [setActiveSessions, setSessionError, t]);
+    }, [setActiveSessions, setSessionError, sendToast, autoReconnect, t]);
 
     const { reconnectStates, markSessionConnected, handleSessionErrored, reconnectNow } = useAutoReconnect({
         activeSessions,

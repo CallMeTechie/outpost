@@ -21,6 +21,7 @@ export const Share = () => {
     const [disconnected, setDisconnected] = useState(false);
     const [connectionError, setConnectionError] = useState(null);
     const markSessionErrored = useCallback((_id, error) => setConnectionError(prev => prev ?? error), []);
+    const markSessionConnected = useCallback(() => setConnectionError(null), []);
     const refs = useRef({});
 
     const handleDisconnect = () => {
@@ -64,9 +65,9 @@ export const Share = () => {
 
     return (
         <div className="share-container">
-            {renderer === "guac" && <GuacamoleRenderer session={session} disconnectFromServer={handleDisconnect} markSessionErrored={markSessionErrored} registerGuacamoleRef={noop} onFullscreenToggle={fullscreen} isShared />}
-            {renderer === "terminal" && <XtermRenderer session={session} disconnectFromServer={handleDisconnect} markSessionErrored={markSessionErrored} registerTerminalRef={noop} broadcastMode={false} terminalRefs={refs} updateProgress={noop} layoutMode="single" onBroadcastToggle={noop} onFullscreenToggle={fullscreen} isShared />}
-            {connectionError && <ConnectionError message={connectionError.message} retryable={false} reconnectable={connectionError.reconnectable} onClose={handleDisconnect} />}
+            {renderer === "guac" && <GuacamoleRenderer session={session} disconnectFromServer={handleDisconnect} markSessionErrored={markSessionErrored} markSessionConnected={markSessionConnected} registerGuacamoleRef={noop} onFullscreenToggle={fullscreen} isShared />}
+            {renderer === "terminal" && <XtermRenderer session={session} disconnectFromServer={handleDisconnect} markSessionErrored={markSessionErrored} markSessionConnected={markSessionConnected} registerTerminalRef={noop} broadcastMode={false} terminalRefs={refs} updateProgress={noop} layoutMode="single" onBroadcastToggle={noop} onFullscreenToggle={fullscreen} isShared />}
+            {connectionError && <ConnectionError message={connectionError.message} retryable={false} onClose={handleDisconnect} />}
         </div>
     );
 };

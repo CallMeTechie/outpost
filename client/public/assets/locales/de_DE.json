@@ -210,7 +210,8 @@
         "reconnect": "Neu verbinden",
         "reconnectNow": "Jetzt verbinden",
         "reconnecting": "Verbinde neu …",
-        "countdown": "Neuer Versuch in {{seconds}} s · Versuch {{attempt}}/{{max}}"
+        "countdown": "Neuer Versuch in {{seconds}} s · Versuch {{attempt}}/{{max}}",
+        "reconnectFailed": "Neu verbinden fehlgeschlagen"
       }
     },
     "messages": {

@@ -644,7 +644,10 @@ const GuacamoleRenderer = ({
         };
         tunnel.onerror = (status) => {
             if (isCleaningUp) return;
-            reportError(status?.message || errorMessageRef.current || null, errorStatusRef.current);
+            const message = status?.message || errorMessageRef.current;
+            // status.code is not used: the library maps a WebSocket close 1008 to 0x0303, which would read as non-reconnectable.
+            if (!message && wasConnectedRef.current) reportError("Connection lost");
+            else reportError(message || null, errorStatusRef.current);
         };
         const cleanupClipboard = handleClipboardEvents();
 
