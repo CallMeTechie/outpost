@@ -161,6 +161,33 @@ const openEngineSession = async (sessionId, sessionType, host, port, params, jum
     return dataSocketPromise;
 };
 
+const isCurrentGeneration = (sessionId, generation) => SessionManager.get(sessionId)?.generation === generation;
+
+const discardStaleConnection = (engineSessionId, dataSocket, session = null) => {
+    try { session?.recording?.stream?.end(); } catch {}
+    dataSocket.removeAllListeners();
+    dataSocket.destroy();
+    try { controlPlane.closeSession(engineSessionId); } catch {}
+    return { success: false, stale: true };
+};
+
+// The data socket and the engine's SessionClosed report arrive over two separate connections; ending
+// the session on `close` right away usually beats the report and loses its reason (4017 vs. normal).
+const bindDataSocketLifecycle = (sessionId, generation, dataSocket, label, onEnd = null) => {
+    dataSocket.on("close", () => {
+        onEnd?.();
+        logger.info(`${label} data connection closed`, { sessionId });
+        SessionManager.beginCloseGrace(sessionId, generation);
+    });
+    dataSocket.on("error", (err) => {
+        onEnd?.();
+        logger.error(`${label} data socket error`, { sessionId, error: err.message });
+        SessionManager.markFailed(sessionId, err.message, generation);
+        SessionManager.remove(sessionId, { code: 4017, reason: "Connection lost", generation })
+            .catch((error) => logger.error("Removing session failed", { sessionId, error: error.message }));
+    });
+};
+
 const createConnectionForSession = async (sessionId, accountId) => {
     const session = requireSession(sessionId);
 
@@ -229,7 +256,7 @@ const createSFTPConnectionForSession = async (sessionId, entry, accountId) => {
         const jumpHosts = await resolveJumpHosts(entry);
 
         const dataSocket = await openEngineSession(
-            sessionId, SessionType.SFTP, host, port, params, jumpHosts, entry.config?.engineId
+            session.engineSessionId, SessionType.SFTP, host, port, params, jumpHosts, entry.config?.engineId
         );
 
         const sftpClient = new EngineSftpClient(dataSocket);
@@ -282,7 +309,7 @@ const getAuxiliarySFTPClient = async (sessionId, entry, accountId, opts) => {
         const jumpHosts = await resolveJumpHosts(entry);
 
         conn._auxGeneration = (conn._auxGeneration || 0) + 1;
-        const engineSessionId = `${sessionId}-${suffix}-${conn._auxGeneration}`;
+        const engineSessionId = `${session.engineSessionId}-${suffix}-${conn._auxGeneration}`;
         openedEngineSessionId = engineSessionId;
         onEngineSession?.(engineSessionId);
         // Registering the id here is what lets SessionManager's cleanupConnection force-close this
@@ -487,6 +514,7 @@ const getSessionPassword = async (sessionId, entry, accountId) => {
 const createSSHConnectionForSession = async (sessionId, entry, identity, organizationId, script = null) => {
     const session = requireSession(sessionId);
     if (session._connecting) return session._connecting;
+    const { generation, engineSessionId } = session;
 
     session._connecting = (async () => {
         requireEngine();
@@ -496,21 +524,14 @@ const createSSHConnectionForSession = async (sessionId, entry, identity, organiz
         const jumpHosts = await resolveJumpHosts(entry);
 
         const dataSocket = await openEngineSession(
-            sessionId, SessionType.SSH, host, port, params, jumpHosts, entry.config?.engineId
+            engineSessionId, SessionType.SSH, host, port, params, jumpHosts, entry.config?.engineId
         );
+        if (!isCurrentGeneration(sessionId, generation)) return discardStaleConnection(engineSessionId, dataSocket, session);
 
         await SessionManager.initRecording(sessionId, organizationId);
 
         dataSocket.on("data", (data) => SessionManager.appendLog(sessionId, data.toString()));
-        dataSocket.on("close", () => {
-            logger.info("SSH data connection closed", { sessionId });
-            SessionManager.remove(sessionId);
-        });
-        dataSocket.on("error", (err) => {
-            logger.error("SSH data socket error", { sessionId, error: err.message });
-            SessionManager.markFailed(sessionId, err.message);
-            SessionManager.remove(sessionId, { code: 4017, reason: "Connection lost" });
-        });
+        bindDataSocketLifecycle(sessionId, generation, dataSocket, "SSH");
 
         let scriptLayer = null;
         if (script) {
@@ -518,13 +539,14 @@ const createSSHConnectionForSession = async (sessionId, entry, identity, organiz
             scriptLayer.start();
         }
 
-        SessionManager.setConnection(sessionId, {
+        const attached = SessionManager.setConnection(sessionId, {
             dataSocket,
-            sessionId,
+            sessionId: engineSessionId,
             type: "ssh",
             auditLogId: session.auditLogId,
             scriptLayer,
-        });
+        }, generation);
+        if (!attached) return discardStaleConnection(engineSessionId, dataSocket, session);
 
         if (!script) {
             const startPath = session.configuration.startPath;
@@ -608,33 +630,28 @@ const createSSHConnectionForSession = async (sessionId, entry, identity, organiz
 const createTelnetConnectionForSession = async (sessionId, entry, organizationId) => {
     requireEngine();
     const session = requireSession(sessionId);
+    const { generation, engineSessionId } = session;
     const { ip, port = 23 } = entry.config || {};
 
     if (!ip) throw new Error("Missing host configuration");
 
     const dataSocket = await openEngineSession(
-        sessionId, SessionType.Telnet, ip, port, {}, [], entry.config?.engineId
+        engineSessionId, SessionType.Telnet, ip, port, {}, [], entry.config?.engineId
     );
+    if (!isCurrentGeneration(sessionId, generation)) return discardStaleConnection(engineSessionId, dataSocket, session);
 
     await SessionManager.initRecording(sessionId, organizationId);
 
     dataSocket.on("data", (data) => SessionManager.appendLog(sessionId, data.toString()));
-    dataSocket.on("close", () => {
-        logger.info("Telnet data connection closed", { sessionId });
-        SessionManager.remove(sessionId);
-    });
-    dataSocket.on("error", (err) => {
-        logger.error("Telnet data socket error", { sessionId, error: err.message });
-        SessionManager.markFailed(sessionId, err.message);
-        SessionManager.remove(sessionId, { code: 4017, reason: err.message });
-    });
+    bindDataSocketLifecycle(sessionId, generation, dataSocket, "Telnet");
 
-    SessionManager.setConnection(sessionId, {
+    const attached = SessionManager.setConnection(sessionId, {
         dataSocket,
-        sessionId,
+        sessionId: engineSessionId,
         type: "telnet",
         auditLogId: session.auditLogId,
-    });
+    }, generation);
+    if (!attached) return discardStaleConnection(engineSessionId, dataSocket, session);
 
     logger.info("Telnet connected", { sessionId, ip, port });
     return { success: true };
@@ -643,6 +660,7 @@ const createTelnetConnectionForSession = async (sessionId, entry, organizationId
 const createPveLxcConnectionForSession = async (sessionId, entry, organizationId) => {
     requireEngine();
     const session = requireSession(sessionId);
+    const { generation, engineSessionId } = session;
 
     const integration = entry.integrationId ? await Integration.findByPk(entry.integrationId) : null;
     if (!integration) throw new Error("Integration not found for PVE entry");
@@ -664,8 +682,9 @@ const createPveLxcConnectionForSession = async (sessionId, entry, organizationId
     };
 
     const dataSocket = await openEngineSession(
-        sessionId, SessionType.WebSocket, server.ip, Number(server.port) || 8006, params, [], entry.config?.engineId
+        engineSessionId, SessionType.WebSocket, server.ip, Number(server.port) || 8006, params, [], entry.config?.engineId
     );
+    if (!isCurrentGeneration(sessionId, generation)) return discardStaleConnection(engineSessionId, dataSocket, session);
 
     dataSocket.write(`${server.username}:${vncTicket.ticket}\n`);
 
@@ -680,24 +699,18 @@ const createPveLxcConnectionForSession = async (sessionId, entry, organizationId
         if (text !== "OK") SessionManager.appendLog(sessionId, text);
     });
 
-    dataSocket.on("close", () => {
-        clearInterval(keepAliveTimer);
-        SessionManager.remove(sessionId);
-    });
+    bindDataSocketLifecycle(sessionId, generation, dataSocket, "PVE LXC", () => clearInterval(keepAliveTimer));
 
-    dataSocket.on("error", (err) => {
-        clearInterval(keepAliveTimer);
-        logger.error("PVE LXC data socket error", { sessionId, error: err.message });
-        SessionManager.markFailed(sessionId, err.message);
-        SessionManager.remove(sessionId, { code: 4017, reason: err.message });
-    });
-
-    SessionManager.setConnection(sessionId, {
+    const attached = SessionManager.setConnection(sessionId, {
         dataSocket,
         keepAliveTimer,
         type: "pve-lxc",
         auditLogId: session.auditLogId,
-    });
+    }, generation);
+    if (!attached) {
+        clearInterval(keepAliveTimer);
+        return discardStaleConnection(engineSessionId, dataSocket, session);
+    }
 
     logger.info("PVE LXC connected via engine", { sessionId, vmid });
     return { success: true };
@@ -705,6 +718,7 @@ const createPveLxcConnectionForSession = async (sessionId, entry, organizationId
 
 const prepareGuacamoleSession = async (sessionId, entry, identity, organizationId) => {
     const session = requireSession(sessionId);
+    const { generation, engineSessionId } = session;
     requireEngine();
     const protocol = entry.type === "server" ? entry.config?.protocol : entry.type;
     const cfg = entry.config || {};
@@ -728,17 +742,20 @@ const prepareGuacamoleSession = async (sessionId, entry, identity, organizationI
     const jumpHosts = await resolveJumpHosts(entry);
 
     const dataSocket = await openEngineSession(
-        sessionId, sessionType, host, port, params, jumpHosts, entry.config?.engineId
+        engineSessionId, sessionType, host, port, params, jumpHosts, entry.config?.engineId
     );
+    if (!isCurrentGeneration(sessionId, generation)) return discardStaleConnection(engineSessionId, dataSocket, session);
 
     const recordingEnabled = await isRecordingEnabled(organizationId);
 
     if (recordingEnabled && session.auditLogId) {
-        controlPlane.registerRecordingSession(sessionId, session.auditLogId);
+        controlPlane.registerRecordingSession(engineSessionId, session.auditLogId);
     }
 
     const masterClient = new GuacdClient({
         sessionId,
+        generation,
+        engineSessionId,
         connectionSettings: {
             connection: { type: protocol, width: 1024, height: 768, ...params, dpi: guacDisplayDpi(session.configuration?.displayDpi) },
             enableAudio: entry.config?.enableAudio !== false,
@@ -755,14 +772,19 @@ const prepareGuacamoleSession = async (sessionId, entry, identity, organizationI
         masterClient.connect();
     });
 
-    SessionManager.setGuacReady(sessionId);
-
-    SessionManager.setConnection(sessionId, {
+    const attached = SessionManager.setConnection(sessionId, {
         guacdClient: masterClient,
         dataSocket,
         type: "guac",
         auditLogId: session.auditLogId,
-    });
+    }, generation);
+    if (!attached) {
+        masterClient.close();
+        try { controlPlane.closeSession(engineSessionId); } catch {}
+        return { success: false, stale: true };
+    }
+
+    SessionManager.setGuacReady(sessionId);
 
     logger.info("Guacamole session prepared", { sessionId, protocol, target: host, port });
     return { success: true };
@@ -770,6 +792,7 @@ const prepareGuacamoleSession = async (sessionId, entry, identity, organizationI
 
 module.exports = {
     createConnectionForSession,
+    bindDataSocketLifecycle,
     getEntryProtocol,
     createSFTPConnectionForSession,
     getSFTPTransferClient,

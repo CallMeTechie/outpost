@@ -23,7 +23,7 @@ const logger = require("./utils/logger");
 const { startSourceSyncService, stopSourceSyncService } = require("./utils/sourceSyncService");
 const backupService = require("./utils/backupService");
 const controlPlane = require("./lib/controlPlane/ControlPlaneServer");
-const SessionManager = require("./lib/SessionManager");
+const engineEvents = require("./lib/engineEvents");
 const { ensureLocalEngine } = require("./controllers/engine");
 const { ensureCPCerts } = require("./utils/controlPlaneCerts");
 const { mountStaticSite } = require("./lib/staticSite");
@@ -161,18 +161,8 @@ db.authenticate()
             logger.system("Local engine configured");
         }
 
-        controlPlane.on("sessionClosed", ({ sessionId, reason }) => {
-            logger.info(`Engine session closed: ${sessionId} (reason: ${reason})`);
-            if (reason === "connection lost") SessionManager.remove(sessionId, { code: 4017, reason: "Connection lost" });
-            else SessionManager.remove(sessionId);
-        });
-
-        controlPlane.on("engineDisconnected", ({ engineId, sessionIds }) => {
-            logger.warn(`Engine ${engineId} disconnected, cleaning up ${sessionIds.length} sessions`);
-            for (const sessionId of sessionIds) {
-                SessionManager.remove(sessionId);
-            }
-        });
+        controlPlane.on("sessionClosed", engineEvents.handleSessionClosed);
+        controlPlane.on("engineDisconnected", engineEvents.handleEngineDisconnected);
 
         try {
             controlPlane.setTlsContext(await ensureCPCerts());

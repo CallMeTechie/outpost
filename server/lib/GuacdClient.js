@@ -23,6 +23,8 @@ class GuacdClient {
 
     constructor(options) {
         this.sessionId = options.sessionId;
+        this.generation = options.generation;
+        this.engineSessionId = options.engineSessionId || options.sessionId;
         this.connectionSettings = options.connectionSettings || {};
         this.joinConnectionId = options.joinConnectionId || null;
         this.onReadyCallback = options.onReady || null;
@@ -92,7 +94,7 @@ class GuacdClient {
 
         if (!this.joinConnectionId && this.recordingEnabled && this.auditLogId) {
             conn['recording-path'] = '/tmp/outpost-recordings';
-            conn['recording-name'] = this.sessionId;
+            conn['recording-name'] = this.engineSessionId;
             conn['create-recording-path'] = 'true';
         }
 
@@ -136,13 +138,13 @@ class GuacdClient {
 
         // Match error instructions only at instruction boundaries (start of string or after ';')
         // to avoid false positives from filenames or clipboard text containing ".error,"
-        const errorMatch = /(?:^|;)\d+\.error,(\d+)\.([^,]+),/.exec(dataToSend);
+        const errorMatch = /(?:^|;)\d+\.error,\d+\.([^,]+),\d+\.(\d+);/.exec(dataToSend);
         if (errorMatch) {
-            const errorMessage = errorMatch[2];
-            logger.error('Guacd error received', { sessionId: this.sessionId, error: errorMessage });
+            const [, errorMessage, status] = errorMatch;
+            logger.error('Guacd error received', { sessionId: this.sessionId, error: errorMessage, status: Number(status) });
             // Forward data to client first so it can display the error message
             try { this.onDataCallback?.(dataToSend); } catch {}
-            this.handleClose(`error: ${errorMessage}`);
+            this.handleClose(`error: ${errorMessage}`, Number(status));
             return;
         }
 
@@ -178,15 +180,15 @@ class GuacdClient {
         this.send(formatted);
     }
 
-    handleClose(reason) {
+    handleClose(reason, guacStatus = null) {
         if (this.state === 'closed') return;
         this.state = 'closed';
         logger.info('Connection closed', { sessionId: this.sessionId, reason });
         this.cleanup();
         this.onCloseCallback?.(reason);
-        if (!this.joinConnectionId) {
-            SessionManager.onMasterConnectionClosed(this.sessionId, reason);
-        }
+        if (this.joinConnectionId) return;
+        if (reason === 'connection closed') SessionManager.beginCloseGrace(this.sessionId, this.generation);
+        else SessionManager.onMasterConnectionClosed(this.sessionId, reason, { guacStatus, generation: this.generation });
     }
 
     handleError(error) {
