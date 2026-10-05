@@ -770,6 +770,7 @@ const prepareGuacamoleSession = async (sessionId, entry, identity, organizationI
 
 module.exports = {
     createConnectionForSession,
+    getEntryProtocol,
     createSFTPConnectionForSession,
     getSFTPTransferClient,
     getSFTPBackgroundClient,
