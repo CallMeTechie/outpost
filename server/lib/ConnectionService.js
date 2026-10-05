@@ -27,6 +27,9 @@ const GUAC_PROTOCOLS = {
     demo: { sessionType: SessionType.Demo, defaultPort: 0 },
 };
 
+// guacd turns the DPI into the RDP DesktopScaleFactor, which Windows only honours between 100 % and 500 %.
+const guacDisplayDpi = (requested) => Math.min(Math.max(Math.round(requested) || 96, 96), 480);
+
 const requireEngine = () => {
     if (!controlPlane.hasEngine()) throw new Error("No engine connected");
 };
@@ -737,7 +740,7 @@ const prepareGuacamoleSession = async (sessionId, entry, identity, organizationI
     const masterClient = new GuacdClient({
         sessionId,
         connectionSettings: {
-            connection: { type: protocol, width: 1024, height: 768, dpi: 96, ...params },
+            connection: { type: protocol, width: 1024, height: 768, ...params, dpi: guacDisplayDpi(session.configuration?.displayDpi) },
             enableAudio: entry.config?.enableAudio !== false,
         },
         recordingEnabled,

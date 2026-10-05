@@ -115,11 +115,18 @@ const GuacamoleRenderer = ({
     // cleared next to clientRef.current = null in the connect cleanup.
     }, [session.id, registerGuacamoleRef, ready]);
 
+    const samplingFor = (scale) => Math.abs(scale - 1) < 0.001 ? "pixelated" : "auto";
+
     const applyDisplayStyles = (el, x, y, scale, width, height) => Object.assign(el.style, {
         position: "absolute", width: width + "px", height: height + "px",
         transform: `translate(${x}px, ${y}px) scale(${scale})`, transformOrigin: "0 0",
-        imageRendering: "crisp-edges", backfaceVisibility: "hidden", willChange: "transform",
+        imageRendering: samplingFor(scale), backfaceVisibility: "hidden", willChange: "transform",
     });
+
+    const snapToDevicePixel = (value) => {
+        const density = window.devicePixelRatio || 1;
+        return Math.round(value * density) / density;
+    };
 
     const clampPan = (pan, visible, scaled) => {
         const limit = Math.max((scaled - visible) / 2, 0);
@@ -152,8 +159,8 @@ const GuacamoleRenderer = ({
         };
 
         offsetRef.current = {
-            x: (cw - mw * scale) / 2 - mx * scale + panRef.current.x,
-            y: (ch - mh * scale) / 2 - my * scale + panRef.current.y,
+            x: snapToDevicePixel((cw - mw * scale) / 2 - mx * scale + panRef.current.x),
+            y: snapToDevicePixel((ch - mh * scale) / 2 - my * scale + panRef.current.y),
         };
 
         applyDisplayStyles(el, offsetRef.current.x, offsetRef.current.y, scale,
@@ -537,7 +544,7 @@ const GuacamoleRenderer = ({
         clientRef.current = client;
         const display = client.getDisplay().getElement();
         display.style.position = "absolute";
-        display.style.imageRendering = "crisp-edges";
+        display.style.imageRendering = samplingFor(scaleRef.current);
         ref.current.appendChild(display);
 
         client.onaudio = (stream, mimetype) => {

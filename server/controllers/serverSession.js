@@ -79,7 +79,7 @@ const directConnectionReasonRequired = async (accountId) => {
     return false;
 };
 
-const createSession = async (accountId, entryId, identityId, connectionReason, type = null, directIdentity = null, tabId = null, browserId = null, scriptId = null, startPath = null, ipAddress = null, userAgent = null, tmuxSession = null, tmuxCreate = false, tmuxWindowId = null, directTarget = null) => {
+const createSession = async (accountId, entryId, identityId, connectionReason, type = null, directIdentity = null, tabId = null, browserId = null, scriptId = null, startPath = null, ipAddress = null, userAgent = null, tmuxSession = null, tmuxCreate = false, tmuxWindowId = null, directTarget = null, { displayDpi = null } = {}) => {
     // Two ways in. The direct one has no entry behind it, so it cannot lean on
     // per-entry access rules and carries its own permission instead.
     let entry;
@@ -175,6 +175,7 @@ const createSession = async (accountId, entryId, identityId, connectionReason, t
         tmuxSession: tmuxSession || null,
         tmuxCreate: Boolean(tmuxCreate),
         tmuxWindowId: tmuxWindowId || null,
+        displayDpi: displayDpi || null,
         renderer: type === "sftp" ? "sftp" : entry.renderer,
         // Carried on the session so ConnectionService can rebuild the same
         // transient entry later; there is no row to load it back from.
@@ -389,7 +390,8 @@ const duplicateSession = async (accountId, sessionId, tabId = null, browserId = 
         config.tmuxSession || null,
         false,
         config.tmuxWindowId || null,
-        config.directTarget || null
+        config.directTarget || null,
+        { displayDpi: config.displayDpi }
     );
 };
 

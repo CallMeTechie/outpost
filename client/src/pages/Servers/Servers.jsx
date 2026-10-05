@@ -514,6 +514,7 @@ export const Servers = () => {
                 type,
                 tabId: getTabId(),
                 browserId: getBrowserId(),
+                displayDpi: Math.min(Math.max(Math.round((window.devicePixelRatio || 1) * 96), 96), 480),
             };
 
             if (directIdentity) payload.directIdentity = directIdentity;
