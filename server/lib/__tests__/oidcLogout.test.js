@@ -55,6 +55,15 @@ test("a non-HTTP end-session endpoint is never handed to the browser - logout st
     assert.strictEqual(await Session.findOne({ where: { token: session.token } }), null);
 });
 
+test("without a configured end-session endpoint logout stays local", async () => {
+    const session = await oidcSession(null);
+
+    const result = await logout(session.token);
+
+    assert.strictEqual(result.logoutUrl, undefined);
+    assert.strictEqual(await Session.findOne({ where: { token: session.token } }), null);
+});
+
 test("the migration adds the logout columns to a fresh database and can run twice", async () => {
     const fresh = new Sequelize({ dialect: "sqlite", storage: ":memory:", logging: false });
     const queryInterface = fresh.getQueryInterface();

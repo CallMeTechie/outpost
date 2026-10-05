@@ -16,7 +16,7 @@ Go to **Settings** → **Authentication** → **Add Provider**.
 | Client Secret | From your IdP            |
 | Redirect URI  | Copy this to your IdP    |
 | Scope         | Usually `openid profile` |
-| End Session Endpoint | Optional logout URL override when discovery does not advertise one |
+| End Session Endpoint | Optional. When set, logging out also ends the session at the identity provider |
 
 ## Provider Setup
 
@@ -77,7 +77,7 @@ Register this post-logout redirect URI with your identity provider in addition t
 https://<outpost-host>/api/auth/oidc/logout/callback
 ```
 
-Outpost uses the provider's discovered `end_session_endpoint` by default. If the provider does not advertise one, set **End Session Endpoint** in the provider's **Advanced Settings**. The configured override takes precedence over discovery.
+Logging out at the identity provider is opt-in. Set **End Session Endpoint** in the provider's **Advanced Settings** (the `end_session_endpoint` from the provider's discovery document) after registering the post-logout redirect URI above; without it, logout stays local to Outpost.
 
 Sessions created before upgrading do not have an ID-token hint and therefore use local-only logout until the user signs in again. Providers without a logout endpoint also continue to log out locally.
 

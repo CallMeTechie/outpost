@@ -74,7 +74,7 @@ export const FileItem = memo(({
     // Opens on the press: on a draggable row the trailing click gets lost to a drag. A click with
     // no press before it (keyboard, assistive tech) still opens the menu.
     const handleDotsPointerDown = (event) => {
-        if (event.button !== 0 || !event.isPrimary) return;
+        if (event.button !== 0 || !event.isPrimary || event.pointerType === "touch") return;
         event.stopPropagation();
         dotsPressedRef.current = true;
         event.currentTarget.setPointerCapture?.(event.pointerId);

@@ -321,7 +321,7 @@ app.get("/oidc/callback", async (req, res) => {
  * @return {redirect} 302 - Redirects to the login screen
  */
 app.get("/oidc/logout/callback", (req, res) => {
-    res.redirect("/");
+    res.redirect("../../../../");
 });
 
 module.exports = app;

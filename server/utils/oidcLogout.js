@@ -1,5 +1,3 @@
-const client = require("openid-client");
-
 const normalizeProviderData = (data) => {
     if (!Object.hasOwn(data, "endSessionEndpoint")) return data;
     return { ...data, endSessionEndpoint: data.endSessionEndpoint?.trim() || null };
@@ -44,32 +42,12 @@ const addLogoutParameters = (url, provider, idToken) => {
     return url;
 };
 
-const buildOIDCLogoutUrl = async (provider, idToken, dependencies = {}) => {
-    if (!provider || !idToken) return null;
-
-    if (provider.endSessionEndpoint) {
-        const endpoint = parseHTTPUrl(provider.endSessionEndpoint, "OIDC end-session endpoint");
-        return addLogoutParameters(endpoint, provider, idToken).href;
-    }
-
-    const discover = dependencies.discovery || client.discovery;
-    const buildEndSessionUrl = dependencies.buildEndSessionUrl || client.buildEndSessionUrl;
-    const configuration = await discover(
-        new URL(provider.issuer),
-        provider.clientId,
-        provider.clientSecret,
-    );
-
-    if (!configuration.serverMetadata().end_session_endpoint) {
-        throw new Error("OIDC provider does not advertise an end-session endpoint");
-    }
-
-    const logoutUrl = buildEndSessionUrl(configuration, {
-        client_id: provider.clientId,
-        id_token_hint: idToken,
-        post_logout_redirect_uri: getPostLogoutRedirectUri(provider.redirectUri),
-    });
-    return parseHTTPUrl(logoutUrl, "Discovered OIDC end-session endpoint").href;
+// Opt-in: an IdP rejects a post-logout redirect it does not know, so logging out through it
+// only starts once an admin has entered the endpoint and registered the callback there.
+const buildOIDCLogoutUrl = (provider, idToken) => {
+    if (!provider?.endSessionEndpoint || !idToken) return null;
+    const endpoint = parseHTTPUrl(provider.endSessionEndpoint, "OIDC end-session endpoint");
+    return addLogoutParameters(endpoint, provider, idToken).href;
 };
 
 module.exports = { buildOIDCLogoutUrl, getPostLogoutRedirectUri, normalizeProviderData };
