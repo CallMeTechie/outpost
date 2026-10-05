@@ -14,6 +14,7 @@ test.each([
     ["404 other", { code: 404, message: "Not found" }, { outcome: "refused", error: { retryable: false, reconnectable: false, expired: false } }],
     ["403", { code: 403 }, { outcome: "refused", error: { retryable: false, reconnectable: false, expired: false } }],
     ["410", { code: 410 }, { outcome: "refused", error: { retryable: false, reconnectable: false, expired: true } }],
+    ["400", { code: 400, message: "Identity not found" }, { outcome: "refused", error: { retryable: false, reconnectable: false, expired: false } }],
     ["500", { code: 500 }, { outcome: "failed" }],
     ["429", { code: 429 }, { outcome: "failed" }],
     ["network", new TypeError("Failed to fetch"), { outcome: "failed" }],

@@ -2,6 +2,7 @@ const Session = require("../models/Session");
 const Account = require("../models/Account");
 const Entry = require("../models/Entry");
 const { buildTransientEntry } = require("../utils/directTarget");
+const { closeReason } = require("../utils/closeReason");
 const Integration = require("../models/Integration");
 const SessionManager = require("../lib/SessionManager");
 const { validateEntryAccess } = require("../controllers/entry");
@@ -105,7 +106,7 @@ const authenticateWebSocket = async (ws, query) => {
         serverSession = SessionManager.get(sessionId);
         if (!serverSession) {
             const failedReason = SessionManager.consumeFailedReason(sessionId);
-            if (failedReason) ws.close(4017, failedReason);
+            if (failedReason) ws.close(4017, closeReason(failedReason));
             else ws.close(4007, "Invalid session ID");
             return null;
         }

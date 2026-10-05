@@ -359,10 +359,17 @@ const deleteSession = async (accountId, sessionId) => {
         return SessionManager.get(sessionId) !== live;
     }) : false;
     await SessionManager.whenEnded(sessionId);
+    const reconnected = SessionManager.get(sessionId);
+    const removedReconnect = reconnected?.accountId === accountId && await SessionManager.remove(sessionId)
+        .catch((error) => {
+            logger.error("Removing session failed", { sessionId, error: error.message });
+            return SessionManager.get(sessionId) !== reconnected;
+        });
+    await SessionManager.whenEnded(sessionId);
     const tombstone = SessionManager.getTombstone(sessionId);
     const dropped = tombstone?.accountId === accountId && SessionManager.dropTombstone(sessionId);
 
-    if (removed || dropped) return { message: "Session deleted" };
+    if (removed || removedReconnect || dropped) return { message: "Session deleted" };
     return { code: 404, message: "Session not found" };
 };
 

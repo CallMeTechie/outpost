@@ -175,7 +175,7 @@ const discardStaleConnection = (engineSessionId, dataSocket, session = null) => 
 };
 
 // The data socket and the engine's SessionClosed report arrive over two separate connections; ending
-// the session on `close` right away usually beats the report and loses its reason (4017 vs. normal).
+// the session on `close` or `error` (an RST from unread input on exit) right away usually beats the report and loses its reason (4017 vs. normal).
 const bindDataSocketLifecycle = (sessionId, generation, dataSocket, label, onEnd = null) => {
     dataSocket.on("close", () => {
         onEnd?.();
@@ -186,8 +186,7 @@ const bindDataSocketLifecycle = (sessionId, generation, dataSocket, label, onEnd
         onEnd?.();
         logger.error(`${label} data socket error`, { sessionId, error: err.message });
         SessionManager.markFailed(sessionId, err.message, generation);
-        SessionManager.remove(sessionId, { code: 4017, reason: "Connection lost", generation })
-            .catch((error) => logger.error("Removing session failed", { sessionId, error: error.message }));
+        SessionManager.beginCloseGrace(sessionId, generation, { code: 4017, reason: "Connection lost" });
     });
 };
 

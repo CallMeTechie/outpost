@@ -37,6 +37,10 @@ export const requestReconnect = async (sessionId, t) => {
             const { text } = classifyConnectionError({ httpStatus: status }, t);
             return { outcome: "refused", error: { message: text, retryable: false, reconnectable: false, expired: status === 410 } };
         }
+        if (status === 400) {
+            const { text } = classifyConnectionError({ message: error?.message ?? null }, t);
+            return { outcome: "refused", error: { message: text, retryable: false, reconnectable: false, expired: false } };
+        }
         return { outcome: "failed" };
     }
 };

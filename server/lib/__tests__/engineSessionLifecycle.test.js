@@ -36,6 +36,15 @@ test("schließt der Daten-Socket vor der Engine-Meldung, entscheidet die Meldung
     await SessionManager.whenEnded(ended.session.sessionId);
     assert.strictEqual(SessionManager.getTombstone(ended.session.sessionId), null);
 
+    const reset = connectedSession();
+    reset.socket.emit("error", new Error("read ECONNRESET"));
+    reset.socket.emit("close");
+    assert.ok(SessionManager.get(reset.session.sessionId), "auch nach einem Socket-Fehler gilt die Karenz");
+    handleSessionClosed({ sessionId: reset.session.engineSessionId, reason: "session ended" });
+    await SessionManager.whenEnded(reset.session.sessionId);
+    assert.strictEqual(SessionManager.get(reset.session.sessionId), null);
+    assert.strictEqual(SessionManager.getTombstone(reset.session.sessionId), null);
+
     const silent = connectedSession();
     silent.socket.emit("close");
     t.mock.timers.tick(SessionManager.CLOSE_GRACE_MS);

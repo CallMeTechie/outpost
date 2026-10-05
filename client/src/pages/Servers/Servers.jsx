@@ -78,6 +78,8 @@ export const Servers = () => {
 
     const [hibernatedSessions, setHibernatedSessions] = useState([]);
     const closingSessionsRef = useRef(new Set());
+    const poppedOutRef = useRef(poppedOutSessions);
+    useEffect(() => { poppedOutRef.current = poppedOutSessions; }, [poppedOutSessions]);
     const erroredSessionsRef = useRef(new Map());
 
     // Read once, during the first render, so restore always works from what was actually on
@@ -268,7 +270,8 @@ export const Servers = () => {
             });
             const mergedIds = new Set(merged.map(s => s.id));
             const pinned = prev.filter(s =>
-                (erroredSessionsRef.current.has(s.id) || pendingAttachRef.current.has(s.id)) && !mergedIds.has(s.id) && !isLocalSession(s)
+                (erroredSessionsRef.current.has(s.id) || pendingAttachRef.current.has(s.id) || poppedOutRef.current.includes(s.id))
+                    && !mergedIds.has(s.id) && !isLocalSession(s)
             );
             mergedSessions = [...merged, ...pinned, ...localOnly];
             return mergedSessions;

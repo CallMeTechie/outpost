@@ -1,6 +1,7 @@
 const fs = require("node:fs");
 const { v4: uuidv4 } = require("uuid");
 const logger = require("../utils/logger");
+const { closeReason } = require("../utils/closeReason");
 const AuditLog = require("../models/AuditLog");
 const { isRecordingEnabled, getRecordingPath, compressRecording } = require("../utils/recordingService");
 const stateBroadcaster = require("./StateBroadcaster");
@@ -358,10 +359,10 @@ const closeAllWebSockets = (sessionId, code = 1000, reason = "Session terminated
     if (!session) return;
     const sharedCode = code === 1000 ? 4016 : code;
     for (const ws of session.connectedWs) {
-        try { if (ws.readyState <= 1) ws.close(code, reason); } catch {}
+        try { if (ws.readyState <= 1) ws.close(code, closeReason(reason)); } catch {}
     }
     for (const ws of session.sharedWs) {
-        try { if (ws.readyState <= 1) ws.close(sharedCode, reason); } catch {}
+        try { if (ws.readyState <= 1) ws.close(sharedCode, closeReason(reason)); } catch {}
     }
     session.connectedWs.clear();
     session.sharedWs.clear();
@@ -415,14 +416,14 @@ const clearCloseGrace = (session) => {
     session._closeGrace = null;
 };
 
-module.exports.beginCloseGrace = (sessionId, generation) => {
+module.exports.beginCloseGrace = (sessionId, generation, fallback = {}) => {
     const session = sessions.get(sessionId);
     if (!session || session._removing || session._closeGrace) return;
     if (!isCurrentGeneration(session, generation, "beginCloseGrace")) return;
     let resolve;
     const promise = new Promise((done) => { resolve = done; });
     const timer = setTimeout(() => {
-        module.exports.remove(sessionId, { generation: session.generation })
+        module.exports.remove(sessionId, { ...fallback, generation: session.generation })
             .catch((error) => logger.error("Removing session after close grace failed", { sessionId, error: error.message }));
     }, CLOSE_GRACE_MS);
     session._closeGrace = { timer, promise, resolve };
@@ -690,7 +691,7 @@ setInterval(() => {
     for (const [sessionId, session] of sessions) {
         if (!session.isHibernated && new Date(session.lastActivity) < sixHoursAgo) {
             logger.info("Removing old session", { sessionId });
-            module.exports.remove(sessionId);
+            module.exports.remove(sessionId).catch(logRemovalError(sessionId));
             removed++;
         }
     }
