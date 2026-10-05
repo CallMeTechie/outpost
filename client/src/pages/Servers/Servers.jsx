@@ -14,13 +14,17 @@ import DirectConnectDialog from "@/pages/Servers/components/DirectConnectDialog"
 import FileEditorWindow from "@/common/components/FileEditorWindow";
 import FilePreviewWindow from "@/common/components/FilePreviewWindow";
 import { useActiveSessions } from "@/common/contexts/SessionContext.jsx";
+import { usePreferences } from "@/common/contexts/PreferencesContext.jsx";
+import { useAutoReconnect } from "@/common/hooks/useAutoReconnect.js";
+import { requestReconnect, applyReconnectOutcome } from "@/common/utils/ReconnectPolicy.js";
+import { shouldRecordError, isSuperseded } from "@/pages/Servers/utils/sessionErrors.js";
 import { useLiveSessions } from "@/common/contexts/LiveSessionContext.jsx";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import { StateStreamContext, STATE_TYPES } from "@/common/contexts/StateStreamContext.jsx";
 import { isTauri } from "@/common/utils/TauriUtil.js";
-import { getTabId, getBrowserId, requiresIdentity, canConnectWithoutPrompt } from "@/common/utils/ConnectionUtil.js";
+import { getTabId, getBrowserId, requiresIdentity, canConnectWithoutPrompt, getDisplayDpi } from "@/common/utils/ConnectionUtil.js";
 import { getRequest, postRequest, deleteRequest } from "@/common/utils/RequestUtil";
 import {
     toLocalSessionDescriptor, restoreLocalSessions, getStoredLocalSessionDescriptors, setStoredLocalSessionDescriptors,
@@ -65,14 +69,17 @@ export const Servers = () => {
     const { activeSessions, setActiveSessions, activeSessionId, setActiveSessionId, poppedOutSessions } = useActiveSessions();
     const { liveSessions } = useLiveSessions();
     const { getServerById, servers } = useContext(ServerContext);
-    const { registerHandler } = useContext(StateStreamContext);
+    const { registerHandler, isConnected } = useContext(StateStreamContext);
     const { sendToast } = useToast();
     const { t } = useTranslation();
+    const { autoReconnect } = usePreferences();
     const location = useLocation();
     const navigate = useNavigate();
 
     const [hibernatedSessions, setHibernatedSessions] = useState([]);
     const closingSessionsRef = useRef(new Set());
+    const poppedOutRef = useRef(poppedOutSessions);
+    useEffect(() => { poppedOutRef.current = poppedOutSessions; }, [poppedOutSessions]);
     const erroredSessionsRef = useRef(new Map());
 
     // Read once, during the first render, so restore always works from what was actually on
@@ -92,14 +99,94 @@ export const Servers = () => {
     // unnumbered before the effect further down catches up.
     const [tabIdentities, setTabIdentities] = useState(() => getStoredTabIdentities());
 
-    const markSessionErrored = useCallback((sessionId, message) => {
-        if (erroredSessionsRef.current.has(sessionId)) return;
-        erroredSessionsRef.current.set(sessionId, message);
+    const activeSessionsRef = useRef(activeSessions);
+    useEffect(() => {
+        activeSessionsRef.current = activeSessions;
+    }, [activeSessions]);
+    const [sessionErrors, setSessionErrors] = useState({});
+    const [reconnecting, setReconnecting] = useState({});
+    // A reconnected session is briefly missing from a CONNECTIONS broadcast computed before it existed.
+    const pendingAttachRef = useRef(new Set());
+    const handleSessionErroredRef = useRef(null);
+    const disconnectFromServerRef = useRef(null);
+
+    const setSessionError = useCallback((sessionId, error) => {
+        if (error) erroredSessionsRef.current.set(sessionId, error);
+        else erroredSessionsRef.current.delete(sessionId);
+        setSessionErrors(Object.fromEntries(erroredSessionsRef.current));
     }, []);
 
-    const getSessionError = useCallback((sessionId) => {
-        return erroredSessionsRef.current.get(sessionId) || null;
-    }, []);
+    const markSessionErrored = useCallback((sessionId, error) => {
+        const generation = activeSessionsRef.current.find(s => s.id === sessionId)?.generation ?? 1;
+        const incoming = typeof error === "string" ? { message: error, retryable: false, generation } : error;
+        if (!shouldRecordError(erroredSessionsRef.current.get(sessionId), incoming, generation)) return;
+        setSessionError(sessionId, incoming);
+        handleSessionErroredRef.current?.(sessionId);
+    }, [setSessionError]);
+
+    const getSessionError = useCallback((sessionId) => erroredSessionsRef.current.get(sessionId)?.message || null, []);
+    const getSessionErrorInfo = useCallback((sessionId) => erroredSessionsRef.current.get(sessionId) || null, []);
+
+    const reconnectSession = useCallback(async (sessionId) => {
+        setReconnecting(prev => ({ ...prev, [sessionId]: true }));
+        try {
+            const result = await requestReconnect(sessionId, t);
+            if (!activeSessionsRef.current.some(s => s.id === sessionId)) {
+                if (result.outcome === "reconnected" || result.outcome === "reattach") {
+                    deleteRequest(`/connections/${sessionId}`).catch(error => {
+                        console.debug("Session deletion request failed:", error);
+                    });
+                }
+                return { connected: false };
+            }
+            const bump = (generation) => (sessions) => sessions.map(s => (s.id === sessionId ? { ...s, generation } : s));
+            return applyReconnectOutcome(result, {
+                onReconnected: (generation) => {
+                    pendingAttachRef.current.add(sessionId);
+                    setSessionError(sessionId, null);
+                    // Synchronous: a late error from the old socket, arriving before the commit, must already be stale.
+                    activeSessionsRef.current = bump(generation)(activeSessionsRef.current);
+                    setActiveSessions(bump(generation));
+                    return { connected: true };
+                },
+                onReattach: () => {
+                    setSessionError(sessionId, null);
+                    setActiveSessions(prev => prev.map(s => (s.id === sessionId ? { ...s, attachNonce: (s.attachNonce ?? 0) + 1 } : s)));
+                    return { connected: true };
+                },
+                onEnded: () => {
+                    disconnectFromServerRef.current?.(sessionId);
+                    return { connected: false };
+                },
+                onRefused: (error) => {
+                    const generation = activeSessionsRef.current.find(s => s.id === sessionId)?.generation ?? 1;
+                    setSessionError(sessionId, { ...error, generation });
+                    return { connected: false };
+                },
+                onFailed: () => {
+                    if (!autoReconnect) sendToast("Error", t("common.errors.connection.reconnectFailed"));
+                    return { connected: false };
+                },
+            });
+        } finally {
+            setReconnecting(prev => {
+                const next = { ...prev };
+                delete next[sessionId];
+                return next;
+            });
+        }
+    }, [setActiveSessions, setSessionError, sendToast, autoReconnect, t]);
+
+    const { reconnectStates, markSessionConnected, handleSessionErrored, reconnectNow } = useAutoReconnect({
+        activeSessions,
+        reconnectSession,
+        getSessionErrorInfo,
+        enabled: autoReconnect,
+        serverConnected: isConnected,
+    });
+    useEffect(() => {
+        handleSessionErroredRef.current = handleSessionErrored;
+    }, [handleSessionErrored]);
 
     const visibleSessions = activeSessions.filter(s => !poppedOutSessions.includes(s.id));
 
@@ -133,6 +220,7 @@ export const Servers = () => {
             if (!server) return null;
             return {
                 id: session.sessionId,
+                generation: session.generation ?? 1,
                 server,
                 identity: session.configuration.identityId,
                 isHibernated: session.isHibernated,
@@ -164,20 +252,31 @@ export const Servers = () => {
         const newActiveIds = new Set(activeMapped.map(s => s.id));
         let mergedSessions = [];
 
+        let supersededErrors = false;
+        for (const s of activeMapped) {
+            if (isSuperseded(erroredSessionsRef.current.get(s.id), s.generation)) {
+                erroredSessionsRef.current.delete(s.id);
+                supersededErrors = true;
+            }
+        }
+        if (supersededErrors) setSessionErrors(Object.fromEntries(erroredSessionsRef.current));
+
         setActiveSessions(prev => {
             const prevMap = new Map(prev.map(s => [s.id, s]));
             const localOnly = prev.filter(s => isLocalSession(s) || s.isJoined);
             const merged = activeMapped.map(newSession => {
                 const existing = prevMap.get(newSession.id);
-                return existing ? { ...newSession, scriptId: existing.scriptId || newSession.scriptId, scriptName: existing.scriptName, osName: newSession.osName || existing.osName } : newSession;
+                return existing ? { ...newSession, generation: Math.max(newSession.generation ?? 1, existing.generation ?? 1), attachNonce: existing.attachNonce ?? 0, scriptId: existing.scriptId || newSession.scriptId, scriptName: existing.scriptName, osName: newSession.osName || existing.osName } : newSession;
             });
             const mergedIds = new Set(merged.map(s => s.id));
-            const erroredPinned = prev.filter(s =>
-                erroredSessionsRef.current.has(s.id) && !mergedIds.has(s.id) && !isLocalSession(s)
+            const pinned = prev.filter(s =>
+                (erroredSessionsRef.current.has(s.id) || pendingAttachRef.current.has(s.id) || poppedOutRef.current.includes(s.id))
+                    && !mergedIds.has(s.id) && !isLocalSession(s)
             );
-            mergedSessions = [...merged, ...erroredPinned, ...localOnly];
+            mergedSessions = [...merged, ...pinned, ...localOnly];
             return mergedSessions;
         });
+        newActiveIds.forEach(id => pendingAttachRef.current.delete(id));
         // scriptName never comes from the server - session.configuration only ever carries
         // scriptId (server/controllers/serverSession.js), so performConnection is the only place
         // that ever learns it. The active path above already rescues it from the previous list on
@@ -514,7 +613,7 @@ export const Servers = () => {
                 type,
                 tabId: getTabId(),
                 browserId: getBrowserId(),
-                displayDpi: Math.min(Math.max(Math.round((window.devicePixelRatio || 1) * 96), 96), 480),
+                displayDpi: getDisplayDpi(),
             };
 
             if (directIdentity) payload.directIdentity = directIdentity;
@@ -686,8 +785,11 @@ export const Servers = () => {
         setTmuxDialogOpen(false);
     };
 
-    const disconnectFromServer = useCallback((sessionId) => {
-        erroredSessionsRef.current.delete(sessionId);
+    const disconnectFromServer = useCallback((sessionId, generation) => {
+        const current = activeSessionsRef.current.find(s => s.id === sessionId)?.generation ?? 1;
+        if (generation !== undefined && generation < current) return;
+        setSessionError(sessionId, null);
+        pendingAttachRef.current.delete(sessionId);
         setActiveSessions(prev => {
             const newSessions = prev.filter(session => session.id !== sessionId);
             setActiveSessionId(currentActiveId => {
@@ -697,7 +799,10 @@ export const Servers = () => {
             });
             return newSessions;
         });
-    }, [setActiveSessions, setActiveSessionId]);
+    }, [setActiveSessions, setActiveSessionId, setSessionError]);
+    useEffect(() => {
+        disconnectFromServerRef.current = disconnectFromServer;
+    }, [disconnectFromServer]);
 
     const closeSession = (sessionId) => {
         const session = activeSessions.find(s => s.id === sessionId);
@@ -1022,6 +1127,11 @@ export const Servers = () => {
                                openNotes={openNotes} renameSession={renameSession}
                                markSessionErrored={markSessionErrored}
                                getSessionError={getSessionError}
+                               sessionErrors={sessionErrors}
+                               reconnectStates={reconnectStates}
+                               reconnecting={reconnecting}
+                               reconnectSession={reconnectNow}
+                               markSessionConnected={markSessionConnected}
                                setOpenFileEditors={setOpenFileEditors}
                                openTerminalFromFileManager={openTerminalFromFileManager}
                                tabIdentities={displayIdentities}

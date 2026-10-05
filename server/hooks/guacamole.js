@@ -44,7 +44,7 @@ const handleGuacJoin = async (ws, sessionId, ctx, pinnedMonitor = null) => {
 
     let joinSocket;
     try {
-        joinSocket = await controlPlane.joinSession(sessionId);
+        joinSocket = await controlPlane.joinSession(SessionManager.get(sessionId)?.engineSessionId ?? sessionId);
     } catch (err) {
         logger.error("Failed to get join data socket", { sessionId, error: err.message });
         ws.close(4014, "Failed to join session");

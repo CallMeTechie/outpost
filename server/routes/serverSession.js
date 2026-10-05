@@ -1,11 +1,32 @@
 const { Router } = require("express");
-const { createSession, getSessions, getSession, hibernateSession, resumeSession, deleteSession, startSharing, stopSharing, updateSharePermissions, duplicateSession, pasteIdentityPassword } = require("../controllers/serverSession");
+const { createSession, reconnectSession, getSessions, getSession, hibernateSession, resumeSession, deleteSession, startSharing, stopSharing, updateSharePermissions, duplicateSession, pasteIdentityPassword } = require("../controllers/serverSession");
 const { execCommand } = require("../controllers/execCommand");
-const { createSessionValidation, sessionIdValidation, resumeSessionValidation, duplicateSessionValidation } = require("../validations/serverSession");
+const { createSessionValidation, sessionIdValidation, resumeSessionValidation, duplicateSessionValidation, reconnectSessionValidation } = require("../validations/serverSession");
 const { validateSchema } = require("../utils/schema");
 const stateBroadcaster = require("../lib/StateBroadcaster");
+const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
 
 const app = Router();
+
+// Keyed like bookmarkRateLimiter.js; ipKeyGenerator is required by express-rate-limit 8 for IPv6.
+// The account bucket bounds the sum over all session ids, which the per-session bucket alone cannot.
+const reconnectAccountLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    keyGenerator: (req) => (req.user ? `acc:${req.user.id}` : `ip:${ipKeyGenerator(req.ip)}`),
+    message: { code: 429, message: "Too many reconnect attempts. Please try again in a moment." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const reconnectLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    keyGenerator: (req) => (req.user ? `acc:${req.user.id}:${req.params.id}` : `ip:${ipKeyGenerator(req.ip)}`),
+    message: { code: 429, message: "Too many reconnect attempts. Please try again in a moment." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 
 /**
  * POST /connections
@@ -84,7 +105,7 @@ app.get("/:id", async (req, res) => {
 app.post("/:id/hibernate", async (req, res) => {
     if (validateSchema(res, sessionIdValidation, req.params)) return;
     
-    const result = await hibernateSession(req.params.id);
+    const result = await hibernateSession(req.user.id, req.params.id);
     if (result?.code) {
         return res.status(result.code).json({ error: result.message });
     }
@@ -107,7 +128,7 @@ app.post("/:id/resume", async (req, res) => {
     if (validateSchema(res, resumeSessionValidation, req.body)) return;
     
     const { tabId, browserId } = req.body;
-    const result = await resumeSession(req.params.id, tabId, browserId);
+    const result = await resumeSession(req.user.id, req.params.id, tabId, browserId);
     if (result?.code) {
         return res.status(result.code).json({ error: result.message });
     }
@@ -128,12 +149,44 @@ app.post("/:id/resume", async (req, res) => {
 app.delete("/:id", async (req, res) => {
     if (validateSchema(res, sessionIdValidation, req.params)) return;
     
-    const result = await deleteSession(req.params.id);
+    const result = await deleteSession(req.user.id, req.params.id);
     if (result?.code) {
         return res.status(result.code).json({ error: result.message });
     }
     stateBroadcaster.broadcast("CONNECTIONS", { accountId: req.user.id });
     res.json(result);
+});
+
+/**
+ * POST /connections/{id}/reconnect
+ * @summary Reconnect Connection
+ * @description Rebuilds a connection that ended with an error under the same session id and the next generation, using the configuration stored when it ended.
+ * @tags Connection
+ * @produces application/json
+ * @security BearerAuth
+ * @param {string} id.path.required - Session ID
+ * @return {object} 200 - Session id and generation
+ */
+const validateSessionId = (req, res, next) => {
+    if (validateSchema(res, sessionIdValidation, req.params)) return;
+    next();
+};
+
+app.post("/:id/reconnect", validateSessionId, reconnectAccountLimiter, reconnectLimiter, async (req, res) => {
+    if (validateSchema(res, reconnectSessionValidation, req.body ?? {})) return;
+
+    try {
+        const result = await reconnectSession(req.user.id, req.params.id, {
+            displayDpi: req.body?.displayDpi,
+            ipAddress: req.ip || req.socket?.remoteAddress || 'unknown',
+            userAgent: req.headers['user-agent'] || 'unknown',
+        });
+        if (result?.code) return res.status(result.code).json({ code: result.code, message: result.message });
+        res.json(result);
+    } catch (error) {
+        console.error('Error reconnecting session:', error);
+        res.status(500).json({ code: 500, message: 'Internal server error' });
+    }
 });
 
 /**

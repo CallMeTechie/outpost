@@ -144,7 +144,13 @@ static void telnet_apply_pending_resize(outpost_session_t* session, int telnet_f
         LOG_DEBUG("Telnet session %s: resized to %ux%u", session->session_id, cols, rows);
 }
 
-static bool telnet_bridge_poll(outpost_session_t* session, int data_fd, int telnet_fd) {
+typedef enum {
+    TELNET_CONTINUE = 0,
+    TELNET_END_NORMAL,
+    TELNET_END_LOST,
+} telnet_end_reason_t;
+
+static telnet_end_reason_t telnet_bridge_poll(outpost_session_t* session, int data_fd, int telnet_fd) {
     uint8_t buf[TELNET_BUF_SIZE];
     struct pollfd fds[2] = {
         { .fd = data_fd,   .events = POLLIN },
@@ -155,29 +161,33 @@ static bool telnet_bridge_poll(outpost_session_t* session, int data_fd, int teln
 
     int ret = poll(fds, 2, 200);
     if (ret < 0)
-        return errno == EINTR;
+        return errno == EINTR ? TELNET_CONTINUE : TELNET_END_LOST;
     if (ret == 0)
-        return true;
+        return TELNET_CONTINUE;
 
     if (fds[0].revents & POLLIN) {
         ssize_t n = read(data_fd, buf, sizeof(buf));
-        if (n <= 0) return false;
-        if (outpost_write_exact(telnet_fd, buf, (size_t)n) != 0) return false;
+        if (n <= 0) return TELNET_END_NORMAL;
+        if (outpost_write_exact(telnet_fd, buf, (size_t)n) != 0) return TELNET_END_LOST;
     }
 
     if (fds[1].revents & POLLIN) {
         ssize_t n = read(telnet_fd, buf, sizeof(buf));
-        if (n <= 0) return false;
+        if (n < 0)
+            return (errno == EINTR || errno == EAGAIN) ? TELNET_CONTINUE : TELNET_END_LOST;
+        if (n == 0) return TELNET_END_NORMAL;
         if (telnet_process_and_forward(telnet_fd, data_fd, buf, (size_t)n) != 0)
-            return false;
+            return TELNET_END_NORMAL;
     }
 
     if (fds[0].revents & (POLLERR | POLLHUP))
-        return false;
-    if (fds[1].revents & (POLLERR | POLLHUP))
-        return false;
+        return TELNET_END_NORMAL;
+    if (fds[1].revents & POLLERR)
+        return TELNET_END_LOST;
+    if (fds[1].revents & POLLHUP)
+        return TELNET_END_NORMAL;
 
-    return true;
+    return TELNET_CONTINUE;
 }
 
 static void* telnet_session_thread(void* arg) {
@@ -186,6 +196,7 @@ static void* telnet_session_thread(void* arg) {
     outpost_control_plane_t* cp = args->cp;
     int data_fd = -1;
     int telnet_fd = -1;
+    telnet_end_reason_t end_reason = TELNET_END_NORMAL;
 
     session->state = SESSION_STATE_CONNECTING;
 
@@ -213,22 +224,28 @@ static void* telnet_session_thread(void* arg) {
     LOG_INFO("Telnet session %s active (target=%s:%u)",
              session->session_id, session->host, session->port);
 
-    while (session->state == SESSION_STATE_ACTIVE
-            && telnet_bridge_poll(session, data_fd, telnet_fd));
+    while (session->state == SESSION_STATE_ACTIVE) {
+        telnet_end_reason_t r = telnet_bridge_poll(session, data_fd, telnet_fd);
+        if (r != TELNET_CONTINUE) { end_reason = r; break; }
+    }
 
-    LOG_INFO("Telnet session %s ending", session->session_id);
+    LOG_INFO("Telnet session %s ending (reason=%s)", session->session_id,
+        end_reason == TELNET_END_LOST ? "lost" : "normal");
 
 cleanup:
     session->telnet_sock = -1;
 
     if (telnet_fd >= 0)
         close(telnet_fd);
-    if (data_fd >= 0)
-        close(data_fd);
 
     char sid[MAX_SESSION_ID_LEN];
     snprintf(sid, sizeof(sid), "%s", session->session_id);
-    outpost_cp_send_session_closed(cp, sid, "session ended");
+    outpost_cp_send_session_closed(cp, sid,
+        end_reason == TELNET_END_LOST ? "connection lost" : "session ended");
+
+    if (data_fd >= 0)
+        close(data_fd);
+
     outpost_sm_finish(&g_session_manager, sid);
 
     free(args);

@@ -3,6 +3,7 @@ const sshHook = require("../hooks/ssh");
 const pveLxcHook = require("../hooks/pve-lxc");
 const telnetHook = require("../hooks/telnet");
 const logger = require("../utils/logger");
+const { closeReason } = require("../utils/closeReason");
 const SessionManager = require("../lib/SessionManager");
 
 const waitForConnection = async (sessionId, timeoutMs = 30000) => {
@@ -39,7 +40,7 @@ module.exports = async (ws, req) => {
     if (!conn) {
         if (sessionRemoved) {
             const failedReason = SessionManager.consumeFailedReason(serverSession.sessionId);
-            if (failedReason) return ws.close(4017, failedReason);
+            if (failedReason) return ws.close(4017, closeReason(failedReason));
         } else {
             logger.warn("Connection timeout", { sessionId: serverSession.sessionId });
         }

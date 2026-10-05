@@ -1,6 +1,6 @@
 # Servers — Arbeitsfläche — Umsetzungsanleitung (UI-SERVERS)
 
-Artboard: docs/design/mockups/ui-servers.html · Manifest-Revision: 3
+Artboard: docs/design/mockups/ui-servers.html · Manifest-Revision: 7
 
 Diese Seite existiert bereits (`client/src/pages/Servers/Servers.jsx`). Die
 Anleitung schreibt den Bestand fest und fügt genau ein neues Verhalten hinzu:
@@ -11,6 +11,8 @@ den Fokus-Modus. Nichts wird neu gebaut, was es gibt.
 - `client/src/pages/Servers/components/ServerList/ServerList.jsx` — `UI-SERVERS-LIST`, `UI-SERVERS-SEARCH` (in `components/ServerSearch`), `UI-SERVERS-LIST-MENU` (ContextMenu)
 - `client/src/pages/Servers/components/ViewContainer/ViewContainer.jsx` — `UI-SERVERS-VIEW`; darin `components/ServerTabs` → `UI-SERVERS-TABS`, `components/TerminalKeyBar` → `UI-SERVERS-KEYBAR`, `components/TerminalActionsMenu` → `UI-SERVERS-ACTIONS`
 - `client/src/pages/Servers/components/WelcomePanel/WelcomePanel.jsx` — `UI-SERVERS-WELCOME`
+- `client/src/pages/Servers/components/ViewContainer/renderer/components/ConnectionError/ConnectionError.jsx` — `UI-SERVERS-VIEW-ERROR` (Runde 6)
+- `client/src/pages/Servers/components/ViewContainer/components/ServerTabs/ServerTabs.jsx` — `UI-SERVERS-TAB-CONNECTION` neben dem `<h2>` des Tabs (Runde 6)
 - Wiederverwenden: `ContextMenu`, `ContextMenuItem`, `ContextMenuSeparator`, `Tooltip`, `Icon` aus `client/src/common/components/`
 - Styles: `styles.sass` der jeweiligen Komponente; Werte aus `client/src/common/styles/_colors.sass` (siehe `docs/design/design-system.md`)
 
@@ -39,13 +41,13 @@ den Fokus-Modus. Nichts wird neu gebaut, was es gibt.
 - `data-ui-id="UI-SERVERS-TABS"` an der Tab-Leiste in `ServerTabs`.
 - Datenquelle: die offenen Sessions (Server-, SFTP-, Notiz-, Skript-Tabs) — **nicht** die Server-Liste.
 - Jeder Tab trägt seine Split-View-Farbe als Streifen (Regel und Palette: `/root/docs/superpowers/specs/2026-08-15-split-view-colors-design.md`; die Farben im Artboard sind Platzhalter).
-- Kontextmenü: Umbenennen · Duplizieren · Teilen/Teilen beenden · Schreibschutz · Schlafen legen · Ausklinken · Notizen · Schließen.
+- Kontextmenü: Umbenennen · Duplizieren · Teilen/Teilen beenden · Schreibschutz · Schlafen legen · Ausklinken · Notizen · Schließen. Bei einer getrennten Session (Fehlerzustand gesetzt) steht **Neu verbinden** an erster Stelle, Icon `RotateCw`; bei verbundenen Sessions erscheint der Eintrag nicht.
 - Zustände: `selected` (aktiv: `--gray-strong` Fläche + Farbstreifen) · `empty` (keine Session → Tab-Leiste leer, Welcome sichtbar).
 
 ### UI-SERVERS-VIEW — Arbeitsfläche
 - `data-ui-id="UI-SERVERS-VIEW"` am Renderer-Container in `ViewContainer`.
 - Zeigt die aktive Session über die vorhandenen Renderer (`XtermRenderer`, `FileRenderer`, `GuacamoleRenderer`, `NotesRenderer`, `ScriptRenderer`); Split via bestehendem `ResizeHandle`.
-- Zustände: `loading` „Verbinde …" zentriert auf `--terminal` · `error` „Verbindung fehlgeschlagen. Erneut versuchen oder Server bearbeiten." mit zwei Aktionen.
+- Zustände: `loading` „Verbinde …" zentriert auf `--terminal` · `error` zeigt `UI-SERVERS-VIEW-ERROR`.
 
 ### UI-SERVERS-FOCUS — Fokus-Modus (neu)
 - `data-ui-id="UI-SERVERS-FOCUS"` am Umschalter (Icon-Button rechts in der Tab-Leiste) **und** derselbe Zustand steuert die Klasse `focus-mode` am Seiten-Wrapper.
@@ -87,6 +89,18 @@ den Fokus-Modus. Nichts wird neu gebaut, was es gibt.
 - Die Nummer erscheint nur, solange in der Leiste tatsächlich ein zweiter Tab steht, der sonst gleich hieße (`idsNeedingNumber`). Ein einzelner Tab trägt nie eine.
 - Vergeben wird die kleinste Nummer, die die Gruppe gerade nicht benutzt; die 1 wird nie geschrieben. Eine bereits vergebene Nummer wird weitergereicht, nie neu berechnet — sonst würde das Schließen eines Tabs die übrigen umbenennen, während man sie ansieht.
 
+### UI-SERVERS-VIEW-ERROR — Verbindungsfehler (Runde 6)
+- `data-ui-id="UI-SERVERS-VIEW-ERROR"` am Wurzelelement von `ConnectionError` (`.connection-error`).
+- Bestand bleibt: Balken, Geräte-Verbindungsgrafik, Titel, Text. Neu ist die Knopfzeile darunter: primär **Neu verbinden** (`--primary`, Lucide `RotateCw`), sekundär **Schließen**. Bestehende Button-Komponente verwenden.
+- Zustände und Wortlaut aus dem Manifest: `default` „Verbindung verloren. Neu verbinden oder schließen.“ · `countdown` Zeile in `--subtext` über den Knöpfen „Neuer Versuch in 8 s · Versuch 2/5“, Primärknopf heißt **Jetzt verbinden** · `loading` „Verbinde neu …“, Primärknopf deaktiviert · `final` (nicht wiederholbarer Fehler, z. B. „Anmeldung abgelehnt“) ohne Countdown, Knopf bleibt — außer nach RDP-Abmelden/-Trennung/-Verdrängung/-Zeitlimit und abgelehnter RDP-Anmeldung: dort nur **Schließen**, weil der Server diese Sitzung nicht aufhebt · `expired` „Sitzung abgelaufen. Öffne den Server neu.“, nur **Schließen**.
+- Der Countdown kommt aus dem Reconnect-Zustand `{attempt, maxAttempts, nextAttemptAt}`, gerechnet im Sekundentakt, nicht aus einem eigenen Timer der Karte.
+- Neu verbinden öffnet **keinen** neuen Tab: es baut dieselbe Session an derselben Stelle wieder auf.
+
+### UI-SERVERS-TAB-CONNECTION — Verbindungszustand eines Tabs (Runde 6)
+- `data-ui-id` an einem Wrapper direkt hinter dem `<h2>` (`UI-SERVERS-TAB-LABEL`), der nur in `loading` und `error` gerendert wird; das `<h2>` bekommt dann die Klasse für `--subtext`.
+- `loading`: Lucide `RotateCw` in Labelgröße, dreht sich; unter `prefers-reduced-motion: reduce` steht es still. `error`: Lucide `Unplug`.
+- **Nicht im Marker:** `.tab-marker` bleibt Punkt bzw. Fortschrittsring, `.tab-stripe` bleibt Fensterfarbe bzw. Kontextfüllung.
+
 ## Ausdrücklich nicht
 - **Keine Nummer als Zähler.** Sie beantwortet „welcher von mehreren", nicht „wie oft schon geöffnet". Eine geschlossene Sitzung reserviert nichts.
 - Keine Aktivitätsleiste mit Icon-Spalte, keine Statusleiste, keine Panels-in-Panels (nicht wie eine IDE).
@@ -95,5 +109,5 @@ den Fokus-Modus. Nichts wird neu gebaut, was es gibt.
 - Kein Onboarding-Overlay im Leerzustand.
 
 ## Fertig, wenn
-- `mockingbird-scope.sh --locate <ID> --root /root/outpost` jedes der zwölf Elemente auf Tier A findet.
+- `mockingbird-scope.sh --locate <ID> --root /root/outpost` jedes der vierzehn Elemente auf Tier A findet.
 - `/design-verify --screen UI-SERVERS` MATCH ergibt.

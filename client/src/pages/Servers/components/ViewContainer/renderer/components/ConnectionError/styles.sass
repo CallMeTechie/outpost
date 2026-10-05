@@ -1,4 +1,5 @@
 @use "@/common/styles/colors"
+@use "@/common/styles/tokens"
 
 .connection-error
   position: absolute
@@ -83,25 +84,19 @@
   line-height: 1.5
   word-break: break-word
 
-.connection-error__action
-  display: inline-flex
-  align-items: center
-  gap: 0.5rem
-  background: transparent
+.connection-error__countdown
+  margin: 0
+  font: tokens.$type-body
   color: colors.$subtext
-  border: 1px solid colors.$dark-gray
-  border-radius: 0.5rem
-  padding: 0.65rem 1.25rem
-  font-size: 0.95rem
-  font-weight: 500
-  cursor: pointer
-  transition: color 0.15s ease-out, border-color 0.15s ease-out, background 0.15s ease-out
+  font-variant-numeric: tabular-nums
 
-  svg
-    width: 1.15rem
-    height: 1.15rem
+.connection-error__actions
+  display: flex
+  flex-wrap: wrap
+  justify-content: center
+  gap: tokens.$space-3
 
-  &:hover
-    color: colors.$white
-    border-color: colors.$gray
-    background: colors.$lighter-background
+  .btn.type-primary:not(:disabled)
+    background-color: colors.$primary
+    border-color: colors.$primary
+

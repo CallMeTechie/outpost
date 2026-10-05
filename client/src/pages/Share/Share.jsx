@@ -1,5 +1,5 @@
 import "./styles.sass";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Icon from "@/common/components/Icon";
@@ -8,6 +8,7 @@ import GuacamoleRenderer from "@/pages/Servers/components/ViewContainer/renderer
 import XtermRenderer from "@/pages/Servers/components/ViewContainer/renderer/XtermRenderer.jsx";
 import Loading from "@/common/components/Loading";
 import { request } from "@/common/utils/RequestUtil";
+import ConnectionError from "@/pages/Servers/components/ViewContainer/renderer/components/ConnectionError";
 
 const noop = () => {};
 
@@ -18,6 +19,9 @@ export const Share = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [disconnected, setDisconnected] = useState(false);
+    const [connectionError, setConnectionError] = useState(null);
+    const markSessionErrored = useCallback((_id, error) => setConnectionError(prev => prev ?? error), []);
+    const markSessionConnected = useCallback(() => setConnectionError(null), []);
     const refs = useRef({});
 
     const handleDisconnect = () => {
@@ -61,8 +65,9 @@ export const Share = () => {
 
     return (
         <div className="share-container">
-            {renderer === "guac" && <GuacamoleRenderer session={session} disconnectFromServer={handleDisconnect} registerGuacamoleRef={noop} onFullscreenToggle={fullscreen} isShared />}
-            {renderer === "terminal" && <XtermRenderer session={session} disconnectFromServer={handleDisconnect} registerTerminalRef={noop} broadcastMode={false} terminalRefs={refs} updateProgress={noop} layoutMode="single" onBroadcastToggle={noop} onFullscreenToggle={fullscreen} isShared />}
+            {renderer === "guac" && <GuacamoleRenderer session={session} disconnectFromServer={handleDisconnect} markSessionErrored={markSessionErrored} markSessionConnected={markSessionConnected} registerGuacamoleRef={noop} onFullscreenToggle={fullscreen} isShared />}
+            {renderer === "terminal" && <XtermRenderer session={session} disconnectFromServer={handleDisconnect} markSessionErrored={markSessionErrored} markSessionConnected={markSessionConnected} registerTerminalRef={noop} broadcastMode={false} terminalRefs={refs} updateProgress={noop} layoutMode="single" onBroadcastToggle={noop} onFullscreenToggle={fullscreen} isShared />}
+            {connectionError && <ConnectionError message={connectionError.message} retryable={false} onClose={handleDisconnect} />}
         </div>
     );
 };

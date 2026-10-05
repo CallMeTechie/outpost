@@ -1,6 +1,7 @@
 const fs = require("node:fs");
 const { v4: uuidv4 } = require("uuid");
 const logger = require("../utils/logger");
+const { closeReason } = require("../utils/closeReason");
 const AuditLog = require("../models/AuditLog");
 const { isRecordingEnabled, getRecordingPath, compressRecording } = require("../utils/recordingService");
 const stateBroadcaster = require("./StateBroadcaster");
@@ -12,11 +13,36 @@ const CONTROL_PLANE_TYPES = new Set(["ssh", "telnet", "sftp", "guac", "pve-lxc"]
 
 const TYPING_DURATION_MS = 1500;
 const PRESENCE_THROTTLE_MS = 250;
+const CLOSE_GRACE_MS = 1000;
+const TOMBSTONE_TTL_MS = 15 * 60 * 1000;
+const RETIRABLE_PROTOCOLS = new Set(["ssh", "telnet", "pve-lxc", "rdp", "vnc"]);
+// guacd ended it on purpose: session conflict, session timeout, logoff (0x0209-0x020B), or a 0x03xx client error.
+const FINAL_GUAC_STATUSES = new Set([0x0209, 0x020A, 0x020B]);
+const ENGINE_SESSION_ID = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?::([1-9][0-9]{0,8}))?$/;
+const retired = new Map();
 
-module.exports.create = (accountId, entryId, configuration, connectionReason = null, tabId = null, browserId = null, auditLogId = null, organizationId = null) => {
-    const sessionId = uuidv4();
+const engineSessionIdFor = (sessionId, generation) => (generation === 1 ? sessionId : `${sessionId}:${generation}`);
+
+const isCurrentGeneration = (session, generation, action) => {
+    if (generation === undefined || session.generation === generation) return true;
+    logger.info(`Ignoring ${action} for an older generation`, { sessionId: session.sessionId, generation, current: session.generation });
+    return false;
+};
+
+module.exports.CLOSE_GRACE_MS = CLOSE_GRACE_MS;
+module.exports.TOMBSTONE_TTL_MS = TOMBSTONE_TTL_MS;
+
+module.exports.resolveEngineSession = (engineSessionId) => {
+    const match = ENGINE_SESSION_ID.exec(String(engineSessionId ?? ""));
+    if (!match) return null;
+    return { sessionId: match[1], generation: match[2] ? Number(match[2]) : 1 };
+};
+
+module.exports.create = (accountId, entryId, configuration, connectionReason = null, tabId = null, browserId = null, auditLogId = null, organizationId = null, { sessionId = uuidv4(), generation = 1 } = {}) => {
+    if (sessions.has(sessionId)) throw new Error("Session id is still in use");
     const session = {
-        sessionId, accountId, entryId, configuration, connectionReason,
+        sessionId, generation, engineSessionId: engineSessionIdFor(sessionId, generation),
+        accountId, entryId, configuration, connectionReason,
         tabId, browserId, auditLogId, organizationId,
         isHibernated: false,
         createdAt: new Date(),
@@ -29,13 +55,24 @@ module.exports.create = (accountId, entryId, configuration, connectionReason = n
         participants: new Map(),
         shareId: null,
         shareWritable: false,
+        _closeGrace: null,
     };
     sessions.set(sessionId, session);
-    logger.info(`Session created`, { sessionId, accountId, entryId, organizationId });
+    logger.info(`Session created`, { sessionId, generation, accountId, entryId, organizationId });
     return session;
 };
 
 module.exports.get = (sessionId) => sessions.get(sessionId) || null;
+
+module.exports.isCurrent = (sessionId, generation, action) => {
+    const session = module.exports.get(sessionId);
+    return Boolean(session) && isCurrentGeneration(session, generation, action);
+};
+
+module.exports.isEnding = (sessionId) => {
+    const session = module.exports.get(sessionId);
+    return Boolean(session?._removing || session?._closeGrace);
+};
 
 module.exports.getAll = (accountId, tabId = undefined, browserId = undefined) => {
     const results = [];
@@ -69,9 +106,9 @@ module.exports.getOrganizationSessions = (organizationId, excludeAccountId = nul
     return results;
 };
 
-module.exports.setConnection = (sessionId, connection) => {
+module.exports.setConnection = (sessionId, connection, generation) => {
     const session = module.exports.get(sessionId);
-    if (!session) return false;
+    if (!session || !isCurrentGeneration(session, generation, "setConnection")) return false;
     if (session.masterConnection) {
         logger.warn(`Session already has master connection`, { sessionId });
         return false;
@@ -110,24 +147,26 @@ module.exports.updateConnectionId = (sessionId, connectionId) => {
     }
 };
 
-module.exports.onMasterConnectionClosed = (sessionId, reason = "closed") => {
+const logRemovalError = (sessionId) => (error) => logger.error("Removing session failed", { sessionId, error: error.message });
+
+module.exports.onMasterConnectionClosed = (sessionId, reason = "closed", { guacStatus = null, generation } = {}) => {
     const session = module.exports.get(sessionId);
     if (!session) return;
     logger.info(`Master connection ${reason}, terminating session`, { sessionId });
     if (reason.startsWith("error:")) {
-        module.exports.markFailed(sessionId, reason);
-        module.exports.remove(sessionId, { code: 4017, reason });
+        module.exports.markFailed(sessionId, reason, generation);
+        module.exports.remove(sessionId, { code: 4017, reason, guacStatus, generation }).catch(logRemovalError(sessionId));
     } else {
-        module.exports.remove(sessionId);
+        module.exports.remove(sessionId, { generation }).catch(logRemovalError(sessionId));
     }
 };
 
-module.exports.initRecording = async (sessionId, organizationId, cols = 80, rows = 24) => {
+module.exports.initRecording = async (sessionId, organizationId, { generation, cols = 80, rows = 24 } = {}) => {
     const session = module.exports.get(sessionId);
-    if (!session?.auditLogId) return false;
+    if (!session?.auditLogId || !isCurrentGeneration(session, generation, "initRecording")) return false;
 
     const enabled = await isRecordingEnabled(organizationId);
-    if (!enabled) return false;
+    if (!enabled || module.exports.get(sessionId) !== session || session._removing) return false;
 
     const castPath = getRecordingPath(session.auditLogId, "cast", false);
     const stream = fs.createWriteStream(castPath, { flags: "w" });
@@ -164,16 +203,22 @@ const markRecordingComplete = async (auditLogId, recordingType) => {
     await AuditLog.update({ details: { ...details, hasRecording: true, recordingType } }, { where: { id: auditLogId } });
 };
 
-const finalizeTerminalRecording = async (sessionId) => {
-    const rec = module.exports.get(sessionId)?.recording;
+const finalizeTerminalRecording = async (session) => {
+    const rec = session.recording;
     if (!rec?.stream) return;
     const { stream, path } = rec;
-    const auditLogId = module.exports.get(sessionId).auditLogId;
-    module.exports.get(sessionId).recording = null;
+    session.recording = null;
     stream.end();
     await new Promise(r => stream.on("finish", r));
-    await compressRecording(path, getRecordingPath(auditLogId, "cast", true));
-    await markRecordingComplete(auditLogId, "cast");
+    await compressRecording(path, getRecordingPath(session.auditLogId, "cast", true));
+    await markRecordingComplete(session.auditLogId, "cast");
+};
+
+// For a generation that lost the race after its recording started: teardown has already run (or will
+// run for a newer object), so nothing else would ever close this stream.
+module.exports.finalizeDetachedRecording = (session) => {
+    if (sessions.get(session.sessionId) === session) return Promise.resolve();
+    return finalizeTerminalRecording(session);
 };
 
 module.exports.getLogBuffer = (sessionId) => module.exports.get(sessionId)?.logBuffer || "";
@@ -314,10 +359,10 @@ const closeAllWebSockets = (sessionId, code = 1000, reason = "Session terminated
     if (!session) return;
     const sharedCode = code === 1000 ? 4016 : code;
     for (const ws of session.connectedWs) {
-        try { if (ws.readyState <= 1) ws.close(code, reason); } catch {}
+        try { if (ws.readyState <= 1) ws.close(code, closeReason(reason)); } catch {}
     }
     for (const ws of session.sharedWs) {
-        try { if (ws.readyState <= 1) ws.close(sharedCode, reason); } catch {}
+        try { if (ws.readyState <= 1) ws.close(sharedCode, closeReason(reason)); } catch {}
     }
     session.connectedWs.clear();
     session.sharedWs.clear();
@@ -327,7 +372,9 @@ const closeAllWebSockets = (sessionId, code = 1000, reason = "Session terminated
 const FAILED_SESSION_TTL_MS = 30000;
 const failedSessions = new Map();
 
-module.exports.markFailed = (sessionId, reason) => {
+module.exports.markFailed = (sessionId, reason, generation) => {
+    const session = sessions.get(sessionId);
+    if (session && !isCurrentGeneration(session, generation, "markFailed")) return;
     const existing = failedSessions.get(sessionId);
     if (existing) clearTimeout(existing.timeout);
     const timeout = setTimeout(() => failedSessions.delete(sessionId), FAILED_SESSION_TTL_MS);
@@ -362,6 +409,67 @@ module.exports.resume = (sessionId, tabId = null, browserId = null) => {
     return true;
 };
 
+const clearCloseGrace = (session) => {
+    if (!session._closeGrace) return;
+    clearTimeout(session._closeGrace.timer);
+    session._closeGrace.resolve();
+    session._closeGrace = null;
+};
+
+module.exports.beginCloseGrace = (sessionId, generation, fallback = {}) => {
+    const session = sessions.get(sessionId);
+    if (!session || session._removing || session._closeGrace) return;
+    if (!isCurrentGeneration(session, generation, "beginCloseGrace")) return;
+    let resolve;
+    const promise = new Promise((done) => { resolve = done; });
+    const timer = setTimeout(() => {
+        module.exports.remove(sessionId, { ...fallback, generation: session.generation })
+            .catch((error) => logger.error("Removing session after close grace failed", { sessionId, error: error.message }));
+    }, CLOSE_GRACE_MS);
+    session._closeGrace = { timer, promise, resolve };
+};
+
+module.exports.whenEnded = async (sessionId) => {
+    for (let session = sessions.get(sessionId); session; session = sessions.get(sessionId)) {
+        if (session._removal) await session._removal.catch(() => {});
+        else if (session._closeGrace) await session._closeGrace.promise;
+        else return;
+    }
+};
+
+const retire = (session, { code, reason, guacStatus }) => {
+    const { protocol, type, scriptId } = session.configuration || {};
+    if (code !== 4017 || !RETIRABLE_PROTOCOLS.has(protocol) || type === "sftp" || scriptId != null) return;
+    const status = guacStatus == null ? null : Number(guacStatus);
+    if (FINAL_GUAC_STATUSES.has(status) || (status >= 0x0300 && status <= 0x03FF)) return;
+    retired.set(session.sessionId, {
+        accountId: session.accountId,
+        organizationId: session.organizationId,
+        entryId: session.entryId ?? null,
+        directTarget: session.configuration.directTarget ?? null,
+        configuration: session.configuration,
+        connectionReason: session.connectionReason,
+        tabId: session.tabId,
+        browserId: session.browserId,
+        generation: session.generation,
+        reason,
+        expiresAt: Date.now() + TOMBSTONE_TTL_MS,
+    });
+    logger.info("Session retired", { sessionId: session.sessionId, generation: session.generation });
+};
+
+module.exports.getTombstone = (sessionId) => {
+    const tombstone = retired.get(sessionId);
+    if (!tombstone) return null;
+    if (tombstone.expiresAt <= Date.now()) {
+        retired.delete(sessionId);
+        return null;
+    }
+    return tombstone;
+};
+
+module.exports.dropTombstone = (sessionId) => retired.delete(sessionId);
+
 const closeCrossTransferClients = (conn) => {
     for (const entry of conn.crossTransferClients?.values() || []) {
         try { entry.client?.close(); } catch {}
@@ -369,9 +477,9 @@ const closeCrossTransferClients = (conn) => {
     conn.crossTransferClients?.clear();
 };
 
-const cleanupConnection = async (conn, sessionId) => {
+const cleanupConnection = async (conn, engineSessionId) => {
     if (CONTROL_PLANE_TYPES.has(conn.type)) {
-        try { require("./controlPlane/ControlPlaneServer").closeSession(sessionId); } catch {}
+        try { require("./controlPlane/ControlPlaneServer").closeSession(engineSessionId); } catch {}
     }
     for (const s of [conn.dataSocket, conn.socket]) {
         if (!s) continue;
@@ -393,10 +501,18 @@ const cleanupConnection = async (conn, sessionId) => {
     }
 };
 
-module.exports.remove = async (sessionId, options = {}) => {
+module.exports.remove = (sessionId, options = {}) => {
     const session = module.exports.get(sessionId);
-    if (!session || session._removing) return false;
+    if (!session || !isCurrentGeneration(session, options.generation, "remove")) return Promise.resolve(false);
+    clearCloseGrace(session);
+    if (session._removing) return Promise.resolve(false);
     session._removing = true;
+    session._removal = teardown(session, options);
+    return session._removal;
+};
+
+const teardown = async (session, options) => {
+    const { sessionId } = session;
 
     // First, unconditionally, before anything below that can throw: finalizeTerminalRecording and
     // cleanupConnection both await external I/O (compression, a DB write, socket teardown) and
@@ -412,7 +528,7 @@ module.exports.remove = async (sessionId, options = {}) => {
     // it lying around for ten minutes.
     try { require("./fileContent/previewTokens").revokeForSession(sessionId); } catch {}
 
-    const { code = 1000, reason = "Session terminated" } = options;
+    const { code = 1000, reason = "Session terminated", guacStatus = null } = options;
     // Everything below can throw (finalizeTerminalRecording awaits compression and a DB write,
     // cleanupConnection awaits socket teardown) — none of it wrapped before this round. Without the
     // finally, a throw here left the session stuck in `sessions` forever: `_removing` is already
@@ -432,11 +548,11 @@ module.exports.remove = async (sessionId, options = {}) => {
         // failure — just after everything that does not depend on it already ran.
         let recordingError = null;
         if (session.recording) {
-            try { await finalizeTerminalRecording(sessionId); }
+            try { await finalizeTerminalRecording(session); }
             catch (err) { recordingError = err; }
         }
         if (session.masterConnection) {
-            await cleanupConnection(session.masterConnection, sessionId);
+            await cleanupConnection(session.masterConnection, session.engineSessionId);
             session.masterConnection = null;
         }
         if (session.shareId) shareIndex.delete(session.shareId);
@@ -447,6 +563,7 @@ module.exports.remove = async (sessionId, options = {}) => {
 
         if (recordingError) throw recordingError;
     } finally {
+        retire(session, { code, reason, guacStatus });
         sessions.delete(sessionId);
     }
 
@@ -530,22 +647,37 @@ module.exports.getByShareId = (shareId) => {
     return sessionId ? module.exports.get(sessionId) : null;
 };
 
+// Repeated until nothing is left: a 4017 teardown still running retires its session in its finally,
+// and a reconnect in flight can claim that tombstone while later sessions are still being torn down.
+const removeAllWhere = async (matchesSession, matchesTombstone) => {
+    let count = 0;
+    for (;;) {
+        for (const [id, tombstone] of retired) if (matchesTombstone(tombstone)) retired.delete(id);
+        const toRemove = [...sessions.entries()].filter(([, s]) => matchesSession(s)).map(([id]) => id);
+        if (toRemove.length === 0) break;
+        for (const id of toRemove) {
+            await module.exports.remove(id).catch(logRemovalError(id));
+            await module.exports.whenEnded(id);
+        }
+        count += toRemove.length;
+    }
+    return count;
+};
+
 module.exports.removeAllByAccountId = async (accountId) => {
     const numericId = Number(accountId);
-    const toRemove = [...sessions.entries()].filter(([, s]) => s.accountId === numericId).map(([id]) => id);
-    for (const id of toRemove) await module.exports.remove(id);
-    logger.info(`Removed all sessions for account`, { accountId, count: toRemove.length });
-    return toRemove.length;
+    const count = await removeAllWhere((s) => s.accountId === numericId, (t) => Number(t.accountId) === numericId);
+    logger.info(`Removed all sessions for account`, { accountId, count });
+    return count;
 };
 
 module.exports.removeAllByEntryId = async (entryId) => {
     const numericId = Number(entryId);
-    const toRemove = [...sessions.entries()].filter(([, s]) => s.entryId === numericId).map(([id]) => id);
-    for (const id of toRemove) await module.exports.remove(id);
-    if (toRemove.length > 0) {
-        logger.info(`Removed all sessions for entry`, { entryId, count: toRemove.length });
+    const count = await removeAllWhere((s) => s.entryId === numericId, (t) => Number(t.entryId) === numericId);
+    if (count > 0) {
+        logger.info(`Removed all sessions for entry`, { entryId, count });
     }
-    return toRemove.length;
+    return count;
 };
 
 module.exports.closeCrossTransferClients = closeCrossTransferClients;
@@ -559,9 +691,14 @@ setInterval(() => {
     for (const [sessionId, session] of sessions) {
         if (!session.isHibernated && new Date(session.lastActivity) < sixHoursAgo) {
             logger.info("Removing old session", { sessionId });
-            module.exports.remove(sessionId);
+            module.exports.remove(sessionId).catch(logRemovalError(sessionId));
             removed++;
         }
     }
     if (removed > 0) logger.info(`Cleaned up ${removed} old sessions`);
 }, 30 * 60 * 1000).unref();
+
+setInterval(() => {
+    const now = Date.now();
+    for (const [sessionId, tombstone] of retired) if (tombstone.expiresAt <= now) retired.delete(sessionId);
+}, 60 * 1000).unref();

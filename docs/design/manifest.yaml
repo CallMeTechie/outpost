@@ -1,7 +1,7 @@
 schema: mockingbird/1
 project: outpost
-revision: 5
-updated: 2026-09-08
+revision: 7
+updated: 2026-10-05
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
 tokens_css: docs/design/mockups/tokens.css
@@ -29,6 +29,14 @@ changelog:
     date: 2026-09-08
     summary: Das Eröffnungsverzeichnis zählt je Identität, nicht nur je Server — und es heißt Startverzeichnis, weil das Pane auch FTP bedient; die Bookmark-Herkunft nennt den Schlüssel, an dem „schon gemerkt" hängt
     touched: [UI-FILES-ADDRESS, UI-FILES-FAVORITES]
+  - rev: 6
+    date: 2026-10-05
+    summary: Runde 6 — Reconnect; die Fehlerkarte einer Session verbindet neu, der Tab zeigt den Verbindungszustand am Label statt im Marker
+    touched: [UI-SERVERS-VIEW-ERROR, UI-SERVERS-TAB-CONNECTION, UI-SERVERS-TABS, UI-SERVERS-VIEW]
+  - rev: 7
+    date: 2026-10-05
+    summary: Fehlerkarte final — bei RDP-Abmelden oder -Trennung kein Neu verbinden, weil der Server diese Sitzung nicht zum Wiederaufbau aufhebt
+    touched: [UI-SERVERS-VIEW-ERROR]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -197,7 +205,7 @@ screens:
         verify: required
         data_source: "offene Sessions des Nutzers (Server-, SFTP-, Notiz-, Skript-Tabs)"
         semantic_anchor:
-          means: Die aktuell offenen Sessions als Tabs, jede mit ihrer Split-View-Zuordnungsfarbe; Kontextmenü mit Umbenennen, Duplizieren, Teilen, Schlafen legen, Ausklinken, Schließen.
+          means: Die aktuell offenen Sessions als Tabs, jede mit ihrer Split-View-Zuordnungsfarbe; Kontextmenü mit Umbenennen, Duplizieren, Teilen, Schlafen legen, Ausklinken, Schließen — bei einer getrennten Session zusätzlich Neu verbinden, an erster Stelle.
           concept: session
           aliases: [tab, connection, view]
           not: [server_entry, folder]
@@ -273,6 +281,32 @@ screens:
         locators:
           web: "[data-ui-id='UI-SERVERS-TAB-LABEL']"
 
+      - id: UI-SERVERS-TAB-CONNECTION
+        type: status
+        label: Verbindungszustand eines Tabs
+        status: required
+        verify: required
+        data_source: "Fehler- und Reconnect-Zustand der Session (erroredSessions, useAutoReconnect)"
+        semantic_anchor:
+          means: >
+            Zeigt am Label, dass die Verbindung einer Session weg ist oder gerade neu aufgebaut wird:
+            das Label wird in --subtext gedämpft, dahinter steht ein kleines Icon — Unplug bei getrennt,
+            ein sich drehendes RotateCw beim Neuverbinden. Im Normalzustand ist nichts zu sehen.
+            Marker und Kontextstreifen bleiben unberührt; ein Ring im Marker heißt weiterhin Fortschritt,
+            nicht Verbindung.
+          concept: connection_state
+          aliases: [reconnect, disconnected]
+          not: [session_activity, agent_context, pane_color]
+          cardinality: one
+          example: "nas ⏚ (gedämpft) während der Countdown läuft"
+          empty_means: Die Verbindung steht — kein Zusatz am Label.
+        states:
+          - { id: default, copy: "kein Zusatz" }
+          - { id: loading, copy: "Label gedämpft, RotateCw dreht sich" }
+          - { id: error, copy: "Label gedämpft, Unplug" }
+        locators:
+          web: "[data-ui-id='UI-SERVERS-TAB-CONNECTION']"
+
       - id: UI-SERVERS-VIEW
         type: region
         label: Arbeitsfläche
@@ -288,9 +322,36 @@ screens:
         states:
           - { id: default }
           - { id: loading, copy: "Verbinde …" }
-          - { id: error, copy: "Verbindung fehlgeschlagen. Erneut versuchen oder Server bearbeiten." }
+          - { id: error, ref: UI-SERVERS-VIEW-ERROR }
         locators:
           web: "[data-ui-id='UI-SERVERS-VIEW']"
+
+      - id: UI-SERVERS-VIEW-ERROR
+        type: status
+        label: Verbindungsfehler
+        status: required
+        verify: required
+        data_source: "Fehler der Session (classifyConnectionError), Reconnect-Zustand {attempt, maxAttempts, nextAttemptAt}"
+        semantic_anchor:
+          means: >
+            Die Karte, die in der Arbeitsfläche an die Stelle einer abgebrochenen Session tritt:
+            Icon, Titel, Fehlertext im Klartext, darunter eine Knopfzeile. Primär Neu verbinden
+            (während der Automatik Jetzt verbinden), sekundär Schließen. Läuft die Automatik, steht
+            über den Knöpfen der Countdown mit Versuchszähler. Neu verbinden baut dieselbe Session im
+            selben Tab und an derselben Stelle im Layout wieder auf; es öffnet keinen neuen Tab.
+          concept: connection_error
+          aliases: [reconnect, retry, disconnected]
+          not: [server_entry, server_dialog]
+          cardinality: one
+          example: "Verbindung verloren · Neuer Versuch in 8 s · Versuch 2/5"
+        states:
+          - { id: default, copy: "Verbindung verloren. Neu verbinden oder schließen." }
+          - { id: countdown, copy: "Neuer Versuch in 8 s · Versuch 2/5" }
+          - { id: loading, copy: "Verbinde neu …" }
+          - { id: final, copy: "Anmeldung abgelehnt. Zugangsdaten prüfen, dann neu verbinden. — Nach RDP-Abmelden oder -Trennung nur Schließen." }
+          - { id: expired, copy: "Sitzung abgelaufen. Öffne den Server neu." }
+        locators:
+          web: "[data-ui-id='UI-SERVERS-VIEW-ERROR']"
 
       - id: UI-SERVERS-FOCUS
         type: toggle

@@ -1,5 +1,5 @@
 const SessionManager = require("../lib/SessionManager");
-const { createConnectionForSession } = require("../lib/ConnectionService");
+const { createConnectionForSession, getEntryProtocol } = require("../lib/ConnectionService");
 const Entry = require("../models/Entry");
 const EntryIdentity = require("../models/EntryIdentity");
 const Account = require("../models/Account");
@@ -79,7 +79,20 @@ const directConnectionReasonRequired = async (accountId) => {
     return false;
 };
 
-const createSession = async (accountId, entryId, identityId, connectionReason, type = null, directIdentity = null, tabId = null, browserId = null, scriptId = null, startPath = null, ipAddress = null, userAgent = null, tmuxSession = null, tmuxCreate = false, tmuxWindowId = null, directTarget = null, { displayDpi = null } = {}) => {
+const openSession = async ({
+    accountId, entryId = null, identityId = null, connectionReason = null, type = null, directIdentity = null,
+    tabId = null, browserId = null, scriptId = null, startPath = null, ipAddress = null, userAgent = null,
+    tmuxSession = null, tmuxCreate = false, tmuxWindowId = null, directTarget = null, displayDpi = null,
+    reconnectOf = null,
+}) => {
+    const reconnecting = reconnectOf !== null;
+
+    const stillClaimable = () => {
+        const claimed = SessionManager.getTombstone(reconnectOf.sessionId);
+        return claimed && claimed.accountId === accountId && claimed.generation + 1 === reconnectOf.generation
+            && !SessionManager.get(reconnectOf.sessionId);
+    };
+
     // Two ways in. The direct one has no entry behind it, so it cannot lean on
     // per-entry access rules and carries its own permission instead.
     let entry;
@@ -88,7 +101,7 @@ const createSession = async (accountId, entryId, identityId, connectionReason, t
             return { code: 403, message: "Access denied" };
         }
 
-        if (!connectionReason && await directConnectionReasonRequired(accountId)) {
+        if (!reconnecting && !connectionReason && await directConnectionReasonRequired(accountId)) {
             return { code: 400, message: "Connection reason required" };
         }
 
@@ -109,7 +122,7 @@ const createSession = async (accountId, entryId, identityId, connectionReason, t
             return { code: 400, message: "Direct connections are not supported for Proxmox entries" };
         }
 
-        if (entry.organizationId) {
+        if (!reconnecting && entry.organizationId) {
             const auditSettings = await getOrganizationAuditSettingsInternal(entry.organizationId);
             if (auditSettings?.requireConnectionReason && !connectionReason) {
                 return { code: 400, message: "Connection reason required" };
@@ -129,7 +142,7 @@ const createSession = async (accountId, entryId, identityId, connectionReason, t
     }
 
     if (result.requiresIdentity && !identity) {
-        return { code: 400, message: "Identity not found" };
+        return { code: reconnecting ? 404 : 400, message: "Identity not found" };
     }
 
     if (tmuxSession && !tmuxCreate) {
@@ -148,16 +161,19 @@ const createSession = async (accountId, entryId, identityId, connectionReason, t
         }
     }
 
+    if (reconnecting && !stillClaimable()) return { code: 410, message: "Session expired" };
+
     const auditLogId = await createAuditLog({
         accountId,
         organizationId: entry.organizationId,
-        action: getAuditAction(entry, scriptId),
+        action: reconnecting ? AUDIT_ACTIONS.RECONNECT : getAuditAction(entry, scriptId),
         resource: scriptId ? RESOURCE_TYPES.SCRIPT : RESOURCE_TYPES.ENTRY,
         resourceId: scriptId || entry.id,
         // A direct connection has no entry to point at, so the target itself is
         // the record. Without this the audit trail would show an account
         // connecting somewhere with no way to learn where.
         details: {
+            ...(reconnecting && { reconnectOf: reconnectOf.sessionId, generation: reconnectOf.generation }),
             connectionReason,
             ...(scriptId && { serverId: entry.id }),
             ...(directTarget && { directTarget: `${directTarget.host}:${directTarget.port}`, protocol: directTarget.protocol }),
@@ -180,28 +196,98 @@ const createSession = async (accountId, entryId, identityId, connectionReason, t
         // Carried on the session so ConnectionService can rebuild the same
         // transient entry later; there is no row to load it back from.
         directTarget: directTarget || null,
+        protocol: getEntryProtocol(entry),
     };
 
-    const session = SessionManager.create(accountId, entryId ?? null, configuration, connectionReason, tabId, browserId, auditLogId, entry.organizationId);
+    // Claimed right before create, not after it: a connection that fails fast would otherwise leave
+    // the new generation's tombstone behind for this line to delete. Re-read here because DELETE,
+    // logout or entry deletion may have dropped it during the awaits above.
+    if (reconnecting) {
+        if (!stillClaimable()) return { code: 410, message: "Session expired" };
+        SessionManager.consumeFailedReason(reconnectOf.sessionId);
+        SessionManager.dropTombstone(reconnectOf.sessionId);
+    }
+
+    const session = SessionManager.create(accountId, entryId ?? null, configuration, connectionReason, tabId, browserId, auditLogId, entry.organizationId,
+        reconnecting ? { sessionId: reconnectOf.sessionId, generation: reconnectOf.generation } : {});
+    const { sessionId, generation } = session;
 
     stateBroadcaster.broadcast("CONNECTIONS", { accountId });
     if (entry.organizationId) stateBroadcaster.broadcast("LIVE_SESSIONS", { organizationId: entry.organizationId });
 
-    createConnectionForSession(session.sessionId, accountId)
+    createConnectionForSession(sessionId, accountId, generation)
         .then(() => {
-            logger.info("Session connection established", { sessionId: session.sessionId, entryId, type: entry.type });
+            logger.info("Session connection established", { sessionId, generation, entryId, type: entry.type });
         })
         .catch((error) => {
             logger.error("Failed to create connection for session", {
-                sessionId: session.sessionId,
+                sessionId,
+                generation,
                 error: error.message,
                 stack: error.stack
             });
-            SessionManager.markFailed(session.sessionId, error.message);
-            SessionManager.remove(session.sessionId, { code: 4017, reason: error.message });
+            SessionManager.markFailed(sessionId, error.message, generation);
+            SessionManager.remove(sessionId, { code: 4017, reason: error.message, generation })
+                .catch((e) => logger.error("Removing session failed", { sessionId, error: e.message }));
         });
 
-    return { sessionId: session.sessionId };
+    return { sessionId, generation };
+};
+
+const createSession = async (accountId, entryId, identityId, connectionReason, type = null, directIdentity = null, tabId = null, browserId = null, scriptId = null, startPath = null, ipAddress = null, userAgent = null, tmuxSession = null, tmuxCreate = false, tmuxWindowId = null, directTarget = null, { displayDpi = null } = {}) => {
+    const result = await openSession({
+        accountId, entryId, identityId, connectionReason, type, directIdentity, tabId, browserId, scriptId, startPath,
+        ipAddress, userAgent, tmuxSession, tmuxCreate, tmuxWindowId, directTarget, displayDpi,
+    });
+    return result.code ? result : { sessionId: result.sessionId };
+};
+
+const reconnectOperations = new Map();
+
+const runReconnect = async (accountId, sessionId, { displayDpi = null, ipAddress = null, userAgent = null }) => {
+    const live = SessionManager.get(sessionId);
+    if (live) {
+        if (!SessionManager.isEnding(sessionId)) return { code: 409, message: "Session is still connected" };
+        await SessionManager.whenEnded(sessionId);
+        if (SessionManager.get(sessionId)) return { code: 409, message: "Session is still connected" };
+        if (!SessionManager.getTombstone(sessionId)) return { code: 404, message: "Session ended" };
+    }
+
+    const tombstone = SessionManager.getTombstone(sessionId);
+    if (!tombstone || tombstone.accountId !== accountId) return { code: 410, message: "Session expired" };
+
+    const { configuration } = tombstone;
+    return openSession({
+        accountId,
+        entryId: tombstone.entryId,
+        identityId: configuration.identityId,
+        connectionReason: tombstone.connectionReason,
+        type: configuration.type,
+        directIdentity: configuration.directIdentity,
+        tabId: tombstone.tabId,
+        browserId: tombstone.browserId,
+        startPath: configuration.startPath,
+        ipAddress,
+        userAgent,
+        tmuxSession: configuration.tmuxSession,
+        tmuxCreate: Boolean(configuration.tmuxSession),
+        tmuxWindowId: configuration.tmuxWindowId,
+        directTarget: tombstone.directTarget,
+        displayDpi: displayDpi ?? configuration.displayDpi,
+        reconnectOf: { sessionId, generation: tombstone.generation + 1 },
+    });
+};
+
+const reconnectSession = (accountId, sessionId, options = {}) => {
+    const owner = SessionManager.get(sessionId)?.accountId ?? SessionManager.getTombstone(sessionId)?.accountId;
+    if (owner !== undefined && owner !== accountId) return Promise.resolve({ code: 404, message: "Session not found" });
+
+    let operation = reconnectOperations.get(sessionId);
+    if (!operation) {
+        operation = runReconnect(accountId, sessionId, options).finally(() => reconnectOperations.delete(sessionId));
+        reconnectOperations.set(sessionId, operation);
+    }
+    return operation;
 };
 
 const getSessions = async (accountId, tabId = null, browserId = null) => {
@@ -236,6 +322,7 @@ const getSessions = async (accountId, tabId = null, browserId = null) => {
         const { directIdentity, ...safeConfiguration } = session.configuration;
         return {
             sessionId: session.sessionId,
+            generation: session.generation,
             entryId: session.entryId,
             configuration: safeConfiguration,
             isHibernated: session.isHibernated,
@@ -251,27 +338,38 @@ const getSessions = async (accountId, tabId = null, browserId = null) => {
     });
 };
 
-const hibernateSession = (sessionId) => {
-    const success = SessionManager.hibernate(sessionId);
-    if (success) {
-        return { message: "Session hibernated" };
-    }
-    return { code: 404, message: "Session not found" };
+const hibernateSession = (accountId, sessionId) => {
+    if (SessionManager.get(sessionId)?.accountId !== accountId) return { code: 404, message: "Session not found" };
+    SessionManager.hibernate(sessionId);
+    return { message: "Session hibernated" };
 };
 
-const resumeSession = (sessionId, tabId = null, browserId = null) => {
-    const success = SessionManager.resume(sessionId, tabId, browserId);
-    if (success) {
-        return { message: "Session resumed" };
-    }
-    return { code: 404, message: "Session not found" };
+const resumeSession = (accountId, sessionId, tabId = null, browserId = null) => {
+    if (SessionManager.get(sessionId)?.accountId !== accountId) return { code: 404, message: "Session not found" };
+    SessionManager.resume(sessionId, tabId, browserId);
+    return { message: "Session resumed" };
 };
 
-const deleteSession = (sessionId) => {
-    const success = SessionManager.remove(sessionId);
-    if (success) {
-        return { message: "Session deleted" };
-    }
+const deleteSession = async (accountId, sessionId) => {
+    const live = SessionManager.get(sessionId);
+    if (live && live.accountId !== accountId) return { code: 404, message: "Session not found" };
+
+    const removed = live ? await SessionManager.remove(sessionId).catch((error) => {
+        logger.error("Removing session failed", { sessionId, error: error.message });
+        return SessionManager.get(sessionId) !== live;
+    }) : false;
+    await SessionManager.whenEnded(sessionId);
+    const reconnected = SessionManager.get(sessionId);
+    const removedReconnect = reconnected?.accountId === accountId && await SessionManager.remove(sessionId)
+        .catch((error) => {
+            logger.error("Removing session failed", { sessionId, error: error.message });
+            return SessionManager.get(sessionId) !== reconnected;
+        });
+    await SessionManager.whenEnded(sessionId);
+    const tombstone = SessionManager.getTombstone(sessionId);
+    const dropped = tombstone?.accountId === accountId && SessionManager.dropTombstone(sessionId);
+
+    if (removed || removedReconnect || dropped) return { message: "Session deleted" };
     return { code: 404, message: "Session not found" };
 };
 
@@ -313,6 +411,7 @@ const getSession = async (accountId, sessionId) => {
 
     return {
         id: session.sessionId,
+        generation: session.generation,
         server,
         identity: session.configuration.identityId,
         isHibernated: session.isHibernated,
@@ -440,4 +539,4 @@ const pasteIdentityPassword = async (accountId, sessionId, ipAddress = null, use
     }
 };
 
-module.exports = { createSession, getSessions, getSession, hibernateSession, resumeSession, deleteSession, startSharing, stopSharing, updateSharePermissions, duplicateSession, pasteIdentityPassword, directConnectionReasonRequired };
+module.exports = { createSession, reconnectSession, getSessions, getSession, hibernateSession, resumeSession, deleteSession, startSharing, stopSharing, updateSharePermissions, duplicateSession, pasteIdentityPassword, directConnectionReasonRequired };

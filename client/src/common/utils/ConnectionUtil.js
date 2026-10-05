@@ -55,3 +55,5 @@ export const requiresIdentity = (server) => {
 
 export const canConnectWithoutPrompt = (server) =>
     !requiresIdentity(server) || server?.identities?.length > 0;
+
+export const getDisplayDpi = () => Math.min(Math.max(Math.round((window.devicePixelRatio || 1) * 96), 96), 480);

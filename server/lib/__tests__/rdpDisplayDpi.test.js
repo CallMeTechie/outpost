@@ -24,11 +24,11 @@ const handshakeFor = async (displayDpi) => {
         }
     };
 
-    const session = { accountId: 1, entryId: 9, auditLogId: null, configuration: { displayDpi } };
+    const session = { accountId: 1, entryId: 9, auditLogId: null, generation: 1, engineSessionId: "s1", configuration: { displayDpi } };
     const stubs = [
         [SessionManager, "get", () => session],
         [SessionManager, "setGuacReady", () => {}],
-        [SessionManager, "setConnection", () => {}],
+        [SessionManager, "setConnection", () => true],
         [SessionManager, "updateConnectionId", () => {}],
         [SessionManager, "onMasterConnectionClosed", () => {}],
         [Entry, "findByPk", async () => ({ id: 9, type: "server", organizationId: null, config: { protocol: "rdp", ip: "10.0.0.5" } })],

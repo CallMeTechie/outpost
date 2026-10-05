@@ -186,7 +186,6 @@
       "qrCodeExpired": "Der QR-Code ist abgelaufen. Bitte versuche es erneut.",
       "connection": {
         "title": "Verbindung fehlgeschlagen",
-        "close": "Registerkarte schließen",
         "hostUnreachable": "Entfernter Host unerreichbar",
         "refused": "Verbindung vom entfernten Host abgelehnt",
         "timeout": "Zeitüberschreitung der Verbindung",
@@ -199,7 +198,20 @@
         "scriptError": "Skript-Verbindungsfehler aufgetreten",
         "rdpSessionConflict": "Die Sitzung wurde vom Server getrennt, weil eine andere Verbindung geöffnet wurde.",
         "rdpSessionTimeout": "Die RDP-Sitzung wurde getrennt, weil ihr Zeitlimit erreicht wurde.",
-        "rdpSessionClosed": "Die RDP-Sitzung wurde vom entfernten Server oder einem Administrator beendet."
+        "rdpSessionClosed": "Die RDP-Sitzung wurde vom entfernten Server oder einem Administrator beendet.",
+        "connectionLost": "Die Verbindung zum Host wurde unterbrochen.",
+        "engineDisconnected": "Die Verbindungs-Engine wurde neu gestartet oder ist nicht erreichbar.",
+        "hostKey": "Der Host-Schlüssel des Servers stimmt nicht überein.",
+        "sessionEnded": "Die Sitzung wurde beendet.",
+        "accessRevoked": "Du hast keinen Zugriff mehr auf diesen Server oder diese Identität.",
+        "lostTitle": "Verbindung verloren",
+        "expiredTitle": "Sitzung abgelaufen",
+        "expired": "Öffne den Server neu.",
+        "reconnect": "Neu verbinden",
+        "reconnectNow": "Jetzt verbinden",
+        "reconnecting": "Verbinde neu …",
+        "countdown": "Neuer Versuch in {{seconds}} s · Versuch {{attempt}}/{{max}}",
+        "reconnectFailed": "Neu verbinden fehlgeschlagen"
       }
     },
     "messages": {
@@ -991,6 +1003,7 @@
         "description": "Lege fest, wie sich Tastenkombinationen im Terminal verhalten.",
         "smartCopyPaste": "Smart Strg+C",
         "passwordPromptDetection": "Erkennung der Passworteingabe",
+        "autoReconnect": "Automatisch neu verbinden",
         "enabled": "Aktiviert",
         "disabled": "Deaktiviert",
         "syncEnabled": "Die Eingabeeinstellungen werden nun mit deinem Konto synchronisiert",
@@ -1659,6 +1672,10 @@
     },
     "tabs": {
       "contextTooltip": "Kontext: {{tool}} bei {{percent}} %",
+      "connection": {
+        "disconnected": "Getrennt",
+        "reconnecting": "Verbinde neu"
+      },
       "newSession": "Neue Sitzung",
       "contextMenu": {
         "popOut": "In eigenem Fenster öffnen",
@@ -1672,7 +1689,8 @@
         "duplicate": "Duplizieren",
         "openNotes": "Notizen",
         "hibernateSession": "Ruhezustand aktivieren",
-        "closeSession": "Trennen"
+        "closeSession": "Trennen",
+        "reconnect": "Neu verbinden"
       },
       "renameDialog": {
         "title": "Tab umbenennen",

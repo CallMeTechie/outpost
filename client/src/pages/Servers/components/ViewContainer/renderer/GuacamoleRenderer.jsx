@@ -7,7 +7,7 @@ import { useKeymaps, matchesKeybind } from "@/common/contexts/KeymapContext.jsx"
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useTranslation } from "react-i18next";
 import ConnectionLoader from "./components/ConnectionLoader";
-import ConnectionError, { mapConnectionError } from "./components/ConnectionError";
+import { classifyConnectionError } from "@/common/utils/ConnectionErrorUtil.js";
 import SessionToolbar from "./components/SessionToolbar";
 import { getWebSocketUrl } from "@/common/utils/ConnectionUtil.js";
 import { openPopout, onPopoutClosed } from "@/common/utils/PopoutUtil.js";
@@ -40,6 +40,7 @@ const GuacamoleRenderer = ({
                                disconnectFromServer,
                                markSessionErrored,
                                getSessionError,
+                               markSessionConnected,
                                registerGuacamoleRef,
                                fullscreenEnabled,
                                onFullscreenToggle,
@@ -90,15 +91,15 @@ const GuacamoleRenderer = ({
     const browserFsRef = useRef(null);
     const clipboardIntervalRef = useRef(null);
     const errorMessageRef = useRef(null);
-    const [connectionError, setConnectionError] = useState(() => getSessionError?.(session.id) || null);
-    const errorShownRef = useRef(!!connectionError);
+    const errorStatusRef = useRef(null);
+    const wasConnectedRef = useRef(false);
+    const errorShownRef = useRef(!!getSessionError?.(session.id));
 
-    const reportError = (rawMessage) => {
+    const reportError = (rawMessage, statusCode = null) => {
         if (errorShownRef.current) return;
         errorShownRef.current = true;
-        const mapped = mapConnectionError(rawMessage, t);
-        markSessionErrored?.(session.id, mapped);
-        setConnectionError(mapped);
+        const { text, retryable, reconnectable } = classifyConnectionError({ message: rawMessage, statusCode }, t);
+        markSessionErrored?.(session.id, { message: text, retryable, reconnectable, generation: session.generation ?? 1 });
     };
 
     useEffect(() => {
@@ -537,6 +538,7 @@ const GuacamoleRenderer = ({
             }
             if (opcode === "error" && args?.length) {
                 errorMessageRef.current = args[0] || "Connection failed";
+                errorStatusRef.current = args[1] ?? null;
             }
             clientOnInstruction?.(opcode, args);
         };
@@ -619,29 +621,33 @@ const GuacamoleRenderer = ({
         };
         keyboard.onkeyup = (k, sc) => client.sendKeyEvent(0, k, sc);
 
+        const reportClosed = () => {
+            if (errorShownRef.current) return;
+            if (errorMessageRef.current) reportError(errorMessageRef.current, errorStatusRef.current);
+            else if (wasConnectedRef.current) reportError("Connection lost");
+            else disconnectFromServer(s.id, s.generation ?? 1);
+        };
         client.onstatechange = (st) => {
             if (isCleaningUp) return;
             if (st === Guacamole.Client.State.CONNECTED) {
+                wasConnectedRef.current = true;
+                markSessionConnected?.(s.id);
                 lastSentRef.current = { w: 0, h: 0, monitor: -1, at: 0 };
                 confirmAttemptsRef.current = 0;
                 resizeHandler();
             }
-            if (st === Guacamole.Client.State.DISCONNECTED || st === Guacamole.Client.State.ERROR) {
-                if (errorShownRef.current) return;
-                if (errorMessageRef.current) reportError(errorMessageRef.current);
-                else disconnectFromServer(s.id);
-            }
+            if (st === Guacamole.Client.State.DISCONNECTED || st === Guacamole.Client.State.ERROR) reportClosed();
         };
         tunnel.onstatechange = (st) => {
             if (isCleaningUp || st !== Guacamole.Tunnel.State.CLOSED) return;
-            if (errorShownRef.current) return;
-            if (errorMessageRef.current) reportError(errorMessageRef.current);
-            else disconnectFromServer(s.id);
+            reportClosed();
         };
         tunnel.onerror = (status) => {
             if (isCleaningUp) return;
-            const message = status?.message || errorMessageRef.current || t("common.errors.connection.error");
-            reportError(message);
+            const message = status?.message || errorMessageRef.current;
+            // status.code is not used: the library maps a WebSocket close 1008 to 0x0303, which would read as non-reconnectable.
+            if (!message && wasConnectedRef.current) reportError("Connection lost");
+            else reportError(message || null, errorStatusRef.current);
         };
         const cleanupClipboard = handleClipboardEvents();
 
@@ -759,9 +765,6 @@ const GuacamoleRenderer = ({
                                 onZoomIn={zoomIn} onZoomOut={zoomOut} onResetZoom={resetZoom}
                                 fullscreenEnabled={fullscreenEnabled} onFullscreenToggle={onFullscreenToggle}
                                 onDraggingChange={(dragging) => draggingRef.current = dragging} />
-            )}
-            {connectionError && (
-                <ConnectionError message={connectionError} onClose={() => disconnectFromServer(session.id)} />
             )}
         </div>
     );

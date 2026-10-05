@@ -1,7 +1,7 @@
 import "./styles.sass";
 import ServerTabs from "./components/ServerTabs";
 import TerminalKeyBar from "./components/TerminalKeyBar";
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo, memo } from "react";
 import { createPortal } from "react-dom";
 import GuacamoleRenderer from "@/pages/Servers/components/ViewContainer/renderer/GuacamoleRenderer.jsx";
 import XtermRenderer from "@/pages/Servers/components/ViewContainer/renderer/XtermRenderer.jsx";
@@ -17,6 +17,8 @@ import { useTauriWindow } from "@/common/hooks/useTauriWindow.js";
 import { useBodyClass } from "@/common/hooks/useBodyClass.js";
 import { paneColorFor } from "./utils/paneColors.js";
 import { barKeySequence } from "@/common/utils/keyBarSequences.js";
+import ConnectionError from "@/pages/Servers/components/ViewContainer/renderer/components/ConnectionError";
+import { isReconnectEligible } from "@/common/utils/ReconnectPolicy.js";
 
 const BTN_SIZE = 44;
 const BTN_STORAGE_KEY = "fullscreen-btn-position";
@@ -51,6 +53,22 @@ const clampPosition = (x, y) => ({
     y: Math.max(getMinY(), Math.min(window.innerHeight - BTN_SIZE, y))
 });
 
+// Owns the countdown tick so it re-renders only this card, not the workspace. The clock is tied to
+// the reconnect state it was taken for, so a fresh countdown never paints with a stale `now`.
+const ReconnectAwareError = memo(({ reconnect, ...props }) => {
+    const [clock, setClock] = useState({ reconnect: null, now: null });
+    useLayoutEffect(() => {
+        if (!reconnect) return;
+        const tick = () => setClock({ reconnect, now: Date.now() });
+        tick();
+        const timer = setInterval(tick, 1000);
+        return () => clearInterval(timer);
+    }, [reconnect]);
+    const now = reconnect && clock.reconnect === reconnect ? clock.now : null;
+    return <ConnectionError {...props} reconnect={reconnect} now={now} />;
+});
+ReconnectAwareError.displayName = "ReconnectAwareError";
+
 const loadBtnPosition = () => {
     try {
         const saved = JSON.parse(localStorage.getItem(BTN_STORAGE_KEY));
@@ -73,6 +91,11 @@ export const ViewContainer = ({
                                   renameSession,
                                   markSessionErrored,
                                   getSessionError,
+                                  sessionErrors = {},
+                                  reconnectStates = {},
+                                  reconnecting = {},
+                                  reconnectSession,
+                                  markSessionConnected,
                                   setOpenFileEditors,
                                   openTerminalFromFileManager,
                                   tabIdentities,
@@ -118,6 +141,18 @@ export const ViewContainer = ({
     const appWindow = useTauriWindow();
     const { t } = useTranslation();
     const { showKeyBar } = usePreferences();
+    const connectionStates = useMemo(() => {
+        const states = {};
+        for (const id of Object.keys(sessionErrors)) states[id] = "error";
+        for (const id of Object.keys(reconnecting)) states[id] = "loading";
+        return states;
+    }, [sessionErrors, reconnecting]);
+    const reconnectable = useMemo(() => {
+        const result = {};
+        for (const [id, error] of Object.entries(sessionErrors)) if (!error.expired && error.reconnectable !== false) result[id] = true;
+        for (const id of Object.keys(reconnecting)) result[id] = true;
+        return result;
+    }, [sessionErrors, reconnecting]);
 
     useEffect(() => {
         setTitleBarTabsSlot(document.getElementById("titlebar-tabs-slot"));
@@ -598,6 +633,8 @@ export const ViewContainer = ({
                 return <GuacamoleRenderer session={session} disconnectFromServer={disconnectFromServer}
                                           markSessionErrored={markSessionErrored}
                                           getSessionError={getSessionError}
+                                          key={`${session.id}-${session.generation ?? 1}-${session.attachNonce ?? 0}`}
+                                          markSessionConnected={markSessionConnected}
                                           registerGuacamoleRef={registerGuacamoleRef}
                                           isShared={!!session.isJoined}
                                           fullscreenEnabled={fullscreenMode}
@@ -607,6 +644,8 @@ export const ViewContainer = ({
                                       isShared={!!session.isJoined}
                                       markSessionErrored={markSessionErrored}
                                       getSessionError={getSessionError}
+                                      key={`${session.id}-${session.generation ?? 1}-${session.attachNonce ?? 0}`}
+                                      markSessionConnected={markSessionConnected}
                                       registerTerminalRef={registerTerminalRef} broadcastMode={broadcastMode}
                                       onTerminalReady={onTerminalReady}
                                       modifierLatch={modifierLatch} onLatchConsumed={clearLatch}
@@ -723,6 +762,16 @@ export const ViewContainer = ({
                  onClick={() => session.id !== activeSessionId && focusSession(session.id)}
                  style={{ ...getSessionStyle(session), ...(paneColor && { "--pane-color": paneColor }) }}>
                 {renderRenderer(session)}
+                {sessionErrors[session.id] && !session.scriptId && (
+                    <ReconnectAwareError message={sessionErrors[session.id].message}
+                                     retryable={sessionErrors[session.id].retryable}
+                                     expired={sessionErrors[session.id].expired}
+                                     reconnectable={sessionErrors[session.id].reconnectable}
+                                     reconnecting={!!reconnecting[session.id]}
+                                     reconnect={reconnectStates[session.id] || null}
+                                     onReconnect={isReconnectEligible(session) ? () => reconnectSession(session.id) : undefined}
+                                     onClose={() => closeSession(session.id)} />
+                )}
             </div>
         );
     });
@@ -743,7 +792,8 @@ export const ViewContainer = ({
                     onFullscreenToggle={toggleFullscreenMode}
                     openNotes={openNotes} renameSession={renameSession}
                     hibernateSession={hibernateSession} duplicateSession={duplicateSession}
-                    onNewSession={onNewSession} openSFTP={openSFTP} />
+                    onNewSession={onNewSession} openSFTP={openSFTP}
+                    connectionStates={connectionStates} reconnectable={reconnectable} onReconnect={reconnectSession} />
     );
 
     return (
