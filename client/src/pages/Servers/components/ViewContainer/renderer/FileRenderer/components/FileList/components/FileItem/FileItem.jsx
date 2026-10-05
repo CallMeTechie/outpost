@@ -1,4 +1,4 @@
-import { memo, useState, useContext } from "react";
+import { memo, useState, useContext, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import Icon from "@/common/components/Icon";
 import { EllipsisVertical as IconEllipsisVertical, Folder as IconFolder, Link as IconLink } from "lucide-react";
@@ -44,6 +44,7 @@ export const FileItem = memo(({
     const { t } = useTranslation();
     const { sessionToken } = useContext(UserContext);
     const [thumbnailError, setThumbnailError] = useState(false);
+    const dotsPressedRef = useRef(false);
 
     const showThumbnailCandidate = showsThumbnails(viewMode) && showThumbnails && item.type === "file"
         && isThumbnailSupported(item.name) && !thumbnailError;
@@ -70,6 +71,33 @@ export const FileItem = memo(({
     const canShowThumbnail = thumbnailContentUrl !== null;
     const thumbnailUrl = canShowThumbnail ? `${getBaseUrl()}${thumbnailContentUrl}` : null;
 
+    // Opens on the press: on a draggable row the trailing click gets lost to a drag. A click with
+    // no press before it (keyboard, assistive tech) still opens the menu.
+    const handleDotsPointerDown = (event) => {
+        if (event.button !== 0 || !event.isPrimary) return;
+        event.stopPropagation();
+        dotsPressedRef.current = true;
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        onDotsClick(event);
+    };
+
+    const handleDotsClick = (event) => {
+        event.stopPropagation();
+        if (dotsPressedRef.current) {
+            dotsPressedRef.current = false;
+            return;
+        }
+        onDotsClick(event);
+    };
+
+    const handleDragStart = (event) => {
+        if (dotsPressedRef.current) {
+            event.preventDefault();
+            return;
+        }
+        onDragStart(event);
+    };
+
     const classNames = [
         "file-item",
         viewMode,
@@ -90,8 +118,9 @@ export const FileItem = memo(({
             className={classNames}
             onClick={onClick}
             onContextMenu={onContextMenu}
+            onPointerDown={() => { dotsPressedRef.current = false; }}
             draggable={!isRenaming}
-            onDragStart={onDragStart}
+            onDragStart={handleDragStart}
             onDragEnd={onDragEnd}
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
@@ -144,7 +173,8 @@ export const FileItem = memo(({
             <Icon
                 icon={IconEllipsisVertical}
                 className="dots-menu"
-                onClick={onDotsClick}
+                onClick={handleDotsClick}
+                onPointerDown={handleDotsPointerDown}
             />
         </div>
     );

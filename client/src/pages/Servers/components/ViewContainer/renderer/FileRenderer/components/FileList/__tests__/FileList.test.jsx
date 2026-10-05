@@ -1,4 +1,5 @@
 import { expect, test, vi } from "vitest";
+import { fireEvent } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders.jsx";
 import { FileList } from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer/components/FileList/FileList.jsx";
 
@@ -30,4 +31,14 @@ test("shown hidden entries are dimmed, ordinary ones are not", () => {
 
     expect(row(container, ".env").classList.contains("dimmed")).toBe(true);
     expect(row(container, "notes.txt").classList.contains("dimmed")).toBe(false);
+});
+
+test("pressing the dots opens the menu and keeps the row from starting a drag", () => {
+    const { container } = renderList();
+    const entry = row(container, "notes.txt");
+
+    fireEvent.pointerDown(entry.querySelector(".dots-menu"), { button: 0, isPrimary: true, pointerId: 1 });
+
+    expect(document.querySelector("[data-ui-id='UI-FILES-LIST-MENU']")).not.toBeNull();
+    expect(fireEvent.dragStart(entry)).toBe(false);
 });
