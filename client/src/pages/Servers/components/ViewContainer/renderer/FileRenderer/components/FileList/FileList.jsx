@@ -279,6 +279,7 @@ export const FileList = forwardRef(({
                             isBeingDragged={draggedItems.some(d => d.name === item.name)}
                             isDropTarget={dropTarget === item.name}
                             isCut={isItemCut(`${path}/${item.name}`)}
+                            isDimmed={showHiddenFiles && item.name.startsWith(".")}
                             showThumbnails={showThumbnails}
                             capabilities={capabilities}
                             highlight={query}
