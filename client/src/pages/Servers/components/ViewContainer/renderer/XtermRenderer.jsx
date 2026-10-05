@@ -18,8 +18,7 @@ import { createProgressParser } from "../utils/progressParser";
 import { Copy as IconCopy, ClipboardPaste as IconClipboardPaste, Brackets as IconBrackets, SquareDashed as IconSquareDashed, Trash as IconTrash, Keyboard as IconKeyboard, Key as IconKey, FolderOpen as IconFolderOpen, BotMessageSquare as IconBotMessageSquare, WandSparkles as IconWandSparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import ConnectionLoader from "./components/ConnectionLoader";
-import ConnectionError from "./components/ConnectionError";
-import { mapConnectionError } from "@/common/utils/ConnectionErrorUtil.js";
+import { classifyConnectionError } from "@/common/utils/ConnectionErrorUtil.js";
 import { getWebSocketUrl } from "@/common/utils/ConnectionUtil.js";
 import { isImeBackspace } from "@/common/utils/imeKeys.js";
 import { shouldFit, shouldSendSize } from "@/common/utils/terminalResize.js";
@@ -41,7 +40,7 @@ const MODIFIER_KEYS = ["Shift", "Control", "Alt", "Meta", "AltGraph", "CapsLock"
 // cannot force a React render per escape sequence.
 const TITLE_UPDATE_THROTTLE_MS = 100;
 
-const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getSessionError, registerTerminalRef, onTerminalReady, broadcastMode, modifierLatch, onLatchConsumed, terminalRefs, updateProgress, updateContext, updateTitle, layoutMode, onBroadcastToggle, onFullscreenToggle, isShared = false, onOpenSftp }) => {
+const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getSessionError, markSessionConnected, registerTerminalRef, onTerminalReady, broadcastMode, modifierLatch, onLatchConsumed, terminalRefs, updateProgress, updateContext, updateTitle, layoutMode, onBroadcastToggle, onFullscreenToggle, isShared = false, onOpenSftp }) => {
     const ref = useRef(null);
     const termRef = useRef(null);
     const wsRef = useRef(null);
@@ -91,7 +90,6 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
     const typingParticipants = getParticipants(session.joinSessionId || session.id)
         .filter(participant => participant.typing && participant.accountId !== userContext?.user?.id);
     const [showSnippetsMenu, setShowSnippetsMenu] = useState(false);
-    const [connectionError, setConnectionError] = useState(() => getSessionError?.(session.id) || null);
     const [passwordPrompt, setPasswordPrompt] = useState(null);
     const [passwordHintIndex, setPasswordHintIndex] = useState(-1);
     const [passwordIdentities, setPasswordIdentities] = useState([]);
@@ -399,7 +397,6 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
         if (getSessionError?.(session.id)) return;
 
         let isCleaningUp = false;
-        setConnectionError(null);
 
         const terminalTheme = getCurrentTheme();
         const isLightTerminalTheme = selectedTheme === "light";
@@ -611,9 +608,9 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
             onTerminalReady?.(session.id, true);
         }
 
-        const reportError = (message) => {
-            markSessionErrored?.(session.id, message);
-            setConnectionError(message);
+        const reportError = (message, code = null) => {
+            const { text, retryable, reconnectable } = classifyConnectionError({ message, code }, t);
+            markSessionErrored?.(session.id, { message: text, retryable, reconnectable, generation: session.generation ?? 1 });
         };
 
         const cursorSyncDisposable = term.onCursorMove(syncCursorAnchor);
@@ -683,18 +680,18 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
             if (isCleaningUp) return;
 
             if (event.code >= 4000 && event.reason) {
-                reportError(mapConnectionError(event.reason, t));
+                reportError(event.reason, event.code);
             } else if (event.code !== 1000 && event.code !== 1005) {
-                reportError(t("common.errors.connection.closedUnexpectedly"));
+                reportError(null, event.code);
             } else {
-                disconnectFromServer(session.id);
+                disconnectFromServer(session.id, session.generation ?? 1);
             }
         };
 
         ws.onerror = (error) => {
             console.error("WebSocket error:", error);
             if (!isCleaningUp) {
-                reportError(t("common.errors.connection.error"));
+                reportError(null);
             }
         };
 
@@ -710,6 +707,7 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
             if (!hostSpoke) {
                 hostSpoke = true;
                 lastSentSize = null;
+                markSessionConnected?.(session.id);
             }
 
             // Meldet die Sitzung ihre Kontextfüllung, steht sie als Marke im Strom. Vor der
@@ -978,9 +976,6 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
     return (
         <div className="xterm-container" onContextMenu={!isShared ? handleContextMenu : undefined}>
             <ConnectionLoader onReady={(loader) => { connectionLoaderRef.current = loader; }} />
-            {connectionError && (
-                <ConnectionError message={connectionError} onClose={() => disconnectFromServer(session.id)} />
-            )}
             <div ref={ref} className="xterm-wrapper" />
             <TypingIndicators anchor={cursorAnchor} participants={typingParticipants} />
             {!isShared && passwordPrompt && passwordIdentities.length > 0 && (
