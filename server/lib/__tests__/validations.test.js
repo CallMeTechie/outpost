@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert");
 const { createServerValidation } = require("../../validations/server");
-const { createSessionValidation } = require("../../validations/serverSession");
+const { createSessionValidation, reconnectSessionValidation } = require("../../validations/serverSession");
 
 const build = (config) => ({ name: "host", config: { protocol: "ssh", ip: "10.0.0.1", ...config } });
 
@@ -91,4 +91,12 @@ test("tmuxWindowId: rejects malformed ids", () => {
 test("tmuxWindowId: null and absence stay valid", () => {
     assert.strictEqual(createSessionValidation.validate(session({ tmuxWindowId: null })).error, undefined);
     assert.strictEqual(createSessionValidation.validate(session({})).error, undefined);
+});
+
+test("reconnect: der Body kennt nur displayDpi im erlaubten Bereich", () => {
+    assert.strictEqual(reconnectSessionValidation.validate({}).error, undefined);
+    assert.strictEqual(reconnectSessionValidation.validate({ displayDpi: 144 }).error, undefined);
+    for (const body of [{ displayDpi: 1000 }, { displayDpi: 1.5 }, { tmuxSession: "x" }, { directIdentity: {} }]) {
+        assert.ok(reconnectSessionValidation.validate(body).error, `expected refusal for ${JSON.stringify(body)}`);
+    }
 });

@@ -8,6 +8,7 @@ const terminalSchema = Joi.object({
     smartCopyPaste: Joi.boolean(),
     passwordPromptDetection: Joi.boolean(),
     keyBar: Joi.string().valid('auto', 'always', 'never'),
+    autoReconnect: Joi.boolean(),
     theme: Joi.string().max(50),
 }).unknown(false);
 
