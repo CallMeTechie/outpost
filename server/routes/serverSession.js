@@ -8,7 +8,17 @@ const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
 
 const app = Router();
 
-// Keyed on account and session (bookmarkRateLimiter.js keys on the account); ipKeyGenerator is required by express-rate-limit 8 for IPv6.
+// Keyed like bookmarkRateLimiter.js; ipKeyGenerator is required by express-rate-limit 8 for IPv6.
+// The account bucket bounds the sum over all session ids, which the per-session bucket alone cannot.
+const reconnectAccountLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    keyGenerator: (req) => (req.user ? `acc:${req.user.id}` : `ip:${ipKeyGenerator(req.ip)}`),
+    message: { code: 429, message: "Too many reconnect attempts. Please try again in a moment." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 const reconnectLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 10,
@@ -157,8 +167,12 @@ app.delete("/:id", async (req, res) => {
  * @param {string} id.path.required - Session ID
  * @return {object} 200 - Session id and generation
  */
-app.post("/:id/reconnect", reconnectLimiter, async (req, res) => {
+const validateSessionId = (req, res, next) => {
     if (validateSchema(res, sessionIdValidation, req.params)) return;
+    next();
+};
+
+app.post("/:id/reconnect", validateSessionId, reconnectAccountLimiter, reconnectLimiter, async (req, res) => {
     if (validateSchema(res, reconnectSessionValidation, req.body ?? {})) return;
 
     try {

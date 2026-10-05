@@ -112,7 +112,6 @@ test("Reconnect schreibt entry.reconnect ins Audit-Log und hängt die neue Gener
     await reconnectSession(ACCOUNT, id, request);
     const entry = auditCalls.at(-1);
     assert.strictEqual(entry.action, "entry.reconnect");
-    assert.strictEqual(entry.action, audit.AUDIT_ACTIONS.RECONNECT);
     assert.deepStrictEqual(
         { resource: entry.resource, resourceId: entry.resourceId, details: entry.details, ipAddress: entry.ipAddress },
         { resource: "entry", resourceId: 101, details: { reconnectOf: id, generation: 2, connectionReason: "maintenance" }, ipAddress: "10.0.0.9" },

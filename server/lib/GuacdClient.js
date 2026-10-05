@@ -19,6 +19,33 @@
 const SessionManager = require('./SessionManager');
 const logger = require('../utils/logger');
 
+// Guacamole lengths count code points, not UTF-16 units.
+const readElement = (data, start) => {
+    const dot = data.indexOf('.', start);
+    if (dot <= start || !/^\d+$/.test(data.slice(start, dot))) return null;
+    let end = dot + 1;
+    for (let left = Number(data.slice(start, dot)); left > 0; left--) {
+        if (end >= data.length) return null;
+        end += data.codePointAt(end) > 0xFFFF ? 2 : 1;
+    }
+    if (end >= data.length) return null;
+    return { value: data.slice(dot + 1, end), terminator: data[end], next: end + 1 };
+};
+
+// Only at instruction boundaries (start of string or after ';'), so filenames or clipboard text
+// containing "5.error," never count; the message itself may contain commas.
+const findErrorInstruction = (data) => {
+    for (let start = 0; start < data.length; start = data.indexOf(';', start) + 1 || data.length) {
+        if (!data.startsWith('5.error,', start)) continue;
+        const message = readElement(data, start + 8);
+        if (message?.terminator !== ',') continue;
+        const status = readElement(data, message.next);
+        if (status?.terminator !== ';' || !/^\d+$/.test(status.value)) continue;
+        return { message: message.value, status: Number(status.value) };
+    }
+    return null;
+};
+
 class GuacdClient {
 
     constructor(options) {
@@ -136,15 +163,13 @@ class GuacdClient {
         this.receivedBuffer = this.receivedBuffer.substring(delimiterPos + 1);
         if (!dataToSend) return;
 
-        // Match error instructions only at instruction boundaries (start of string or after ';')
-        // to avoid false positives from filenames or clipboard text containing ".error,"
-        const errorMatch = /(?:^|;)\d+\.error,\d+\.([^,]+),\d+\.(\d+);/.exec(dataToSend);
+        const errorMatch = findErrorInstruction(dataToSend);
         if (errorMatch) {
-            const [, errorMessage, status] = errorMatch;
-            logger.error('Guacd error received', { sessionId: this.sessionId, error: errorMessage, status: Number(status) });
+            const { message: errorMessage, status } = errorMatch;
+            logger.error('Guacd error received', { sessionId: this.sessionId, error: errorMessage, status });
             // Forward data to client first so it can display the error message
             try { this.onDataCallback?.(dataToSend); } catch {}
-            this.handleClose(`error: ${errorMessage}`, Number(status));
+            this.handleClose(`error: ${errorMessage}`, status);
             return;
         }
 

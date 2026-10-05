@@ -215,7 +215,7 @@ const openSession = async ({
     stateBroadcaster.broadcast("CONNECTIONS", { accountId });
     if (entry.organizationId) stateBroadcaster.broadcast("LIVE_SESSIONS", { organizationId: entry.organizationId });
 
-    createConnectionForSession(sessionId, accountId)
+    createConnectionForSession(sessionId, accountId, generation)
         .then(() => {
             logger.info("Session connection established", { sessionId, generation, entryId, type: entry.type });
         })
@@ -227,7 +227,8 @@ const openSession = async ({
                 stack: error.stack
             });
             SessionManager.markFailed(sessionId, error.message, generation);
-            SessionManager.remove(sessionId, { code: 4017, reason: error.message, generation });
+            SessionManager.remove(sessionId, { code: 4017, reason: error.message, generation })
+                .catch((e) => logger.error("Removing session failed", { sessionId, error: e.message }));
         });
 
     return { sessionId, generation };
@@ -246,7 +247,7 @@ const reconnectOperations = new Map();
 const runReconnect = async (accountId, sessionId, { displayDpi = null, ipAddress = null, userAgent = null }) => {
     const live = SessionManager.get(sessionId);
     if (live) {
-        if (!live._removing && !live._closeGrace) return { code: 409, message: "Session is still connected" };
+        if (!SessionManager.isEnding(sessionId)) return { code: 409, message: "Session is still connected" };
         await SessionManager.whenEnded(sessionId);
         if (SessionManager.get(sessionId)) return { code: 409, message: "Session is still connected" };
         if (!SessionManager.getTombstone(sessionId)) return { code: 404, message: "Session ended" };
@@ -353,7 +354,10 @@ const deleteSession = async (accountId, sessionId) => {
     const live = SessionManager.get(sessionId);
     if (live && live.accountId !== accountId) return { code: 404, message: "Session not found" };
 
-    const removed = live ? await SessionManager.remove(sessionId) : false;
+    const removed = live ? await SessionManager.remove(sessionId).catch((error) => {
+        logger.error("Removing session failed", { sessionId, error: error.message });
+        return SessionManager.get(sessionId) !== live;
+    }) : false;
     await SessionManager.whenEnded(sessionId);
     const tombstone = SessionManager.getTombstone(sessionId);
     const dropped = tombstone?.accountId === accountId && SessionManager.dropTombstone(sessionId);

@@ -65,6 +65,7 @@ test("ein RDP-Logoff (Guacamole-Status 0x020B) hinterlässt keinen Tombstone, ei
 
     assert.strictEqual(await end("5.error,11.Logged off.,3.523;"), null);
     assert.strictEqual((await end("5.error,15.Connection lost,3.514;"))?.reason, "error: Connection lost");
+    assert.strictEqual((await end("4.sync,1.0;5.error,25.Connection lost, retrying,3.514;"))?.reason, "error: Connection lost, retrying");
 });
 
 test("ein Engine-Abbruch hinterlässt einen Tombstone, auch wenn der Daten-Socket vorher schließt", async () => {
@@ -90,7 +91,6 @@ test("verspätete Meldungen der alten Generation lassen die neue leben", async (
     t.mock.timers.tick(SessionManager.CLOSE_GRACE_MS);
 
     assert.strictEqual(SessionManager.get(sessionId), second);
-    assert.strictEqual(second._removing, undefined);
-    assert.strictEqual(second._closeGrace, null);
+    assert.strictEqual(SessionManager.isEnding(sessionId), false);
     await SessionManager.remove(sessionId);
 });

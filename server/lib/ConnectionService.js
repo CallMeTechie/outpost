@@ -161,14 +161,17 @@ const openEngineSession = async (sessionId, sessionType, host, port, params, jum
     return dataSocketPromise;
 };
 
-const isCurrentGeneration = (sessionId, generation) => SessionManager.get(sessionId)?.generation === generation;
+const STALE = Object.freeze({ success: false, stale: true });
 
 const discardStaleConnection = (engineSessionId, dataSocket, session = null) => {
-    try { session?.recording?.stream?.end(); } catch {}
+    if (session?.recording) {
+        SessionManager.finalizeDetachedRecording(session)
+            .catch((error) => logger.error("Finalizing a stale recording failed", { sessionId: session.sessionId, error: error.message }));
+    }
     dataSocket.removeAllListeners();
     dataSocket.destroy();
     try { controlPlane.closeSession(engineSessionId); } catch {}
-    return { success: false, stale: true };
+    return STALE;
 };
 
 // The data socket and the engine's SessionClosed report arrive over two separate connections; ending
@@ -188,20 +191,23 @@ const bindDataSocketLifecycle = (sessionId, generation, dataSocket, label, onEnd
     });
 };
 
-const createConnectionForSession = async (sessionId, accountId) => {
+const createConnectionForSession = async (sessionId, accountId, generation) => {
     const session = requireSession(sessionId);
+    const stale = () => !SessionManager.isCurrent(sessionId, generation, "connect");
 
     // A direct connection has no row to load: the target travels on the session
     // and is rebuilt into the same shape the protocol handlers expect.
     const entry = session.entryId
         ? await Entry.findByPk(session.entryId)
         : buildTransientEntry(session.configuration.directTarget);
+    if (stale()) return STALE;
     if (!entry) throw new Error("Entry not found");
 
     const { type, identityId, directIdentity, scriptId } = session.configuration;
     if (type === "sftp") return { success: true, skipped: true };
 
     const identityResult = await resolveIdentity(entry, identityId, directIdentity, accountId);
+    if (stale()) return STALE;
     const identity = extractIdentity(identityResult);
     const organizationId = entry.organizationId || null;
     const protocol = getEntryProtocol(entry);
@@ -211,6 +217,7 @@ const createConnectionForSession = async (sessionId, accountId) => {
         const memberships = await OrganizationMember.findAll({ where: { accountId } });
         script = await getScript(accountId, scriptId, null, memberships.map(m => m.organizationId));
         if (!script) throw new Error("Script not found");
+        if (stale()) return STALE;
     }
 
     switch (protocol) {
@@ -526,9 +533,10 @@ const createSSHConnectionForSession = async (sessionId, entry, identity, organiz
         const dataSocket = await openEngineSession(
             engineSessionId, SessionType.SSH, host, port, params, jumpHosts, entry.config?.engineId
         );
-        if (!isCurrentGeneration(sessionId, generation)) return discardStaleConnection(engineSessionId, dataSocket, session);
+        if (!SessionManager.isCurrent(sessionId, generation, "attach")) return discardStaleConnection(engineSessionId, dataSocket, session);
 
-        await SessionManager.initRecording(sessionId, organizationId);
+        await SessionManager.initRecording(sessionId, organizationId, { generation });
+        if (!SessionManager.isCurrent(sessionId, generation, "attach")) return discardStaleConnection(engineSessionId, dataSocket, session);
 
         dataSocket.on("data", (data) => SessionManager.appendLog(sessionId, data.toString()));
         bindDataSocketLifecycle(sessionId, generation, dataSocket, "SSH");
@@ -638,9 +646,10 @@ const createTelnetConnectionForSession = async (sessionId, entry, organizationId
     const dataSocket = await openEngineSession(
         engineSessionId, SessionType.Telnet, ip, port, {}, [], entry.config?.engineId
     );
-    if (!isCurrentGeneration(sessionId, generation)) return discardStaleConnection(engineSessionId, dataSocket, session);
+    if (!SessionManager.isCurrent(sessionId, generation, "attach")) return discardStaleConnection(engineSessionId, dataSocket, session);
 
-    await SessionManager.initRecording(sessionId, organizationId);
+    await SessionManager.initRecording(sessionId, organizationId, { generation });
+    if (!SessionManager.isCurrent(sessionId, generation, "attach")) return discardStaleConnection(engineSessionId, dataSocket, session);
 
     dataSocket.on("data", (data) => SessionManager.appendLog(sessionId, data.toString()));
     bindDataSocketLifecycle(sessionId, generation, dataSocket, "Telnet");
@@ -684,11 +693,12 @@ const createPveLxcConnectionForSession = async (sessionId, entry, organizationId
     const dataSocket = await openEngineSession(
         engineSessionId, SessionType.WebSocket, server.ip, Number(server.port) || 8006, params, [], entry.config?.engineId
     );
-    if (!isCurrentGeneration(sessionId, generation)) return discardStaleConnection(engineSessionId, dataSocket, session);
+    if (!SessionManager.isCurrent(sessionId, generation, "attach")) return discardStaleConnection(engineSessionId, dataSocket, session);
 
     dataSocket.write(`${server.username}:${vncTicket.ticket}\n`);
 
-    await SessionManager.initRecording(sessionId, organizationId);
+    await SessionManager.initRecording(sessionId, organizationId, { generation });
+    if (!SessionManager.isCurrent(sessionId, generation, "attach")) return discardStaleConnection(engineSessionId, dataSocket, session);
 
     const keepAliveTimer = setInterval(() => {
         if (!dataSocket.destroyed) dataSocket.write("2");
@@ -744,13 +754,9 @@ const prepareGuacamoleSession = async (sessionId, entry, identity, organizationI
     const dataSocket = await openEngineSession(
         engineSessionId, sessionType, host, port, params, jumpHosts, entry.config?.engineId
     );
-    if (!isCurrentGeneration(sessionId, generation)) return discardStaleConnection(engineSessionId, dataSocket, session);
+    if (!SessionManager.isCurrent(sessionId, generation, "attach")) return discardStaleConnection(engineSessionId, dataSocket, session);
 
     const recordingEnabled = await isRecordingEnabled(organizationId);
-
-    if (recordingEnabled && session.auditLogId) {
-        controlPlane.registerRecordingSession(engineSessionId, session.auditLogId);
-    }
 
     const masterClient = new GuacdClient({
         sessionId,
@@ -781,7 +787,11 @@ const prepareGuacamoleSession = async (sessionId, entry, identity, organizationI
     if (!attached) {
         masterClient.close();
         try { controlPlane.closeSession(engineSessionId); } catch {}
-        return { success: false, stale: true };
+        return STALE;
+    }
+
+    if (recordingEnabled && session.auditLogId) {
+        controlPlane.registerRecordingSession(engineSessionId, session.auditLogId);
     }
 
     SessionManager.setGuacReady(sessionId);

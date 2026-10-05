@@ -63,6 +63,16 @@ module.exports.create = (accountId, entryId, configuration, connectionReason = n
 
 module.exports.get = (sessionId) => sessions.get(sessionId) || null;
 
+module.exports.isCurrent = (sessionId, generation, action) => {
+    const session = module.exports.get(sessionId);
+    return Boolean(session) && isCurrentGeneration(session, generation, action);
+};
+
+module.exports.isEnding = (sessionId) => {
+    const session = module.exports.get(sessionId);
+    return Boolean(session?._removing || session?._closeGrace);
+};
+
 module.exports.getAll = (accountId, tabId = undefined, browserId = undefined) => {
     const results = [];
     for (const session of sessions.values()) {
@@ -150,12 +160,12 @@ module.exports.onMasterConnectionClosed = (sessionId, reason = "closed", { guacS
     }
 };
 
-module.exports.initRecording = async (sessionId, organizationId, cols = 80, rows = 24) => {
+module.exports.initRecording = async (sessionId, organizationId, { generation, cols = 80, rows = 24 } = {}) => {
     const session = module.exports.get(sessionId);
-    if (!session?.auditLogId) return false;
+    if (!session?.auditLogId || !isCurrentGeneration(session, generation, "initRecording")) return false;
 
     const enabled = await isRecordingEnabled(organizationId);
-    if (!enabled) return false;
+    if (!enabled || module.exports.get(sessionId) !== session || session._removing) return false;
 
     const castPath = getRecordingPath(session.auditLogId, "cast", false);
     const stream = fs.createWriteStream(castPath, { flags: "w" });
@@ -192,16 +202,22 @@ const markRecordingComplete = async (auditLogId, recordingType) => {
     await AuditLog.update({ details: { ...details, hasRecording: true, recordingType } }, { where: { id: auditLogId } });
 };
 
-const finalizeTerminalRecording = async (sessionId) => {
-    const rec = module.exports.get(sessionId)?.recording;
+const finalizeTerminalRecording = async (session) => {
+    const rec = session.recording;
     if (!rec?.stream) return;
     const { stream, path } = rec;
-    const auditLogId = module.exports.get(sessionId).auditLogId;
-    module.exports.get(sessionId).recording = null;
+    session.recording = null;
     stream.end();
     await new Promise(r => stream.on("finish", r));
-    await compressRecording(path, getRecordingPath(auditLogId, "cast", true));
-    await markRecordingComplete(auditLogId, "cast");
+    await compressRecording(path, getRecordingPath(session.auditLogId, "cast", true));
+    await markRecordingComplete(session.auditLogId, "cast");
+};
+
+// For a generation that lost the race after its recording started: teardown has already run (or will
+// run for a newer object), so nothing else would ever close this stream.
+module.exports.finalizeDetachedRecording = (session) => {
+    if (sessions.get(session.sessionId) === session) return Promise.resolve();
+    return finalizeTerminalRecording(session);
 };
 
 module.exports.getLogBuffer = (sessionId) => module.exports.get(sessionId)?.logBuffer || "";
@@ -531,7 +547,7 @@ const teardown = async (session, options) => {
         // failure — just after everything that does not depend on it already ran.
         let recordingError = null;
         if (session.recording) {
-            try { await finalizeTerminalRecording(sessionId); }
+            try { await finalizeTerminalRecording(session); }
             catch (err) { recordingError = err; }
         }
         if (session.masterConnection) {
