@@ -313,4 +313,15 @@ app.get("/oidc/callback", async (req, res) => {
     }
 });
 
+/**
+ * GET /auth/oidc/logout/callback
+ * @summary OIDC Logout Callback
+ * @description Returns the browser to Outpost after the identity provider completes logout.
+ * @tags Auth Providers
+ * @return {redirect} 302 - Redirects to the login screen
+ */
+app.get("/oidc/logout/callback", (req, res) => {
+    res.redirect("/");
+});
+
 module.exports = app;
