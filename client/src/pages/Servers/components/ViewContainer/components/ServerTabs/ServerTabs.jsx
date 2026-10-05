@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback, useContext } from "react";
 import { useTranslation } from "react-i18next";
 import Icon from "@/common/components/Icon";
 import { copyToClipboard } from "@/common/utils/clipboard.js";
-import { Shrink as IconShrink, X as IconX, Columns2 as IconColumns2, ChevronLeft as IconChevronLeft, ChevronRight as IconChevronRight, Moon as IconMoon, FolderOpen as IconFolderOpen, ExternalLink as IconExternalLink, Share2 as IconShare2, Link as IconLink, Pencil as IconPencil, Eye as IconEye, CircleX as IconCircleX, CopyPlus as IconCopyPlus, NotebookPen as IconNotebookPen, SquarePen as IconSquarePen } from "lucide-react";
+import { Shrink as IconShrink, X as IconX, Columns2 as IconColumns2, ChevronLeft as IconChevronLeft, ChevronRight as IconChevronRight, Moon as IconMoon, FolderOpen as IconFolderOpen, ExternalLink as IconExternalLink, Share2 as IconShare2, Link as IconLink, Pencil as IconPencil, Eye as IconEye, CircleX as IconCircleX, CopyPlus as IconCopyPlus, NotebookPen as IconNotebookPen, SquarePen as IconSquarePen, RotateCw as IconRotateCw, Unplug as IconUnplug } from "lucide-react";
 import { useDrag, useDrop } from "react-dnd";
 import TerminalActionsMenu from "../TerminalActionsMenu";
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator, useContextMenu } from "@/common/components/ContextMenu";
@@ -15,6 +15,7 @@ import { getBaseUrl } from "@/common/utils/ConnectionUtil.js";
 import { paneColorFor } from "../../utils/paneColors.js";
 import { buildTabLabel, idsNeedingNumber } from "@/common/utils/tabLabel.js";
 import RenameTabDialog from "./RenameTabDialog.jsx";
+import { isReconnectEligible } from "@/common/utils/ReconnectPolicy.js";
 import "./styles.sass";
 
 const DraggableTab = ({
@@ -36,6 +37,8 @@ const DraggableTab = ({
     liveTitle,
     numbered = false,
     context = null,
+    connectionState = null,
+    onReconnect,
 }) => {
     const contextMenu = useContextMenu();
     const { popOutSession } = useActiveSessions();
@@ -213,11 +216,18 @@ const DraggableTab = ({
                         <span className="tab-swatch" />
                     )}
                 </span>
-                <h2 title={tabTooltip} data-ui-id="UI-SERVERS-TAB-LABEL">
+                <h2 title={tabTooltip} data-ui-id="UI-SERVERS-TAB-LABEL" className={connectionState ? "is-disconnected" : undefined}>
                     <span className="tab-name">{tabLabel.name}</span>
                     {tabLabel.kind && <span className="tab-kind">{tabLabel.kind}</span>}
                     {tabLabel.number && <span className="tab-number">({tabLabel.number})</span>}
                 </h2>
+                {connectionState && (
+                    <span className="tab-connection" data-ui-id="UI-SERVERS-TAB-CONNECTION" data-ui-state={connectionState}
+                          role="img"
+                          aria-label={t(connectionState === "loading" ? "servers.tabs.connection.reconnecting" : "servers.tabs.connection.disconnected")}>
+                        <Icon icon={connectionState === "loading" ? IconRotateCw : IconUnplug} spin={connectionState === "loading"} />
+                    </span>
+                )}
                 <AvatarStack className="tab-participants" users={otherParticipants} max={2}
                              getKey={participant => participant.viewerId} />
                 <div className="tab-actions">
@@ -233,6 +243,17 @@ const DraggableTab = ({
                 onClose={contextMenu.close}
                 trigger={contextMenu.triggerRef}
             >
+                {connectionState && onReconnect && isReconnectEligible(session) && (
+                    <>
+                        <ContextMenuItem
+                            icon={IconRotateCw}
+                            label={t("servers.tabs.contextMenu.reconnect")}
+                            onClick={() => onReconnect(session.id)}
+                            disabled={connectionState === "loading"}
+                        />
+                        <ContextMenuSeparator />
+                    </>
+                )}
                 {/* Unconditional, unlike every item below it: a name has to find its way back to
                     every tab kind on reload/rejoin, joined sessions included - copying canDuplicate's
                     !isLocal && !isJoined guard here would silently take that away from exactly the
@@ -346,6 +367,9 @@ export const ServerTabs = ({
     onFullscreenToggle,
     tabIdentities = {},
     sessionContext = {},
+    connectionStates = {},
+    onReconnect,
+    reconnectable = {},
 }) => {
 
     const { t } = useTranslation();
@@ -483,7 +507,9 @@ export const ServerTabs = ({
                                 identity={tabIdentities[session.id]}
                                 numbered={numberedIds.has(session.id)}
                                 context={sessionContext[session.id] || null}
-                                liveTitle={liveTitles[session.id]} />
+                                liveTitle={liveTitles[session.id]}
+                                connectionState={connectionStates[session.id] || null}
+                                onReconnect={reconnectable[session.id] ? onReconnect : undefined} />
                         );
                     })}
                     {/* The artboard's .tab-add: opening another session is the one action the

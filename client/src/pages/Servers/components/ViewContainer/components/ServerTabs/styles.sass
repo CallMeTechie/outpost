@@ -1,4 +1,5 @@
 @use "@/common/styles/colors"
+@use "@/common/styles/tokens"
 @use "@/common/styles/breakpoints"
 
 .server-tabs
@@ -315,6 +316,20 @@
 
       .tab-participants
         margin-right: 0.25rem
+
+      h2.is-disconnected .tab-name
+        color: colors.$subtext
+
+      .tab-connection
+        display: inline-flex
+        align-items: center
+        flex: none
+        margin-right: tokens.$space-1
+        color: colors.$subtext
+
+        svg
+          width: 0.875rem
+          height: 0.875rem
 
       .tab-actions
         display: flex

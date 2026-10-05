@@ -186,7 +186,6 @@
       "qrCodeExpired": "QR code expired. Please try again.",
       "connection": {
         "title": "Connection failed",
-        "close": "Close tab",
         "hostUnreachable": "Remote host unreachable",
         "refused": "Connection refused by remote host",
         "timeout": "Connection timed out",
@@ -199,7 +198,19 @@
         "scriptError": "Script connection error occurred",
         "rdpSessionConflict": "The session was disconnected by the server because another connection was opened.",
         "rdpSessionTimeout": "The RDP session was disconnected because its session time limit was reached.",
-        "rdpSessionClosed": "The RDP session was ended by the remote server or an administrator."
+        "rdpSessionClosed": "The RDP session was ended by the remote server or an administrator.",
+        "connectionLost": "The connection to the host was interrupted.",
+        "engineDisconnected": "The connection engine was restarted or is unreachable.",
+        "hostKey": "The host key of the server does not match.",
+        "sessionEnded": "The session was ended.",
+        "accessRevoked": "You no longer have access to this server or identity.",
+        "lostTitle": "Connection lost",
+        "expiredTitle": "Session expired",
+        "expired": "Open the server again.",
+        "reconnect": "Reconnect",
+        "reconnectNow": "Connect now",
+        "reconnecting": "Reconnecting …",
+        "countdown": "Retrying in {{seconds}} s · Attempt {{attempt}}/{{max}}"
       }
     },
     "messages": {
@@ -991,6 +1002,7 @@
         "description": "Control how keyboard shortcuts behave inside the terminal.",
         "smartCopyPaste": "Smart Ctrl+C",
         "passwordPromptDetection": "Password input detection",
+        "autoReconnect": "Reconnect automatically",
         "enabled": "Enabled",
         "disabled": "Disabled",
         "syncEnabled": "Input settings will now sync to your account",
@@ -1661,6 +1673,10 @@
     },
     "tabs": {
       "contextTooltip": "Context: {{tool}} at {{percent}}%",
+      "connection": {
+        "disconnected": "Disconnected",
+        "reconnecting": "Reconnecting"
+      },
       "newSession": "New session",
       "contextMenu": {
         "popOut": "Pop Out",
@@ -1674,7 +1690,8 @@
         "duplicate": "Duplicate",
         "openNotes": "Open Notes",
         "hibernateSession": "Hibernate",
-        "closeSession": "Disconnect"
+        "closeSession": "Disconnect",
+        "reconnect": "Reconnect"
       },
       "renameDialog": {
         "title": "Rename Tab",
