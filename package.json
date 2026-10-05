@@ -1,6 +1,6 @@
 {
   "name": "outpost",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "main": "server/index.js",
   "bin": {
     "ntctl": "server/cli/index.js"
