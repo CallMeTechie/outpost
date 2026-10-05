@@ -2101,7 +2101,9 @@
         "closeSearch": "Close search",
         "refresh": "Refresh",
         "switchTo": "Switch to {{view}}",
-        "favorites": "Favorites"
+        "favorites": "Favorites",
+        "createFile": "Create file",
+        "createFolder": "Create folder"
       },
       "viewMode": {
         "details": "Details",

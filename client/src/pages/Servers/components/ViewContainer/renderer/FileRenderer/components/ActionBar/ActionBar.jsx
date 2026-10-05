@@ -434,8 +434,8 @@ export const ActionBar = ({
                     <Icon icon={IconFileUp} onClick={uploadFile} title={t("servers.fileManager.actionBar.uploadFile")} />
                     <Icon icon={IconFolderUp} onClick={uploadFolder} title={t("servers.fileManager.actionBar.uploadFolder")} />
                 </>}
-                {capabilities.nativeFs && <Icon icon={IconFilePlus} onClick={createFile} />}
-                <Icon icon={IconFolderPlus} onClick={createFolder} />
+                {capabilities.nativeFs && <Icon icon={IconFilePlus} onClick={createFile} title={t("servers.fileManager.actionBar.createFile")} />}
+                <Icon icon={IconFolderPlus} onClick={createFolder} title={t("servers.fileManager.actionBar.createFolder")} />
             </div>
 
             <ContextMenu isOpen={dropMenu.isOpen} position={dropMenu.position} onClose={() => { dropMenu.close(); setPendingDrop(null); }}>

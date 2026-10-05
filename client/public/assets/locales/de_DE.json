@@ -2038,7 +2038,9 @@
         "search": "Durchsuche Dateien",
         "closeSearch": "Suchfeld schließen",
         "refresh": "Aktualisieren",
-        "switchTo": "Zu {{view}} wechseln"
+        "switchTo": "Zu {{view}} wechseln",
+        "createFile": "Datei erstellen",
+        "createFolder": "Ordner erstellen"
       },
       "viewMode": {
         "details": "Details",

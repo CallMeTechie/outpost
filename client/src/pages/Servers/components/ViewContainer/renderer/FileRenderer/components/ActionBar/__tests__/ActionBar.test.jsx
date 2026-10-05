@@ -23,3 +23,10 @@ test("a long path is shortened to first and last once the width is measured", ()
 
     expect(breadcrumbs(container)).toEqual(["home", "...", "src"]);
 });
+
+test("the create actions are named", () => {
+    const { getByTitle } = renderBar("/home");
+
+    expect(getByTitle("Create file")).toBeTruthy();
+    expect(getByTitle("Create folder")).toBeTruthy();
+});
