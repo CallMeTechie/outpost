@@ -2,7 +2,7 @@
 <html lang="de" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<title>outpost — Mockups (Revision 3)</title>
+<title>outpost — Mockups (Revision 6)</title>
 <link rel="stylesheet" href="./tokens.css">
 <style>
 .mb-page { font: var(--type-body, 500 0.875rem/1.45 system-ui, sans-serif); color: var(--text, #eee); background: var(--background, #111); margin: 0; padding: var(--space-8, 2rem); }
@@ -390,6 +390,22 @@
 #ab-ui-servers .tabdemo .ctxbar{ position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--gray); }
 #ab-ui-servers .tabdemo .ctxbar i{ display: block; height: 100%; }
 #ab-ui-servers .ctxnote{ margin-top: var(--space-2); font: var(--type-caption); color: var(--subtext); }
+#ab-ui-servers .errcard{ flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2); padding: var(--space-6); text-align: center; background: var(--terminal); }
+#ab-ui-servers .errcard .ico{ width: 2rem; height: 2rem; color: var(--error); }
+#ab-ui-servers .errcard .ttl{ font: var(--type-heading); color: var(--text); margin: 0; }
+#ab-ui-servers .errcard .txt{ font: var(--type-body); color: var(--text); margin: 0; }
+#ab-ui-servers .errcard .auto{ font: var(--type-caption); color: var(--subtext); margin: var(--space-2) 0 0; font-variant-numeric: tabular-nums; }
+#ab-ui-servers .errcard .row{ display: flex; gap: var(--space-2); margin-top: var(--space-3); }
+#ab-ui-servers .errcard .btn.primary{ background: var(--primary); border-color: var(--primary); }
+#ab-ui-servers .errcard .btn.disabled{ opacity: 0.5; }
+#ab-ui-servers .tabdemo .tab .lbl{ display: inline-flex; align-items: center; gap: var(--space-1); }
+#ab-ui-servers .tabdemo .tab .lbl.muted{ color: var(--subtext); }
+#ab-ui-servers .tabdemo .tab .lbl svg{ width: 1em; height: 1em; flex: none; }
+#ab-ui-servers .tabdemo .tab .lbl svg.spin{ animation: conn-spin 1s linear infinite; }
+@keyframes conn-spin{ to { transform: rotate(360deg); }
+ }
+@media (prefers-reduced-motion: reduce){#ab-ui-servers .tabdemo .tab .lbl svg.spin{ animation: none; }
+ }
 
 </style>
 <style>
@@ -519,7 +535,7 @@
 </head>
 <body class="mb-page">
 <h1>outpost — Mockups</h1>
-<p class="sub">Manifest-Revision 3 · 2026-09-08 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
+<p class="sub">Manifest-Revision 6 · 2026-10-05 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
 <ul class="mb-toc">
 <li><a href="#UI-SHELL">Rahmen — Navigation</a> <code>UI-SHELL</code></li>
 <li><a href="#UI-SERVERS">Servers — Arbeitsfläche</a> <code>UI-SERVERS</code></li>
@@ -903,11 +919,13 @@
 <tr><td><code>UI-SERVERS-LIST</code></td><td>Server</td><td>Die Verbindungsziele des Nutzers, gruppiert nach Ordner und Organisation, plus verknüpfte OneDrive-Konten. <b>Nicht:</b> session, tab, identity, snippet.</td><td><code>default · loading · empty · error · selected</code></td></tr>
 <tr><td><code>UI-SERVERS-SEARCH</code></td><td>Suche</td><td>Filtert die Server-Liste nach Name, IP oder Tag, ohne die Gruppierung aufzulösen.</td><td><code>default · empty</code></td></tr>
 <tr><td><code>UI-SERVERS-LIST-MENU</code></td><td>Kontextmenü Server</td><td>Zweitweg für Aktionen auf einem Eintrag — Verbinden, SFTP öffnen, Notizen, Bearbeiten, Duplizieren, Session beitreten, Löschen. Port weiterleiten erscheint nur in der Desktop-App (Tauri), im Web-Build nie. <b>Nicht:</b> primary_navigation.</td><td><code>default · disabled</code></td></tr>
-<tr><td><code>UI-SERVERS-TABS</code></td><td>Sessions</td><td>Die aktuell offenen Sessions als Tabs, jede mit ihrer Split-View-Zuordnungsfarbe; Kontextmenü mit Umbenennen, Duplizieren, Teilen, Schlafen legen, Ausklinken, Schließen. <b>Nicht:</b> server_entry, folder.</td><td><code>default · selected · empty</code></td></tr>
+<tr><td><code>UI-SERVERS-TABS</code></td><td>Sessions</td><td>Die aktuell offenen Sessions als Tabs, jede mit ihrer Split-View-Zuordnungsfarbe; Kontextmenü mit Umbenennen, Duplizieren, Teilen, Schlafen legen, Ausklinken, Schließen — bei einer getrennten Session zusätzlich Neu verbinden, an erster Stelle. <b>Nicht:</b> server_entry, folder.</td><td><code>default · selected · empty</code></td></tr>
 <tr><td><code>UI-SERVERS-TAB-MARKER</code></td><td>Zustand eines Tabs</td><td>Der Platz links im Tab. Im Ruhezustand ein Punkt in der Farbe des Split-Fensters, zu dem der Tab gehört. Läuft ein Befehl, der Prozente ausgibt, steht dort stattdessen ein Ring, der sich im Uhrzeigersinn füllt. <b>Nicht:</b> connection_state, session.</td><td><code>default · loading</code></td></tr>
 <tr><td><code>UI-SERVERS-TAB-CONTEXT</code></td><td>Kontextfüllung</td><td>Der Streifen am oberen Rand eines Tabs. Ohne Agenten die Farbe des Split-Fensters über die volle Breite; meldet ein Agent seine Kontextfüllung, wird derselbe Streifen zur Spur, in der ein Balken dieser Länge wächst -- in derselben Farbe, aber höher, damit „kein Agent" und „randvoll" sich unterscheiden. <b>Nicht:</b> session_activity, connection_state, pane_color.</td><td><code>default · loading</code></td></tr>
 <tr><td><code>UI-SERVERS-TAB-LABEL</code></td><td>Beschriftung eines Tabs</td><td>Der Text eines Tabs. Name zuerst, dann die Art in Klammern, zuletzt die Nummer. Die Nummer unterscheidet Tabs, die sonst gleich hießen, und erscheint nur, solange in der Leiste tatsächlich ein zweiter solcher Tab steht. <b>Nicht:</b> server_entry, hostname.</td><td><code>default · selected</code></td></tr>
+<tr><td><code>UI-SERVERS-TAB-CONNECTION</code></td><td>Verbindungszustand eines Tabs</td><td>Zeigt am Label, dass die Verbindung einer Session weg ist oder gerade neu aufgebaut wird: das Label wird in --subtext gedämpft, dahinter steht ein kleines Icon — Unplug bei getrennt, ein sich drehendes RotateCw beim Neuverbinden. Im Normalzustand ist nichts zu sehen. Marker und Kontextstreifen bleiben unberührt; ein Ring im Marker heißt weiterhin Fortschritt, nicht Verbindung. <b>Nicht:</b> session_activity, agent_context, pane_color.</td><td><code>default · loading · error</code></td></tr>
 <tr><td><code>UI-SERVERS-VIEW</code></td><td>Arbeitsfläche</td><td>Der Inhalt der aktiven Session, einzeln oder als Split; Terminal und Datei-Pane nebeneinander sind der Kernfall. <b>Nicht:</b> server_entry.</td><td><code>default · loading · error</code></td></tr>
+<tr><td><code>UI-SERVERS-VIEW-ERROR</code></td><td>Verbindungsfehler</td><td>Die Karte, die in der Arbeitsfläche an die Stelle einer abgebrochenen Session tritt: Icon, Titel, Fehlertext im Klartext, darunter eine Knopfzeile. Primär Neu verbinden (während der Automatik Jetzt verbinden), sekundär Schließen. Läuft die Automatik, steht über den Knöpfen der Countdown mit Versuchszähler. Neu verbinden baut dieselbe Session im selben Tab und an derselben Stelle im Layout wieder auf; es öffnet keinen neuen Tab. <b>Nicht:</b> server_entry, server_dialog.</td><td><code>default · countdown · loading · final · expired</code></td></tr>
 <tr><td><code>UI-SERVERS-FOCUS</code></td><td>Fokus-Modus</td><td>Blendet Server-Liste und Tab-Leiste aus, nur das aktive Pane bleibt; Taste Ctrl+Shift+F, greift automatisch unter den Mindestbreiten (Terminal 40 rem, Datei-Pane 22 rem). <b>Nicht:</b> fullscreen_browser.</td><td><code>default · selected</code></td></tr>
 <tr><td><code>UI-SERVERS-KEYBAR</code></td><td>Tastenleiste</td><td>Terminal-Sondertasten (Esc, Tab, Ctrl, Alt, Shift, Pfeile, Home, Ende, Bild auf/ab sowie die auf Touch-Tastaturen vergrabenen Zeichen | ~ - /), und nur wenn das aktive Pane ein Terminal ist. Sichtbar nach der Einstellung terminal.keyBar (auto/always/never); auto heißt "es gibt gar keinen präzisen Zeiger" — die Frage ist any-pointer, nicht pointer, denn ein Tablet meldet einen groben Primärzeiger auch mit angeschlossener Maus, und wer eine Maus hat, braucht keine Tastenleiste. Sie sitzt über der Arbeitsfläche, nicht darunter: unterhalb schneidet eine Kette aus vier height-100%-Containern sie ab.</td><td><code>default · disabled</code></td></tr>
 <tr><td><code>UI-SERVERS-ACTIONS</code></td><td>Aktionen</td><td>Werkzeuge für das aktive Pane: Snippets, Broadcast an alle Panes (nur bei geteilter Ansicht bedienbar), Vollbild. Tastenkürzel nur bei Guacamole-Sitzungen, wo sie hingehören. Teilen, Ausklinken und Schließen liegen im Tab-Kontextmenü (UI-SERVERS-TABS), nicht hier — die Trennung ist beabsichtigt: hier Werkzeuge, dort Sitzungsverwaltung.</td><td><code>default · disabled</code></td></tr>
@@ -1239,6 +1257,31 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 		</div>
 
 		<div class="wide">
+			<div class="gallery-caption">UI-SERVERS-TABS · nav · Sessions — Kontextmenü einer getrennten Session</div>
+			<div data-ui-id="UI-SERVERS-TABS" aria-label="Sessions">
+				<section data-ui-state="selected" style="height: 19rem;">
+					<div class="tabs" style="height: var(--title-bar-height);">
+						<div class="tabstrip">
+							<div class="tab active" style="--pane:#2A72C9"><span class="stripe"></span><span class="swatch"></span><span class="lbl muted" style="display:inline-flex;align-items:center;gap:var(--space-1);color:var(--subtext)">nas<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 5 3-3"/><path d="m2 22 3-3"/><path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z"/><path d="M7.5 13.5 10 11"/><path d="M10.5 16.5 13 14"/><path d="m12 6 6 6 2.3-2.3a2.4 2.4 0 0 0 0-3.4l-2.6-2.6a2.4 2.4 0 0 0-3.4 0Z"/></svg></span><span class="x">×</span></div>
+							<div class="tab" style="--pane:#A8741A"><span class="stripe"></span><span class="swatch"></span>pihole <span class="kind">(SFTP)</span><span class="x">×</span></div>
+							<div class="tab-add">+</div>
+						</div>
+						<div class="menu ctx-menu" role="menu" style="left: 2rem;">
+							<div class="item hover">Neu verbinden</div>
+							<div class="item">Umbenennen<kbd>F2</kbd></div>
+							<div class="item">Duplizieren</div>
+							<div class="item">Teilen</div>
+							<div class="item">Schlafen legen</div>
+							<div class="item">Ausklinken</div>
+							<div class="sep"></div>
+							<div class="item">Schließen</div>
+						</div>
+					</div>
+				</section>
+			</div>
+		</div>
+
+		<div class="wide">
 			<div class="gallery-caption">UI-SERVERS-VIEW · region · Arbeitsfläche</div>
 	
 
@@ -1314,6 +1357,79 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 			</div>
 		</div>
 
+		<div data-ui-id="UI-SERVERS-TAB-CONNECTION" aria-label="Verbindungszustand eines Tabs">
+			<div class="gallery-caption">UI-SERVERS-TAB-CONNECTION · status · Verbindungszustand eines Tabs</div>
+			<section data-ui-state="default">
+				<p>Die Verbindung steht — kein Zusatz am Label.</p>
+					<div class="tabdemo"><div class="tab active"><span class="mark"><i class="dot" style="background:#2A72C9"></i></span><span class="lbl">nas</span></div></div>
+			</section>
+			<section data-ui-state="loading">
+				<p>Neuaufbau läuft: Label gedämpft, RotateCw dreht sich (nicht bei reduzierter Bewegung).</p>
+					<div class="tabdemo"><div class="tab active"><span class="mark"><i class="dot" style="background:#2A72C9"></i></span><span class="lbl muted">nas<svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></span></div></div>
+			</section>
+			<section data-ui-state="error">
+				<p>Verbindung weg: Label gedämpft, Unplug dahinter. Der Marker bleibt unberührt.</p>
+					<div class="tabdemo"><div class="tab active"><span class="mark"><i class="dot" style="background:#2A72C9"></i></span><span class="lbl muted">nas<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 5 3-3"/><path d="m2 22 3-3"/><path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z"/><path d="M7.5 13.5 10 11"/><path d="M10.5 16.5 13 14"/><path d="m12 6 6 6 2.3-2.3a2.4 2.4 0 0 0 0-3.4l-2.6-2.6a2.4 2.4 0 0 0-3.4 0Z"/></svg></span></div></div>
+			</section>
+		</div>
+
+		<div class="wide">
+			<div class="gallery-caption">UI-SERVERS-VIEW-ERROR · status · Verbindungsfehler</div>
+			<div data-ui-id="UI-SERVERS-VIEW-ERROR" aria-label="Verbindungsfehler">
+				<section data-ui-state="default" style="height: 15rem; display:flex;">
+					<div class="pane active-pane" style="--pane:#2A72C9; flex:1; display:flex;">
+						<div class="errcard" role="alert">
+						<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+						<h3 class="ttl">Verbindung verloren</h3>
+						<p class="txt">Die Verbindung zu nas wurde unterbrochen.</p>
+						<div class="row"><span class="btn primary">Neu verbinden</span><span class="btn">Schließen</span></div>
+					</div>
+				</div>
+			</section>
+				<section data-ui-state="countdown" style="height: 15rem; display:flex;">
+					<div class="pane active-pane" style="--pane:#2A72C9; flex:1; display:flex;">
+						<div class="errcard" role="alert">
+						<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+						<h3 class="ttl">Verbindung verloren</h3>
+						<p class="txt">Die Verbindung zu nas wurde unterbrochen.</p>
+						<p class="auto">Neuer Versuch in 8 s · Versuch 2/5</p>
+						<div class="row"><span class="btn primary">Jetzt verbinden</span><span class="btn">Schließen</span></div>
+					</div>
+				</div>
+			</section>
+				<section data-ui-state="loading" style="height: 15rem; display:flex;">
+					<div class="pane active-pane" style="--pane:#2A72C9; flex:1; display:flex;">
+						<div class="errcard" role="alert">
+						<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+						<h3 class="ttl">Verbindung verloren</h3>
+						<p class="txt">Verbinde neu …</p>
+						<div class="row"><span class="btn primary disabled" aria-disabled="true">Neu verbinden</span><span class="btn">Schließen</span></div>
+					</div>
+				</div>
+			</section>
+				<section data-ui-state="final" style="height: 15rem; display:flex;">
+					<div class="pane active-pane" style="--pane:#2A72C9; flex:1; display:flex;">
+						<div class="errcard" role="alert">
+						<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+						<h3 class="ttl">Anmeldung abgelehnt</h3>
+						<p class="txt">Zugangsdaten prüfen, dann neu verbinden.</p>
+						<div class="row"><span class="btn primary">Neu verbinden</span><span class="btn">Schließen</span></div>
+					</div>
+				</div>
+			</section>
+				<section data-ui-state="expired" style="height: 15rem; display:flex;">
+					<div class="pane active-pane" style="--pane:#2A72C9; flex:1; display:flex;">
+						<div class="errcard" role="alert">
+						<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+						<h3 class="ttl">Sitzung abgelaufen</h3>
+						<p class="txt">Öffne den Server neu.</p>
+						<div class="row"><span class="btn">Schließen</span></div>
+					</div>
+				</div>
+			</section>
+			</div>
+		</div>
+
 		<div class="wide">
 			<div class="gallery-caption">UI-SERVERS-WELCOME · empty · Willkommen</div>
 			<div data-ui-id="UI-SERVERS-WELCOME" aria-label="Willkommen">
@@ -1351,7 +1467,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <p class="meta">Artboard: <a href="./ui-files.html">ui-files.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-files.md</code></p>
 <table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
 <tr><td><code>UI-FILES-ACTIONBAR</code></td><td>Aktionsleiste</td><td>Bestand: Zurück, Vorwärts, Hoch, die Adresszeile, und rechts die Icon-Gruppe Suchen · Ansicht · Neu laden · Datei hochladen · Ordner hochladen · Neue Datei · Neuer Ordner. Diese Runde setzt genau ein Icon hinzu, den Stern, links neben der Lupe — die Reihenfolge der übrigen Icons bleibt unangetastet.</td><td><code>default</code></td></tr>
-<tr><td><code>UI-FILES-ADDRESS</code></td><td>Adresszeile</td><td>Der Pfad des gerade angezeigten Verzeichnisses als anklickbare Brotkrumen. Beim Öffnen einer Datei-Sitzung steht hier das Verzeichnis, in dem dieses Konto auf diesem Server zuletzt war. Gibt es keines, das Home-Verzeichnis des SSH-Benutzers — bei root also /root, nicht /. Ist der gemerkte Pfad verschwunden oder nicht lesbar, der nächste vorhandene übergeordnete Ordner; im Grenzfall das Home, zuletzt /. <b>Nicht:</b> filesystem_root, home_directory, bookmark_path, transfer_destination.</td><td><code>default · loading · partial</code></td></tr>
+<tr><td><code>UI-FILES-ADDRESS</code></td><td>Adresszeile</td><td>Der Pfad des gerade angezeigten Verzeichnisses als anklickbare Brotkrumen. Beim Öffnen einer Datei-Sitzung steht hier das Verzeichnis, in dem dieses Konto auf diesem Server mit diesem Benutzer zuletzt war. Gibt es keines, das Startverzeichnis des verbundenen Benutzers — für root also /root, nicht /; über FTP das PWD der Verbindung. Ist der gemerkte Pfad verschwunden oder nicht lesbar, der nächste vorhandene übergeordnete Ordner; im Grenzfall das Startverzeichnis, zuletzt /. <b>Nicht:</b> filesystem_root, home_directory, bookmark_path, transfer_destination.</td><td><code>default · loading · partial</code></td></tr>
 <tr><td><code>UI-FILES-FAVORITES-TOGGLE</code></td><td>Favoriten</td><td>Blendet die Favoritenleiste ein und aus — ein Stern in der Icon-Gruppe der Aktionsleiste, unmittelbar links neben der Lupe. Er merkt sich nichts und legt nichts an: er zeigt nur den Streifen. Solange der Streifen offen ist, ist der Stern gefüllt und trägt die Akzentfarbe, wie der Suchen-Button es im Bestand schon tut. Der Zustand gilt kontoweit, nicht je Sitzung, und überlebt das Neuladen. Taste Strg+B. <b>Nicht:</b> add_bookmark, mark_folder_as_favorite, search, filter, rating.</td><td><code>default · selected</code></td></tr>
 <tr><td><code>UI-FILES-FAVORITES</code></td><td>Favoriten</td><td>Die von diesem Konto auf diesem Server gemerkten Verzeichnisse, als eine Zeile Chips mit Ordner-Icon und Ordnernamen; der volle Pfad steht im Tooltip. Ein Klick springt in den Ordner. Der Chip des gerade angezeigten Verzeichnisses ist in der Akzentfarbe hinterlegt. Die Zeile scrollt nicht und bricht nicht um; was nicht passt, geht ins Überlauf-Menü. Umsortiert wird per Ziehen oder mit Umschalt+Pfeil auf dem fokussierten Chip. <b>Nicht:</b> navigation_history, recent_directory, open_tab, server_entry, tag, saved_search.</td><td><code>default · selected · partial · dragging · empty</code></td></tr>
 <tr><td><code>UI-FILES-FAVORITES-OVERFLOW</code></td><td>Weitere Favoriten</td><td>Ein Chevron am rechten Ende der Zeile, das die verdeckten Bookmarks als Menü öffnet — in derselben Reihenfolge wie im Balken, mit Ordner-Icon und Namen. Es erscheint nur, wenn wirklich etwas verdeckt ist, und verschwindet, sobald die Kachel breit genug wird. <b>Nicht:</b> more_actions_menu, chip_context_menu, pagination, sort_menu.</td><td><code>default · selected</code></td></tr>

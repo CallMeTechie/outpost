@@ -235,6 +235,22 @@
 	.tabdemo .ctxbar { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--gray); }
 	.tabdemo .ctxbar i { display: block; height: 100%; }
 	.ctxnote { margin-top: var(--space-2); font: var(--type-caption); color: var(--subtext); }
+
+	/* UI-SERVERS-VIEW-ERROR, UI-SERVERS-TAB-CONNECTION */
+	.errcard { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2); padding: var(--space-6); text-align: center; background: var(--terminal); }
+	.errcard .ico { width: 2rem; height: 2rem; color: var(--error); }
+	.errcard .ttl { font: var(--type-heading); color: var(--text); margin: 0; }
+	.errcard .txt { font: var(--type-body); color: var(--text); margin: 0; }
+	.errcard .auto { font: var(--type-caption); color: var(--subtext); margin: var(--space-2) 0 0; font-variant-numeric: tabular-nums; }
+	.errcard .row { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
+	.errcard .btn.primary { background: var(--primary); border-color: var(--primary); }
+	.errcard .btn.disabled { opacity: 0.5; }
+	.tabdemo .tab .lbl { display: inline-flex; align-items: center; gap: var(--space-1); }
+	.tabdemo .tab .lbl.muted { color: var(--subtext); }
+	.tabdemo .tab .lbl svg { width: 1em; height: 1em; flex: none; }
+	.tabdemo .tab .lbl svg.spin { animation: conn-spin 1s linear infinite; }
+	@keyframes conn-spin { to { transform: rotate(360deg); } }
+	@media (prefers-reduced-motion: reduce) { .tabdemo .tab .lbl svg.spin { animation: none; } }
 </style>
 </head>
 <body>
@@ -562,6 +578,31 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 		</div>
 
 		<div class="wide">
+			<div class="gallery-caption">UI-SERVERS-TABS · nav · Sessions — Kontextmenü einer getrennten Session</div>
+			<div data-ui-id="UI-SERVERS-TABS" aria-label="Sessions">
+				<section data-ui-state="selected" style="height: 19rem;">
+					<div class="tabs" style="height: var(--title-bar-height);">
+						<div class="tabstrip">
+							<div class="tab active" style="--pane:#2A72C9"><span class="stripe"></span><span class="swatch"></span><span class="lbl muted" style="display:inline-flex;align-items:center;gap:var(--space-1);color:var(--subtext)">nas<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 5 3-3"/><path d="m2 22 3-3"/><path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z"/><path d="M7.5 13.5 10 11"/><path d="M10.5 16.5 13 14"/><path d="m12 6 6 6 2.3-2.3a2.4 2.4 0 0 0 0-3.4l-2.6-2.6a2.4 2.4 0 0 0-3.4 0Z"/></svg></span><span class="x">×</span></div>
+							<div class="tab" style="--pane:#A8741A"><span class="stripe"></span><span class="swatch"></span>pihole <span class="kind">(SFTP)</span><span class="x">×</span></div>
+							<div class="tab-add">+</div>
+						</div>
+						<div class="menu ctx-menu" role="menu" style="left: 2rem;">
+							<div class="item hover">Neu verbinden</div>
+							<div class="item">Umbenennen<kbd>F2</kbd></div>
+							<div class="item">Duplizieren</div>
+							<div class="item">Teilen</div>
+							<div class="item">Schlafen legen</div>
+							<div class="item">Ausklinken</div>
+							<div class="sep"></div>
+							<div class="item">Schließen</div>
+						</div>
+					</div>
+				</section>
+			</div>
+		</div>
+
+		<div class="wide">
 			<div class="gallery-caption">UI-SERVERS-VIEW · region · Arbeitsfläche</div>
 	
 
@@ -634,6 +675,79 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 						</div>
 					</div>
 				</section>
+			</div>
+		</div>
+
+		<div data-ui-id="UI-SERVERS-TAB-CONNECTION" aria-label="Verbindungszustand eines Tabs">
+			<div class="gallery-caption">UI-SERVERS-TAB-CONNECTION · status · Verbindungszustand eines Tabs</div>
+			<section data-ui-state="default">
+				<p>Die Verbindung steht — kein Zusatz am Label.</p>
+					<div class="tabdemo"><div class="tab active"><span class="mark"><i class="dot" style="background:#2A72C9"></i></span><span class="lbl">nas</span></div></div>
+			</section>
+			<section data-ui-state="loading">
+				<p>Neuaufbau läuft: Label gedämpft, RotateCw dreht sich (nicht bei reduzierter Bewegung).</p>
+					<div class="tabdemo"><div class="tab active"><span class="mark"><i class="dot" style="background:#2A72C9"></i></span><span class="lbl muted">nas<svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></span></div></div>
+			</section>
+			<section data-ui-state="error">
+				<p>Verbindung weg: Label gedämpft, Unplug dahinter. Der Marker bleibt unberührt.</p>
+					<div class="tabdemo"><div class="tab active"><span class="mark"><i class="dot" style="background:#2A72C9"></i></span><span class="lbl muted">nas<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 5 3-3"/><path d="m2 22 3-3"/><path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z"/><path d="M7.5 13.5 10 11"/><path d="M10.5 16.5 13 14"/><path d="m12 6 6 6 2.3-2.3a2.4 2.4 0 0 0 0-3.4l-2.6-2.6a2.4 2.4 0 0 0-3.4 0Z"/></svg></span></div></div>
+			</section>
+		</div>
+
+		<div class="wide">
+			<div class="gallery-caption">UI-SERVERS-VIEW-ERROR · status · Verbindungsfehler</div>
+			<div data-ui-id="UI-SERVERS-VIEW-ERROR" aria-label="Verbindungsfehler">
+				<section data-ui-state="default" style="height: 15rem; display:flex;">
+					<div class="pane active-pane" style="--pane:#2A72C9; flex:1; display:flex;">
+						<div class="errcard" role="alert">
+						<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+						<h3 class="ttl">Verbindung verloren</h3>
+						<p class="txt">Die Verbindung zu nas wurde unterbrochen.</p>
+						<div class="row"><span class="btn primary">Neu verbinden</span><span class="btn">Schließen</span></div>
+					</div>
+				</div>
+			</section>
+				<section data-ui-state="countdown" style="height: 15rem; display:flex;">
+					<div class="pane active-pane" style="--pane:#2A72C9; flex:1; display:flex;">
+						<div class="errcard" role="alert">
+						<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+						<h3 class="ttl">Verbindung verloren</h3>
+						<p class="txt">Die Verbindung zu nas wurde unterbrochen.</p>
+						<p class="auto">Neuer Versuch in 8 s · Versuch 2/5</p>
+						<div class="row"><span class="btn primary">Jetzt verbinden</span><span class="btn">Schließen</span></div>
+					</div>
+				</div>
+			</section>
+				<section data-ui-state="loading" style="height: 15rem; display:flex;">
+					<div class="pane active-pane" style="--pane:#2A72C9; flex:1; display:flex;">
+						<div class="errcard" role="alert">
+						<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+						<h3 class="ttl">Verbindung verloren</h3>
+						<p class="txt">Verbinde neu …</p>
+						<div class="row"><span class="btn primary disabled" aria-disabled="true">Neu verbinden</span><span class="btn">Schließen</span></div>
+					</div>
+				</div>
+			</section>
+				<section data-ui-state="final" style="height: 15rem; display:flex;">
+					<div class="pane active-pane" style="--pane:#2A72C9; flex:1; display:flex;">
+						<div class="errcard" role="alert">
+						<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+						<h3 class="ttl">Anmeldung abgelehnt</h3>
+						<p class="txt">Zugangsdaten prüfen, dann neu verbinden.</p>
+						<div class="row"><span class="btn primary">Neu verbinden</span><span class="btn">Schließen</span></div>
+					</div>
+				</div>
+			</section>
+				<section data-ui-state="expired" style="height: 15rem; display:flex;">
+					<div class="pane active-pane" style="--pane:#2A72C9; flex:1; display:flex;">
+						<div class="errcard" role="alert">
+						<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+						<h3 class="ttl">Sitzung abgelaufen</h3>
+						<p class="txt">Öffne den Server neu.</p>
+						<div class="row"><span class="btn">Schließen</span></div>
+					</div>
+				</div>
+			</section>
 			</div>
 		</div>
 

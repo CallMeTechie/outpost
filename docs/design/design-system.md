@@ -115,6 +115,17 @@ Der Streifen ist **kein** zweites Navigationsband: er wiederholt nicht die
 Brotkrumen, zeigt keine Schließen-Kreuze an den Chips (das Entfernen liegt im
 Kontextmenü) und bekommt keine eigene Überschrift.
 
+**Neu in Runde 6 — Reconnect.** Die Fehlerkarte einer Session (Bestand
+ConnectionError: Icon, Titel, Text) bekommt eine Knopfzeile: primär „Neu
+verbinden“ (`--primary`), sekundär „Schließen“. Läuft die Automatik, steht
+darüber eine Zeile in `--subtext` mit Countdown und Versuchszähler, und der
+Primärknopf heißt „Jetzt verbinden“. Ist die Sitzung abgelaufen, bleibt nur
+„Schließen“. Im Tab wird der Verbindungszustand am Label gezeigt, nie im
+Marker: das Label wird in `--subtext` gedämpft, dahinter ein Lucide-Icon in
+Labelgröße — `Unplug` für getrennt, ein sich drehendes `RotateCw` für
+„verbindet neu“ (Drehung entfällt bei `prefers-reduced-motion`). Keine
+zusätzliche Farbe: Gedämpft heißt „gerade nicht nutzbar“, wie überall.
+
 ## Copy und Ton
 
 Knapp, technisch, keine Erklärtexte im Normalbetrieb. **Ausnahme Leer- und
