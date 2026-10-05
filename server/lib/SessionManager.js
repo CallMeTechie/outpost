@@ -136,15 +136,17 @@ module.exports.updateConnectionId = (sessionId, connectionId) => {
     }
 };
 
+const logRemovalError = (sessionId) => (error) => logger.error("Removing session failed", { sessionId, error: error.message });
+
 module.exports.onMasterConnectionClosed = (sessionId, reason = "closed", { guacStatus = null, generation } = {}) => {
     const session = module.exports.get(sessionId);
     if (!session) return;
     logger.info(`Master connection ${reason}, terminating session`, { sessionId });
     if (reason.startsWith("error:")) {
         module.exports.markFailed(sessionId, reason, generation);
-        module.exports.remove(sessionId, { code: 4017, reason, guacStatus, generation });
+        module.exports.remove(sessionId, { code: 4017, reason, guacStatus, generation }).catch(logRemovalError(sessionId));
     } else {
-        module.exports.remove(sessionId, { generation });
+        module.exports.remove(sessionId, { generation }).catch(logRemovalError(sessionId));
     }
 };
 
@@ -421,7 +423,8 @@ module.exports.whenEnded = async (sessionId) => {
 const retire = (session, { code, reason, guacStatus }) => {
     const { protocol, type, scriptId } = session.configuration || {};
     if (code !== 4017 || !RETIRABLE_PROTOCOLS.has(protocol) || type === "sftp" || scriptId != null) return;
-    if (FINAL_GUAC_STATUSES.has(guacStatus) || (guacStatus >= 0x0300 && guacStatus <= 0x03FF)) return;
+    const status = guacStatus == null ? null : Number(guacStatus);
+    if (FINAL_GUAC_STATUSES.has(status) || (status >= 0x0300 && status <= 0x03FF)) return;
     retired.set(session.sessionId, {
         accountId: session.accountId,
         organizationId: session.organizationId,
@@ -627,44 +630,33 @@ module.exports.getByShareId = (shareId) => {
     return sessionId ? module.exports.get(sessionId) : null;
 };
 
-module.exports.removeAllByAccountId = async (accountId) => {
-    const numericId = Number(accountId);
-    const dropTombstones = () => {
-        for (const [id, tombstone] of retired) if (Number(tombstone.accountId) === numericId) retired.delete(id);
-    };
-    // Repeated until nothing is left: a 4017 teardown still running retires its session in its finally,
-    // and a reconnect in flight can claim that tombstone while later sessions are still being torn down.
+// Repeated until nothing is left: a 4017 teardown still running retires its session in its finally,
+// and a reconnect in flight can claim that tombstone while later sessions are still being torn down.
+const removeAllWhere = async (matchesSession, matchesTombstone) => {
     let count = 0;
     for (;;) {
-        dropTombstones();
-        const toRemove = [...sessions.entries()].filter(([, s]) => s.accountId === numericId).map(([id]) => id);
+        for (const [id, tombstone] of retired) if (matchesTombstone(tombstone)) retired.delete(id);
+        const toRemove = [...sessions.entries()].filter(([, s]) => matchesSession(s)).map(([id]) => id);
         if (toRemove.length === 0) break;
         for (const id of toRemove) {
-            await module.exports.remove(id);
+            await module.exports.remove(id).catch(logRemovalError(id));
             await module.exports.whenEnded(id);
         }
         count += toRemove.length;
     }
+    return count;
+};
+
+module.exports.removeAllByAccountId = async (accountId) => {
+    const numericId = Number(accountId);
+    const count = await removeAllWhere((s) => s.accountId === numericId, (t) => Number(t.accountId) === numericId);
     logger.info(`Removed all sessions for account`, { accountId, count });
     return count;
 };
 
 module.exports.removeAllByEntryId = async (entryId) => {
     const numericId = Number(entryId);
-    const dropTombstones = () => {
-        for (const [id, tombstone] of retired) if (Number(tombstone.entryId) === numericId) retired.delete(id);
-    };
-    let count = 0;
-    for (;;) {
-        dropTombstones();
-        const toRemove = [...sessions.entries()].filter(([, s]) => s.entryId === numericId).map(([id]) => id);
-        if (toRemove.length === 0) break;
-        for (const id of toRemove) {
-            await module.exports.remove(id);
-            await module.exports.whenEnded(id);
-        }
-        count += toRemove.length;
-    }
+    const count = await removeAllWhere((s) => s.entryId === numericId, (t) => Number(t.entryId) === numericId);
     if (count > 0) {
         logger.info(`Removed all sessions for entry`, { entryId, count });
     }
