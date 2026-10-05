@@ -1,7 +1,7 @@
 name: outpost
 description: "The open source server management software for SSH, VNC & RDP"
 publish_to: 'none'
-version: 0.1.5+12
+version: 0.1.5+13
 
 environment:
   sdk: ^3.9.2
