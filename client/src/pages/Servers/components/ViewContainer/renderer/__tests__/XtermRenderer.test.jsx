@@ -46,6 +46,7 @@ vi.mock("@xterm/xterm", () => {
 vi.mock("@xterm/addon-fit", () => ({
     FitAddon: class FitAddon {
         fit() {}
+        proposeDimensions() { return { cols: 80, rows: 24 }; }
         dispose() {}
     },
 }));
@@ -69,6 +70,7 @@ vi.mock("@/common/contexts/SnippetContext.jsx", () => ({
 }));
 
 class MockWebSocket {
+    static instances = [];
     static CONNECTING = 0;
     static OPEN = 1;
     static CLOSING = 2;
@@ -78,8 +80,8 @@ class MockWebSocket {
     CLOSING = 2;
     CLOSED = 3;
     readyState = 0;
-    constructor(url) { this.url = url; }
-    send() {}
+    constructor(url) { this.url = url; this.sent = []; MockWebSocket.instances.push(this); }
+    send(data) { this.sent.push(data); }
     close() { this.readyState = 3; }
 }
 
@@ -171,4 +173,26 @@ test("the paste entry reads the clipboard and pastes it into the terminal", () =
     fireEvent.click(item);
 
     return vi.waitFor(() => expect(term.paste).toHaveBeenCalledWith("eingefuegt"));
+});
+
+// tmux and other full-screen programs only repaint on SIGWINCH, and the kernel sends that
+// only when the size really changes. A terminal re-attached at the size the PTY already has
+// would otherwise show nothing but the replayed tail of raw output.
+test("an attach makes the host repaint: a different size goes first, the real one follows", async () => {
+    vi.useFakeTimers();
+    try {
+        renderWithProviders(
+            <XtermRenderer session={SESSION} terminalRefs={{ current: {} }} />,
+        );
+        const ws = MockWebSocket.instances.at(-1);
+        ws.readyState = MockWebSocket.OPEN;
+        ws.onopen();
+        await vi.advanceTimersByTimeAsync(700);
+
+        const sizes = ws.sent.filter((m) => typeof m === "string" && m.startsWith("\x01"));
+        expect(sizes[0]).not.toBe("\x0180,24");
+        expect(sizes.at(-1)).toBe("\x0180,24");
+    } finally {
+        vi.useRealTimers();
+    }
 });
