@@ -598,10 +598,22 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
         let interval = setInterval(() => {
             if (ws.readyState === ws.OPEN) handleResize();
         }, 300);
+        let repaintTimer = 0;
 
         ws.onopen = () => {
-            ws.send(`\x01${term.cols},${term.rows}`);
+            // Attaching to a running PTY at its current size sends no SIGWINCH, so tmux and other
+            // full-screen programs never repaint and only the replayed output tail shows. One row
+            // off first, the real size after the engine's 200 ms resize coalescing window, and
+            // that change triggers the repaint.
+            const nudge = { cols: term.cols, rows: term.rows > 1 ? term.rows - 1 : term.rows + 1 };
+            ws.send(`\x01${nudge.cols},${nudge.rows}`);
             lastSentSize = { cols: term.cols, rows: term.rows };
+            repaintTimer = setTimeout(() => {
+                repaintTimer = 0;
+                if (ws.readyState !== ws.OPEN) return;
+                ws.send(`\x01${term.cols},${term.rows}`);
+                lastSentSize = { cols: term.cols, rows: term.rows };
+            }, 300);
             // Not when the socket is constructed but when it is open: only from
             // here does a key press actually reach the host (UI-SERVERS-KEYBAR,
             // state disabled).
@@ -677,6 +689,7 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
         ws.onclose = (event) => {
             onTerminalReady?.(session.id, false);
             clearInterval(interval);
+            if (repaintTimer) clearTimeout(repaintTimer);
             if (isCleaningUp) return;
 
             if (event.code >= 4000 && event.reason) {
@@ -966,6 +979,7 @@ const XtermRenderer = ({ session, disconnectFromServer, markSessionErrored, getS
             detachTouchScroll();
             term.dispose();
             clearInterval(interval);
+            if (repaintTimer) clearTimeout(repaintTimer);
             termRef.current = null;
             wsRef.current = null;
         };
