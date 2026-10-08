@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require("uuid");
 const { getIdentityCredentials } = require("../controllers/identity");
 const { SessionType } = require("../lib/generated/control_plane_generated");
 const controlPlane = require("../lib/controlPlane/ControlPlaneServer");
-const { buildSSHParams, resolveJumpHosts } = require("../lib/ConnectionService");
+const { buildSSHParams, resolveJumpHosts, openEngineSession } = require("../lib/ConnectionService");
 const { hasResourcePermission } = require("../utils/permission");
 const { Permission } = require("../permissions/registry");
 
@@ -69,9 +69,7 @@ module.exports = async (ws, req) => {
 
         const jumpHosts = await resolveJumpHosts(entry);
 
-        const dataSocketPromise = controlPlane.waitForDataConnection(sessionId);
-        await controlPlane.openSession(sessionId, SessionType.Tunnel, host, port, params, jumpHosts);
-        dataSocket = await dataSocketPromise;
+        dataSocket = await openEngineSession(sessionId, SessionType.Tunnel, host, port, params, jumpHosts);
 
         logger.info(`Tunnel established`, { user: user.username, server: entry.name, remoteHost, remotePort });
         ws.send(JSON.stringify({ type: "ready" }));
