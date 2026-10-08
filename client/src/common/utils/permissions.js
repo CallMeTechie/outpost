@@ -13,6 +13,7 @@ export const Permission = Object.freeze({
     SETTINGS_BACKUP: "settings.backup",
     SETTINGS_AI: "settings.ai",
     SETTINGS_MICROSOFT: "settings.microsoft",
+    SETTINGS_BROWSER: "settings.browser",
 
     RESOURCES_MANAGE: "resources.manage",
     IDENTITIES_MANAGE: "identities.manage",
@@ -23,6 +24,7 @@ export const Permission = Object.freeze({
     CONNECT_VNC: "connect.vnc",
     CONNECT_PROXMOX: "connect.proxmox",
     CONNECT_TUNNEL: "connect.tunnel",
+    CONNECT_BROWSER: "connect.browser",
     FILES_VIEW: "files.view",
     FILES_UPLOAD: "files.upload",
     FILES_DOWNLOAD: "files.download",
