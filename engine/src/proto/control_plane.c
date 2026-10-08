@@ -433,7 +433,10 @@ static void handle_exec_batch(outpost_control_plane_t* cp,
     free(commands);
 }
 
-static bool check_port_open(const char* host, uint16_t port, uint32_t timeout_ms) {
+// Returns a socket whose connect is still in progress, or -1 once the outcome is already in *open.
+static int start_port_connect(const char* host, uint16_t port, bool* open) {
+    *open = false;
+
     struct addrinfo hints = {0};
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
@@ -444,13 +447,13 @@ static bool check_port_open(const char* host, uint16_t port, uint32_t timeout_ms
     struct addrinfo* res = NULL;
     if (getaddrinfo(host, port_str, &hints, &res) != 0 || !res) {
         if (res) freeaddrinfo(res);
-        return false;
+        return -1;
     }
 
     int fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if (fd < 0) {
         freeaddrinfo(res);
-        return false;
+        return -1;
     }
 
     int flags = fcntl(fd, F_GETFL, 0);
@@ -461,27 +464,68 @@ static bool check_port_open(const char* host, uint16_t port, uint32_t timeout_ms
 
     if (rc == 0) {
         close(fd);
-        return true;
+        *open = true;
+        return -1;
     }
-
     if (errno != EINPROGRESS) {
         close(fd);
-        return false;
+        return -1;
+    }
+    return fd;
+}
+
+static long elapsed_ms_since(const struct timespec* start) {
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    return (now.tv_sec - start->tv_sec) * 1000L + (now.tv_nsec - start->tv_nsec) / 1000000L;
+}
+
+// All targets share one deadline: checked one after another, a single unreachable host costs the
+// full timeout and the whole batch answers after the server has given up on it.
+static void check_ports_open(char** hosts, const uint16_t* ports, size_t count, uint32_t timeout_ms, bool* results) {
+    struct pollfd* pfds = calloc(count, sizeof(struct pollfd));
+    size_t* target_of = calloc(count, sizeof(size_t));
+    if (!pfds || !target_of) {
+        free(pfds);
+        free(target_of);
+        return;
     }
 
-    struct pollfd pfd = { .fd = fd, .events = POLLOUT };
-    rc = poll(&pfd, 1, (int)timeout_ms);
-
-    if (rc <= 0) {
-        close(fd);
-        return false;
+    size_t pending = 0;
+    for (size_t i = 0; i < count; i++) {
+        int fd = start_port_connect(hosts[i], ports[i], &results[i]);
+        if (fd < 0) continue;
+        pfds[pending].fd = fd;
+        pfds[pending].events = POLLOUT;
+        target_of[pending] = i;
+        pending++;
     }
 
-    int err = 0;
-    socklen_t len = sizeof(err);
-    getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len);
-    close(fd);
-    return err == 0;
+    struct timespec start;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    size_t waiting = pending;
+    while (waiting > 0) {
+        long left = (long)timeout_ms - elapsed_ms_since(&start);
+        if (left <= 0) break;
+        int rc = poll(pfds, pending, (int)left);
+        if (rc < 0 && errno == EINTR) continue;
+        if (rc <= 0) break;
+        for (size_t p = 0; p < pending; p++) {
+            if (pfds[p].fd < 0 || pfds[p].revents == 0) continue;
+            int err = 0;
+            socklen_t len = sizeof(err);
+            getsockopt(pfds[p].fd, SOL_SOCKET, SO_ERROR, &err, &len);
+            results[target_of[p]] = err == 0;
+            close(pfds[p].fd);
+            pfds[p].fd = -1;
+            waiting--;
+        }
+    }
+
+    for (size_t p = 0; p < pending; p++)
+        if (pfds[p].fd >= 0) close(pfds[p].fd);
+    free(pfds);
+    free(target_of);
 }
 
 typedef struct {
@@ -514,8 +558,7 @@ static void* port_check_thread(void* arg) {
         return NULL;
     }
 
-    for (size_t i = 0; i < ctx->count; i++)
-        results[i] = check_port_open(ctx->hosts[i], ctx->ports[i], ctx->timeout_ms);
+    check_ports_open(ctx->hosts, ctx->ports, ctx->count, ctx->timeout_ms, results);
 
     outpost_cp_send_port_check_result(ctx->cp, ctx->request_id,
                                       (const char**)ctx->ids, results, ctx->count);

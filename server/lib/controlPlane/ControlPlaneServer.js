@@ -30,6 +30,9 @@ const { RECORDINGS_DIR, ensureRecordingsDir, compressRecording, getRecordingPath
 const AuditLog = require("../../models/AuditLog");
 
 const SESSION_TIMEOUT = 30000;
+// Requests that hand the engine a timeout of their own wait this much longer for its answer;
+// with equal deadlines the answer of a check that used its full time always arrived too late.
+const ENGINE_ANSWER_MARGIN = 5000;
 const DATA_CONNECTION_TIMEOUT = 30000;
 
 class ControlPlaneServer extends EventEmitter {
@@ -160,7 +163,7 @@ class ControlPlaneServer extends EventEmitter {
         const requestId = `portcheck-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
         return this._createPendingRequest(requestId, null, () => {
             this._sendFrame(engine.socket, buildPortCheck(requestId, targets, timeoutMs));
-        }, null, engine.engineId);
+        }, null, engine.engineId, timeoutMs + ENGINE_ANSWER_MARGIN);
     }
 
     httpFetch(method, url, headers = {}, body = null, timeoutMs = 30000, insecure = false, engineId = null) {
@@ -170,7 +173,7 @@ class ControlPlaneServer extends EventEmitter {
         const requestId = `fetch-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
         return this._createPendingRequest(requestId, null, () => {
             this._sendFrame(engine.socket, buildHttpFetch(requestId, method, url, headers, body, timeoutMs, insecure));
-        }, null, engine.engineId);
+        }, null, engine.engineId, timeoutMs + ENGINE_ANSWER_MARGIN);
     }
 
     hasEngine() {
@@ -211,12 +214,12 @@ class ControlPlaneServer extends EventEmitter {
         return true;
     }
 
-    _createPendingRequest(key, onResult, onSend, joinSessionId = null, ownerEngineId = null) {
+    _createPendingRequest(key, onResult, onSend, joinSessionId = null, ownerEngineId = null, timeoutMs = SESSION_TIMEOUT) {
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
                 this._pending.delete(key);
                 reject(new Error("Request timeout"));
-            }, SESSION_TIMEOUT);
+            }, timeoutMs);
 
             this._pending.set(key, { resolve, reject, timeout, onResult, joinSessionId, ownerEngineId });
             onSend();
