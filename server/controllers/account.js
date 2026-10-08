@@ -86,6 +86,11 @@ module.exports.deleteAccount = async (id) => {
     const microsoftConnections = await MicrosoftConnection.findAll({ where: { accountId: id }, attributes: ["id"] });
     for (const connection of microsoftConnections) forget(connection.id);
 
+    // A persistent browser profile holds the account's logins to real web apps; it must not outlive the account.
+    // The id can arrive as a string from the route; sessions carry the numeric account id.
+    await require("../lib/browser").removeAccount(Number(id)).catch((err) =>
+        logger.warn("Could not remove the browser profile of a deleted account", { accountId: id, error: err.message }));
+
     await Account.destroy({ where: { id } });
 
     logger.system(`Account deleted`, { accountId: id, username: account.username });
