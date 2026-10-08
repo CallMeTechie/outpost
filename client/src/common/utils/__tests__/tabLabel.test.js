@@ -13,6 +13,8 @@ const t = (key) => ({
     "servers.tabLabel.type.notes": "Notes",
     "servers.tabLabel.type.onedrive": "OneDrive",
     "servers.tabLabel.type.remoteDesktop": "Remote desktop",
+    "servers.tabLabel.type.browser": "Browser",
+    "servers.tabLabel.browserAgentActive": "Claude is driving",
 })[key];
 
 const ssh = { id: "s1", type: "terminal", server: { name: "pve-01" } };
@@ -451,4 +453,13 @@ test("assignNumbers: groups are counted apart", () => {
     assert.equal(result.a, 1);
     assert.equal(result.b, 2);
     assert.equal(result.c, 1);
+});
+
+test("a browser tab is named after its sanitised page title and says when Claude is driving", () => {
+    const idle = buildTabLabel({ id: "browser-1", type: "browser", browser: { title: "Grafana\u0007 Home‮", url: "https://grafana.test/d/x" } }, {}, t);
+    assert.deepStrictEqual([idle.name, idle.kind], ["Grafana Home", "(Browser)"]);
+
+    const busy = buildTabLabel({ id: "browser-1", type: "browser", browser: { title: "", url: "https://grafana.test/d/x", agentActive: true } }, {}, t);
+    assert.deepStrictEqual([busy.name, busy.kind], ["grafana.test", "(Claude is driving)"]);
+    assert.ok(busy.tooltip.some(({ key, value }) => key === "servers.tabLabel.tooltip.type" && value === "Browser"));
 });

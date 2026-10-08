@@ -52,9 +52,10 @@ const DraggableTab = ({
 
     const isNotes = session.type === "notes";
     const isOneDrive = session.type === "onedrive";
+    const isBrowser = session.type === "browser";
     // Both live in this browser only, so everything that needs a session the server knows about
     // is off for both.
-    const isLocal = isNotes || isOneDrive;
+    const isLocal = isNotes || isOneDrive || isBrowser;
     const isJoined = !!session.isJoined;
     const canPopOut = !session.scriptId && session.type !== "sftp" && !isLocal && !isJoined;
     const canShare = canPopOut;

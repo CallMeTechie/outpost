@@ -1,8 +1,8 @@
 const OrganizationMember = require("../models/OrganizationMember");
 const logger = require("../utils/logger");
 
-const STATE_TYPES = { ENTRIES: "ENTRIES", IDENTITIES: "IDENTITIES", SNIPPETS: "SNIPPETS", CONNECTIONS: "CONNECTIONS", LIVE_SESSIONS: "LIVE_SESSIONS", SESSION_PRESENCE: "SESSION_PRESENCE", LOGOUT: "LOGOUT" };
-const BROADCASTABLE_TYPES = [STATE_TYPES.ENTRIES, STATE_TYPES.IDENTITIES, STATE_TYPES.SNIPPETS, STATE_TYPES.CONNECTIONS, STATE_TYPES.LIVE_SESSIONS];
+const STATE_TYPES = { ENTRIES: "ENTRIES", IDENTITIES: "IDENTITIES", SNIPPETS: "SNIPPETS", CONNECTIONS: "CONNECTIONS", LIVE_SESSIONS: "LIVE_SESSIONS", SESSION_PRESENCE: "SESSION_PRESENCE", BROWSER_SESSIONS: "BROWSER_SESSIONS", LOGOUT: "LOGOUT" };
+const BROADCASTABLE_TYPES = [STATE_TYPES.ENTRIES, STATE_TYPES.IDENTITIES, STATE_TYPES.SNIPPETS, STATE_TYPES.CONNECTIONS, STATE_TYPES.LIVE_SESSIONS, STATE_TYPES.BROWSER_SESSIONS];
 
 class StateBroadcaster {
     constructor() {
@@ -52,6 +52,8 @@ class StateBroadcaster {
                 return require("../controllers/serverSession").getSessions(accountId, tabId, browserId);
             case STATE_TYPES.LIVE_SESSIONS:
                 return require("../controllers/liveSession").listLiveSessions(accountId);
+            case STATE_TYPES.BROWSER_SESSIONS:
+                return require("./browser").getBrowserPool().listForAccount(accountId);
             default:
                 return null;
         }

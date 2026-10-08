@@ -24,6 +24,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import { StateStreamContext, STATE_TYPES } from "@/common/contexts/StateStreamContext.jsx";
 import { isTauri } from "@/common/utils/TauriUtil.js";
+import { syncBrowserTabs, BROWSER_SESSION_TYPE } from "@/common/utils/browserTabs.js";
 import { getTabId, getBrowserId, requiresIdentity, canConnectWithoutPrompt, getDisplayDpi } from "@/common/utils/ConnectionUtil.js";
 import { getRequest, postRequest, deleteRequest } from "@/common/utils/RequestUtil";
 import {
@@ -36,7 +37,7 @@ import { assignNumbers, diffAssignments, tabGroupKey, tabIdentitySignature } fro
 // A session the server does not know about: it lives in this browser only. The poll below
 // replaces the session list with what the server reports, so anything matching this has to be
 // carried over by hand — otherwise it vanishes without anyone closing it.
-const isLocalSession = (session) => session?.type === "notes" || session?.type === "onedrive";
+const isLocalSession = (session) => session?.type === "notes" || session?.type === "onedrive" || session?.type === BROWSER_SESSION_TYPE;
 
 export const Servers = () => {
 
@@ -300,6 +301,19 @@ export const Servers = () => {
     useEffect(() => {
         if (servers) return registerHandler(STATE_TYPES.CONNECTIONS, handleConnectionsUpdate);
     }, [servers, registerHandler, handleConnectionsUpdate]);
+
+    // Tabs the user closed in this page load; without it the next push would reopen them at once.
+    // A reload starts empty on purpose, so a returning client finds running sessions again.
+    const dismissedBrowserSessionsRef = useRef(new Set());
+
+    const handleBrowserSessions = useCallback((list) => {
+        const dismissed = dismissedBrowserSessionsRef.current;
+        setActiveSessions(prev => syncBrowserTabs(prev, list, dismissed).sessions);
+        const { activate } = syncBrowserTabs(activeSessionsRef.current, list, dismissed);
+        if (activate) setActiveSessionId(activate);
+    }, [setActiveSessions, setActiveSessionId]);
+
+    useEffect(() => registerHandler(STATE_TYPES.BROWSER_SESSIONS, handleBrowserSessions), [registerHandler, handleBrowserSessions]);
 
     // Persist whatever local-only tabs (OneDrive, notes) are open right now, on every change -
     // but only once restore has read a complete picture (see canPersistLocalSessions). Writing
@@ -806,6 +820,7 @@ export const Servers = () => {
 
     const closeSession = (sessionId) => {
         const session = activeSessions.find(s => s.id === sessionId);
+        if (session?.type === BROWSER_SESSION_TYPE) dismissedBrowserSessionsRef.current.add(sessionId);
         if (!isLocalSession(session) && !session?.isJoined) {
             closingSessionsRef.current.add(sessionId);
             deleteRequest(`/connections/${sessionId}`).catch(error => {

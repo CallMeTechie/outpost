@@ -18,6 +18,7 @@ const TYPE_LABEL_KEY = {
     sftp: "servers.tabLabel.type.sftp",
     notes: "servers.tabLabel.type.notes",
     onedrive: "servers.tabLabel.type.onedrive",
+    browser: "servers.tabLabel.type.browser",
     remoteDesktop: "servers.tabLabel.type.remoteDesktop",
 };
 
@@ -38,7 +39,20 @@ const typeLabelKey = (session) => {
 // `server` object at all - only `oneDrive` - so the access must stay optional, exactly as
 // ServerTabs.jsx already does at its own `server?.name`: a plain `session.server.name` would
 // throw on every OneDrive tab.
-const baseName = (session) => session.server?.name ?? session.oneDrive?.displayName ?? "";
+// A browser tab has neither a server nor a OneDrive name; its page title is remote text like a
+// tmux name and gets the same treatment, falling back to the host when the page has no title.
+const browserName = (session) => {
+    if (!session.browser) return undefined;
+    const title = sanitizeRemoteText(session.browser.title ?? "", DISCRIMINATOR_MAX_LENGTH);
+    if (title) return title;
+    try {
+        return sanitizeRemoteText(new URL(session.browser.url).host, DISCRIMINATOR_MAX_LENGTH);
+    } catch {
+        return sanitizeRemoteText(session.browser.url ?? "", DISCRIMINATOR_MAX_LENGTH);
+    }
+};
+
+const baseName = (session) => session.server?.name ?? session.oneDrive?.displayName ?? browserName(session) ?? "";
 
 // Sanitizes both possible discriminator sources once per call. The visible text uses whichever
 // one wins (tmux over script); the tooltip lists each independently when present. Computing both
@@ -94,7 +108,9 @@ export const buildTabLabel = (session, identity = {}, t, { numbered = true } = {
     const base = discriminatedBase(session, parts);
     const typeSuffix = session.type === "sftp" ? " (SFTP)"
         : session.type === "notes" ? ` (${t("servers.notesPanel.title")})`
-            : "";
+            : session.type === "browser"
+                ? ` (${t(session.browser?.agentActive ? "servers.tabLabel.browserAgentActive" : "servers.tabLabel.type.browser")})`
+                : "";
     const auto = `${base}${typeSuffix}`;
     // A custom name replaces the automatic base and its discriminator, but the type suffix still
     // applies: the name says what the person called it, the suffix still says what it is.
