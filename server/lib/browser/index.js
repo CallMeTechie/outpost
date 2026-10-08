@@ -10,6 +10,10 @@ const getBrowserPool = () => {
     const getSettings = () => BrowserSettings.getOrCreate();
     const launcher = createLauncherClient(async () => (await getSettings()).launcherUrl);
     pool = new BrowserPool({ getSettings, launcher, createVia: (options) => createEngineVia({ ...options, launcher }) });
+    pool.on("change", (accountId) => {
+        const stateBroadcaster = require("../StateBroadcaster");
+        stateBroadcaster.broadcast(stateBroadcaster.STATE_TYPES.BROWSER_SESSIONS, { accountId });
+    });
     pool.reconcile();
     pool.startSweeper();
     return pool;
