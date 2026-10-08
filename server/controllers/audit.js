@@ -64,6 +64,13 @@ const AUDIT_ACTIONS = {
     AI_FILE_RENAME: "ai.file_rename",
     AI_FILE_CHMOD: "ai.file_chmod",
     AI_FOLDER_CREATE: "ai.folder_create",
+    BROWSER_OPEN: "browser.open",
+    BROWSER_NAVIGATE: "browser.navigate",
+    BROWSER_CLICK: "browser.click",
+    BROWSER_TYPE: "browser.type",
+    BROWSER_KEY: "browser.key",
+    BROWSER_EVALUATE: "browser.evaluate",
+    BROWSER_CLOSE: "browser.close",
 };
 
 const RESOURCE_TYPES = {
@@ -72,6 +79,7 @@ const RESOURCE_TYPES = {
     FOLDER: "folder",
     FILE: "file",
     SCRIPT: "script",
+    BROWSER: "browser",
 };
 
 const ACTION_LABELS = {
@@ -118,6 +126,13 @@ const ACTION_LABELS = {
     "ai.file_rename": "AI moved / renamed a path",
     "ai.file_chmod": "AI changed permissions",
     "ai.folder_create": "AI created a folder",
+    "browser.open": "Browser page opened",
+    "browser.navigate": "Browser navigated",
+    "browser.click": "Browser element clicked",
+    "browser.type": "Browser text entered",
+    "browser.key": "Browser key pressed",
+    "browser.evaluate": "Browser script evaluated",
+    "browser.close": "Browser session closed",
 };
 
 const ACTION_CATEGORIES = [
@@ -128,6 +143,7 @@ const ACTION_CATEGORIES = [
     { key: "identity", label: "Identities", description: "Identity records and credential access" },
     { key: "script", label: "Scripts", description: "Script execution" },
     { key: "ai", label: "AI Assistant", description: "Actions performed by the AI assistant on a server" },
+    { key: "browser", label: "Browser", description: "Pages opened and operated in browser tabs, by the agent and through MCP" },
 ];
 
 const RESOURCE_LABELS = {
@@ -136,6 +152,7 @@ const RESOURCE_LABELS = {
     folder: "Folder",
     file: "File",
     script: "Script",
+    browser: "Browser session",
 };
 
 const getOrgAuditSettings = async (organizationId) => {
@@ -152,6 +169,7 @@ const getOrgAuditSettings = async (organizationId) => {
         enableFolderManagementAudit: true,
         enableScriptExecutionAudit: true,
         enableAIOperationAudit: true,
+        enableBrowserOperationAudit: true,
     };
 
     if (!org?.auditSettings) return defaults;
@@ -171,6 +189,7 @@ const shouldAudit = (action, settings) => {
         [action.startsWith("folder_mgmt."), settings.enableFolderManagementAudit],
         [action.startsWith("script."), settings.enableScriptExecutionAudit],
         [action.startsWith("ai."), settings.enableAIOperationAudit],
+        [action.startsWith("browser."), settings.enableBrowserOperationAudit],
     ];
 
     for (const [condition, enabled] of checks) {
@@ -409,3 +428,4 @@ module.exports.isConnectionReasonRequired = async (organizationId) => {
 module.exports.updateAuditLogWithSessionDuration = updateAuditLogWithSessionDuration;
 module.exports.AUDIT_ACTIONS = AUDIT_ACTIONS;
 module.exports.RESOURCE_TYPES = RESOURCE_TYPES;
+module.exports.shouldAudit = shouldAudit;

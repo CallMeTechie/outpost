@@ -20,6 +20,7 @@ const Permission = Object.freeze({
     SETTINGS_BACKUP: "settings.backup",
     SETTINGS_AI: "settings.ai",
     SETTINGS_MICROSOFT: "settings.microsoft",
+    SETTINGS_BROWSER: "settings.browser",
 
     RESOURCES_MANAGE: "resources.manage",
     IDENTITIES_MANAGE: "identities.manage",
@@ -31,6 +32,7 @@ const Permission = Object.freeze({
     CONNECT_PROXMOX: "connect.proxmox",
     CONNECT_TUNNEL: "connect.tunnel",
     CONNECT_DIRECT: "connect.direct",
+    CONNECT_BROWSER: "connect.browser",
     FILES_VIEW: "files.view",
     FILES_UPLOAD: "files.upload",
     FILES_DOWNLOAD: "files.download",
@@ -81,6 +83,7 @@ const PERMISSIONS = [
     { id: P.SETTINGS_BACKUP, scopes: [SYSTEM], category: "settings", label: "Backups", description: "Create, restore, export and import backups.", dangerous: true },
     { id: P.SETTINGS_AI, scopes: [SYSTEM], category: "settings", label: "AI Settings", description: "Configure the AI assistant integration." },
     { id: P.SETTINGS_MICROSOFT, scopes: [SYSTEM], category: "settings", label: "Microsoft Integration", description: "Configure the Azure app registration used for OneDrive access." },
+    { id: P.SETTINGS_BROWSER, scopes: [SYSTEM], category: "settings", label: "Browser", description: "Configure the browser container used for browser tabs." },
 
     { id: P.RESOURCES_MANAGE, scopes: BOTH, category: "resources", default: true, label: "Manage Resources", description: "Create, edit and delete servers and folders." },
     { id: P.IDENTITIES_MANAGE, scopes: BOTH, category: "resources", default: true, label: "Manage Identities", description: "Create, edit and delete identities." },
@@ -94,6 +97,7 @@ const PERMISSIONS = [
     { id: P.CONNECT_PROXMOX, scopes: BOTH, category: "connections", default: true, label: "Connect to Proxmox", description: "Open Proxmox VM, container and shell sessions." },
     { id: P.CONNECT_TUNNEL, scopes: BOTH, category: "connections", default: true, label: "Port Forwarding", description: "Create SSH tunnels and port forwards to servers." },
     { id: P.CONNECT_DIRECT, scopes: [SYSTEM], category: "connections", default: false, label: "Connect Without an Entry", description: "Open a one-off connection to a freely entered host. This bypasses per-entry access rules, so it is off by default." },
+    { id: P.CONNECT_BROWSER, scopes: [SYSTEM], category: "connections", default: false, label: "Browser Sessions", description: "Open and control browser tabs, also through the MCP endpoint. A session reaches every address the browser container reaches, so it is off by default.", dangerous: true },
 
     { id: P.FILES_VIEW, scopes: BOTH, category: "files", default: true, label: "Browse Files", description: "Open the file manager and browse files over SFTP." },
     { id: P.FILES_UPLOAD, scopes: BOTH, category: "files", default: true, label: "Upload Files", description: "Upload files to servers." },

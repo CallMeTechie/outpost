@@ -23,6 +23,7 @@ module.exports.updateOrganizationAuditSettingsValidation = Joi.object({
     enableFolderManagementAudit: Joi.boolean().optional(),
     enableScriptExecutionAudit: Joi.boolean().optional(),
     enableAIOperationAudit: Joi.boolean().optional(),
+    enableBrowserOperationAudit: Joi.boolean().optional(),
     enableSessionRecording: Joi.boolean().optional(),
     recordingRetentionDays: Joi.number().integer().min(1).max(3650).optional(),
 }).min(1);
