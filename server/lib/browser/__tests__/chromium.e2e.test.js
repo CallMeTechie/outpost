@@ -36,6 +36,9 @@ test("against a real Chromium: snapshot, type, click, frames, navigation, close,
             launcher: createLauncherClient(async () => LAUNCHER),
             createVia: async () => { throw new Error("via is part of the manual acceptance"); },
         });
+        t.after(() => {
+            for (const instance of pool.live.values()) instance.cdp.close();
+        });
 
         const { session, navigationError } = await pool.open({ accountId: 1, url: `${base}/` });
         assert.strictEqual(navigationError, null);
