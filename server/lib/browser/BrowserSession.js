@@ -39,6 +39,7 @@ class BrowserSession extends EventEmitter {
         this.pendingDialog = null;
         this.dialogSeq = 0;
         this.screencasting = false;
+        this.refreshing = 0;
         this.seq = 0;
         this.closed = false;
         this.closeReason = null;
@@ -73,7 +74,7 @@ class BrowserSession extends EventEmitter {
         this.#sendTo(ws, { type: "state", ...this.state });
         this.#sendTo(ws, this.#agentMessage());
         if (this.pendingDialog) this.#sendTo(ws, { type: "dialog", ...this.pendingDialog });
-        if (!this.screencasting) this.#startScreencast().catch(() => {});
+        if (!this.screencasting) this.#startScreencast();
     }
 
     removeViewer(ws) {
@@ -232,7 +233,7 @@ class BrowserSession extends EventEmitter {
     async settle() {
         await sleep(SETTLE_QUIET_MS);
         const deadline = Date.now() + SETTLE_MAX_MS;
-        while (this.state.loading && !this.closed && Date.now() < deadline) await sleep(SETTLE_POLL_MS);
+        while ((this.state.loading || this.refreshing > 0) && !this.closed && Date.now() < deadline) await sleep(SETTLE_POLL_MS);
     }
 
     notifyDownload({ filename, state }) {
@@ -276,11 +277,13 @@ class BrowserSession extends EventEmitter {
             case "Page.frameNavigated":
                 if (params.frame?.parentId) return;
                 this.refs.reset();
+                await this.#resumeScreencast();
                 return this.#refreshState();
             case "Page.navigatedWithinDocument":
                 return this.#refreshState();
             case "Page.loadEventFired":
                 this.state.loading = false;
+                await this.#resumeScreencast();
                 return this.#refreshState();
             case "Page.frameStoppedLoading":
                 // Downloads and 204 answers end loading without a load event.
@@ -307,6 +310,16 @@ class BrowserSession extends EventEmitter {
     }
 
     async #refreshState() {
+        // loading turns false before the title arrives; settle() has to wait for it.
+        this.refreshing++;
+        try {
+            await this.#readHistory();
+        } finally {
+            this.refreshing--;
+        }
+    }
+
+    async #readHistory() {
         const { currentIndex, entries } = await this.send("Page.getNavigationHistory");
         const entry = entries?.[currentIndex];
         if (!entry) return;
@@ -340,7 +353,17 @@ class BrowserSession extends EventEmitter {
 
     async #startScreencast() {
         this.screencasting = true;
-        await this.send("Page.startScreencast", { ...SCREENCAST, maxWidth: this.viewport.width, maxHeight: this.viewport.height });
+        try {
+            await this.send("Page.startScreencast", { ...SCREENCAST, maxWidth: this.viewport.width, maxHeight: this.viewport.height });
+        } catch (err) {
+            // Fails while the page is swapping its render frame during the first navigation; a later navigation event retries.
+            this.screencasting = false;
+            logger.warn("Browser screencast start failed", { session: this.id, error: err.message });
+        }
+    }
+
+    async #resumeScreencast() {
+        if (this.viewers.length > 0 && !this.screencasting && !this.closed) await this.#startScreencast();
     }
 
     #onFrame({ data, sessionId: frameId }) {

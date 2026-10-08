@@ -69,3 +69,44 @@ test("viewers, frames and size stay with their own session when a second one is 
     assert.deepStrictEqual(cdp.callsOf("Emulation.setDeviceMetricsOverride", "SA").map((c) => [c.params.width, c.params.height]), [[1280, 800]]);
     assert.deepStrictEqual([a.viewers.length, b.viewers.length], [1, 1]);
 });
+
+test("a screencast that failed to start is retried on the next main-frame navigation", async () => {
+    let starts = 0;
+    const cdp = createFakeCdp({
+        "Page.startScreencast": () => {
+            if (++starts === 1) throw new Error("Not attached to an active page");
+        },
+    });
+    const session = new BrowserSession({ id: "browser-a", accountId: 1, profile: "ephemeral", origin: "agent", cdp, targetId: "T1", cdpSessionId: "S1" });
+    await session.start();
+    const viewer = createFakeViewer();
+    session.addViewer(viewer);
+    await flush();
+    assert.strictEqual(session.screencasting, false);
+
+    cdp.emitEvent("Page.frameNavigated", { frame: { id: "T1", url: "https://a.test/" } }, "S1");
+    await flush();
+    assert.strictEqual(cdp.callsOf("Page.startScreencast").length, 2);
+
+    cdp.emitEvent("Page.screencastFrame", { data: Buffer.from("jpeg").toString("base64"), sessionId: 1, metadata: {} }, "S1");
+    await flush();
+    assert.strictEqual(viewer.binary.length, 1);
+});
+
+test("settle does not return between the load event and the title that comes with it", async () => {
+    let history = { currentIndex: 0, entries: [{ id: 1, url: "https://a.test/", title: "" }] };
+    const cdp = createFakeCdp({
+        "Page.getNavigationHistory": async () => {
+            const answer = history;
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            return answer;
+        },
+    });
+    const session = new BrowserSession({ id: "browser-a", accountId: 1, profile: "ephemeral", origin: "agent", cdp, targetId: "T1", cdpSessionId: "S1" });
+    await session.start();
+    history = { currentIndex: 0, entries: [{ id: 1, url: "https://a.test/", title: "Real title" }] };
+
+    cdp.emitEvent("Page.loadEventFired", {}, "S1");
+    await session.settle();
+    assert.strictEqual(session.state.title, "Real title");
+});

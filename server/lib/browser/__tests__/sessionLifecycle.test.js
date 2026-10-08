@@ -82,7 +82,8 @@ test("refusals name their reason: via with a persistent profile, a disabled feat
         (err) => err.code === BrowserErrorCode.UNAVAILABLE && /not reachable/.test(err.message) && /ECONNREFUSED/.test(err.message));
 });
 
-test("ephemeral sessions get a context each; persistent ones share their account's instance; nobody reaches another account's session", async () => {
+test("ephemeral sessions get a context each; persistent ones share their account's instance; nobody reaches another account's session", async (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout"] });
     const { pool, launcher, instances } = harness();
     const { session: e1 } = await pool.open({ accountId: 1, url: "https://a.test/" });
     const { session: e2 } = await pool.open({ accountId: 1, url: "https://b.test/" });
@@ -102,11 +103,30 @@ test("ephemeral sessions get a context each; persistent ones share their account
     assert.deepStrictEqual(launcher.stopped, [], "the profile instance stays while a session uses it");
     p2.close("test");
     await flush();
+    assert.deepStrictEqual(launcher.stopped, [], "the profile instance lingers so Chromium can commit cookies");
+    t.mock.timers.tick(60 * 1000);
+    await flush();
     assert.deepStrictEqual(launcher.stopped, ["account-1"]);
 
     e2.close("test");
     await flush();
     assert.deepStrictEqual(defaultCdp.callsOf("Target.disposeBrowserContext").map((c) => c.params.browserContextId), ["ctx-2"]);
+});
+
+test("a persistent open during the linger reuses the instance and cancels the retire", async (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout"] });
+    const { pool, launcher } = harness();
+    const { session: first } = await pool.open({ accountId: 1, url: "https://a.test/", profile: "persistent" });
+    first.close("test");
+    await flush();
+    t.mock.timers.tick(30 * 1000);
+    const { session: second } = await pool.open({ accountId: 1, url: "https://b.test/", profile: "persistent" });
+
+    t.mock.timers.tick(60 * 1000);
+    await flush();
+    assert.deepStrictEqual(launcher.started.map((s) => s.key), ["account-1"]);
+    assert.deepStrictEqual(launcher.stopped, []);
+    assert.ok(pool.get(second.id));
 });
 
 test("a popup of the page becomes a session of its own for the same account", async () => {
