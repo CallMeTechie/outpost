@@ -76,6 +76,7 @@ app.ws("/api/ws/sftp", require("./routes/sftpWS"));
 app.ws("/api/ws/onedrive", require("./routes/oneDriveWS"));
 app.ws("/api/ws/ai", require("./routes/aiWS"));
 app.ws("/api/ws/tunnel", require("./routes/tunnel"));
+app.ws("/api/ws/browser", require("./routes/browserWS"));
 app.ws("/api/ws/state", require("./routes/state"));
 
 app.use("/api/entries/sftp", require("./routes/sftp"));
