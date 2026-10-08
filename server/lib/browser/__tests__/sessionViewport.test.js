@@ -92,3 +92,21 @@ test("a screencast that failed to start is retried on the next main-frame naviga
     await flush();
     assert.strictEqual(viewer.binary.length, 1);
 });
+
+test("settle does not return between the load event and the title that comes with it", async () => {
+    let history = { currentIndex: 0, entries: [{ id: 1, url: "https://a.test/", title: "" }] };
+    const cdp = createFakeCdp({
+        "Page.getNavigationHistory": async () => {
+            const answer = history;
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            return answer;
+        },
+    });
+    const session = new BrowserSession({ id: "browser-a", accountId: 1, profile: "ephemeral", origin: "agent", cdp, targetId: "T1", cdpSessionId: "S1" });
+    await session.start();
+    history = { currentIndex: 0, entries: [{ id: 1, url: "https://a.test/", title: "Real title" }] };
+
+    cdp.emitEvent("Page.loadEventFired", {}, "S1");
+    await session.settle();
+    assert.strictEqual(session.state.title, "Real title");
+});

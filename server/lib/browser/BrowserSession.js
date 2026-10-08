@@ -39,6 +39,7 @@ class BrowserSession extends EventEmitter {
         this.pendingDialog = null;
         this.dialogSeq = 0;
         this.screencasting = false;
+        this.refreshing = 0;
         this.seq = 0;
         this.closed = false;
         this.closeReason = null;
@@ -232,7 +233,7 @@ class BrowserSession extends EventEmitter {
     async settle() {
         await sleep(SETTLE_QUIET_MS);
         const deadline = Date.now() + SETTLE_MAX_MS;
-        while (this.state.loading && !this.closed && Date.now() < deadline) await sleep(SETTLE_POLL_MS);
+        while ((this.state.loading || this.refreshing > 0) && !this.closed && Date.now() < deadline) await sleep(SETTLE_POLL_MS);
     }
 
     notifyDownload({ filename, state }) {
@@ -309,6 +310,16 @@ class BrowserSession extends EventEmitter {
     }
 
     async #refreshState() {
+        // loading turns false before the title arrives; settle() has to wait for it.
+        this.refreshing++;
+        try {
+            await this.#readHistory();
+        } finally {
+            this.refreshing--;
+        }
+    }
+
+    async #readHistory() {
         const { currentIndex, entries } = await this.send("Page.getNavigationHistory");
         const entry = entries?.[currentIndex];
         if (!entry) return;
