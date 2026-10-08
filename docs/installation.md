@@ -130,6 +130,62 @@ volumes:
 docker-compose up -d
 ```
 
+### Browser Tabs (optional)
+
+Browser tabs let an agent such as Claude Code open and operate a web page in an Outpost tab while you watch and take over. They need the `outpost-browser` container (Chromium under Xvfb plus a small launcher).
+
+::: danger
+The container's DevTools ports have **no authentication**. Whoever reaches them controls every open browser session, including logged-in profiles. Put the container on a Docker network of its own that only Outpost joins and never publish its ports. When the container runs on the same host, Outpost itself must not run with `network_mode: host`.
+:::
+
+```yaml
+services:
+  outpost:
+    image: outpost/aio:latest
+    environment:
+      ENCRYPTION_KEY: "aba3aa8e29b9904d5d8d705230b664c053415c54be20ad13be99af0057dfa23a" # Replace with your generated key
+    ports:
+      - "6989:6989"
+    restart: always
+    volumes:
+      - outpost:/app/data
+    networks: [default, browser]
+
+  outpost-browser:
+    image: ghcr.io/callmetechie/outpost-browser:latest
+    restart: always
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 2g
+    volumes:
+      - outpost-browser-profiles:/profiles
+      - outpost-browser-downloads:/downloads
+    networks: [browser]
+
+networks:
+  browser: {}
+
+volumes:
+  outpost:
+  outpost-browser-profiles:
+  outpost-browser-downloads:
+```
+
+Then, as an administrator:
+
+1. **Settings → Browser**: enable browser tabs, launcher address `http://outpost-browser:9300`, Outpost address seen from the container `outpost` (the service name).
+2. Grant the **Browser Sessions** permission (`connect.browser`, off by default) to the accounts that may use it.
+3. On the machine where Claude Code runs, with an API key of that account:
+
+```bash
+claude mcp add --transport http outpost https://<outpost>/api/mcp \
+  --header "Authorization: Bearer <api-key>"
+```
+
+**Container on another machine.** Chromium and the JPEG stream are noticeable on weak hardware such as a DS918+; the container can run on a stronger machine on the same network. Then publish ports `9300`, `9222` and `9230-9429` only on an address that nothing but the Outpost server can reach (a firewall rule allowing only Outpost's IP), set the launcher address to that machine, and set the Outpost address to the Outpost server's LAN address. CDP travels unencrypted and carries everything typed into the pages, passwords included; between machines, run it through WireGuard or an SSH tunnel instead of the plain LAN. Sessions opened with `via` need Outpost to run with `network_mode: host` in this setup: their listening port is opened on demand and is not published from a bridge network.
+
+Sessions opened with `via` tunnel the page's host and port through an SSH server entry; the account also needs **Port Forwarding** (`connect.tunnel`) on that entry.
+
 ### 🌐 IPv6 Support
 
 To connect to IPv6 servers from within the container using bridge networking, add the following to your existing `docker-compose.yml` (not needed for host network):
