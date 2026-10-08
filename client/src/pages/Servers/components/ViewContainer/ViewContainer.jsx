@@ -8,6 +8,7 @@ import XtermRenderer from "@/pages/Servers/components/ViewContainer/renderer/Xte
 import FileRenderer from "@/pages/Servers/components/ViewContainer/renderer/FileRenderer";
 import ScriptRenderer from "@/pages/Servers/components/ViewContainer/renderer/ScriptRenderer";
 import NotesRenderer from "@/pages/Servers/components/ViewContainer/renderer/NotesRenderer";
+import WebRenderer from "@/pages/Servers/components/ViewContainer/renderer/WebRenderer";
 import Icon from "@/common/components/Icon";
 import { Minimize as IconMinimize } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -658,6 +659,10 @@ export const ViewContainer = ({
                 return <FileRenderer session={session} disconnectFromServer={disconnectFromServer}
                                      setOpenFileEditors={setOpenFileEditors} isActive={session.id === activeSessionId}
                                      onOpenTerminal={(path) => openTerminalFromFileManager?.(session.id, path)} />;
+            case "browser":
+                return <WebRenderer session={session} disconnectFromServer={disconnectFromServer}
+                                    markSessionErrored={markSessionErrored} getSessionError={getSessionError}
+                                    key={session.id} />;
             default:
                 return <p>Unknown renderer: {renderer}</p>;
         }
@@ -746,9 +751,9 @@ export const ViewContainer = ({
     const paneColorSessions = layoutMode === "single" ? [] : gridSessions;
 
     const renderAllSessions = () => activeSessions.map(session => {
-        // A OneDrive session has no `server` — its identity is the Microsoft connection id — so the
-        // guard that used to mean "not ready yet" would otherwise hide it from the layout forever.
-        if (!session?.server && session?.type !== "onedrive") return null;
+        // OneDrive and browser sessions have no `server`; the guard that used to mean "not ready yet"
+        // would otherwise hide them from the layout forever.
+        if (!session?.server && session?.type !== "onedrive" && session?.type !== "browser") return null;
         const isVisible = layoutMode === "single" ? session.id === activeSessionId : gridSessions.includes(session.id);
         const paneColor = paneColorFor(paneColorSessions.indexOf(session.id));
         // Drives the split-view border's strong/faint state in CSS. Deliberately not
