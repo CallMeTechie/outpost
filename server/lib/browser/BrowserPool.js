@@ -8,12 +8,13 @@ const logger = require("../../utils/logger");
 
 const DOWNLOAD_PATH = "/downloads";
 const SWEEP_INTERVAL_MS = 60 * 1000;
+const PERSISTENT_LINGER_MS = 60 * 1000;
 const PROFILES = new Set(["ephemeral", "persistent"]);
 
 class BrowserPool extends EventEmitter {
-    constructor({ getSettings, launcher, connectCdp = (url) => CdpConnection.connect(url), createVia }) {
+    constructor({ getSettings, launcher, connectCdp = (url) => CdpConnection.connect(url), createVia, persistentLingerMs = PERSISTENT_LINGER_MS }) {
         super();
-        Object.assign(this, { getSettings, launcher, connectCdp, createVia });
+        Object.assign(this, { getSettings, launcher, connectCdp, createVia, persistentLingerMs });
         this.sessions = new Map();
         this.instances = new Map();
         this.live = new Map();
@@ -91,6 +92,7 @@ class BrowserPool extends EventEmitter {
             instance = await this.#instance(instanceKey, { kind, hostResolverRules: viaHandle?.resolverRule ?? null });
             // Reserved before the next await: a session closing meanwhile must not retire the instance under us.
             instance.users.add(id);
+            clearTimeout(instance.lingerTimer);
             // The tunnel belongs to the instance, so a popup of the page keeps it after its opener closed.
             if (viaHandle) instance.viaHandle = viaHandle;
             const ownsContext = !via && profile === "ephemeral";
@@ -201,7 +203,19 @@ class BrowserPool extends EventEmitter {
         if (this.live.get(instanceKey) !== instance) return;
         if (ownsContext) await instance.cdp.send("Target.disposeBrowserContext", { browserContextId }).catch(() => {});
         else await instance.cdp.send("Target.closeTarget", { targetId: session.targetId }).catch(() => {});
-        if (instance.users.size === 0 && instanceKey !== "default" && this.live.get(instanceKey) === instance) await this.#retire(instanceKey);
+        if (instance.users.size > 0 || instanceKey === "default" || this.live.get(instanceKey) !== instance) return;
+        if (instanceKey.startsWith("account-")) this.#retireAfterLinger(instance);
+        else await this.#retire(instanceKey);
+    }
+
+    // Chromium commits persistent cookies to disk on a timer of about 30 s, not on shutdown.
+    #retireAfterLinger(instance) {
+        clearTimeout(instance.lingerTimer);
+        instance.lingerTimer = setTimeout(() => {
+            if (instance.users.size > 0 || this.live.get(instance.key) !== instance) return;
+            this.#retire(instance.key).catch((err) => logger.warn("Browser instance retire failed", { instance: instance.key, error: err.message }));
+        }, this.persistentLingerMs);
+        instance.lingerTimer.unref?.();
     }
 
     #stopInstance(key) {
@@ -215,6 +229,7 @@ class BrowserPool extends EventEmitter {
 
     async #retire(key) {
         const instance = this.live.get(key);
+        clearTimeout(instance?.lingerTimer);
         this.live.delete(key);
         this.instances.delete(key);
         instance?.viaHandle?.close();
