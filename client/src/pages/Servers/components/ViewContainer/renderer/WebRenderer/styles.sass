@@ -1,0 +1,122 @@
+@use "@/common/styles/colors"
+
+.web-renderer
+  position: relative
+  display: flex
+  flex-direction: column
+  height: 100%
+  width: 100%
+  background-color: colors.$terminal
+  overflow: hidden
+
+  .web-address-bar
+    order: -1
+    display: flex
+    align-items: center
+    gap: 0.35rem
+    padding: 0.4rem 0.6rem
+    border-bottom: 1px solid colors.$gray
+    background-color: colors.$lighter-background
+    flex-shrink: 0
+
+    button
+      display: flex
+      align-items: center
+      justify-content: center
+      padding: 0.3rem
+      border: none
+      border-radius: 0.4rem
+      background: transparent
+      color: colors.$white
+      cursor: pointer
+
+      &:disabled
+        opacity: 0.4
+        cursor: default
+
+      &[aria-pressed="true"]
+        color: colors.$primary
+
+    input
+      flex: 1
+      min-width: 0
+      padding: 0.35rem 0.6rem
+      border: 1px solid colors.$gray
+      border-radius: 0.4rem
+      background-color: colors.$terminal
+      color: colors.$white
+
+  .web-agent
+    display: flex
+    align-items: center
+    gap: 0.4rem
+    color: colors.$subtext
+    font-size: 0.8rem
+    white-space: nowrap
+
+    .web-agent-dot
+      width: 0.5rem
+      height: 0.5rem
+      border-radius: 50%
+      background-color: colors.$gray
+
+    &.is-active
+      color: colors.$white
+
+      .web-agent-dot
+        background-color: colors.$primary
+
+  .web-stage
+    position: relative
+    flex: 1
+    min-height: 0
+    outline: none
+
+    canvas
+      display: block
+      width: 100%
+      height: 100%
+
+  .web-connecting
+    position: absolute
+    inset: 0
+    display: flex
+    align-items: center
+    justify-content: center
+    color: colors.$subtext
+
+  .web-notice
+    position: absolute
+    top: 3rem
+    left: 50%
+    transform: translateX(-50%)
+    padding: 0.4rem 0.8rem
+    border-radius: 0.4rem
+    background-color: colors.$lighter-background
+    color: colors.$white
+    font-size: 0.85rem
+    cursor: pointer
+
+  .web-dialog
+    position: absolute
+    top: 4rem
+    left: 50%
+    transform: translateX(-50%)
+    min-width: 20rem
+    max-width: 90%
+    padding: 1rem
+    border: 1px solid colors.$gray
+    border-radius: 0.5rem
+    background-color: colors.$lighter-background
+    color: colors.$white
+
+    .web-dialog-origin
+      margin: 0 0 0.5rem 0
+      color: colors.$subtext
+      font-size: 0.8rem
+
+    .web-dialog-actions
+      display: flex
+      justify-content: flex-end
+      gap: 0.5rem
+      margin-top: 0.75rem
