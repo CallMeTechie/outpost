@@ -1,6 +1,6 @@
 schema: mockingbird/1
 project: outpost
-revision: 7
+revision: 8
 updated: 2026-10-05
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
@@ -37,6 +37,10 @@ changelog:
     date: 2026-10-05
     summary: Fehlerkarte final — bei RDP-Abmelden oder -Trennung kein Neu verbinden, weil der Server diese Sitzung nicht zum Wiederaufbau aufhebt
     touched: [UI-SERVERS-VIEW-ERROR]
+  - rev: 8
+    date: 2026-10-08
+    summary: Browser-Tab — Session ohne Server, eigene Arbeitsfläche mit Adressleiste, Agenten-Anzeiger und Pause
+    touched: [UI-SERVERS-TABS, UI-SERVERS-TAB-LABEL, UI-SERVERS-VIEW]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -203,7 +207,7 @@ screens:
         label: Sessions
         status: required
         verify: required
-        data_source: "offene Sessions des Nutzers (Server-, SFTP-, Notiz-, Skript-Tabs)"
+        data_source: "offene Sessions des Nutzers (Server-, SFTP-, Notiz-, Skript-, Browser-Tabs)"
         semantic_anchor:
           means: Die aktuell offenen Sessions als Tabs, jede mit ihrer Split-View-Zuordnungsfarbe; Kontextmenü mit Umbenennen, Duplizieren, Teilen, Schlafen legen, Ausklinken, Schließen — bei einer getrennten Session zusätzlich Neu verbinden, an erster Stelle.
           concept: session
@@ -266,7 +270,7 @@ screens:
         label: Beschriftung eines Tabs
         status: required
         verify: required
-        data_source: "buildTabLabel: Servername, tmux-Sitzung oder Skriptname, eigener Name, Art, Nummer"
+        data_source: "buildTabLabel: Servername, tmux-Sitzung oder Skriptname, Seitentitel eines Browser-Tabs, eigener Name, Art, Nummer"
         semantic_anchor:
           means: Der Text eines Tabs. Name zuerst, dann die Art in Klammern, zuletzt die Nummer. Die Nummer unterscheidet Tabs, die sonst gleich hießen, und erscheint nur, solange in der Leiste tatsächlich ein zweiter solcher Tab steht.
           concept: session_label
@@ -312,7 +316,7 @@ screens:
         label: Arbeitsfläche
         status: required
         verify: required
-        data_source: "aktive Session(en): Terminal (xterm), Datei-Pane, Guacamole, Notizen, Skript"
+        data_source: "aktive Session(en): Terminal (xterm), Datei-Pane, Guacamole, Notizen, Skript, Browser"
         semantic_anchor:
           means: Der Inhalt der aktiven Session, einzeln oder als Split; Terminal und Datei-Pane nebeneinander sind der Kernfall.
           concept: session_view
