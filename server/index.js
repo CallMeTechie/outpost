@@ -87,6 +87,7 @@ app.use("/api/permissions", authenticate, requirePermission(Permission.PERMISSIO
 app.use("/api/sources", authenticate, requirePermission(Permission.SETTINGS_SOURCES), require("./routes/source"));
 app.use("/api/ai", authenticate, require("./routes/ai"));
 app.use("/api/browser", authenticate, require("./routes/browser"));
+app.use("/api/mcp", authenticate, require("./routes/mcp"));
 app.use("/api/sessions", authenticate, require("./routes/session"));
 app.use("/api/connections", authenticate, require("./routes/serverSession"));
 app.use("/api/folders", authenticate, require("./routes/folder"));
