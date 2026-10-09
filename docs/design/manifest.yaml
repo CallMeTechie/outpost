@@ -1,7 +1,7 @@
 schema: mockingbird/1
 project: outpost
-revision: 8
-updated: 2026-10-05
+revision: 9
+updated: 2026-10-09
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
 tokens_css: docs/design/mockups/tokens.css
@@ -75,14 +75,14 @@ screens:
         label: Bereiche
         status: required
         verify: required
-        data_source: "getSidebarNavigation(t), gefiltert nach den Rechten des Kontos"
+        data_source: "useSidebarNavigation(): getSidebarNavigation(t), gefiltert nach den Rechten des Kontos und, für Browser, nach GET /api/browser/available"
         semantic_anchor:
-          means: Die Bereiche der Anwendung — Server, Monitoring, Snippets, Audit. Ein Eintrag je Bereich, der aktive hervorgehoben; Audit nur mit dem Recht dafür.
+          means: Die Bereiche der Anwendung — Server, Monitoring, Snippets, Browser, Audit. Ein Eintrag je Bereich, der aktive hervorgehoben; Browser nur, wenn Browser-Tabs aktiviert sind und das Konto das Recht dazu hat; Audit nur mit dem Recht dafür.
           concept: app_section
           aliases: [area, page, route]
           not: [server_entry, session]
           cardinality: many
-          example: "Server · Monitoring · Snippets · Audit"
+          example: "Server · Monitoring · Snippets · Browser · Audit"
         states:
           - { id: default }
           - { id: selected }

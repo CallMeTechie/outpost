@@ -900,6 +900,13 @@ export const Servers = () => {
         }
     };
 
+    // The sidebar's browser entry arrives as ?openBrowser=1, so it works from any page.
+    useEffect(() => {
+        if (!new URLSearchParams(location.search).has("openBrowser")) return;
+        navigate("/servers", { replace: true });
+        openBrowser();
+    }, [location.search]);
+
     const hibernateSession = async (sessionId) => {
         try {
             await postRequest(`/connections/${sessionId}/hibernate`);
@@ -1138,7 +1145,7 @@ export const Servers = () => {
                             hibernatedSessions={hibernatedSessions} resumeSession={resumeConnection}
                             joinLiveSession={joinLiveSession}
                             openDirectConnect={openDirectConnect} runScript={runScript}
-                            openNotes={openNotes} openOneDrive={openOneDrive} openBrowser={openBrowser}
+                            openNotes={openNotes} openOneDrive={openOneDrive}
                             openPortForward={isTauri() ? openPortForward : undefined}
                             mobileOpen={mobileServerListOpen} setMobileOpen={setMobileServerListOpen} />,
                 leftPaneSlot

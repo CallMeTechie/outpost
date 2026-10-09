@@ -24,6 +24,7 @@ export const getSidebarNavigation = t => [
     { title: t('common.sidebar.servers'), key: "servers", path: "/servers", icon: IconServer, toggleEvent: "toggleServerList" },
     { title: t('common.sidebar.monitoring'), key: "monitoring", path: "/monitoring", icon: IconChartColumn },
     { title: t('common.sidebar.snippets'), key: "snippets", path: "/snippets", icon: IconBraces },
+    { title: t('common.sidebar.browser'), key: "browser", path: "/servers?openBrowser=1", icon: IconGlobe, permission: Permission.CONNECT_BROWSER },
     { title: t('common.sidebar.audit'), key: "audit", path: "/audit", icon: IconShieldCheck, permission: Permission.AUDIT_VIEW },
 ];
 

@@ -146,6 +146,7 @@
       "servers": "Servers",
       "monitoring": "Monitoring",
       "snippets": "Snippets",
+      "browser": "Browser",
       "audit": "Audit",
       "account": "Account",
       "logout": "Logout",
@@ -2334,7 +2335,6 @@
       "disconnected": "Disconnected",
       "reconnectHint": "Reconnect this account under Settings → Account."
     },
-    "browserEntry": "Browser",
     "keyBar": {
       "escape": "Escape",
       "tab": "Tab",

@@ -10,7 +10,6 @@ import { useScripts } from "@/common/contexts/ScriptContext.jsx";
 import Button from "@/common/components/Button";
 import ServerEntries from "./components/ServerEntries.jsx";
 import OneDriveAccounts from "./components/OneDriveAccounts";
-import BrowserEntry from "./components/BrowserEntry";
 import { isCredentiallessProtocol } from "@/common/utils/ConnectionUtil.js";
 import { useDevFeature } from "@/common/utils/devFeatures.js";
 import { useBodyClass } from "@/common/hooks/useBodyClass.js";
@@ -76,7 +75,6 @@ export const ServerList = ({
     setEditServerId,
     connectToServer,
     openOneDrive,
-    openBrowser,
     openSFTP,
     setCurrentOrganizationId,
     hibernatedSessions = [],
@@ -626,7 +624,6 @@ export const ServerList = ({
                     )}
 
                     <OneDriveAccounts openOneDrive={openOneDrive} />
-                    <BrowserEntry openBrowser={openBrowser} />
 
                     <ContextMenu
                         dataUiId="UI-SERVERS-LIST-MENU"
