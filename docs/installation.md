@@ -157,6 +157,8 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     mem_limit: 2g
+    environment:
+      ALLOWED_CLIENTS: outpost
     volumes:
       - outpost-browser-profiles:/profiles
       - outpost-browser-downloads:/downloads
@@ -171,6 +173,8 @@ volumes:
   outpost-browser-downloads:
 ```
 
+`ALLOWED_CLIENTS` (comma-separated host names or IPs) limits the launcher and the DevTools ports to the Outpost container; connections from any other address, including pages inside the browser, are dropped. Without it the container accepts every client that reaches it.
+
 Then, as an administrator:
 
 1. **Settings → Browser**: enable browser tabs, launcher address `http://outpost-browser:9300`, Outpost address seen from the container `outpost` (the service name).
@@ -182,7 +186,7 @@ claude mcp add --transport http outpost https://<outpost>/api/mcp \
   --header "Authorization: Bearer <api-key>"
 ```
 
-**Container on another machine.** Chromium and the JPEG stream are noticeable on weak hardware such as a DS918+; the container can run on a stronger machine on the same network. Then publish ports `9300`, `9222` and `9230-9429` only on an address that nothing but the Outpost server can reach (a firewall rule allowing only Outpost's IP), set the launcher address to that machine, and set the Outpost address to the Outpost server's LAN address. CDP travels unencrypted and carries everything typed into the pages, passwords included; between machines, run it through WireGuard or an SSH tunnel instead of the plain LAN. Sessions opened with `via` need Outpost to run with `network_mode: host` in this setup: their listening port is opened on demand and is not published from a bridge network.
+**Container on another machine.** Chromium and the JPEG stream are noticeable on weak hardware such as a DS918+; the container can run on a stronger machine on the same network. Then publish ports `9300`, `9222` and `9230-9269` only on an address that nothing but the Outpost server can reach (a firewall rule allowing only Outpost's IP), set the launcher address to that machine, and set the Outpost address to the Outpost server's LAN address. Set `ALLOWED_CLIENTS` to the Outpost server's address. CDP travels unencrypted and carries everything typed into the pages, passwords included; between machines, run it through WireGuard or an SSH tunnel instead of the plain LAN. Sessions opened with `via` need Outpost to run with `network_mode: host` in this setup: their listening port is opened on demand and is not published from a bridge network.
 
 Sessions opened with `via` tunnel the page's host and port through an SSH server entry; the account also needs **Port Forwarding** (`connect.tunnel`) on that entry.
 

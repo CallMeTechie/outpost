@@ -5,8 +5,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd --create-home --uid 1000 browser \
-    && mkdir -p /profiles /downloads \
-    && chown browser:browser /profiles /downloads
+    && mkdir -p /profiles /downloads /etc/chromium/policies/managed \
+    && chown browser:browser /profiles /downloads /etc/chromium/policies/managed
 
 COPY launcher.js /opt/outpost-browser/launcher.js
 
