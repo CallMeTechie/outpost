@@ -95,6 +95,7 @@ test("ephemeral sessions get a context each; persistent ones share their account
     assert.deepStrictEqual(defaultCdp.callsOf("Target.createTarget").map((c) => c.params.browserContextId), ["ctx-1", "ctx-2"]);
     assert.strictEqual(profileCdp.callsOf("Target.createBrowserContext").length, 0);
     assert.strictEqual(profileCdp.callsOf("Target.createTarget").length, 2);
+    assert.ok(profileCdp.callsOf("Target.createTarget").every((c) => c.params.newWindow === true), "a background tab would stop painting");
     assert.strictEqual(pool.getOwned(2, e1.id), null);
     assert.strictEqual(pool.getOwned(1, e1.id), e1);
 

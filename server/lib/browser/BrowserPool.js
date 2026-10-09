@@ -172,8 +172,9 @@ class BrowserPool extends EventEmitter {
     }
 
     async #attach(instance, { id, accountId, profile, via, origin, organizationId, browserContextId = null, targetId = null }) {
+        // A tab behind another tab of its window is hidden and paints nothing, so the screencast stays black.
         const target = targetId
-            ?? (await instance.cdp.send("Target.createTarget", { url: "about:blank", ...(browserContextId && { browserContextId }) })).targetId;
+            ?? (await instance.cdp.send("Target.createTarget", { url: "about:blank", newWindow: true, ...(browserContextId && { browserContextId }) })).targetId;
         let session = null;
         try {
             const { sessionId: cdpSessionId } = await instance.cdp.send("Target.attachToTarget", { targetId: target, flatten: true });

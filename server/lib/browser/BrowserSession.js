@@ -399,6 +399,8 @@ class BrowserSession extends EventEmitter {
     async #startScreencast() {
         this.screencasting = true;
         try {
+            // An adopted popup shares its opener's window; only the front tab of a window paints.
+            await this.send("Page.bringToFront");
             await this.send("Page.startScreencast", { ...SCREENCAST, maxWidth: this.viewport.width, maxHeight: this.viewport.height });
         } catch (err) {
             // Fails while the page is swapping its render frame during the first navigation; a later navigation event retries.

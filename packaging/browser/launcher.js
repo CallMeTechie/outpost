@@ -31,6 +31,8 @@ const KINDS = new Set(["default", "persistent", "ephemeral"]);
 const BASE_ARGS = [
     "--no-first-run", "--no-default-browser-check", "--disable-dev-shm-usage", "--no-sandbox",
     "--remote-debugging-address=127.0.0.1", "--window-position=0,0", "--window-size=1920,1080",
+    // All windows of all instances lie on top of each other on one Xvfb screen; a covered page would count as hidden and stop painting.
+    "--disable-backgrounding-occluded-windows",
 ];
 
 const instances = new Map();
