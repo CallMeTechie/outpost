@@ -30,6 +30,26 @@ const PageDialog = ({ dialog, onReply }) => {
     );
 };
 
+// React knows no prop for it; with "manual" a focused field opens the keyboard only through navigator.virtualKeyboard.
+const MANUAL_KEYBOARD = { virtualkeyboardpolicy: "manual" };
+
+// Chrome on Android ignores an inputmode change on a focused field; it opens the keyboard only through
+// the VirtualKeyboard API, which needs the tap's user activation - still live when the focus reply lands.
+const setSoftKeyboard = (ime, open) => {
+    const keyboard = navigator.virtualKeyboard;
+    if (keyboard) {
+        if (open && document.activeElement !== ime) ime.focus({ preventScroll: true });
+        if (open) keyboard.show();
+        else keyboard.hide();
+        return;
+    }
+    ime.inputMode = open ? "text" : "none";
+    if (!open) return;
+    // Safari re-reads inputmode only when the field takes focus again.
+    if (document.activeElement === ime) ime.blur();
+    ime.focus({ preventScroll: true });
+};
+
 const WebRenderer = ({ session, markSessionErrored, isVisible = true }) => {
     const { t } = useTranslation();
     const { sessionToken } = useContext(UserContext);
@@ -39,6 +59,7 @@ const WebRenderer = ({ session, markSessionErrored, isVisible = true }) => {
     const canvasRef = useRef(null);
     const imeRef = useRef(null);
     const touchRef = useRef(null);
+    const keyboardOpenRef = useRef(false);
     const viewportRef = useRef({ width: 1280, height: 800 });
     const drawnSeqRef = useRef(null);
     const decodingRef = useRef(false);
@@ -144,9 +165,10 @@ const WebRenderer = ({ session, markSessionErrored, isVisible = true }) => {
                         setDialog({ id: message.id, kind: message.kind, message: message.message, defaultPrompt: message.defaultPrompt, origin: message.origin });
                         break;
                     case "focus": {
-                        // Set on the element, not through state: the keyboard follows inputmode only while the field keeps focus.
                         const ime = imeRef.current;
-                        if (ime && document.activeElement === ime) ime.inputMode = message.editable ? "text" : "none";
+                        if (!ime || document.activeElement !== ime) break;
+                        setSoftKeyboard(ime, message.editable);
+                        keyboardOpenRef.current = message.editable;
                         break;
                     }
                     case "dialogClosed":
@@ -267,9 +289,9 @@ const WebRenderer = ({ session, markSessionErrored, isVisible = true }) => {
     const toggleKeyboard = () => {
         const ime = imeRef.current;
         if (!ime) return;
-        if (document.activeElement === ime && ime.inputMode === "text") return ime.blur();
-        ime.inputMode = "text";
-        ime.focus({ preventScroll: true });
+        const open = !(keyboardOpenRef.current && document.activeElement === ime);
+        setSoftKeyboard(ime, open);
+        keyboardOpenRef.current = open;
     };
 
     const onKey = (action, e) => {
@@ -306,9 +328,11 @@ const WebRenderer = ({ session, markSessionErrored, isVisible = true }) => {
                 <canvas ref={canvasRef} />
                 {!connected && <div className="web-connecting">{t("servers.webRenderer.connecting")}</div>}
             </div>
-            <textarea className="web-ime" ref={imeRef} inputMode="none" tabIndex={-1} aria-hidden="true"
+            <textarea className="web-ime" ref={imeRef} tabIndex={-1} aria-hidden="true"
+                      inputMode={navigator.virtualKeyboard ? "text" : "none"} {...MANUAL_KEYBOARD}
                       autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false}
-                      onFocus={resetIme} onInput={(e) => { if (!e.nativeEvent.isComposing) flushIme(); }}
+                      onFocus={resetIme} onBlur={() => { keyboardOpenRef.current = false; }}
+                      onInput={(e) => { if (!e.nativeEvent.isComposing) flushIme(); }}
                       onCompositionEnd={flushIme} onKeyDown={(e) => onImeKey("down", e)}
                       onKeyUp={(e) => onImeKey("up", e)} onPaste={onPaste} />
             <AddressBar page={page} agent={agent} connected={connected} onKeyboard={toggleKeyboard}
