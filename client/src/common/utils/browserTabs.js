@@ -8,6 +8,8 @@ const toBrowserFields = (item) => ({
     via: item.via ?? null,
 });
 
+export const toBrowserTab = (item) => ({ id: item.id, type: BROWSER_SESSION_TYPE, browser: toBrowserFields(item) });
+
 const sameBrowserFields = (a, b) => !!a && Object.keys(b).every((key) => a[key] === b[key]);
 
 // An absent list means "not known yet", never "nothing open".
@@ -31,7 +33,7 @@ export const syncBrowserTabs = (sessions, list, dismissed) => {
     const known = new Set(sessions.map((session) => session.id));
     for (const item of list) {
         if (known.has(item.id) || dismissed.has(item.id) || item.origin !== "agent") continue;
-        next.push({ id: item.id, type: BROWSER_SESSION_TYPE, browser: toBrowserFields(item) });
+        next.push(toBrowserTab(item));
         activate = item.id;
     }
 

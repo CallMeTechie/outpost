@@ -7,6 +7,7 @@ const withScheme = (value) => (/^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? value : 
 
 const AddressBar = ({ page, agent, connected, onNavigate, onHistory, onPause, onClose, onKeyboard }) => {
     const { t } = useTranslation();
+    const shownUrl = page.url === "about:blank" ? "" : page.url;
     const [draft, setDraft] = useState("");
     const [editing, setEditing] = useState(false);
 
@@ -32,8 +33,8 @@ const AddressBar = ({ page, agent, connected, onNavigate, onHistory, onPause, on
             <button type="button" aria-label={t("servers.webRenderer.reload")} disabled={!connected} onClick={() => onHistory("reload")}>
                 <Icon icon={IconRotateCw} spin={page.loading} />
             </button>
-            <input aria-label={t("servers.webRenderer.address")} spellCheck={false} value={editing ? draft : page.url}
-                   onFocus={() => { setDraft(page.url); setEditing(true); }}
+            <input aria-label={t("servers.webRenderer.address")} spellCheck={false} value={editing ? draft : shownUrl}
+                   onFocus={() => { setDraft(shownUrl); setEditing(true); }}
                    onBlur={() => setEditing(false)}
                    onChange={(e) => setDraft(e.target.value)} />
             <span className={`web-agent${agent.active ? " is-active" : ""}${agent.paused ? " is-paused" : ""}`}

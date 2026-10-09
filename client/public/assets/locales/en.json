@@ -2333,6 +2333,7 @@
       "disconnected": "Disconnected",
       "reconnectHint": "Reconnect this account under Settings → Account."
     },
+    "browserEntry": "Browser",
     "keyBar": {
       "escape": "Escape",
       "tab": "Tab",

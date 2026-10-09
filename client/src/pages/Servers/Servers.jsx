@@ -24,7 +24,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import { StateStreamContext, STATE_TYPES } from "@/common/contexts/StateStreamContext.jsx";
 import { isTauri } from "@/common/utils/TauriUtil.js";
-import { syncBrowserTabs, BROWSER_SESSION_TYPE } from "@/common/utils/browserTabs.js";
+import { syncBrowserTabs, toBrowserTab, BROWSER_SESSION_TYPE } from "@/common/utils/browserTabs.js";
 import { getTabId, getBrowserId, requiresIdentity, canConnectWithoutPrompt, getDisplayDpi } from "@/common/utils/ConnectionUtil.js";
 import { getRequest, postRequest, deleteRequest } from "@/common/utils/RequestUtil";
 import {
@@ -889,6 +889,16 @@ export const Servers = () => {
         setActiveSessionId(sessionId);
     };
 
+    const openBrowser = async () => {
+        try {
+            const item = await postRequest("/browser/sessions");
+            setActiveSessions(prev => prev.some(s => s.id === item.id) ? prev : [...prev, toBrowserTab(item)]);
+            setActiveSessionId(item.id);
+        } catch (error) {
+            sendToast("Error", error?.message || t("servers.unknownError"));
+        }
+    };
+
     const hibernateSession = async (sessionId) => {
         try {
             await postRequest(`/connections/${sessionId}/hibernate`);
@@ -1127,7 +1137,7 @@ export const Servers = () => {
                             hibernatedSessions={hibernatedSessions} resumeSession={resumeConnection}
                             joinLiveSession={joinLiveSession}
                             openDirectConnect={openDirectConnect} runScript={runScript}
-                            openNotes={openNotes} openOneDrive={openOneDrive}
+                            openNotes={openNotes} openOneDrive={openOneDrive} openBrowser={openBrowser}
                             openPortForward={isTauri() ? openPortForward : undefined}
                             mobileOpen={mobileServerListOpen} setMobileOpen={setMobileServerListOpen} />,
                 leftPaneSlot

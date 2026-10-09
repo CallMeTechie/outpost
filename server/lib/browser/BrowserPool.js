@@ -61,9 +61,11 @@ class BrowserPool extends EventEmitter {
     }
 
     async open({ accountId, url, profile = "ephemeral", via = null, origin = "agent" }) {
-        const href = assertNavigableUrl(url);
+        const href = url == null ? null : assertNavigableUrl(url);
         if (!PROFILES.has(profile))
             throw new BrowserError(BrowserErrorCode.INVALID_PROFILE, `Unknown profile "${profile}"; use "ephemeral" or "persistent"`);
+        if (via && href === null)
+            throw new BrowserError(BrowserErrorCode.INVALID_ARGUMENT, "via tunnels the host of a URL; pass a url together with via.");
         if (via && profile === "persistent")
             throw new BrowserError(BrowserErrorCode.VIA_PERSISTENT,
                 "via and a persistent profile exclude each other: a Chromium profile directory can only be held by one instance, and via needs an instance of its own. Leave out profile; a via session always runs ephemeral.");
@@ -108,7 +110,7 @@ class BrowserPool extends EventEmitter {
             this.opening--;
             counted = false;
             let navigationError = null;
-            await session.navigate(href).catch((err) => {
+            if (href) await session.navigate(href).catch((err) => {
                 navigationError = err.message;
             });
             return { session, navigationError };

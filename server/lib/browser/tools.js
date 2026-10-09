@@ -67,9 +67,21 @@ const errorResult = (err) => {
 const pageResult = (session, snapshot, note = "") =>
     textResult(`Session: ${session.id}\nURL: ${session.state.url}\nTitle: ${session.state.title}${note}\n\n${snapshot}`);
 
+const defaultAudit = (entry) => require("../../controllers/audit").createAuditLog(entry);
+
+const recordBrowserAudit = (audit, ctx, session, action, details) => audit({
+    accountId: ctx.accountId,
+    organizationId: session.organizationId ?? null,
+    action,
+    resource: "browser",
+    details: { url: auditUrl(session.state.url), sessionId: session.id, ...details },
+    ipAddress: ctx.ipAddress ?? null,
+    userAgent: ctx.userAgent ?? null,
+});
+
 const createBrowserTools = ({
     getPool,
-    audit = (entry) => require("../../controllers/audit").createAuditLog(entry),
+    audit = defaultAudit,
     sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 }) => {
     const defaults = new Map();
@@ -108,15 +120,7 @@ const createBrowserTools = ({
             "More than one browser session is open and this connection has none of its own. Pass sessionId.", { sessions: open });
     };
 
-    const record = (ctx, session, action, details) => audit({
-        accountId: ctx.accountId,
-        organizationId: session.organizationId ?? null,
-        action,
-        resource: "browser",
-        details: { url: auditUrl(session.state.url), sessionId: session.id, ...details },
-        ipAddress: ctx.ipAddress ?? null,
-        userAgent: ctx.userAgent ?? null,
-    });
+    const record = (ctx, session, action, details) => recordBrowserAudit(audit, ctx, session, action, details);
 
     const snapshotAfter = async (session, note) => {
         await session.settle();
@@ -156,6 +160,8 @@ const createBrowserTools = ({
 
     const handlers = {
         browser_open: async (args, ctx) => {
+            if (args.url == null)
+                throw new BrowserError(BrowserErrorCode.INVALID_URL, "browser_open needs a url. Include the scheme, e.g. https://example.com");
             const { session, navigationError } = await getPool().open({
                 accountId: ctx.accountId, url: args.url, via: args.via ?? null, profile: args.profile ?? "ephemeral", origin: "agent",
             });
@@ -240,4 +246,4 @@ const createBrowserTools = ({
     };
 };
 
-module.exports = { createBrowserTools };
+module.exports = { createBrowserTools, recordBrowserAudit, defaultAudit };

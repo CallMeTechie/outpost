@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert";
-import { syncBrowserTabs } from "../browserTabs.js";
+import { syncBrowserTabs, toBrowserTab } from "../browserTabs.js";
 
 const terminal = { id: "s1", type: "terminal", server: { name: "pve" } };
 const item = (id, extra = {}) => ({ id, url: `https://${id}.test/`, title: id, origin: "agent", agentActive: false, agentPaused: false, via: null, ...extra });
@@ -39,4 +39,13 @@ test("a push that changes nothing returns the same array and reuses an unchanged
     assert.notStrictEqual(sessions, before);
     assert.strictEqual(sessions[1], before[1]);
     assert.notStrictEqual(sessions[2], before[2]);
+});
+
+test("a tab the user opened survives the next push that contains it and is not added twice", () => {
+    const opened = toBrowserTab(item("browser-u", { origin: "user", url: "about:blank" }));
+    const before = [terminal, opened];
+    const { sessions, activate } = syncBrowserTabs(before, [item("browser-u", { origin: "user", url: "https://a.test/", title: "A" })], new Set());
+    assert.deepStrictEqual(sessions.map((s) => s.id), ["s1", "browser-u"]);
+    assert.deepStrictEqual([sessions[1].browser.url, sessions[1].browser.title], ["https://a.test/", "A"]);
+    assert.strictEqual(activate, null);
 });

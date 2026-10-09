@@ -2319,6 +2319,7 @@
       "disconnected": "Getrennt",
       "reconnectHint": "Dieses Konto unter Einstellungen → Konto neu verbinden."
     },
+    "browserEntry": "Browser",
     "keyBar": {
       "escape": "Escape",
       "tab": "Tabulator",
