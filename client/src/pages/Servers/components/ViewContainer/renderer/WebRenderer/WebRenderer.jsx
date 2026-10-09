@@ -241,7 +241,11 @@ const WebRenderer = ({ session, markSessionErrored, isVisible = true }) => {
         if (action === "move" && !moveAllowed()) return;
         const touch = touchRef.current !== null;
         // A tap gets the hidden field instead of the stage: only a focused text field can show the soft keyboard.
-        if (action === "down") (touch ? imeRef.current : stageRef.current)?.focus({ preventScroll: true });
+        // Without preventDefault the mousedown default action hands focus back to the stage.
+        if (action === "down") {
+            (touch ? imeRef.current : stageRef.current)?.focus({ preventScroll: true });
+            if (touch) e.preventDefault();
+        }
         const payload = mousePayload(action, e, canvas.getBoundingClientRect(), viewportRef.current);
         sendJson(action === "up" && touch ? { ...payload, focusCheck: true } : payload);
     };

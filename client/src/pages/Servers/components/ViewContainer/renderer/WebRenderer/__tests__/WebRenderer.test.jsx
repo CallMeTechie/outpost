@@ -79,3 +79,19 @@ test("a hidden browser tab holds no connection; showing it connects", () => {
     view.rerender(<WebRenderer session={session} markSessionErrored={vi.fn()} isVisible={false} />);
     expect(ws.readyState).toBe(3);
 });
+
+test("a tap on a page text field opens the soft keyboard", () => {
+    const keyboard = { show: vi.fn(), hide: vi.fn() };
+    vi.stubGlobal("navigator", { ...navigator, virtualKeyboard: keyboard });
+    const ws = connect();
+    const stage = document.querySelector(".web-stage");
+
+    fireEvent.pointerDown(stage, { pointerType: "touch" });
+    expect(fireEvent.mouseDown(stage, { button: 0 })).toBe(false);
+    fireEvent.mouseUp(stage, { button: 0 });
+    expect(ws.sent.at(-1)).toMatchObject({ type: "mouse", action: "up", focusCheck: true });
+
+    act(() => ws.receive({ type: "focus", editable: true }));
+    expect(document.activeElement).toBe(document.querySelector(".web-ime"));
+    expect(keyboard.show).toHaveBeenCalled();
+});
