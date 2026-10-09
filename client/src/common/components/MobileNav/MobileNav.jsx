@@ -20,7 +20,8 @@ export const MobileNav = () => {
         <nav className="mobile-nav" data-ui-id="UI-SHELL-MOBILE-NAV">
             <div className="mobile-nav-scroll">
                 {navigation.map((item, i) => (
-                    <div key={i} onClick={() => handleClick(item)} className={`mobile-nav-item${pathname.startsWith(item.path) ? " active" : ""}`}>
+                    <div key={i} role="link" tabIndex={0} onClick={() => handleClick(item)}
+                         onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), handleClick(item))} className={`mobile-nav-item${pathname.startsWith(item.path) ? " active" : ""}`}>
                         <Icon icon={item.icon} /><span>{item.title}</span>
                     </div>
                 ))}

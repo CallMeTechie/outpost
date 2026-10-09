@@ -139,6 +139,8 @@ class BrowserSession extends EventEmitter {
     }
 
     async #focusIsEditable() {
+        // An open page dialog blocks Runtime.evaluate until someone answers it.
+        if (this.pendingDialog) return false;
         try {
             const { result } = await this.send("Runtime.evaluate", { expression: FOCUS_EDITABLE, returnByValue: true });
             return result?.value === true;
@@ -401,6 +403,8 @@ class BrowserSession extends EventEmitter {
         try {
             // An adopted popup shares its opener's window; only the front tab of a window paints.
             await this.send("Page.bringToFront");
+            // The last viewer may have left while bringToFront was in flight.
+            if (!this.screencasting || this.closed) return;
             await this.send("Page.startScreencast", { ...SCREENCAST, maxWidth: this.viewport.width, maxHeight: this.viewport.height });
         } catch (err) {
             // Fails while the page is swapping its render frame during the first navigation; a later navigation event retries.

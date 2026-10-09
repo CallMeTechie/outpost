@@ -264,7 +264,7 @@ const WebRenderer = ({ session, markSessionErrored, isVisible = true }) => {
         const canvas = canvasRef.current;
         if (action !== "move" || !touch || !canvas) return;
         touch.dragging ||= Math.hypot(e.clientX - touch.startX, e.clientY - touch.startY) > TAP_SLOP_PX;
-        if (!touch.dragging) return;
+        if (!touch.dragging || !moveAllowed()) return;
         const point = { clientX: e.clientX, clientY: e.clientY };
         sendJson(touchScrollPayload(touch.last, point, canvas.getBoundingClientRect(), viewportRef.current));
         touch.last = point;

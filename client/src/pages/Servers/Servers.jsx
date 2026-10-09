@@ -900,9 +900,13 @@ export const Servers = () => {
         navigate("/servers", { replace: true });
         openBrowser();
     });
+    // StrictMode runs this effect twice for one navigation; each run would open a session.
+    const handledBrowserParamRef = useRef(null);
     useEffect(() => {
-        if (new URLSearchParams(location.search).has("openBrowser")) onOpenBrowserParam();
-    }, [location.search]);
+        if (!new URLSearchParams(location.search).has("openBrowser") || handledBrowserParamRef.current === location.key) return;
+        handledBrowserParamRef.current = location.key;
+        onOpenBrowserParam();
+    }, [location.search, location.key]);
 
     const hibernateSession = async (sessionId) => {
         try {

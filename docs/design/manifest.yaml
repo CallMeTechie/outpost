@@ -1,6 +1,6 @@
 schema: mockingbird/1
 project: outpost
-revision: 9
+revision: 10
 updated: 2026-10-09
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
@@ -77,7 +77,7 @@ screens:
         verify: required
         data_source: "useSidebarNavigation(): getSidebarNavigation(t), gefiltert nach den Rechten des Kontos und, für Browser, nach GET /api/browser/available"
         semantic_anchor:
-          means: Die Bereiche der Anwendung — Server, Monitoring, Snippets, Browser, Audit. Ein Eintrag je Bereich, der aktive hervorgehoben; Browser nur, wenn Browser-Tabs aktiviert sind und das Konto das Recht dazu hat; Audit nur mit dem Recht dafür.
+          means: Die Bereiche der Anwendung — Server, Monitoring, Snippets, Audit — und dazwischen die Aktion Browser. Ein Eintrag je Bereich, der aktive hervorgehoben; Browser ist kein Bereich, sondern öffnet unter Server einen neuen Browser-Tab und wird deshalb nie hervorgehoben. Browser nur, wenn Browser-Tabs aktiviert sind und das Konto das Recht dazu hat; Audit nur mit dem Recht dafür.
           concept: app_section
           aliases: [area, page, route]
           not: [server_entry, session]
@@ -129,7 +129,7 @@ screens:
         verify: required
         data_source: "dieselbe Liste wie UI-SHELL-NAV"
         semantic_anchor:
-          means: Unter 768px ersetzt eine Leiste am unteren Rand die seitliche. Sie zeigt dieselben Bereiche mit Beschriftung; ein Tipp auf den bereits offenen Bereich klappt dort die Serverliste auf.
+          means: Unter 768px ersetzt eine Leiste am unteren Rand die seitliche. Sie zeigt dieselben Einträge mit Beschriftung, Browser auch hier als Aktion ohne hervorgehobenen Zustand; ein Tipp auf den bereits offenen Bereich klappt dort die Serverliste auf.
           concept: app_section
           aliases: [area, page, route]
           not: [server_entry, session]

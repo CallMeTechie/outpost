@@ -160,12 +160,15 @@ export const Sidebar = ({ onToggleCollapse }) => {
                 }} />}
             <div className="sidebar-top">
                 <Tooltip text={t('common.sidebar.collapseTitle')}>
-                    <div className="sidebar-logo outpost-logo" data-ui-id="UI-SHELL-LOGO" onClick={onToggleCollapse} title={t('common.sidebar.collapseTitle')}><OutpostLogo size={42 * uiScale} /></div>
+                    <div className="sidebar-logo outpost-logo" data-ui-id="UI-SHELL-LOGO" role="button" tabIndex={0} onClick={onToggleCollapse}
+                         onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onToggleCollapse())} title={t('common.sidebar.collapseTitle')}><OutpostLogo size={42 * uiScale} /></div>
                 </Tooltip>
                 <nav data-ui-id="UI-SHELL-NAV">
                     {navigation.map((item, i) => (
                         <Tooltip key={i} text={item.title}>
-                            <div onClick={() => navigate(item.path)} className={`nav-item${location.pathname.startsWith(item.path) ? " nav-item-active" : ""}`}><Icon icon={item.icon} /></div>
+                            <div role="link" tabIndex={0} aria-label={item.title} onClick={() => navigate(item.path)}
+                                 onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), navigate(item.path))}
+                                 className={`nav-item${location.pathname.startsWith(item.path) ? " nav-item-active" : ""}`}><Icon icon={item.icon} /></div>
                         </Tooltip>
                     ))}
                 </nav>

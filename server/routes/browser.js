@@ -96,7 +96,10 @@ app.post("/sessions", requirePermission(Permission.CONNECT_BROWSER), async (req,
     } catch (err) {
         if (err instanceof BrowserError) {
             const status = STATUS_BY_CODE[err.code] ?? 400;
-            return sendError(res, status, status, err.message);
+            if (status !== 503) return sendError(res, status, status, err.message);
+            // The message carries the container's internal address; it is for the admin's log.
+            logger.warn("Opening a browser session failed", { error: err.message });
+            return sendError(res, 503, 503, "The browser is not available right now.");
         }
         logger.error("Opening a browser session failed", { error: err.message });
         sendError(res, 500, 500, "Internal server error");
