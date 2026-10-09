@@ -308,9 +308,18 @@ export const Servers = () => {
 
     const handleBrowserSessions = useCallback((list) => {
         const dismissed = dismissedBrowserSessionsRef.current;
-        setActiveSessions(prev => syncBrowserTabs(prev, list, dismissed).sessions);
-        const { activate } = syncBrowserTabs(activeSessionsRef.current, list, dismissed);
-        if (activate) setActiveSessionId(activate);
+        setActiveSessions(prev => {
+            const { sessions, activate } = syncBrowserTabs(prev, list, dismissed);
+            if (sessions === prev) return prev;
+            const keptIds = new Set(sessions.map(session => session.id));
+            const removedIds = new Set(prev.filter(session => !keptIds.has(session.id)).map(session => session.id));
+            setActiveSessionId(currentActiveId => {
+                if (activate) return activate;
+                if (removedIds.has(currentActiveId)) return sessions.at(-1)?.id || null;
+                return currentActiveId;
+            });
+            return sessions;
+        });
     }, [setActiveSessions, setActiveSessionId]);
 
     useEffect(() => registerHandler(STATE_TYPES.BROWSER_SESSIONS, handleBrowserSessions), [registerHandler, handleBrowserSessions]);

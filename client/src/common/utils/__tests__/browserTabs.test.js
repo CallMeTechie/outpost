@@ -30,3 +30,13 @@ test("an absent list is not read as 'nothing is open'", () => {
     const before = [terminal, tab("browser-a")];
     for (const list of [null, undefined]) assert.deepStrictEqual(syncBrowserTabs(before, list, new Set()), { sessions: before, activate: null });
 });
+
+test("a push that changes nothing returns the same array and reuses an unchanged tab", () => {
+    const before = [terminal, tab("browser-a"), tab("browser-b")];
+    assert.strictEqual(syncBrowserTabs(before, [item("browser-a"), item("browser-b")], new Set()).sessions, before);
+
+    const { sessions } = syncBrowserTabs(before, [item("browser-a"), item("browser-b", { title: "Grafana" })], new Set());
+    assert.notStrictEqual(sessions, before);
+    assert.strictEqual(sessions[1], before[1]);
+    assert.notStrictEqual(sessions[2], before[2]);
+});
