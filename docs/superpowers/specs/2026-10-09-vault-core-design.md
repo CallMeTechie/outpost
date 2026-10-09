@@ -482,7 +482,7 @@ Artboards: `docs/design/mockups/index.html` · Design-System: `docs/design/desig
 <!-- preflight:security:begin -->
 <!-- facts: network_surface=both has_accounts=yes auth_method=api-key
      has_privilege_levels=yes session_transport=bearer-header has_owned_data=yes
-     is_multi_tenant=no persistence=sql renders_html=yes accepts_uploads=yes
+     is_multi_tenant=yes persistence=sql renders_html=yes accepts_uploads=yes
      handles_pii=yes -->
 
 ## Security Requirements
@@ -498,12 +498,13 @@ Artboards: `docs/design/mockups/index.html` · Design-System: `docs/design/desig
 | SEC-RATE-02 | Brute-Force-Bremse am Login | Login | not-applicable | (2026-10-09) die Spec ändert den Login nicht; Agenten-Keys haben 256 Bit Entropie |
 | SEC-SQLI-01 | Prepared Statements, keine String-Konkatenation | Sichtbarkeits-Abfragen, Bindungen, Agenten-Keys | required | SQL-Persistenz |
 | SEC-XSS-01 | Kontextsensitives Output-Encoding | Vault-Seite, Freigabe-Karte, angezeigte Werte | required | React-Oberfläche |
-| SEC-CSP-01 | Content Security Policy | gesamte Oberfläche | not-applicable | (2026-10-09) keine neuen fremden Ressourcen; eine CSP betrifft die ganze Anwendung und ist nicht Teil dieses Teilprojekts |
+| SEC-CSP-01 | Content Security Policy | gesamte Oberfläche; zuerst `Content-Security-Policy-Report-Only`, scharf nach Auswertung der Verstöße | required | React-Oberfläche; XSS erreicht über Reveal alle Werte |
 | SEC-UPLOAD-01 | Upload-Prüfung | Dateimanager | not-applicable | (2026-10-09) der Vault nimmt keine Dateien an, SSH-Schlüssel kommen als Text |
 | SEC-IDOR-01 | Objektbezogene Autorisierung bei jedem Zugriff über eine ID | Einträge, Werte, Freigaben, Agenten-Keys | required | Einträge gehören Konten oder Organisationen |
+| SEC-TENANT-01 | Mandanten-Scoping in jeder Abfrage | Sichtbarkeit, Bindungen (nur Server und Ordner derselben Organisation), Freigaben, Reveal | required | Organisationen als Mandanten |
 | SEC-RBAC-01 | Rollen- oder Rechtemodell | `vault.use`, `vault.manage`, `vault.reveal`, `settings.vault` | required | Berechtigungssystem |
 | SEC-APIKEY-01 | API-Keys hoch entropisch, gehasht, widerrufbar, zeitkonstant verglichen | Agenten-Keys inkl. `pending` | required | Agenten-Keys |
 | SEC-SESS-02 | Ablauf, Rotation, serverseitiger Widerruf | Agenten-Keys, Freigaben je MCP-Sitzung | required | Bearer-Header |
-| SEC-TOKEN-01 | Token-Validierung, Lebensdauer, sichere Ablage, Widerruf | Bearer-Pfad in `authenticate`, IP-Bindung | required | Bearer-Header |
+| SEC-TOKEN-01 | Token-Validierung, Lebensdauer, sichere Ablage, Widerruf | Bearer-Pfad in `authenticate`, IP-Bindung, Token im Query-String des Zustandsstroms (nicht in Logs) | required | Bearer-Header |
 | SEC-PII-01 | Datensparsamkeit, Zugriffsprotokoll, Löschkonzept | Benutzernamen in Einträgen, Audit der Nutzung, Löschen von Einträgen | required | Login-Einträge und Audit enthalten Personenbezug |
 <!-- preflight:security:end -->
