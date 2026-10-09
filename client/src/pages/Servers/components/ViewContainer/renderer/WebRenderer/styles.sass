@@ -73,6 +73,11 @@
     outline: none
     touch-action: none
 
+    canvas
+      display: block
+      width: 100%
+      height: 100%
+
   // 16px keeps iOS from zooming in when the field takes focus.
   .web-ime
     position: absolute
@@ -92,11 +97,6 @@
 
     @media (pointer: coarse)
       display: flex
-
-    canvas
-      display: block
-      width: 100%
-      height: 100%
 
   .web-connecting
     position: absolute
