@@ -70,6 +70,10 @@ test("against a real Chromium: snapshot, type, click, frames, navigation, close,
         await assert.rejects(session.click(link), (err) => err.code === BrowserErrorCode.STALE_REF);
         assert.strictEqual(session.state.title, "E2E second");
 
+        await assert.rejects(session.navigate("http://127.0.0.1:10222/json/list"),
+            (err) => err.code === BrowserErrorCode.NAVIGATION_FAILED && /ERR_BLOCKED_BY_ADMINISTRATOR/.test(err.message),
+            "a page must not reach the container's own DevTools");
+
         await pool.close(session.id, "test");
         await flush();
         assert.deepStrictEqual(viewer.json.at(-1), { type: "closed", reason: "test" });
