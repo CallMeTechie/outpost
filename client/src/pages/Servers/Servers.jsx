@@ -1,6 +1,6 @@
 import "./styles.sass";
 import ServerList from "@/pages/Servers/components/ServerList";
-import { useContext, useEffect, useState, useCallback, useRef } from "react";
+import { useContext, useEffect, useState, useCallback, useRef, useEffectEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import WelcomePanel from "@/pages/Servers/components/WelcomePanel";
@@ -889,22 +889,19 @@ export const Servers = () => {
         setActiveSessionId(sessionId);
     };
 
-    const openBrowser = async () => {
-        try {
-            const item = await postRequest("/browser/sessions");
-            setActiveSessions(prev => prev.some(s => s.id === item.id) ? prev : [...prev, toBrowserTab(item)]);
-            setActiveSessionId(item.id);
-            setMobileServerListOpen(false);
-        } catch (error) {
-            sendToast("Error", error?.message || t("servers.unknownError"));
-        }
-    };
+    const openBrowser = () => postRequest("/browser/sessions").then((item) => {
+        setActiveSessions(prev => prev.some(s => s.id === item.id) ? prev : [...prev, toBrowserTab(item)]);
+        setActiveSessionId(item.id);
+        setMobileServerListOpen(false);
+    }, (error) => sendToast("Error", error?.message || t("servers.unknownError")));
 
     // The sidebar's browser entry arrives as ?openBrowser=1, so it works from any page.
-    useEffect(() => {
-        if (!new URLSearchParams(location.search).has("openBrowser")) return;
+    const onOpenBrowserParam = useEffectEvent(() => {
         navigate("/servers", { replace: true });
         openBrowser();
+    });
+    useEffect(() => {
+        if (new URLSearchParams(location.search).has("openBrowser")) onOpenBrowserParam();
     }, [location.search]);
 
     const hibernateSession = async (sessionId) => {
