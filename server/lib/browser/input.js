@@ -76,4 +76,16 @@ const assertNavigableUrl = (raw) => {
     return url.href;
 };
 
-module.exports = { SCREENCAST, toCdpCalls, viewportCalls, clampViewport, assertNavigableUrl };
+// Every viewer of a tab reads its address; the user part of a URL is a password like any other.
+const withoutCredentials = (raw) => {
+    try {
+        const url = new URL(String(raw));
+        url.username = "";
+        url.password = "";
+        return url.href;
+    } catch {
+        return String(raw);
+    }
+};
+
+module.exports = { SCREENCAST, toCdpCalls, viewportCalls, clampViewport, assertNavigableUrl, withoutCredentials };

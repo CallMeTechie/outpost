@@ -114,3 +114,17 @@ test("a second agent call on a busy session is refused instead of interleaving i
     assert.strictEqual(await first, "done");
     assert.strictEqual(await a.runAgent("browser_click", () => a.click("e1")), 'button "Go"');
 });
+
+test("credentials in the page address reach neither viewers nor the session list", async () => {
+    const cdp = createFakeCdp({
+        "Page.getNavigationHistory": { currentIndex: 0, entries: [{ id: 1, url: "https://alice:secret@a.test/inbox", title: "Inbox" }] },
+    });
+    const session = new BrowserSession({ id: "browser-a", accountId: 1, profile: "ephemeral", origin: "agent", cdp, targetId: "TA", cdpSessionId: "SA" });
+    await session.start();
+    const viewer = createFakeViewer();
+    session.addViewer(viewer);
+
+    assert.ok(viewer.json.length > 0);
+    assert.ok(viewer.json.every((m) => !JSON.stringify(m).includes("secret")));
+    assert.strictEqual(session.summary().url, "https://a.test/inbox");
+});

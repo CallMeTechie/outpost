@@ -1,7 +1,7 @@
 const { EventEmitter } = require("node:events");
 const { AsyncLocalStorage } = require("node:async_hooks");
 const { encodeFrame, nextSeq } = require("./frameProtocol");
-const { toCdpCalls, viewportCalls, clampViewport, assertNavigableUrl, SCREENCAST } = require("./input");
+const { toCdpCalls, viewportCalls, clampViewport, assertNavigableUrl, withoutCredentials, SCREENCAST } = require("./input");
 const { RefTable, buildSnapshot } = require("./snapshot");
 const actions = require("./actions");
 const { BrowserError, BrowserErrorCode } = require("./errors");
@@ -370,7 +370,7 @@ class BrowserSession extends EventEmitter {
         if (!entry) return;
         this.state = {
             ...this.state,
-            url: entry.url,
+            url: withoutCredentials(entry.url),
             title: entry.title ?? "",
             canGoBack: currentIndex > 0,
             canGoForward: currentIndex < entries.length - 1,
