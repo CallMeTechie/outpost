@@ -42,6 +42,8 @@ test("a key arrives with the same key, code, virtual key code, text and modifier
     const altGrQ = { ...noKeys, key: "@", code: "KeyQ", keyCode: 81, ctrlKey: true, altKey: true };
     const typed = toCdpCalls(keyPayload("down", altGrQ))[0].params;
     assert.deepStrictEqual([typed.type, typed.text, typed.modifiers], ["keyDown", "@", 0]);
+    const shortcut = toCdpCalls(keyPayload("down", { ...noKeys, key: "t", code: "KeyT", keyCode: 84, ctrlKey: true, altKey: true }))[0].params;
+    assert.deepStrictEqual([shortcut.type, shortcut.text, shortcut.modifiers], ["rawKeyDown", undefined, 3]);
 
     assert.deepStrictEqual(toCdpCalls(pastePayload("pw 😀\nx")), [{ method: "Input.insertText", params: { text: "pw 😀\nx" } }]);
 });

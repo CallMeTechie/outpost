@@ -100,4 +100,5 @@ test("the resolver rule keeps the page's own address; IP literals are refused", 
     assert.deepStrictEqual(viaTargetFromUrl("https://dev.internal/"), { host: "dev.internal", port: 443, remoteHost: "dev.internal" });
     for (const url of ["http://127.0.0.1:5173/", "http://[::1]:5173/"])
         assert.throws(() => viaTargetFromUrl(url), (err) => err.code === BrowserErrorCode.VIA_INVALID && /host name/.test(err.message), url);
+    assert.throws(() => viaTargetFromUrl("http://localhost:9222/"), (err) => err.code === BrowserErrorCode.VIA_INVALID && /reserves/.test(err.message));
 });

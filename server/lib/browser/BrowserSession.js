@@ -16,6 +16,8 @@ const SETTLE_QUIET_MS = 150;
 const SETTLE_POLL_MS = 50;
 const SETTLE_MAX_MS = 10000;
 const SCREENSHOT_MAX_HEIGHT = 16384;
+// One oversized CDP message closes the connection every session of the instance shares.
+const SCREENSHOT_MAX_PIXELS = 8e6;
 
 // Bound to the work of one runAgent across its awaits: that work outlives an interrupted runAgent
 // and has to see its own abort, not whatever call runs on the session by then.
@@ -234,8 +236,10 @@ class BrowserSession extends EventEmitter {
         const params = { format: "png" };
         if (fullPage) {
             const { cssContentSize } = await this.agentSend("Page.getLayoutMetrics");
+            const width = Math.min(cssContentSize.width, SCREENSHOT_MAX_HEIGHT);
             const height = Math.min(cssContentSize.height, SCREENSHOT_MAX_HEIGHT);
-            Object.assign(params, { captureBeyondViewport: true, clip: { x: 0, y: 0, width: cssContentSize.width, height, scale: 1 } });
+            const scale = Math.min(1, Math.sqrt(SCREENSHOT_MAX_PIXELS / (width * height)));
+            Object.assign(params, { captureBeyondViewport: true, clip: { x: 0, y: 0, width, height, scale } });
         }
         return (await this.agentSend("Page.captureScreenshot", params)).data;
     }

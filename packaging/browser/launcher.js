@@ -62,18 +62,25 @@ const clientAllowed = async (remoteAddress) => {
     return (await allowedAddresses()).has(stripMapped(remoteAddress));
 };
 
+const urlHost = (address) => new URL(`http://${address.includes(":") ? `[${address}]` : address}/`).host;
+
 // Pages run in this container and reach everything it listens on. Chromium re-reads this at start.
+// Internal DevTools ports are blocked for every host: a host list misses spellings such as
+// [::ffff:127.0.0.1], which reach 127.0.0.1 all the same. The public ports stay host-bound so a
+// via target elsewhere may use them; ALLOWED_CLIENTS guards those against this container's own pages.
 const writePolicy = () => {
-    const loopback = ["localhost", "127.0.0.1", "[::1]", "0.0.0.0"];
-    const others = new Set([os.hostname().toLowerCase()]);
+    const hosts = new Set(["localhost", "127.0.0.1", "[::1]", "0.0.0.0", urlHost("::ffff:127.0.0.1"), urlHost("::ffff:0.0.0.0"), os.hostname().toLowerCase()]);
     for (const addresses of Object.values(os.networkInterfaces()))
-        for (const { address } of addresses) others.add(address.includes(":") ? `[${address}]` : address);
+        for (const { address, family } of addresses) {
+            if (address.startsWith("fe80:")) continue;
+            hosts.add(urlHost(address));
+            if (family === "IPv4") hosts.add(urlHost(`::ffff:${address}`));
+        }
     const publicPorts = [CONTROL_PORT, DEFAULT_PORT];
     for (let port = FIRST_DYNAMIC_PORT; port <= LAST_DYNAMIC_PORT; port++) publicPorts.push(port);
     const internalPorts = publicPorts.filter((port) => port !== CONTROL_PORT).map((port) => port + INTERNAL_OFFSET);
-    const blocklist = new Set();
-    for (const host of loopback) for (const port of [...publicPorts, ...internalPorts]) blocklist.add(`${host}:${port}`);
-    for (const host of others) for (const port of publicPorts) blocklist.add(`${host}:${port}`);
+    const blocklist = new Set(internalPorts.map((port) => `*:${port}`));
+    for (const host of hosts) for (const port of publicPorts) blocklist.add(`${host}:${port}`);
     if (blocklist.size > 900) throw new Error(`URLBlocklist would hold ${blocklist.size} entries, Chromium accepts 1000`);
     fs.mkdirSync(path.dirname(POLICY_FILE), { recursive: true });
     fs.writeFileSync(POLICY_FILE, JSON.stringify({ URLBlocklist: [...blocklist] }));

@@ -40,9 +40,11 @@ export const wheelPayload = (e, rect, viewport) => {
     };
 };
 
+const baseCharacter = (code) => /^Key[A-Z]$/.test(code) ? code.slice(3).toLowerCase() : /^Digit\d$/.test(code) ? code.slice(5) : null;
+
 export const keyPayload = (action, e) => {
-    // Windows reports AltGr as Ctrl+Alt, and the character it produces is text, not a shortcut.
-    const altGr = Boolean(e.getModifierState?.("AltGraph")) || (e.ctrlKey && e.altKey);
+    // Windows reports AltGr as Ctrl+Alt; only a character other than the key's own makes it AltGr text.
+    const altGr = Boolean(e.getModifierState?.("AltGraph")) || (e.ctrlKey && e.altKey && e.key.toLowerCase() !== baseCharacter(e.code));
     const printable = [...e.key].length === 1 && (altGr || (!e.ctrlKey && !e.metaKey));
     const text = action !== "down" ? "" : printable ? e.key : e.key === "Enter" ? "\r" : "";
     const modifiers = altGr && printable ? modifiersOf(e) & ~3 : modifiersOf(e);

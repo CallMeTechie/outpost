@@ -6,6 +6,8 @@ const MAX_CHANNELS = 6;
 const HEAD_LIMIT = 16 * 1024;
 const HEAD_TIMEOUT_MS = 10000;
 const TLS_HANDSHAKE = 0x16;
+// The browser container's own ports: its URLBlocklist refuses them before the resolver rule applies.
+const RESERVED_PORTS = (port) => port === 9222 || port === 9300 || port === 10222 || (port >= 9230 && port <= 9269) || (port >= 10230 && port <= 10269);
 
 const normalizeAddress = (address) => String(address ?? "").replace(/^::ffff:/, "");
 
@@ -121,6 +123,9 @@ const viaTargetFromUrl = (href) => {
     if (net.isIP(host) || host.startsWith("["))
         throw new BrowserError(BrowserErrorCode.VIA_INVALID,
             `via needs a host name in the URL, not the IP address ${host}: Chromium applies its host resolver rules to names only. Use http://localhost:${port} instead.`);
+    if (RESERVED_PORTS(port))
+        throw new BrowserError(BrowserErrorCode.VIA_INVALID,
+            `via cannot reach port ${port}: the browser container reserves 9222, 9230-9269, 9300, 10222 and 10230-10269 for itself`);
     return { host, port, remoteHost: host === "localhost" ? "127.0.0.1" : host };
 };
 

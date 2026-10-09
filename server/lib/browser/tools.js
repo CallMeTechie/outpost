@@ -137,8 +137,8 @@ const createBrowserTools = ({
             load: async () => !session.state.loading && (await session.evaluate("document.readyState")) === "complete",
             text: async () => (await session.evaluate(`(document.body?.innerText ?? '').includes(${JSON.stringify(String(value))})`)) === true,
             ref: () => session.refVisible(value).then(() => true, (err) => {
-                if (err.code === BrowserErrorCode.STALE_REF || err.code === BrowserErrorCode.UNKNOWN_REF) throw err;
-                return false;
+                if (err.code === BrowserErrorCode.NOT_VISIBLE) return false;
+                throw err;
             }),
         };
         const check = Object.hasOwn(checks, condition) ? checks[condition] : null;

@@ -225,7 +225,9 @@ class BrowserPool extends EventEmitter {
 
     #release(instance, id) {
         instance.users.delete(id);
-        if (instance.users.size === 0 && instance.key !== "default" && this.live.get(instance.key) === instance) this.#retire(instance.key).catch(() => {});
+        if (instance.users.size > 0 || instance.key === "default" || this.live.get(instance.key) !== instance) return;
+        if (instance.key.startsWith("account-")) this.#retireAfterLinger(instance);
+        else this.#retire(instance.key).catch(() => {});
     }
 
     #forgetDownloads(sessionIds) {

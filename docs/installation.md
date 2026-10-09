@@ -173,7 +173,7 @@ volumes:
   outpost-browser-downloads:
 ```
 
-`ALLOWED_CLIENTS` (comma-separated host names or IPs) limits the launcher and the DevTools ports to the Outpost container; connections from any other address, including pages inside the browser, are dropped. Without it the container accepts every client that reaches it.
+`ALLOWED_CLIENTS` (comma-separated host names or IPs) limits the launcher and the DevTools ports to the Outpost container; connections from any other address are dropped. Without it the container accepts every client that reaches it. Pages inside the browser are kept away from these ports by a Chromium policy the container writes at start, so the ports 9222, 9230-9269, 9300, 10222 and 10230-10269 are not available as `via` targets.
 
 Then, as an administrator:
 
