@@ -1753,7 +1753,8 @@
         "remoteDesktop": "Remotedesktop",
         "browser": "Browser"
       },
-      "browserAgentActive": "Claude steuert"
+      "browserAgentActive": "Claude steuert",
+      "blankPage": "Neuer Tab"
     },
     "wol": {
       "successDescription": "Magic-Paket an {{name}} gesendet",

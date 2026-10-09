@@ -105,7 +105,7 @@ const field = (key, value) => (value ? { key, value } : null);
 export const buildTabLabel = (session, identity = {}, t, { numbered = true } = {}) => {
     const hasCustomName = Boolean(identity?.name);
     const parts = discriminatorParts(session);
-    const base = discriminatedBase(session, parts);
+    const base = discriminatedBase(session, parts) || (session.type === "browser" ? t("servers.tabLabel.blankPage") : "");
     const typeSuffix = session.type === "sftp" ? " (SFTP)"
         : session.type === "notes" ? ` (${t("servers.notesPanel.title")})`
             : session.type === "browser"

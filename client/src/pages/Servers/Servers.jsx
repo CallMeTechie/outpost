@@ -894,6 +894,7 @@ export const Servers = () => {
             const item = await postRequest("/browser/sessions");
             setActiveSessions(prev => prev.some(s => s.id === item.id) ? prev : [...prev, toBrowserTab(item)]);
             setActiveSessionId(item.id);
+            setMobileServerListOpen(false);
         } catch (error) {
             sendToast("Error", error?.message || t("servers.unknownError"));
         }

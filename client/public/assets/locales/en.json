@@ -1755,7 +1755,8 @@
         "remoteDesktop": "Remote desktop",
         "browser": "Browser"
       },
-      "browserAgentActive": "Claude is driving"
+      "browserAgentActive": "Claude is driving",
+      "blankPage": "New tab"
     },
     "wol": {
       "successDescription": "Magic packet sent to {{name}}",
