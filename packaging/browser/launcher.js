@@ -1,3 +1,4 @@
+const dns = require("node:dns");
 const http = require("node:http");
 const net = require("node:net");
 const fs = require("node:fs");
@@ -8,18 +9,25 @@ const { spawn } = require("node:child_process");
 const CONTROL_PORT = Number(process.env.LAUNCHER_PORT || 9300);
 const DEFAULT_PORT = 9222;
 const FIRST_DYNAMIC_PORT = 9230;
-const LAST_DYNAMIC_PORT = 9429;
+const LAST_DYNAMIC_PORT = 9269;
 const INTERNAL_OFFSET = 1000;
 const STOP_GRACE_MS = 5000;
 const PROFILE_ROOT = process.env.PROFILE_ROOT || "/profiles";
+const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || "/downloads";
+const POLICY_FILE = process.env.POLICY_FILE || "/etc/chromium/policies/managed/outpost.json";
+const MAX_BODY = 16384;
+const DOWNLOAD_MAX_AGE_MS = 24 * 3600 * 1000;
+const DOWNLOAD_PRUNE_INTERVAL_MS = 3600 * 1000;
+const ALLOWED_CLIENTS = (process.env.ALLOWED_CLIENTS || "").split(",").map((host) => host.trim()).filter(Boolean);
+const ALLOWED_CACHE_MS = 10000;
 const CHROMIUM = process.env.CHROMIUM_BIN || "/usr/bin/chromium";
 const DISPLAY_SOCKET = "/tmp/.X11-unix/X99";
 const KEY_PATTERN = /^[a-z0-9-]{1,64}$/;
 const RULE_PATTERN = /^MAP [a-z0-9._-]+:\d{1,5} [a-z0-9._-]+:\d{1,5}$/i;
 const PROFILE_PATH = /^\/profiles\/(account-\d{1,12})$/;
 const KINDS = new Set(["default", "persistent", "ephemeral"]);
-// No --remote-allow-origins: Chromium then refuses DevTools WebSockets that carry an Origin,
-// which keeps pages in this container off every instance's DevTools.
+// No --remote-allow-origins: Chromium then refuses DevTools WebSockets that carry an Origin.
+// That covers WebSockets only; the HTTP endpoints (/json/list, /json/close) are shut by URLBlocklist.
 const BASE_ARGS = [
     "--no-first-run", "--no-default-browser-check", "--disable-dev-shm-usage", "--no-sandbox",
     "--remote-debugging-address=127.0.0.1", "--window-position=0,0", "--window-size=1920,1080",
@@ -31,6 +39,48 @@ let shuttingDown = false;
 let defaultFailures = 0;
 
 const badRequest = (message) => Object.assign(new Error(message), { status: 400 });
+
+const stripMapped = (address) => address.replace(/^::ffff:/i, "");
+
+let allowedLookup = { at: 0, addresses: null };
+const allowedAddresses = () => {
+    const age = Date.now() - allowedLookup.at;
+    if (allowedLookup.addresses && age < ALLOWED_CACHE_MS) return allowedLookup.addresses;
+    const addresses = Promise.all(ALLOWED_CLIENTS.map((host) => dns.promises.lookup(host, { all: true }).catch(() => [])))
+        .then((results) => new Set(results.flat().map((entry) => stripMapped(entry.address))));
+    allowedLookup = { at: Date.now(), addresses };
+    // A name that does not resolve yet (peer container still starting) must not stay denied for the whole cache window.
+    addresses.then((set) => {
+        if (!set.size && allowedLookup.addresses === addresses) allowedLookup = { at: 0, addresses: null };
+    });
+    return addresses;
+};
+
+const clientAllowed = async (remoteAddress) => {
+    if (!ALLOWED_CLIENTS.length) return true;
+    if (!remoteAddress) return false;
+    return (await allowedAddresses()).has(stripMapped(remoteAddress));
+};
+
+// Pages run in this container and reach everything it listens on. Chromium re-reads this at start.
+const writePolicy = () => {
+    const loopback = ["localhost", "127.0.0.1", "[::1]", "0.0.0.0"];
+    const others = new Set([os.hostname().toLowerCase()]);
+    for (const addresses of Object.values(os.networkInterfaces()))
+        for (const { address } of addresses) others.add(address.includes(":") ? `[${address}]` : address);
+    const publicPorts = [CONTROL_PORT, DEFAULT_PORT];
+    for (let port = FIRST_DYNAMIC_PORT; port <= LAST_DYNAMIC_PORT; port++) publicPorts.push(port);
+    const internalPorts = publicPorts.filter((port) => port !== CONTROL_PORT).map((port) => port + INTERNAL_OFFSET);
+    const blocklist = new Set();
+    for (const host of loopback) for (const port of [...publicPorts, ...internalPorts]) blocklist.add(`${host}:${port}`);
+    for (const host of others) for (const port of publicPorts) blocklist.add(`${host}:${port}`);
+    if (blocklist.size > 900) throw new Error(`URLBlocklist would hold ${blocklist.size} entries, Chromium accepts 1000`);
+    fs.mkdirSync(path.dirname(POLICY_FILE), { recursive: true });
+    fs.writeFileSync(POLICY_FILE, JSON.stringify({ URLBlocklist: [...blocklist] }));
+};
+
+writePolicy();
+if (!ALLOWED_CLIENTS.length) console.warn("ALLOWED_CLIENTS is not set: any host that reaches this container may use the launcher and the DevTools forwards");
 
 // A container restart keeps /tmp: a stale lock makes Xvfb refuse display 99, a stale socket fakes readiness.
 for (const stale of ["/tmp/.X99-lock", DISPLAY_SOCKET]) fs.rmSync(stale, { force: true });
@@ -78,7 +128,9 @@ const waitForPort = (port, child, timeoutMs = 15000) => new Promise((resolve, re
 
 // Chromium binds DevTools to loopback; this forward is the only way in from the container network.
 const forward = (publicPort, internalPort) => new Promise((resolve, reject) => {
-    const server = net.createServer((client) => {
+    const server = net.createServer(async (client) => {
+        client.on("error", () => client.destroy());
+        if (!(await clientAllowed(client.remoteAddress)) || client.destroyed) return client.destroy();
         const upstream = net.connect(internalPort, "127.0.0.1");
         const done = () => {
             client.destroy();
@@ -99,7 +151,8 @@ const forward = (publicPort, internalPort) => new Promise((resolve, reject) => {
 const onExit = (key, instance) => {
     if (instances.get(key) === instance) instances.delete(key);
     instance.server?.close();
-    if (instance.tempDir) fs.rmSync(instance.tempDir, { recursive: true, force: true });
+    if (instance.tempDir)
+        fs.promises.rm(instance.tempDir, { recursive: true, force: true }).catch((err) => console.error(`remove ${instance.tempDir}: ${err.message}`));
     if (key === "default" && !shuttingDown)
         setTimeout(() => start({ key: "default", kind: "default" }).catch((err) => console.error(err.message)),
             Math.min(1000 * 2 ** defaultFailures++, 30000));
@@ -125,7 +178,12 @@ const launch = async (key, kind, rules, instance) => {
     try {
         await waitForPort(internalPort, instance.child);
         if (instances.get(key) !== instance) throw new Error(`instance ${key} was stopped while starting`);
-        instance.server = await forward(instance.port, internalPort);
+        const server = await forward(instance.port, internalPort);
+        if (instances.get(key) !== instance || instance.child.exitCode !== null || instance.child.signalCode !== null) {
+            server.close();
+            throw new Error(`instance ${key} was stopped while starting`);
+        }
+        instance.server = server;
     } catch (err) {
         instance.child.kill("SIGKILL");
         throw err;
@@ -176,16 +234,42 @@ const stop = (key) => {
 const removeProfile = async (key) => {
     stop(key);
     await exiting.get(key)?.gone;
-    fs.rmSync(path.join(PROFILE_ROOT, key), { recursive: true, force: true });
+    await fs.promises.rm(path.join(PROFILE_ROOT, key), { recursive: true, force: true });
 };
 
+const pruneDownloads = async () => {
+    const cutoff = Date.now() - DOWNLOAD_MAX_AGE_MS;
+    for (const entry of await fs.promises.readdir(DOWNLOAD_ROOT, { withFileTypes: true })) {
+        if (!entry.isFile()) continue;
+        const file = path.join(DOWNLOAD_ROOT, entry.name);
+        try {
+            if ((await fs.promises.stat(file)).mtimeMs < cutoff) await fs.promises.rm(file, { force: true });
+        } catch (err) {
+            console.error(`prune ${file}: ${err.message}`);
+        }
+    }
+};
+const prune = () => pruneDownloads().catch((err) => console.error(`prune downloads: ${err.message}`));
+prune();
+setInterval(prune, DOWNLOAD_PRUNE_INTERVAL_MS).unref();
+
 const readJson = (req) => new Promise((resolve, reject) => {
-    let raw = "";
+    const chunks = [];
+    let size = 0;
     req.on("data", (chunk) => {
-        raw += chunk;
-        if (raw.length > 16384) req.destroy();
+        size += chunk.length;
+        if (size > MAX_BODY) {
+            reject(Object.assign(new Error("body too large"), { status: 413 }));
+            chunks.length = 0;
+            setImmediate(() => req.destroy());
+            return;
+        }
+        chunks.push(chunk);
     });
+    req.on("error", reject);
+    req.on("close", () => reject(badRequest("request aborted")));
     req.on("end", () => {
+        const raw = Buffer.concat(chunks).toString("utf8");
         try {
             resolve(raw ? JSON.parse(raw) : {});
         } catch {
@@ -204,7 +288,7 @@ http.createServer(async (req, res) => {
         res.end(JSON.stringify(body));
     };
     try {
-        if (!fromOutpost(req)) return reply(403, { error: "forbidden" });
+        if (!(await clientAllowed(req.socket.remoteAddress)) || !fromOutpost(req)) return reply(403, { error: "forbidden" });
         const { pathname } = new URL(req.url, "http://launcher");
         if (req.method === "POST" && pathname === "/instances") return reply(200, await start(await readJson(req)));
         if (req.method === "GET" && pathname === "/instances") return reply(200, [...instances].map(([key, i]) => ({ key, port: i.port })));
