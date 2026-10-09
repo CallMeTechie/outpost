@@ -29,7 +29,7 @@ const PageDialog = ({ dialog, onReply }) => {
     );
 };
 
-const WebRenderer = ({ session, markSessionErrored }) => {
+const WebRenderer = ({ session, markSessionErrored, isVisible = true }) => {
     const { t } = useTranslation();
     const { sessionToken } = useContext(UserContext);
     const { keymaps, getParsedKeybind } = useKeymaps();
@@ -38,6 +38,8 @@ const WebRenderer = ({ session, markSessionErrored }) => {
     const canvasRef = useRef(null);
     const viewportRef = useRef({ width: 1280, height: 800 });
     const drawnSeqRef = useRef(null);
+    const decodingRef = useRef(false);
+    const pendingFrameRef = useRef(null);
     const [moveAllowed] = useState(createMoveThrottle);
     const [page, setPage] = useState(INITIAL_PAGE);
     const [agent, setAgent] = useState({ active: false, tool: null, paused: false });
@@ -76,8 +78,29 @@ const WebRenderer = ({ session, markSessionErrored }) => {
         bitmap.close();
     }, []);
 
+    const pushFrame = useCallback(async (buffer) => {
+        pendingFrameRef.current = buffer;
+        if (decodingRef.current) return;
+        decodingRef.current = true;
+        try {
+            while (pendingFrameRef.current) {
+                const next = pendingFrameRef.current;
+                pendingFrameRef.current = null;
+                try {
+                    await drawFrame(next);
+                } catch {
+                    // A frame that cannot be decoded is dropped; the next one replaces it anyway.
+                }
+            }
+        } finally {
+            decodingRef.current = false;
+        }
+    }, [drawFrame]);
+
+    // A hidden pane stays mounted, so it must not stay a viewer: it would keep streaming, keep the
+    // session from idling out, and - as the first viewer - keep the viewport authority.
     useEffect(() => {
-        if (!sessionToken) return;
+        if (!sessionToken || !isVisible) return;
         let disposed = false;
         let retryTimer = null;
         let attempt = 0;
@@ -88,7 +111,7 @@ const WebRenderer = ({ session, markSessionErrored }) => {
             ws.onopen = () => setConnected(true);
             ws.onmessage = (event) => {
                 if (typeof event.data !== "string") {
-                    drawFrame(event.data);
+                    pushFrame(event.data);
                     return;
                 }
                 let message;
@@ -150,9 +173,10 @@ const WebRenderer = ({ session, markSessionErrored }) => {
             clearTimeout(retryTimer);
             const ws = wsRef.current;
             wsRef.current = null;
-            ws?.close();
+            pendingFrameRef.current = null;
+            ws?.close(1000);
         };
-    }, [session.id, sessionToken, drawFrame, markSessionErrored, t]);
+    }, [session.id, sessionToken, isVisible, pushFrame, markSessionErrored, t]);
 
     useEffect(() => {
         const stage = stageRef.current;

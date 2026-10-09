@@ -41,9 +41,12 @@ export const wheelPayload = (e, rect, viewport) => {
 };
 
 export const keyPayload = (action, e) => {
-    const printable = e.key.length === 1 && !e.ctrlKey && !e.metaKey;
+    // Windows reports AltGr as Ctrl+Alt, and the character it produces is text, not a shortcut.
+    const altGr = Boolean(e.getModifierState?.("AltGraph")) || (e.ctrlKey && e.altKey);
+    const printable = [...e.key].length === 1 && (altGr || (!e.ctrlKey && !e.metaKey));
     const text = action !== "down" ? "" : printable ? e.key : e.key === "Enter" ? "\r" : "";
-    return { type: "key", action, key: e.key, code: e.code, keyCode: e.keyCode, text, modifiers: modifiersOf(e) };
+    const modifiers = altGr && printable ? modifiersOf(e) & ~3 : modifiersOf(e);
+    return { type: "key", action, key: e.key, code: e.code, keyCode: e.keyCode, text, modifiers };
 };
 
 export const resizePayload = (rect) => ({ type: "resize", width: Math.round(rect.width), height: Math.round(rect.height) });

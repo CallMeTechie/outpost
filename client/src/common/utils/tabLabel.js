@@ -181,6 +181,7 @@ export const idsNeedingNumber = (sessions, identities = {}) => {
 const suffixBucket = (session) => {
     if (session.type === "sftp") return "sftp";
     if (session.type === "notes") return "notes";
+    if (session.type === "browser") return "browser";
     return "other";
 };
 

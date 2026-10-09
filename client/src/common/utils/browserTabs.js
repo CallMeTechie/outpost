@@ -8,6 +8,8 @@ const toBrowserFields = (item) => ({
     via: item.via ?? null,
 });
 
+const sameBrowserFields = (a, b) => !!a && Object.keys(b).every((key) => a[key] === b[key]);
+
 // An absent list means "not known yet", never "nothing open".
 export const syncBrowserTabs = (sessions, list, dismissed) => {
     if (!Array.isArray(list)) return { sessions, activate: null };
@@ -20,7 +22,9 @@ export const syncBrowserTabs = (sessions, list, dismissed) => {
             continue;
         }
         const item = live.get(session.id);
-        if (item) next.push({ ...session, browser: toBrowserFields(item) });
+        if (!item) continue;
+        const browser = toBrowserFields(item);
+        next.push(sameBrowserFields(session.browser, browser) ? session : { ...session, browser });
     }
 
     let activate = null;
@@ -30,5 +34,7 @@ export const syncBrowserTabs = (sessions, list, dismissed) => {
         next.push({ id: item.id, type: BROWSER_SESSION_TYPE, browser: toBrowserFields(item) });
         activate = item.id;
     }
-    return { sessions: next, activate };
+
+    const unchanged = next.length === sessions.length && next.every((session, index) => session === sessions[index]);
+    return { sessions: unchanged ? sessions : next, activate };
 };

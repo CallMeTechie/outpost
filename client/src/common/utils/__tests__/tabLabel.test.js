@@ -463,3 +463,9 @@ test("a browser tab is named after its sanitised page title and says when Claude
     assert.deepStrictEqual([busy.name, busy.kind], ["grafana.test", "(Claude is driving)"]);
     assert.ok(busy.tooltip.some(({ key, value }) => key === "servers.tabLabel.tooltip.type" && value === "Browser"));
 });
+
+test("a browser tab and a server tab with the same base name are not numbered as one group", () => {
+    const page = { id: "browser-2", type: "browser", browser: { title: "pve-01", url: "https://pve.test/" } };
+    assert.strictEqual(idsNeedingNumber([ssh, page], {}).size, 0);
+    assert.notStrictEqual(tabGroupKey(ssh), tabGroupKey(page));
+});

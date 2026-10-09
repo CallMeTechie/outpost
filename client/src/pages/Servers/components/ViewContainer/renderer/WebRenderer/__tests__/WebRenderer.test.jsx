@@ -67,3 +67,15 @@ test("a page dialog is answered by the human and the reply goes to the server", 
     expect(ws.sent.at(-1)).toEqual({ type: "dialogReply", id: 1, accept: false });
     expect(screen.queryByRole("alertdialog")).toBeNull();
 });
+
+test("a hidden browser tab holds no connection; showing it connects", () => {
+    const view = renderWithProviders(<WebRenderer session={session} markSessionErrored={vi.fn()} isVisible={false} />);
+    expect(FakeSocket.instances).toHaveLength(0);
+
+    view.rerender(<WebRenderer session={session} markSessionErrored={vi.fn()} isVisible />);
+    expect(FakeSocket.instances).toHaveLength(1);
+    const ws = FakeSocket.instances[0];
+
+    view.rerender(<WebRenderer session={session} markSessionErrored={vi.fn()} isVisible={false} />);
+    expect(ws.readyState).toBe(3);
+});

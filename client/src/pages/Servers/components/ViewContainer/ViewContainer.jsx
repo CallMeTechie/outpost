@@ -611,6 +611,8 @@ export const ViewContainer = ({
         setModifierLatch(EMPTY_LATCH);
     }, [activeSessionId]);
 
+    const isSessionVisible = (session) => (layoutMode === "single" ? session.id === activeSessionId : gridSessions.includes(session.id));
+
     const renderRenderer = (session) => {
         if (session.type === "notes") {
             return <NotesRenderer session={session} />;
@@ -662,7 +664,7 @@ export const ViewContainer = ({
             case "browser":
                 return <WebRenderer session={session} disconnectFromServer={disconnectFromServer}
                                     markSessionErrored={markSessionErrored} getSessionError={getSessionError}
-                                    key={session.id} />;
+                                    isVisible={isSessionVisible(session)} key={session.id} />;
             default:
                 return <p>Unknown renderer: {renderer}</p>;
         }
@@ -754,7 +756,7 @@ export const ViewContainer = ({
         // OneDrive and browser sessions have no `server`; the guard that used to mean "not ready yet"
         // would otherwise hide them from the layout forever.
         if (!session?.server && session?.type !== "onedrive" && session?.type !== "browser") return null;
-        const isVisible = layoutMode === "single" ? session.id === activeSessionId : gridSessions.includes(session.id);
+        const isVisible = isSessionVisible(session);
         const paneColor = paneColorFor(paneColorSessions.indexOf(session.id));
         // Drives the split-view border's strong/faint state in CSS. Deliberately not
         // :focus-within: a portalled overlay (e.g. ContextMenu, which moves focus to itself on
