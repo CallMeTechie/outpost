@@ -1,6 +1,6 @@
 # Eintrag anlegen / bearbeiten — Umsetzungsanleitung (UI-VAULT-DIALOG)
 
-Artboard: docs/design/mockups/ui-vault-dialog.html · Manifest-Revision: 11
+Artboard: docs/design/mockups/ui-vault-dialog.html · Manifest-Revision: 12
 
 Neuer Dialog, im Client gibt es noch keine Vault-Seite. Er folgt dem Muster von `SnippetDialog` (ein Formular, `DialogProvider`, Toast bei Fehlern). Nicht neu gebaut: Dialog-Rahmen, Eingabefelder, Auswahl, Schalter, Chips, Ordner- und Tag-Laden.
 
@@ -39,6 +39,7 @@ Neuer Dialog, im Client gibt es noch keine Vault-Seite. Er folgt dem Muster von 
 ### UI-VAULT-DIALOG-SECRET — Geheimer Wert (neu)
 - `data-ui-id` am Wrapper der geheimen Felder. `type="password"`, mono. Felder je Typ: `login` password; `api_key` token; `ssh` privateKey und/oder password, optional passphrase; `database` password; `generic` value.
 - Beim Bearbeiten leer, Platzhalter und Hilfetext „gespeichert — leer lassen, um beizubehalten“ (`partial`); leere Felder werden nicht gesendet. `error` „Wert fehlt.“ beim Anlegen ohne Wert.
+- `empty` „Ziel geändert — gespeicherte Werte werden verworfen. Neu eingeben.“ (Hinweis in `--warning` unter dem leeren Feld, Platzhalter „Passwort eingeben“ statt des `partial`-Hinweises). Greift nur beim Bearbeiten, sobald ein Ziel-Feld geändert wurde (`origins`, `hosts`, `host`): der Server löscht dann beim PATCH die gespeicherten Werte. Speichern ist dann nur mit neuem Wert möglich; ohne ihn bleibt der Button `disabled`.
 - Kein Anzeigen- oder Kopieren-Button hier.
 
 ### UI-VAULT-DIALOG-SCOPE — Gilt für (neu)

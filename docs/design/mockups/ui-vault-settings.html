@@ -33,6 +33,10 @@
 	.vs-input.invalid { border-color: var(--error); }
 	.vs-help { margin: 0; font: var(--type-caption); color: var(--subtext); }
 	.vs-error { margin: 0; font: var(--type-caption); color: var(--error); }
+	.vs-banner { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--warning-opacity); border: 1px solid var(--warning); border-radius: var(--radius-md); color: var(--warning); }
+	.vs-banner svg { width: 1.25rem; height: 1.25rem; flex: none; }
+	.vs-banner p { margin: 0; font: var(--type-body); color: var(--text); }
+	.vs-none { margin: 0; font: var(--type-caption); color: var(--subtext); }
 	.vs-actions { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-4); }
 	.vs-actions .vs-state { align-items: flex-end; min-width: 14rem; }
 	.vs-btn { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 2.25rem; padding: 0 var(--space-4); border: 0; border-radius: var(--radius-sm); background: var(--primary); color: var(--on-accent); font: var(--type-body); }
@@ -103,6 +107,23 @@
 					</div>
 					<p class="vs-error">Keine gültige http- oder https-Adresse.</p>
 					<p class="vs-help">Unter dieser Adresse erreichen deine Server Outpost; daraus entsteht die MCP-URL für Agenten.</p>
+				</div>
+			</div>
+
+			<div class="vs-item" data-ui-id="UI-VAULT-SETTINGS-PROXY">
+				<div class="vs-label"><h4>Hinweis Reverse-Proxy <code>UI-VAULT-SETTINGS-PROXY</code></h4></div>
+
+				<div class="vs-state" data-ui-state="default">
+					<span class="vs-tag">default</span>
+					<p class="vs-none">nicht sichtbar</p>
+				</div>
+
+				<div class="vs-state" data-ui-state="error">
+					<span class="vs-tag">error</span>
+					<div class="vs-banner" role="alert">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+						<p>TRUST_PROXY=true — Outpost glaubt jedem X-Forwarded-For, die IP-Bindung von Agenten-Keys ist wirkungslos. Hop-Zahl oder Adressliste setzen.</p>
+					</div>
 				</div>
 			</div>
 		</div>

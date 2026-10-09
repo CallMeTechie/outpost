@@ -74,6 +74,8 @@
 	.notice { font: var(--type-caption); color: var(--warning); }
 	.confirm { display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--gray); border-left: 3px solid var(--warning); border-radius: var(--radius-sm); background: var(--background); }
 	.confirm p { margin: 0; }
+	.warn { display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--gray); border-left: 3px solid var(--warning); border-radius: var(--radius-sm); background: var(--background); color: var(--warning); font: var(--type-caption); }
+	.warn p { margin: 0; }
 </style>
 </head>
 <body>
@@ -194,6 +196,19 @@
 						<span class="notice">Outpost-Adresse für Agenten fehlt — in Einstellungen › Vault setzen.</span>
 						<div class="actions"><button class="btn primary" type="button" disabled>Einrichten</button></div>
 					</section>
+
+					<section class="state" data-ui-state="partial">
+						<div class="warn" role="status"><p>Für root auf web01 hat bereits ein anderes Konto Agenten-Zugang eingerichtet — die Registrierung wird ersetzt.</p></div>
+						<div class="checks">
+							<label class="check"><input type="checkbox" checked> Claude Code</label>
+							<label class="check"><input type="checkbox" checked> Codex</label>
+						</div>
+						<div class="field">
+							<label class="label" for="p-cidr">Zusätzliche Adressbereiche</label>
+							<input class="input" id="p-cidr" value="10.0.0.0/24">
+						</div>
+						<div class="actions"><span class="kbd">Ctrl+Enter</span><button class="btn primary" type="button">Einrichten</button></div>
+					</section>
 				</div>
 
 				<div class="element" data-ui-id="UI-AGENT-ACCESS-IPBIND">
@@ -217,6 +232,31 @@
 							</div>
 							<span class="toggle" role="switch" aria-checked="false" aria-label="Nur von der IP dieses Servers"></span>
 						</div>
+					</section>
+
+					<section class="state" data-ui-state="partial">
+						<div class="row">
+							<div class="ip-detect">
+								<span>Nur von der IP dieses Servers</span>
+								<span class="help">an · <span class="mono">192.168.2.40</span></span>
+							</div>
+							<span class="toggle on" role="switch" aria-checked="true" aria-label="Nur von der IP dieses Servers"></span>
+						</div>
+						<div class="confirm" role="status">
+							<p>Gesehen wurde <span class="mono">172.17.0.1</span> statt <span class="mono">192.168.2.40</span> — als Adressbereich übernehmen?</p>
+							<div class="actions"><button class="btn ghost small" type="button">Nein</button><button class="btn primary small" type="button">Übernehmen</button></div>
+						</div>
+					</section>
+
+					<section class="state is-error" data-ui-state="error">
+						<div class="row">
+							<div class="ip-detect">
+								<span>Nur von der IP dieses Servers</span>
+								<span class="help">an · <span class="mono">192.168.2.40</span></span>
+							</div>
+							<span class="toggle on" role="switch" aria-checked="true" aria-label="Nur von der IP dieses Servers"></span>
+						</div>
+						<div class="warn" role="alert"><p><span class="mono">TRUST_PROXY=true</span> — die IP-Bindung ist wirkungslos.</p></div>
 					</section>
 				</div>
 
@@ -246,7 +286,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 					<section class="state is-success" data-ui-state="success">
 						<div class="result-row ok">
 							<div class="result-head"><span>Claude Code</span><span class="status">eingerichtet</span></div>
-							<span class="help">Eingerichtet. Claude Code neu starten, dann /mcp.</span>
+							<span class="help">Eingerichtet für root. Claude Code neu starten, dann /mcp.</span>
 						</div>
 					</section>
 

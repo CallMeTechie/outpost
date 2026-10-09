@@ -97,6 +97,7 @@
 	.input::placeholder { color: var(--subtext); opacity: .7; }
 	.help { font: var(--type-caption); color: var(--subtext); }
 	.help.error { color: var(--error); }
+	.help.warn { color: var(--warning); }
 	.icon-field { display: flex; align-items: center; gap: var(--space-2); height: 2.25rem; }
 	.avatar {
 		width: 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center;
@@ -207,6 +208,7 @@
 				<header><code>UI-VAULT-DIALOG-SECRET</code><span class="type">field</span><span>Geheimer Wert</span></header>
 				<section data-ui-state="default"><div class="field"><label for="a-sec">Passwort</label><input class="input mono" id="a-sec" type="password" value="" placeholder="Passwort eingeben"></div></section>
 				<section data-ui-state="partial"><div class="field"><label for="a-sec-p">Passwort</label><input class="input mono" id="a-sec-p" type="password" value="" placeholder="gespeichert — leer lassen, um beizubehalten"><span class="help">gespeichert — leer lassen, um beizubehalten</span></div></section>
+				<section data-ui-state="empty"><div class="field"><label for="a-sec-m">Passwort</label><input class="input mono" id="a-sec-m" type="password" value="" placeholder="Passwort eingeben"><span class="help warn">Ziel geändert — gespeicherte Werte werden verworfen. Neu eingeben.</span></div></section>
 				<section data-ui-state="error"><div class="field"><label for="a-sec-e">Passwort</label><input class="input mono is-error" id="a-sec-e" type="password" value="" aria-invalid="true"><span class="help error" role="alert">Wert fehlt.</span></div></section>
 			</div>
 

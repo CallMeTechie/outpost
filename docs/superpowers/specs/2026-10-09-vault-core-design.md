@@ -29,7 +29,7 @@ Der Vault ist in vier Teilprojekte geschnitten, jedes mit eigener Spec:
    brauchen, mit Freigabe.
 
 Teilprojekt 1 legt alle Credential-Typen schon an, damit Einträge vor den Werkzeugen aus 2
-gepflegt werden können. Nutzbar durch Agenten ist in Teilprojekt 1 nur der Typ `login`.
+gepflegt werden können. Nutzbar durch Agenten ist in Teilprojekt 1 nur der Typ `login`. Die `fields` von `api_key`, `ssh` und `database` werden in Teilprojekt 1 nur gespeichert und angezeigt. Wie sie bei der Vermittlung gelten (Host-Abgleich, Header-Vorlage, Engine), legt Teilprojekt 2 fest, und es darf sie per Migration ändern.
 
 ### Grenze des Modells
 
@@ -38,6 +38,13 @@ dieser Spec einen Wert heraus. Der Agenten-Key selbst ist vor dem Agenten nicht 
 (`~/.claude.json` ist lesbar, Codex sieht seine Umgebung); er erlaubt nur vermittelte
 Aktionen unter Server-Bindung, Freigabe und Audit, und die IP-Bindung macht ihn außerhalb
 seines Servers wertlos.
+
+Die IP-Bindung unterscheidet nicht zwischen Nutzern desselben Servers. Wer dort ein Konto hat, kann den Key aus `~/.claude.json` bzw. `~/.codex/outpost.env` lesen, wenn die Dateirechte es zulassen, und während der Einrichtung aus der Prozessliste, weil der Key in der Befehlszeile steht. Er nutzt ihn dann mit der Adresse des Servers. Agenten-Zugang gehört deshalb auf Server, deren lokale Nutzer dem Konto-Inhaber vertrauen; `docs/vault.md` sagt das.
+
+
+`vault.reveal` schützt die Vault-Oberfläche, nicht das Live-Bild: Wer einen Eintrag in seinem
+eigenen Browser-Tab ausfüllen lässt und zusieht, kann ihn über „Passwort anzeigen“ der Seite
+sichtbar machen, auch ohne `vault.reveal`. Das ist hingenommen und steht in `docs/vault.md`.
 
 ## Entscheidungen
 
@@ -48,12 +55,12 @@ seines Servers wertlos.
 | Geltung für Server | Vereinigung aus Servern, Ordnern (mit Unterordnern), Tags (nur persönliche Einträge) oder „alle Server“. Standard: keine Geltung. |
 | Freigabe | Je Eintrag `approvalRequired`, Standard an. Antworten: einmal / für diese Agenten-Sitzung / ablehnen; 2 Minuten ohne Antwort = abgelehnt. |
 | Agenten-Key auf den Server | Ein-Klick-Einrichtung per Exec; Kopierbefehl als Ausweg. |
-| IP-Bindung | Je Key, Standard an; zusätzliche CIDRs eintragbar, Bindung abschaltbar. |
+| IP-Bindung | Je Key, Standard an; zusätzliche CIDRs und das Abschalten werden beim Einrichten festgelegt, einschließlich der Übernahme der gemessenen Adresse im Einrichtungsdialog (Schritt 1a); später nur durch Entziehen und Neu-Einrichten. |
 | Architektur | Im Outpost-Server integriert, eigener `VAULT_KEY`. Kein eigener Container, kein Master-Passwort (späterer Ausbau möglich, die Verschlüsselung liegt hinter einer Schnittstelle). |
 
 ## Datenmodell
 
-Neue Migration `0047-add-vault.js`.
+Neue Migration `0047-add-vault.js` mit `vault_items`, `vault_secrets`, `vault_bindings`, `vault_settings` und den neuen Spalten von `api_keys`.
 
 ### `vault_items`
 
@@ -67,9 +74,11 @@ Neue Migration `0047-add-vault.js`.
 | `fields` | JSON | nicht geheime Angaben, je Typ (siehe unten) |
 | `approvalRequired` | BOOLEAN | Standard `true` |
 | `allServers` | BOOLEAN | Standard `false` |
-| `createdBy` | INTEGER | Konto |
+| `createdBy` | INTEGER null | Konto; `SET NULL`, wenn das Konto gelöscht wird |
 | `lastUsedAt` | DATE null | |
 | Zeitstempel | | |
+
+`accountId` und `organizationId` sind Fremdschlüssel mit `CASCADE`: Mit dem Konto bzw. der Organisation verschwinden ihre Einträge samt Werten und Bindungen.
 
 `fields` je Typ, per Joi validiert:
 
@@ -86,12 +95,17 @@ Neue Migration `0047-add-vault.js`.
 |---|---|---|
 | `itemId` | INTEGER | CASCADE |
 | `field` | STRING | `password`, `token`, `privateKey`, `passphrase`, `value` |
-| `valueEncrypted` | BLOB | AES-256-GCM mit `VAULT_KEY` |
+| `valueEncrypted` | BLOB | AES-256-GCM mit `VAULT_KEY` über eigene Funktionen in `server/lib/vault/crypto.js` (`server/utils/encryption.js` ist fest an `ENCRYPTION_KEY` gebunden); Associated Data `vault:<itemId>:<field>`, damit kein Chiffretext in eine andere Zeile wandern kann |
 | `valueIV`, `valueAuthTag` | STRING | |
 
 Eindeutig auf (`itemId`, `field`). Geheime Felder je Typ: `login` → `password`;
 `api_key` → `token`; `ssh` → `privateKey` und/oder `password`, optional `passphrase`;
 `database` → `password`; `generic` → `value`.
+
+Ändert ein `PATCH /items/:id` ein Ziel-Feld eines Eintrags (`origins`, `hosts`, `host`), löscht
+der Server im selben Vorgang alle `vault_secrets` dieses Eintrags; der Dialog verlangt die Werte
+neu. Sonst könnte jemand mit `vault.manage`, aber ohne `vault.reveal`, einen Organisationswert
+ohne Sichtkontakt auf eine fremde Seite ausfüllen lassen. Audit `vault.item_update` mit `secretsCleared: true`.
 
 Anders als `Credential` hat das Modell **keinen** `afterFind`-Hook. Entschlüsselt wird
 ausschließlich in `server/lib/vault/secrets.js` (`readSecret(itemId, field)`), aufgerufen nur
@@ -100,7 +114,7 @@ dadurch nie Klartext.
 
 ### `vault_bindings`
 
-`itemId` (CASCADE), `kind` (`entry`, `folder`, `tag`), `targetId`. Eindeutig auf allen drei.
+`itemId` (CASCADE), `kind` (`entry`, `folder`, `tag`), `targetId`. Eindeutig auf allen drei. `targetId` zeigt je nach `kind` auf verschiedene Tabellen und hat deshalb keinen Fremdschlüssel. Bindungen entfernt der Code: `deleteEntry`, `deleteFolder` (rekursiv, einschließlich der dort per `Entry.destroy({ where: { folderId } })` gelöschten Einträge) und `deleteTag` rufen `removeBindings(kind, ids)` aus `server/lib/vault/bindings.js` auf.
 `tag` nur bei persönlichen Einträgen (Tags gehören einem Konto, `Tag.accountId`).
 Organisationseinträge binden nur an Server und Ordner derselben Organisation; `allServers`
 heißt bei ihnen „alle Server der Organisation“.
@@ -115,10 +129,16 @@ heißt bei ihnen „alle Server der Organisation“.
 | `agentType` | STRING null | `claude`, `codex` |
 | `ipBinding` | BOOLEAN | Standard `true` |
 | `allowedCidrs` | JSON null | zusätzliche Adressbereiche |
+| `identityId` | INTEGER null | nur bei `agent`; `SET NULL` |
+| `remoteUser` | STRING null | nur bei `agent` |
 
 Bestehende Keys bekommen `kind = account` und verhalten sich unverändert. Die bestehende
 Liste, das Löschen und die Obergrenze von 50 in `server/controllers/apiKey.js` gelten nur für
 `kind = account`.
+
+### `vault_settings`
+
+Eine Zeile, Muster `browser_settings` (Migration 0046): `agentUrl` (STRING null), `keyCheck`, `keyCheckIV`, `keyCheckAuthTag` (je STRING null; ein fester Prüftext, mit `VAULT_KEY` verschlüsselt, geschrieben beim ersten Start mit Schlüssel). `keyStatus` wird beim Start daraus berechnet und nicht gespeichert.
 
 ### Berechtigungen (`server/permissions/registry.js`)
 
@@ -127,7 +147,7 @@ Liste, das Löschen und die Obergrenze von 50 in `server/controllers/apiKey.js` 
 - `vault.manage` (Organisation): Organisationseinträge anlegen, bearbeiten, löschen.
 - `vault.reveal` (Organisation, `dangerous`): Werte von Organisationseinträgen anzeigen.
 - `settings.vault` (System): Einstellungsseite Vault.
-- Nutzung von Organisationseinträgen durch Agenten: Mitgliedschaft genügt.
+- Nutzung von Organisationseinträgen durch Agenten: aktive Mitgliedschaft genügt.
 
 ## Sichtbarkeit
 
@@ -135,12 +155,12 @@ Liste, das Löschen und die Obergrenze von 50 in `server/controllers/apiKey.js` 
 `visibleItems({ accountId, agent })` liefert die Einträge, die ein Aufrufer nutzen darf.
 
 - Kandidaten: persönliche Einträge des Kontos (nur mit `vault.use`) plus Einträge aller
-  Organisationen, in denen das Konto Mitglied ist.
+  Organisationen, in denen das Konto aktives Mitglied ist (`OrganizationMember.status = "active"`; Einladungen zählen nicht).
 - Agenten-Key (`agent.entryId` gesetzt): ein Eintrag gilt, wenn `allServers` gesetzt ist
-  (bei Organisationseinträgen nur, wenn der Server zur Organisation gehört) oder eine Bindung
+  (bei Organisationseinträgen nur, wenn der Server laut `resolveEntryScope` zur Organisation gehört; `entry.organizationId` ist in Organisationsordnern leer) oder eine Bindung
   passt — `entry` = der Server; `folder` = Ordner des Servers oder ein Vorfahre davon
   (`Folder.parentId`); `tag` = ein Tag des Servers (`EntryTag`).
-- Konto-Key (kein Server): nur Einträge mit `allServers`.
+- Konto-Key und Login-Session (kein Server): nur persönliche Einträge mit `allServers`. Organisationseinträge brauchen immer einen Server der Organisation.
 - Der Agent muss den Server selbst noch erreichen dürfen (`validateEntryAccess`); fällt der
   Zugriff weg, sieht der Key nichts mehr.
 
@@ -148,10 +168,9 @@ Liste, das Löschen und die Obergrenze von 50 in `server/controllers/apiKey.js` 
 
 ### Authentifizierung (`server/middlewares/auth.js`)
 
-- Agenten-Keys passieren nur Anfragen unter `/api/mcp`; alles andere `403`.
-- IP-Bindung: `req.ip` (nach `TRUST_PROXY`) muss der aufgelösten Adresse von
-  `entry.config.ip` entsprechen oder in `allowedCidrs` liegen. Auflösung mit Cache von
-  60 Sekunden. Verstoß: `403` und Audit `vault.agent_ip_denied`.
+- Agenten-Keys passieren nur Anfragen unter `/api/mcp`; alles andere `403`. Einzige Ausnahme: Ein `pending`-Agenten-Key passiert ausschließlich `GET /api/vault/agent-keys/probe`, ohne IP-Bindung, die er erst misst. Unter `/api/mcp` und überall sonst wird er abgewiesen. Ein endgültiger Agenten-Key, eine Login-Session oder ein Konto-Key erhalten an `probe` `403`.
+- IP-Bindung: `normalizeIp(req.ip)` (nach `TRUST_PROXY`) muss einer der Adressen entsprechen, die `entry.config.ip` auflöst (alle A- und AAAA-Einträge, `dns.lookup` mit `all: true`), oder in `allowedCidrs` liegen. Auflösung mit Cache von 60 Sekunden; scheitert sie, gilt die Anfrage als Verstoß. Verstoß: `403` und Audit `vault.agent_ip_denied`, höchstens einmal je Key und Quelladresse in 10 Minuten.
+  - Mit `TRUST_PROXY=true` stammt `req.ip` aus einem `X-Forwarded-For`, das der Aufrufer selbst setzen kann; die Bindung ist dann wirkungslos. Einstellungen › Vault und der Agenten-Zugang-Dialog warnen in diesem Fall. `docs/vault.md` verlangt eine Adressliste (die Adresse des Reverse-Proxys). Eine Hop-Zahl ist nur sicher, wenn Outpost ausschließlich über den Proxy erreichbar ist; sonst setzt ein Agent, der `agentUrl` direkt anspricht, `X-Forwarded-For` selbst. Die Doku erklärt außerdem, dass ohne `TRUST_PROXY` hinter einem Reverse-Proxy jede Anfrage von der Adresse des Proxys kommt (bei einem Agenten auf dem Proxy-Host selbst gilt dessen Key dann von überall).
 - `req.agent = { keyId, entryId, agentType }`.
 - `lastUsedAt` wie bei Konto-Keys.
 
@@ -161,21 +180,26 @@ Liste, das Löschen und die Obergrenze von 50 in `server/controllers/apiKey.js` 
 **Werkzeug-Anbieter** statt eines Werkzeugsatzes:
 
 ```
-provider = { name, available(ctx) → bool, list(ctx) → tools[], has(name), call(name, args, ctx), forgetTransport(id) }
-ctx      = { accountId, agent | null, transportId, ipAddress, userAgent }
+provider = { name, available(ctx) → bool, list(ctx) → tools[], has(name, ctx), call(name, args, ctx), forgetTransport(id) }
+ctx      = { accountId, agent | null, keyId | null, transportId, ipAddress, userAgent, signal }
 ```
 
 - Browser-Anbieter: bisherige `createBrowserTools`, `available` = `connect.browser`.
-- Vault-Anbieter: `available` = Vault eingeschaltet und (Recht `vault.use` oder Mitglied
-  einer Organisation).
+- Vault-Anbieter: `available` = Vault eingeschaltet und (Recht `vault.use` oder aktives Mitglied einer Organisation). `vault_list` ist dann verfügbar. `browser_fill_credential` listet und nimmt der Anbieter nur, wenn zusätzlich `connect.browser` gilt; sonst antwortet es wie ein unbekanntes Werkzeug.
 - `tools/list` vereinigt die verfügbaren Anbieter, `tools/call` leitet an den Anbieter des
   Werkzeugs; nicht verfügbare Werkzeuge antworten wie unbekannte.
+- Ein Transport gehört dem Aufrufer, der ihn mit `initialize` geöffnet hat: (`accountId`, `keyId`). `keyId` ist die Id des API-Keys, bei Agenten- wie bei Konto-Keys, und `null` für die Login-Session. Eine Anfrage mit derselben `Mcp-Session-Id`, aber einem anderen Aufrufer antwortet `404` wie bei einem unbekannten Transport; das gilt auch für `DELETE /api/mcp`. `signal` bricht ab, sobald der Client die HTTP-Verbindung schließt, bevor die Antwort fertig ist (`res.on("close")` in `server/routes/mcp.js`). Die Freigabe nutzt es für `client_gone`. Die Obergrenze von 50 Transporten gilt je Key.
+- Für Agenten-Keys schränkt der Browser-Anbieter ein: `via` nur zum Server-Eintrag des Keys
+  (sonst `vault.via_not_allowed` bzw. der Browser-Fehler für fremde Ziele), und `browser_list`,
+  die Auflösung von `sessionId` und die Standard-Sitzung umfassen nur Sitzungen, die dieser Key
+  geöffnet hat. Sitzungen des Nutzers und anderer Agenten bleiben unsichtbar. Jede Sitzung trägt dafür die `keyId` des Aufrufers, der sie geöffnet hat; `#adoptPopup` übernimmt sie vom Öffner. Dieselbe Einschränkung gilt für `browser_fill_credential` im Vault-Anbieter. Login-Session und
+  Konto-Keys verhalten sich wie bisher.
 - Protokoll unverändert (JSON-RPC 2.0, Streamable HTTP ohne SSE, `Mcp-Session-Id`).
 - Die Route `server/routes/mcp.js` bleibt, baut aber den Rahmen mit beiden Anbietern.
 
 ### `vault_list`
 
-Liefert für jeden sichtbaren Eintrag: `name`, `type`, `description`, `username` bzw. `host`,
+Liefert für jeden sichtbaren Eintrag: `item` (die Kennung, die `browser_fill_credential` annimmt), `owner` (`personal` oder Organisationsname), `type`, `description`, `username` bzw. `host`,
 `origins`/`hosts`, `approvalRequired`, `usableBy` (Liste der Werkzeuge, die den Typ heute
 nutzen; in Teilprojekt 1 nur `browser_fill_credential` für `login`). Nie Werte, Längen,
 Präfixe oder Hashes von Werten.
@@ -187,15 +211,17 @@ den Eintrag). Auswahl Claude Code und/oder Codex.
 
 1. Outpost legt den Agenten-Key an (`kind = agent`, Name `claude@<entry>` bzw.
    `codex@<entry>`).
-2. Outpost führt über `execCommand` aus:
+1a. Adresse messen, solange der Key `pending` ist (vor Schritt 2): Der Server ruft per Exec `GET <agentUrl>/api/vault/agent-keys/probe` mit diesem Key auf (`curl -fsS -H @<datei>`; ersatzweise `wget -qO- --config=<datei>`). Der Key steht dabei wie in Schritt 2 kurz in der Befehlszeile der entfernten Shell, weil `execCommand` keine Standardeingabe kennt (siehe „Grenze des Modells“). An das Werkzeug geht er aus einer Datei mit Modus `0600`, die der Befehl danach löscht. `probe` antwortet mit der gesehenen Adresse (`normalizeIp(req.ip)`); der Server speichert sie am Key. Weicht sie von den aufgelösten Adressen des Servers ab (NAT, Docker-Gateway, IPv6), sagt das Ergebnis das. Der Dialog bietet dann an, sie als `/32` bzw. `/128` zu übernehmen: `POST /agent-keys/:id/confirm` mit `{ addSeenIp: true }` trägt die gespeicherte Adresse in `allowedCidrs` ein, nie einen Wert vom Client. Das geht einmal und nur bis 15 Minuten nach dem Anlegen, auch bei `configured`. Ohne Übernahme weist die IP-Bindung den Key ab; das Ergebnis sagt das. Scheitert die Messung (kein Werkzeug, Outpost vom Server aus nicht erreichbar), sagt das Ergebnis das, und die Einrichtung läuft mit der statischen Auflösung weiter.
+2. Outpost führt über `execCommand(accountId, entryId, identityId, command)` aus, mit der Identität, die `resolveIdentity(entry, null, null, accountId)` liefert (dieselbe Wahl wie bei `via`). Der Key speichert `identityId` und den entfernten Benutzernamen. Das Ergebnis nennt ihn („eingerichtet für root“), und Entziehen führt die Entfernbefehle mit derselben Identität aus. Ist die Identität inzwischen gelöscht, löscht Entziehen nur den Key und zeigt die Entfernbefehle zum Kopieren.
    - Claude: `claude mcp add --scope user --transport http outpost <url> --header "Authorization: Bearer <key>"`
-     (vorher `claude mcp remove --scope user outpost`, Fehler ignoriert).
+     (vorher `claude mcp get outpost`. Besteht schon eine Registrierung, etwa die Konto-Key-Registrierung aus `docs/browser-tabs.md`, nennt das Ergebnis, dass sie ersetzt wurde und der alte Konto-Key in Outpost gültig bleibt, bis der Nutzer ihn löscht. Dann `claude mcp remove --scope user outpost`, Fehler ignoriert; der ganze Befehl läuft mit `umask 077`, nach `add` zusätzlich `chmod 600 ~/.claude.json`).
    - Codex: `~/.codex/outpost.env` mit `export OUTPOST_MCP_TOKEN=<key>`, Modus `0600`; eine
-     Zeile `[ -f ~/.codex/outpost.env ] && . ~/.codex/outpost.env` in `~/.bashrc` und
-     `~/.profile`, falls noch nicht vorhanden; dann
+     Zeile `[ -f ~/.codex/outpost.env ] && . ~/.codex/outpost.env` in `~/.bashrc`, `~/.profile` und, falls vorhanden, `~/.bash_profile` und `~/.zshrc`, jeweils nur, wenn sie noch fehlt. Das Ergebnis sagt: „Codex in einer neuen Shell starten; laufende Codex-Prozesse und tmux-Sitzungen kennen den Key nicht.“; dann
      `codex mcp add outpost --url <url> --bearer-token-env-var OUTPOST_MCP_TOKEN`.
    - Alle Werte werden über einen gemeinsamen Quoting-Baustein (`server/lib/vault/provision.js`)
      in die Befehle gesetzt.
+   - Die CLIs werden per `command -v` in einer Login-Shell gesucht (`bash -lc`, ersatzweise `sh -lc`) und zusätzlich unter `~/.local/bin`, `~/.claude/local` und `~/.npm-global/bin`. Gefunden wird mit absolutem Pfad aufgerufen. „CLI fehlt“ heißt: an keiner dieser Stellen gefunden.
+   - `execCommand` gibt `entry.config.engineId` heute nicht weiter (`server/controllers/execCommand.js:48`). Die Einrichtung ergänzt das Argument, wie `openEngineSession` in `server/lib/browser/proxy.js` es tut.
 3. `<url>` = Einstellung „Outpost-Adresse für Agenten“ + `/api/mcp`.
 4. Scheitert ein Schritt (CLI fehlt, Exec-Fehler), zeigt der Dialog den fertigen Befehl zum
    Kopieren. Der Key wird nur in diesem Dialog angezeigt.
@@ -203,15 +229,17 @@ den Eintrag). Auswahl Claude Code und/oder Codex.
    Einrichtung gelingt oder der Nutzer den Befehl kopiert (`POST /agent-keys/:id/confirm`).
    Schließt der Nutzer den Dialog vorher, löscht der Client ihn (`DELETE /agent-keys/:id`);
    was danach noch `pending` ist, löscht der Server nach 15 Minuten. Ein `pending`-Key wird von
-   `authenticate` nicht akzeptiert.
+   `authenticate` nur an `probe` akzeptiert (Schritt 1a).
 6. Ist „Outpost-Adresse für Agenten“ nicht gesetzt (Standard: leer), ist Einrichten gesperrt
    mit Verweis auf Einstellungen › Vault.
+7. Erneutes Einrichten für denselben Server, Agenten und entfernten Benutzer ersetzt den bisherigen Key dieses Kontos: Nach gelungener Einrichtung bzw. Bestätigung wird der alte gelöscht. Hat ein **anderes** Konto für denselben Server und entfernten Benutzer schon einen Agenten-Key, warnt der Dialog vor dem Einrichten: Die Registrierung wird ersetzt, und Agenten dieses Benutzers handeln danach mit den Einträgen und Freigaben des neuen Kontos.
+
+8. Mehrere Konten auf demselben Unix-Benutzer: In Teilprojekt 1 nur die Warnung aus Schritt 7.
+   Ein Key je (Server, entferntem Benutzer) mit Sperre des fremden Keys folgt in Teilprojekt 3.
 
 Entziehen fragt vorher im Bestätigungsdialog nach.
 
-„Zugang entziehen“ löscht den Key und führt danach `claude mcp remove --scope user outpost`
-bzw. `codex mcp remove outpost` und das Entfernen von `~/.codex/outpost.env` aus; schlägt das
-fehl, ist der Key trotzdem widerrufen.
+„Zugang entziehen“ löscht den Key und entfernt danach die Registrierung nur, wenn sie noch diesen Key trägt. Verglichen wird das Präfix des Keys im Eintrag `outpost` von `~/.claude.json` bzw. in `~/.codex/outpost.env`; der Vergleich läuft im Outpost-Server, die gelesene Ausgabe geht nirgends weiter. Dann folgen `claude mcp remove --scope user outpost` bzw. `codex mcp remove outpost` und das Entfernen von `~/.codex/outpost.env`. Trägt die Registrierung einen anderen Key (anderes Konto, Schritt 7), bleibt sie stehen, und das Ergebnis sagt das. Ersetzt Schritt 7 den eigenen alten Key, wird dieser ohne Entfernbefehle gelöscht. Schlägt das Entfernen fehl, ist der Key trotzdem widerrufen.
 
 ## `browser_fill_credential`
 
@@ -226,27 +254,28 @@ Prüfungen in dieser Reihenfolge, jede bricht mit eigenem Fehler ab:
 1. `item` ist sichtbar (siehe Sichtbarkeit). Nicht sichtbar und nicht vorhanden ergeben
    denselben Fehler `vault.item_unknown`.
 2. `type === "login"`.
-3. Die Browser-Sitzung gehört dem Konto (wie bei allen `browser_*`-Werkzeugen) und ist nicht
-   pausiert.
-4. Der Ursprung des **Frames**, in dem das Ziel-Element liegt, entspricht exakt einem Eintrag
-   aus `origins` (Schema, Host, Port; Standardports normalisiert).
+3. Die Browser-Sitzung gehört dem Aufrufer nach denselben Regeln wie bei den `browser_*`-Werkzeugen (bei Agenten-Keys: von diesem Key geöffnet oder ein Popup einer solchen Sitzung; das gilt auch für die Auflösung ohne `sessionId`) und ist nicht pausiert. Eine fremde `sessionId` ergibt denselben Fehler wie eine unbekannte.
+3a. Im Browser-Kontext der Sitzung (siehe „Folgen für die Browser-Sitzung“) lief seit seiner Entstehung kein `browser_evaluate`, auch nicht in einer inzwischen geschlossenen Sitzung. Ein Popup kann über `window.opener` oder einen Service Worker die Anmeldeseite präpariert haben. `browser_evaluate` markiert den Kontext, bevor es `Runtime.evaluate` sendet; Prüfen und Markieren geschehen ohne `await` dazwischen. Sonst `vault.session_tainted` („öffne mit browser_open ohne profile=persistent eine neue Sitzung und fülle dort aus“). Im Profil `persistent` wird nie ausgefüllt (3b), weil Präparationen dort auf der Platte jeden Kontext überleben. Ein Dokumentwechsel reicht nicht: Der bfcache stellt präparierte Dokumente wieder her.
+3b. Die Sitzung läuft nicht über `via` und nicht im Profil `persistent` (dort `vault.persistent_not_allowed`). Dort führt die Verbindung durch einen Server, den der Agent selbst bedient, und bei `http`-Ursprüngen läge das Passwort dort im Klartext. Fehler `vault.via_not_allowed`.
+4. Der Ursprung des **Frames**, in dem das Ziel-Element liegt, und die Ursprünge aller seiner Vorfahren-Frames bis zur obersten Seite entsprechen je exakt einem Eintrag aus `origins` (Schema, Host, Port; Standardports normalisiert). Sonst könnte eine fremde Seite, die die Anmeldung einbettet, den Fokus zwischen Fokussieren und Eingabe in ein eigenes Feld ziehen. Wer eine Einbettung will, trägt den einbettenden Ursprung ein.
 5. `passwordRef` ist ein `<input type="password">`; `usernameRef`, falls angegeben, ein
    Textfeld (`text`, `email`, `tel` oder ohne Typ) im selben Ursprung.
-6. Freigabe, falls `approvalRequired`.
+6. Freigabe, falls `approvalRequired`. Gewartet wird außerhalb von `session.runAgent`, denn dessen Grenze `AGENT_CALL_TIMEOUT_MS` (90 s) liegt unter den 2 Minuten der Freigabe. Während der Wartezeit ist die Sitzung für andere Werkzeuge frei, auch für `browser_evaluate`. Nach der Freigabe laufen deshalb die Prüfungen 3, 3a, 3b, 4 und 5 in `runAgent` erneut, unmittelbar vor dem Ausfüllen. Ohne Freigabe laufen 3 bis 5 und das Ausfüllen in einem einzigen `runAgent`. Scheitert eine Prüfung nach der Freigabe, ist eine Antwort `once` verbraucht (eine Antwort `session` bleibt gemerkt), und das Werkzeug meldet den Fehler dieser Prüfung.
 
-Ausfüllen: `readSecret(item, "password")`, Fokus über die Referenz, `Input.insertText` wie
+Ausfüllen: `readSecret(item, "password")`, Fokus über die Referenz. Unmittelbar vor `Input.insertText` wird geprüft, ob das fokussierte Element (durch Shadow-Roots hindurch) das Ziel ist (`backendNodeId`); sonst `vault.focus_lost` ohne Eingabe. Dann `Input.insertText` wie
 `browser_type`; beim Benutzernamen vorher Feld leeren. Antwort an den Agenten nur
 „Benutzername und Passwort von `<item>` eingetragen.“ Klartext erscheint nie in Antwort,
 Log oder Audit.
 
 ### Folgen für die Browser-Sitzung
 
-- `browser_snapshot` schwärzt den Wert jedes Passwortfeldes, **immer** (auch Eingaben des
-  Nutzers): `value="••••"` statt des Werts.
-- Nach einem erfolgreichen Ausfüllen ist die Sitzung „befüllt“: `browser_evaluate` antwortet
-  bis zum Ende der Sitzung mit `vault.evaluate_locked` („in dieser Sitzung gesperrt, weil
+- Jeder Snapshot wird in `buildSnapshot` geschwärzt, also auch die Snapshots, die `browser_open`, `_navigate`, `_click`, `_type`, `_key`, `_scroll` und `_wait` zurückgeben. Geschwärzt wird **immer** (auch Eingaben des Nutzers) der Wert jedes `<input type="password">` in allen Frames und der Wert jedes Elements, das `browser_fill_credential` in diesem Kontext befüllt hat, auch wenn dessen Typ inzwischen nicht mehr `password` ist („Passwort anzeigen“). Das Ergebnis ist `value="••••"`, unabhängig von der Länge. Der Accessibility-Baum kennt den Eingabetyp nicht; die Menge der zu schwärzenden `backendNodeId`s kommt je Snapshot aus dem DOM.
+- Browser-Kontext heißt: bei ephemeren Sitzungen der `browserContextId`, den `BrowserPool.open()` anlegt; bei `persistent` die Instanz `account-<accountId>`. Popups erben den Kontext ihres Öffners. `#adoptPopup` registriert sie heute mit `browserContextId: null`; die Pool-Registrierung bekommt deshalb ein Feld `contextKey`, das das Popup vom Öffner übernimmt. Vor dem ersten `Input.insertText` von `browser_fill_credential` wird der Kontext „befüllt“, nicht erst nach dessen Erfolg. Die Sperre gilt für jede Sitzung dieses Kontexts, auch für später angehängte Popups, mit oder ohne `window.opener`. Ein ephemerer Kontext endet mit `Target.disposeBrowserContext`, wenn die Sitzung schließt, die ihn angelegt hat; ihre Popups enden mit ihm. Der Kontext `persistent` endet, wenn seine letzte Sitzung schließt. `browser_evaluate` antwortet dort mit `vault.evaluate_locked` („in dieser Sitzung gesperrt, weil
   Zugangsdaten eingetragen wurden; nutze snapshot und click“).
-- `browser_screenshot` bleibt erlaubt.
+- `browser_screenshot` bleibt erlaubt, außer ein Element, das `browser_fill_credential` in
+  diesem Kontext befüllt hat, existiert noch und ist nicht mehr `type="password"` („Passwort
+  anzeigen“): dann `vault.screenshot_locked`. Die Prüfung läuft unmittelbar vor jeder Aufnahme.
+- Jeder Text, der an den Agenten oder ins Audit geht und aus einem befüllten Kontext stammt oder eine seiner Sitzungen nennt (Snapshot, `URL:`, `Title:`, Fehlermeldungen, `browser_list`, die Liste „Open sessions:“ in Fehlern, auch wenn sie aus einem anderen Kontext abgefragt werden, `details.url` von `recordBrowserAudit`), wird vor dem Versand nach dem Wert der dort eingetragenen Passwörter durchsucht, roh, mit `encodeURIComponent` und formular-kodiert. Jedes Vorkommen wird durch `••••` ersetzt. Dafür legt `browser_fill_credential` beim Ausfüllen im Kontext eine eigene, mit `VAULT_KEY` verschlüsselte Kopie des eingetragenen Werts an (Associated Data `vault:ctx:<contextKey>`). Sie wird mit dem Kontext verworfen und je Prüfung entschlüsselt; Klartext bleibt nicht im Kontext. `readSecret` des Eintrags taugt dafür nicht: Ein `PATCH` mit Zieländerung löscht den Wert, und ein geänderter Wert ist nicht mehr der eingetragene. Anlass: Ein Formular mit `method=get` legt das Passwort in die URL, und `auditUrl` entfernt nur Benutzerteil und Fragment.
 
 ## Freigabe
 
@@ -255,15 +284,17 @@ Log oder Audit.
 - Anfrage: `{ id, accountId, agentType, entryName, item, target, expiresAt }`, verteilt über
   den `StateBroadcaster` an alle offenen Fenster des Kontos, dem der Agenten-Key gehört (bei
   Organisationseinträgen derselbe Nutzer, nicht Org-Admins).
+- Offene Anfragen sind Zustand des Kontos: neuer Typ `VAULT_APPROVALS` in `STATE_TYPES` und `BROADCASTABLE_TYPES` (`server/lib/StateBroadcaster.js` und `client/src/common/hooks/useStateStream.js`), `getStateData` liefert die offenen Anfragen. Ein Fenster, das sich (neu) verbindet, erhält sie sofort. Nach jeder Antwort, jedem Ablauf und jedem Abbruch wird die Liste an alle Fenster des Kontos neu verteilt.
+- Die erste Antwort gewinnt (atomar im Speicher). Jede weitere Antwort auf dieselbe Anfrage erhält `409`, eine Antwort nach `expiresAt` erhält `410`.
 - Antwort per Endpunkt `POST /api/vault/approvals/:id` mit `once`, `session` oder `deny`;
   nur das besitzende Konto.
 - `session` merkt sich (`transportId`, `item`) im Speicher bis zum Ende der MCP-Sitzung
   (`forgetTransport`) oder bis zum Neustart.
 - Der Werkzeugaufruf wartet bis `expiresAt` (jetzt + 2 Minuten). Ohne Antwort:
-  `vault.approval_timeout`.
+  `vault.approval_timeout`. Schließt der Client die HTTP-Verbindung vorher (eigene Werkzeug-Zeitgrenze, Proxy-Timeout), wird die Anfrage sofort zurückgezogen: Die Karte verschwindet, das Audit schreibt `vault.approval_timeout` mit `reason: "client_gone"`, und eine spätere Antwort füllt nichts mehr aus. `docs/vault.md` nennt die nötigen Zeitgrenzen (Reverse-Proxy `proxy_read_timeout` ≥ 150 s, Codex `tool_timeout_sec`).
 - Ist kein Fenster des Kontos verbunden, sofort `vault.approval_unavailable` („Outpost
   öffnen, um Freigaben zu erteilen“).
-- Mehrere offene Anfragen werden unabhängig beantwortet.
+- Mehrere offene Anfragen werden unabhängig beantwortet. Je (Transport, Eintrag) gibt es höchstens eine offene Anfrage. Ein zweiter Aufruf, solange sie offen ist, erhält sofort `vault.approval_pending` („warte auf die offene Freigabe“), denn eine Antwort `once` gilt für genau ein Ausfüllen. Je Aufrufer (`accountId`, `keyId` wie bei der Transport-Bindung) sind höchstens drei Anfragen offen, darüber `vault.approval_busy`. Nach `deny` antwortet derselbe Aufrufer für denselben Eintrag 60 Sekunden lang sofort mit `vault.approval_denied`, ohne neue Karte, auch über einen neu geöffneten Transport.
 
 ## Oberfläche
 
@@ -283,7 +314,7 @@ Log oder Audit.
 - **Agenten-Zugang-Dialog** im Kontextmenü des Server-Eintrags mit den bestehenden
   Agenten-Keys dieses Servers.
 - **Einstellungen → Konto → API-Keys**: Agenten-Keys gruppiert nach Server mit Agententyp,
-  zuletzt genutzt, IP-Bindung, CIDRs bearbeitbar.
+  zuletzt genutzt und IP-Bindung; je Key Entziehen, je Server „Bearbeiten“ (öffnet den Agenten-Zugang-Dialog).
 - **Einstellungen → Vault** (System, `settings.vault`): Status von `VAULT_KEY`,
   „Outpost-Adresse für Agenten“.
 
@@ -294,26 +325,31 @@ Mobile-App (Flutter) ist nicht Teil dieses Teilprojekts.
 
 ## REST-Endpunkte
 
-Unter `/api/vault`, nur Login-Session oder Konto-Key (Agenten-Keys sind ausgeschlossen):
+Unter `/api/vault`, nur Login-Session oder Konto-Key (Agenten-Keys sind ausgeschlossen, außer dem `pending`-Key an `GET /agent-keys/probe`). Reveal, `POST /approvals/:id` sowie Einrichten, Bestätigen und Entziehen von Agenten-Keys verlangen eine Login-Session; Konto-Keys erhalten dort `403`, wie `blockApiKeyAuth` in `server/routes/apiKey.js`:
 
 - `GET /items`, `POST /items`, `PATCH /items/:id`, `DELETE /items/:id`
 - `GET /items/:id/secrets/:field` (Reveal)
 - `POST /approvals/:id`
-- `GET /agent-keys` (alle Agenten-Keys des Kontos; mit `?entryId=` nur die eines Servers),
-  `POST /agent-keys` (Einrichtung), `POST /agent-keys/:id/confirm`, `DELETE /agent-keys/:id`
-  (Entziehen bzw. Verwerfen)
+- `GET /agent-keys` (alle Agenten-Keys des Kontos; mit `?entryId=` nur die eines Servers und
+  zusätzlich `{ remoteUser, otherAccountConfigured }`: der entfernte Benutzer der Identität, die
+  `resolveIdentity` wählen würde, und ob ein anderes Konto für diesen Server und Benutzer schon
+  einen Agenten-Key hat — Grundlage der Warnung vor dem Einrichten).
+- `POST /agent-keys` (Einrichtung), `GET /agent-keys/probe` (nur der `pending`-Agenten-Key selbst, siehe Einrichtung Schritt 1a), `POST /agent-keys/:id/confirm` (optional `{ addSeenIp: true }`), `DELETE /agent-keys/:id` (Entziehen bzw. Verwerfen).
+- Antwort von `POST /agent-keys`: je Agent `{ id, agentType, status: "configured" | "manual", remoteUser, command?, probe: { seenIp, matches } | null, replacedRegistration: boolean }`; `command` (mit Key) nur bei `manual`.
 - `GET /settings`, `PATCH /settings` (Recht `settings.vault`): `{ keyStatus: "active" |
-  "missing" | "mismatch", agentUrl }`; `agentUrl` muss eine http- oder https-Adresse sein.
+  "missing" | "mismatch", agentUrl, trustProxyUnsafe }`; `agentUrl` muss eine http- oder https-Adresse sein.
   `GET /settings` antwortet auch bei ausgeschaltetem Vault, damit die Seite den Grund zeigt.
 
-Ist der Vault ausgeschaltet, antworten alle mit `404`.
+Ist der Vault ausgeschaltet, antworten alle mit `404`, außer `GET /settings`, `PATCH /settings` (die Agenten-Adresse lässt sich vor dem Schlüssel setzen) und `GET /available`.
 
 Ausnahme `GET /api/vault/available`, nach dem Muster von `GET /api/browser/available`: antwortet
-immer `200` mit `{ enabled, canUse, canManageOrgs: [orgId…], canProvision }`. `enabled` = Vault
-eingeschaltet; `canUse` = `vault.use` oder Mitglied mindestens einer Organisation (steuert den
-Bereich in der Navigation); `canProvision` = Vault eingeschaltet und `vault.use` oder Mitglied
-(steuert „Agenten-Zugang…“ im Server-Kontextmenü). Ist der Vault aus, sind alle Rechte-Felder
-`false` bzw. leer.
+immer `200` mit `{ enabled, canUse, canManageOrgs: [orgId…], canProvision, agentUrlSet, impersonating, trustProxyUnsafe }`. `enabled` = Vault
+eingeschaltet; `canUse` = `vault.use` oder aktives Mitglied mindestens einer Organisation (steuert den
+Bereich in der Navigation); `canProvision` = Vault eingeschaltet und `vault.use` oder aktives Mitglied
+(steuert „Agenten-Zugang…“ im Server-Kontextmenü); `impersonating` = die Sitzung trägt
+`impersonatorId` (die Oberfläche blendet dann Anzeigen, Freigabe-Knöpfe und Einrichten aus);
+`agentUrlSet` = die Agenten-Adresse ist gesetzt (sonst ist Einrichten gesperrt); `trustProxyUnsafe` = `TRUST_PROXY` ist `true` (Warnung im Agenten-Zugang-Dialog). Der Dialog liest beides hier, weil `GET /settings` `settings.vault` verlangt. Ist der Vault
+aus, sind alle Rechte-Felder `false` bzw. leer.
 
 ## Betrieb
 
@@ -332,7 +368,7 @@ Bereich in der Navigation); `canProvision` = Vault eingeschaltet und `vault.use`
 
 Neue Aktionen: `vault.item_create`, `vault.item_update`, `vault.item_delete`, `vault.reveal`,
 `vault.use`, `vault.approve`, `vault.deny`, `vault.agent_key_create`,
-`vault.agent_key_revoke`, `vault.agent_ip_denied`. Details: Eintrag, Agent, Server, Ziel
+`vault.agent_key_revoke`, `vault.agent_ip_denied`, `vault.use_denied` (eine Prüfung von `browser_fill_credential` oder die Fokusprüfung schlägt fehl, mit Fehlercode wie `vault.session_tainted` oder `vault.focus_lost`, mit Angabe, ob vor oder nach der Freigabe, und mit Ziel), `vault.approval_timeout` (mit `reason`: `expired` oder `client_gone`), `vault.item_unreadable`, `vault.evaluate_locked`, `vault.screenshot_locked`, `vault.persistent_not_allowed`. Details: Eintrag, Agent, Server, Ziel
 (Ursprung/Host). Nie Werte.
 
 ## Fehler- und Randfälle
@@ -341,19 +377,27 @@ Neue Aktionen: `vault.item_create`, `vault.item_update`, `vault.item_delete`, `v
   Übersetzungsschlüssel, an den Agenten gerichtete Meldung mit nächstem Schritt.
 - Entschlüsselung schlägt fehl: Werkzeug meldet `vault.item_unreadable`, Server-Log und Audit
   mit Eintrags-ID, Oberfläche zeigt den Eintrag als „nicht lesbar“.
-- Server-Eintrag gelöscht: Agenten-Keys fallen per CASCADE weg, Bindungen an ihn ebenso.
-- Ordner gelöscht: Bindungen an ihn werden entfernt.
+- Server-Eintrag gelöscht: Agenten-Keys fallen per CASCADE weg; Bindungen an ihn entfernt `deleteEntry`.
+- Ordner gelöscht: Bindungen an ihn, an seine Unterordner und an die mitgelöschten Einträge entfernt `deleteFolder`.
+- Tag gelöscht: Bindungen an ihn entfernt `deleteTag`.
 - Organisation verlassen: Einträge der Organisation sind sofort nicht mehr sichtbar, auch für
   bestehende MCP-Sitzungen (Sichtbarkeit wird je Aufruf berechnet).
-- Gleichnamige Einträge in Konto und Organisation: `vault_list` liefert beide mit Präfix des
-  Besitzers (`org:<orgname>/<name>`); persönliche Einträge ohne Präfix.
+- Kennung für Agenten: Persönliche Einträge heißen `<name>`, Organisationseinträge immer `org:<organizationId>/<name>`, auch ohne Namensgleichheit. So wechselt eine Kennung nicht, wenn anderswo ein gleichnamiger Eintrag entsteht. Organisationsnamen sind nicht eindeutig und taugen nicht als Kennung; `vault_list` nennt sie in `owner`.
+
+## Impersonation
+
+`POST /users/:accountId/login` (Recht `users.impersonate`) erzeugt eine Sitzung des Zielkontos.
+`sessions` bekommt die Spalte `impersonatorId` (INTEGER null, gesetzt nur von diesem Endpunkt).
+In solchen Sitzungen antworten Reveal (`GET /items/:id/secrets/:field`), Freigabe-Antworten
+(`POST /approvals/:id`), Einrichten, Bestätigen und Entziehen von Agenten-Keys mit `403`; die
+Vault-Seite zeigt Einträge, aber keine Anzeigen-Knöpfe. Jeder Audit-Eintrag aus einer solchen
+Sitzung nennt zusätzlich `impersonatorId`. Ein Konto-Key, den der Impersonator anlegt, umgeht die Sperre nicht, weil Reveal, Freigabe-Antworten und die Verwaltung der Agenten-Keys eine Login-Session verlangen (siehe REST-Endpunkte). Fenster einer Impersonations-Sitzung erhalten `VAULT_APPROVALS` nicht und zählen für `vault.approval_unavailable` nicht als verbundenes Fenster; `StateBroadcaster.register` bekommt dafür, ob die Session `impersonatorId` trägt.
 
 ## Tests
 
 Budget nach Verhalten; Kernlogik der Sichtbarkeit test-first.
 
-1. Agenten-Key wird auf jeder Route außer `/api/mcp` abgewiesen, ein `pending`-Key auch
-   dort (HTTP über die Middleware).
+1. Agenten-Key wird auf jeder Route außer `/api/mcp` abgewiesen, ein `pending`-Key auch dort; die `Mcp-Session-Id` eines anderen Keys desselben Kontos ergibt `404` (HTTP über die Middleware).
 2. IP-Bindung: eigene IP ok, fremde abgewiesen, CIDR ok, gelöste Bindung ok.
 3. Reveal: Besitzer persönlich ok, `vault.reveal` bei Organisation ok, Mitglied ohne Recht
    `403`; jeder Abruf erzeugt Audit.
@@ -361,12 +405,17 @@ Budget nach Verhalten; Kernlogik der Sichtbarkeit test-first.
    (persönlich/Organisation), keine Bindung, Konto-Key, Organisation verlassen.
 5. `vault_list`-Antwort enthält keinen gespeicherten Wert (Prüfung über die serialisierte
    Antwort).
-6. Freigabe: einmal, Sitzung, ablehnen, Timeout, kein Fenster.
-7. Chromium-Reihe: Ausfüllen bei passendem Ursprung; Ablehnung bei fremdem Ursprung, fremdem
-   iframe und Nicht-Passwortfeld.
-8. Chromium-Reihe: nach dem Ausfüllen `browser_evaluate` gesperrt; `browser_snapshot`
-   schwärzt Passwortfelder.
+6. Freigabe: einmal, Sitzung, ablehnen, Timeout, kein Fenster; zweite Antwort `409`; Client bricht ab → Anfrage zurückgezogen; eine Freigabe nach mehr als 90 s füllt noch aus; ein `browser_evaluate` während der Wartezeit lässt das Ausfüllen mit `vault.session_tainted` scheitern; die Sperre nach `deny` gilt auch über einen neuen Transport.
+7. Chromium-Reihe: Ausfüllen bei passendem Ursprung; Ablehnung bei fremdem Ursprung, fremdem iframe, Einbettung durch eine fremde Seite, Nicht-Passwortfeld, `via`-Sitzung, `persistent`-Sitzung und nach einem vorherigen `browser_evaluate` in einem inzwischen geschlossenen Popup desselben Kontexts.
+8. Chromium-Reihe: Nach dem Ausfüllen ist `browser_evaluate` gesperrt, auch im Popup der Seite. Der Snapshot nach `browser_click` schwärzt das befüllte Feld auch nach dem Umschalten auf `type=text`. Ein `method=get`-Formular bringt das Passwort weder in `URL:` noch in `browser_list` noch ins Audit, auch nachdem ein `PATCH` mit Zieländerung die Werte des Eintrags gelöscht hat.
 9. Einrichtungsbefehle quoten URL und Key mit Sonderzeichen korrekt.
+10. Agenten-Key im Browser-Anbieter: `via` zu einem fremden Server abgelehnt, `browser_list`
+    zeigt nur eigene Sitzungen, eine fremde `sessionId` antwortet wie unbekannt, auch bei `browser_fill_credential`.
+11. Ein `PATCH` mit geändertem Ursprung löscht die gespeicherten Werte; Reveal, Freigabe und
+    Einrichtung antworten in einer Impersonations-Sitzung mit `403`; `probe` nimmt einen
+    `pending`-Key an und liefert die gesehene Adresse.
+12. Chromium-Reihe: `browser_screenshot` nach „Passwort anzeigen“ auf dem befüllten Feld wird
+    abgelehnt, ohne diesen Umschalter erlaubt.
 
 Nicht getestet: reine Weiterreichung in Controllern, Konfig-Konstanten, Darstellung (prüft
 mockingbird), Log-Ausgaben.
@@ -382,7 +431,7 @@ Die übernommenen Elemente unten werden nicht neu gebaut, aber ergänzt (Manifes
   `canProvision` (Anleitung `docs/design/guides/ui-servers.md`).
 
 <!-- mockingbird:design:begin -->
-<!-- design: manifest=docs/design/manifest.yaml design_rev=11 design_hash=sha256:766e158afd75a14d82bc0ce04a0172047319054631fe67e4cb4f1c012643d8d1 system=docs/design/design-system.md index=docs/design/mockups/index.html adapter=web screens=UI-VAULT,UI-VAULT-DIALOG,UI-AGENT-ACCESS,UI-VAULT-SETTINGS,UI-API-KEYS,UI-VAULT-APPROVAL consumes=UI-SHELL-NAV,UI-SHELL-MOBILE-NAV,UI-SHELL-ACCOUNT,UI-SERVERS-LIST-MENU -->
+<!-- design: manifest=docs/design/manifest.yaml design_rev=12 design_hash=sha256:35dc03481fbf042179f422816d8b806d5bb1064449ae36bf88bf26f343f55c32 system=docs/design/design-system.md index=docs/design/mockups/index.html adapter=web screens=UI-VAULT,UI-VAULT-DIALOG,UI-AGENT-ACCESS,UI-VAULT-SETTINGS,UI-API-KEYS,UI-VAULT-APPROVAL consumes=UI-SHELL-NAV,UI-SHELL-MOBILE-NAV,UI-SHELL-ACCOUNT,UI-SERVERS-LIST-MENU -->
 <!-- Generiert aus docs/design/manifest.yaml. Nicht von Hand ändern —
      Änderungen hier werden beim nächsten mockingbird-Lauf überschrieben.
      Design ändern heißt Manifest ändern. -->
@@ -399,7 +448,7 @@ Die übernommenen Elemente unten werden nicht neu gebaut, aber ergänzt (Manifes
 | UI-VAULT-DETAIL | Eintrag | UI-VAULT | required | Kopf des gewählten Eintrags — Name, Typ, Besitzer, Beschreibung — mit Bearbeiten und Löschen (nur mit Verwaltungsrecht). Nicht: identity, server_entry. |
 | UI-VAULT-DETAIL-ACTIONS | Bearbeiten · Löschen | UI-VAULT | required | Bearbeiten öffnet den Eintrag-Dialog; Löschen fragt im Bestätigungsdialog nach und entfernt den Eintrag samt Werten und Bindungen. Nur mit Verwaltungsrecht (Besitzer persönlicher Einträge, vault.manage bei Organisationen); ohne das Recht nicht sichtbar. Nicht: vault_secret. |
 | UI-VAULT-DETAIL-FIELDS | Angaben | UI-VAULT | required | Die nicht geheimen Angaben des Eintrags je Typ — Login Benutzer und erlaubte Ursprünge, API-Key Hosts und Header, SSH Benutzer, Datenbank Engine, Host, Port, Datenbank, Benutzer. Nicht: vault_secret. |
-| UI-VAULT-DETAIL-SECRET | Geheimer Wert | UI-VAULT | required | Je geheimem Feld eine Zeile mit genau zwölf Punkten, unabhängig von der Länge des Werts. Anzeigen und Kopieren nur für den Besitzer persönlicher Einträge oder mit vault.reveal; sonst der Hinweis, dass der Wert nur für Agenten nutzbar ist. Ein angezeigter Wert verbirgt sich nach 30 Sekunden. Nicht: vault_item_fields, identity. |
+| UI-VAULT-DETAIL-SECRET | Geheimer Wert | UI-VAULT | required | Je geheimem Feld eine Zeile mit genau zwölf Punkten, unabhängig von der Länge des Werts. Anzeigen und Kopieren nur für den Besitzer persönlicher Einträge oder mit vault.reveal, nie in einer Impersonations-Sitzung; sonst der Hinweis, dass der Wert nur für Agenten nutzbar ist. Ein angezeigter Wert verbirgt sich nach 30 Sekunden. Nicht: vault_item_fields, identity. |
 | UI-VAULT-DETAIL-SCOPE | Gilt für | UI-VAULT | required | Für welche Server Agenten diesen Eintrag sehen — einzelne Server, Ordner mit Unterordnern, Tags oder alle Server. Nicht: vault_owner, permission. |
 | UI-VAULT-DETAIL-POLICY | Freigabe erforderlich | UI-VAULT | required | Ob jede Nutzung durch einen Agenten bestätigt werden muss, und wann der Eintrag zuletzt genutzt wurde. Nicht: permission, vault_binding. |
 | UI-VAULT-DIALOG-TYPE | Typ | UI-VAULT-DIALOG | required | Art der Zugangsdaten — Login, API-Key, SSH, Datenbank, Sonstiges. Nur beim Anlegen wählbar, danach fest. Nicht: vault_owner. |
@@ -415,6 +464,7 @@ Die übernommenen Elemente unten werden nicht neu gebaut, aber ergänzt (Manifes
 | UI-AGENT-ACCESS-RESULT | Ergebnis | UI-AGENT-ACCESS | required | Je Agent das Ergebnis der Einrichtung — eingerichtet, oder der fertige Befehl zum Kopieren, wenn die automatische Einrichtung scheiterte (CLI fehlt, Exec-Fehler). Der Key ist nur hier und nur jetzt sichtbar; ein Key, der weder automatisch eingerichtet noch kopiert wurde, wird beim Schließen gelöscht. Nicht: agent_key, toast. |
 | UI-VAULT-SETTINGS-KEY | Vault-Schlüssel | UI-VAULT-SETTINGS | required | Ob der Vault läuft — Schlüssel aktiv, fehlt (Vault aus) oder passt nicht zu den gespeicherten Daten (Vault aus). Bei fehlendem Schlüssel ein Satz, wie man VAULT_KEY setzt. Nicht: encryption_key, api_key. |
 | UI-VAULT-SETTINGS-URL | Outpost-Adresse für Agenten | UI-VAULT-SETTINGS | required | Die Adresse, unter der Server Outpost erreichen; daraus entsteht die MCP-URL, die beim Einrichten eines Agenten eingetragen wird. Nicht: browser_launcher_url. |
+| UI-VAULT-SETTINGS-PROXY | Hinweis Reverse-Proxy | UI-VAULT-SETTINGS | required | Warnt, wenn Outpost jedem X-Forwarded-For glaubt (TRUST_PROXY=true) — dann ist die IP-Bindung von Agenten-Keys wirkungslos. Sonst nicht sichtbar. Nicht: vault_key_status, agent_base_url. |
 | UI-VAULT-SETTINGS-SAVE | Einstellungen speichern | UI-VAULT-SETTINGS | required | Speichert die Outpost-Adresse für Agenten, wie der Speichern-Knopf der Browser-Einstellungen. |
 | UI-API-KEYS-LIST | API-Schlüssel | UI-API-KEYS | required | Die API-Keys des Kontos mit voller Kontoberechtigung — Name, Präfix, zuletzt genutzt, Ablauf; Anlegen und Löschen wie bisher. Nicht: agent_key. |
 | UI-API-KEYS-AGENTS | Agenten-Schlüssel | UI-API-KEYS | required | Die Agenten-Keys des Kontos, gruppiert nach Server — Agent, zuletzt genutzt, IP-Bindung; je Server Bearbeiten (öffnet Agenten-Zugang) und je Key Entziehen. Agenten-Keys erreichen nur den MCP-Endpunkt. Nicht: api_key, vault_item. |
@@ -428,3 +478,32 @@ Die übernommenen Elemente unten werden nicht neu gebaut, aber ergänzt (Manifes
 
 Artboards: `docs/design/mockups/index.html` · Design-System: `docs/design/design-system.md`
 <!-- mockingbird:design:end -->
+
+<!-- preflight:security:begin -->
+<!-- facts: network_surface=both has_accounts=yes auth_method=api-key
+     has_privilege_levels=yes session_transport=bearer-header has_owned_data=yes
+     is_multi_tenant=no persistence=sql renders_html=yes accepts_uploads=yes
+     handles_pii=yes -->
+
+## Security Requirements
+
+| ID | Maßnahme | Geltungsbereich | Status | Begründung |
+|----|----------|-----------------|--------|------------|
+| SEC-INPUT-01 | Input-Validierung per Whitelist | `fields` je Typ, `name`-Muster, CIDRs, `agentUrl`, Argumente der Vault-Werkzeuge | required | HTTP-API |
+| SEC-ERR-01 | Fehlermeldungen ohne Stack-Traces und DB-Details | Vault-Werkzeuge, REST-Antworten, „nicht lesbar“ ohne Details | required | HTTP-API |
+| SEC-SECRET-01 | Secrets außerhalb von Code und Repo | `VAULT_KEY` per Umgebung oder Docker-Secret; Werte nie in Log, Audit oder Antwort | required | immer |
+| SEC-DEP-01 | Abhängigkeiten auf bekannte Schwachstellen prüfen | neue Abhängigkeiten und Client-Bausteine | required | immer |
+| SEC-INJECT-01 | Fremde Eingaben nicht in Befehle oder Pfade bauen | Einrichtungsbefehle per Exec, Quoting in `server/lib/vault/provision.js` | required | immer |
+| SEC-RATE-01 | Rate Limiting auf zustandsändernden Endpunkten | Reveal, Freigabe-Antwort, Agenten-Einrichtung, Vault-Werkzeuge | required | HTTP-API |
+| SEC-RATE-02 | Brute-Force-Bremse am Login | Login | not-applicable | (2026-10-09) die Spec ändert den Login nicht; Agenten-Keys haben 256 Bit Entropie |
+| SEC-SQLI-01 | Prepared Statements, keine String-Konkatenation | Sichtbarkeits-Abfragen, Bindungen, Agenten-Keys | required | SQL-Persistenz |
+| SEC-XSS-01 | Kontextsensitives Output-Encoding | Vault-Seite, Freigabe-Karte, angezeigte Werte | required | React-Oberfläche |
+| SEC-CSP-01 | Content Security Policy | gesamte Oberfläche | not-applicable | (2026-10-09) keine neuen fremden Ressourcen; eine CSP betrifft die ganze Anwendung und ist nicht Teil dieses Teilprojekts |
+| SEC-UPLOAD-01 | Upload-Prüfung | Dateimanager | not-applicable | (2026-10-09) der Vault nimmt keine Dateien an, SSH-Schlüssel kommen als Text |
+| SEC-IDOR-01 | Objektbezogene Autorisierung bei jedem Zugriff über eine ID | Einträge, Werte, Freigaben, Agenten-Keys | required | Einträge gehören Konten oder Organisationen |
+| SEC-RBAC-01 | Rollen- oder Rechtemodell | `vault.use`, `vault.manage`, `vault.reveal`, `settings.vault` | required | Berechtigungssystem |
+| SEC-APIKEY-01 | API-Keys hoch entropisch, gehasht, widerrufbar, zeitkonstant verglichen | Agenten-Keys inkl. `pending` | required | Agenten-Keys |
+| SEC-SESS-02 | Ablauf, Rotation, serverseitiger Widerruf | Agenten-Keys, Freigaben je MCP-Sitzung | required | Bearer-Header |
+| SEC-TOKEN-01 | Token-Validierung, Lebensdauer, sichere Ablage, Widerruf | Bearer-Pfad in `authenticate`, IP-Bindung | required | Bearer-Header |
+| SEC-PII-01 | Datensparsamkeit, Zugriffsprotokoll, Löschkonzept | Benutzernamen in Einträgen, Audit der Nutzung, Löschen von Einträgen | required | Login-Einträge und Audit enthalten Personenbezug |
+<!-- preflight:security:end -->

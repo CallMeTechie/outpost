@@ -1,6 +1,6 @@
 schema: mockingbird/1
 project: outpost
-revision: 11
+revision: 12
 updated: 2026-10-09
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
@@ -45,6 +45,10 @@ changelog:
     date: 2026-10-09
     summary: Runde 11 — Vault; eigene Seite mit Liste und Details, Eintrag-Dialog, Agenten-Zugang je Server, Freigabe-Karte über jeder Seite, Einstellungen und Agenten-Keys; Navigation und Server-Kontextmenü ergänzt
     touched: [UI-VAULT, UI-VAULT-DIALOG, UI-AGENT-ACCESS, UI-VAULT-SETTINGS, UI-API-KEYS, UI-VAULT-APPROVAL, UI-SHELL-NAV, UI-SHELL-MOBILE-NAV, UI-SERVERS-LIST-MENU]
+  - rev: 12
+    date: 2026-10-09
+    summary: Nachzug aus preflight — Proxy-Warnung, gemessene Adresse, Warnung bei fremdem Konto, entfernter Benutzer im Ergebnis, verworfene Werte nach Zieländerung
+    touched: [UI-VAULT-SETTINGS-PROXY, UI-AGENT-ACCESS-IPBIND, UI-AGENT-ACCESS-SETUP, UI-AGENT-ACCESS-RESULT, UI-VAULT-DIALOG-SECRET, UI-VAULT-DETAIL-SECRET]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -1071,8 +1075,8 @@ screens:
           means: >
             Je geheimem Feld eine Zeile mit genau zwölf Punkten, unabhängig von der Länge des
             Werts. Anzeigen und Kopieren nur für den Besitzer persönlicher Einträge oder mit
-            vault.reveal; sonst der Hinweis, dass der Wert nur für Agenten nutzbar ist. Ein
-            angezeigter Wert verbirgt sich nach 30 Sekunden.
+            vault.reveal, nie in einer Impersonations-Sitzung; sonst der Hinweis, dass der Wert
+            nur für Agenten nutzbar ist. Ein angezeigter Wert verbirgt sich nach 30 Sekunden.
           concept: vault_secret
           aliases: [password, token, private_key]
           not: [vault_item_fields, identity]
@@ -1196,6 +1200,7 @@ screens:
           - { id: default }
           - { id: partial, copy: "gespeichert — leer lassen, um beizubehalten" }
           - { id: error, copy: "Wert fehlt." }
+          - { id: empty, copy: "Ziel geändert — gespeicherte Werte werden verworfen. Neu eingeben." }
         locators:
           web: "[data-ui-id='UI-VAULT-DIALOG-SECRET']"
 
@@ -1296,6 +1301,7 @@ screens:
           - { id: loading, copy: "Richte ein …" }
           - { id: error, copy: "Ungültiger Adressbereich." }
           - { id: disabled, copy: "Outpost-Adresse für Agenten fehlt — in Einstellungen › Vault setzen." }
+          - { id: partial, copy: "Für root auf web01 hat bereits ein anderes Konto Agenten-Zugang eingerichtet — die Registrierung wird ersetzt." }
         locators:
           web: "[data-ui-id='UI-AGENT-ACCESS-SETUP']"
 
@@ -1313,6 +1319,8 @@ screens:
         states:
           - { id: default }
           - { id: selected, copy: "aus — von überall" }
+          - { id: partial, copy: "Gesehen wurde 172.17.0.1 statt 192.168.2.40 — als Adressbereich übernehmen?" }
+          - { id: error, copy: "TRUST_PROXY=true — die IP-Bindung ist wirkungslos." }
         locators:
           web: "[data-ui-id='UI-AGENT-ACCESS-IPBIND']"
 
@@ -1333,7 +1341,7 @@ screens:
         states:
           - { id: default }
           - { id: empty, copy: "erscheint erst nach dem Einrichten" }
-          - { id: success, copy: "Eingerichtet. Claude Code neu starten, dann /mcp." }
+          - { id: success, copy: "Eingerichtet für root. Claude Code neu starten, dann /mcp." }
           - { id: error, copy: "codex nicht gefunden. Befehl kopieren und auf dem Server ausführen." }
         locators:
           web: "[data-ui-id='UI-AGENT-ACCESS-RESULT']"
@@ -1380,6 +1388,22 @@ screens:
           - { id: error, copy: "Keine gültige http- oder https-Adresse." }
         locators:
           web: "[data-ui-id='UI-VAULT-SETTINGS-URL']"
+
+      - id: UI-VAULT-SETTINGS-PROXY
+        type: feedback
+        label: Hinweis Reverse-Proxy
+        status: required
+        verify: required
+        data_source: "Einstellung TRUST_PROXY des Servers"
+        semantic_anchor:
+          means: Warnt, wenn Outpost jedem X-Forwarded-For glaubt (TRUST_PROXY=true) — dann ist die IP-Bindung von Agenten-Keys wirkungslos. Sonst nicht sichtbar.
+          concept: proxy_trust_warning
+          not: [vault_key_status, agent_base_url]
+        states:
+          - { id: default, copy: "nicht sichtbar" }
+          - { id: error, copy: "TRUST_PROXY=true — Outpost glaubt jedem X-Forwarded-For, die IP-Bindung von Agenten-Keys ist wirkungslos. Hop-Zahl oder Adressliste setzen." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-SETTINGS-PROXY']"
 
       - id: UI-VAULT-SETTINGS-SAVE
         type: action

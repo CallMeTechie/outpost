@@ -1,6 +1,6 @@
 # Agenten-Zugang — Umsetzungsanleitung (UI-AGENT-ACCESS)
 
-Artboard: docs/design/mockups/ui-agent-access.html · Manifest-Revision: 11
+Artboard: docs/design/mockups/ui-agent-access.html · Manifest-Revision: 12
 
 Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dialog, ein Menüpunkt im Bestandsmenü `UI-SERVERS-LIST-MENU`. Nicht neu gebaut werden: Dialog-Rahmen, Kontextmenü, Clipboard-Helfer, Toggle.
 
@@ -33,20 +33,27 @@ Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dial
 - `data-ui-id` am Formular.
 - Inhalt: zwei `Checkbox`en Claude Code und Codex (beide vorbelegt); Feld „Zusätzliche Adressbereiche“ (CIDR); primärer Button „Einrichten“ mit Hinweis `Ctrl+Enter`. Die IP-Bindung gehört nicht mehr zu SETUP, sondern ist `UI-AGENT-ACCESS-IPBIND`.
 - Datenquelle: lokaler Formularzustand; Absenden `POST /api/vault/agent-keys` mit `entryId`, Agentenauswahl, Bindung (aus IPBIND), Bereichen.
-- Zustände: `loading` alle Felder `disabled`, Button „Richte ein …“; `error` Feld in `--error`, darunter „Ungültiger Adressbereich.“ (`role="alert"`, `aria-invalid`); `disabled` Felder und Button `disabled`, Hinweis (`--warning`) „Outpost-Adresse für Agenten fehlt — in Einstellungen › Vault setzen.“ — gilt, solange `agentUrl` in `GET /api/vault/settings` leer ist; `Ctrl+Enter` tut dann nichts.
+- Zustände: `loading` alle Felder `disabled`, Button „Richte ein …“; `error` Feld in `--error`, darunter „Ungültiger Adressbereich.“ (`role="alert"`, `aria-invalid`); `disabled` Felder und Button `disabled`, Hinweis (`--warning`) „Outpost-Adresse für Agenten fehlt — in Einstellungen › Vault setzen.“ — gilt, solange `agentUrlSet` aus `GET /api/vault/available` `false` ist; `Ctrl+Enter` tut dann nichts; `partial` Warnhinweis (`--warning`, Warnrand links) **vor** den Feldern und dem Einrichten-Knopf: „Für root auf web01 hat bereits ein anderes Konto Agenten-Zugang eingerichtet — die Registrierung wird ersetzt.“ Einrichten bleibt bedienbar. Datenquelle: Spec Schritt 7 (anderes Konto hat für denselben Server und entfernten Benutzer schon einen Agenten-Key); Benutzer ist der über `resolveIdentity(entry, null, null, accountId)` bestimmte entfernte Benutzer (Schritt 2). Name im Text = `remoteUser` und Servername.
 
 ### UI-AGENT-ACCESS-IPBIND — Nur von der IP dieses Servers (neu)
 - `data-ui-id` an der Toggle-Zeile (`ToggleSwitch`), eigenes Element außerhalb des SETUP-Knotens; im Layout zwischen Agentenauswahl und Adressbereichen. Der Bindungszustand liegt im Dialog-State, nicht im SETUP-Knoten.
 - Datenquelle: aufgelöste Adresse des Server-Eintrags.
 - Zustände: `default` an, Hinweis „an · 192.168.2.40“ (IP in `--type-mono`); `selected` aus, Hinweis „aus — von überall“. Aus = Key ohne IP-Bindung.
+- `partial` Messung weicht ab: unter der Zeile eine Bestätigung im Warnrand-Muster (`--warning`): „Gesehen wurde 172.17.0.1 statt 192.168.2.40 — als Adressbereich übernehmen?“ mit „Nein“ (Ghost) / „Übernehmen“ (primär). Adressen in `--type-mono`. Datenquelle: das Probe-Ergebnis der Einrichtung (Spec „Einrichtung per Klick“ Schritt 1a: der Server ruft per Exec `GET <agentUrl>/api/vault/agent-keys/probe` mit dem `pending`-Key auf, die Antwort nennt `normalizeIp(req.ip)`). „Übernehmen“ ruft `POST /api/vault/agent-keys/:id/confirm` mit `{ addSeenIp: true }` (der Server trägt die von ihm gemessene Adresse ein, nie einen Wert vom Client; einmal, bis 15 Minuten nach dem Anlegen); „Nein“ verwirft den Vorschlag. Scheitert die Messung, erscheint dieser Zustand nicht; das Ergebnis sagt es (RESULT).
+- `error` Proxy-Vertrauen: unter der Zeile Warnhinweis in `--warning`, `role="alert"`: „TRUST_PROXY=true — die IP-Bindung ist wirkungslos.“ (`TRUST_PROXY=true` in `--type-mono`). Datenquelle: Feld `trustProxyUnsafe` aus `GET /api/vault/available`. Sichtbar nur, solange es `true` ist; der Toggle bleibt bedienbar.
 
 ### UI-AGENT-ACCESS-RESULT — Ergebnis (neu)
 - `data-ui-id` am Ergebnis-Container; je Agent eine Zeile mit linkem 3-px-Rand (`--success` / `--error`).
 - Datenquelle: Antwort von `POST /api/vault/agent-keys`, je Agent eingerichtet oder Fehlergrund plus fertiger Befehl.
-- Zustände: `empty` „erscheint erst nach dem Einrichten“; `success` „Eingerichtet. Claude Code neu starten, dann /mcp.“; `error` z. B. „codex nicht gefunden. Befehl kopieren und auf dem Server ausführen.“ mit Befehl in `<pre>` und Button „Kopieren“ (`copyToClipboard`; Rückgabe `false` → Toast, kein Erfolg anzeigen — der Helfer deckt http ohne sicheren Kontext ab).
+- Zustände: `empty` „erscheint erst nach dem Einrichten“; `success` „Eingerichtet für root. Claude Code neu starten, dann /mcp.“ (`root` = `remoteUser` aus der Antwort von `POST /api/vault/agent-keys`, Spec Schritt 2); `error` z. B. „codex nicht gefunden. Befehl kopieren und auf dem Server ausführen.“ mit Befehl in `<pre>` und Button „Kopieren“ (`copyToClipboard`; Rückgabe `false` → Toast, kein Erfolg anzeigen — der Helfer deckt http ohne sicheren Kontext ab).
 - Der Key steht nur hier, nur jetzt; Hinweis „Der Key ist nur jetzt sichtbar. Schließen ohne Übernahme löscht ihn.“ Der Key wird nie in KEYS, Toasts oder Logs gezeigt und nicht im State über das Schließen hinaus gehalten.
 - Pending/Confirm: `POST /api/vault/agent-keys` legt Keys als `pending` an. Sie werden endgültig, sobald die automatische Einrichtung gelingt (der Server bestätigt dann selbst) oder der Nutzer „Kopieren“ klickt (`copyToClipboard` liefert `true` → `POST /api/vault/agent-keys/:id/confirm`). Schließen des Dialogs ohne eines von beiden → `DELETE /api/vault/agent-keys/:id` für jeden noch offenen Key. Was `pending` bleibt (Absturz, Tab zu), löscht der Server nach 15 Minuten; ein `pending`-Key ist nirgends nutzbar.
 - Tokens: `--success` eingerichtet, `--error` fehlgeschlagen, sonst `--subtext`.
+
+## Datenquellen (Spec, Abschnitt REST-Endpunkte)
+- Beim Öffnen: `GET /api/vault/agent-keys?entryId=` → `keys`, `remoteUser`, `otherAccountConfigured` (Warnung `partial` von SETUP vor dem Einrichten).
+- `GET /api/vault/available` → `agentUrlSet` (SETUP `disabled`), `trustProxyUnsafe` (IPBIND `error`). Nicht `GET /api/vault/settings`: das verlangt `settings.vault`.
+- Nach dem Einrichten: Antwort von `POST /api/vault/agent-keys` je Agent `{ id, agentType, status, remoteUser, command?, probe, replacedRegistration }` → RESULT (`success`/`error`) und IPBIND `partial` (`probe.matches === false`, gesehene Adresse `probe.seenIp`).
 
 ## Ausdrücklich nicht
 - Keine KI-, Sparkle- oder Roboter-Symbolik; Agenten nur mit Produktnamen.
@@ -58,7 +65,7 @@ Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dial
 ## i18n
 Schema des Bestands (`servers.contextMenu.*`, `servers.dialog.*`); zuerst `client/public/assets/locales/de_DE.json`, dann die übrigen Sprachdateien:
 - `servers.contextMenu.agentAccess` („Agenten-Zugang…“)
-- `servers.agentAccess.title`, `.keys.empty`, `.keys.revoke`, `.keys.revokeConfirm`, `.keys.revokeError`, `.setup.submit`, `.setup.loading`, `.setup.cidrLabel`, `.setup.cidrInvalid`, `.setup.urlMissing`, `.ipBind.label`, `.ipBind.on`, `.ipBind.off`, `.result.empty`, `.result.success`, `.result.copy`, `.result.keyNotice`
+- `servers.agentAccess.title`, `.keys.empty`, `.keys.revoke`, `.keys.revokeConfirm`, `.keys.revokeError`, `.setup.submit`, `.setup.loading`, `.setup.cidrLabel`, `.setup.cidrInvalid`, `.setup.urlMissing`, `.ipBind.label`, `.ipBind.on`, `.ipBind.off`, `.result.empty`, `.result.success`, `.result.copy`, `.result.keyNotice`, `.setup.foreignAccount`, `.ipBind.seenOther`, `.ipBind.adopt`, `.ipBind.decline`, `.ipBind.trustProxy`
 - Copy-Strings aus dem Manifest wörtlich; Allgemeines (`common.close`, `common.error`) wiederverwenden.
 
 ## Fertig, wenn

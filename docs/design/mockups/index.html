@@ -2,7 +2,7 @@
 <html lang="de" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<title>outpost — Mockups (Revision 11)</title>
+<title>outpost — Mockups (Revision 12)</title>
 <link rel="stylesheet" href="./tokens.css">
 <style>
 .mb-page { font: var(--type-body, 500 0.875rem/1.45 system-ui, sans-serif); color: var(--text, #eee); background: var(--background, #111); margin: 0; padding: var(--space-8, 2rem); }
@@ -85,6 +85,8 @@
 #ab-ui-agent-access .notice{ font: var(--type-caption); color: var(--warning); }
 #ab-ui-agent-access .confirm{ display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--gray); border-left: 3px solid var(--warning); border-radius: var(--radius-sm); background: var(--background); }
 #ab-ui-agent-access .confirm p{ margin: 0; }
+#ab-ui-agent-access .warn{ display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--gray); border-left: 3px solid var(--warning); border-radius: var(--radius-sm); background: var(--background); color: var(--warning); font: var(--type-caption); }
+#ab-ui-agent-access .warn p{ margin: 0; }
 
 </style>
 <style>
@@ -729,6 +731,7 @@
 #ab-ui-vault-dialog .input::placeholder{ color: var(--subtext); opacity: .7; }
 #ab-ui-vault-dialog .help{ font: var(--type-caption); color: var(--subtext); }
 #ab-ui-vault-dialog .help.error{ color: var(--error); }
+#ab-ui-vault-dialog .help.warn{ color: var(--warning); }
 #ab-ui-vault-dialog .icon-field{ display: flex; align-items: center; gap: var(--space-2); height: 2.25rem; }
 #ab-ui-vault-dialog .avatar{}
 #ab-ui-vault-dialog .tri{ display: inline-flex; padding: 2px; background: var(--dark-gray); border: 1px solid var(--gray); border-radius: var(--radius-sm); }
@@ -909,6 +912,10 @@
 #ab-ui-vault-settings .vs-input.invalid{ border-color: var(--error); }
 #ab-ui-vault-settings .vs-help{ margin: 0; font: var(--type-caption); color: var(--subtext); }
 #ab-ui-vault-settings .vs-error{ margin: 0; font: var(--type-caption); color: var(--error); }
+#ab-ui-vault-settings .vs-banner{ display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--warning-opacity); border: 1px solid var(--warning); border-radius: var(--radius-md); color: var(--warning); }
+#ab-ui-vault-settings .vs-banner svg{ width: 1.25rem; height: 1.25rem; flex: none; }
+#ab-ui-vault-settings .vs-banner p{ margin: 0; font: var(--type-body); color: var(--text); }
+#ab-ui-vault-settings .vs-none{ margin: 0; font: var(--type-caption); color: var(--subtext); }
 #ab-ui-vault-settings .vs-actions{ display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-4); }
 #ab-ui-vault-settings .vs-actions .vs-state{ align-items: flex-end; min-width: 14rem; }
 #ab-ui-vault-settings .vs-btn{ display: inline-flex; align-items: center; gap: var(--space-2); min-height: 2.25rem; padding: 0 var(--space-4); border: 0; border-radius: var(--radius-sm); background: var(--primary); color: var(--on-accent); font: var(--type-body); }
@@ -919,7 +926,7 @@
 </head>
 <body class="mb-page">
 <h1>outpost — Mockups</h1>
-<p class="sub">Manifest-Revision 11 · 2026-10-09 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
+<p class="sub">Manifest-Revision 12 · 2026-10-09 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
 <ul class="mb-toc">
 <li><a href="#UI-SHELL">Rahmen — Navigation</a> <code>UI-SHELL</code></li>
 <li><a href="#UI-SERVERS">Servers — Arbeitsfläche</a> <code>UI-SERVERS</code></li>
@@ -3132,7 +3139,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <tr><td><code>UI-VAULT-DETAIL</code></td><td>Eintrag</td><td>Kopf des gewählten Eintrags — Name, Typ, Besitzer, Beschreibung — mit Bearbeiten und Löschen (nur mit Verwaltungsrecht). <b>Nicht:</b> identity, server_entry.</td><td><code>default · empty · error</code></td></tr>
 <tr><td><code>UI-VAULT-DETAIL-ACTIONS</code></td><td>Bearbeiten · Löschen</td><td>Bearbeiten öffnet den Eintrag-Dialog; Löschen fragt im Bestätigungsdialog nach und entfernt den Eintrag samt Werten und Bindungen. Nur mit Verwaltungsrecht (Besitzer persönlicher Einträge, vault.manage bei Organisationen); ohne das Recht nicht sichtbar. <b>Nicht:</b> vault_secret.</td><td><code>default · disabled · selected</code></td></tr>
 <tr><td><code>UI-VAULT-DETAIL-FIELDS</code></td><td>Angaben</td><td>Die nicht geheimen Angaben des Eintrags je Typ — Login Benutzer und erlaubte Ursprünge, API-Key Hosts und Header, SSH Benutzer, Datenbank Engine, Host, Port, Datenbank, Benutzer. <b>Nicht:</b> vault_secret.</td><td><code>default</code></td></tr>
-<tr><td><code>UI-VAULT-DETAIL-SECRET</code></td><td>Geheimer Wert</td><td>Je geheimem Feld eine Zeile mit genau zwölf Punkten, unabhängig von der Länge des Werts. Anzeigen und Kopieren nur für den Besitzer persönlicher Einträge oder mit vault.reveal; sonst der Hinweis, dass der Wert nur für Agenten nutzbar ist. Ein angezeigter Wert verbirgt sich nach 30 Sekunden. <b>Nicht:</b> vault_item_fields, identity.</td><td><code>default · selected · disabled · success</code></td></tr>
+<tr><td><code>UI-VAULT-DETAIL-SECRET</code></td><td>Geheimer Wert</td><td>Je geheimem Feld eine Zeile mit genau zwölf Punkten, unabhängig von der Länge des Werts. Anzeigen und Kopieren nur für den Besitzer persönlicher Einträge oder mit vault.reveal, nie in einer Impersonations-Sitzung; sonst der Hinweis, dass der Wert nur für Agenten nutzbar ist. Ein angezeigter Wert verbirgt sich nach 30 Sekunden. <b>Nicht:</b> vault_item_fields, identity.</td><td><code>default · selected · disabled · success</code></td></tr>
 <tr><td><code>UI-VAULT-DETAIL-SCOPE</code></td><td>Gilt für</td><td>Für welche Server Agenten diesen Eintrag sehen — einzelne Server, Ordner mit Unterordnern, Tags oder alle Server. <b>Nicht:</b> vault_owner, permission.</td><td><code>default · empty</code></td></tr>
 <tr><td><code>UI-VAULT-DETAIL-POLICY</code></td><td>Freigabe erforderlich</td><td>Ob jede Nutzung durch einen Agenten bestätigt werden muss, und wann der Eintrag zuletzt genutzt wurde. <b>Nicht:</b> permission, vault_binding.</td><td><code>default · disabled</code></td></tr>
 </table>
@@ -3363,7 +3370,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <tr><td><code>UI-VAULT-DIALOG-TYPE</code></td><td>Typ</td><td>Art der Zugangsdaten — Login, API-Key, SSH, Datenbank, Sonstiges. Nur beim Anlegen wählbar, danach fest. <b>Nicht:</b> vault_owner.</td><td><code>default · disabled</code></td></tr>
 <tr><td><code>UI-VAULT-DIALOG-OWNER</code></td><td>Besitzer</td><td>Wem der Eintrag gehört — dem eigenen Konto oder einer Organisation. Nur beim Anlegen wählbar. <b>Nicht:</b> vault_binding, server_folder.</td><td><code>default · disabled</code></td></tr>
 <tr><td><code>UI-VAULT-DIALOG-FIELDS</code></td><td>Angaben</td><td>Name, Beschreibung und die nicht geheimen Angaben des gewählten Typs. Der Name ist die Kennung für Agenten, Kleinbuchstaben, Ziffern, Punkt, Bindestrich und Unterstrich. <b>Nicht:</b> vault_secret.</td><td><code>default · error</code></td></tr>
-<tr><td><code>UI-VAULT-DIALOG-SECRET</code></td><td>Geheimer Wert</td><td>Eingabe der geheimen Felder des Typs. Beim Bearbeiten leer mit dem Hinweis, dass ein Wert gespeichert ist und leer lassen ihn behält. <b>Nicht:</b> vault_item_fields.</td><td><code>default · partial · error</code></td></tr>
+<tr><td><code>UI-VAULT-DIALOG-SECRET</code></td><td>Geheimer Wert</td><td>Eingabe der geheimen Felder des Typs. Beim Bearbeiten leer mit dem Hinweis, dass ein Wert gespeichert ist und leer lassen ihn behält. <b>Nicht:</b> vault_item_fields.</td><td><code>default · partial · error · empty</code></td></tr>
 <tr><td><code>UI-VAULT-DIALOG-SCOPE</code></td><td>Gilt für</td><td>Auswahl, auf welchen Servern Agenten den Eintrag sehen — Server, Ordner (mit Unterordnern), Tags nur bei persönlichen Einträgen, oder Alle Server. Standard keine Auswahl. <b>Nicht:</b> vault_owner, permission.</td><td><code>default · empty · selected</code></td></tr>
 <tr><td><code>UI-VAULT-DIALOG-APPROVAL</code></td><td>Freigabe erforderlich</td><td>Jede Nutzung durch einen Agenten muss im Outpost-Fenster bestätigt werden. Standard an.</td><td><code>default · selected</code></td></tr>
 <tr><td><code>UI-VAULT-DIALOG-SAVE</code></td><td>Speichern</td><td>Legt den Eintrag an bzw. speichert Änderungen und schließt den Dialog; Beschriftung Erstellen beim Anlegen.</td><td><code>default · disabled · loading · error</code></td></tr>
@@ -3420,6 +3427,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 				<header><code>UI-VAULT-DIALOG-SECRET</code><span class="type">field</span><span>Geheimer Wert</span></header>
 				<section data-ui-state="default"><div class="field"><label for="a-sec">Passwort</label><input class="input mono" id="a-sec" type="password" value="" placeholder="Passwort eingeben"></div></section>
 				<section data-ui-state="partial"><div class="field"><label for="a-sec-p">Passwort</label><input class="input mono" id="a-sec-p" type="password" value="" placeholder="gespeichert — leer lassen, um beizubehalten"><span class="help">gespeichert — leer lassen, um beizubehalten</span></div></section>
+				<section data-ui-state="empty"><div class="field"><label for="a-sec-m">Passwort</label><input class="input mono" id="a-sec-m" type="password" value="" placeholder="Passwort eingeben"><span class="help warn">Ziel geändert — gespeicherte Werte werden verworfen. Neu eingeben.</span></div></section>
 				<section data-ui-state="error"><div class="field"><label for="a-sec-e">Passwort</label><input class="input mono is-error" id="a-sec-e" type="password" value="" aria-invalid="true"><span class="help error" role="alert">Wert fehlt.</span></div></section>
 			</div>
 
@@ -3495,8 +3503,8 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <p class="meta">Artboard: <a href="./ui-agent-access.html">ui-agent-access.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-agent-access.md</code></p>
 <table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
 <tr><td><code>UI-AGENT-ACCESS-KEYS</code></td><td>Agenten auf diesem Server</td><td>Die Agenten-Keys dieses Servers — Agent, angelegt, zuletzt genutzt, IP-Bindung — je mit Entziehen. Entziehen widerruft den Key und entfernt die Registrierung auf dem Server. <b>Nicht:</b> api_key, vault_item, identity.</td><td><code>default · empty · loading · selected · error</code></td></tr>
-<tr><td><code>UI-AGENT-ACCESS-SETUP</code></td><td>Einrichten</td><td>Welche Agenten eingerichtet werden (Claude Code, Codex) und welche zusätzlichen Adressbereiche (CIDR) ihr Key neben der IP dieses Servers akzeptiert. <b>Nicht:</b> api_key, vault_binding.</td><td><code>default · loading · error · disabled</code></td></tr>
-<tr><td><code>UI-AGENT-ACCESS-IPBIND</code></td><td>Nur von der IP dieses Servers</td><td>Ob der Key nur Anfragen von der Adresse dieses Servers (plus den eingetragenen Adressbereichen) akzeptiert. Standard an; aus heißt von überall. <b>Nicht:</b> vault_binding, allowed_origin.</td><td><code>default · selected</code></td></tr>
+<tr><td><code>UI-AGENT-ACCESS-SETUP</code></td><td>Einrichten</td><td>Welche Agenten eingerichtet werden (Claude Code, Codex) und welche zusätzlichen Adressbereiche (CIDR) ihr Key neben der IP dieses Servers akzeptiert. <b>Nicht:</b> api_key, vault_binding.</td><td><code>default · loading · error · disabled · partial</code></td></tr>
+<tr><td><code>UI-AGENT-ACCESS-IPBIND</code></td><td>Nur von der IP dieses Servers</td><td>Ob der Key nur Anfragen von der Adresse dieses Servers (plus den eingetragenen Adressbereichen) akzeptiert. Standard an; aus heißt von überall. <b>Nicht:</b> vault_binding, allowed_origin.</td><td><code>default · selected · partial · error</code></td></tr>
 <tr><td><code>UI-AGENT-ACCESS-RESULT</code></td><td>Ergebnis</td><td>Je Agent das Ergebnis der Einrichtung — eingerichtet, oder der fertige Befehl zum Kopieren, wenn die automatische Einrichtung scheiterte (CLI fehlt, Exec-Fehler). Der Key ist nur hier und nur jetzt sichtbar; ein Key, der weder automatisch eingerichtet noch kopiert wurde, wird beim Schließen gelöscht. <b>Nicht:</b> agent_key, toast.</td><td><code>default · empty · success · error</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-agent-access.html — alle Zustände, wie im Artboard</div><div id="ab-ui-agent-access">
@@ -3618,6 +3626,19 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 						<span class="notice">Outpost-Adresse für Agenten fehlt — in Einstellungen › Vault setzen.</span>
 						<div class="actions"><button class="btn primary" type="button" disabled>Einrichten</button></div>
 					</section>
+
+					<section class="state" data-ui-state="partial">
+						<div class="warn" role="status"><p>Für root auf web01 hat bereits ein anderes Konto Agenten-Zugang eingerichtet — die Registrierung wird ersetzt.</p></div>
+						<div class="checks">
+							<label class="check"><input type="checkbox" checked> Claude Code</label>
+							<label class="check"><input type="checkbox" checked> Codex</label>
+						</div>
+						<div class="field">
+							<label class="label" for="p-cidr">Zusätzliche Adressbereiche</label>
+							<input class="input" id="p-cidr" value="10.0.0.0/24">
+						</div>
+						<div class="actions"><span class="kbd">Ctrl+Enter</span><button class="btn primary" type="button">Einrichten</button></div>
+					</section>
 				</div>
 
 				<div class="element" data-ui-id="UI-AGENT-ACCESS-IPBIND">
@@ -3641,6 +3662,31 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 							</div>
 							<span class="toggle" role="switch" aria-checked="false" aria-label="Nur von der IP dieses Servers"></span>
 						</div>
+					</section>
+
+					<section class="state" data-ui-state="partial">
+						<div class="row">
+							<div class="ip-detect">
+								<span>Nur von der IP dieses Servers</span>
+								<span class="help">an · <span class="mono">192.168.2.40</span></span>
+							</div>
+							<span class="toggle on" role="switch" aria-checked="true" aria-label="Nur von der IP dieses Servers"></span>
+						</div>
+						<div class="confirm" role="status">
+							<p>Gesehen wurde <span class="mono">172.17.0.1</span> statt <span class="mono">192.168.2.40</span> — als Adressbereich übernehmen?</p>
+							<div class="actions"><button class="btn ghost small" type="button">Nein</button><button class="btn primary small" type="button">Übernehmen</button></div>
+						</div>
+					</section>
+
+					<section class="state is-error" data-ui-state="error">
+						<div class="row">
+							<div class="ip-detect">
+								<span>Nur von der IP dieses Servers</span>
+								<span class="help">an · <span class="mono">192.168.2.40</span></span>
+							</div>
+							<span class="toggle on" role="switch" aria-checked="true" aria-label="Nur von der IP dieses Servers"></span>
+						</div>
+						<div class="warn" role="alert"><p><span class="mono">TRUST_PROXY=true</span> — die IP-Bindung ist wirkungslos.</p></div>
 					</section>
 				</div>
 
@@ -3670,7 +3716,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 					<section class="state is-success" data-ui-state="success">
 						<div class="result-row ok">
 							<div class="result-head"><span>Claude Code</span><span class="status">eingerichtet</span></div>
-							<span class="help">Eingerichtet. Claude Code neu starten, dann /mcp.</span>
+							<span class="help">Eingerichtet für root. Claude Code neu starten, dann /mcp.</span>
 						</div>
 					</section>
 
@@ -3702,6 +3748,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 <table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
 <tr><td><code>UI-VAULT-SETTINGS-KEY</code></td><td>Vault-Schlüssel</td><td>Ob der Vault läuft — Schlüssel aktiv, fehlt (Vault aus) oder passt nicht zu den gespeicherten Daten (Vault aus). Bei fehlendem Schlüssel ein Satz, wie man VAULT_KEY setzt. <b>Nicht:</b> encryption_key, api_key.</td><td><code>default · disabled · error</code></td></tr>
 <tr><td><code>UI-VAULT-SETTINGS-URL</code></td><td>Outpost-Adresse für Agenten</td><td>Die Adresse, unter der Server Outpost erreichen; daraus entsteht die MCP-URL, die beim Einrichten eines Agenten eingetragen wird. <b>Nicht:</b> browser_launcher_url.</td><td><code>default · error</code></td></tr>
+<tr><td><code>UI-VAULT-SETTINGS-PROXY</code></td><td>Hinweis Reverse-Proxy</td><td>Warnt, wenn Outpost jedem X-Forwarded-For glaubt (TRUST_PROXY=true) — dann ist die IP-Bindung von Agenten-Keys wirkungslos. Sonst nicht sichtbar. <b>Nicht:</b> vault_key_status, agent_base_url.</td><td><code>default · error</code></td></tr>
 <tr><td><code>UI-VAULT-SETTINGS-SAVE</code></td><td>Einstellungen speichern</td><td>Speichert die Outpost-Adresse für Agenten, wie der Speichern-Knopf der Browser-Einstellungen.</td><td><code>default · disabled</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-vault-settings.html — alle Zustände, wie im Artboard</div><div id="ab-ui-vault-settings">
@@ -3768,6 +3815,23 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 					</div>
 					<p class="vs-error">Keine gültige http- oder https-Adresse.</p>
 					<p class="vs-help">Unter dieser Adresse erreichen deine Server Outpost; daraus entsteht die MCP-URL für Agenten.</p>
+				</div>
+			</div>
+
+			<div class="vs-item" data-ui-id="UI-VAULT-SETTINGS-PROXY">
+				<div class="vs-label"><h4>Hinweis Reverse-Proxy <code>UI-VAULT-SETTINGS-PROXY</code></h4></div>
+
+				<div class="vs-state" data-ui-state="default">
+					<span class="vs-tag">default</span>
+					<p class="vs-none">nicht sichtbar</p>
+				</div>
+
+				<div class="vs-state" data-ui-state="error">
+					<span class="vs-tag">error</span>
+					<div class="vs-banner" role="alert">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+						<p>TRUST_PROXY=true — Outpost glaubt jedem X-Forwarded-For, die IP-Bindung von Agenten-Keys ist wirkungslos. Hop-Zahl oder Adressliste setzen.</p>
+					</div>
 				</div>
 			</div>
 		</div>

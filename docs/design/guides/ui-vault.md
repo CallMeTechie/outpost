@@ -1,6 +1,6 @@
 # Vault — Umsetzungsanleitung (UI-VAULT)
 
-Artboard: docs/design/mockups/ui-vault.html · Manifest-Revision: 11
+Artboard: docs/design/mockups/ui-vault.html · Manifest-Revision: 12
 
 Die Seite gibt es noch nicht; sie ist komplett **neu**. Bestand sind nur Rahmen und Bausteine (Shell, Navigation, `PageHeader`, `TabSwitcher`, `Button`, `ActionConfirmDialog`, Clipboard-Helfer). Der Eintrag-Dialog (`UI-VAULT-DIALOG`) und die Freigabe-Karte (`UI-VAULT-APPROVAL-CARD`) haben eigene Anleitungen; hier werden sie nur geöffnet bzw. eingebunden.
 
@@ -61,6 +61,7 @@ Die Seite gibt es noch nicht; sie ist komplett **neu**. Bestand sind nur Rahmen 
 - `data-ui-id` je geheimer Zeile (`SecretRow`), pro Feld einmal. Immer genau zwölf `•` in `--type-mono`, unabhängig von der Länge; nirgends Teile des Werts.
 - Icon-Buttons `Eye` und `Copy` nur für den Besitzer persönlicher Einträge oder mit `vault.reveal`. Der Wert wird erst beim Klick per `GET /api/vault/items/:id/secrets/:field` geholt, nie vorgeladen und nicht im Listenstate gehalten.
 - Zustände: `selected` Wert sichtbar, nach 30 s und beim Wechsel/Verlassen des Eintrags wieder zwölf Punkte (Timer in `useEffect` aufräumen); `disabled` statt der Buttons „nur für Agenten nutzbar“ in `--subtext`; `success` „Kopiert“ über `copyToClipboard` + `sendToast`.
+- In Impersonations-Sitzungen (`impersonating` aus `GET /api/vault/available`) erscheinen weder `Eye` noch `Copy`; die Zeile zeigt die zwölf Punkte und den `disabled`-Hinweis „nur für Agenten nutzbar“. Die Sitzung beantwortet Reveal ohnehin mit `403` (Spec, Abschnitt „Impersonation“). Keine neuen Zustände.
 
 ### UI-VAULT-DETAIL-SCOPE — Gilt für (neu)
 - `data-ui-id` am Listen-Wrapper. Datenquelle `vault_bindings` und `allServers`: Server, Ordner (mit Unterordnern), Tags, oder „alle Server“. **Nicht** Besitzer und nicht Rechte.
