@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Icon from "@/common/components/Icon";
-import { ArrowLeft as IconArrowLeft, ArrowRight as IconArrowRight, RotateCw as IconRotateCw, X as IconX, Pause as IconPause, Play as IconPlay, Keyboard as IconKeyboard } from "lucide-react";
+import { ArrowLeft as IconArrowLeft, ArrowRight as IconArrowRight, RotateCw as IconRotateCw, Power as IconPower, Pause as IconPause, Play as IconPlay, Keyboard as IconKeyboard } from "lucide-react";
 
 const withScheme = (value) => (/^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? value : `https://${value}`);
 
@@ -51,8 +51,8 @@ const AddressBar = ({ page, agent, connected, onNavigate, onHistory, onPause, on
                     aria-label={agent.paused ? t("servers.webRenderer.resume") : t("servers.webRenderer.pause")}>
                 <Icon icon={agent.paused ? IconPlay : IconPause} />
             </button>
-            <button type="button" aria-label={t("servers.webRenderer.close")} disabled={!connected} onClick={onClose}>
-                <Icon icon={IconX} />
+            <button type="button" aria-label={t("servers.webRenderer.close")} title={t("servers.webRenderer.close")} disabled={!connected} onClick={onClose}>
+                <Icon icon={IconPower} />
             </button>
         </form>
     );
