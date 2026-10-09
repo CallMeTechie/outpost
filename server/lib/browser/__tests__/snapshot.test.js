@@ -49,5 +49,5 @@ test("a native select lists its options without refs of their own and keeps them
         node("5", "MenuListOption", "Germany", { parentId: "3", backendDOMNodeId: 22, properties: [{ name: "selected", value: { type: "booleanOrUndefined", value: true } }] }),
     ], refs);
     assert.strictEqual(text, ['- combobox "Country" [ref=e1] value="Germany"', '  - option "France"', '  - option "Germany" selected'].join("\n"));
-    assert.deepStrictEqual(refs.resolve("e1").options, [{ name: "France", selected: false }, { name: "Germany", selected: true }]);
+    assert.deepStrictEqual(refs.resolve("e1").options, [{ name: "France", selected: false, disabled: false }, { name: "Germany", selected: true, disabled: false }]);
 });

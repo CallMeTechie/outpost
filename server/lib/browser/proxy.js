@@ -4,14 +4,17 @@ const { BrowserError, BrowserErrorCode } = require("./errors");
 
 const MAX_CHANNELS = 6;
 const HEAD_LIMIT = 16 * 1024;
+const HEAD_TIMEOUT_MS = 10000;
 const TLS_HANDSHAKE = 0x16;
 
 const normalizeAddress = (address) => String(address ?? "").replace(/^::ffff:/, "");
 
 const readHead = (client) => new Promise((resolve) => {
     let head = Buffer.alloc(0);
+    const timer = setTimeout(() => finish(null), HEAD_TIMEOUT_MS);
     const finish = (value) => {
-        client.off("data", onData).off("end", onEnd).off("error", onEnd);
+        clearTimeout(timer);
+        client.off("data", onData).off("end", onEnd).off("error", onEnd).off("close", onEnd);
         client.pause();
         resolve(value);
     };
@@ -20,7 +23,7 @@ const readHead = (client) => new Promise((resolve) => {
         if (head[0] === TLS_HANDSHAKE || head.includes("\r\n\r\n") || head.length >= HEAD_LIMIT) finish(head);
     };
     const onEnd = () => finish(null);
-    client.on("data", onData).once("end", onEnd).once("error", onEnd);
+    client.on("data", onData).once("end", onEnd).once("error", onEnd).once("close", onEnd);
 });
 
 const hostOf = (head) => /\r\nhost:[ \t]*([^\r\n]*)/i.exec(head.toString("latin1"))?.[1].trim().toLowerCase() ?? null;
@@ -169,7 +172,8 @@ const openEngineChannel = async ({ entry, identity, remoteHost, remotePort }) =>
     const params = { ...buildSSHParams(identity, await resolveCredentials(identity)), remoteHost, remotePort: String(remotePort) };
     let socket;
     try {
-        socket = await openEngineSession(sessionId, SessionType.Tunnel, entry.config.ip, entry.config.port || 22, params, await resolveJumpHosts(entry));
+        socket = await openEngineSession(sessionId, SessionType.Tunnel, entry.config.ip, entry.config.port || 22, params,
+            await resolveJumpHosts(entry), entry.config?.engineId);
     } catch (err) {
         // Also reached when the session opened but its data connection never came.
         controlPlane.closeSession(sessionId);

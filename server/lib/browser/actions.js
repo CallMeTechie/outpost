@@ -17,6 +17,11 @@ const KEYS = {
     PageDown: { code: "PageDown", keyCode: 34 },
     Space: { code: "Space", keyCode: 32, text: " ", key: " " },
 };
+// US layout. Using the character code instead sends "." as 46 (Delete) and "-" as 45 (Insert).
+const PUNCTUATION_KEY_CODES = {
+    ";": 186, "=": 187, ",": 188, "-": 189, ".": 190, "/": 191, "`": 192, "[": 219, "\\": 220, "]": 221, "'": 222, " ": 32,
+};
+const GONE = /No node (found|with given id)|detached from document/i;
 
 const centerOf = (q) => ({ x: (q[0] + q[2] + q[4] + q[6]) / 4, y: (q[1] + q[3] + q[5] + q[7]) / 4 });
 
@@ -29,9 +34,15 @@ const areaOf = (q) => {
     return Math.abs(area / 2);
 };
 
+const unlessGone = (fallback) => (err) => {
+    if (err instanceof BrowserError) throw err;
+    if (GONE.test(err?.message ?? "")) throw new BrowserError(BrowserErrorCode.STALE_REF, "The element no longer exists; take a new snapshot");
+    return fallback;
+};
+
 const clickablePoint = async (send, backendNodeId) => {
-    await send("DOM.scrollIntoViewIfNeeded", { backendNodeId }).catch(() => {});
-    const { quads } = await send("DOM.getContentQuads", { backendNodeId }).catch(() => ({ quads: [] }));
+    await send("DOM.scrollIntoViewIfNeeded", { backendNodeId }).catch(unlessGone());
+    const { quads } = await send("DOM.getContentQuads", { backendNodeId }).catch(unlessGone({ quads: [] }));
     const { cssLayoutViewport: viewport } = await send("Page.getLayoutMetrics");
     for (const quad of quads ?? []) {
         if (areaOf(quad) < 1) continue;
@@ -52,18 +63,22 @@ const click = async (send, backendNodeId, { button = "left", clickCount = 1 } = 
 };
 
 const parseKey = (combo) => {
-    const parts = String(combo).split("+");
-    const name = parts.pop();
+    const text = String(combo);
+    const plusKey = text === "+" || text.endsWith("++");
+    const cut = plusKey ? text.length - 1 : text.lastIndexOf("+") + 1;
+    const name = text.slice(cut);
+    const parts = cut > 0 ? text.slice(0, cut - 1).split("+") : [];
     let modifiers = 0;
     for (const part of parts) {
-        if (!MODIFIERS[part]) throw new BrowserError(BrowserErrorCode.INVALID_KEY, `Unknown modifier "${part}"; use Alt, Control, Meta or Shift`);
+        if (!Object.hasOwn(MODIFIERS, part)) throw new BrowserError(BrowserErrorCode.INVALID_KEY, `Unknown modifier "${part}"; use Alt, Control, Meta or Shift`);
         modifiers |= MODIFIERS[part];
     }
-    if (KEYS[name]) return { key: KEYS[name].key ?? name, ...KEYS[name], modifiers };
+    if (Object.hasOwn(KEYS, name)) return { key: KEYS[name].key ?? name, ...KEYS[name], modifiers };
     if ([...name].length === 1) {
         const upper = name.toUpperCase();
-        const code = /[A-Z]/.test(upper) ? `Key${upper}` : /[0-9]/.test(name) ? `Digit${name}` : "";
-        return { key: name, code, keyCode: upper.charCodeAt(0), text: name, modifiers };
+        const code = /^[A-Z]$/.test(upper) ? `Key${upper}` : /^[0-9]$/.test(name) ? `Digit${name}` : "";
+        const keyCode = /^[A-Z0-9]$/.test(upper) ? upper.charCodeAt(0) : Object.hasOwn(PUNCTUATION_KEY_CODES, name) ? PUNCTUATION_KEY_CODES[name] : 0;
+        return { key: name, code, keyCode, text: name, modifiers };
     }
     throw new BrowserError(BrowserErrorCode.INVALID_KEY, `Unknown key "${name}"`);
 };
@@ -90,11 +105,15 @@ const selectOption = async (send, backendNodeId, options, wanted) => {
     const target = options.findIndex((option) => option.name === String(wanted));
     if (target === -1)
         throw new BrowserError(BrowserErrorCode.INVALID_ARGUMENT, `No option "${wanted}"; choose one of: ${options.map((o) => JSON.stringify(o.name)).join(", ")}`);
+    if (options[target].disabled) throw new BrowserError(BrowserErrorCode.INVALID_ARGUMENT, `Option "${wanted}" is disabled`);
     const current = Math.max(options.findIndex((option) => option.selected), 0);
+    // The arrow keys skip disabled options, so only the enabled ones on the way count as steps.
+    const passed = target > current ? options.slice(current + 1, target + 1) : options.slice(target, current);
+    const steps = passed.filter((option) => !option.disabled).length;
     // A click would open the list outside the screencast; a focused select moves with the arrow keys.
     await send("DOM.focus", { backendNodeId });
     const key = target > current ? "ArrowDown" : "ArrowUp";
-    for (let step = 0; step < Math.abs(target - current); step++) await pressKey(send, key);
+    for (let step = 0; step < steps; step++) await pressKey(send, key);
 };
 
 const scroll = async (send, { backendNodeId = null, deltaY, deltaX = 0, viewport }) => {

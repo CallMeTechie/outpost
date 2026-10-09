@@ -1,4 +1,5 @@
 const { EventEmitter } = require("node:events");
+const { AsyncLocalStorage } = require("node:async_hooks");
 const { encodeFrame, nextSeq } = require("./frameProtocol");
 const { toCdpCalls, viewportCalls, clampViewport, assertNavigableUrl, SCREENCAST } = require("./input");
 const { RefTable, buildSnapshot } = require("./snapshot");
@@ -14,6 +15,11 @@ const ACK_POLL_MS = 16;
 const SETTLE_QUIET_MS = 150;
 const SETTLE_POLL_MS = 50;
 const SETTLE_MAX_MS = 10000;
+const SCREENSHOT_MAX_HEIGHT = 16384;
+
+// Bound to the work of one runAgent across its awaits: that work outlives an interrupted runAgent
+// and has to see its own abort, not whatever call runs on the session by then.
+const agentCall = new AsyncLocalStorage();
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const originOf = (url) => {
@@ -45,6 +51,10 @@ class BrowserSession extends EventEmitter {
         this.closeReason = null;
         this.lastActivity = Date.now();
         this.send = (method, params = {}) => cdp.send(method, params, cdpSessionId);
+        this.agentSend = (method, params = {}) => {
+            agentCall.getStore()?.throwIfAborted();
+            return this.send(method, params);
+        };
         this.onCdpEvent = (event) => {
             if (event.sessionId !== cdpSessionId) return;
             this.#handleEvent(event).catch((err) => logger.warn("Browser session event failed", { session: id, method: event.method, error: err.message }));
@@ -117,7 +127,7 @@ class BrowserSession extends EventEmitter {
 
     async navigate(rawUrl) {
         const url = assertNavigableUrl(rawUrl);
-        const { errorText } = await this.send("Page.navigate", { url });
+        const { errorText } = await this.agentSend("Page.navigate", { url });
         if (errorText) {
             this.#broadcast({ type: "error", code: BrowserErrorCode.NAVIGATION_FAILED, message: `${url}: ${errorText}` });
             throw new BrowserError(BrowserErrorCode.NAVIGATION_FAILED, `Navigation to ${url} failed: ${errorText}`);
@@ -146,21 +156,27 @@ class BrowserSession extends EventEmitter {
         if (this.closed) throw this.#closedError();
         if (this.agentPaused) throw new BrowserError(BrowserErrorCode.PAUSED, "The session is paused by the user. Wait and try again later.");
         if (this.pendingDialog) throw this.#dialogError();
+        if (this.agentTool !== null) throw new BrowserError(BrowserErrorCode.BUSY, "Another agent action is still running on this session");
         this.lastActivity = Date.now();
         this.agentTool = tool;
         this.#broadcast(this.#agentMessage());
         this.emit("change");
         let onDialog;
         let timer;
+        const controller = new AbortController();
         // A click or navigation that opens a page dialog does not return until someone answers it;
         // the agent gets the named refusal instead (spec, "Was schiefgehen kann").
         const interrupted = new Promise((_, reject) => {
-            onDialog = () => reject(this.#dialogError());
+            const stop = (err) => {
+                controller.abort(err);
+                reject(err);
+            };
+            onDialog = () => stop(this.#dialogError());
             this.once("dialog", onDialog);
-            timer = setTimeout(() => reject(new BrowserError(BrowserErrorCode.TIMEOUT,
+            timer = setTimeout(() => stop(new BrowserError(BrowserErrorCode.TIMEOUT,
                 `${tool} did not finish within ${AGENT_CALL_TIMEOUT_MS / 1000} s`)), AGENT_CALL_TIMEOUT_MS);
         });
-        const work = Promise.resolve().then(() => fn(this));
+        const work = agentCall.run(controller.signal, () => Promise.resolve().then(() => fn(this)));
         work.catch(() => {});
         try {
             return await Promise.race([work, interrupted]);
@@ -180,7 +196,7 @@ class BrowserSession extends EventEmitter {
     }
 
     async snapshot() {
-        const { nodes } = await this.send("Accessibility.getFullAXTree");
+        const { nodes } = await this.agentSend("Accessibility.getFullAXTree");
         return buildSnapshot(nodes ?? [], this.refs);
     }
 
@@ -190,41 +206,42 @@ class BrowserSession extends EventEmitter {
 
     async click(ref, options = {}) {
         const { backendNodeId, label } = this.refs.resolve(ref);
-        await actions.click(this.send, backendNodeId, options);
+        await actions.click(this.agentSend, backendNodeId, options);
         return label;
     }
 
     async type(ref, text, options = {}) {
         const { backendNodeId, label, options: choices } = this.refs.resolve(ref);
-        if (choices) await actions.selectOption(this.send, backendNodeId, choices, text);
-        else await actions.typeText(this.send, backendNodeId, text, options);
+        if (choices) await actions.selectOption(this.agentSend, backendNodeId, choices, text);
+        else await actions.typeText(this.agentSend, backendNodeId, text, options);
         return label;
     }
 
     async key(combo) {
-        await actions.pressKey(this.send, combo);
+        await actions.pressKey(this.agentSend, combo);
     }
 
     async scroll({ ref = null, deltaY }) {
         const backendNodeId = ref ? this.refs.resolve(ref).backendNodeId : null;
-        await actions.scroll(this.send, { backendNodeId, deltaY, viewport: this.viewport });
+        await actions.scroll(this.agentSend, { backendNodeId, deltaY, viewport: this.viewport });
     }
 
     async refVisible(ref) {
-        await actions.clickablePoint(this.send, this.refs.resolve(ref).backendNodeId);
+        await actions.clickablePoint(this.agentSend, this.refs.resolve(ref).backendNodeId);
     }
 
     async screenshot(fullPage = false) {
         const params = { format: "png" };
         if (fullPage) {
-            const { cssContentSize } = await this.send("Page.getLayoutMetrics");
-            Object.assign(params, { captureBeyondViewport: true, clip: { x: 0, y: 0, width: cssContentSize.width, height: cssContentSize.height, scale: 1 } });
+            const { cssContentSize } = await this.agentSend("Page.getLayoutMetrics");
+            const height = Math.min(cssContentSize.height, SCREENSHOT_MAX_HEIGHT);
+            Object.assign(params, { captureBeyondViewport: true, clip: { x: 0, y: 0, width: cssContentSize.width, height, scale: 1 } });
         }
-        return (await this.send("Page.captureScreenshot", params)).data;
+        return (await this.agentSend("Page.captureScreenshot", params)).data;
     }
 
     async evaluate(expression) {
-        const { result, exceptionDetails } = await this.send("Runtime.evaluate", { expression: String(expression), returnByValue: true, awaitPromise: true });
+        const { result, exceptionDetails } = await this.agentSend("Runtime.evaluate", { expression: String(expression), returnByValue: true, awaitPromise: true });
         if (exceptionDetails)
             throw new BrowserError(BrowserErrorCode.EVALUATION_FAILED, exceptionDetails.exception?.description ?? exceptionDetails.text);
         return result?.value;
@@ -233,7 +250,10 @@ class BrowserSession extends EventEmitter {
     async settle() {
         await sleep(SETTLE_QUIET_MS);
         const deadline = Date.now() + SETTLE_MAX_MS;
-        while ((this.state.loading || this.refreshing > 0) && !this.closed && Date.now() < deadline) await sleep(SETTLE_POLL_MS);
+        while ((this.state.loading || this.refreshing > 0) && !this.closed && Date.now() < deadline) {
+            agentCall.getStore()?.throwIfAborted();
+            await sleep(SETTLE_POLL_MS);
+        }
     }
 
     notifyDownload({ filename, state }) {
@@ -303,7 +323,7 @@ class BrowserSession extends EventEmitter {
                 this.pendingDialog = null;
                 return this.#broadcast({ type: "dialogClosed" });
             case "Page.fileChooserOpened":
-                return this.notifyError("FILE_CHOOSER_REJECTED", "File uploads are not supported in browser tabs");
+                return this.notifyError(BrowserErrorCode.FILE_CHOOSER_REJECTED, "File uploads are not supported in browser tabs");
             case "Inspector.targetCrashed":
                 return this.close("crashed");
         }

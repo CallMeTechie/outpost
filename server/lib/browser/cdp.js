@@ -12,6 +12,8 @@ class CdpError extends Error {
 class CdpConnection extends EventEmitter {
     constructor(socket) {
         super();
+        // Every session on this connection adds its own "event" listener.
+        this.setMaxListeners(0);
         this.socket = socket;
         this.nextId = 1;
         this.pending = new Map();
@@ -23,7 +25,7 @@ class CdpConnection extends EventEmitter {
 
     static connect(url, { WebSocketImpl = WebSocket, timeoutMs = 5000 } = {}) {
         return new Promise((resolve, reject) => {
-            const socket = new WebSocketImpl(url, { perMessageDeflate: false, maxPayload: 256 * 1024 * 1024 });
+            const socket = new WebSocketImpl(url, { perMessageDeflate: false, maxPayload: 64 * 1024 * 1024 });
             const timer = setTimeout(() => {
                 socket.terminate?.();
                 reject(new Error(`CDP connect timeout: ${url}`));

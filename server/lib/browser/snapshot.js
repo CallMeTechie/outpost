@@ -53,7 +53,13 @@ const optionsOf = (node, byId) => {
     while (stack.length > 0) {
         const child = byId.get(stack.pop());
         if (!child) continue;
-        if (OPTION_ROLES.has(child.role?.value)) options.push({ name: clip(child.name?.value), selected: propertyOf(child, "selected") === true });
+        if (OPTION_ROLES.has(child.role?.value)) {
+            options.push({
+                name: String(child.name?.value ?? "").trim(),
+                selected: propertyOf(child, "selected") === true,
+                disabled: propertyOf(child, "disabled") === true,
+            });
+        }
         else for (const id of [...(child.childIds ?? [])].reverse()) stack.push(id);
     }
     return options;
@@ -94,7 +100,8 @@ const buildSnapshot = (nodes, refs) => {
             if (line) lines.push(line);
             if (options.length > 0) {
                 // A native select's options are chosen through its own ref (A23), so they get none.
-                for (const option of options) lines.push(`  - option ${JSON.stringify(option.name)}${option.selected ? " selected" : ""}`);
+                for (const option of options)
+                    lines.push(`  - option ${JSON.stringify(clip(option.name))}${option.selected ? " selected" : ""}${option.disabled ? " disabled" : ""}`);
                 continue;
             }
         }

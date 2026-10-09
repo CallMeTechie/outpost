@@ -11,11 +11,12 @@ const tree = { nodes: [
 
 // Every test runs with a second session already open on the same connection, so state leaking
 // between sessions (refs, pause, dialogs) shows up as a failure in B.
-const twoSessions = async () => {
+const twoSessions = async (responders = {}) => {
     const cdp = createFakeCdp({
         "Accessibility.getFullAXTree": tree,
         "DOM.getContentQuads": { quads: [[0, 0, 20, 0, 20, 20, 0, 20]] },
         "Page.getLayoutMetrics": { cssLayoutViewport: { clientWidth: 1280, clientHeight: 800 } },
+        ...responders,
     });
     const make = (id, cdpSessionId, targetId) => new BrowserSession({ id, accountId: 1, profile: "ephemeral", origin: "agent", cdp, targetId, cdpSessionId });
     const a = make("browser-a", "SA", "TA");
@@ -74,5 +75,42 @@ test("a page dialog goes to the human, interrupts a running agent call, and a st
     cdp.emitEvent("Page.javascriptDialogClosed", { result: false }, "SA");
     await flush();
     assert.deepStrictEqual(viewer.json.at(-1), { type: "dialogClosed" });
+    assert.strictEqual(await a.runAgent("browser_click", () => a.click("e1")), 'button "Go"');
+});
+
+test("an interrupted agent call drives the page no further, while the human's input still arrives", async () => {
+    let releaseInsert;
+    const { cdp, a } = await twoSessions({ "Input.insertText": () => new Promise((resolve) => { releaseInsert = resolve; }) });
+    const viewer = createFakeViewer();
+    a.addViewer(viewer);
+    const typing = assert.rejects(a.runAgent("browser_type", () => a.type("e1", "hunter2", { submit: true })),
+        (err) => err.code === BrowserErrorCode.DIALOG_PENDING);
+    await flush();
+    assert.strictEqual(cdp.callsOf("Input.insertText", "SA").length, 1);
+    cdp.emitEvent("Page.javascriptDialogOpening", { type: "alert", message: "Saved", url: "https://a.test/" }, "SA");
+    await flush();
+    await typing;
+
+    const interruptedAt = cdp.calls.length;
+    releaseInsert({});
+    await flush();
+    assert.deepStrictEqual(cdp.calls.slice(interruptedAt).filter((c) => c.sessionId === "SA" && c.method.startsWith("Input.")), [], "no Enter after the interruption");
+
+    await a.handleViewerMessage(viewer, { type: "mouse", action: "down", x: 5, y: 6, button: "left", clickCount: 1, modifiers: 0 });
+    assert.deepStrictEqual(cdp.callsOf("Input.dispatchMouseEvent", "SA").at(-1).params, { type: "mousePressed", x: 5, y: 6, button: "left", clickCount: 1, modifiers: 0 });
+});
+
+test("a second agent call on a busy session is refused instead of interleaving its input", async () => {
+    const { cdp, a, b } = await twoSessions();
+    let finish;
+    const first = a.runAgent("browser_click", () => new Promise((resolve) => { finish = resolve; }));
+    await flush();
+    await assert.rejects(a.runAgent("browser_type", () => a.type("e1", "x")),
+        (err) => err.code === BrowserErrorCode.BUSY && /still running/.test(err.message));
+    assert.strictEqual(cdp.callsOf("Input.insertText", "SA").length, 0);
+    assert.strictEqual(await b.runAgent("browser_click", () => b.click("e1")), 'button "Go"', "another session is not blocked");
+
+    finish("done");
+    assert.strictEqual(await first, "done");
     assert.strictEqual(await a.runAgent("browser_click", () => a.click("e1")), 'button "Go"');
 });
