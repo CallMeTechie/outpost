@@ -1,6 +1,6 @@
 # Agenten-Zugang — Umsetzungsanleitung (UI-AGENT-ACCESS)
 
-Artboard: docs/design/mockups/ui-agent-access.html · Manifest-Revision: 12
+Artboard: docs/design/mockups/ui-agent-access.html · Manifest-Revision: 13
 
 Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dialog, ein Menüpunkt im Bestandsmenü `UI-SERVERS-LIST-MENU`. Nicht neu gebaut werden: Dialog-Rahmen, Kontextmenü, Clipboard-Helfer, Toggle.
 
@@ -39,13 +39,15 @@ Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dial
 - `data-ui-id` an der Toggle-Zeile (`ToggleSwitch`), eigenes Element außerhalb des SETUP-Knotens; im Layout zwischen Agentenauswahl und Adressbereichen. Der Bindungszustand liegt im Dialog-State, nicht im SETUP-Knoten.
 - Datenquelle: aufgelöste Adresse des Server-Eintrags.
 - Zustände: `default` an, Hinweis „an · 192.168.2.40“ (IP in `--type-mono`); `selected` aus, Hinweis „aus — von überall“. Aus = Key ohne IP-Bindung.
-- `partial` Messung weicht ab: unter der Zeile eine Bestätigung im Warnrand-Muster (`--warning`): „Gesehen wurde 172.17.0.1 statt 192.168.2.40 — als Adressbereich übernehmen?“ mit „Nein“ (Ghost) / „Übernehmen“ (primär). Adressen in `--type-mono`. Datenquelle: das Probe-Ergebnis der Einrichtung (Spec „Einrichtung per Klick“ Schritt 1a: der Server ruft per Exec `GET <agentUrl>/api/vault/agent-keys/probe` mit dem `pending`-Key auf, die Antwort nennt `normalizeIp(req.ip)`). „Übernehmen“ ruft `POST /api/vault/agent-keys/:id/confirm` mit `{ addSeenIp: true }` (der Server trägt die von ihm gemessene Adresse ein, nie einen Wert vom Client; einmal, bis 15 Minuten nach dem Anlegen); „Nein“ verwirft den Vorschlag. Scheitert die Messung, erscheint dieser Zustand nicht; das Ergebnis sagt es (RESULT).
+- `partial` Messung weicht ab: unter der Zeile eine Bestätigung im Warnrand-Muster (`--warning`): „Gesehen wurde 172.17.0.1 statt 192.168.2.40 — als Adressbereich übernehmen?“ mit „Nein“ (Ghost) / „Übernehmen“ (primär). Adressen in `--type-mono`. Datenquelle: das Probe-Ergebnis der Einrichtung (Spec „Einrichtung per Klick“ Schritt 1a: der Server ruft per Exec `GET <agentUrl>/api/vault/agent-keys/probe` mit dem `pending`-Key auf, die Antwort nennt `normalizeIp(req.ip)`). „Übernehmen“ ruft `POST /api/vault/agent-keys/:id/confirm` mit `{ addSeenIp: true }` (der Server trägt die von ihm gemessene Adresse ein, nie einen Wert vom Client; einmal, bis 15 Minuten nach dem Anlegen); „Nein“ verwirft den Vorschlag. Der Satz „Ohne Übernahme weist Outpost den Key ab.“ gehört zur Frage. Scheitert die Messung, erscheint `partial` nicht, sondern `disabled`.
+- `disabled` Messung nicht möglich: unter der Zeile Hinweis in `--subtext`: „Adresse konnte nicht gemessen werden — der Key gilt für die aufgelöste Adresse des Servers.“ Datenquelle: `probe === null` in der Antwort von `POST /api/vault/agent-keys`. Der Toggle bleibt bedienbar.
 - `error` Proxy-Vertrauen: unter der Zeile Warnhinweis in `--warning`, `role="alert"`: „TRUST_PROXY=true — die IP-Bindung ist wirkungslos.“ (`TRUST_PROXY=true` in `--type-mono`). Datenquelle: Feld `trustProxyUnsafe` aus `GET /api/vault/available`. Sichtbar nur, solange es `true` ist; der Toggle bleibt bedienbar.
 
 ### UI-AGENT-ACCESS-RESULT — Ergebnis (neu)
 - `data-ui-id` am Ergebnis-Container; je Agent eine Zeile mit linkem 3-px-Rand (`--success` / `--error`).
 - Datenquelle: Antwort von `POST /api/vault/agent-keys`, je Agent eingerichtet oder Fehlergrund plus fertiger Befehl.
 - Zustände: `empty` „erscheint erst nach dem Einrichten“; `success` „Eingerichtet für root. Claude Code neu starten, dann /mcp.“ (`root` = `remoteUser` aus der Antwort von `POST /api/vault/agent-keys`, Spec Schritt 2); `error` z. B. „codex nicht gefunden. Befehl kopieren und auf dem Server ausführen.“ mit Befehl in `<pre>` und Button „Kopieren“ (`copyToClipboard`; Rückgabe `false` → Toast, kein Erfolg anzeigen — der Helfer deckt http ohne sicheren Kontext ab).
+- `partial` Registrierung ersetzt: unter dem Ergebnis von Claude Code Hinweis in `--warning`: „Bestehende Registrierung ersetzt — der alte Konto-Key bleibt gültig, bis du ihn unter API-Schlüssel löschst.“ Datenquelle: `replacedRegistration === true` in der Antwort von `POST /api/vault/agent-keys` für diesen Agenten.
 - Der Key steht nur hier, nur jetzt; Hinweis „Der Key ist nur jetzt sichtbar. Schließen ohne Übernahme löscht ihn.“ Der Key wird nie in KEYS, Toasts oder Logs gezeigt und nicht im State über das Schließen hinaus gehalten.
 - Pending/Confirm: `POST /api/vault/agent-keys` legt Keys als `pending` an. Sie werden endgültig, sobald die automatische Einrichtung gelingt (der Server bestätigt dann selbst) oder der Nutzer „Kopieren“ klickt (`copyToClipboard` liefert `true` → `POST /api/vault/agent-keys/:id/confirm`). Schließen des Dialogs ohne eines von beiden → `DELETE /api/vault/agent-keys/:id` für jeden noch offenen Key. Was `pending` bleibt (Absturz, Tab zu), löscht der Server nach 15 Minuten; ein `pending`-Key ist nirgends nutzbar.
 - Tokens: `--success` eingerichtet, `--error` fehlgeschlagen, sonst `--subtext`.
@@ -53,7 +55,7 @@ Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dial
 ## Datenquellen (Spec, Abschnitt REST-Endpunkte)
 - Beim Öffnen: `GET /api/vault/agent-keys?entryId=` → `keys`, `remoteUser`, `otherAccountConfigured` (Warnung `partial` von SETUP vor dem Einrichten).
 - `GET /api/vault/available` → `agentUrlSet` (SETUP `disabled`), `trustProxyUnsafe` (IPBIND `error`). Nicht `GET /api/vault/settings`: das verlangt `settings.vault`.
-- Nach dem Einrichten: Antwort von `POST /api/vault/agent-keys` je Agent `{ id, agentType, status, remoteUser, command?, probe, replacedRegistration }` → RESULT (`success`/`error`) und IPBIND `partial` (`probe.matches === false`, gesehene Adresse `probe.seenIp`).
+- Nach dem Einrichten: Antwort von `POST /api/vault/agent-keys` je Agent `{ id, agentType, status, remoteUser, command?, probe, replacedRegistration }` → RESULT (`success`/`error`) und IPBIND `partial` (`probe.matches === false`, gesehene Adresse `probe.seenIp`), IPBIND `disabled` (`probe === null`) und RESULT `partial` (`replacedRegistration === true`).
 
 ## Ausdrücklich nicht
 - Keine KI-, Sparkle- oder Roboter-Symbolik; Agenten nur mit Produktnamen.

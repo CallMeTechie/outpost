@@ -2,7 +2,7 @@
 <html lang="de" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<title>outpost — Mockups (Revision 12)</title>
+<title>outpost — Mockups (Revision 13)</title>
 <link rel="stylesheet" href="./tokens.css">
 <style>
 .mb-page { font: var(--type-body, 500 0.875rem/1.45 system-ui, sans-serif); color: var(--text, #eee); background: var(--background, #111); margin: 0; padding: var(--space-8, 2rem); }
@@ -926,7 +926,7 @@
 </head>
 <body class="mb-page">
 <h1>outpost — Mockups</h1>
-<p class="sub">Manifest-Revision 12 · 2026-10-09 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
+<p class="sub">Manifest-Revision 13 · 2026-10-09 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
 <ul class="mb-toc">
 <li><a href="#UI-SHELL">Rahmen — Navigation</a> <code>UI-SHELL</code></li>
 <li><a href="#UI-SERVERS">Servers — Arbeitsfläche</a> <code>UI-SERVERS</code></li>
@@ -3504,8 +3504,8 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
 <tr><td><code>UI-AGENT-ACCESS-KEYS</code></td><td>Agenten auf diesem Server</td><td>Die Agenten-Keys dieses Servers — Agent, angelegt, zuletzt genutzt, IP-Bindung — je mit Entziehen. Entziehen widerruft den Key und entfernt die Registrierung auf dem Server. <b>Nicht:</b> api_key, vault_item, identity.</td><td><code>default · empty · loading · selected · error</code></td></tr>
 <tr><td><code>UI-AGENT-ACCESS-SETUP</code></td><td>Einrichten</td><td>Welche Agenten eingerichtet werden (Claude Code, Codex) und welche zusätzlichen Adressbereiche (CIDR) ihr Key neben der IP dieses Servers akzeptiert. <b>Nicht:</b> api_key, vault_binding.</td><td><code>default · loading · error · disabled · partial</code></td></tr>
-<tr><td><code>UI-AGENT-ACCESS-IPBIND</code></td><td>Nur von der IP dieses Servers</td><td>Ob der Key nur Anfragen von der Adresse dieses Servers (plus den eingetragenen Adressbereichen) akzeptiert. Standard an; aus heißt von überall. <b>Nicht:</b> vault_binding, allowed_origin.</td><td><code>default · selected · partial · error</code></td></tr>
-<tr><td><code>UI-AGENT-ACCESS-RESULT</code></td><td>Ergebnis</td><td>Je Agent das Ergebnis der Einrichtung — eingerichtet, oder der fertige Befehl zum Kopieren, wenn die automatische Einrichtung scheiterte (CLI fehlt, Exec-Fehler). Der Key ist nur hier und nur jetzt sichtbar; ein Key, der weder automatisch eingerichtet noch kopiert wurde, wird beim Schließen gelöscht. <b>Nicht:</b> agent_key, toast.</td><td><code>default · empty · success · error</code></td></tr>
+<tr><td><code>UI-AGENT-ACCESS-IPBIND</code></td><td>Nur von der IP dieses Servers</td><td>Ob der Key nur Anfragen von der Adresse dieses Servers (plus den eingetragenen Adressbereichen) akzeptiert. Standard an; aus heißt von überall. <b>Nicht:</b> vault_binding, allowed_origin.</td><td><code>default · selected · partial · disabled · error</code></td></tr>
+<tr><td><code>UI-AGENT-ACCESS-RESULT</code></td><td>Ergebnis</td><td>Je Agent das Ergebnis der Einrichtung — eingerichtet, oder der fertige Befehl zum Kopieren, wenn die automatische Einrichtung scheiterte (CLI fehlt, Exec-Fehler). Der Key ist nur hier und nur jetzt sichtbar; ein Key, der weder automatisch eingerichtet noch kopiert wurde, wird beim Schließen gelöscht. <b>Nicht:</b> agent_key, toast.</td><td><code>default · empty · success · partial · error</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-agent-access.html — alle Zustände, wie im Artboard</div><div id="ab-ui-agent-access">
 
@@ -3673,9 +3673,20 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 							<span class="toggle on" role="switch" aria-checked="true" aria-label="Nur von der IP dieses Servers"></span>
 						</div>
 						<div class="confirm" role="status">
-							<p>Gesehen wurde <span class="mono">172.17.0.1</span> statt <span class="mono">192.168.2.40</span> — als Adressbereich übernehmen?</p>
+							<p>Gesehen wurde <span class="mono">172.17.0.1</span> statt <span class="mono">192.168.2.40</span> — als Adressbereich übernehmen? Ohne Übernahme weist Outpost den Key ab.</p>
 							<div class="actions"><button class="btn ghost small" type="button">Nein</button><button class="btn primary small" type="button">Übernehmen</button></div>
 						</div>
+					</section>
+
+					<section class="state" data-ui-state="disabled">
+						<div class="row">
+							<div class="ip-detect">
+								<span>Nur von der IP dieses Servers</span>
+								<span class="help">an · <span class="mono">192.168.2.40</span></span>
+							</div>
+							<span class="toggle on" role="switch" aria-checked="true" aria-label="Nur von der IP dieses Servers"></span>
+						</div>
+						<span class="help">Adresse konnte nicht gemessen werden — der Key gilt für die aufgelöste Adresse des Servers.</span>
 					</section>
 
 					<section class="state is-error" data-ui-state="error">
@@ -3717,6 +3728,14 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 						<div class="result-row ok">
 							<div class="result-head"><span>Claude Code</span><span class="status">eingerichtet</span></div>
 							<span class="help">Eingerichtet für root. Claude Code neu starten, dann /mcp.</span>
+						</div>
+					</section>
+
+					<section class="state" data-ui-state="partial">
+						<div class="result-row ok">
+							<div class="result-head"><span>Claude Code</span><span class="status">eingerichtet</span></div>
+							<span class="help">Claude Code neu starten, dann /mcp.</span>
+							<span class="notice">Bestehende Registrierung ersetzt — der alte Konto-Key bleibt gültig, bis du ihn unter API-Schlüssel löschst.</span>
 						</div>
 					</section>
 

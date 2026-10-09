@@ -239,7 +239,7 @@ den Eintrag). Auswahl Claude Code und/oder Codex.
 
 Entziehen fragt vorher im Bestätigungsdialog nach.
 
-„Zugang entziehen“ löscht den Key und entfernt danach die Registrierung nur, wenn sie noch diesen Key trägt. Verglichen wird das Präfix des Keys im Eintrag `outpost` von `~/.claude.json` bzw. in `~/.codex/outpost.env`; der Vergleich läuft im Outpost-Server, die gelesene Ausgabe geht nirgends weiter. Dann folgen `claude mcp remove --scope user outpost` bzw. `codex mcp remove outpost` und das Entfernen von `~/.codex/outpost.env`. Trägt die Registrierung einen anderen Key (anderes Konto, Schritt 7), bleibt sie stehen, und das Ergebnis sagt das. Ersetzt Schritt 7 den eigenen alten Key, wird dieser ohne Entfernbefehle gelöscht. Schlägt das Entfernen fehl, ist der Key trotzdem widerrufen.
+„Zugang entziehen“ löscht den Key und entfernt danach die Registrierung nur, wenn sie noch diesen Key trägt. Verglichen wird das (nicht geheime) Präfix des Keys im Eintrag `outpost` von `~/.claude.json` bzw. in `~/.codex/outpost.env`; der Vergleich läuft auf dem Zielserver im selben Exec wie das Entfernen, sodass ein fremder Key den Server nie verlässt. Outpost liest nur die Ergebniszeile (`REMOVED`, `FOREIGN`, `ABSENT`). Dann folgen `claude mcp remove --scope user outpost` bzw. `codex mcp remove outpost` und das Entfernen von `~/.codex/outpost.env`. Trägt die Registrierung einen anderen Key (anderes Konto, Schritt 7), bleibt sie stehen, und das Ergebnis sagt das. Ersetzt Schritt 7 den eigenen alten Key, wird dieser ohne Entfernbefehle gelöscht. Schlägt das Entfernen fehl, ist der Key trotzdem widerrufen.
 
 ## `browser_fill_credential`
 
@@ -431,7 +431,7 @@ Die übernommenen Elemente unten werden nicht neu gebaut, aber ergänzt (Manifes
   `canProvision` (Anleitung `docs/design/guides/ui-servers.md`).
 
 <!-- mockingbird:design:begin -->
-<!-- design: manifest=docs/design/manifest.yaml design_rev=12 design_hash=sha256:35dc03481fbf042179f422816d8b806d5bb1064449ae36bf88bf26f343f55c32 system=docs/design/design-system.md index=docs/design/mockups/index.html adapter=web screens=UI-VAULT,UI-VAULT-DIALOG,UI-AGENT-ACCESS,UI-VAULT-SETTINGS,UI-API-KEYS,UI-VAULT-APPROVAL consumes=UI-SHELL-NAV,UI-SHELL-MOBILE-NAV,UI-SHELL-ACCOUNT,UI-SERVERS-LIST-MENU -->
+<!-- design: manifest=docs/design/manifest.yaml design_rev=13 design_hash=sha256:ee843503c13714e772ee945925ae1861f4c7688198f358ff1e4b075a86d8436e system=docs/design/design-system.md index=docs/design/mockups/index.html adapter=web screens=UI-VAULT,UI-VAULT-DIALOG,UI-AGENT-ACCESS,UI-VAULT-SETTINGS,UI-API-KEYS,UI-VAULT-APPROVAL consumes=UI-SHELL-NAV,UI-SHELL-MOBILE-NAV,UI-SHELL-ACCOUNT,UI-SERVERS-LIST-MENU -->
 <!-- Generiert aus docs/design/manifest.yaml. Nicht von Hand ändern —
      Änderungen hier werden beim nächsten mockingbird-Lauf überschrieben.
      Design ändern heißt Manifest ändern. -->

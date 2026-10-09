@@ -1,6 +1,6 @@
 schema: mockingbird/1
 project: outpost
-revision: 12
+revision: 13
 updated: 2026-10-09
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
@@ -49,6 +49,10 @@ changelog:
     date: 2026-10-09
     summary: Nachzug aus preflight — Proxy-Warnung, gemessene Adresse, Warnung bei fremdem Konto, entfernter Benutzer im Ergebnis, verworfene Werte nach Zieländerung
     touched: [UI-VAULT-SETTINGS-PROXY, UI-AGENT-ACCESS-IPBIND, UI-AGENT-ACCESS-SETUP, UI-AGENT-ACCESS-RESULT, UI-VAULT-DIALOG-SECRET, UI-VAULT-DETAIL-SECRET]
+  - rev: 13
+    date: 2026-10-10
+    summary: Nachzug aus dem Umsetzungsplan — Hinweise im Agenten-Zugang für ersetzte Registrierung, gescheiterte Messung und Abweisung ohne Übernahme
+    touched: [UI-AGENT-ACCESS-RESULT, UI-AGENT-ACCESS-IPBIND]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -1319,7 +1323,8 @@ screens:
         states:
           - { id: default }
           - { id: selected, copy: "aus — von überall" }
-          - { id: partial, copy: "Gesehen wurde 172.17.0.1 statt 192.168.2.40 — als Adressbereich übernehmen?" }
+          - { id: partial, copy: "Gesehen wurde 172.17.0.1 statt 192.168.2.40 — als Adressbereich übernehmen? Ohne Übernahme weist Outpost den Key ab." }
+          - { id: disabled, copy: "Adresse konnte nicht gemessen werden — der Key gilt für die aufgelöste Adresse des Servers." }
           - { id: error, copy: "TRUST_PROXY=true — die IP-Bindung ist wirkungslos." }
         locators:
           web: "[data-ui-id='UI-AGENT-ACCESS-IPBIND']"
@@ -1342,6 +1347,7 @@ screens:
           - { id: default }
           - { id: empty, copy: "erscheint erst nach dem Einrichten" }
           - { id: success, copy: "Eingerichtet für root. Claude Code neu starten, dann /mcp." }
+          - { id: partial, copy: "Bestehende Registrierung ersetzt — der alte Konto-Key bleibt gültig, bis du ihn unter API-Schlüssel löschst." }
           - { id: error, copy: "codex nicht gefunden. Befehl kopieren und auf dem Server ausführen." }
         locators:
           web: "[data-ui-id='UI-AGENT-ACCESS-RESULT']"

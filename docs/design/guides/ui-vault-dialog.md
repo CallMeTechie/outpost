@@ -9,7 +9,7 @@ Neuer Dialog, im Client gibt es noch keine Vault-Seite. Er folgt dem Muster von 
 - `…/VaultItemDialog/index.js`, `styles.sass` — **neu** (Muster `SnippetDialog/index.js`, `styles.sass`)
 - `…/VaultItemDialog/typeFields.js` — **neu**; Feldliste und Geheimfelder je Typ (aus der Spec, siehe SECRET/FIELDS)
 - Eingebunden von der Vault-Seite `client/src/pages/Vault/Vault.jsx` (**neu**, andere Anleitung: UI-VAULT); Auslöser „Neuer Eintrag“, Bearbeiten im Detail-Kopf, Taste `N`
-- Wiederverwenden: `DialogProvider`, `DialogCancelButton` (`common/components/Dialog`), `IconInput`, `SelectBox` (`multiple`, `searchable`), `ToggleSwitch`, `Chip`, `Button`, `useToast`, `useServers` (`ServerContext`), `useTags` (`TagContext`), `getRequest`/`postRequest`/`patchRequest` (`common/utils/RequestUtil.js`)
+- Wiederverwenden: `DialogProvider`, `DialogCancelButton` (`common/components/Dialog`), `IconInput`, `SelectBox` (`multiple`, `searchable`), `ToggleSwitch`, `Chip`, `Button`, `useToast`, `useContext(ServerContext)` (es gibt keinen Hook `useServers`), `TagContext`, `getRequest`/`postRequest`/`patchRequest` (`common/utils/RequestUtil.js`)
 - Styles: `styles.sass` des Dialogs; Werte nur aus den Tokens des Design-Systems (`--lighter-background`, `--radius-lg`, `--type-mono`, `--subtext`, `--danger`)
 
 ## Darstellung
@@ -44,7 +44,7 @@ Neuer Dialog, im Client gibt es noch keine Vault-Seite. Er folgt dem Muster von 
 
 ### UI-VAULT-DIALOG-SCOPE — Gilt für (neu)
 - `data-ui-id` am Wrapper aus Chip-Zeile und „Alle Server“-Zeile. Gewählte Bindungen als Chips mit Art-Präfix (Ordner, Server, Tag), daneben „+ Server“, „+ Ordner“, „+ Tag“ (öffnen `SelectBox` multiple, searchable).
-- Datenquelle: Server und Ordner aus `useServers().servers` (Baum, `type` `folder`/`organization`/Server; beim Besitzer „Persönlich“ die Knoten ohne Organisation, sonst `entries` der gewählten Organisation); Tags aus `useTags().tags`, nur bei Besitzer „Persönlich“ (bei Organisationen entfällt „+ Tag“). Ordner gelten mit Unterordnern.
+- Datenquelle: Server und Ordner aus `useContext(ServerContext).servers` (Baum, `type` `folder`/`organization`/Server; beim Besitzer „Persönlich“ die Knoten ohne Organisation, sonst `entries` der gewählten Organisation); Tags aus dem `TagContext`, nur bei Besitzer „Persönlich“ (bei Organisationen entfällt „+ Tag“). Ordner gelten mit Unterordnern.
 - Zustände: `empty` „Für keinen Server freigegeben.“ (Standard). `selected` bei Schalter „Alle Server“ (`ToggleSwitch`, `allServers`): Chips werden gedimmt und nicht mehr bearbeitet. Wechsel des Besitzers verwirft Bindungen, die dort nicht gelten.
 
 ### UI-VAULT-DIALOG-APPROVAL — Freigabe erforderlich (neu)

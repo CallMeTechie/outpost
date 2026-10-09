@@ -6,12 +6,12 @@ Der Abschnitt „API-Schlüssel“ der Kontoseite existiert. Neu: die Liste zeig
 
 ## Wo im Code
 - `client/src/pages/Settings/pages/Account/Account.jsx` (Bestand) — Abschnitt `account-section` ab dem `<h2>` mit `settings.account.apiKeys.sectionTitle` → `UI-API-KEYS-LIST`; direkt dahinter der neue Abschnitt.
-- `client/src/pages/Settings/pages/Account/components/AgentKeys/` — **neu** (`AgentKeys.jsx`, `index.js`, `styles.sass`, nach dem Muster von `components/MicrosoftConnections/`) → `UI-API-KEYS-AGENTS`.
+- `client/src/pages/Settings/pages/Account/components/AgentKeysSection/` — **neu** (`AgentKeysSection.jsx`, `index.js`, `styles.sass`, nach dem Muster von `components/MicrosoftConnections/`) → `UI-API-KEYS-AGENTS`.
 - `server/controllers/apiKey.js` (Bestand) — `listApiKeys` ist die Stelle für den Filter: `where: { accountId, kind: "account" }`. Erst damit zeigt `GET accounts/api-keys` keine Agenten-Schlüssel mehr. `serialize` bleibt (id, name, prefix, lastUsedAt, expiresAt, createdAt); `kind` wird nicht ausgeliefert.
 - `deleteApiKey` (Bestand) — ebenfalls auf `kind: "account"` einschränken, damit ein Agenten-Schlüssel nicht über `DELETE accounts/api-keys/:id` fällt. `createApiKey` zählt das 50er-Limit (Obergrenze) nur über `kind: "account"`.
 - `GET /api/vault/agent-keys` und `DELETE /api/vault/agent-keys/:id` — **neu**, gehören zum Vault-Backend (Spec `2026-10-09-vault-core-design.md`), nicht zu diesem Screen.
 - Wiederverwenden: `Button`, `Icon`, `DialogProvider`/Bestätigungsdialog wie `deleteApiKeyOpen` in `Account.jsx`, CSS-Klassen `account-section`, `settings-list`, `settings-list-item`, `list-empty`.
-- Styles: `Account/styles.sass` und `AgentKeys/styles.sass`; Werte aus den Tokens der Runde 11 (`docs/design/design-system.md`), keine Hex-Werte.
+- Styles: `Account/styles.sass` und `AgentKeysSection/styles.sass`; Werte aus den Tokens der Runde 11 (`docs/design/design-system.md`), keine Hex-Werte.
 
 ## Darstellung
 - Art: Panel, Abschnitt der Kontoseite, über `UI-SHELL`. Auslöser: Konto › Einstellungen › Konto. Schließen: Einstellungen schließen.

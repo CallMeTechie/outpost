@@ -243,9 +243,20 @@
 							<span class="toggle on" role="switch" aria-checked="true" aria-label="Nur von der IP dieses Servers"></span>
 						</div>
 						<div class="confirm" role="status">
-							<p>Gesehen wurde <span class="mono">172.17.0.1</span> statt <span class="mono">192.168.2.40</span> — als Adressbereich übernehmen?</p>
+							<p>Gesehen wurde <span class="mono">172.17.0.1</span> statt <span class="mono">192.168.2.40</span> — als Adressbereich übernehmen? Ohne Übernahme weist Outpost den Key ab.</p>
 							<div class="actions"><button class="btn ghost small" type="button">Nein</button><button class="btn primary small" type="button">Übernehmen</button></div>
 						</div>
+					</section>
+
+					<section class="state" data-ui-state="disabled">
+						<div class="row">
+							<div class="ip-detect">
+								<span>Nur von der IP dieses Servers</span>
+								<span class="help">an · <span class="mono">192.168.2.40</span></span>
+							</div>
+							<span class="toggle on" role="switch" aria-checked="true" aria-label="Nur von der IP dieses Servers"></span>
+						</div>
+						<span class="help">Adresse konnte nicht gemessen werden — der Key gilt für die aufgelöste Adresse des Servers.</span>
 					</section>
 
 					<section class="state is-error" data-ui-state="error">
@@ -287,6 +298,14 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 						<div class="result-row ok">
 							<div class="result-head"><span>Claude Code</span><span class="status">eingerichtet</span></div>
 							<span class="help">Eingerichtet für root. Claude Code neu starten, dann /mcp.</span>
+						</div>
+					</section>
+
+					<section class="state" data-ui-state="partial">
+						<div class="result-row ok">
+							<div class="result-head"><span>Claude Code</span><span class="status">eingerichtet</span></div>
+							<span class="help">Claude Code neu starten, dann /mcp.</span>
+							<span class="notice">Bestehende Registrierung ersetzt — der alte Konto-Key bleibt gültig, bis du ihn unter API-Schlüssel löschst.</span>
 						</div>
 					</section>
 
