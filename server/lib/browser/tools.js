@@ -135,14 +135,16 @@ const createBrowserTools = ({
         }
         const checks = {
             load: async () => !session.state.loading && (await session.evaluate("document.readyState")) === "complete",
-            text: async () => String(await session.evaluate("document.body ? document.body.innerText : ''")).includes(String(value)),
+            text: async () => (await session.evaluate(`(document.body?.innerText ?? '').includes(${JSON.stringify(String(value))})`)) === true,
             ref: () => session.refVisible(value).then(() => true, (err) => {
                 if (err.code === BrowserErrorCode.STALE_REF || err.code === BrowserErrorCode.UNKNOWN_REF) throw err;
                 return false;
             }),
         };
-        const check = checks[condition];
+        const check = Object.hasOwn(checks, condition) ? checks[condition] : null;
         if (!check) throw new BrowserError(BrowserErrorCode.INVALID_ARGUMENT, `Unknown condition "${condition}"; use load, text, ref or ms`);
+        if (condition !== "load" && (value === undefined || value === null))
+            throw new BrowserError(BrowserErrorCode.INVALID_ARGUMENT, `Condition ${condition} needs a value: the ${condition} to wait for`);
         const limit = Math.min(Number(timeoutMs) || WAIT_DEFAULT_MS, WAIT_MAX_MS);
         for (let waited = 0; ; waited += WAIT_POLL_MS) {
             if (await check()) return snapshotAfter(session);

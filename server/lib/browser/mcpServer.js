@@ -24,7 +24,8 @@ const createMcpServer = ({ tools, canUseBrowser, now = Date.now }) => {
         if (Array.isArray(body)) return { status: 400, body: rpcError(null, -32600, "Batched requests are not supported") };
         if (!body || body.jsonrpc !== "2.0" || typeof body.method !== "string")
             return { status: 400, body: rpcError(body?.id, -32600, "Invalid JSON-RPC request") };
-        const { id, method, params = {} } = body;
+        const { id, method } = body;
+        const params = body.params ?? {};
 
         if (method === "initialize") {
             const own = [...transports].filter(([, t]) => t.accountId === accountId).sort(([, a], [, b]) => a.lastSeen - b.lastSeen);

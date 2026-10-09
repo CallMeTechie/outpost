@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const { click, typeText, selectOption } = require("../actions");
+const { click, typeText, selectOption, pressKey } = require("../actions");
 const { BrowserErrorCode } = require("../errors");
 
 const recorder = (responses = {}) => {
@@ -57,4 +57,37 @@ test("choosing a select option focuses without a click and moves with real arrow
     assert.strictEqual(calls.filter((c) => c.method === "Input.dispatchMouseEvent").length, 0);
     assert.deepStrictEqual(calls.filter((c) => c.params.type === "rawKeyDown").map((c) => c.params.key), ["ArrowDown", "ArrowDown"]);
     await assert.rejects(selectOption(send, 9, options, "Z"), (err) => err.code === BrowserErrorCode.INVALID_ARGUMENT && /"A", "B", "C", "D"/.test(err.message));
+});
+
+test("a node that left the page is refused as stale, not as invisible, and gets no mouse event", async () => {
+    const gone = () => { throw new Error("DOM.scrollIntoViewIfNeeded: No node found for given backend id"); };
+    const { send, calls } = recorder({ "DOM.scrollIntoViewIfNeeded": gone, "Page.getLayoutMetrics": viewport });
+    await assert.rejects(click(send, 7), (err) => err.code === BrowserErrorCode.STALE_REF && /no longer exists/.test(err.message));
+    assert.strictEqual(calls.filter((c) => c.method === "Input.dispatchMouseEvent").length, 0);
+});
+
+test("single characters carry their US virtual key code, never that of Delete or Insert; a trailing + is the key", async () => {
+    const keyDown = async (combo) => {
+        const { send, calls } = recorder();
+        await pressKey(send, combo);
+        const { windowsVirtualKeyCode, key, modifiers } = calls[0].params;
+        return [key, windowsVirtualKeyCode, modifiers];
+    };
+    assert.deepStrictEqual(await keyDown("."), [".", 190, 0]);
+    assert.deepStrictEqual(await keyDown("-"), ["-", 189, 0]);
+    assert.deepStrictEqual(await keyDown("Control+a"), ["a", 65, 2]);
+    assert.deepStrictEqual(await keyDown("7"), ["7", 55, 0]);
+    assert.deepStrictEqual(await keyDown("ä"), ["ä", 0, 0]);
+    assert.deepStrictEqual(await keyDown("+"), ["+", 0, 0]);
+    assert.deepStrictEqual(await keyDown("Control++"), ["+", 0, 2]);
+    await assert.rejects(pressKey(recorder().send, "constructor"), (err) => err.code === BrowserErrorCode.INVALID_KEY);
+});
+
+test("choosing a select option steps over disabled options and refuses a disabled one", async () => {
+    const options = [{ name: "A", selected: true, disabled: false }, { name: "B", selected: false, disabled: true },
+        { name: "C", selected: false, disabled: false }, { name: "D", selected: false, disabled: false }];
+    const { send, calls } = recorder();
+    await selectOption(send, 9, options, "C");
+    assert.deepStrictEqual(calls.filter((c) => c.params.type === "rawKeyDown").map((c) => c.params.key), ["ArrowDown"]);
+    await assert.rejects(selectOption(send, 9, options, "B"), (err) => err.code === BrowserErrorCode.INVALID_ARGUMENT && /disabled/.test(err.message));
 });

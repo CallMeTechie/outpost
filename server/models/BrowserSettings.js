@@ -12,6 +12,13 @@ const BrowserSettings = db.define("browser_settings", {
     updatedAt: { type: Sequelize.DATE, defaultValue: Sequelize.NOW },
 });
 
-BrowserSettings.getOrCreate = async () => (await BrowserSettings.findOne()) ?? BrowserSettings.create({});
+// Not findOrCreate: on SQLite two concurrent first calls fail with SQLITE_BUSY inside its transaction.
+// With a fixed id, INSERT OR IGNORE lets the slower call find the faster one's row.
+BrowserSettings.getOrCreate = async () => {
+    const existing = await BrowserSettings.findByPk(1, { raw: false });
+    if (existing) return existing;
+    await BrowserSettings.bulkCreate([{ id: 1 }], { ignoreDuplicates: true });
+    return BrowserSettings.findByPk(1, { raw: false });
+};
 
 module.exports = BrowserSettings;

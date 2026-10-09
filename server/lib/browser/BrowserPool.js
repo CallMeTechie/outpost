@@ -114,9 +114,8 @@ class BrowserPool extends EventEmitter {
             return { session, navigationError };
         } catch (err) {
             if (instance) {
-                instance.users.delete(id);
                 if (browserContextId) instance.cdp.send("Target.disposeBrowserContext", { browserContextId }).catch(() => {});
-                if (instance.users.size === 0 && instanceKey !== "default" && this.live.get(instanceKey) === instance) this.#retire(instanceKey).catch(() => {});
+                this.#release(instance, id);
             } else {
                 viaHandle?.close();
                 if (via) this.#stopInstance(instanceKey);
@@ -187,6 +186,11 @@ class BrowserPool extends EventEmitter {
     }
 
     #register(session, instance, { ownsContext, browserContextId }) {
+        if (session.closed || this.live.get(instance.key) !== instance) {
+            session.close("browser instance ended");
+            instance.cdp.send("Target.closeTarget", { targetId: session.targetId }).catch(() => {});
+            throw new BrowserError(BrowserErrorCode.UNAVAILABLE, "The browser instance ended while the session was starting. Try again.");
+        }
         const record = { session, instanceKey: instance.key, ownsContext, browserContextId };
         this.sessions.set(session.id, record);
         instance.users.add(session.id);
@@ -198,6 +202,7 @@ class BrowserPool extends EventEmitter {
 
     async #onClosed({ session, instanceKey, ownsContext, browserContextId }, instance) {
         this.sessions.delete(session.id);
+        this.#forgetDownloads(new Set([session.id]));
         this.emit("change", session.accountId);
         instance.users.delete(session.id);
         if (this.live.get(instanceKey) !== instance) return;
@@ -218,8 +223,18 @@ class BrowserPool extends EventEmitter {
         instance.lingerTimer.unref?.();
     }
 
+    #release(instance, id) {
+        instance.users.delete(id);
+        if (instance.users.size === 0 && instance.key !== "default" && this.live.get(instance.key) === instance) this.#retire(instance.key).catch(() => {});
+    }
+
+    #forgetDownloads(sessionIds) {
+        for (const [guid, download] of this.downloads) if (sessionIds.has(download.sessionId)) this.downloads.delete(guid);
+    }
+
     #stopInstance(key) {
-        const stopping = this.launcher.stop(key).catch(() => {});
+        const stopping = this.launcher.stop(key)
+            .catch((err) => logger.warn("Browser instance stop failed", { instance: key, error: err.message }));
         this.retiring.set(key, stopping);
         stopping.then(() => {
             if (this.retiring.get(key) === stopping) this.retiring.delete(key);
@@ -244,8 +259,9 @@ class BrowserPool extends EventEmitter {
         instance.viaHandle?.close();
         // The connection can drop while Chromium keeps running; a via key is never asked for again.
         if (instance.key !== "default") this.#stopInstance(instance.key);
-        for (const { session, instanceKey } of [...this.sessions.values()])
-            if (instanceKey === instance.key) session.close("crashed");
+        const lost = [...this.sessions.values()].filter(({ instanceKey }) => instanceKey === instance.key).map(({ session }) => session);
+        this.#forgetDownloads(new Set(lost.map((session) => session.id)));
+        for (const session of lost) session.close("crashed");
     }
 
     async #onBrowserEvent(instance, { method, params }) {
@@ -280,24 +296,33 @@ class BrowserPool extends EventEmitter {
     }
 
     async #adoptPopup(instance, opener, targetId) {
-        const settings = await this.getSettings();
-        const parent = opener.session;
-        if (this.sessions.size + this.opening >= settings.maxSessions) {
-            await instance.cdp.send("Target.closeTarget", { targetId }).catch(() => {});
-            parent.notifyError("POPUP_BLOCKED", `The page opened a popup, but the limit of ${settings.maxSessions} browser sessions is reached`);
-            return;
-        }
-        this.opening++;
+        const id = `browser-${randomUUID()}`;
+        // Reserved before the first await, as in open(): the opener closing meanwhile must not retire the instance under us.
+        instance.users.add(id);
+        clearTimeout(instance.lingerTimer);
+        let counted = false;
+        let registered = false;
         try {
+            const settings = await this.getSettings();
+            const parent = opener.session;
+            if (this.sessions.size + this.opening >= settings.maxSessions) {
+                await instance.cdp.send("Target.closeTarget", { targetId }).catch(() => {});
+                parent.notifyError(BrowserErrorCode.POPUP_BLOCKED, `The page opened a popup, but the limit of ${settings.maxSessions} browser sessions is reached`);
+                return;
+            }
+            this.opening++;
+            counted = true;
             const session = await this.#attach(instance, {
-                id: `browser-${randomUUID()}`, accountId: parent.accountId, profile: parent.profile, via: parent.via,
+                id, accountId: parent.accountId, profile: parent.profile, via: parent.via,
                 origin: parent.origin, organizationId: parent.organizationId, targetId,
             });
             // A popup is often the login the user paused the agent for; it must not arrive unpaused.
             session.agentPaused = parent.agentPaused;
             this.#register(session, instance, { ownsContext: false, browserContextId: null });
+            registered = true;
         } finally {
-            this.opening--;
+            if (counted) this.opening--;
+            if (!registered) this.#release(instance, id);
         }
     }
 }

@@ -67,3 +67,12 @@ test("each transport reaches the tools under its own id", async () => {
     assert.deepStrictEqual(tools.calls[0].ctx, { accountId: 1, transportId: first.transportId, ipAddress: "10.0.0.1", userAgent: "ua" });
     assert.deepStrictEqual(tools.calls[0].args, { sessionId: "x" });
 });
+
+test("a request with \"params\": null is answered, not failed", async () => {
+    const mcp = createMcpServer({ tools: fakeTools(), canUseBrowser: async () => true });
+    const init = await mcp.handle({ body: { jsonrpc: "2.0", id: 1, method: "initialize", params: null }, accountId: 1 });
+    assert.strictEqual(init.status, 200);
+    assert.strictEqual(init.body.result.protocolVersion, "2025-06-18");
+    const call = await mcp.handle({ body: { jsonrpc: "2.0", id: 2, method: "tools/call", params: null }, transportId: init.headers["Mcp-Session-Id"], accountId: 1 });
+    assert.strictEqual(call.body.error.code, -32602);
+});
