@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI-API-KEYS · Einstellungen › Konto › API-Schlüssel</title>
+<link rel="stylesheet" href="./tokens.css">
+<style>
+	.mb-artboard, .mb-artboard *, .mb-artboard *::before, .mb-artboard *::after { box-sizing: border-box; }
+	.mb-artboard { max-width: 56rem; margin: 0 auto; padding: var(--space-8); background: var(--background); color: var(--text); font: var(--type-body); display: grid; gap: var(--space-8); }
+	.mb-artboard h1, .mb-artboard h2, .mb-artboard h3, .mb-artboard p { margin: 0; }
+	.mb-context { font: var(--type-caption); color: var(--subtext); background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); line-height: 1.6; }
+	.mb-context strong { color: var(--text); font: var(--type-heading); }
+	.mb-context b { color: var(--text); }
+	.ak-head { display: grid; gap: var(--space-1); padding-bottom: var(--space-4); border-bottom: 1px solid var(--gray); }
+	.ak-head h1 { font: var(--type-title); }
+	.ak-id { font: var(--type-mono); color: var(--subtext); }
+	.ak-state { display: grid; gap: var(--space-3); }
+	.ak-state-label { font: var(--type-caption); color: var(--subtext); text-transform: uppercase; letter-spacing: .06em; }
+	.ak-section { display: grid; gap: var(--space-4); }
+	.ak-section-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); }
+	.ak-section-title { display: flex; align-items: center; gap: var(--space-2); font: var(--type-title); font-size: 1.3rem; margin-bottom: var(--space-2); }
+	.ak-section-desc { font-size: 0.9rem; color: var(--subtext); }
+	.ak-list { display: flex; flex-direction: column; gap: var(--space-3); }
+	.ak-item { background: var(--lighter-background); border: 1px solid var(--dark-gray); border-radius: var(--radius-md); padding: 0.875rem var(--space-4); display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); }
+	.ak-item-info { display: flex; align-items: center; gap: var(--space-3); }
+	.ak-icon { width: 1.25rem; height: 1.25rem; color: var(--primary); flex: none; }
+	.ak-name { font-size: 0.9rem; font-weight: 600; }
+	.ak-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-1); color: var(--subtext); font-size: 0.8rem; }
+	.ak-meta code { font-family: var(--font-mono); color: var(--white); }
+	.ak-actions { display: flex; gap: 0.375rem; align-items: center; }
+	.ak-icon-btn { background: transparent; border: none; border-radius: var(--radius-md); padding: var(--space-2); color: var(--subtext); display: flex; align-items: center; }
+	.ak-icon-btn svg { width: 1rem; height: 1rem; }
+	.ak-btn { display: inline-flex; align-items: center; gap: var(--space-2); font: var(--type-body); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); border: 1px solid var(--gray); background: transparent; color: var(--text); }
+	.ak-btn svg { width: 1rem; height: 1rem; }
+	.ak-btn-primary { background: var(--primary); border-color: var(--primary); color: var(--on-accent); }
+	.ak-btn-danger { color: var(--error); border-color: var(--error-opacity); }
+	.ak-empty { padding: var(--space-6); text-align: center; color: var(--subtext); background: var(--lighter-background); border: 1px solid var(--dark-gray); border-radius: var(--radius-md); }
+	.ak-group { background: var(--lighter-background); border: 1px solid var(--dark-gray); border-radius: var(--radius-md); overflow: hidden; }
+	.ak-group-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--gray); }
+	.ak-group-name { font: var(--type-heading); }
+	.ak-key { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-4); }
+	.ak-key + .ak-key { border-top: 1px solid var(--dark-gray); }
+	.ak-pill { display: inline-block; font: var(--type-caption); padding: 0 var(--space-2); border-radius: var(--radius-xl); background: var(--warning-opacity); color: var(--warning); }
+	.ak-ip { font-family: var(--font-mono); color: var(--white); }
+	.ak-agents { display: grid; gap: var(--space-3); }
+</style>
+</head>
+<body>
+<main class="mb-artboard">
+
+<header class="mb-context">
+	<strong>Darstellungskontext</strong><br>
+	<b>Art:</b> Panel · Abschnitt der Kontoseite<br>
+	<b>Erscheint über:</b> UI-SHELL<br>
+	<b>Auslöser:</b> Konto › Einstellungen › Konto<br>
+	<b>Größe:</b> Abschnitt der Kontoseite<br>
+	<b>Schließen:</b> Einstellungen schließen<br>
+	<b>Tastatur:</b> Tab durchläuft Schaltflächen und Aktionen der Liste; Enter löst aus
+</header>
+
+<div class="ak-head">
+	<h1>UI-API-KEYS</h1>
+	<span class="ak-id">Einstellungen › Konto › API-Schlüssel</span>
+</div>
+
+<div class="ak-section" data-ui-id="UI-API-KEYS-LIST">
+	<div class="ak-section-head">
+		<div>
+			<h2 class="ak-section-title">
+				<svg class="ak-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>
+				API-Schlüssel
+			</h2>
+			<p class="ak-section-desc">Schlüssel mit voller Kontoberechtigung.</p>
+		</div>
+		<span class="ak-btn ak-btn-primary">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+			Hinzufügen
+		</span>
+	</div>
+
+	<section class="ak-state" data-ui-state="default">
+		<span class="ak-state-label">Zustand: default</span>
+		<div class="ak-list">
+			<div class="ak-item">
+				<div class="ak-item-info">
+					<svg class="ak-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+					<div>
+						<h3 class="ak-name">claude-laptop</h3>
+						<p class="ak-meta"><code>outpost_3f9a1c…</code><span>zuletzt heute</span><span>läuft nie ab</span></p>
+					</div>
+				</div>
+				<div class="ak-actions">
+					<span class="ak-icon-btn" title="Löschen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>
+				</div>
+			</div>
+			<div class="ak-item">
+				<div class="ak-item-info">
+					<svg class="ak-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+					<div>
+						<h3 class="ak-name">ci-backup</h3>
+						<p class="ak-meta"><code>outpost_91be07…</code><span>zuletzt vor 3 Tagen</span></p>
+					</div>
+				</div>
+				<div class="ak-actions">
+					<span class="ak-icon-btn" title="Löschen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<section class="ak-state" data-ui-state="empty">
+		<span class="ak-state-label">Zustand: empty</span>
+		<div class="ak-empty"><p>Noch keine API-Schlüssel</p></div>
+	</section>
+</div>
+
+<div class="ak-section" data-ui-id="UI-API-KEYS-AGENTS">
+	<div>
+		<h2 class="ak-section-title">
+			<svg class="ak-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+			Agenten-Schlüssel
+		</h2>
+		<p class="ak-section-desc">Agenten-Schlüssel erreichen nur den MCP-Endpunkt.</p>
+	</div>
+
+	<section class="ak-state" data-ui-state="default">
+		<span class="ak-state-label">Zustand: default</span>
+		<div class="ak-agents">
+			<div class="ak-group">
+				<div class="ak-group-head">
+					<span class="ak-group-name">web01</span>
+					<span class="ak-btn">Bearbeiten</span>
+				</div>
+				<div class="ak-key">
+					<div class="ak-item-info">
+						<svg class="ak-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+						<div>
+							<h3 class="ak-name">Claude Code</h3>
+							<p class="ak-meta"><span>zuletzt vor 5 Min.</span><span>nur <span class="ak-ip">192.168.2.40</span></span></p>
+						</div>
+					</div>
+					<span class="ak-btn ak-btn-danger">Entziehen</span>
+				</div>
+				<div class="ak-key">
+					<div class="ak-item-info">
+						<svg class="ak-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+						<div>
+							<h3 class="ak-name">Codex</h3>
+							<p class="ak-meta"><span>zuletzt gestern</span><span>nur <span class="ak-ip">192.168.2.40</span></span></p>
+						</div>
+					</div>
+					<span class="ak-btn ak-btn-danger">Entziehen</span>
+				</div>
+			</div>
+
+			<div class="ak-group">
+				<div class="ak-group-head">
+					<span class="ak-group-name">nas</span>
+					<span class="ak-btn">Bearbeiten</span>
+				</div>
+				<div class="ak-key">
+					<div class="ak-item-info">
+						<svg class="ak-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+						<div>
+							<h3 class="ak-name">Claude Code</h3>
+							<p class="ak-meta"><span>zuletzt vor 2 Std.</span><span>Bindung gelöst</span><span class="ak-pill">von überall</span></p>
+						</div>
+					</div>
+					<span class="ak-btn ak-btn-danger">Entziehen</span>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<section class="ak-state" data-ui-state="empty">
+		<span class="ak-state-label">Zustand: empty</span>
+		<div class="ak-empty"><p>Noch kein Agenten-Zugang. Einrichten über das Kontextmenü eines Servers.</p></div>
+	</section>
+</div>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI-AGENT-ACCESS — Agenten-Zugang</title>
+<link rel="stylesheet" href="./tokens.css">
+<style>
+	.mb-artboard { background: var(--background); color: var(--text); font: var(--type-body); min-height: 100vh; box-sizing: border-box; }
+	.mb-artboard *, .mb-artboard *::before, .mb-artboard *::after { box-sizing: border-box; }
+	.mb-context { font: var(--type-caption); color: var(--subtext); background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-4); line-height: 1.6; }
+	.mb-context strong { color: var(--text); font: var(--type-heading); }
+	.mb-context b { color: var(--text); }
+	.backdrop { background: var(--dialog-background); padding: var(--space-8) var(--space-4); display: flex; justify-content: center; }
+	.dialog { width: 100%; max-width: 40rem; background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); overflow: hidden; }
+	.dialog-head { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--gray); }
+	.dialog-head h1 { margin: 0; font: var(--type-title); }
+	.close { width: 2rem; height: 2rem; display: grid; place-items: center; border-radius: var(--radius-sm); color: var(--subtext); background: transparent; border: 0; font: var(--type-heading); }
+	.dialog-body { padding: var(--space-4); display: grid; gap: var(--space-6); }
+
+	.element { display: grid; gap: var(--space-2); }
+	.element > header { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2); font: var(--type-caption); color: var(--subtext); }
+	.element > header code { font: var(--type-mono); font-size: 0.75rem; color: var(--primary); }
+	.element > header .type { padding: 0 var(--space-1); border: 1px solid var(--gray); border-radius: var(--radius-sm); }
+	.element > header .name { color: var(--text); font: var(--type-heading); }
+	.state { position: relative; border: 1px dashed var(--gray-strong); border-radius: var(--radius-md); padding: var(--space-3); padding-top: var(--space-4); display: grid; gap: var(--space-3); }
+	.state::before { content: attr(data-ui-state); position: absolute; top: 0; left: var(--space-3); transform: translateY(-50%); padding: 0 var(--space-1); background: var(--lighter-background); font: var(--type-mono); font-size: 0.6875rem; color: var(--subtext); }
+	.state.is-error::before { color: var(--error); }
+	.state.is-success::before { color: var(--success); }
+
+	.label { font: var(--type-caption); color: var(--subtext); }
+	.help { font: var(--type-caption); color: var(--subtext); }
+	.help.error { color: var(--error); }
+	.mono { font: var(--type-mono); }
+
+	.agent-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--gray); border-radius: var(--radius-sm); background: var(--background); }
+	.agent-row .icon { flex: none; width: 1rem; height: 1rem; color: var(--subtext); }
+	.agent-row .main { flex: 1; display: grid; gap: 0; min-width: 0; }
+	.agent-row .meta { font: var(--type-mono); font-size: 0.75rem; color: var(--subtext); }
+	.agent-row.is-loading { opacity: .6; }
+	.skeleton { height: 0.875rem; border-radius: var(--radius-sm); background: var(--gray); }
+	.skeleton.w1 { width: 8rem; } .skeleton.w2 { width: 16rem; background: var(--dark-gray); }
+	.empty-box { padding: var(--space-3); border: 1px dashed var(--gray-strong); border-radius: var(--radius-sm); color: var(--subtext); text-align: center; }
+
+	.check { display: flex; align-items: center; gap: var(--space-2); color: var(--text); }
+	.check input { accent-color: var(--primary); width: 1rem; height: 1rem; margin: 0; }
+	.checks { display: flex; gap: var(--space-6); }
+	.field { display: grid; gap: var(--space-1); }
+	.row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: 1.75rem; }
+	.ip-detect { display: grid; gap: 0; }
+	.toggle { width: 2.25rem; height: 1.25rem; border-radius: var(--radius-xl); background: var(--gray); position: relative; flex: none; }
+	.toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: calc(1.25rem - 4px); height: calc(1.25rem - 4px); border-radius: 50%; background: var(--subtext); }
+	.toggle.on { background: var(--primary); }
+	.toggle.on::after { left: auto; right: 2px; background: var(--white); }
+	.input { width: 100%; height: 2.25rem; padding: 0 var(--space-2); background: var(--background); color: var(--text); border: 1px solid var(--gray); border-radius: var(--radius-sm); font: var(--type-mono); outline: none; }
+	.input.is-error { border-color: var(--error); background: var(--error-opacity); }
+	.actions { display: flex; gap: var(--space-2); justify-content: flex-end; align-items: center; }
+	.btn { height: 2.25rem; padding: 0 var(--space-4); border-radius: var(--radius-sm); font: var(--type-body); font-weight: 600; border: 1px solid transparent; display: inline-flex; align-items: center; gap: var(--space-2); }
+	.btn.primary { background: var(--primary); color: var(--white); }
+	.btn.primary[disabled] { opacity: .45; }
+	.btn.ghost { background: transparent; color: var(--subtext); border-color: var(--gray); }
+	.btn.small { height: 2rem; padding: 0 var(--space-3); }
+	.kbd { font: var(--type-caption); color: var(--subtext); }
+
+	.result-row { display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--gray); border-left-width: 3px; border-radius: var(--radius-sm); background: var(--background); }
+	.result-row.ok { border-left-color: var(--success); }
+	.result-row.fail { border-left-color: var(--error); }
+	.result-head { display: flex; align-items: baseline; gap: var(--space-2); font: var(--type-heading); }
+	.result-head .status { font: var(--type-caption); color: var(--subtext); }
+	.result-row.ok .status { color: var(--success); }
+	.result-row.fail .status { color: var(--error); }
+	.cmd { display: flex; align-items: flex-start; gap: var(--space-2); }
+	.cmd pre { flex: 1; margin: 0; padding: var(--space-2) var(--space-3); background: var(--terminal); border: 1px solid var(--gray); border-radius: var(--radius-sm); font: var(--type-mono); font-size: 0.75rem; color: var(--text); white-space: pre-wrap; word-break: break-all; }
+	.notice { font: var(--type-caption); color: var(--warning); }
+	.confirm { display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--gray); border-left: 3px solid var(--warning); border-radius: var(--radius-sm); background: var(--background); }
+	.confirm p { margin: 0; }
+</style>
+</head>
+<body>
+<main class="mb-artboard">
+
+<header class="mb-context">
+	<strong>Darstellungskontext</strong><br>
+	<b>Art:</b> Dialog, modal, mit Backdrop (--dialog-background) · erscheint über UI-SERVERS<br>
+	<b>Auslöser:</b> Kontextmenü Server › Agenten-Zugang… (nur SSH); Bearbeiten in UI-API-KEYS-AGENTS<br>
+	<b>Größe:</b> mittig, 40rem, max 85vh · <b>Schließen:</b> Esc, Backdrop, Schließen — nicht, während die Einrichtung läuft<br>
+	<b>Tastatur:</b> Ctrl+Enter Einrichten
+</header>
+
+<div class="backdrop">
+	<div class="dialog" role="dialog" aria-labelledby="dlg-title" data-ui-id="UI-AGENT-ACCESS">
+
+		<div class="dialog-head">
+			<h1 id="dlg-title">Agenten-Zugang — web01</h1>
+			<button class="close" type="button" aria-label="Schließen">×</button>
+		</div>
+
+		<div class="dialog-body">
+
+				<div class="element" data-ui-id="UI-AGENT-ACCESS-KEYS">
+					<header><code>UI-AGENT-ACCESS-KEYS</code><span class="type">list</span><span class="name">Agenten auf diesem Server</span></header>
+
+					<section class="state" data-ui-state="default">
+						<div class="agent-row">
+							<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+							<div class="main">
+								<span>Claude Code</span>
+								<span class="meta">angelegt 09.10. · zuletzt vor 5 Min. · nur 192.168.2.40</span>
+							</div>
+							<button class="btn ghost small" type="button">Entziehen</button>
+						</div>
+					</section>
+
+					<section class="state" data-ui-state="empty">
+						<div class="empty-box">Noch kein Agent auf diesem Server eingerichtet.</div>
+					</section>
+
+					<section class="state" data-ui-state="loading" aria-busy="true">
+						<div class="agent-row is-loading">
+							<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+							<div class="main"><span class="skeleton w1"></span><span class="skeleton w2"></span></div>
+						</div>
+					</section>
+
+					<section class="state" data-ui-state="selected">
+						<div class="confirm" role="alertdialog" aria-label="Zugang entziehen">
+							<p>Zugang von Claude Code auf web01 entziehen? Der Agent verliert sofort den Zugriff.</p>
+							<div class="actions"><button class="btn ghost small" type="button">Abbrechen</button><button class="btn primary small" type="button">Entziehen</button></div>
+						</div>
+					</section>
+
+					<section class="state is-error" data-ui-state="error">
+						<div class="agent-row">
+							<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+							<div class="main">
+								<span>Claude Code</span>
+								<span class="meta">angelegt 09.10. · zuletzt vor 5 Min. · nur 192.168.2.40</span>
+							</div>
+							<button class="btn ghost small" type="button">Entziehen</button>
+						</div>
+						<span class="help error" role="alert">Entziehen fehlgeschlagen.</span>
+					</section>
+				</div>
+
+				<div class="element" data-ui-id="UI-AGENT-ACCESS-SETUP">
+					<header><code>UI-AGENT-ACCESS-SETUP</code><span class="type">form</span><span class="name">Einrichten</span></header>
+
+					<section class="state" data-ui-state="default">
+						<div class="checks">
+							<label class="check"><input type="checkbox" checked> Claude Code</label>
+							<label class="check"><input type="checkbox" checked> Codex</label>
+						</div>
+						<div class="field">
+							<label class="label" for="s-cidr">Zusätzliche Adressbereiche</label>
+							<input class="input" id="s-cidr" value="10.0.0.0/24">
+						</div>
+						<div class="actions"><span class="kbd">Ctrl+Enter</span><button class="btn primary" type="button">Einrichten</button></div>
+					</section>
+
+					<section class="state" data-ui-state="loading" aria-busy="true">
+						<div class="checks">
+							<label class="check"><input type="checkbox" checked disabled> Claude Code</label>
+							<label class="check"><input type="checkbox" checked disabled> Codex</label>
+						</div>
+						<div class="field">
+							<label class="label" for="l-cidr">Zusätzliche Adressbereiche</label>
+							<input class="input" id="l-cidr" value="10.0.0.0/24" disabled>
+						</div>
+						<div class="actions"><button class="btn primary" type="button" disabled>Richte ein …</button></div>
+					</section>
+
+					<section class="state is-error" data-ui-state="error">
+						<div class="checks">
+							<label class="check"><input type="checkbox" checked> Claude Code</label>
+							<label class="check"><input type="checkbox" checked> Codex</label>
+						</div>
+						<div class="field">
+							<label class="label" for="e-cidr">Zusätzliche Adressbereiche</label>
+							<input class="input is-error" id="e-cidr" value="10.0.0.0/33" aria-invalid="true" aria-describedby="e-cidr-help">
+							<span class="help error" id="e-cidr-help" role="alert">Ungültiger Adressbereich.</span>
+						</div>
+						<div class="actions"><span class="kbd">Ctrl+Enter</span><button class="btn primary" type="button">Einrichten</button></div>
+					</section>
+
+					<section class="state" data-ui-state="disabled">
+						<div class="checks">
+							<label class="check"><input type="checkbox" checked disabled> Claude Code</label>
+							<label class="check"><input type="checkbox" checked disabled> Codex</label>
+						</div>
+						<div class="field">
+							<label class="label" for="d-cidr">Zusätzliche Adressbereiche</label>
+							<input class="input" id="d-cidr" value="" disabled>
+						</div>
+						<span class="notice">Outpost-Adresse für Agenten fehlt — in Einstellungen › Vault setzen.</span>
+						<div class="actions"><button class="btn primary" type="button" disabled>Einrichten</button></div>
+					</section>
+				</div>
+
+				<div class="element" data-ui-id="UI-AGENT-ACCESS-IPBIND">
+					<header><code>UI-AGENT-ACCESS-IPBIND</code><span class="type">toggle</span><span class="name">Nur von der IP dieses Servers</span></header>
+
+					<section class="state" data-ui-state="default">
+						<div class="row">
+							<div class="ip-detect">
+								<span>Nur von der IP dieses Servers</span>
+								<span class="help">an · <span class="mono">192.168.2.40</span></span>
+							</div>
+							<span class="toggle on" role="switch" aria-checked="true" aria-label="Nur von der IP dieses Servers"></span>
+						</div>
+					</section>
+
+					<section class="state" data-ui-state="selected">
+						<div class="row">
+							<div class="ip-detect">
+								<span>Nur von der IP dieses Servers</span>
+								<span class="help">aus — von überall</span>
+							</div>
+							<span class="toggle" role="switch" aria-checked="false" aria-label="Nur von der IP dieses Servers"></span>
+						</div>
+					</section>
+				</div>
+
+				<div class="element" data-ui-id="UI-AGENT-ACCESS-RESULT">
+					<header><code>UI-AGENT-ACCESS-RESULT</code><span class="type">feedback</span><span class="name">Ergebnis</span></header>
+
+					<section class="state" data-ui-state="default">
+						<div class="result-row ok">
+							<div class="result-head"><span>Claude Code</span><span class="status">eingerichtet</span></div>
+							<span class="help">Claude Code neu starten, dann /mcp.</span>
+						</div>
+						<div class="result-row fail">
+							<div class="result-head"><span>Codex</span><span class="status">codex nicht gefunden</span></div>
+							<div class="cmd">
+								<pre>codex mcp add outpost --url http://192.168.2.10:6989/api/mcp --bearer-token-env-var OUTPOST_MCP_TOKEN
+export OUTPOST_MCP_TOKEN=outpost_••••</pre>
+								<button class="btn ghost small" type="button">Kopieren</button>
+							</div>
+							<span class="notice">Der Key ist nur jetzt sichtbar. Schließen ohne Übernahme löscht ihn.</span>
+						</div>
+					</section>
+
+					<section class="state" data-ui-state="empty">
+						<div class="empty-box">erscheint erst nach dem Einrichten</div>
+					</section>
+
+					<section class="state is-success" data-ui-state="success">
+						<div class="result-row ok">
+							<div class="result-head"><span>Claude Code</span><span class="status">eingerichtet</span></div>
+							<span class="help">Eingerichtet. Claude Code neu starten, dann /mcp.</span>
+						</div>
+					</section>
+
+					<section class="state is-error" data-ui-state="error">
+						<div class="result-row fail">
+							<div class="result-head"><span>Codex</span><span class="status">gescheitert</span></div>
+							<span class="help error">codex nicht gefunden. Befehl kopieren und auf dem Server ausführen.</span>
+							<div class="cmd">
+								<pre>codex mcp add outpost --url http://192.168.2.10:6989/api/mcp --bearer-token-env-var OUTPOST_MCP_TOKEN
+export OUTPOST_MCP_TOKEN=outpost_••••</pre>
+								<button class="btn ghost small" type="button">Kopieren</button>
+							</div>
+							<span class="notice">Der Key ist nur jetzt sichtbar. Schließen ohne Übernahme löscht ihn.</span>
+						</div>
+					</section>
+				</div>
+
+		</div>
+	</div>
+</div>
+
+</main>
+</body>
+</html>

@@ -110,12 +110,15 @@ heißt bei ihnen „alle Server der Organisation“.
 | Spalte | Typ | Bemerkung |
 |---|---|---|
 | `kind` | STRING | `account` (Bestand, Standard) oder `agent` |
+| `pending` | BOOLEAN | nur bei `agent`; Standard `true`, siehe Einrichtung |
 | `entryId` | INTEGER null | nur bei `agent`; CASCADE |
 | `agentType` | STRING null | `claude`, `codex` |
 | `ipBinding` | BOOLEAN | Standard `true` |
 | `allowedCidrs` | JSON null | zusätzliche Adressbereiche |
 
-Bestehende Keys bekommen `kind = account` und verhalten sich unverändert.
+Bestehende Keys bekommen `kind = account` und verhalten sich unverändert. Die bestehende
+Liste, das Löschen und die Obergrenze von 50 in `server/controllers/apiKey.js` gelten nur für
+`kind = account`.
 
 ### Berechtigungen (`server/permissions/registry.js`)
 
@@ -195,8 +198,16 @@ den Eintrag). Auswahl Claude Code und/oder Codex.
      in die Befehle gesetzt.
 3. `<url>` = Einstellung „Outpost-Adresse für Agenten“ + `/api/mcp`.
 4. Scheitert ein Schritt (CLI fehlt, Exec-Fehler), zeigt der Dialog den fertigen Befehl zum
-   Kopieren. Der Key wird nur in diesem Dialog angezeigt; schließt der Nutzer ihn, ohne den
-   Key übernommen oder kopiert zu haben, wird er gelöscht.
+   Kopieren. Der Key wird nur in diesem Dialog angezeigt.
+5. Ein neuer Agenten-Key ist zunächst `pending`. Er wird endgültig, wenn die automatische
+   Einrichtung gelingt oder der Nutzer den Befehl kopiert (`POST /agent-keys/:id/confirm`).
+   Schließt der Nutzer den Dialog vorher, löscht der Client ihn (`DELETE /agent-keys/:id`);
+   was danach noch `pending` ist, löscht der Server nach 15 Minuten. Ein `pending`-Key wird von
+   `authenticate` nicht akzeptiert.
+6. Ist „Outpost-Adresse für Agenten“ nicht gesetzt (Standard: leer), ist Einrichten gesperrt
+   mit Verweis auf Einstellungen › Vault.
+
+Entziehen fragt vorher im Bestätigungsdialog nach.
 
 „Zugang entziehen“ löscht den Key und führt danach `claude mcp remove --scope user outpost`
 bzw. `codex mcp remove outpost` und das Entfernen von `~/.codex/outpost.env` aus; schlägt das
@@ -256,10 +267,11 @@ Log oder Audit.
 
 ## Oberfläche
 
-- **Vault-Seite** als eigener Bereich der Navigation (neben Snippets), nur sichtbar, wenn der
-  Vault eingeschaltet ist und das Konto `vault.use` hat oder Mitglied einer Organisation ist.
-  Liste gruppiert nach Persönlich und Organisationen, Filter nach Typ, Suche; je Zeile Typ,
-  Name, Benutzername/Host, Kurzform der Geltung, Freigabe-Kennzeichen, zuletzt genutzt.
+- **Vault-Seite** als eigener Bereich der Navigation (neben Snippets), nur sichtbar laut
+  `GET /api/vault/available` (`canUse`). Zweispaltig: links die Liste mit Reitern je Besitzer
+  (Persönlich, Organisationen), Filter nach Typ, Suche; je Zeile Typ, Name, Benutzername/Host,
+  Freigabe-Kennzeichen. Rechts die Details: Angaben, geheime Felder, Geltung, Freigabe und
+  zuletzt genutzt, Bearbeiten/Löschen.
 - **Eintrag-Dialog**: Felder je Typ; geheime Felder beim Bearbeiten leer mit Hinweis
   „gespeichert – leer lassen, um beizubehalten“ (der Wert wird nicht an den Client geschickt);
   Bereich „Gilt für“ mit Servern, Ordnern, Tags (nur persönlich) und „alle Server“; Schalter
@@ -287,10 +299,21 @@ Unter `/api/vault`, nur Login-Session oder Konto-Key (Agenten-Keys sind ausgesch
 - `GET /items`, `POST /items`, `PATCH /items/:id`, `DELETE /items/:id`
 - `GET /items/:id/secrets/:field` (Reveal)
 - `POST /approvals/:id`
-- `GET /agent-keys?entryId=`, `POST /agent-keys` (Einrichtung), `DELETE /agent-keys/:id`
-  (Entziehen)
+- `GET /agent-keys` (alle Agenten-Keys des Kontos; mit `?entryId=` nur die eines Servers),
+  `POST /agent-keys` (Einrichtung), `POST /agent-keys/:id/confirm`, `DELETE /agent-keys/:id`
+  (Entziehen bzw. Verwerfen)
+- `GET /settings`, `PATCH /settings` (Recht `settings.vault`): `{ keyStatus: "active" |
+  "missing" | "mismatch", agentUrl }`; `agentUrl` muss eine http- oder https-Adresse sein.
+  `GET /settings` antwortet auch bei ausgeschaltetem Vault, damit die Seite den Grund zeigt.
 
 Ist der Vault ausgeschaltet, antworten alle mit `404`.
+
+Ausnahme `GET /api/vault/available`, nach dem Muster von `GET /api/browser/available`: antwortet
+immer `200` mit `{ enabled, canUse, canManageOrgs: [orgId…], canProvision }`. `enabled` = Vault
+eingeschaltet; `canUse` = `vault.use` oder Mitglied mindestens einer Organisation (steuert den
+Bereich in der Navigation); `canProvision` = Vault eingeschaltet und `vault.use` oder Mitglied
+(steuert „Agenten-Zugang…“ im Server-Kontextmenü). Ist der Vault aus, sind alle Rechte-Felder
+`false` bzw. leer.
 
 ## Betrieb
 
@@ -329,8 +352,8 @@ Neue Aktionen: `vault.item_create`, `vault.item_update`, `vault.item_delete`, `v
 
 Budget nach Verhalten; Kernlogik der Sichtbarkeit test-first.
 
-1. Agenten-Key wird auf jeder Route außer `/api/mcp` abgewiesen (HTTP über die
-   Middleware).
+1. Agenten-Key wird auf jeder Route außer `/api/mcp` abgewiesen, ein `pending`-Key auch
+   dort (HTTP über die Middleware).
 2. IP-Bindung: eigene IP ok, fremde abgewiesen, CIDR ok, gelöste Bindung ok.
 3. Reveal: Besitzer persönlich ok, `vault.reveal` bei Organisation ok, Mitglied ohne Recht
    `403`; jeder Abruf erzeugt Audit.

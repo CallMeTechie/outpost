@@ -126,6 +126,42 @@ Labelgröße — `Unplug` für getrennt, ein sich drehendes `RotateCw` für
 „verbindet neu“ (Drehung entfällt bei `prefers-reduced-motion`). Keine
 zusätzliche Farbe: Gedämpft heißt „gerade nicht nutzbar“, wie überall.
 
+**Neu in Runde 11 — Vault.** Die Vault-Seite ist zweispaltig wie ein
+Passwortmanager, aber im Charakter dieser Oberfläche: links die Liste auf
+`--lighter-background`, mindestens 20 rem, höchstens 26 rem breit; rechts die
+Details auf `--background`. Unter `$mobile` nur eine Spalte: erst die Liste,
+ein Tipp öffnet die Details mit Zurück-Pfeil im Kopf. Listenzeilen sind
+dicht wie die Server-Liste: Typ-Icon, Name in `--type-body`, darunter
+Benutzer oder Host in `--type-mono` und `--subtext`; die gewählte Zeile trägt
+`--primary-opacity`. Typ-Icons (Lucide, Labelgröße, `--subtext`, nie farbig):
+Login `LogIn`, API-Key `KeyRound`, SSH `SquareTerminal`, Datenbank
+`Database`, Sonstiges `Lock`.
+
+Geheime Felder stehen immer als genau zwölf Punkte in `--type-mono` — gleich
+lang, egal wie lang der Wert ist, damit die Länge nichts verrät. Daneben zwei
+Icon-Buttons `Eye` (Anzeigen) und `Copy` (Kopieren), nur bei Reveal-Recht;
+ohne das Recht steht dort in `--subtext` „nur für Agenten nutzbar“. Ein
+angezeigter Wert verbirgt sich nach 30 Sekunden und beim Verlassen des
+Eintrags wieder. Nirgends erscheinen Teile eines Werts (keine letzten vier
+Zeichen).
+
+Die Freigabe-Karte (`UI-VAULT-APPROVAL-CARD`) ist das einzige Element, das über
+allen Seiten schwebt, ohne modal zu sein: unten rechts, Abstand
+`--space-4`, 24 rem breit, `--lighter-background`, `--radius-lg`,
+`--shadow-xl`, links ein 3 px breiter Rand in `--warning` — eine
+Sicherheitsentscheidung steht an, nicht ein Fehler. Inhalt: Kopfzeile
+„Freigabe angefordert“ in `--type-heading`, darunter Agent und Server, Eintrag
+und Ziel in `--type-mono`, dann die Knopfzeile *Einmal* (primär), *Für diese
+Sitzung*, *Ablehnen*. Am unteren Rand läuft die verbleibende Zeit als 2 px
+hoher Balken in `--subtext` ab, daneben die Sekunden als Text; ohne Bewegung
+bei `prefers-reduced-motion`. Mehrere Anfragen stapeln sich nach oben, die
+älteste unten. Unter `$mobile` liegt die Karte in voller Breite über der
+unteren Navigation.
+
+Agenten werden mit ihrem Produktnamen in Klartext benannt („Claude Code“,
+„Codex“), ohne eigenes Icon und ohne KI-Symbolik. Agenten-Keys tragen das
+Icon `KeyRound` wie API-Keys.
+
 ## Copy und Ton
 
 Knapp, technisch, keine Erklärtexte im Normalbetrieb. **Ausnahme Leer- und
@@ -163,6 +199,9 @@ Trefferflächen ≥ 44×44 px in der Tastenleiste und auf Touch.
 - Nichts, was nur per Maus geht.
 - Keine zweite Akzentfarbe; Farbe nur als Bedeutung.
 - Kein Onboarding-Overlay, keine Marketing-Leere im Leerzustand.
+- Vault: keine Kacheln mit Favicons, kein Sicherheits-Score, kein
+  Passwortgenerator, keine farbigen Ordner. Kein Wert und kein Teil davon im
+  Klartext ohne bewussten Klick. Keine Sparkle- oder Roboter-Icons für Agenten.
 
 ## Token-Quellen für `/design-verify`
 

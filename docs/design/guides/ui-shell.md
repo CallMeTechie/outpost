@@ -1,6 +1,6 @@
 # Rahmen — Umsetzungsanleitung (UI-SHELL)
 
-Artboard: docs/design/mockups/ui-shell.html · Manifest-Revision: 2
+Artboard: docs/design/mockups/ui-shell.html · Manifest-Revision: 11
 
 Bestehend und vollständig gebaut. Diese Anleitung schreibt fest, was bisher nur im Code stand — der Screen wurde am 2026-09-07 nachgezeichnet, nachdem Logo, Icons und Größen ohne Artboard geändert worden waren.
 
@@ -27,6 +27,9 @@ Bestehend und vollständig gebaut. Diese Anleitung schreibt fest, was bisher nur
 - `data-ui-id` an `<nav>`, nicht an den einzelnen Einträgen — geprüft wird, dass die Bereiche vollständig und in dieser Reihenfolge erscheinen.
 - Quelle ist `getSidebarNavigation(t)`, gefiltert über `hasPermission(item.permission)`. Audit fehlt ohne `AUDIT_VIEW`, und das ist richtig so, kein Ladefehler.
 - Browser ist kein Ort, sondern eine Aktion: der Eintrag führt nach `/servers?openBrowser=1`, dort öffnet sich ein neuer Browser-Tab, und er wird nie als aktiv hervorgehoben. Er fehlt, solange `GET /api/browser/available` nicht `enabled: true` liefert.
+- Vault ist ein Bereich (Route `/vault`) zwischen Snippets und Browser; Reihenfolge laut Manifest: Server · Monitoring · Snippets · Vault · Browser · Audit. Er erscheint nur, wenn der Vault eingeschaltet ist (`VAULT_KEY` gesetzt und gültig) **und** das Konto `vault.use` hat oder Mitglied einer Organisation ist. Fehlt er, ist das richtig so, kein Ladefehler.
+- Bedingung wie bei Browser: Eintrag `key: "vault"` in `getSidebarNavigation(t)` (`client/src/common/utils/navigationConfig.jsx`, nach Snippets), im Hook `useSidebarNavigation` (`client/src/common/hooks/useSidebarNavigation.js`) zusätzlich zum Rechtefilter ausgeblendet, solange die Vault-Verfügbarkeit nicht bejaht ist. Quelle ist `GET /api/vault/available` → `canUse` (`vault.use` oder Mitglied einer Organisation; bei ausgeschaltetem Vault `false`). Muster ist `loadBrowserAvailable` im selben Hook: eine geteilte Anfrage je Konto, Fehler zählt als „nicht verfügbar"; Filter `item.key !== "vault" || vaultCanUse`. Das Recht `vault.use` allein reicht nicht (Mitgliedschaft genügt auch ohne), deshalb entscheidet die Antwort des Servers, nicht `item.permission`.
+- Icon `KeyRound` (Lucide, Schlüssel) laut Artboard `ui-shell.html`; Titel über `common.sidebar.vault`.
 - Icon 2 rem in einer Fläche von 3,25 rem, Radius 1 rem, Abstand 0,75 rem. Aktiv: `--dark-gray` Fläche, 1 px `--gray` Rand, Icon in `--primary`.
 - Die Icons kommen aus `lucide-react`, nicht aus `@mdi/js`. Neue Bereiche nehmen ebenfalls Lucide; MDI bleibt allein den Marken- und Systemlogos vorbehalten (siehe `client/src/common/components/Icon/Icon.jsx`).
 
@@ -43,6 +46,7 @@ Bestehend und vollständig gebaut. Diese Anleitung schreibt fest, was bisher nur
 ### UI-SHELL-MOBILE-NAV
 - `data-ui-id` an `<nav class="mobile-nav">`. Unter 768 px sichtbar, darüber `display: none`; die seitliche Leiste verhält sich genau umgekehrt.
 - Dieselben Bereiche wie `UI-SHELL-NAV`, hier mit Text unter dem Icon.
+- Vault steht auch hier zwischen Snippets und Browser, mit Icon `KeyRound` und Beschriftung „Vault", unter denselben Bedingungen — keine zweite Prüfung, die Leiste liest die gefilterte Liste aus `useSidebarNavigation`.
 - Ein Tipp auf den **bereits offenen** Bereich navigiert nicht, sondern sendet dessen `toggleEvent` — bei Server klappt das die Serverliste als Schublade auf. Das ist die einzige Stelle, an der ein Navigationseintrag zwei Bedeutungen hat.
 
 ## Ausdrücklich nicht

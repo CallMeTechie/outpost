@@ -1,6 +1,6 @@
 # Servers — Arbeitsfläche — Umsetzungsanleitung (UI-SERVERS)
 
-Artboard: docs/design/mockups/ui-servers.html · Manifest-Revision: 7
+Artboard: docs/design/mockups/ui-servers.html · Manifest-Revision: 11
 
 Diese Seite existiert bereits (`client/src/pages/Servers/Servers.jsx`). Die
 Anleitung schreibt den Bestand fest und fügt genau ein neues Verhalten hinzu:
@@ -34,7 +34,9 @@ den Fokus-Modus. Nichts wird neu gebaut, was es gibt.
 
 ### UI-SERVERS-LIST-MENU — Kontextmenü Server
 - `data-ui-id="UI-SERVERS-LIST-MENU"` am `ContextMenu`-Container der Liste.
-- Einträge in dieser Reihenfolge: Verbinden · SFTP öffnen · Notizen · — · Bearbeiten · Duplizieren · Session beitreten · — · Löschen (destruktiv, `--error`, mit `ActionConfirmDialog`). Port weiterleiten steht nur in der Desktop-App (Tauri) und rendert im Web-Build nicht.
+- Einträge in dieser Reihenfolge: Verbinden · SFTP öffnen · Notizen · — · Bearbeiten · Duplizieren · Session beitreten · Agenten-Zugang… · — · Löschen (destruktiv, `--error`, mit `ActionConfirmDialog`). Port weiterleiten steht nur in der Desktop-App (Tauri) und rendert im Web-Build nicht.
+- „Agenten-Zugang…" (Icon `KeyRound`) steht unmittelbar vor Löschen, nur bei SSH-Einträgen (`server?.protocol === "ssh"`) und nur, wenn `GET /api/vault/available` → `canProvision` wahr ist; sonst rendert der Eintrag nicht. Er öffnet den Dialog `UI-AGENT-ACCESS` (Agenten-Keys dieses Servers). Stelle im Code: `ServerList.jsx`, Zweig `contextClickedType === "server-object"` im `ContextMenu`, im Block mit Bearbeiten/Duplizieren/Tags vor dem Trenner und `servers.contextMenu.deleteServer`. Protokollabhängig wird dort heute per `server?.protocol === "ssh"` bedingt gerendert (SFTP öffnen, Port weiterleiten, Skripte), Vorbild ist also dieselbe Form.
+- Vault-Schalter: `canProvision` aus `GET /api/vault/available` (Vault eingeschaltet und `vault.use` oder Organisationsmitglied), geladen nach dem Muster von `loadBrowserAvailable` in `client/src/common/hooks/useSidebarNavigation.js` (eine geteilte Anfrage je Konto, Fehler zählt als `false`).
 - Zweitweg: jede Aktion hat auch eine Taste (bestehende i18n-Schlüssel `servers.contextMenu.*` beibehalten).
 
 ### UI-SERVERS-TABS — Sessions

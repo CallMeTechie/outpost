@@ -2,7 +2,7 @@
 <html lang="de" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<title>outpost — Mockups (Revision 7)</title>
+<title>outpost — Mockups (Revision 11)</title>
 <link rel="stylesheet" href="./tokens.css">
 <style>
 .mb-page { font: var(--type-body, 500 0.875rem/1.45 system-ui, sans-serif); color: var(--text, #eee); background: var(--background, #111); margin: 0; padding: var(--space-8, 2rem); }
@@ -18,6 +18,116 @@
 .mb-embed { border: 1px solid var(--gray, #333); border-radius: var(--radius-lg, .75rem); overflow: hidden; margin: 1rem 0 0; }
 .mb-embed-label { font: var(--type-caption, 500 .75rem system-ui); color: var(--subtext, #aaa); padding: .4rem .75rem; background: var(--lighter-background, #1a1a1a); border-bottom: 1px solid var(--gray, #333); }
 .mb-toc { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; }
+</style>
+<style>
+/* ui-agent-access */
+#ab-ui-agent-access .mb-artboard{ background: var(--background); color: var(--text); font: var(--type-body); min-height: 100vh; box-sizing: border-box; }
+#ab-ui-agent-access .mb-artboard *, #ab-ui-agent-access .mb-artboard *::before, #ab-ui-agent-access .mb-artboard *::after{ box-sizing: border-box; }
+#ab-ui-agent-access .mb-context{ font: var(--type-caption); color: var(--subtext); background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-4); line-height: 1.6; }
+#ab-ui-agent-access .mb-context strong{ color: var(--text); font: var(--type-heading); }
+#ab-ui-agent-access .mb-context b{ color: var(--text); }
+#ab-ui-agent-access .backdrop{ background: var(--dialog-background); padding: var(--space-8) var(--space-4); display: flex; justify-content: center; }
+#ab-ui-agent-access .dialog{ width: 100%; max-width: 40rem; background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); overflow: hidden; }
+#ab-ui-agent-access .dialog-head{ display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--gray); }
+#ab-ui-agent-access .dialog-head h1{ margin: 0; font: var(--type-title); }
+#ab-ui-agent-access .close{ width: 2rem; height: 2rem; display: grid; place-items: center; border-radius: var(--radius-sm); color: var(--subtext); background: transparent; border: 0; font: var(--type-heading); }
+#ab-ui-agent-access .dialog-body{ padding: var(--space-4); display: grid; gap: var(--space-6); }
+#ab-ui-agent-access .element{ display: grid; gap: var(--space-2); }
+#ab-ui-agent-access .element > header{ display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2); font: var(--type-caption); color: var(--subtext); }
+#ab-ui-agent-access .element > header code{ font: var(--type-mono); font-size: 0.75rem; color: var(--primary); }
+#ab-ui-agent-access .element > header .type{ padding: 0 var(--space-1); border: 1px solid var(--gray); border-radius: var(--radius-sm); }
+#ab-ui-agent-access .element > header .name{ color: var(--text); font: var(--type-heading); }
+#ab-ui-agent-access .state{ position: relative; border: 1px dashed var(--gray-strong); border-radius: var(--radius-md); padding: var(--space-3); padding-top: var(--space-4); display: grid; gap: var(--space-3); }
+#ab-ui-agent-access .state::before{ content: attr(data-ui-state); position: absolute; top: 0; left: var(--space-3); transform: translateY(-50%); padding: 0 var(--space-1); background: var(--lighter-background); font: var(--type-mono); font-size: 0.6875rem; color: var(--subtext); }
+#ab-ui-agent-access .state.is-error::before{ color: var(--error); }
+#ab-ui-agent-access .state.is-success::before{ color: var(--success); }
+#ab-ui-agent-access .label{ font: var(--type-caption); color: var(--subtext); }
+#ab-ui-agent-access .help{ font: var(--type-caption); color: var(--subtext); }
+#ab-ui-agent-access .help.error{ color: var(--error); }
+#ab-ui-agent-access .mono{ font: var(--type-mono); }
+#ab-ui-agent-access .agent-row{ display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--gray); border-radius: var(--radius-sm); background: var(--background); }
+#ab-ui-agent-access .agent-row .icon{ flex: none; width: 1rem; height: 1rem; color: var(--subtext); }
+#ab-ui-agent-access .agent-row .main{ flex: 1; display: grid; gap: 0; min-width: 0; }
+#ab-ui-agent-access .agent-row .meta{ font: var(--type-mono); font-size: 0.75rem; color: var(--subtext); }
+#ab-ui-agent-access .agent-row.is-loading{ opacity: .6; }
+#ab-ui-agent-access .skeleton{ height: 0.875rem; border-radius: var(--radius-sm); background: var(--gray); }
+#ab-ui-agent-access .skeleton.w1{ width: 8rem; }
+#ab-ui-agent-access .skeleton.w2{ width: 16rem; background: var(--dark-gray); }
+#ab-ui-agent-access .empty-box{ padding: var(--space-3); border: 1px dashed var(--gray-strong); border-radius: var(--radius-sm); color: var(--subtext); text-align: center; }
+#ab-ui-agent-access .check{ display: flex; align-items: center; gap: var(--space-2); color: var(--text); }
+#ab-ui-agent-access .check input{ accent-color: var(--primary); width: 1rem; height: 1rem; margin: 0; }
+#ab-ui-agent-access .checks{ display: flex; gap: var(--space-6); }
+#ab-ui-agent-access .field{ display: grid; gap: var(--space-1); }
+#ab-ui-agent-access .row{ display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: 1.75rem; }
+#ab-ui-agent-access .ip-detect{ display: grid; gap: 0; }
+#ab-ui-agent-access .toggle{ width: 2.25rem; height: 1.25rem; border-radius: var(--radius-xl); background: var(--gray); position: relative; flex: none; }
+#ab-ui-agent-access .toggle::after{ content: ""; position: absolute; top: 2px; left: 2px; width: calc(1.25rem - 4px); height: calc(1.25rem - 4px); border-radius: 50%; background: var(--subtext); }
+#ab-ui-agent-access .toggle.on{ background: var(--primary); }
+#ab-ui-agent-access .toggle.on::after{ left: auto; right: 2px; background: var(--white); }
+#ab-ui-agent-access .input{ width: 100%; height: 2.25rem; padding: 0 var(--space-2); background: var(--background); color: var(--text); border: 1px solid var(--gray); border-radius: var(--radius-sm); font: var(--type-mono); outline: none; }
+#ab-ui-agent-access .input.is-error{ border-color: var(--error); background: var(--error-opacity); }
+#ab-ui-agent-access .actions{ display: flex; gap: var(--space-2); justify-content: flex-end; align-items: center; }
+#ab-ui-agent-access .btn{ height: 2.25rem; padding: 0 var(--space-4); border-radius: var(--radius-sm); font: var(--type-body); font-weight: 600; border: 1px solid transparent; display: inline-flex; align-items: center; gap: var(--space-2); }
+#ab-ui-agent-access .btn.primary{ background: var(--primary); color: var(--white); }
+#ab-ui-agent-access .btn.primary[disabled]{ opacity: .45; }
+#ab-ui-agent-access .btn.ghost{ background: transparent; color: var(--subtext); border-color: var(--gray); }
+#ab-ui-agent-access .btn.small{ height: 2rem; padding: 0 var(--space-3); }
+#ab-ui-agent-access .kbd{ font: var(--type-caption); color: var(--subtext); }
+#ab-ui-agent-access .result-row{ display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--gray); border-left-width: 3px; border-radius: var(--radius-sm); background: var(--background); }
+#ab-ui-agent-access .result-row.ok{ border-left-color: var(--success); }
+#ab-ui-agent-access .result-row.fail{ border-left-color: var(--error); }
+#ab-ui-agent-access .result-head{ display: flex; align-items: baseline; gap: var(--space-2); font: var(--type-heading); }
+#ab-ui-agent-access .result-head .status{ font: var(--type-caption); color: var(--subtext); }
+#ab-ui-agent-access .result-row.ok .status{ color: var(--success); }
+#ab-ui-agent-access .result-row.fail .status{ color: var(--error); }
+#ab-ui-agent-access .cmd{ display: flex; align-items: flex-start; gap: var(--space-2); }
+#ab-ui-agent-access .cmd pre{ flex: 1; margin: 0; padding: var(--space-2) var(--space-3); background: var(--terminal); border: 1px solid var(--gray); border-radius: var(--radius-sm); font: var(--type-mono); font-size: 0.75rem; color: var(--text); white-space: pre-wrap; word-break: break-all; }
+#ab-ui-agent-access .notice{ font: var(--type-caption); color: var(--warning); }
+#ab-ui-agent-access .confirm{ display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--gray); border-left: 3px solid var(--warning); border-radius: var(--radius-sm); background: var(--background); }
+#ab-ui-agent-access .confirm p{ margin: 0; }
+
+</style>
+<style>
+/* ui-api-keys */
+#ab-ui-api-keys .mb-artboard, #ab-ui-api-keys .mb-artboard *, #ab-ui-api-keys .mb-artboard *::before, #ab-ui-api-keys .mb-artboard *::after{ box-sizing: border-box; }
+#ab-ui-api-keys .mb-artboard{ max-width: 56rem; margin: 0 auto; padding: var(--space-8); background: var(--background); color: var(--text); font: var(--type-body); display: grid; gap: var(--space-8); }
+#ab-ui-api-keys .mb-artboard h1, #ab-ui-api-keys .mb-artboard h2, #ab-ui-api-keys .mb-artboard h3, #ab-ui-api-keys .mb-artboard p{ margin: 0; }
+#ab-ui-api-keys .mb-context{ font: var(--type-caption); color: var(--subtext); background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); line-height: 1.6; }
+#ab-ui-api-keys .mb-context strong{ color: var(--text); font: var(--type-heading); }
+#ab-ui-api-keys .mb-context b{ color: var(--text); }
+#ab-ui-api-keys .ak-head{ display: grid; gap: var(--space-1); padding-bottom: var(--space-4); border-bottom: 1px solid var(--gray); }
+#ab-ui-api-keys .ak-head h1{ font: var(--type-title); }
+#ab-ui-api-keys .ak-id{ font: var(--type-mono); color: var(--subtext); }
+#ab-ui-api-keys .ak-state{ display: grid; gap: var(--space-3); }
+#ab-ui-api-keys .ak-state-label{ font: var(--type-caption); color: var(--subtext); text-transform: uppercase; letter-spacing: .06em; }
+#ab-ui-api-keys .ak-section{ display: grid; gap: var(--space-4); }
+#ab-ui-api-keys .ak-section-head{ display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); }
+#ab-ui-api-keys .ak-section-title{ display: flex; align-items: center; gap: var(--space-2); font: var(--type-title); font-size: 1.3rem; margin-bottom: var(--space-2); }
+#ab-ui-api-keys .ak-section-desc{ font-size: 0.9rem; color: var(--subtext); }
+#ab-ui-api-keys .ak-list{ display: flex; flex-direction: column; gap: var(--space-3); }
+#ab-ui-api-keys .ak-item{ background: var(--lighter-background); border: 1px solid var(--dark-gray); border-radius: var(--radius-md); padding: 0.875rem var(--space-4); display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); }
+#ab-ui-api-keys .ak-item-info{ display: flex; align-items: center; gap: var(--space-3); }
+#ab-ui-api-keys .ak-icon{ width: 1.25rem; height: 1.25rem; color: var(--primary); flex: none; }
+#ab-ui-api-keys .ak-name{ font-size: 0.9rem; font-weight: 600; }
+#ab-ui-api-keys .ak-meta{ display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-1); color: var(--subtext); font-size: 0.8rem; }
+#ab-ui-api-keys .ak-meta code{ font-family: var(--font-mono); color: var(--white); }
+#ab-ui-api-keys .ak-actions{ display: flex; gap: 0.375rem; align-items: center; }
+#ab-ui-api-keys .ak-icon-btn{ background: transparent; border: none; border-radius: var(--radius-md); padding: var(--space-2); color: var(--subtext); display: flex; align-items: center; }
+#ab-ui-api-keys .ak-icon-btn svg{ width: 1rem; height: 1rem; }
+#ab-ui-api-keys .ak-btn{ display: inline-flex; align-items: center; gap: var(--space-2); font: var(--type-body); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); border: 1px solid var(--gray); background: transparent; color: var(--text); }
+#ab-ui-api-keys .ak-btn svg{ width: 1rem; height: 1rem; }
+#ab-ui-api-keys .ak-btn-primary{ background: var(--primary); border-color: var(--primary); color: var(--on-accent); }
+#ab-ui-api-keys .ak-btn-danger{ color: var(--error); border-color: var(--error-opacity); }
+#ab-ui-api-keys .ak-empty{ padding: var(--space-6); text-align: center; color: var(--subtext); background: var(--lighter-background); border: 1px solid var(--dark-gray); border-radius: var(--radius-md); }
+#ab-ui-api-keys .ak-group{ background: var(--lighter-background); border: 1px solid var(--dark-gray); border-radius: var(--radius-md); overflow: hidden; }
+#ab-ui-api-keys .ak-group-head{ display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--gray); }
+#ab-ui-api-keys .ak-group-name{ font: var(--type-heading); }
+#ab-ui-api-keys .ak-key{ display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-4); }
+#ab-ui-api-keys .ak-key + .ak-key{ border-top: 1px solid var(--dark-gray); }
+#ab-ui-api-keys .ak-pill{ display: inline-block; font: var(--type-caption); padding: 0 var(--space-2); border-radius: var(--radius-xl); background: var(--warning-opacity); color: var(--warning); }
+#ab-ui-api-keys .ak-ip{ font-family: var(--font-mono); color: var(--white); }
+#ab-ui-api-keys .ak-agents{ display: grid; gap: var(--space-3); }
+
 </style>
 <style>
 /* ui-direct-connect */
@@ -287,6 +397,7 @@
 #ab-ui-servers .menu .item.hover{ background: var(--dark-gray); }
 #ab-ui-servers .menu .item.danger{ color: var(--error); }
 #ab-ui-servers .menu .item.disabled{ color: var(--subtext); opacity: 0.55; }
+#ab-ui-servers .menu .item svg{ width: 1em; height: 1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 #ab-ui-servers .menu .sep{ height: 1px; background: var(--gray); margin: var(--space-1) 0; }
 #ab-ui-servers .menu .item.check::before{ content: "✓"; width: 0.75rem; color: var(--accent-color); }
 #ab-ui-servers .menu .item.nocheck::before{ content: ""; width: 0.75rem; }
@@ -532,10 +643,283 @@
 #ab-ui-tmux-dialog .frame-inline{ width: auto; }
 
 </style>
+<style>
+/* ui-vault-approval */
+#ab-ui-vault-approval *{ box-sizing: border-box; }
+#ab-ui-vault-approval .mb-artboard *{ box-sizing: border-box; }
+#ab-ui-vault-approval .mb-artboard{ padding: var(--space-6); background: var(--background); color: var(--text); font: var(--type-body); }
+#ab-ui-vault-approval .mb-artboard section[data-ui-state]{ position: relative; }
+#ab-ui-vault-approval .mb-artboard section[data-ui-state]::before{ content: attr(data-ui-state); position: absolute; top: 2px; right: 2px; z-index: 5; font: var(--type-caption); color: var(--subtext); background: var(--background); border: 1px dashed var(--gray-strong); border-radius: var(--radius-sm); padding: 0 var(--space-1); line-height: 1.2; pointer-events: none; }
+#ab-ui-vault-approval .mb-artboard .art-head{ display: flex; align-items: baseline; gap: var(--space-3); margin: 0 0 var(--space-4); }
+#ab-ui-vault-approval .mb-artboard .art-head h1{ font: var(--type-title); margin: 0; }
+#ab-ui-vault-approval .mb-artboard .art-head code{ font: var(--type-mono); color: var(--subtext); }
+#ab-ui-vault-approval .mb-artboard .block > h2{ font: var(--type-heading); margin: 0 0 var(--space-1); }
+#ab-ui-vault-approval .mb-artboard .block > h2 code{ font: var(--type-mono); font-size: 0.75rem; color: var(--subtext); margin-left: var(--space-2); }
+#ab-ui-vault-approval .mb-artboard .anchor{ margin: 0 0 var(--space-1); max-width: 48rem; }
+#ab-ui-vault-approval .mb-artboard .anchor-example{ font: var(--type-caption); color: var(--subtext); margin: 0 0 var(--space-3); }
+#ab-ui-vault-approval .mb-artboard .demo-row{ display: flex; gap: var(--space-4); flex-wrap: wrap; align-items: flex-start; }
+#ab-ui-vault-approval .mb-artboard .demo-card{ border: 1px solid var(--gray); border-radius: var(--radius-md); overflow: hidden; background: var(--background); }
+#ab-ui-vault-approval .mb-artboard .demo-card > .cap{ font: var(--type-caption); color: var(--subtext); padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--gray); background: var(--lighter-background); }
+#ab-ui-vault-approval .mb-artboard .demo-card .body{ padding: var(--space-4); display: flex; }
+#ab-ui-vault-approval .mb-artboard .demo-card section[data-ui-state]::before{ content: none; }
+#ab-ui-vault-approval .mb-artboard .mobile-frame{ width: 380px; max-width: 100%; }
+#ab-ui-vault-approval .mb-artboard .mobile-screen{ height: 11rem; position: relative; background: var(--background); }
+#ab-ui-vault-approval .mb-artboard .mobile-nav{ position: absolute; left: 0; right: 0; bottom: 0; height: 3.5rem; background: var(--lighter-background); border-top: 1px solid var(--gray); display: flex; align-items: stretch; }
+#ab-ui-vault-approval .mb-artboard .mobile-nav .m-item{ flex: 1; display: flex; align-items: center; justify-content: center; color: var(--white); font: var(--type-caption); }
+#ab-ui-vault-approval .mb-artboard .mobile-nav .m-item.active{ color: var(--primary); }
+#ab-ui-vault-approval .approval-card{ position: relative; width: 24rem; max-width: 100%; background: var(--lighter-background); border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); border-left: 3px solid var(--warning); padding: var(--space-4) var(--space-4) var(--space-6); overflow: hidden; display: flex; flex-direction: column; gap: var(--space-2); }
+#ab-ui-vault-approval .approval-card h3{ font: var(--type-heading); color: var(--text); margin: 0; }
+#ab-ui-vault-approval .approval-card .who{ color: var(--text); }
+#ab-ui-vault-approval .approval-card .target{ font: var(--type-mono); color: var(--text); overflow-wrap: anywhere; }
+#ab-ui-vault-approval .approval-card .actions{ display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+#ab-ui-vault-approval .approval-card .btn{ display: inline-flex; align-items: center; height: 2rem; padding: 0 var(--space-3); border-radius: var(--radius-sm); border: 1px solid var(--gray); background: var(--dark-gray); color: var(--text); font: var(--type-body); white-space: nowrap; }
+#ab-ui-vault-approval .approval-card .btn.primary{ background: var(--accent-color); border-color: var(--accent-color); color: var(--on-accent); }
+#ab-ui-vault-approval .approval-card .btn.off{ opacity: 0.45; }
+#ab-ui-vault-approval .approval-card .timer{ display: flex; align-items: center; justify-content: flex-end; font: var(--type-caption); color: var(--subtext); }
+#ab-ui-vault-approval .approval-card .bar{ position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--gray); }
+#ab-ui-vault-approval .approval-card .bar i{ display: block; height: 100%; background: var(--subtext); }
+#ab-ui-vault-approval .approval-card .status{ font: var(--type-body); color: var(--text); }
+#ab-ui-vault-approval .approval-stack{ display: flex; flex-direction: column; gap: var(--space-2); }
+#ab-ui-vault-approval .approval-stack .count{ font: var(--type-caption); color: var(--subtext); text-align: right; }
+#ab-ui-vault-approval .approval-empty{ width: 24rem; max-width: 100%; border: 1px dashed var(--gray-strong); border-radius: var(--radius-lg); padding: var(--space-4); font: var(--type-caption); color: var(--subtext); }
+#ab-ui-vault-approval .mobile-screen.tall{ height: 17rem; }
+#ab-ui-vault-approval .mobile-screen .approval-card{ position: absolute; left: 0; right: 0; bottom: 3.5rem; width: auto; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+
+</style>
+<style>
+/* ui-vault-dialog */
+#ab-ui-vault-dialog .artboard-head{}
+#ab-ui-vault-dialog .artboard-head strong{ font: var(--type-heading); color: var(--text); }
+#ab-ui-vault-dialog .artboard-head code{ font: var(--type-mono); font-size: 0.75rem; color: var(--subtext); }
+#ab-ui-vault-dialog .backdrop{}
+#ab-ui-vault-dialog .dialog{}
+#ab-ui-vault-dialog .dialog-head{}
+#ab-ui-vault-dialog .dialog-head h1{ margin: 0; font: var(--type-title); }
+#ab-ui-vault-dialog .dialog-head .close{}
+#ab-ui-vault-dialog .dialog-body{ padding: var(--space-2) var(--space-4) var(--space-4); display: grid; gap: var(--space-4); }
+#ab-ui-vault-dialog .dialog-foot{}
+#ab-ui-vault-dialog .element{ display: grid; gap: var(--space-2); }
+#ab-ui-vault-dialog .element > header{}
+#ab-ui-vault-dialog .element > header code{ font: var(--type-mono); font-size: 0.75rem; color: var(--primary); }
+#ab-ui-vault-dialog .element > header .type{ padding: 0 var(--space-1); border: 1px solid var(--gray); border-radius: var(--radius-sm); }
+#ab-ui-vault-dialog section[data-ui-state]{}
+#ab-ui-vault-dialog section[data-ui-state]::before{}
+#ab-ui-vault-dialog section[data-ui-state="error"]::before{ color: var(--error); }
+#ab-ui-vault-dialog section[data-ui-state="empty"]::before, #ab-ui-vault-dialog section[data-ui-state="disabled"]::before{ color: var(--subtext); }
+#ab-ui-vault-dialog section[data-ui-state="selected"]::before{ color: var(--primary); }
+#ab-ui-vault-dialog .tabs{ display: flex; gap: var(--space-1); padding: var(--space-1); background: var(--dark-gray); border-radius: var(--radius-md); }
+#ab-ui-vault-dialog .tab{}
+#ab-ui-vault-dialog .tab[aria-current="page"]{ background: var(--gray-strong); color: var(--text); }
+#ab-ui-vault-dialog .tab.is-selected{ background: var(--primary-opacity); color: var(--text); box-shadow: inset 0 0 0 1px var(--primary); }
+#ab-ui-vault-dialog .grid{ display: grid; grid-template-columns: repeat(12, 1fr); gap: var(--space-2) var(--space-3); }
+#ab-ui-vault-dialog .field{ display: grid; gap: var(--space-1); }
+#ab-ui-vault-dialog .c3{ grid-column: span 3; }
+#ab-ui-vault-dialog .c4{ grid-column: span 4; }
+#ab-ui-vault-dialog .c5{ grid-column: span 5; }
+#ab-ui-vault-dialog .c6{ grid-column: span 6; }
+#ab-ui-vault-dialog .c7{ grid-column: span 7; }
+#ab-ui-vault-dialog .c8{ grid-column: span 8; }
+#ab-ui-vault-dialog .c9{ grid-column: span 9; }
+#ab-ui-vault-dialog .c12{ grid-column: span 12; }
+#ab-ui-vault-dialog label, #ab-ui-vault-dialog .label{ font: var(--type-caption); color: var(--subtext); }
+#ab-ui-vault-dialog .input, #ab-ui-vault-dialog select.input{}
+#ab-ui-vault-dialog .input.mono{ font: var(--type-mono); }
+#ab-ui-vault-dialog .input:focus-visible{ border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-opacity); }
+#ab-ui-vault-dialog .input.is-error{ border-color: var(--error); background: var(--error-opacity); }
+#ab-ui-vault-dialog .input::placeholder{ color: var(--subtext); opacity: .7; }
+#ab-ui-vault-dialog .help{ font: var(--type-caption); color: var(--subtext); }
+#ab-ui-vault-dialog .help.error{ color: var(--error); }
+#ab-ui-vault-dialog .icon-field{ display: flex; align-items: center; gap: var(--space-2); height: 2.25rem; }
+#ab-ui-vault-dialog .avatar{}
+#ab-ui-vault-dialog .tri{ display: inline-flex; padding: 2px; background: var(--dark-gray); border: 1px solid var(--gray); border-radius: var(--radius-sm); }
+#ab-ui-vault-dialog .tri span{ padding: var(--space-1) var(--space-3); border-radius: var(--radius-sm); color: var(--subtext); font: var(--type-caption); }
+#ab-ui-vault-dialog .tri span[aria-checked="true"]{ background: var(--primary); color: var(--white); }
+#ab-ui-vault-dialog .toggle{ width: 2.25rem; height: 1.25rem; border-radius: var(--radius-xl); background: var(--gray); position: relative; flex: none; }
+#ab-ui-vault-dialog .toggle::after{ content: ""; position: absolute; top: 2px; left: 2px; width: calc(1.25rem - 4px); height: calc(1.25rem - 4px); border-radius: 50%; background: var(--subtext); }
+#ab-ui-vault-dialog .toggle.on{ background: var(--primary); }
+#ab-ui-vault-dialog .toggle.on::after{ left: auto; right: 2px; background: var(--white); }
+#ab-ui-vault-dialog .group{ display: grid; gap: var(--space-1); }
+#ab-ui-vault-dialog .group-head{ display: flex; justify-content: space-between; align-items: baseline; font: var(--type-caption); color: var(--subtext); }
+#ab-ui-vault-dialog .ident{ display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2); border: 1px solid var(--gray); border-radius: var(--radius-sm); background: var(--background); }
+#ab-ui-vault-dialog .ident.linked{ border-color: var(--primary); background: var(--primary-opacity); }
+#ab-ui-vault-dialog .ident .name{ flex: 1; font: var(--type-mono); }
+#ab-ui-vault-dialog .chip{ padding: 0 var(--space-2); border-radius: var(--radius-sm); background: var(--gray); font: var(--type-caption); color: var(--text); line-height: 1.5rem; }
+#ab-ui-vault-dialog .empty-box{ padding: var(--space-3); border: 1px dashed var(--gray-strong); border-radius: var(--radius-sm); color: var(--subtext); text-align: center; }
+#ab-ui-vault-dialog .empty-box a{ text-decoration: none; font-weight: 600; }
+#ab-ui-vault-dialog .fieldset{ border: 1px solid var(--gray); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); display: grid; gap: var(--space-2); }
+#ab-ui-vault-dialog .fieldset > .label{ text-transform: uppercase; letter-spacing: .04em; }
+#ab-ui-vault-dialog .row{ display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: 1.75rem; }
+#ab-ui-vault-dialog .actions{ display: flex; gap: var(--space-2); justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+#ab-ui-vault-dialog .btn{}
+#ab-ui-vault-dialog .btn.ghost{ background: transparent; color: var(--subtext); border-color: var(--gray); }
+#ab-ui-vault-dialog .btn.primary{ background: var(--primary); color: var(--white); }
+#ab-ui-vault-dialog .btn.primary[disabled]{ opacity: .45; }
+#ab-ui-vault-dialog .btn.primary.is-error{ background: var(--error); border-color: var(--error); }
+#ab-ui-vault-dialog .btn:focus-visible{ outline: 2px solid var(--primary); outline-offset: 2px; }
+#ab-ui-vault-dialog .kbd{ font: var(--type-caption); color: var(--subtext); opacity: .8; }
+#ab-ui-vault-dialog .variant{ display: grid; gap: var(--space-1); }
+#ab-ui-vault-dialog .variant .label{ text-align: right; }
+#ab-ui-vault-dialog .mb-artboard{ box-sizing: border-box; background: var(--background); color: var(--text); font: var(--type-body); }
+#ab-ui-vault-dialog .mb-artboard *, #ab-ui-vault-dialog .mb-artboard *::before, #ab-ui-vault-dialog .mb-artboard *::after{ box-sizing: border-box; }
+#ab-ui-vault-dialog .mb-context{ font: var(--type-caption); color: var(--subtext); background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-4); line-height: 1.6; }
+#ab-ui-vault-dialog .mb-context strong{ color: var(--text); font: var(--type-heading); }
+#ab-ui-vault-dialog .mb-context b{ color: var(--text); }
+#ab-ui-vault-dialog .dialog{ max-width: 40rem; }
+#ab-ui-vault-dialog .variant-title{ font: var(--type-heading); color: var(--text); padding: var(--space-4) var(--space-4) 0; }
+#ab-ui-vault-dialog .chips{ display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; }
+#ab-ui-vault-dialog .chip.sel{ background: var(--primary-opacity); box-shadow: inset 0 0 0 1px var(--primary); }
+#ab-ui-vault-dialog .chip.add{ background: transparent; border: 1px dashed var(--gray-strong); color: var(--subtext); }
+#ab-ui-vault-dialog .chip.off{ opacity: .5; }
+#ab-ui-vault-dialog .chip .k{ color: var(--subtext); margin-right: var(--space-1); }
+#ab-ui-vault-dialog .input[disabled], #ab-ui-vault-dialog .input.is-disabled{ opacity: .55; }
+#ab-ui-vault-dialog .secret-dots{ letter-spacing: .1em; }
+#ab-ui-vault-dialog .sketch{ display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-4); }
+#ab-ui-vault-dialog .sketch .fieldset{ align-content: start; }
+#ab-ui-vault-dialog .loading{ opacity: .8; }
+#ab-ui-vault-dialog .stack{ display: grid; gap: var(--space-3); }
+
+</style>
+<style>
+/* ui-vault */
+#ab-ui-vault .mb-artboard{ box-sizing: border-box; padding: var(--space-6); background: var(--background); color: var(--text); font: var(--type-body); font-size: calc(16px * var(--ui-scale)); }
+#ab-ui-vault .mb-artboard *, #ab-ui-vault .mb-artboard *::before, #ab-ui-vault .mb-artboard *::after{ box-sizing: border-box; }
+#ab-ui-vault .mb-context{ font: var(--type-caption); color: var(--subtext); background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-4); line-height: 1.6; }
+#ab-ui-vault .mb-context b{ color: var(--text); }
+#ab-ui-vault .mb-context strong{ color: var(--text); font: var(--type-heading); }
+#ab-ui-vault .v-head{ display: flex; align-items: baseline; gap: var(--space-3); margin: 0 0 var(--space-4); }
+#ab-ui-vault .v-head h1{ font: var(--type-title); margin: 0; }
+#ab-ui-vault .v-head code, #ab-ui-vault .v-mono{ font: var(--type-mono); }
+#ab-ui-vault .v-head code{ color: var(--subtext); }
+#ab-ui-vault .v-block{ margin: 0 0 var(--space-8); }
+#ab-ui-vault .v-block > h2{ font: var(--type-heading); color: var(--subtext); margin: 0 0 var(--space-2); }
+#ab-ui-vault .v-block > h2 code{ font: var(--type-caption); font-family: var(--font-mono); margin-left: var(--space-2); }
+#ab-ui-vault .v-frame{ width: 82rem; max-width: 100%; border: 1px solid var(--gray); border-radius: var(--radius-md); overflow: hidden; background: var(--background); }
+#ab-ui-vault .v-ico{ width: 1rem; height: 1rem; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#ab-ui-vault .v-sprite{ position: absolute; width: 0; height: 0; overflow: hidden; }
+#ab-ui-vault .v-state{ position: relative; }
+#ab-ui-vault .v-state::before{}
+#ab-ui-vault .v-gallery{ display: grid; grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr)); gap: var(--space-4); }
+#ab-ui-vault .v-gallery .wide{ grid-column: 1 / -1; }
+#ab-ui-vault .v-cell{ border: 1px solid var(--gray); border-radius: var(--radius-md); background: var(--lighter-background); overflow: hidden; }
+#ab-ui-vault .v-cell > .v-state{ min-height: 3.5rem; padding: var(--space-3); }
+#ab-ui-vault .v-cell.flush > .v-state{ padding: 0; }
+#ab-ui-vault .v-cap{ font: var(--type-caption); color: var(--subtext); padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--gray); background: var(--background); }
+#ab-ui-vault .v-cap code{ font-family: var(--font-mono); color: var(--text); }
+#ab-ui-vault .v-page{ display: grid; grid-template-columns: 5rem 1fr; height: 40rem; }
+#ab-ui-vault .v-nav{ background: var(--darker-gray); border-right: 1px solid var(--gray); display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-3) 0; font: var(--type-caption); color: var(--subtext); }
+#ab-ui-vault .v-nav span{ display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; padding: var(--space-2) 0; }
+#ab-ui-vault .v-nav .active{ color: var(--primary); background: var(--primary-opacity); }
+#ab-ui-vault .v-nav .ico{ width: 1.25rem; height: 1.25rem; border: 1px solid currentColor; border-radius: var(--radius-sm); }
+#ab-ui-vault .v-split{ display: grid; grid-template-columns: 22rem 1fr; min-width: 0; min-height: 0; }
+#ab-ui-vault .v-left{ background: var(--lighter-background); border-right: 1px solid var(--gray); display: flex; flex-direction: column; min-height: 0; min-width: 20rem; max-width: 26rem; }
+#ab-ui-vault .v-right{ background: var(--background); min-width: 0; overflow: hidden; }
+#ab-ui-vault .v-top{ display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2); border-bottom: 1px solid var(--gray); }
+#ab-ui-vault .v-top h3{ font: var(--type-heading); margin: 0; }
+#ab-ui-vault .v-btn{ display: inline-flex; align-items: center; gap: var(--space-2); height: 2rem; padding: 0 var(--space-3); border: 1px solid var(--gray); border-radius: var(--radius-sm); background: var(--dark-gray); color: var(--text); font: var(--type-body); }
+#ab-ui-vault .v-btn.primary{ background: var(--primary); border-color: var(--primary); color: var(--on-accent); }
+#ab-ui-vault .v-btn.danger{ color: var(--error); }
+#ab-ui-vault .v-btn.disabled{ opacity: 0.45; }
+#ab-ui-vault .v-iconbtn{ display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border: 1px solid var(--gray); border-radius: var(--radius-sm); background: var(--dark-gray); color: var(--text); }
+#ab-ui-vault .v-iconbtn.done{ color: var(--success); border-color: var(--success); background: var(--success-opacity); }
+#ab-ui-vault .v-scope{ display: flex; gap: var(--space-1); padding: 0 var(--space-2); border-bottom: 1px solid var(--gray); }
+#ab-ui-vault .v-scope span{ padding: var(--space-2) var(--space-2); color: var(--subtext); border-bottom: 2px solid transparent; }
+#ab-ui-vault .v-scope .sel{ color: var(--primary); border-bottom-color: var(--primary); background: var(--primary-opacity); }
+#ab-ui-vault .v-search{ padding: var(--space-2); }
+#ab-ui-vault .v-input{ display: flex; align-items: center; gap: var(--space-2); height: 2rem; padding: 0 var(--space-2); background: var(--dark-gray); border: 1px solid var(--gray); border-radius: var(--radius-sm); color: var(--subtext); }
+#ab-ui-vault .v-hint{ margin: var(--space-2) 0 0; font: var(--type-caption); color: var(--subtext); }
+#ab-ui-vault .v-types{ display: flex; flex-wrap: wrap; gap: var(--space-1); padding: 0 var(--space-2) var(--space-2); border-bottom: 1px solid var(--gray); }
+#ab-ui-vault .v-types span{ padding: 0 var(--space-2); height: 1.5rem; display: inline-flex; align-items: center; border: 1px solid var(--gray); border-radius: var(--radius-md); color: var(--subtext); font: var(--type-caption); }
+#ab-ui-vault .v-types .sel{ background: var(--primary-opacity); color: var(--primary); border-color: var(--primary); }
+#ab-ui-vault .v-rows{ list-style: none; margin: 0; padding: var(--space-1) 0; flex: 1; overflow: hidden; }
+#ab-ui-vault .v-row{ display: flex; align-items: center; gap: var(--space-2); min-height: 2.5rem; padding: var(--space-1) var(--space-2); color: var(--subtext); }
+#ab-ui-vault .v-row .t{ flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#ab-ui-vault .v-row .n{ font: var(--type-body); color: var(--text); }
+#ab-ui-vault .v-row .s{ font: var(--type-mono); color: var(--subtext); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#ab-ui-vault .v-row.sel{ background: var(--primary-opacity); }
+#ab-ui-vault .v-row .shield{ color: var(--subtext); }
+#ab-ui-vault .v-skel{ height: 2.5rem; margin: var(--space-1) var(--space-2); display: flex; align-items: center; gap: var(--space-2); }
+#ab-ui-vault .v-skel i{ display: block; background: var(--gray); border-radius: var(--radius-sm); }
+#ab-ui-vault .v-skel .a{ width: 1rem; height: 1rem; }
+#ab-ui-vault .v-skel .b{ width: 9rem; height: 0.75rem; }
+#ab-ui-vault .v-note{ padding: var(--space-4); color: var(--subtext); display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+#ab-ui-vault .v-note.err{ color: var(--error); }
+#ab-ui-vault .v-confirm{ max-width: 24rem; background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+#ab-ui-vault .v-confirm h5{ font: var(--type-heading); margin: 0; }
+#ab-ui-vault .v-confirm p{ margin: 0; color: var(--subtext); }
+#ab-ui-vault .v-confirm .v-actions{ justify-content: flex-end; }
+#ab-ui-vault .v-btn.danger-solid{ background: var(--error); border-color: var(--error); color: var(--on-accent); }
+#ab-ui-vault .v-backdrop{ background: var(--dialog-background); padding: var(--space-4); display: flex; justify-content: center; }
+#ab-ui-vault .v-dhead{ display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); padding: var(--space-4); border-bottom: 1px solid var(--gray); }
+#ab-ui-vault .v-dhead h3{ font: var(--type-title); margin: 0 0 var(--space-1); font-family: var(--font-mono); }
+#ab-ui-vault .v-meta{ display: flex; align-items: center; gap: var(--space-2); color: var(--subtext); font: var(--type-caption); }
+#ab-ui-vault .v-actions{ display: flex; gap: var(--space-2); }
+#ab-ui-vault .v-sec{ padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--gray); }
+#ab-ui-vault .v-sec h4{ font: var(--type-caption); color: var(--subtext); margin: 0 0 var(--space-2); font-weight: 400; }
+#ab-ui-vault .v-kv{ display: grid; grid-template-columns: 9rem 1fr; gap: var(--space-1) var(--space-3); margin: 0; }
+#ab-ui-vault .v-kv dt{ color: var(--subtext); }
+#ab-ui-vault .v-kv dd{ margin: 0; font: var(--type-mono); }
+#ab-ui-vault .v-secret{ display: flex; align-items: center; gap: var(--space-2); }
+#ab-ui-vault .v-secret .lbl{ width: 9rem; color: var(--subtext); }
+#ab-ui-vault .v-secret .val{ font: var(--type-mono); flex: 1; }
+#ab-ui-vault .v-secret .hint{ color: var(--subtext); font: var(--type-caption); }
+#ab-ui-vault .v-chips{ display: flex; flex-wrap: wrap; gap: var(--space-2); }
+#ab-ui-vault .v-chip{ display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-2); border: 1px solid var(--gray); border-radius: var(--radius-md); background: var(--lighter-background); }
+#ab-ui-vault .v-policy{ display: flex; align-items: center; gap: var(--space-2); }
+#ab-ui-vault .v-policy.off{ color: var(--subtext); }
+#ab-ui-vault .v-phones{ display: flex; gap: var(--space-6); flex-wrap: wrap; align-items: flex-start; }
+#ab-ui-vault .v-phone{ width: 24rem; max-width: 100%; border: 1px solid var(--gray); border-radius: var(--radius-lg); overflow: hidden; background: var(--background); display: flex; flex-direction: column; height: 40rem; }
+#ab-ui-vault .v-phone .v-left{ min-width: 0; max-width: none; border-right: 0; flex: 1; }
+#ab-ui-vault .v-phone .v-body{ flex: 1; overflow: hidden; }
+#ab-ui-vault .v-phone .v-kv{ grid-template-columns: 6rem 1fr; }
+#ab-ui-vault .v-phone .v-secret .lbl{ width: 6rem; }
+#ab-ui-vault .v-phone .v-dhead{ flex-direction: column; padding: var(--space-3); }
+#ab-ui-vault .v-phone .v-sec{ padding: var(--space-3); }
+#ab-ui-vault .v-mnav{ flex: none; height: 3.5rem; display: flex; align-items: center; justify-content: space-around; background: var(--darker-gray); border-top: 1px solid var(--gray); color: var(--subtext); font: var(--type-caption); }
+#ab-ui-vault .v-mnav .active{ color: var(--primary); }
+#ab-ui-vault .v-back{ display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--gray); background: var(--lighter-background); }
+#ab-ui-vault .v-back .v-iconbtn{ width: 2.75rem; height: 2.75rem; }
+
+</style>
+<style>
+/* ui-vault-settings */
+#ab-ui-vault-settings .mb-artboard{ box-sizing: border-box; background: var(--background); color: var(--text); font: var(--type-body); padding: var(--space-4); }
+#ab-ui-vault-settings .mb-artboard *, #ab-ui-vault-settings .mb-artboard *::before, #ab-ui-vault-settings .mb-artboard *::after{ box-sizing: border-box; }
+#ab-ui-vault-settings .mb-context{ font: var(--type-caption); color: var(--subtext); background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-4); line-height: 1.6; }
+#ab-ui-vault-settings .mb-context strong{ color: var(--text); font: var(--type-heading); }
+#ab-ui-vault-settings .mb-context b{ color: var(--text); }
+#ab-ui-vault-settings .vs-page{ max-width: 44rem; display: flex; flex-direction: column; gap: var(--space-8); margin-top: var(--space-4); }
+#ab-ui-vault-settings .vs-section{ display: flex; flex-direction: column; gap: var(--space-4); }
+#ab-ui-vault-settings .vs-title{ margin: 0; font: var(--type-title); }
+#ab-ui-vault-settings .vs-intro{ margin: 0; font: var(--type-body); color: var(--subtext); }
+#ab-ui-vault-settings .vs-item{ display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-4); border-top: 1px solid var(--gray); }
+#ab-ui-vault-settings .vs-label h4{ margin: 0; font: var(--type-heading); display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); }
+#ab-ui-vault-settings .vs-label code{ font: var(--type-mono); font-size: 0.6875rem; color: var(--subtext); }
+#ab-ui-vault-settings .vs-state{ position: relative; padding: var(--space-3); border: 1px dashed var(--gray); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: var(--space-2); }
+#ab-ui-vault-settings .vs-tag{ position: absolute; top: calc(-1 * var(--space-2)); right: var(--space-2); padding: 0 var(--space-2); background: var(--background); border: 1px solid var(--gray); border-radius: var(--radius-sm); font: var(--type-mono); font-size: 0.6875rem; color: var(--subtext); }
+#ab-ui-vault-settings .vs-status{ display: flex; align-items: flex-start; gap: var(--space-3); }
+#ab-ui-vault-settings .vs-pill{ flex: none; display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-3); border-radius: var(--radius-xl); font: var(--type-caption); }
+#ab-ui-vault-settings .vs-pill svg{ width: 0.875rem; height: 0.875rem; flex: none; }
+#ab-ui-vault-settings .vs-pill.ok{ background: var(--success-opacity); color: var(--success); }
+#ab-ui-vault-settings .vs-pill.warn{ background: var(--warning-opacity); color: var(--warning); }
+#ab-ui-vault-settings .vs-pill.err{ background: var(--error-opacity); color: var(--error); }
+#ab-ui-vault-settings .vs-status-text{ margin: 0; font: var(--type-body); color: var(--text); }
+#ab-ui-vault-settings .vs-input{ display: flex; align-items: center; gap: var(--space-2); min-height: 2.25rem; padding: 0 var(--space-3); background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-sm); }
+#ab-ui-vault-settings .vs-input svg{ width: 1rem; height: 1rem; flex: none; color: var(--subtext); }
+#ab-ui-vault-settings .vs-input span{ font: var(--type-mono); color: var(--text); }
+#ab-ui-vault-settings .vs-input.invalid{ border-color: var(--error); }
+#ab-ui-vault-settings .vs-help{ margin: 0; font: var(--type-caption); color: var(--subtext); }
+#ab-ui-vault-settings .vs-error{ margin: 0; font: var(--type-caption); color: var(--error); }
+#ab-ui-vault-settings .vs-actions{ display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-4); }
+#ab-ui-vault-settings .vs-actions .vs-state{ align-items: flex-end; min-width: 14rem; }
+#ab-ui-vault-settings .vs-btn{ display: inline-flex; align-items: center; gap: var(--space-2); min-height: 2.25rem; padding: 0 var(--space-4); border: 0; border-radius: var(--radius-sm); background: var(--primary); color: var(--on-accent); font: var(--type-body); }
+#ab-ui-vault-settings .vs-btn svg{ width: 1rem; height: 1rem; flex: none; }
+#ab-ui-vault-settings .vs-btn[disabled]{ opacity: 0.5; }
+
+</style>
 </head>
 <body class="mb-page">
 <h1>outpost — Mockups</h1>
-<p class="sub">Manifest-Revision 7 · 2026-10-05 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
+<p class="sub">Manifest-Revision 11 · 2026-10-09 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
 <ul class="mb-toc">
 <li><a href="#UI-SHELL">Rahmen — Navigation</a> <code>UI-SHELL</code></li>
 <li><a href="#UI-SERVERS">Servers — Arbeitsfläche</a> <code>UI-SERVERS</code></li>
@@ -543,6 +927,12 @@
 <li><a href="#UI-SERVER-DIALOG">Server anlegen / bearbeiten</a> <code>UI-SERVER-DIALOG</code></li>
 <li><a href="#UI-TMUX-DIALOG">tmux-Sessions</a> <code>UI-TMUX-DIALOG</code></li>
 <li><a href="#UI-DIRECT-CONNECT">Direkt verbinden</a> <code>UI-DIRECT-CONNECT</code></li>
+<li><a href="#UI-VAULT">Vault</a> <code>UI-VAULT</code></li>
+<li><a href="#UI-VAULT-DIALOG">Eintrag anlegen / bearbeiten</a> <code>UI-VAULT-DIALOG</code></li>
+<li><a href="#UI-AGENT-ACCESS">Agenten-Zugang</a> <code>UI-AGENT-ACCESS</code></li>
+<li><a href="#UI-VAULT-SETTINGS">Einstellungen › Vault</a> <code>UI-VAULT-SETTINGS</code></li>
+<li><a href="#UI-API-KEYS">Einstellungen › Konto › API-Schlüssel</a> <code>UI-API-KEYS</code></li>
+<li><a href="#UI-VAULT-APPROVAL">Freigabe-Karte</a> <code>UI-VAULT-APPROVAL</code></li>
 </ul>
 <h2 id="UI-SHELL">Rahmen — Navigation <code>UI-SHELL</code></h2>
 <p>Die Navigation, die jede Seite umgibt — als Leiste links, unter 768px als Leiste unten.</p>
@@ -550,10 +940,10 @@
 <p class="meta">Artboard: <a href="./ui-shell.html">ui-shell.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-shell.md</code></p>
 <table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
 <tr><td><code>UI-SHELL-LOGO</code></td><td>Outpost</td><td>Die Bildmarke, zugleich der Schalter, der die Leiste ein- und ausklappt. Vier Pfosten unterschiedlicher Höhe, der letzte in der Erfolgsfarbe.</td><td><code>default · selected</code></td></tr>
-<tr><td><code>UI-SHELL-NAV</code></td><td>Bereiche</td><td>Die Bereiche der Anwendung — Server, Monitoring, Snippets, Audit. Ein Eintrag je Bereich, der aktive hervorgehoben; Audit nur mit dem Recht dafür. <b>Nicht:</b> server_entry, session.</td><td><code>default · selected</code></td></tr>
+<tr><td><code>UI-SHELL-NAV</code></td><td>Bereiche</td><td>Die Bereiche der Anwendung — Server, Monitoring, Snippets, Vault, Audit — und dazwischen die Aktion Browser. Ein Eintrag je Bereich, der aktive hervorgehoben; Browser ist kein Bereich, sondern öffnet unter Server einen neuen Browser-Tab und wird deshalb nie hervorgehoben. Browser nur, wenn Browser-Tabs aktiviert sind und das Konto das Recht dazu hat; Vault nur, wenn der Vault eingeschaltet ist und das Konto vault.use hat oder Mitglied einer Organisation ist; Audit nur mit dem Recht dafür. <b>Nicht:</b> server_entry, session.</td><td><code>default · selected</code></td></tr>
 <tr><td><code>UI-SHELL-ACCOUNT</code></td><td>Konto</td><td>Das eigene Konto am Fuß der Leiste. Öffnet ein Menü mit Einstellungen, Unterstützung und Abmelden. <b>Nicht:</b> server_entry, identity.</td><td><code>default · selected</code></td></tr>
 <tr><td><code>UI-SHELL-REVEAL</code></td><td>Seitenleiste einblenden</td><td>Der schmale Streifen am linken Rand, solange die Leiste eingeklappt ist. Mit Maus fährt sie beim Überfahren vorübergehend ein, ein Tipp oder Klick holt sie dauerhaft zurück.</td><td><code>default · disabled</code></td></tr>
-<tr><td><code>UI-SHELL-MOBILE-NAV</code></td><td>Bereiche (schmaler Schirm)</td><td>Unter 768px ersetzt eine Leiste am unteren Rand die seitliche. Sie zeigt dieselben Bereiche mit Beschriftung; ein Tipp auf den bereits offenen Bereich klappt dort die Serverliste auf. <b>Nicht:</b> server_entry, session.</td><td><code>default · selected</code></td></tr>
+<tr><td><code>UI-SHELL-MOBILE-NAV</code></td><td>Bereiche (schmaler Schirm)</td><td>Unter 768px ersetzt eine Leiste am unteren Rand die seitliche. Sie zeigt dieselben Einträge mit Beschriftung, Browser auch hier als Aktion ohne hervorgehobenen Zustand; ein Tipp auf den bereits offenen Bereich klappt dort die Serverliste auf. <b>Nicht:</b> server_entry, session.</td><td><code>default · selected</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-shell.html — alle Zustände, wie im Artboard</div><div id="ab-ui-shell">
 
@@ -636,8 +1026,8 @@
      =================================================================== -->
 <div class="block">
 	<h2>Navigation — Bereiche <code>UI-SHELL-NAV</code></h2>
-	<p class="anchor">Die Bereiche der Anwendung — Server, Monitoring, Snippets, Audit. Ein Eintrag je Bereich, der aktive hervorgehoben; Audit nur mit dem Recht dafür.</p>
-	<p class="anchor-example">Beispiel: Server · Monitoring · Snippets · Audit</p>
+	<p class="anchor">Die Bereiche der Anwendung — Server, Monitoring, Snippets, Vault, Browser, Audit. Ein Eintrag je Bereich, der aktive hervorgehoben; Browser nur, wenn Browser-Tabs aktiviert sind und das Konto das Recht dazu hat; Audit nur mit dem Recht dafür.</p>
+	<p class="anchor-example">Beispiel: Server · Monitoring · Snippets · Vault · Browser · Audit</p>
 
 	<div class="demo-row">
 		<div class="demo-card">
@@ -657,6 +1047,12 @@
 							</div>
 							<div class="nav-item" title="Snippets">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.1 0-2 .9-2 2v3.5c0 1-.6 1.7-1.5 2 .9.3 1.5 1 1.5 2V16c0 1.1.9 2 2 2"/><path d="M16 3c1.1 0 2 .9 2 2v3.5c0 1 .6 1.7 1.5 2-.9.3-1.5 1-1.5 2V16c0 1.1-.9 2-2 2"/></svg>
+							</div>
+							<div class="nav-item" title="Vault">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+							</div>
+							<div class="nav-item" title="Browser">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
 							</div>
 							<div class="nav-item" title="Audit">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
@@ -688,6 +1084,12 @@
 							</div>
 							<div class="nav-item" title="Snippets">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c-1.1 0-2 .9-2 2v3.5c0 1-.6 1.7-1.5 2 .9.3 1.5 1 1.5 2V16c0 1.1.9 2 2 2"/><path d="M16 3c1.1 0 2 .9 2 2v3.5c0 1 .6 1.7 1.5 2-.9.3-1.5 1-1.5 2V16c0 1.1-.9 2-2 2"/></svg>
+							</div>
+							<div class="nav-item" title="Vault">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+							</div>
+							<div class="nav-item" title="Browser">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
 							</div>
 							<div class="nav-item" title="Audit">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
@@ -867,6 +1269,14 @@
 							<span>Snippets</span>
 						</div>
 						<div class="m-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+							<span>Vault</span>
+						</div>
+						<div class="m-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+							<span>Browser</span>
+						</div>
+						<div class="m-item">
 							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
 							<span>Audit</span>
 						</div>
@@ -896,6 +1306,14 @@
 							<span>Snippets</span>
 						</div>
 						<div class="m-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+							<span>Vault</span>
+						</div>
+						<div class="m-item">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+							<span>Browser</span>
+						</div>
+						<div class="m-item">
 							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c6-2.5 8-7 8-11V5l-8-3-8 3v5c0 4 2 8.5 8 11z"/><path d="M9 12l2 2 4-4.5"/></svg>
 							<span>Audit</span>
 						</div>
@@ -918,7 +1336,7 @@
 <table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
 <tr><td><code>UI-SERVERS-LIST</code></td><td>Server</td><td>Die Verbindungsziele des Nutzers, gruppiert nach Ordner und Organisation, plus verknüpfte OneDrive-Konten. <b>Nicht:</b> session, tab, identity, snippet.</td><td><code>default · loading · empty · error · selected</code></td></tr>
 <tr><td><code>UI-SERVERS-SEARCH</code></td><td>Suche</td><td>Filtert die Server-Liste nach Name, IP oder Tag, ohne die Gruppierung aufzulösen.</td><td><code>default · empty</code></td></tr>
-<tr><td><code>UI-SERVERS-LIST-MENU</code></td><td>Kontextmenü Server</td><td>Zweitweg für Aktionen auf einem Eintrag — Verbinden, SFTP öffnen, Notizen, Bearbeiten, Duplizieren, Session beitreten, Löschen. Port weiterleiten erscheint nur in der Desktop-App (Tauri), im Web-Build nie. <b>Nicht:</b> primary_navigation.</td><td><code>default · disabled</code></td></tr>
+<tr><td><code>UI-SERVERS-LIST-MENU</code></td><td>Kontextmenü Server</td><td>Zweitweg für Aktionen auf einem Eintrag — Verbinden, SFTP öffnen, Notizen, Bearbeiten, Duplizieren, Session beitreten, Agenten-Zugang… (nur SSH, nur bei eingeschaltetem Vault), Löschen. Port weiterleiten erscheint nur in der Desktop-App (Tauri), im Web-Build nie. <b>Nicht:</b> primary_navigation.</td><td><code>default · disabled</code></td></tr>
 <tr><td><code>UI-SERVERS-TABS</code></td><td>Sessions</td><td>Die aktuell offenen Sessions als Tabs, jede mit ihrer Split-View-Zuordnungsfarbe; Kontextmenü mit Umbenennen, Duplizieren, Teilen, Schlafen legen, Ausklinken, Schließen — bei einer getrennten Session zusätzlich Neu verbinden, an erster Stelle. <b>Nicht:</b> server_entry, folder.</td><td><code>default · selected · empty</code></td></tr>
 <tr><td><code>UI-SERVERS-TAB-MARKER</code></td><td>Zustand eines Tabs</td><td>Der Platz links im Tab. Im Ruhezustand ein Punkt in der Farbe des Split-Fensters, zu dem der Tab gehört. Läuft ein Befehl, der Prozente ausgibt, steht dort stattdessen ein Ring, der sich im Uhrzeigersinn füllt. <b>Nicht:</b> connection_state, session.</td><td><code>default · loading</code></td></tr>
 <tr><td><code>UI-SERVERS-TAB-CONTEXT</code></td><td>Kontextfüllung</td><td>Der Streifen am oberen Rand eines Tabs. Ohne Agenten die Farbe des Split-Fensters über die volle Breite; meldet ein Agent seine Kontextfüllung, wird derselbe Streifen zur Spur, in der ein Balken dieser Länge wächst -- in derselben Farbe, aber höher, damit „kein Agent" und „randvoll" sich unterscheiden. <b>Nicht:</b> session_activity, connection_state, pane_color.</td><td><code>default · loading</code></td></tr>
@@ -983,6 +1401,7 @@
 						<div class="item">Duplizieren</div>
 						<div class="item">Port weiterleiten</div>
 						<div class="item">Session beitreten</div>
+						<div class="item"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>Agenten-Zugang…</div>
 						<div class="sep"></div>
 						<div class="item danger">Löschen<kbd>⌫</kbd></div>
 					</section>
@@ -1208,6 +1627,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 						<div class="item disabled">Duplizieren</div>
 						<div class="item disabled">Port weiterleiten</div>
 						<div class="item disabled">Session beitreten</div>
+						<div class="item disabled"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>Agenten-Zugang…</div>
 						<div class="sep"></div>
 						<div class="item disabled">Löschen<kbd>⌫</kbd></div>
 					</div>
@@ -2697,6 +3117,1013 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 	</div>
 </div>
 
+
+</div></div>
+<h2 id="UI-VAULT">Vault <code>UI-VAULT</code></h2>
+<p>Zugangsdaten für Agenten, zweispaltig — links die Einträge, rechts der gewählte Eintrag. Unter 768px erst die Liste, dann die Details.</p>
+<div class="ctx"><b>Art:</b> Seite · Route <code>/vault</code><br><b>Tastatur:</b> N Neuer Eintrag; ↑/↓ wählt in der Liste; E Bearbeiten; unter 768px Zurück-Pfeil im Kopf der Details" </div>
+<p class="meta">Artboard: <a href="./ui-vault.html">ui-vault.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-vault.md</code></p>
+<table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
+<tr><td><code>UI-VAULT-NEW</code></td><td>Neuer Eintrag</td><td>Öffnet den Eintrag-Dialog zum Anlegen. Nur sichtbar mit Recht vault.use oder vault.manage in mindestens einer Organisation.</td><td><code>default · disabled</code></td></tr>
+<tr><td><code>UI-VAULT-SCOPE</code></td><td>Persönlich · Organisationen</td><td>Wechselt, wessen Einträge die Liste zeigt — die eigenen oder die einer Organisation. Ein Reiter je Besitzer. <b>Nicht:</b> server_folder, tag, item_type.</td><td><code>default · selected</code></td></tr>
+<tr><td><code>UI-VAULT-SEARCH</code></td><td>Suchen</td><td>Filtert die Liste nach Name, Benutzer, Host, Ursprung und Beschreibung. Durchsucht nie geheime Werte.</td><td><code>default · empty</code></td></tr>
+<tr><td><code>UI-VAULT-TYPES</code></td><td>Alle · Login · API-Key · SSH · Datenbank · Sonstiges</td><td>Filtert die Liste nach der Art der Zugangsdaten. <b>Nicht:</b> vault_owner, tag.</td><td><code>default · selected</code></td></tr>
+<tr><td><code>UI-VAULT-LIST</code></td><td>Einträge</td><td>Die Vault-Einträge des gewählten Besitzers — je Zeile Typ-Icon, Name, darunter Benutzer oder Host; ein Schild-Kennzeichen, wenn eine Freigabe nötig ist. Nie ein geheimer Wert. <b>Nicht:</b> identity, api_key, server_entry, snippet.</td><td><code>default · selected · loading · empty · error</code></td></tr>
+<tr><td><code>UI-VAULT-DETAIL</code></td><td>Eintrag</td><td>Kopf des gewählten Eintrags — Name, Typ, Besitzer, Beschreibung — mit Bearbeiten und Löschen (nur mit Verwaltungsrecht). <b>Nicht:</b> identity, server_entry.</td><td><code>default · empty · error</code></td></tr>
+<tr><td><code>UI-VAULT-DETAIL-ACTIONS</code></td><td>Bearbeiten · Löschen</td><td>Bearbeiten öffnet den Eintrag-Dialog; Löschen fragt im Bestätigungsdialog nach und entfernt den Eintrag samt Werten und Bindungen. Nur mit Verwaltungsrecht (Besitzer persönlicher Einträge, vault.manage bei Organisationen); ohne das Recht nicht sichtbar. <b>Nicht:</b> vault_secret.</td><td><code>default · disabled · selected</code></td></tr>
+<tr><td><code>UI-VAULT-DETAIL-FIELDS</code></td><td>Angaben</td><td>Die nicht geheimen Angaben des Eintrags je Typ — Login Benutzer und erlaubte Ursprünge, API-Key Hosts und Header, SSH Benutzer, Datenbank Engine, Host, Port, Datenbank, Benutzer. <b>Nicht:</b> vault_secret.</td><td><code>default</code></td></tr>
+<tr><td><code>UI-VAULT-DETAIL-SECRET</code></td><td>Geheimer Wert</td><td>Je geheimem Feld eine Zeile mit genau zwölf Punkten, unabhängig von der Länge des Werts. Anzeigen und Kopieren nur für den Besitzer persönlicher Einträge oder mit vault.reveal; sonst der Hinweis, dass der Wert nur für Agenten nutzbar ist. Ein angezeigter Wert verbirgt sich nach 30 Sekunden. <b>Nicht:</b> vault_item_fields, identity.</td><td><code>default · selected · disabled · success</code></td></tr>
+<tr><td><code>UI-VAULT-DETAIL-SCOPE</code></td><td>Gilt für</td><td>Für welche Server Agenten diesen Eintrag sehen — einzelne Server, Ordner mit Unterordnern, Tags oder alle Server. <b>Nicht:</b> vault_owner, permission.</td><td><code>default · empty</code></td></tr>
+<tr><td><code>UI-VAULT-DETAIL-POLICY</code></td><td>Freigabe erforderlich</td><td>Ob jede Nutzung durch einen Agenten bestätigt werden muss, und wann der Eintrag zuletzt genutzt wurde. <b>Nicht:</b> permission, vault_binding.</td><td><code>default · disabled</code></td></tr>
+</table>
+<div class="mb-embed"><div class="mb-embed-label">Auszug: ui-vault.html — alle Zustände, wie im Artboard</div><div id="ab-ui-vault">
+
+
+<header class="mb-context">
+	<strong>Darstellungskontext</strong><br>
+	<b>Art:</b> Seite (page) · Route <code class="v-mono">/vault</code> · Navigation links, Freigabe-Karte schwebt unten rechts über der Seite<br>
+	<b>Größe:</b> zweispaltig — Liste 20–26 rem, Details füllen den Rest · unter 768px eine Spalte: erst Liste, Tipp öffnet Details mit Zurück-Pfeil<br>
+	Tastatur: N Neuer Eintrag · ↑/↓ wählt in der Liste · E Bearbeiten · unter 768px Zurück-Pfeil im Kopf der Details<br>
+	Tab-Reihenfolge Neuer Eintrag → Besitzer-Reiter → Suchen → Typ-Filter → Liste (↑/↓, Enter öffnet) → Details (Anzeigen, Kopieren, Bearbeiten, Löschen); Esc im Detail geht auf schmal zurück zur Liste
+</header>
+
+<main class="mb-artboard">
+
+<svg class="v-sprite" aria-hidden="true" focusable="false">
+	<symbol id="i-login" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/></symbol>
+	<symbol id="i-key" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
+	<symbol id="i-ssh" viewBox="0 0 24 24"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2"/></symbol>
+	<symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></symbol>
+	<symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+	<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></symbol>
+	<symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></symbol>
+	<symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+	<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+	<symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+	<symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol>
+	<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+	<symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></symbol>
+	<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+	<symbol id="i-back" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol>
+</svg>
+
+<div class="v-head">
+	<h1>UI-VAULT</h1>
+	<span>Vault — Zugangsdaten für Agenten</span>
+	<code>/vault</code>
+</div>
+
+<!-- ============ Gesamtseite ============ -->
+<div class="v-block">
+	<h2>Seite — Liste links, Eintrag rechts <code>UI-VAULT</code></h2>
+	<div class="v-frame" data-ui-id="UI-VAULT">
+	<div class="v-page">
+		<nav class="v-nav" aria-label="Navigation (Shell, angedeutet)">
+			<span><i class="ico"></i>Server</span>
+			<span><i class="ico"></i>Dateien</span>
+			<span class="active"><i class="ico"></i>Vault</span>
+		</nav>
+		<div class="v-split">
+			<div class="v-left">
+				<div class="v-top"><h3>Vault</h3>
+					<span class="v-btn primary"><svg class="v-ico"><use href="#i-plus"/></svg>Neuer Eintrag</span>
+				</div>
+				<div class="v-scope"><span class="sel">Persönlich</span><span>Homelab</span><span>Kunde Meier</span></div>
+				<div class="v-search"><div class="v-input"><svg class="v-ico"><use href="#i-search"/></svg>Suchen</div></div>
+				<div class="v-types"><span class="sel">Alle</span><span>Login</span><span>API-Key</span><span>SSH</span><span>Datenbank</span><span>Sonstiges</span></div>
+				<ul class="v-rows">
+					<li class="v-row sel"><svg class="v-ico"><use href="#i-login"/></svg><span class="t"><span class="n">portal-login</span><span class="s">ma.backes@portal.example.com</span></span><svg class="v-ico shield"><use href="#i-shield"/></svg></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-key"/></svg><span class="t"><span class="n">github-token</span><span class="s">api.github.com</span></span></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-db"/></svg><span class="t"><span class="n">db-prod</span><span class="s">postgres@10.0.0.12</span></span><svg class="v-ico shield"><use href="#i-shield"/></svg></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-ssh"/></svg><span class="t"><span class="n">deploy-key</span><span class="s">deploy</span></span></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-lock"/></svg><span class="t"><span class="n">smtp-relay</span></span></li>
+				</ul>
+			</div>
+			<div class="v-right">
+				<div class="v-dhead">
+					<div><h3>portal-login</h3><div class="v-meta"><svg class="v-ico"><use href="#i-login"/></svg>Login · Persönlich</div></div>
+					<div class="v-actions"><span class="v-btn"><svg class="v-ico"><use href="#i-pencil"/></svg>Bearbeiten</span><span class="v-btn danger"><svg class="v-ico"><use href="#i-trash"/></svg>Löschen</span></div>
+				</div>
+				<div class="v-sec"><h4>Angaben</h4><dl class="v-kv"><dt>Benutzer</dt><dd>ma.backes</dd><dt>Ursprünge</dt><dd>https://portal.example.com</dd></dl></div>
+				<div class="v-sec"><h4>Geheimer Wert</h4><div class="v-secret"><span class="lbl">Passwort</span><span class="val">••••••••••••</span><span class="v-iconbtn"><svg class="v-ico"><use href="#i-eye"/></svg></span><span class="v-iconbtn"><svg class="v-ico"><use href="#i-copy"/></svg></span></div></div>
+				<div class="v-sec"><h4>Gilt für</h4><div class="v-chips"><span class="v-chip">Server web01</span><span class="v-chip">Ordner Produktion</span><span class="v-chip">Tag db</span></div></div>
+				<div class="v-sec"><div class="v-policy"><svg class="v-ico"><use href="#i-shield"/></svg>Freigabe erforderlich · zuletzt genutzt vor 2 Stunden</div></div>
+			</div>
+		</div>
+	</div>
+	</div>
+</div>
+
+<!-- ============ Zustände ============ -->
+<div class="v-block">
+	<h2>Zustände je Element</h2>
+	<div class="v-gallery">
+
+		<div class="v-cell" data-ui-id="UI-VAULT-NEW">
+			<div class="v-cap"><code>UI-VAULT-NEW</code> · Neuer Eintrag</div>
+			<section class="v-state" data-ui-state="default"><span class="v-btn primary"><svg class="v-ico"><use href="#i-plus"/></svg>Neuer Eintrag</span></section>
+			<section class="v-state" data-ui-state="disabled"><span class="v-btn primary disabled"><svg class="v-ico"><use href="#i-plus"/></svg>Neuer Eintrag</span></section>
+		</div>
+
+		<div class="v-cell" data-ui-id="UI-VAULT-SCOPE">
+			<div class="v-cap"><code>UI-VAULT-SCOPE</code> · Persönlich · Organisationen</div>
+			<section class="v-state" data-ui-state="default"><div class="v-scope" style="padding:0;border:0"><span>Persönlich</span><span>Homelab</span><span>Kunde Meier</span></div></section>
+			<section class="v-state" data-ui-state="selected"><div class="v-scope" style="padding:0;border:0"><span>Persönlich</span><span class="sel">Homelab</span><span>Kunde Meier</span></div></section>
+		</div>
+
+		<div class="v-cell" data-ui-id="UI-VAULT-SEARCH">
+			<div class="v-cap"><code>UI-VAULT-SEARCH</code> · Suchen</div>
+			<section class="v-state" data-ui-state="default"><div class="v-input"><svg class="v-ico"><use href="#i-search"/></svg>Suchen</div></section>
+			<section class="v-state" data-ui-state="empty"><div class="v-input"><svg class="v-ico"><use href="#i-search"/></svg><span style="color:var(--text)">smtp-xyz</span></div><p class="v-hint">Kein Eintrag passt zur Suche.</p></section>
+		</div>
+
+		<div class="v-cell" data-ui-id="UI-VAULT-TYPES">
+			<div class="v-cap"><code>UI-VAULT-TYPES</code> · Alle · Login · API-Key · SSH · Datenbank · Sonstiges</div>
+			<section class="v-state" data-ui-state="default"><div class="v-types" style="padding:0;border:0"><span>Alle</span><span>Login</span><span>API-Key</span><span>SSH</span><span>Datenbank</span><span>Sonstiges</span></div></section>
+			<section class="v-state" data-ui-state="selected"><div class="v-types" style="padding:0;border:0"><span>Alle</span><span class="sel">Login</span><span>API-Key</span><span>SSH</span><span>Datenbank</span><span>Sonstiges</span></div></section>
+		</div>
+
+		<div class="v-cell flush wide" data-ui-id="UI-VAULT-LIST">
+			<div class="v-cap"><code>UI-VAULT-LIST</code> · Einträge</div>
+			<div class="v-gallery" style="padding:var(--space-3)">
+				<section class="v-state v-cell" data-ui-state="default"><ul class="v-rows">
+					<li class="v-row"><svg class="v-ico"><use href="#i-login"/></svg><span class="t"><span class="n">portal-login</span><span class="s">ma.backes@portal.example.com</span></span><svg class="v-ico shield"><use href="#i-shield"/></svg></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-key"/></svg><span class="t"><span class="n">github-token</span><span class="s">api.github.com</span></span></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-db"/></svg><span class="t"><span class="n">db-prod</span><span class="s">postgres@10.0.0.12</span></span><svg class="v-ico shield"><use href="#i-shield"/></svg></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-ssh"/></svg><span class="t"><span class="n">deploy-key</span><span class="s">deploy</span></span></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-lock"/></svg><span class="t"><span class="n">smtp-relay</span></span></li>
+				</ul></section>
+				<section class="v-state v-cell" data-ui-state="selected"><ul class="v-rows">
+					<li class="v-row"><svg class="v-ico"><use href="#i-login"/></svg><span class="t"><span class="n">portal-login</span><span class="s">ma.backes@portal.example.com</span></span><svg class="v-ico shield"><use href="#i-shield"/></svg></li>
+					<li class="v-row sel"><svg class="v-ico"><use href="#i-key"/></svg><span class="t"><span class="n">github-token</span><span class="s">api.github.com</span></span></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-db"/></svg><span class="t"><span class="n">db-prod</span><span class="s">postgres@10.0.0.12</span></span><svg class="v-ico shield"><use href="#i-shield"/></svg></li>
+				</ul></section>
+				<section class="v-state v-cell" data-ui-state="loading">
+					<div class="v-skel"><i class="a"></i><i class="b"></i></div><div class="v-skel"><i class="a"></i><i class="b"></i></div><div class="v-skel"><i class="a"></i><i class="b"></i></div>
+				</section>
+				<section class="v-state v-cell" data-ui-state="empty"><div class="v-note">Noch keine Einträge. Zugangsdaten im Vault nutzen Agenten, ohne den Wert zu sehen.<span class="v-btn primary"><svg class="v-ico"><use href="#i-plus"/></svg>Neuer Eintrag</span></div></section>
+				<section class="v-state v-cell" data-ui-state="error"><div class="v-note err">Vault nicht erreichbar. Seite neu laden.</div></section>
+			</div>
+		</div>
+
+		<div class="v-cell flush wide" data-ui-id="UI-VAULT-DETAIL">
+			<div class="v-cap"><code>UI-VAULT-DETAIL</code> · Eintrag</div>
+			<section class="v-state" data-ui-state="default"><div class="v-dhead" style="border:0">
+				<div><h3>portal-login</h3><div class="v-meta"><svg class="v-ico"><use href="#i-login"/></svg>Login · Persönlich</div></div>
+				<div class="v-actions"><span class="v-btn"><svg class="v-ico"><use href="#i-pencil"/></svg>Bearbeiten</span><span class="v-btn danger"><svg class="v-ico"><use href="#i-trash"/></svg>Löschen</span></div>
+			</div></section>
+			<section class="v-state" data-ui-state="empty"><div class="v-note">Eintrag links wählen.</div></section>
+			<section class="v-state" data-ui-state="error"><div class="v-note err">Eintrag nicht lesbar — der Vault-Schlüssel passt nicht zu diesem Eintrag.</div></section>
+		</div>
+
+		<div class="v-cell" data-ui-id="UI-VAULT-DETAIL-ACTIONS">
+			<div class="v-cap"><code>UI-VAULT-DETAIL-ACTIONS</code> · Bearbeiten · Löschen</div>
+			<section class="v-state" data-ui-state="default"><div class="v-actions"><span class="v-btn"><svg class="v-ico"><use href="#i-pencil"/></svg>Bearbeiten</span><span class="v-btn danger"><svg class="v-ico"><use href="#i-trash"/></svg>Löschen</span></div></section>
+			<section class="v-state" data-ui-state="disabled"><div class="v-actions"></div><p class="v-hint">ohne Verwaltungsrecht nicht sichtbar</p></section>
+			<section class="v-state" data-ui-state="selected"><div class="v-backdrop"><div class="v-confirm" role="alertdialog" aria-label="Eintrag löschen">
+				<h5>portal-login löschen?</h5>
+				<p>Agenten verlieren den Zugriff sofort.</p>
+				<div class="v-actions"><span class="v-btn">Abbrechen</span><span class="v-btn danger-solid"><svg class="v-ico"><use href="#i-trash"/></svg>Löschen</span></div>
+			</div></div></section>
+		</div>
+
+		<div class="v-cell" data-ui-id="UI-VAULT-DETAIL-FIELDS">
+			<div class="v-cap"><code>UI-VAULT-DETAIL-FIELDS</code> · Angaben</div>
+			<section class="v-state" data-ui-state="default"><dl class="v-kv"><dt>Benutzer</dt><dd>ma.backes</dd><dt>Ursprünge</dt><dd>https://portal.example.com</dd></dl></section>
+		</div>
+
+		<div class="v-cell" data-ui-id="UI-VAULT-DETAIL-SECRET">
+			<div class="v-cap"><code>UI-VAULT-DETAIL-SECRET</code> · Geheimer Wert</div>
+			<section class="v-state" data-ui-state="default"><div class="v-secret"><span class="lbl">Passwort</span><span class="val">••••••••••••</span><span class="v-iconbtn"><svg class="v-ico"><use href="#i-eye"/></svg></span><span class="v-iconbtn"><svg class="v-ico"><use href="#i-copy"/></svg></span></div></section>
+			<section class="v-state" data-ui-state="selected"><div class="v-secret"><span class="lbl">Passwort</span><span class="val">Wn4-eTq8-Rz2x</span><span class="v-iconbtn"><svg class="v-ico"><use href="#i-eyeoff"/></svg></span><span class="v-iconbtn"><svg class="v-ico"><use href="#i-copy"/></svg></span></div><p class="v-hint">angezeigt, verbirgt sich in 30 s</p></section>
+			<section class="v-state" data-ui-state="disabled"><div class="v-secret"><span class="lbl">Passwort</span><span class="val">••••••••••••</span><span class="hint">nur für Agenten nutzbar</span></div></section>
+			<section class="v-state" data-ui-state="success"><div class="v-secret"><span class="lbl">Passwort</span><span class="val">••••••••••••</span><span class="v-iconbtn"><svg class="v-ico"><use href="#i-eye"/></svg></span><span class="v-iconbtn done"><svg class="v-ico"><use href="#i-check"/></svg></span><span class="hint" style="color:var(--success)">Kopiert</span></div></section>
+		</div>
+
+		<div class="v-cell" data-ui-id="UI-VAULT-DETAIL-SCOPE">
+			<div class="v-cap"><code>UI-VAULT-DETAIL-SCOPE</code> · Gilt für</div>
+			<section class="v-state" data-ui-state="default"><div class="v-chips"><span class="v-chip">Server web01</span><span class="v-chip">Ordner Produktion</span><span class="v-chip">Tag db</span></div></section>
+			<section class="v-state" data-ui-state="empty"><div style="color:var(--subtext)">Für keinen Server freigegeben — kein Agent sieht diesen Eintrag.</div></section>
+		</div>
+
+		<div class="v-cell" data-ui-id="UI-VAULT-DETAIL-POLICY">
+			<div class="v-cap"><code>UI-VAULT-DETAIL-POLICY</code> · Freigabe erforderlich</div>
+			<section class="v-state" data-ui-state="default"><div class="v-policy"><svg class="v-ico"><use href="#i-shield"/></svg>Freigabe erforderlich · zuletzt genutzt vor 2 Stunden</div></section>
+			<section class="v-state" data-ui-state="disabled"><div class="v-policy off">Ohne Freigabe nutzbar</div></section>
+		</div>
+
+	</div>
+</div>
+
+<!-- ============ Schmal ============ -->
+<div class="v-block">
+	<h2>Schmal (&lt;768px) — erst Liste, Tipp öffnet Details <code>UI-VAULT</code></h2>
+	<div class="v-phones">
+		<section class="v-state v-phone" data-variant="narrow-list">
+			<div class="v-left">
+				<div class="v-top"><h3>Vault</h3><span class="v-btn primary"><svg class="v-ico"><use href="#i-plus"/></svg>Neuer Eintrag</span></div>
+				<div class="v-scope"><span class="sel">Persönlich</span><span>Homelab</span><span>Kunde Meier</span></div>
+				<div class="v-search"><div class="v-input"><svg class="v-ico"><use href="#i-search"/></svg>Suchen</div></div>
+				<div class="v-types"><span class="sel">Alle</span><span>Login</span><span>API-Key</span><span>SSH</span><span>Datenbank</span><span>Sonstiges</span></div>
+				<ul class="v-rows">
+					<li class="v-row"><svg class="v-ico"><use href="#i-login"/></svg><span class="t"><span class="n">portal-login</span><span class="s">ma.backes@portal.example.com</span></span><svg class="v-ico shield"><use href="#i-shield"/></svg></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-key"/></svg><span class="t"><span class="n">github-token</span><span class="s">api.github.com</span></span></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-db"/></svg><span class="t"><span class="n">db-prod</span><span class="s">postgres@10.0.0.12</span></span><svg class="v-ico shield"><use href="#i-shield"/></svg></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-ssh"/></svg><span class="t"><span class="n">deploy-key</span><span class="s">deploy</span></span></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-lock"/></svg><span class="t"><span class="n">smtp-relay</span></span></li>
+				</ul>
+			</div>
+			<nav class="v-mnav"><span>Server</span><span>Dateien</span><span class="active">Vault</span></nav>
+		</section>
+		<section class="v-state v-phone" data-variant="narrow-detail">
+			<div class="v-back"><span class="v-iconbtn"><svg class="v-ico"><use href="#i-back"/></svg></span><span>Vault</span></div>
+			<div class="v-body">
+				<div class="v-dhead">
+					<div><h3>portal-login</h3><div class="v-meta"><svg class="v-ico"><use href="#i-login"/></svg>Login · Persönlich</div></div>
+					<div class="v-actions"><span class="v-btn"><svg class="v-ico"><use href="#i-pencil"/></svg>Bearbeiten</span><span class="v-btn danger"><svg class="v-ico"><use href="#i-trash"/></svg>Löschen</span></div>
+				</div>
+				<div class="v-sec"><h4>Angaben</h4><dl class="v-kv"><dt>Benutzer</dt><dd>ma.backes</dd><dt>Ursprünge</dt><dd>https://portal.example.com</dd></dl></div>
+				<div class="v-sec"><h4>Geheimer Wert</h4><div class="v-secret"><span class="lbl">Passwort</span><span class="val">••••••••••••</span><span class="v-iconbtn"><svg class="v-ico"><use href="#i-eye"/></svg></span><span class="v-iconbtn"><svg class="v-ico"><use href="#i-copy"/></svg></span></div></div>
+				<div class="v-sec"><h4>Gilt für</h4><div class="v-chips"><span class="v-chip">Server web01</span><span class="v-chip">Ordner Produktion</span><span class="v-chip">Tag db</span></div></div>
+				<div class="v-sec"><div class="v-policy"><svg class="v-ico"><use href="#i-shield"/></svg>Freigabe erforderlich · zuletzt genutzt vor 2 Stunden</div></div>
+			</div>
+			<nav class="v-mnav"><span>Server</span><span>Dateien</span><span class="active">Vault</span></nav>
+		</section>
+	</div>
+</div>
+
+</main>
+
+</div></div>
+<h2 id="UI-VAULT-DIALOG">Eintrag anlegen / bearbeiten <code>UI-VAULT-DIALOG</code></h2>
+<p>Ein Formular, dessen Felder sich nach dem Typ richten; Geltung und Freigabe kompakt darunter.</p>
+<div class="ctx"><b>Art:</b> Dialog (modal, mit Backdrop)<br><b>Erscheint über:</b> UI-VAULT<br><b>Öffnen durch:</b> Neuer Eintrag<br><b>Größe:</b> mittig<br><b>Schließen:</b> Esc<br><b>Tastatur:</b> Ctrl+Enter Speichern" </div>
+<p class="meta">Artboard: <a href="./ui-vault-dialog.html">ui-vault-dialog.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-vault-dialog.md</code></p>
+<table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
+<tr><td><code>UI-VAULT-DIALOG-TYPE</code></td><td>Typ</td><td>Art der Zugangsdaten — Login, API-Key, SSH, Datenbank, Sonstiges. Nur beim Anlegen wählbar, danach fest. <b>Nicht:</b> vault_owner.</td><td><code>default · disabled</code></td></tr>
+<tr><td><code>UI-VAULT-DIALOG-OWNER</code></td><td>Besitzer</td><td>Wem der Eintrag gehört — dem eigenen Konto oder einer Organisation. Nur beim Anlegen wählbar. <b>Nicht:</b> vault_binding, server_folder.</td><td><code>default · disabled</code></td></tr>
+<tr><td><code>UI-VAULT-DIALOG-FIELDS</code></td><td>Angaben</td><td>Name, Beschreibung und die nicht geheimen Angaben des gewählten Typs. Der Name ist die Kennung für Agenten, Kleinbuchstaben, Ziffern, Punkt, Bindestrich und Unterstrich. <b>Nicht:</b> vault_secret.</td><td><code>default · error</code></td></tr>
+<tr><td><code>UI-VAULT-DIALOG-SECRET</code></td><td>Geheimer Wert</td><td>Eingabe der geheimen Felder des Typs. Beim Bearbeiten leer mit dem Hinweis, dass ein Wert gespeichert ist und leer lassen ihn behält. <b>Nicht:</b> vault_item_fields.</td><td><code>default · partial · error</code></td></tr>
+<tr><td><code>UI-VAULT-DIALOG-SCOPE</code></td><td>Gilt für</td><td>Auswahl, auf welchen Servern Agenten den Eintrag sehen — Server, Ordner (mit Unterordnern), Tags nur bei persönlichen Einträgen, oder Alle Server. Standard keine Auswahl. <b>Nicht:</b> vault_owner, permission.</td><td><code>default · empty · selected</code></td></tr>
+<tr><td><code>UI-VAULT-DIALOG-APPROVAL</code></td><td>Freigabe erforderlich</td><td>Jede Nutzung durch einen Agenten muss im Outpost-Fenster bestätigt werden. Standard an.</td><td><code>default · selected</code></td></tr>
+<tr><td><code>UI-VAULT-DIALOG-SAVE</code></td><td>Speichern</td><td>Legt den Eintrag an bzw. speichert Änderungen und schließt den Dialog; Beschriftung Erstellen beim Anlegen.</td><td><code>default · disabled · loading · error</code></td></tr>
+</table>
+<div class="mb-embed"><div class="mb-embed-label">Auszug: ui-vault-dialog.html — alle Zustände, wie im Artboard</div><div id="ab-ui-vault-dialog">
+
+<main class="mb-artboard">
+<header class="mb-context">
+<strong>Darstellungskontext</strong><br>
+<b>Art:</b> Dialog, modal, mit Backdrop (--dialog-background) · erscheint über UI-VAULT<br>
+<b>Auslöser:</b> Neuer Eintrag, Bearbeiten im Detail-Kopf, Taste N · <b>Schließen:</b> Esc, Backdrop, Abbrechen; nach Speichern automatisch<br>
+<b>Größe:</b> mittig, 40rem, max 85vh · <b>Tastatur:</b> Ctrl+Enter Speichern
+</header>
+<div class="artboard-head"><strong>UI-VAULT-DIALOG</strong><code>kind: dialog</code><span>Eintrag anlegen / bearbeiten — Felder richten sich nach dem Typ.</span></div>
+
+<div class="backdrop">
+<div class="stack">
+<div class="dialog" role="dialog" aria-labelledby="dlg-title" data-ui-id="UI-VAULT-DIALOG" data-variant="create">
+<div class="dialog-head"><h1 id="dlg-title">Eintrag anlegen</h1><button class="close" aria-label="Schließen">×</button></div>
+<div class="variant-title">Anlegen — Typ Login, alle Zustände</div>
+<div class="dialog-body">
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-TYPE">
+				<header><code>UI-VAULT-DIALOG-TYPE</code><span class="type">field</span><span>Typ — nur beim Anlegen wählbar</span></header>
+				<section data-ui-state="default"><div class="field"><label for="a-type">Typ</label><select class="input" id="a-type"><option selected>Login</option></select></div></section>
+				<section data-ui-state="disabled"><div class="field"><label for="a-type-d">Typ</label><select class="input is-disabled" id="a-type-d" disabled><option selected>Login</option></select></div><span class="help">nach dem Anlegen fest</span></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-OWNER">
+				<header><code>UI-VAULT-DIALOG-OWNER</code><span class="type">field</span><span>Besitzer — nur beim Anlegen wählbar</span></header>
+				<section data-ui-state="default"><div class="field"><label for="a-owner">Besitzer</label><select class="input" id="a-owner"><option selected>Persönlich (ma.backes)</option></select></div></section>
+				<section data-ui-state="disabled"><div class="field"><label for="a-owner-d">Besitzer</label><select class="input is-disabled" id="a-owner-d" disabled><option selected>Persönlich (ma.backes)</option></select></div><span class="help">nach dem Anlegen fest</span></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-FIELDS">
+				<header><code>UI-VAULT-DIALOG-FIELDS</code><span class="type">form</span><span>Angaben — Felder des Typs Login</span></header>
+				<section data-ui-state="default">
+<div class="grid">
+<div class="field c6"><label for="a-name">Name</label><input class="input mono" id="a-name" value="portal-login"></div>
+<div class="field c6"><label for="a-user">Benutzer</label><input class="input mono" id="a-user" value="ma.backes"></div>
+<div class="field c12"><label for="a-url">Ursprung</label><input class="input mono" id="a-url" value="https://portal.example.com"></div>
+<div class="field c12"><label for="a-desc">Beschreibung</label><input class="input" id="a-desc" value="Kundenportal"></div>
+</div></section>
+				<section data-ui-state="error">
+<div class="grid">
+<div class="field c6"><label for="ae-name">Name</label><input class="input mono is-error" id="ae-name" value="portal-login" aria-invalid="true"><span class="help error" role="alert">Name schon vergeben.</span></div>
+<div class="field c6"><label for="ae-user">Benutzer</label><input class="input mono" id="ae-user" value="ma.backes"></div>
+<div class="field c12"><label for="ae-url">Ursprung</label><input class="input mono" id="ae-url" value="https://portal.example.com"></div>
+<div class="field c12"><label for="ae-desc">Beschreibung</label><input class="input" id="ae-desc" value="Kundenportal"></div>
+</div></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-SECRET">
+				<header><code>UI-VAULT-DIALOG-SECRET</code><span class="type">field</span><span>Geheimer Wert</span></header>
+				<section data-ui-state="default"><div class="field"><label for="a-sec">Passwort</label><input class="input mono" id="a-sec" type="password" value="" placeholder="Passwort eingeben"></div></section>
+				<section data-ui-state="partial"><div class="field"><label for="a-sec-p">Passwort</label><input class="input mono" id="a-sec-p" type="password" value="" placeholder="gespeichert — leer lassen, um beizubehalten"><span class="help">gespeichert — leer lassen, um beizubehalten</span></div></section>
+				<section data-ui-state="error"><div class="field"><label for="a-sec-e">Passwort</label><input class="input mono is-error" id="a-sec-e" type="password" value="" aria-invalid="true"><span class="help error" role="alert">Wert fehlt.</span></div></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-SCOPE">
+				<header><code>UI-VAULT-DIALOG-SCOPE</code><span class="type">field</span><span>Gilt für — Chips plus „Alle Server“</span></header>
+				<section data-ui-state="default"><div class="chips"><span class="chip sel"><span class="k">Ordner</span>Produktion</span><span class="chip sel"><span class="k">Server</span>nas</span><span class="chip add">+ Server</span><span class="chip add">+ Ordner</span><span class="chip add">+ Tag</span></div><div class="row"><span>Alle Server</span><span class="toggle" role="switch" aria-checked="false" aria-label="Alle Server"></span></div></section>
+				<section data-ui-state="empty"><div class="chips"><span class="chip add">+ Server</span><span class="chip add">+ Ordner</span><span class="chip add">+ Tag</span></div><span class="help">Für keinen Server freigegeben.</span><div class="row"><span>Alle Server</span><span class="toggle" role="switch" aria-checked="false" aria-label="Alle Server"></span></div></section>
+				<section data-ui-state="selected"><div class="chips"><span class="chip off"><span class="k">Ordner</span>Produktion</span><span class="chip off"><span class="k">Server</span>nas</span></div><div class="row"><span>Alle Server</span><span class="toggle on" role="switch" aria-checked="true" aria-label="Alle Server"></span></div></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-APPROVAL">
+				<header><code>UI-VAULT-DIALOG-APPROVAL</code><span class="type">toggle</span><span>Freigabe erforderlich — Standard an</span></header>
+				<section data-ui-state="default"><div class="row"><span>Freigabe erforderlich</span><span class="toggle" role="switch" aria-checked="false" aria-label="Freigabe erforderlich"></span></div></section>
+				<section data-ui-state="selected"><div class="row"><span>Freigabe erforderlich</span><span class="toggle on" role="switch" aria-checked="true" aria-label="Freigabe erforderlich"></span></div></section>
+			</div>
+
+</div>
+
+<div class="dialog-foot">
+<div class="element" data-ui-id="UI-VAULT-DIALOG-SAVE" style="flex:1">
+<header><code>UI-VAULT-DIALOG-SAVE</code><span class="type">action</span><span>Erstellen beim Anlegen, Speichern beim Bearbeiten</span></header>
+<section data-ui-state="default"><div class="actions"><button class="btn ghost" type="button">Abbrechen</button><span class="variant"><span class="label">Anlegen</span><button class="btn primary" type="button">Erstellen</button></span><span class="variant"><span class="label">Bearbeiten</span><button class="btn primary" type="button">Speichern</button></span></div></section>
+<section data-ui-state="disabled"><div class="actions"><button class="btn ghost" type="button">Abbrechen</button><span class="variant"><span class="label">Anlegen</span><button class="btn primary" type="button" disabled>Erstellen</button></span><span class="variant"><span class="label">Bearbeiten</span><button class="btn primary" type="button" disabled>Speichern</button></span></div></section>
+<section data-ui-state="loading"><div class="actions"><button class="btn ghost" type="button">Abbrechen</button><button class="btn primary loading" type="button" aria-busy="true" disabled>Speichere …</button></div></section>
+<section data-ui-state="error"><div class="actions"><button class="btn ghost" type="button">Abbrechen</button><span class="variant"><button class="btn primary" type="button">Speichern</button><span class="help error" role="alert">Speichern fehlgeschlagen.</span></span></div></section>
+</div></div>
+</div>
+
+
+<div class="dialog" role="dialog" aria-labelledby="dlg-title-b" data-variant="edit">
+<div class="dialog-head"><h1 id="dlg-title-b">Eintrag bearbeiten</h1><button class="close" aria-label="Schließen">×</button></div>
+<div class="dialog-body">
+<div class="grid"><div class="c6"><div class="field"><label for="b-type">Typ</label><select class="input is-disabled" id="b-type" disabled><option selected>Login</option></select></div><span class="help">nach dem Anlegen fest</span></div><div class="c6"><div class="field"><label for="b-owner">Besitzer</label><select class="input is-disabled" id="b-owner" disabled><option selected>Persönlich (ma.backes)</option></select></div><span class="help">nach dem Anlegen fest</span></div></div>
+
+<div class="grid">
+<div class="field c6"><label for="b-name">Name</label><input class="input mono" id="b-name" value="portal-login"></div>
+<div class="field c6"><label for="b-user">Benutzer</label><input class="input mono" id="b-user" value="ma.backes"></div>
+<div class="field c12"><label for="b-url">Ursprung</label><input class="input mono" id="b-url" value="https://portal.example.com"></div>
+<div class="field c12"><label for="b-desc">Beschreibung</label><input class="input" id="b-desc" value="Kundenportal"></div>
+</div>
+<div class="field"><label for="b-sec">Passwort</label><input class="input mono" id="b-sec" type="password" value="" placeholder="gespeichert — leer lassen, um beizubehalten"><span class="help">gespeichert — leer lassen, um beizubehalten</span></div>
+<div class="field"><span class="label">Gilt für</span><div class="chips"><span class="chip sel"><span class="k">Ordner</span>Produktion</span><span class="chip sel"><span class="k">Server</span>nas</span><span class="chip add">+ Server</span><span class="chip add">+ Ordner</span><span class="chip add">+ Tag</span></div><div class="row"><span>Alle Server</span><span class="toggle" role="switch" aria-checked="false" aria-label="Alle Server"></span></div></div>
+<div class="row"><span>Freigabe erforderlich</span><span class="toggle on" role="switch" aria-checked="true" aria-label="Freigabe erforderlich"></span></div>
+</div>
+<div class="dialog-foot"><div class="actions"><button class="btn ghost" type="button">Abbrechen</button><button class="btn primary" type="button">Speichern</button></div></div>
+</div>
+
+
+<div class="dialog" data-variant="types">
+<div class="dialog-head"><h1>Angaben je Typ (Skizze)</h1></div>
+<div class="sketch">
+<div class="fieldset"><span class="label">API-Key</span>
+<div class="field"><label for="k-name">Name</label><input class="input mono" id="k-name" value="portal-api"></div>
+<div class="field"><label for="k-hosts">Hosts</label><input class="input mono" id="k-hosts" value="api.example.com"></div>
+<div class="field"><label for="k-hdr">Header-Name</label><input class="input mono" id="k-hdr" value="Authorization"></div>
+<div class="field"><label for="k-tpl">Header-Vorlage</label><input class="input mono" id="k-tpl" value="Bearer {{secret}}"></div>
+</div>
+<div class="fieldset"><span class="label">Datenbank</span>
+<div class="field"><label for="db-eng">Engine</label><select class="input" id="db-eng"><option selected>PostgreSQL</option></select></div>
+<div class="field"><label for="db-host">Host</label><input class="input mono" id="db-host" value="db.example.com"></div>
+<div class="grid"><div class="field c4"><div class="field"><label for="db-port">Port</label><input class="input mono" id="db-port" value="5432"></div></div><div class="field c8"><div class="field"><label for="db-db">Datenbank</label><input class="input mono" id="db-db" value="portal"></div></div></div>
+<div class="field"><label for="db-user">Benutzer</label><input class="input mono" id="db-user" value="portal_app"></div>
+</div>
+</div></div>
+</div>
+</div>
+</main>
+
+</div></div>
+<h2 id="UI-AGENT-ACCESS">Agenten-Zugang <code>UI-AGENT-ACCESS</code></h2>
+<p>Richtet Claude Code und Codex auf diesem Server für den Outpost-MCP ein und zeigt, welche Agenten schon Zugang haben.</p>
+<div class="ctx"><b>Art:</b> Dialog (modal, mit Backdrop)<br><b>Erscheint über:</b> UI-SERVERS<br><b>Öffnen durch:</b> Kontextmenü Server › Agenten-Zugang… (nur SSH); Bearbeiten in UI-API-KEYS-AGENTS<br><b>Größe:</b> mittig<br><b>Schließen:</b> Esc<br><b>Tastatur:</b> Ctrl+Enter Einrichten" </div>
+<p class="meta">Artboard: <a href="./ui-agent-access.html">ui-agent-access.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-agent-access.md</code></p>
+<table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
+<tr><td><code>UI-AGENT-ACCESS-KEYS</code></td><td>Agenten auf diesem Server</td><td>Die Agenten-Keys dieses Servers — Agent, angelegt, zuletzt genutzt, IP-Bindung — je mit Entziehen. Entziehen widerruft den Key und entfernt die Registrierung auf dem Server. <b>Nicht:</b> api_key, vault_item, identity.</td><td><code>default · empty · loading · selected · error</code></td></tr>
+<tr><td><code>UI-AGENT-ACCESS-SETUP</code></td><td>Einrichten</td><td>Welche Agenten eingerichtet werden (Claude Code, Codex) und welche zusätzlichen Adressbereiche (CIDR) ihr Key neben der IP dieses Servers akzeptiert. <b>Nicht:</b> api_key, vault_binding.</td><td><code>default · loading · error · disabled</code></td></tr>
+<tr><td><code>UI-AGENT-ACCESS-IPBIND</code></td><td>Nur von der IP dieses Servers</td><td>Ob der Key nur Anfragen von der Adresse dieses Servers (plus den eingetragenen Adressbereichen) akzeptiert. Standard an; aus heißt von überall. <b>Nicht:</b> vault_binding, allowed_origin.</td><td><code>default · selected</code></td></tr>
+<tr><td><code>UI-AGENT-ACCESS-RESULT</code></td><td>Ergebnis</td><td>Je Agent das Ergebnis der Einrichtung — eingerichtet, oder der fertige Befehl zum Kopieren, wenn die automatische Einrichtung scheiterte (CLI fehlt, Exec-Fehler). Der Key ist nur hier und nur jetzt sichtbar; ein Key, der weder automatisch eingerichtet noch kopiert wurde, wird beim Schließen gelöscht. <b>Nicht:</b> agent_key, toast.</td><td><code>default · empty · success · error</code></td></tr>
+</table>
+<div class="mb-embed"><div class="mb-embed-label">Auszug: ui-agent-access.html — alle Zustände, wie im Artboard</div><div id="ab-ui-agent-access">
+
+<main class="mb-artboard">
+
+<header class="mb-context">
+	<strong>Darstellungskontext</strong><br>
+	<b>Art:</b> Dialog, modal, mit Backdrop (--dialog-background) · erscheint über UI-SERVERS<br>
+	<b>Auslöser:</b> Kontextmenü Server › Agenten-Zugang… (nur SSH); Bearbeiten in UI-API-KEYS-AGENTS<br>
+	<b>Größe:</b> mittig, 40rem, max 85vh · <b>Schließen:</b> Esc, Backdrop, Schließen — nicht, während die Einrichtung läuft<br>
+	<b>Tastatur:</b> Ctrl+Enter Einrichten
+</header>
+
+<div class="backdrop">
+	<div class="dialog" role="dialog" aria-labelledby="dlg-title" data-ui-id="UI-AGENT-ACCESS">
+
+		<div class="dialog-head">
+			<h1 id="dlg-title">Agenten-Zugang — web01</h1>
+			<button class="close" type="button" aria-label="Schließen">×</button>
+		</div>
+
+		<div class="dialog-body">
+
+				<div class="element" data-ui-id="UI-AGENT-ACCESS-KEYS">
+					<header><code>UI-AGENT-ACCESS-KEYS</code><span class="type">list</span><span class="name">Agenten auf diesem Server</span></header>
+
+					<section class="state" data-ui-state="default">
+						<div class="agent-row">
+							<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+							<div class="main">
+								<span>Claude Code</span>
+								<span class="meta">angelegt 09.10. · zuletzt vor 5 Min. · nur 192.168.2.40</span>
+							</div>
+							<button class="btn ghost small" type="button">Entziehen</button>
+						</div>
+					</section>
+
+					<section class="state" data-ui-state="empty">
+						<div class="empty-box">Noch kein Agent auf diesem Server eingerichtet.</div>
+					</section>
+
+					<section class="state" data-ui-state="loading" aria-busy="true">
+						<div class="agent-row is-loading">
+							<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+							<div class="main"><span class="skeleton w1"></span><span class="skeleton w2"></span></div>
+						</div>
+					</section>
+
+					<section class="state" data-ui-state="selected">
+						<div class="confirm" role="alertdialog" aria-label="Zugang entziehen">
+							<p>Zugang von Claude Code auf web01 entziehen? Der Agent verliert sofort den Zugriff.</p>
+							<div class="actions"><button class="btn ghost small" type="button">Abbrechen</button><button class="btn primary small" type="button">Entziehen</button></div>
+						</div>
+					</section>
+
+					<section class="state is-error" data-ui-state="error">
+						<div class="agent-row">
+							<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+							<div class="main">
+								<span>Claude Code</span>
+								<span class="meta">angelegt 09.10. · zuletzt vor 5 Min. · nur 192.168.2.40</span>
+							</div>
+							<button class="btn ghost small" type="button">Entziehen</button>
+						</div>
+						<span class="help error" role="alert">Entziehen fehlgeschlagen.</span>
+					</section>
+				</div>
+
+				<div class="element" data-ui-id="UI-AGENT-ACCESS-SETUP">
+					<header><code>UI-AGENT-ACCESS-SETUP</code><span class="type">form</span><span class="name">Einrichten</span></header>
+
+					<section class="state" data-ui-state="default">
+						<div class="checks">
+							<label class="check"><input type="checkbox" checked> Claude Code</label>
+							<label class="check"><input type="checkbox" checked> Codex</label>
+						</div>
+						<div class="field">
+							<label class="label" for="s-cidr">Zusätzliche Adressbereiche</label>
+							<input class="input" id="s-cidr" value="10.0.0.0/24">
+						</div>
+						<div class="actions"><span class="kbd">Ctrl+Enter</span><button class="btn primary" type="button">Einrichten</button></div>
+					</section>
+
+					<section class="state" data-ui-state="loading" aria-busy="true">
+						<div class="checks">
+							<label class="check"><input type="checkbox" checked disabled> Claude Code</label>
+							<label class="check"><input type="checkbox" checked disabled> Codex</label>
+						</div>
+						<div class="field">
+							<label class="label" for="l-cidr">Zusätzliche Adressbereiche</label>
+							<input class="input" id="l-cidr" value="10.0.0.0/24" disabled>
+						</div>
+						<div class="actions"><button class="btn primary" type="button" disabled>Richte ein …</button></div>
+					</section>
+
+					<section class="state is-error" data-ui-state="error">
+						<div class="checks">
+							<label class="check"><input type="checkbox" checked> Claude Code</label>
+							<label class="check"><input type="checkbox" checked> Codex</label>
+						</div>
+						<div class="field">
+							<label class="label" for="e-cidr">Zusätzliche Adressbereiche</label>
+							<input class="input is-error" id="e-cidr" value="10.0.0.0/33" aria-invalid="true" aria-describedby="e-cidr-help">
+							<span class="help error" id="e-cidr-help" role="alert">Ungültiger Adressbereich.</span>
+						</div>
+						<div class="actions"><span class="kbd">Ctrl+Enter</span><button class="btn primary" type="button">Einrichten</button></div>
+					</section>
+
+					<section class="state" data-ui-state="disabled">
+						<div class="checks">
+							<label class="check"><input type="checkbox" checked disabled> Claude Code</label>
+							<label class="check"><input type="checkbox" checked disabled> Codex</label>
+						</div>
+						<div class="field">
+							<label class="label" for="d-cidr">Zusätzliche Adressbereiche</label>
+							<input class="input" id="d-cidr" value="" disabled>
+						</div>
+						<span class="notice">Outpost-Adresse für Agenten fehlt — in Einstellungen › Vault setzen.</span>
+						<div class="actions"><button class="btn primary" type="button" disabled>Einrichten</button></div>
+					</section>
+				</div>
+
+				<div class="element" data-ui-id="UI-AGENT-ACCESS-IPBIND">
+					<header><code>UI-AGENT-ACCESS-IPBIND</code><span class="type">toggle</span><span class="name">Nur von der IP dieses Servers</span></header>
+
+					<section class="state" data-ui-state="default">
+						<div class="row">
+							<div class="ip-detect">
+								<span>Nur von der IP dieses Servers</span>
+								<span class="help">an · <span class="mono">192.168.2.40</span></span>
+							</div>
+							<span class="toggle on" role="switch" aria-checked="true" aria-label="Nur von der IP dieses Servers"></span>
+						</div>
+					</section>
+
+					<section class="state" data-ui-state="selected">
+						<div class="row">
+							<div class="ip-detect">
+								<span>Nur von der IP dieses Servers</span>
+								<span class="help">aus — von überall</span>
+							</div>
+							<span class="toggle" role="switch" aria-checked="false" aria-label="Nur von der IP dieses Servers"></span>
+						</div>
+					</section>
+				</div>
+
+				<div class="element" data-ui-id="UI-AGENT-ACCESS-RESULT">
+					<header><code>UI-AGENT-ACCESS-RESULT</code><span class="type">feedback</span><span class="name">Ergebnis</span></header>
+
+					<section class="state" data-ui-state="default">
+						<div class="result-row ok">
+							<div class="result-head"><span>Claude Code</span><span class="status">eingerichtet</span></div>
+							<span class="help">Claude Code neu starten, dann /mcp.</span>
+						</div>
+						<div class="result-row fail">
+							<div class="result-head"><span>Codex</span><span class="status">codex nicht gefunden</span></div>
+							<div class="cmd">
+								<pre>codex mcp add outpost --url http://192.168.2.10:6989/api/mcp --bearer-token-env-var OUTPOST_MCP_TOKEN
+export OUTPOST_MCP_TOKEN=outpost_••••</pre>
+								<button class="btn ghost small" type="button">Kopieren</button>
+							</div>
+							<span class="notice">Der Key ist nur jetzt sichtbar. Schließen ohne Übernahme löscht ihn.</span>
+						</div>
+					</section>
+
+					<section class="state" data-ui-state="empty">
+						<div class="empty-box">erscheint erst nach dem Einrichten</div>
+					</section>
+
+					<section class="state is-success" data-ui-state="success">
+						<div class="result-row ok">
+							<div class="result-head"><span>Claude Code</span><span class="status">eingerichtet</span></div>
+							<span class="help">Eingerichtet. Claude Code neu starten, dann /mcp.</span>
+						</div>
+					</section>
+
+					<section class="state is-error" data-ui-state="error">
+						<div class="result-row fail">
+							<div class="result-head"><span>Codex</span><span class="status">gescheitert</span></div>
+							<span class="help error">codex nicht gefunden. Befehl kopieren und auf dem Server ausführen.</span>
+							<div class="cmd">
+								<pre>codex mcp add outpost --url http://192.168.2.10:6989/api/mcp --bearer-token-env-var OUTPOST_MCP_TOKEN
+export OUTPOST_MCP_TOKEN=outpost_••••</pre>
+								<button class="btn ghost small" type="button">Kopieren</button>
+							</div>
+							<span class="notice">Der Key ist nur jetzt sichtbar. Schließen ohne Übernahme löscht ihn.</span>
+						</div>
+					</section>
+				</div>
+
+		</div>
+	</div>
+</div>
+
+</main>
+
+</div></div>
+<h2 id="UI-VAULT-SETTINGS">Einstellungen › Vault <code>UI-VAULT-SETTINGS</code></h2>
+<p>Systemeinstellungen des Vaults.</p>
+<div class="ctx"><b>Art:</b> Panel<br><b>Erscheint über:</b> UI-SHELL<br><b>Öffnen durch:</b> Konto › Einstellungen › Vault (Recht settings.vault)<br><b>Größe:</b> Einstellungsfläche<br><b>Schließen:</b> Einstellungen schließen" </div>
+<p class="meta">Artboard: <a href="./ui-vault-settings.html">ui-vault-settings.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-vault-settings.md</code></p>
+<table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
+<tr><td><code>UI-VAULT-SETTINGS-KEY</code></td><td>Vault-Schlüssel</td><td>Ob der Vault läuft — Schlüssel aktiv, fehlt (Vault aus) oder passt nicht zu den gespeicherten Daten (Vault aus). Bei fehlendem Schlüssel ein Satz, wie man VAULT_KEY setzt. <b>Nicht:</b> encryption_key, api_key.</td><td><code>default · disabled · error</code></td></tr>
+<tr><td><code>UI-VAULT-SETTINGS-URL</code></td><td>Outpost-Adresse für Agenten</td><td>Die Adresse, unter der Server Outpost erreichen; daraus entsteht die MCP-URL, die beim Einrichten eines Agenten eingetragen wird. <b>Nicht:</b> browser_launcher_url.</td><td><code>default · error</code></td></tr>
+<tr><td><code>UI-VAULT-SETTINGS-SAVE</code></td><td>Einstellungen speichern</td><td>Speichert die Outpost-Adresse für Agenten, wie der Speichern-Knopf der Browser-Einstellungen.</td><td><code>default · disabled</code></td></tr>
+</table>
+<div class="mb-embed"><div class="mb-embed-label">Auszug: ui-vault-settings.html — alle Zustände, wie im Artboard</div><div id="ab-ui-vault-settings">
+
+<header class="mb-context">
+	<strong>Darstellungskontext</strong><br>
+	<b>Art:</b> Panel · Seite „Vault“ innerhalb der Einstellungen<br>
+	<b>Erscheint über:</b> UI-SHELL<br>
+	<b>Auslöser:</b> Konto › Einstellungen › Vault (Recht settings.vault)<br>
+	<b>Größe und Position:</b> Einstellungsfläche<br>
+	<b>Schließen:</b> Einstellungen schließen<br>
+	<b>Tastatur:</b> Tab wechselt zwischen den Feldern; Esc schließt die Einstellungen
+</header>
+<main class="mb-artboard" data-ui-id="UI-VAULT-SETTINGS">
+	<div class="vs-page">
+		<div class="vs-section">
+			<h2 class="vs-title">Vault</h2>
+			<p class="vs-intro">Systemeinstellungen des Vaults.</p>
+
+			<div class="vs-item" data-ui-id="UI-VAULT-SETTINGS-KEY">
+				<div class="vs-label"><h4>Vault-Schlüssel <code>UI-VAULT-SETTINGS-KEY</code></h4></div>
+
+				<div class="vs-state" data-ui-state="default">
+					<span class="vs-tag">default</span>
+					<div class="vs-status">
+						<span class="vs-pill ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Aktiv</span>
+					</div>
+				</div>
+
+				<div class="vs-state" data-ui-state="disabled">
+					<span class="vs-tag">disabled</span>
+					<div class="vs-status">
+						<span class="vs-pill warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Fehlt</span>
+						<p class="vs-status-text">VAULT_KEY fehlt — der Vault ist aus. Schlüssel als Umgebungsvariable oder Docker-Secret vault_key setzen.</p>
+					</div>
+				</div>
+
+				<div class="vs-state" data-ui-state="error">
+					<span class="vs-tag">error</span>
+					<div class="vs-status">
+						<span class="vs-pill err"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>Passt nicht</span>
+						<p class="vs-status-text">VAULT_KEY passt nicht zu den gespeicherten Einträgen — der Vault ist aus.</p>
+					</div>
+				</div>
+			</div>
+
+			<div class="vs-item" data-ui-id="UI-VAULT-SETTINGS-URL">
+				<div class="vs-label"><h4>Outpost-Adresse für Agenten <code>UI-VAULT-SETTINGS-URL</code></h4></div>
+
+				<div class="vs-state" data-ui-state="default">
+					<span class="vs-tag">default</span>
+					<div class="vs-input">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+						<span>http://192.168.2.10:6989</span>
+					</div>
+					<p class="vs-help">Unter dieser Adresse erreichen deine Server Outpost; daraus entsteht die MCP-URL für Agenten.</p>
+				</div>
+
+				<div class="vs-state" data-ui-state="error">
+					<span class="vs-tag">error</span>
+					<div class="vs-input invalid">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+						<span>192.168.2.10:6989</span>
+					</div>
+					<p class="vs-error">Keine gültige http- oder https-Adresse.</p>
+					<p class="vs-help">Unter dieser Adresse erreichen deine Server Outpost; daraus entsteht die MCP-URL für Agenten.</p>
+				</div>
+			</div>
+		</div>
+		<div class="vs-actions" data-ui-id="UI-VAULT-SETTINGS-SAVE">
+			<div class="vs-state" data-ui-state="default">
+				<span class="vs-tag">default</span>
+				<button type="button" class="vs-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>Einstellungen speichern</button>
+			</div>
+			<div class="vs-state" data-ui-state="disabled">
+				<span class="vs-tag">disabled</span>
+				<button type="button" class="vs-btn" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>Einstellungen speichern</button>
+			</div>
+		</div>
+	</div>
+</main>
+
+</div></div>
+<h2 id="UI-API-KEYS">Einstellungen › Konto › API-Schlüssel <code>UI-API-KEYS</code></h2>
+<p>Die Schlüssel des Kontos — eigene API-Keys und, getrennt davon, die Agenten-Keys nach Server.</p>
+<div class="ctx"><b>Art:</b> Panel<br><b>Erscheint über:</b> UI-SHELL<br><b>Öffnen durch:</b> Konto › Einstellungen › Konto<br><b>Größe:</b> Abschnitt der Kontoseite<br><b>Schließen:</b> Einstellungen schließen" </div>
+<p class="meta">Artboard: <a href="./ui-api-keys.html">ui-api-keys.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-api-keys.md</code></p>
+<table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
+<tr><td><code>UI-API-KEYS-LIST</code></td><td>API-Schlüssel</td><td>Die API-Keys des Kontos mit voller Kontoberechtigung — Name, Präfix, zuletzt genutzt, Ablauf; Anlegen und Löschen wie bisher. <b>Nicht:</b> agent_key.</td><td><code>default · empty</code></td></tr>
+<tr><td><code>UI-API-KEYS-AGENTS</code></td><td>Agenten-Schlüssel</td><td>Die Agenten-Keys des Kontos, gruppiert nach Server — Agent, zuletzt genutzt, IP-Bindung; je Server Bearbeiten (öffnet Agenten-Zugang) und je Key Entziehen. Agenten-Keys erreichen nur den MCP-Endpunkt. <b>Nicht:</b> api_key, vault_item.</td><td><code>default · empty</code></td></tr>
+</table>
+<div class="mb-embed"><div class="mb-embed-label">Auszug: ui-api-keys.html — alle Zustände, wie im Artboard</div><div id="ab-ui-api-keys">
+
+<main class="mb-artboard">
+
+<header class="mb-context">
+	<strong>Darstellungskontext</strong><br>
+	<b>Art:</b> Panel · Abschnitt der Kontoseite<br>
+	<b>Erscheint über:</b> UI-SHELL<br>
+	<b>Auslöser:</b> Konto › Einstellungen › Konto<br>
+	<b>Größe:</b> Abschnitt der Kontoseite<br>
+	<b>Schließen:</b> Einstellungen schließen<br>
+	<b>Tastatur:</b> Tab durchläuft Schaltflächen und Aktionen der Liste; Enter löst aus
+</header>
+
+<div class="ak-head">
+	<h1>UI-API-KEYS</h1>
+	<span class="ak-id">Einstellungen › Konto › API-Schlüssel</span>
+</div>
+
+<div class="ak-section" data-ui-id="UI-API-KEYS-LIST">
+	<div class="ak-section-head">
+		<div>
+			<h2 class="ak-section-title">
+				<svg class="ak-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>
+				API-Schlüssel
+			</h2>
+			<p class="ak-section-desc">Schlüssel mit voller Kontoberechtigung.</p>
+		</div>
+		<span class="ak-btn ak-btn-primary">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+			Hinzufügen
+		</span>
+	</div>
+
+	<section class="ak-state" data-ui-state="default">
+		<span class="ak-state-label">Zustand: default</span>
+		<div class="ak-list">
+			<div class="ak-item">
+				<div class="ak-item-info">
+					<svg class="ak-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+					<div>
+						<h3 class="ak-name">claude-laptop</h3>
+						<p class="ak-meta"><code>outpost_3f9a1c…</code><span>zuletzt heute</span><span>läuft nie ab</span></p>
+					</div>
+				</div>
+				<div class="ak-actions">
+					<span class="ak-icon-btn" title="Löschen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>
+				</div>
+			</div>
+			<div class="ak-item">
+				<div class="ak-item-info">
+					<svg class="ak-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+					<div>
+						<h3 class="ak-name">ci-backup</h3>
+						<p class="ak-meta"><code>outpost_91be07…</code><span>zuletzt vor 3 Tagen</span></p>
+					</div>
+				</div>
+				<div class="ak-actions">
+					<span class="ak-icon-btn" title="Löschen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<section class="ak-state" data-ui-state="empty">
+		<span class="ak-state-label">Zustand: empty</span>
+		<div class="ak-empty"><p>Noch keine API-Schlüssel</p></div>
+	</section>
+</div>
+
+<div class="ak-section" data-ui-id="UI-API-KEYS-AGENTS">
+	<div>
+		<h2 class="ak-section-title">
+			<svg class="ak-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+			Agenten-Schlüssel
+		</h2>
+		<p class="ak-section-desc">Agenten-Schlüssel erreichen nur den MCP-Endpunkt.</p>
+	</div>
+
+	<section class="ak-state" data-ui-state="default">
+		<span class="ak-state-label">Zustand: default</span>
+		<div class="ak-agents">
+			<div class="ak-group">
+				<div class="ak-group-head">
+					<span class="ak-group-name">web01</span>
+					<span class="ak-btn">Bearbeiten</span>
+				</div>
+				<div class="ak-key">
+					<div class="ak-item-info">
+						<svg class="ak-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+						<div>
+							<h3 class="ak-name">Claude Code</h3>
+							<p class="ak-meta"><span>zuletzt vor 5 Min.</span><span>nur <span class="ak-ip">192.168.2.40</span></span></p>
+						</div>
+					</div>
+					<span class="ak-btn ak-btn-danger">Entziehen</span>
+				</div>
+				<div class="ak-key">
+					<div class="ak-item-info">
+						<svg class="ak-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+						<div>
+							<h3 class="ak-name">Codex</h3>
+							<p class="ak-meta"><span>zuletzt gestern</span><span>nur <span class="ak-ip">192.168.2.40</span></span></p>
+						</div>
+					</div>
+					<span class="ak-btn ak-btn-danger">Entziehen</span>
+				</div>
+			</div>
+
+			<div class="ak-group">
+				<div class="ak-group-head">
+					<span class="ak-group-name">nas</span>
+					<span class="ak-btn">Bearbeiten</span>
+				</div>
+				<div class="ak-key">
+					<div class="ak-item-info">
+						<svg class="ak-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+						<div>
+							<h3 class="ak-name">Claude Code</h3>
+							<p class="ak-meta"><span>zuletzt vor 2 Std.</span><span>Bindung gelöst</span><span class="ak-pill">von überall</span></p>
+						</div>
+					</div>
+					<span class="ak-btn ak-btn-danger">Entziehen</span>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<section class="ak-state" data-ui-state="empty">
+		<span class="ak-state-label">Zustand: empty</span>
+		<div class="ak-empty"><p>Noch kein Agenten-Zugang. Einrichten über das Kontextmenü eines Servers.</p></div>
+	</section>
+</div>
+
+</main>
+
+</div></div>
+<h2 id="UI-VAULT-APPROVAL">Freigabe-Karte <code>UI-VAULT-APPROVAL</code></h2>
+<p>Schwebt über jeder Seite, ohne modal zu sein, solange eine Freigabe-Anfrage offen ist.</p>
+<div class="ctx"><b>Art:</b> Shell (auf jedem Screen)<br><b>Erscheint über:</b> UI-SHELL<br><b>Öffnen durch:</b> ein Agent fordert die Nutzung eines Vault-Eintrags an<br><b>Größe:</b> unten rechts<br><b>Schließen:</b> nur durch Antwort oder Ablauf<br><b>Tastatur:</b> Tab erreicht die Karte; Enter Einmal</div>
+<p class="meta">Artboard: <a href="./ui-vault-approval.html">ui-vault-approval.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-vault-approval.md</code></p>
+<table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
+<tr><td><code>UI-VAULT-APPROVAL-CARD</code></td><td>Freigabe angefordert</td><td>Eine Karte unten rechts über jeder Seite, nicht modal: ein Agent will einen Vault-Eintrag nutzen. Zeigt Agent und Server, Eintrag und Ziel (Ursprung oder Host) und die verbleibende Zeit; Antworten Einmal, Für diese Sitzung, Ablehnen. Mehrere Anfragen stapeln sich, die älteste unten. Der Stapel liegt über Dialogen und Toasts. Eine abgelaufene Karte zeigt fünf Sekunden den Fehlerzustand und verschwindet; scheitert das Senden einer Antwort, bleibt die Karte stehen und ein Toast nennt den Grund. <b>Nicht:</b> notification, toast, error.</td><td><code>default · empty · partial · loading · error</code></td></tr>
+</table>
+<div class="mb-embed"><div class="mb-embed-label">Auszug: ui-vault-approval.html — alle Zustände, wie im Artboard</div><div id="ab-ui-vault-approval">
+
+<header class="mb-context" style="font:var(--type-caption);color:var(--subtext);background:var(--lighter-background);border:1px solid var(--gray);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin:0 0 var(--space-4);line-height:1.6">
+	<strong style="color:var(--text);font:var(--type-heading)">Darstellungskontext</strong><br>
+	<b style="color:var(--text)">Art:</b> Schwebende Karte (shared), nicht modal<br>
+	<b style="color:var(--text)">Erscheint über:</b> UI-SHELL, jeder Seite der Anwendung<br>
+	<b style="color:var(--text)">Auslöser:</b> ein Agent fordert die Nutzung eines Vault-Eintrags an<br>
+	<b style="color:var(--text)">Größe:</b> unten rechts, 24rem; unter 768px volle Breite über der unteren Navigation<br>
+	<b style="color:var(--text)">Schließen:</b> nur durch Antwort oder Ablauf<br>
+	Tastatur: Tab erreicht die Karte; Enter Einmal, Esc Ablehnen, solange die Karte den Fokus hat
+</header>
+<main class="mb-artboard">
+<header class="art-head">
+	<h1>UI-VAULT-APPROVAL</h1>
+	<span>Freigabe-Karte</span>
+	<code>shared</code>
+	<a href="./index.html">← Kontaktbogen</a>
+</header>
+
+<!-- ===================================================================
+     UI-VAULT-APPROVAL-CARD — Freigabe angefordert
+     =================================================================== -->
+<div class="block">
+	<h2>Freigabe angefordert <code>UI-VAULT-APPROVAL-CARD</code></h2>
+	<p class="anchor">Eine Karte unten rechts über jeder Seite, nicht modal: ein Agent will einen Vault-Eintrag nutzen. Mehrere Anfragen stapeln sich, die älteste unten.</p>
+	<p class="anchor-example">Beispiel: Claude Code auf web01 · portal-login → https://portal.example.com · 1:42</p>
+
+	<div class="demo-row">
+		<div class="demo-card">
+			<div class="cap">default</div>
+			<div class="body" style="justify-content:flex-end">
+				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
+					<section data-ui-state="default">
+					<div class="approval-card">
+						<h3>Freigabe angefordert</h3>
+						<div class="who">Claude Code auf web01</div>
+						<div class="target">portal-login</div>
+						<div class="target">https://portal.example.com</div>
+						<div class="actions">
+							<span class="btn primary">Einmal</span>
+							<span class="btn">Für diese Sitzung</span>
+							<span class="btn">Ablehnen</span>
+						</div>
+						<div class="timer">1:42</div>
+						<div class="bar"><i style="width:70%"></i></div>
+					</div>
+					</section>
+				</div>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">empty — keine Anfrage offen, die Karte ist nicht da</div>
+			<div class="body" style="justify-content:flex-end">
+				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
+					<section data-ui-state="empty">
+					<div class="approval-empty">Keine Anfrage offen — die Karte ist nicht da.</div>
+					</section>
+				</div>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">partial — 3 Anfragen offen, älteste unten</div>
+			<div class="body" style="justify-content:flex-end">
+				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
+					<section data-ui-state="partial">
+					<div class="approval-stack">
+						<div class="count">3 Anfragen offen</div>
+						<div class="approval-card">
+							<h3>Freigabe angefordert</h3>
+							<div class="who">Claude Code auf web01</div>
+							<div class="target">portal-login</div>
+							<div class="target">https://portal.example.com</div>
+							<div class="actions">
+								<span class="btn primary">Einmal</span>
+								<span class="btn">Für diese Sitzung</span>
+								<span class="btn">Ablehnen</span>
+							</div>
+							<div class="timer">0:58</div>
+							<div class="bar"><i style="width:40%"></i></div>
+						</div>
+						<div class="approval-card">
+							<h3>Freigabe angefordert</h3>
+							<div class="who">Claude Code auf web01</div>
+							<div class="target">portal-login</div>
+							<div class="target">https://portal.example.com</div>
+							<div class="actions">
+								<span class="btn primary">Einmal</span>
+								<span class="btn">Für diese Sitzung</span>
+								<span class="btn">Ablehnen</span>
+							</div>
+							<div class="timer">1:12</div>
+							<div class="bar"><i style="width:50%"></i></div>
+						</div>
+						<div class="approval-card">
+							<h3>Freigabe angefordert</h3>
+							<div class="who">Claude Code auf web01</div>
+							<div class="target">portal-login</div>
+							<div class="target">https://portal.example.com</div>
+							<div class="actions">
+								<span class="btn primary">Einmal</span>
+								<span class="btn">Für diese Sitzung</span>
+								<span class="btn">Ablehnen</span>
+							</div>
+							<div class="timer">1:42</div>
+							<div class="bar"><i style="width:70%"></i></div>
+						</div>
+					</div>
+					</section>
+				</div>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">loading</div>
+			<div class="body" style="justify-content:flex-end">
+				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
+					<section data-ui-state="loading">
+					<div class="approval-card">
+						<h3>Freigabe angefordert</h3>
+						<div class="who">Claude Code auf web01</div>
+						<div class="target">portal-login</div>
+						<div class="target">https://portal.example.com</div>
+						<div class="status">Antwort wird gesendet …</div>
+						<div class="actions">
+							<span class="btn primary off">Einmal</span>
+							<span class="btn off">Für diese Sitzung</span>
+							<span class="btn off">Ablehnen</span>
+						</div>
+						<div class="timer">1:42</div>
+						<div class="bar"><i style="width:70%"></i></div>
+					</div>
+					</section>
+				</div>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">error</div>
+			<div class="body" style="justify-content:flex-end">
+				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
+					<section data-ui-state="error">
+					<div class="approval-card">
+						<h3>Freigabe angefordert</h3>
+						<div class="who">Claude Code auf web01</div>
+						<div class="target">portal-login</div>
+						<div class="target">https://portal.example.com</div>
+						<div class="status">Anfrage ist abgelaufen.</div>
+						<div class="actions">
+							<span class="btn primary off">Einmal</span>
+							<span class="btn off">Für diese Sitzung</span>
+							<span class="btn off">Ablehnen</span>
+						</div>
+						<div class="timer">0:00</div>
+						<div class="bar"><i style="width:0%"></i></div>
+					</div>
+					</section>
+				</div>
+			</div>
+		</div>
+
+		<div class="demo-card mobile-frame">
+			<div class="cap">default — unter 768px, volle Breite über der unteren Navigation</div>
+			<div class="mobile-screen tall">
+				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
+					<section data-variant="narrow">
+					<div class="approval-card">
+						<h3>Freigabe angefordert</h3>
+						<div class="who">Claude Code auf web01</div>
+						<div class="target">portal-login</div>
+						<div class="target">https://portal.example.com</div>
+						<div class="actions">
+							<span class="btn primary">Einmal</span>
+							<span class="btn">Für diese Sitzung</span>
+							<span class="btn">Ablehnen</span>
+						</div>
+						<div class="timer">1:42</div>
+						<div class="bar"><i style="width:70%"></i></div>
+					</div>
+					</section>
+				</div>
+				<div class="mobile-nav" aria-hidden="true">
+					<div class="m-item active"><span>Server</span></div><div class="m-item"><span>Monitoring</span></div><div class="m-item"><span>Snippets</span></div><div class="m-item"><span>Vault</span></div><div class="m-item"><span>Browser</span></div><div class="m-item"><span>Audit</span></div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+</main>
 
 </div></div>
 </body></html>

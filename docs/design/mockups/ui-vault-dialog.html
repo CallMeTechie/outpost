@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI-VAULT-DIALOG — Eintrag anlegen / bearbeiten</title>
+<link rel="stylesheet" href="./tokens.css">
+<style>
+
+	.artboard-head {
+		display: flex; align-items: baseline; gap: var(--space-3);
+		padding: var(--space-3) var(--space-4);
+		border-bottom: 1px solid var(--gray);
+		font: var(--type-caption); color: var(--subtext);
+	}
+	.artboard-head strong { font: var(--type-heading); color: var(--text); }
+	.artboard-head code { font: var(--type-mono); font-size: 0.75rem; color: var(--subtext); }
+
+	.backdrop {
+		background: var(--dialog-background);
+		padding: var(--space-8) var(--space-4);
+		display: flex; justify-content: center;
+	}
+
+	.dialog {
+		width: 100%; max-width: 42rem;
+		background: var(--lighter-background);
+		border: 1px solid var(--gray);
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-lg);
+		overflow: hidden;
+	}
+	.dialog-head {
+		display: flex; align-items: center; justify-content: space-between;
+		padding: var(--space-3) var(--space-4);
+		border-bottom: 1px solid var(--gray);
+	}
+	.dialog-head h1 { margin: 0; font: var(--type-title); }
+	.dialog-head .close {
+		width: 2rem; height: 2rem; display: grid; place-items: center;
+		border-radius: var(--radius-sm); color: var(--subtext);
+		background: transparent; border: 0; font: var(--type-heading); cursor: default;
+	}
+	.dialog-body { padding: var(--space-2) var(--space-4) var(--space-4); display: grid; gap: var(--space-4); }
+	.dialog-foot {
+		display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2);
+		padding: var(--space-3) var(--space-4);
+		border-top: 1px solid var(--gray);
+		background: var(--darker-gray);
+	}
+
+	.element { display: grid; gap: var(--space-2); }
+	.element > header {
+		display: flex; align-items: baseline; gap: var(--space-2);
+		font: var(--type-caption); color: var(--subtext);
+	}
+	.element > header code { font: var(--type-mono); font-size: 0.75rem; color: var(--primary); }
+	.element > header .type { padding: 0 var(--space-1); border: 1px solid var(--gray); border-radius: var(--radius-sm); }
+	section[data-ui-state] {
+		position: relative;
+		border: 1px dashed var(--gray-strong); border-radius: var(--radius-md);
+		padding: var(--space-3); padding-top: calc(var(--space-3) + 0.75rem);
+	}
+	section[data-ui-state]::before {
+		content: attr(data-ui-state);
+		position: absolute; top: 0; left: var(--space-3); transform: translateY(-50%);
+		padding: 0 var(--space-1); background: var(--lighter-background);
+		font: var(--type-mono); font-size: 0.6875rem; color: var(--subtext); text-transform: lowercase;
+	}
+	section[data-ui-state="error"]::before { color: var(--error); }
+	section[data-ui-state="empty"]::before,
+	section[data-ui-state="disabled"]::before { color: var(--subtext); }
+	section[data-ui-state="selected"]::before { color: var(--primary); }
+
+	.tabs { display: flex; gap: var(--space-1); padding: var(--space-1); background: var(--dark-gray); border-radius: var(--radius-md); }
+	.tab {
+		flex: 1; text-align: center; padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-sm); color: var(--subtext); font: var(--type-body);
+	}
+	.tab[aria-current="page"] { background: var(--gray-strong); color: var(--text); }
+	.tab.is-selected { background: var(--primary-opacity); color: var(--text); box-shadow: inset 0 0 0 1px var(--primary); }
+
+	.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: var(--space-2) var(--space-3); }
+	.field { display: grid; gap: var(--space-1); }
+	.c3 { grid-column: span 3; } .c4 { grid-column: span 4; } .c5 { grid-column: span 5; }
+	.c6 { grid-column: span 6; } .c7 { grid-column: span 7; } .c8 { grid-column: span 8; } .c9 { grid-column: span 9; } .c12 { grid-column: span 12; }
+	label, .label { font: var(--type-caption); color: var(--subtext); }
+	.input, select.input {
+		width: 100%; height: 2.25rem; padding: 0 var(--space-2);
+		background: var(--background); color: var(--text);
+		border: 1px solid var(--gray); border-radius: var(--radius-sm);
+		font: var(--type-body); outline: none;
+	}
+	.input.mono { font: var(--type-mono); }
+	.input:focus-visible { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-opacity); }
+	.input.is-error { border-color: var(--error); background: var(--error-opacity); }
+	.input::placeholder { color: var(--subtext); opacity: .7; }
+	.help { font: var(--type-caption); color: var(--subtext); }
+	.help.error { color: var(--error); }
+	.icon-field { display: flex; align-items: center; gap: var(--space-2); height: 2.25rem; }
+	.avatar {
+		width: 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center;
+		background: var(--primary-opacity); color: var(--text); font: var(--type-heading);
+	}
+	.tri { display: inline-flex; padding: 2px; background: var(--dark-gray); border: 1px solid var(--gray); border-radius: var(--radius-sm); }
+	.tri span { padding: var(--space-1) var(--space-3); border-radius: var(--radius-sm); color: var(--subtext); font: var(--type-caption); }
+	.tri span[aria-checked="true"] { background: var(--primary); color: var(--white); }
+	.toggle { width: 2.25rem; height: 1.25rem; border-radius: var(--radius-xl); background: var(--gray); position: relative; flex: none; }
+	.toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: calc(1.25rem - 4px); height: calc(1.25rem - 4px); border-radius: 50%; background: var(--subtext); }
+	.toggle.on { background: var(--primary); }
+	.toggle.on::after { left: auto; right: 2px; background: var(--white); }
+
+	.group { display: grid; gap: var(--space-1); }
+	.group-head { display: flex; justify-content: space-between; align-items: baseline; font: var(--type-caption); color: var(--subtext); }
+	.ident { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2); border: 1px solid var(--gray); border-radius: var(--radius-sm); background: var(--background); }
+	.ident.linked { border-color: var(--primary); background: var(--primary-opacity); }
+	.ident .name { flex: 1; font: var(--type-mono); }
+	.chip { padding: 0 var(--space-2); border-radius: var(--radius-sm); background: var(--gray); font: var(--type-caption); color: var(--text); line-height: 1.5rem; }
+	.empty-box { padding: var(--space-3); border: 1px dashed var(--gray-strong); border-radius: var(--radius-sm); color: var(--subtext); text-align: center; }
+	.empty-box a { text-decoration: none; font-weight: 600; }
+	.fieldset { border: 1px solid var(--gray); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); display: grid; gap: var(--space-2); }
+	.fieldset > .label { text-transform: uppercase; letter-spacing: .04em; }
+	.row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: 1.75rem; }
+
+	.actions { display: flex; gap: var(--space-2); justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+	.btn {
+		height: 2.25rem; padding: 0 var(--space-4); border-radius: var(--radius-sm);
+		font: var(--type-body); font-weight: 600; border: 1px solid transparent; cursor: default;
+	}
+	.btn.ghost { background: transparent; color: var(--subtext); border-color: var(--gray); }
+	.btn.primary { background: var(--primary); color: var(--white); }
+	.btn.primary[disabled] { opacity: .45; }
+	.btn.primary.is-error { background: var(--error); border-color: var(--error); }
+	.btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+	.kbd { font: var(--type-caption); color: var(--subtext); opacity: .8; }
+	.variant { display: grid; gap: var(--space-1); }
+	.variant .label { text-align: right; }
+
+	.mb-artboard { box-sizing: border-box; background: var(--background); color: var(--text); font: var(--type-body); }
+	.mb-artboard *, .mb-artboard *::before, .mb-artboard *::after { box-sizing: border-box; }
+	.mb-context { font: var(--type-caption); color: var(--subtext); background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-4); line-height: 1.6; }
+	.mb-context strong { color: var(--text); font: var(--type-heading); }
+	.mb-context b { color: var(--text); }
+	.dialog { max-width: 40rem; }
+	.variant-title { font: var(--type-heading); color: var(--text); padding: var(--space-4) var(--space-4) 0; }
+	.chips { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; }
+	.chip.sel { background: var(--primary-opacity); box-shadow: inset 0 0 0 1px var(--primary); }
+	.chip.add { background: transparent; border: 1px dashed var(--gray-strong); color: var(--subtext); }
+	.chip.off { opacity: .5; }
+	.chip .k { color: var(--subtext); margin-right: var(--space-1); }
+	.input[disabled], .input.is-disabled { opacity: .55; }
+	.secret-dots { letter-spacing: .1em; }
+	.sketch { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-4); }
+	.sketch .fieldset { align-content: start; }
+	.loading { opacity: .8; }
+	.stack { display: grid; gap: var(--space-3); }
+</style>
+</head>
+<body>
+<main class="mb-artboard">
+<header class="mb-context">
+<strong>Darstellungskontext</strong><br>
+<b>Art:</b> Dialog, modal, mit Backdrop (--dialog-background) · erscheint über UI-VAULT<br>
+<b>Auslöser:</b> Neuer Eintrag, Bearbeiten im Detail-Kopf, Taste N · <b>Schließen:</b> Esc, Backdrop, Abbrechen; nach Speichern automatisch<br>
+<b>Größe:</b> mittig, 40rem, max 85vh · <b>Tastatur:</b> Ctrl+Enter Speichern
+</header>
+<div class="artboard-head"><strong>UI-VAULT-DIALOG</strong><code>kind: dialog</code><span>Eintrag anlegen / bearbeiten — Felder richten sich nach dem Typ.</span></div>
+
+<div class="backdrop">
+<div class="stack">
+<div class="dialog" role="dialog" aria-labelledby="dlg-title" data-ui-id="UI-VAULT-DIALOG" data-variant="create">
+<div class="dialog-head"><h1 id="dlg-title">Eintrag anlegen</h1><button class="close" aria-label="Schließen">×</button></div>
+<div class="variant-title">Anlegen — Typ Login, alle Zustände</div>
+<div class="dialog-body">
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-TYPE">
+				<header><code>UI-VAULT-DIALOG-TYPE</code><span class="type">field</span><span>Typ — nur beim Anlegen wählbar</span></header>
+				<section data-ui-state="default"><div class="field"><label for="a-type">Typ</label><select class="input" id="a-type"><option selected>Login</option></select></div></section>
+				<section data-ui-state="disabled"><div class="field"><label for="a-type-d">Typ</label><select class="input is-disabled" id="a-type-d" disabled><option selected>Login</option></select></div><span class="help">nach dem Anlegen fest</span></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-OWNER">
+				<header><code>UI-VAULT-DIALOG-OWNER</code><span class="type">field</span><span>Besitzer — nur beim Anlegen wählbar</span></header>
+				<section data-ui-state="default"><div class="field"><label for="a-owner">Besitzer</label><select class="input" id="a-owner"><option selected>Persönlich (ma.backes)</option></select></div></section>
+				<section data-ui-state="disabled"><div class="field"><label for="a-owner-d">Besitzer</label><select class="input is-disabled" id="a-owner-d" disabled><option selected>Persönlich (ma.backes)</option></select></div><span class="help">nach dem Anlegen fest</span></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-FIELDS">
+				<header><code>UI-VAULT-DIALOG-FIELDS</code><span class="type">form</span><span>Angaben — Felder des Typs Login</span></header>
+				<section data-ui-state="default">
+<div class="grid">
+<div class="field c6"><label for="a-name">Name</label><input class="input mono" id="a-name" value="portal-login"></div>
+<div class="field c6"><label for="a-user">Benutzer</label><input class="input mono" id="a-user" value="ma.backes"></div>
+<div class="field c12"><label for="a-url">Ursprung</label><input class="input mono" id="a-url" value="https://portal.example.com"></div>
+<div class="field c12"><label for="a-desc">Beschreibung</label><input class="input" id="a-desc" value="Kundenportal"></div>
+</div></section>
+				<section data-ui-state="error">
+<div class="grid">
+<div class="field c6"><label for="ae-name">Name</label><input class="input mono is-error" id="ae-name" value="portal-login" aria-invalid="true"><span class="help error" role="alert">Name schon vergeben.</span></div>
+<div class="field c6"><label for="ae-user">Benutzer</label><input class="input mono" id="ae-user" value="ma.backes"></div>
+<div class="field c12"><label for="ae-url">Ursprung</label><input class="input mono" id="ae-url" value="https://portal.example.com"></div>
+<div class="field c12"><label for="ae-desc">Beschreibung</label><input class="input" id="ae-desc" value="Kundenportal"></div>
+</div></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-SECRET">
+				<header><code>UI-VAULT-DIALOG-SECRET</code><span class="type">field</span><span>Geheimer Wert</span></header>
+				<section data-ui-state="default"><div class="field"><label for="a-sec">Passwort</label><input class="input mono" id="a-sec" type="password" value="" placeholder="Passwort eingeben"></div></section>
+				<section data-ui-state="partial"><div class="field"><label for="a-sec-p">Passwort</label><input class="input mono" id="a-sec-p" type="password" value="" placeholder="gespeichert — leer lassen, um beizubehalten"><span class="help">gespeichert — leer lassen, um beizubehalten</span></div></section>
+				<section data-ui-state="error"><div class="field"><label for="a-sec-e">Passwort</label><input class="input mono is-error" id="a-sec-e" type="password" value="" aria-invalid="true"><span class="help error" role="alert">Wert fehlt.</span></div></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-SCOPE">
+				<header><code>UI-VAULT-DIALOG-SCOPE</code><span class="type">field</span><span>Gilt für — Chips plus „Alle Server“</span></header>
+				<section data-ui-state="default"><div class="chips"><span class="chip sel"><span class="k">Ordner</span>Produktion</span><span class="chip sel"><span class="k">Server</span>nas</span><span class="chip add">+ Server</span><span class="chip add">+ Ordner</span><span class="chip add">+ Tag</span></div><div class="row"><span>Alle Server</span><span class="toggle" role="switch" aria-checked="false" aria-label="Alle Server"></span></div></section>
+				<section data-ui-state="empty"><div class="chips"><span class="chip add">+ Server</span><span class="chip add">+ Ordner</span><span class="chip add">+ Tag</span></div><span class="help">Für keinen Server freigegeben.</span><div class="row"><span>Alle Server</span><span class="toggle" role="switch" aria-checked="false" aria-label="Alle Server"></span></div></section>
+				<section data-ui-state="selected"><div class="chips"><span class="chip off"><span class="k">Ordner</span>Produktion</span><span class="chip off"><span class="k">Server</span>nas</span></div><div class="row"><span>Alle Server</span><span class="toggle on" role="switch" aria-checked="true" aria-label="Alle Server"></span></div></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-APPROVAL">
+				<header><code>UI-VAULT-DIALOG-APPROVAL</code><span class="type">toggle</span><span>Freigabe erforderlich — Standard an</span></header>
+				<section data-ui-state="default"><div class="row"><span>Freigabe erforderlich</span><span class="toggle" role="switch" aria-checked="false" aria-label="Freigabe erforderlich"></span></div></section>
+				<section data-ui-state="selected"><div class="row"><span>Freigabe erforderlich</span><span class="toggle on" role="switch" aria-checked="true" aria-label="Freigabe erforderlich"></span></div></section>
+			</div>
+
+</div>
+
+<div class="dialog-foot">
+<div class="element" data-ui-id="UI-VAULT-DIALOG-SAVE" style="flex:1">
+<header><code>UI-VAULT-DIALOG-SAVE</code><span class="type">action</span><span>Erstellen beim Anlegen, Speichern beim Bearbeiten</span></header>
+<section data-ui-state="default"><div class="actions"><button class="btn ghost" type="button">Abbrechen</button><span class="variant"><span class="label">Anlegen</span><button class="btn primary" type="button">Erstellen</button></span><span class="variant"><span class="label">Bearbeiten</span><button class="btn primary" type="button">Speichern</button></span></div></section>
+<section data-ui-state="disabled"><div class="actions"><button class="btn ghost" type="button">Abbrechen</button><span class="variant"><span class="label">Anlegen</span><button class="btn primary" type="button" disabled>Erstellen</button></span><span class="variant"><span class="label">Bearbeiten</span><button class="btn primary" type="button" disabled>Speichern</button></span></div></section>
+<section data-ui-state="loading"><div class="actions"><button class="btn ghost" type="button">Abbrechen</button><button class="btn primary loading" type="button" aria-busy="true" disabled>Speichere …</button></div></section>
+<section data-ui-state="error"><div class="actions"><button class="btn ghost" type="button">Abbrechen</button><span class="variant"><button class="btn primary" type="button">Speichern</button><span class="help error" role="alert">Speichern fehlgeschlagen.</span></span></div></section>
+</div></div>
+</div>
+
+
+<div class="dialog" role="dialog" aria-labelledby="dlg-title-b" data-variant="edit">
+<div class="dialog-head"><h1 id="dlg-title-b">Eintrag bearbeiten</h1><button class="close" aria-label="Schließen">×</button></div>
+<div class="dialog-body">
+<div class="grid"><div class="c6"><div class="field"><label for="b-type">Typ</label><select class="input is-disabled" id="b-type" disabled><option selected>Login</option></select></div><span class="help">nach dem Anlegen fest</span></div><div class="c6"><div class="field"><label for="b-owner">Besitzer</label><select class="input is-disabled" id="b-owner" disabled><option selected>Persönlich (ma.backes)</option></select></div><span class="help">nach dem Anlegen fest</span></div></div>
+
+<div class="grid">
+<div class="field c6"><label for="b-name">Name</label><input class="input mono" id="b-name" value="portal-login"></div>
+<div class="field c6"><label for="b-user">Benutzer</label><input class="input mono" id="b-user" value="ma.backes"></div>
+<div class="field c12"><label for="b-url">Ursprung</label><input class="input mono" id="b-url" value="https://portal.example.com"></div>
+<div class="field c12"><label for="b-desc">Beschreibung</label><input class="input" id="b-desc" value="Kundenportal"></div>
+</div>
+<div class="field"><label for="b-sec">Passwort</label><input class="input mono" id="b-sec" type="password" value="" placeholder="gespeichert — leer lassen, um beizubehalten"><span class="help">gespeichert — leer lassen, um beizubehalten</span></div>
+<div class="field"><span class="label">Gilt für</span><div class="chips"><span class="chip sel"><span class="k">Ordner</span>Produktion</span><span class="chip sel"><span class="k">Server</span>nas</span><span class="chip add">+ Server</span><span class="chip add">+ Ordner</span><span class="chip add">+ Tag</span></div><div class="row"><span>Alle Server</span><span class="toggle" role="switch" aria-checked="false" aria-label="Alle Server"></span></div></div>
+<div class="row"><span>Freigabe erforderlich</span><span class="toggle on" role="switch" aria-checked="true" aria-label="Freigabe erforderlich"></span></div>
+</div>
+<div class="dialog-foot"><div class="actions"><button class="btn ghost" type="button">Abbrechen</button><button class="btn primary" type="button">Speichern</button></div></div>
+</div>
+
+
+<div class="dialog" data-variant="types">
+<div class="dialog-head"><h1>Angaben je Typ (Skizze)</h1></div>
+<div class="sketch">
+<div class="fieldset"><span class="label">API-Key</span>
+<div class="field"><label for="k-name">Name</label><input class="input mono" id="k-name" value="portal-api"></div>
+<div class="field"><label for="k-hosts">Hosts</label><input class="input mono" id="k-hosts" value="api.example.com"></div>
+<div class="field"><label for="k-hdr">Header-Name</label><input class="input mono" id="k-hdr" value="Authorization"></div>
+<div class="field"><label for="k-tpl">Header-Vorlage</label><input class="input mono" id="k-tpl" value="Bearer {{secret}}"></div>
+</div>
+<div class="fieldset"><span class="label">Datenbank</span>
+<div class="field"><label for="db-eng">Engine</label><select class="input" id="db-eng"><option selected>PostgreSQL</option></select></div>
+<div class="field"><label for="db-host">Host</label><input class="input mono" id="db-host" value="db.example.com"></div>
+<div class="grid"><div class="field c4"><div class="field"><label for="db-port">Port</label><input class="input mono" id="db-port" value="5432"></div></div><div class="field c8"><div class="field"><label for="db-db">Datenbank</label><input class="input mono" id="db-db" value="portal"></div></div></div>
+<div class="field"><label for="db-user">Benutzer</label><input class="input mono" id="db-user" value="portal_app"></div>
+</div>
+</div></div>
+</div>
+</div>
+</main>
+</body>
+</html>

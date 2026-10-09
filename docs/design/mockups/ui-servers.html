@@ -106,6 +106,7 @@
 	.menu .item.hover { background: var(--dark-gray); }
 	.menu .item.danger { color: var(--error); }
 	.menu .item.disabled { color: var(--subtext); opacity: 0.55; }
+	.menu .item svg { width: 1em; height: 1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 	.menu .sep { height: 1px; background: var(--gray); margin: var(--space-1) 0; }
 	.menu .item.check::before { content: "✓"; width: 0.75rem; color: var(--accent-color); }
 	.menu .item.nocheck::before { content: ""; width: 0.75rem; }
@@ -304,6 +305,7 @@
 						<div class="item">Duplizieren</div>
 						<div class="item">Port weiterleiten</div>
 						<div class="item">Session beitreten</div>
+						<div class="item"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>Agenten-Zugang…</div>
 						<div class="sep"></div>
 						<div class="item danger">Löschen<kbd>⌫</kbd></div>
 					</section>
@@ -529,6 +531,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 						<div class="item disabled">Duplizieren</div>
 						<div class="item disabled">Port weiterleiten</div>
 						<div class="item disabled">Session beitreten</div>
+						<div class="item disabled"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>Agenten-Zugang…</div>
 						<div class="sep"></div>
 						<div class="item disabled">Löschen<kbd>⌫</kbd></div>
 					</div>
