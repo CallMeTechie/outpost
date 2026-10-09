@@ -16,6 +16,14 @@ const SETTLE_QUIET_MS = 150;
 const SETTLE_POLL_MS = 50;
 const SETTLE_MAX_MS = 10000;
 const SCREENSHOT_MAX_HEIGHT = 16384;
+const FOCUS_EDITABLE = `(() => {
+    const deepest = (el) => { while (el?.shadowRoot?.activeElement) el = el.shadowRoot.activeElement; return el; };
+    let el = deepest(document.activeElement);
+    try { while (el?.tagName === "IFRAME" && el.contentDocument) el = deepest(el.contentDocument.activeElement); } catch {}
+    if (!el || el.disabled || el.readOnly) return false;
+    if (el.isContentEditable || el.tagName === "TEXTAREA") return true;
+    return el.tagName === "INPUT" && !["button", "checkbox", "color", "file", "hidden", "image", "radio", "range", "reset", "submit"].includes(el.type);
+})()`;
 // One oversized CDP message closes the connection every session of the instance shares.
 const SCREENSHOT_MAX_PIXELS = 8e6;
 
@@ -125,6 +133,18 @@ class BrowserSession extends EventEmitter {
                 break;
         }
         for (const { method, params } of toCdpCalls(message)) await this.send(method, params);
+        // A touch device opens its keyboard only for a focused text field; the page alone knows whether it has one.
+        if (message.type === "mouse" && message.action === "up" && message.focusCheck === true)
+            this.#sendTo(ws, { type: "focus", editable: await this.#focusIsEditable() });
+    }
+
+    async #focusIsEditable() {
+        try {
+            const { result } = await this.send("Runtime.evaluate", { expression: FOCUS_EDITABLE, returnByValue: true });
+            return result?.value === true;
+        } catch {
+            return false;
+        }
     }
 
     async navigate(rawUrl) {
@@ -279,6 +299,7 @@ class BrowserSession extends EventEmitter {
         if (this.closed) return;
         this.closed = true;
         this.closeReason = reason;
+        logger.info("Browser session ended", { session: this.id, accountId: this.accountId, reason });
         this.cdp.off("event", this.onCdpEvent);
         for (const { ws } of this.viewers) {
             this.#sendTo(ws, { type: "closed", reason });

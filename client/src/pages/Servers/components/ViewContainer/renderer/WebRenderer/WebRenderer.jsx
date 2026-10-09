@@ -7,10 +7,11 @@ import { getWebSocketUrl } from "@/common/utils/ConnectionUtil.js";
 import Button from "@/common/components/Button";
 import AddressBar from "./AddressBar.jsx";
 import { decodeFrame, isNewerSeq } from "./frameProtocol.js";
-import { createMoveThrottle, fitFrame, keyPayload, mousePayload, pastePayload, resizePayload, wheelPayload } from "./inputPayload.js";
+import { IME_FILLER, createMoveThrottle, fitFrame, imePayloads, keyPayload, mousePayload, pastePayload, resizePayload, touchScrollPayload, wheelPayload } from "./inputPayload.js";
 
 const RESIZE_DEBOUNCE_MS = 150;
 const RECONNECT_MAX_MS = 15000;
+const TAP_SLOP_PX = 8;
 const INITIAL_PAGE = { url: "", title: "", loading: false, canGoBack: false, canGoForward: false };
 
 const PageDialog = ({ dialog, onReply }) => {
@@ -36,6 +37,8 @@ const WebRenderer = ({ session, markSessionErrored, isVisible = true }) => {
     const wsRef = useRef(null);
     const stageRef = useRef(null);
     const canvasRef = useRef(null);
+    const imeRef = useRef(null);
+    const touchRef = useRef(null);
     const viewportRef = useRef({ width: 1280, height: 800 });
     const drawnSeqRef = useRef(null);
     const decodingRef = useRef(false);
@@ -140,6 +143,12 @@ const WebRenderer = ({ session, markSessionErrored, isVisible = true }) => {
                     case "dialog":
                         setDialog({ id: message.id, kind: message.kind, message: message.message, defaultPrompt: message.defaultPrompt, origin: message.origin });
                         break;
+                    case "focus": {
+                        // Set on the element, not through state: the keyboard follows inputmode only while the field keeps focus.
+                        const ime = imeRef.current;
+                        if (ime && document.activeElement === ime) ime.inputMode = message.editable ? "text" : "none";
+                        break;
+                    }
                     case "dialogClosed":
                         setDialog(null);
                         break;
@@ -208,8 +217,59 @@ const WebRenderer = ({ session, markSessionErrored, isVisible = true }) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
         if (action === "move" && !moveAllowed()) return;
-        if (action === "down") stageRef.current?.focus();
-        sendJson(mousePayload(action, e, canvas.getBoundingClientRect(), viewportRef.current));
+        const touch = touchRef.current !== null;
+        // A tap gets the hidden field instead of the stage: only a focused text field can show the soft keyboard.
+        if (action === "down") (touch ? imeRef.current : stageRef.current)?.focus({ preventScroll: true });
+        const payload = mousePayload(action, e, canvas.getBoundingClientRect(), viewportRef.current);
+        sendJson(action === "up" && touch ? { ...payload, focusCheck: true } : payload);
+    };
+
+    // Taps arrive as the mouse events the browser derives from them; only a drag is handled here.
+    const onTouch = (action, e) => {
+        if (e.pointerType !== "touch") {
+            if (action === "down") touchRef.current = null;
+            return;
+        }
+        if (action === "down") {
+            touchRef.current = { startX: e.clientX, startY: e.clientY, last: { clientX: e.clientX, clientY: e.clientY }, dragging: false };
+            return;
+        }
+        const touch = touchRef.current;
+        const canvas = canvasRef.current;
+        if (action !== "move" || !touch || !canvas) return;
+        touch.dragging ||= Math.hypot(e.clientX - touch.startX, e.clientY - touch.startY) > TAP_SLOP_PX;
+        if (!touch.dragging) return;
+        const point = { clientX: e.clientX, clientY: e.clientY };
+        sendJson(touchScrollPayload(touch.last, point, canvas.getBoundingClientRect(), viewportRef.current));
+        touch.last = point;
+    };
+
+    const resetIme = () => {
+        const ime = imeRef.current;
+        if (!ime) return;
+        ime.value = IME_FILLER;
+        ime.setSelectionRange(IME_FILLER.length, IME_FILLER.length);
+    };
+
+    const flushIme = () => {
+        const ime = imeRef.current;
+        if (!ime) return;
+        for (const payload of imePayloads(ime.value)) sendJson(payload);
+        resetIme();
+    };
+
+    // Soft keyboards report most keys as "Unidentified" (229) and deliver the text through input events.
+    const onImeKey = (action, e) => {
+        if (e.nativeEvent.isComposing || e.keyCode === 229 || e.key === "Unidentified") return;
+        onKey(action, e);
+    };
+
+    const toggleKeyboard = () => {
+        const ime = imeRef.current;
+        if (!ime) return;
+        if (document.activeElement === ime && ime.inputMode === "text") return ime.blur();
+        ime.inputMode = "text";
+        ime.focus({ preventScroll: true });
     };
 
     const onKey = (action, e) => {
@@ -239,13 +299,19 @@ const WebRenderer = ({ session, markSessionErrored, isVisible = true }) => {
                 ViewContainer focuses the first focusable element of a pane, and that has to be
                 the page, not the address field. */}
             <div className="web-stage" ref={stageRef} tabIndex={0}
+                 onPointerDown={(e) => onTouch("down", e)} onPointerMove={(e) => onTouch("move", e)}
                  onMouseMove={(e) => onPointer("move", e)} onMouseDown={(e) => onPointer("down", e)}
                  onMouseUp={(e) => onPointer("up", e)} onKeyDown={(e) => onKey("down", e)}
                  onKeyUp={(e) => onKey("up", e)} onPaste={onPaste} onContextMenu={(e) => e.preventDefault()}>
                 <canvas ref={canvasRef} />
                 {!connected && <div className="web-connecting">{t("servers.webRenderer.connecting")}</div>}
             </div>
-            <AddressBar page={page} agent={agent} connected={connected}
+            <textarea className="web-ime" ref={imeRef} inputMode="none" tabIndex={-1} aria-hidden="true"
+                      autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false}
+                      onFocus={resetIme} onInput={(e) => { if (!e.nativeEvent.isComposing) flushIme(); }}
+                      onCompositionEnd={flushIme} onKeyDown={(e) => onImeKey("down", e)}
+                      onKeyUp={(e) => onImeKey("up", e)} onPaste={onPaste} />
+            <AddressBar page={page} agent={agent} connected={connected} onKeyboard={toggleKeyboard}
                         onNavigate={(url) => sendJson({ type: "navigate", url })}
                         onHistory={(action) => sendJson({ type: "nav", action })}
                         onPause={(paused) => sendJson({ type: "pause", paused })}

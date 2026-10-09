@@ -2375,7 +2375,8 @@
       "dialogFrom": "{{origin}} says",
       "download": "Download {{filename}}: {{state}}",
       "closed": "The browser session has ended ({{reason}})",
-      "connecting": "Connecting to the browser session..."
+      "connecting": "Connecting to the browser session...",
+      "keyboard": "Keyboard"
     }
   },
   "support": {

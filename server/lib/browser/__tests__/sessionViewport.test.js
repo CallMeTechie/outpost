@@ -110,3 +110,29 @@ test("settle does not return between the load event and the title that comes wit
     await session.settle();
     assert.strictEqual(session.state.title, "Real title");
 });
+
+test("after a touch tap the tapping viewer learns whether the page focused a text field", async () => {
+    let focused = true;
+    const cdp = createFakeCdp({ "Runtime.evaluate": () => ({ result: { type: "boolean", value: focused } }) });
+    const session = new BrowserSession({ id: "browser-a", accountId: 1, profile: "ephemeral", origin: "agent", cdp, targetId: "T1", cdpSessionId: "S1" });
+    await session.start();
+    const tapper = createFakeViewer();
+    const other = createFakeViewer();
+    session.addViewer(tapper);
+    session.addViewer(other);
+    await flush();
+    const tap = { type: "mouse", x: 10, y: 10, button: "left", clickCount: 1 };
+
+    await session.handleViewerMessage(tapper, { ...tap, action: "down" });
+    await session.handleViewerMessage(tapper, { ...tap, action: "up", focusCheck: true });
+    const order = cdp.calls.map((c) => c.method).filter((m) => m === "Input.dispatchMouseEvent" || m === "Runtime.evaluate");
+    assert.deepStrictEqual(order, ["Input.dispatchMouseEvent", "Input.dispatchMouseEvent", "Runtime.evaluate"], "the check runs after the release reached the page");
+    assert.deepStrictEqual(tapper.json.at(-1), { type: "focus", editable: true });
+    assert.ok(!other.json.some((m) => m.type === "focus"));
+
+    focused = false;
+    await session.handleViewerMessage(tapper, { ...tap, action: "up", focusCheck: true });
+    assert.deepStrictEqual(tapper.json.at(-1), { type: "focus", editable: false });
+    await session.handleViewerMessage(tapper, { ...tap, action: "up" });
+    assert.strictEqual(cdp.callsOf("Runtime.evaluate").length, 2, "a mouse click asks nothing");
+});

@@ -51,6 +51,37 @@ export const keyPayload = (action, e) => {
     return { type: "key", action, key: e.key, code: e.code, keyCode: e.keyCode, text, modifiers };
 };
 
+// A finger drag moves the page the way the finger moves: content follows it, as in a native scroll.
+export const touchScrollPayload = (from, to, rect, viewport) => {
+    const { scale } = fitFrame(rect, viewport);
+    return {
+        type: "mouse", action: "wheel", ...toPagePoint(to, rect, viewport), button: "none", clickCount: 0,
+        deltaX: (from.clientX - to.clientX) / scale, deltaY: (from.clientY - to.clientY) / scale, modifiers: 0,
+    };
+};
+
+// The on-screen keyboard types into a hidden field. It starts with this filler so that Backspace
+// still changes something when nothing was typed yet; many soft keyboards send no key event for it.
+export const IME_FILLER = "  ";
+
+const pressKey = (key, code, keyCode) => [
+    { type: "key", action: "down", key, code, keyCode, text: key === "Enter" ? "\r" : "", modifiers: 0 },
+    { type: "key", action: "up", key, code, keyCode, text: "", modifiers: 0 },
+];
+
+// What the soft keyboard did to the hidden field since it last held only the filler.
+export const imePayloads = (value) => {
+    let kept = 0;
+    while (kept < IME_FILLER.length && value[kept] === IME_FILLER[kept]) kept++;
+    const payloads = [];
+    for (let i = kept; i < IME_FILLER.length; i++) payloads.push(...pressKey("Backspace", "Backspace", 8));
+    value.slice(kept).split(/\r?\n/).forEach((line, index) => {
+        if (index > 0) payloads.push(...pressKey("Enter", "Enter", 13));
+        if (line) payloads.push(pastePayload(line));
+    });
+    return payloads;
+};
+
 export const resizePayload = (rect) => ({ type: "resize", width: Math.round(rect.width), height: Math.round(rect.height) });
 
 export const pastePayload = (text) => ({ type: "paste", text });

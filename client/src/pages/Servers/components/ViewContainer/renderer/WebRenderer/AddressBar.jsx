@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Icon from "@/common/components/Icon";
-import { ArrowLeft as IconArrowLeft, ArrowRight as IconArrowRight, RotateCw as IconRotateCw, X as IconX, Pause as IconPause, Play as IconPlay } from "lucide-react";
+import { ArrowLeft as IconArrowLeft, ArrowRight as IconArrowRight, RotateCw as IconRotateCw, X as IconX, Pause as IconPause, Play as IconPlay, Keyboard as IconKeyboard } from "lucide-react";
 
 const withScheme = (value) => (/^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? value : `https://${value}`);
 
-const AddressBar = ({ page, agent, connected, onNavigate, onHistory, onPause, onClose }) => {
+const AddressBar = ({ page, agent, connected, onNavigate, onHistory, onPause, onClose, onKeyboard }) => {
     const { t } = useTranslation();
     const [draft, setDraft] = useState("");
     const [editing, setEditing] = useState(false);
@@ -41,6 +41,11 @@ const AddressBar = ({ page, agent, connected, onNavigate, onHistory, onPause, on
                 <span className="web-agent-dot" aria-hidden="true" />
                 {agentText && <span>{agentText}</span>}
             </span>
+            {/* Keeps the hidden field focused, so a second press can close the keyboard it opened. */}
+            <button type="button" className="web-keyboard" aria-label={t("servers.webRenderer.keyboard")} disabled={!connected}
+                    onPointerDown={(e) => e.preventDefault()} onClick={onKeyboard}>
+                <Icon icon={IconKeyboard} />
+            </button>
             <button type="button" aria-pressed={agent.paused} disabled={!connected} onClick={() => onPause(!agent.paused)}
                     aria-label={agent.paused ? t("servers.webRenderer.resume") : t("servers.webRenderer.pause")}>
                 <Icon icon={agent.paused ? IconPlay : IconPause} />

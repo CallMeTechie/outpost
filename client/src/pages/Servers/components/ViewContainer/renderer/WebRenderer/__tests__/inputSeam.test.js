@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert";
 import { createRequire } from "node:module";
 import { Buffer } from "node:buffer";
-import { mousePayload, keyPayload, pastePayload, resizePayload, wheelPayload } from "../inputPayload.js";
+import { mousePayload, keyPayload, pastePayload, resizePayload, wheelPayload, imePayloads, touchScrollPayload, IME_FILLER } from "../inputPayload.js";
 import { decodeFrame, isNewerSeq } from "../frameProtocol.js";
 
 // The other side of the seam is the server's own code, not a copy of it.
@@ -71,4 +71,20 @@ test("a frame packed by the server unpacks in the client, and ordering survives 
     assert.strictEqual(isNewerSeq(5, 9), false);
     assert.strictEqual(isNewerSeq(7, null), true);
     assert.strictEqual(decodeFrame(new ArrayBuffer(3)), null);
+});
+
+test("what a soft keyboard leaves in the hidden field arrives as typed text, Enter and Backspace", () => {
+    const calls = (value) => imePayloads(value).flatMap(toCdpCalls).map(({ method, params }) =>
+        method === "Input.insertText" ? params.text : `${params.type}:${params.key}${params.text ? `(${JSON.stringify(params.text)})` : ""}`);
+    assert.deepStrictEqual(calls(IME_FILLER), []);
+    assert.deepStrictEqual(calls(`${IME_FILLER}Grüße 😀`), ["Grüße 😀"]);
+    assert.deepStrictEqual(calls(`${IME_FILLER}ab\ncd`), ["ab", "keyDown:Enter(\"\\r\")", "keyUp:Enter", "cd"]);
+    assert.deepStrictEqual(calls(IME_FILLER.slice(1)), ["rawKeyDown:Backspace", "keyUp:Backspace"]);
+    assert.deepStrictEqual(calls(""), ["rawKeyDown:Backspace", "keyUp:Backspace", "rawKeyDown:Backspace", "keyUp:Backspace"]);
+});
+
+test("a finger drag scrolls the page by the dragged distance in page pixels, content following the finger", () => {
+    const rect = { left: 0, top: 0, width: 800, height: 500 };
+    const [{ params }] = toCdpCalls(touchScrollPayload({ clientX: 400, clientY: 300 }, { clientX: 390, clientY: 200 }, rect, viewport));
+    assert.deepStrictEqual(params, { type: "mouseWheel", x: 780, y: 400, deltaX: 20, deltaY: 200, modifiers: 0 });
 });

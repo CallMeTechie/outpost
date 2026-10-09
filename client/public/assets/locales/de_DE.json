@@ -2361,7 +2361,8 @@
       "dialogFrom": "{{origin}} meldet",
       "download": "Download {{filename}}: {{state}}",
       "closed": "Die Browser-Sitzung wurde beendet ({{reason}})",
-      "connecting": "Verbinde mit der Browser-Sitzung..."
+      "connecting": "Verbinde mit der Browser-Sitzung...",
+      "keyboard": "Tastatur"
     }
   },
   "support": {

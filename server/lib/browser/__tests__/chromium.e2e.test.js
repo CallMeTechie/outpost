@@ -4,6 +4,7 @@ const http = require("node:http");
 const { BrowserPool } = require("../BrowserPool");
 const { createLauncherClient } = require("../launcher");
 const { BrowserErrorCode } = require("../errors");
+const { clickablePoint } = require("../actions");
 const { createFakeViewer, flush } = require("./helpers/fakeCdp");
 
 const LAUNCHER = process.env.OUTPOST_BROWSER_E2E_LAUNCHER;
@@ -53,6 +54,15 @@ test("against a real Chromium: snapshot, type, click, frames, navigation, close,
         await session.settle();
         snapshot = await session.snapshot();
         assert.match(snapshot, /- heading "Hello Ada" level=1/);
+
+        const tap = async ({ x, y }) => {
+            await session.handleViewerMessage(viewer, { type: "mouse", action: "down", x, y, button: "left", clickCount: 1 });
+            await session.handleViewerMessage(viewer, { type: "mouse", action: "up", x, y, button: "left", clickCount: 1, focusCheck: true });
+            return viewer.json.at(-1);
+        };
+        const field = await clickablePoint(session.send, session.refs.resolve(refOf(snapshot, 'textbox "Name"')).backendNodeId);
+        assert.deepStrictEqual(await tap(field), { type: "focus", editable: true });
+        assert.deepStrictEqual(await tap({ x: 600, y: 700 }), { type: "focus", editable: false }, "a tap on empty page space");
 
         await session.runAgent("browser_type", () => session.type(refOf(snapshot, 'combobox "Country"'), "Italy"));
         snapshot = await session.snapshot();
