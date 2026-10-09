@@ -244,6 +244,20 @@ export const OrganizationAuditSettings = ({ organizationId, isOwner, onClose }) 
                                 disabled={!isOwner}
                             />
                         </div>
+                        <div className="setting-item">
+                            <div className="setting-info">
+                                <span className="setting-label">{t("settings.organizations.auditSettings.browserOperationsLabel")}</span>
+                                <span className="setting-description">
+                                    {t("settings.organizations.auditSettings.browserOperationsDescription")}
+                                </span>
+                            </div>
+                            <ToggleSwitch
+                                id="enableBrowserOperationAudit"
+                                checked={settings.enableBrowserOperationAudit}
+                                onChange={(value) => handleSettingChange("enableBrowserOperationAudit", value)}
+                                disabled={!isOwner}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>

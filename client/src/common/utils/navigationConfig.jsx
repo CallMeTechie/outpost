@@ -1,4 +1,4 @@
-import { Server as IconServer, Braces as IconBraces, ChartColumn as IconChartColumn, ShieldCheck as IconShieldCheck, CircleUser as IconCircleUser, Users as IconUsers, Hourglass as IconHourglass, ShieldUser as IconShieldUser, Building2 as IconBuilding2, Sparkles as IconSparkles, KeyRound as IconKeyRound, SquareTerminal as IconSquareTerminal, Keyboard as IconKeyboard, CloudDownload as IconCloudDownload, ChartLine as IconChartLine, HardDrive as IconHardDrive, Folder as IconFolder, Engine as IconEngine, Palette as IconPalette, ShieldHalf as IconShieldHalf } from "lucide-react";
+import { Server as IconServer, Braces as IconBraces, ChartColumn as IconChartColumn, ShieldCheck as IconShieldCheck, CircleUser as IconCircleUser, Users as IconUsers, Hourglass as IconHourglass, ShieldUser as IconShieldUser, Building2 as IconBuilding2, Sparkles as IconSparkles, KeyRound as IconKeyRound, SquareTerminal as IconSquareTerminal, Keyboard as IconKeyboard, CloudDownload as IconCloudDownload, ChartLine as IconChartLine, HardDrive as IconHardDrive, Folder as IconFolder, Engine as IconEngine, Palette as IconPalette, ShieldHalf as IconShieldHalf, Globe as IconGlobe } from "lucide-react";
 import { mdiMicrosoft } from "@mdi/js";
 import Account from "@/pages/Settings/pages/Account";
 import Appearance from "@/pages/Settings/pages/Appearance";
@@ -15,6 +15,7 @@ import Sources from "@/pages/Settings/pages/Sources";
 import Monitoring from "@/pages/Settings/pages/Monitoring";
 import Backup from "@/pages/Settings/pages/Backup";
 import AI from "@/pages/Settings/pages/AI";
+import Browser from "@/pages/Settings/pages/Browser";
 import Engines from "@/pages/Settings/pages/Engines";
 import Permissions from "@/pages/Settings/pages/Permissions";
 import { Permission } from "@/common/utils/permissions.js";
@@ -23,6 +24,7 @@ export const getSidebarNavigation = t => [
     { title: t('common.sidebar.servers'), key: "servers", path: "/servers", icon: IconServer, toggleEvent: "toggleServerList" },
     { title: t('common.sidebar.monitoring'), key: "monitoring", path: "/monitoring", icon: IconChartColumn },
     { title: t('common.sidebar.snippets'), key: "snippets", path: "/snippets", icon: IconBraces },
+    { title: t('common.sidebar.browser'), key: "browser", path: "/servers?openBrowser=1", icon: IconGlobe, permission: Permission.CONNECT_BROWSER },
     { title: t('common.sidebar.audit'), key: "audit", path: "/audit", icon: IconShieldCheck, permission: Permission.AUDIT_VIEW },
 ];
 
@@ -47,6 +49,7 @@ export const getSettingsAdminPages = t => [
     { title: t("settings.pages.engines"), key: "engines", icon: IconEngine, permission: Permission.SETTINGS_ENGINES, content: <Engines /> },
     { title: t("settings.pages.backup"), key: "backup", icon: IconHardDrive, permission: Permission.SETTINGS_BACKUP, content: <Backup /> },
     { title: t("settings.pages.ai"), key: "ai", icon: IconSparkles, permission: Permission.SETTINGS_AI, content: <AI /> },
+    { title: t("settings.pages.browser"), key: "browser", icon: IconGlobe, permission: Permission.SETTINGS_BROWSER, content: <Browser /> },
 ];
 
 export const getAllSettingsPages = t => [...getSettingsUserPages(t), ...getSettingsAdminPages(t)];

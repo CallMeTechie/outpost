@@ -146,6 +146,7 @@
       "servers": "Server",
       "monitoring": "Monitoring",
       "snippets": "Snippets",
+      "browser": "Browser",
       "audit": "Audit",
       "account": "Konto",
       "logout": "Abmelden",
@@ -605,7 +606,8 @@
       "monitoring": "Überwachung",
       "backup": "Speicher",
       "engines": "Motoren",
-      "permissions": "Benutzergruppen und Berechtigungen"
+      "permissions": "Benutzergruppen und Berechtigungen",
+      "browser": "Browser"
     },
     "account": {
       "title": "Account",
@@ -827,7 +829,9 @@
         "messages": {
           "updated": "Audit-Einstellungen erfolgreich aktualisiert",
           "updateFailed": "Aktualisierung der Audit-Einstellungen fehlgeschlagen"
-        }
+        },
+        "browserOperationsLabel": "Browser-Aktionen",
+        "browserOperationsDescription": "Geöffnete Seiten, Klicks, Eingaben und Skriptauswertungen in Browser-Tabs protokollieren"
       },
       "pendingInvitations": "Ausstehende Einladungen",
       "invitedBy": "Eingeladen von: {{name}}",
@@ -1558,6 +1562,39 @@
       "deleteConfirm": "Dadurch wird die Benutzergruppe „{{name}}“ endgültig gelöscht und von allen Mitgliedern entfernt.",
       "inheritsAllow": "Vererbung: Erlaubt",
       "inheritsDeny": "Vererbung: Verweigert"
+    },
+    "browser": {
+      "loading": "Browser-Einstellungen werden geladen...",
+      "title": "Browser-Container",
+      "description": "Browser-Tabs laufen in einem eigenen Container (Chromium unter Xvfb). Sein DevTools-Port kennt keine Anmeldung: Er gehört in ein eigenes Docker-Netz, das nur Outpost mit ihm teilt.",
+      "enabled": {
+        "title": "Browser-Tabs aktivieren",
+        "description": "Ohne laufenden Container bleibt die Funktion abwesend."
+      },
+      "launcherUrl": {
+        "title": "Adresse des Launchers",
+        "description": "Adresse des Launchers im Browser-Container, z. B. http://outpost-browser:9300"
+      },
+      "callbackHost": {
+        "title": "Outpost-Adresse aus Sicht des Containers",
+        "description": "Hostname, unter dem der Browser-Container diesen Server erreicht. Nötig für Sitzungen mit via."
+      },
+      "maxSessions": {
+        "title": "Gleichzeitige Sitzungen",
+        "description": "Weitere Sitzungen werden mit einer Liste der offenen abgelehnt."
+      },
+      "idleMinutes": {
+        "title": "Leerlauf-Ende",
+        "description": "Eine Sitzung ohne Zuschauer und ohne Agenten-Aufruf endet nach dieser Zeit."
+      },
+      "minutes": "Minuten",
+      "sessions": "Sitzungen",
+      "saveSettings": "Einstellungen speichern",
+      "saveSuccess": "Browser-Einstellungen gespeichert",
+      "errors": {
+        "loadSettings": "Browser-Einstellungen konnten nicht geladen werden",
+        "saveSettings": "Browser-Einstellungen konnten nicht gespeichert werden"
+      }
     }
   },
   "tunnel": {
@@ -1714,8 +1751,11 @@
         "sftp": "SFTP",
         "notes": "Notizen",
         "onedrive": "OneDrive",
-        "remoteDesktop": "Remotedesktop"
-      }
+        "remoteDesktop": "Remotedesktop",
+        "browser": "Browser"
+      },
+      "browserAgentActive": "Claude steuert",
+      "blankPage": "Neuer Tab"
     },
     "wol": {
       "successDescription": "Magic-Paket an {{name}} gesendet",
@@ -2307,6 +2347,24 @@
       "sessions_other": "{{count}} Sitzungen",
       "sleeping_one": "1 schläft",
       "sleeping_other": "{{count}} schlafen"
+    },
+    "webRenderer": {
+      "address": "Adresse",
+      "back": "Zurück",
+      "forward": "Vor",
+      "reload": "Neu laden",
+      "close": "Browser-Sitzung beenden",
+      "agentIdle": "Niemand steuert",
+      "agentActive": "Claude: {{tool}}",
+      "pause": "Agent pausieren",
+      "resume": "Agent fortsetzen",
+      "paused": "Agent pausiert",
+      "dialogAccept": "OK",
+      "dialogFrom": "{{origin}} meldet",
+      "download": "Download {{filename}}: {{state}}",
+      "closed": "Die Browser-Sitzung wurde beendet ({{reason}})",
+      "connecting": "Verbinde mit der Browser-Sitzung...",
+      "keyboard": "Tastatur"
     }
   },
   "support": {

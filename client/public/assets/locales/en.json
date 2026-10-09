@@ -146,6 +146,7 @@
       "servers": "Servers",
       "monitoring": "Monitoring",
       "snippets": "Snippets",
+      "browser": "Browser",
       "audit": "Audit",
       "account": "Account",
       "logout": "Logout",
@@ -605,7 +606,8 @@
       "monitoring": "Monitoring",
       "backup": "Storage",
       "engines": "Engines",
-      "permissions": "Roles & Permissions"
+      "permissions": "Roles & Permissions",
+      "browser": "Browser"
     },
     "account": {
       "title": "Account",
@@ -827,7 +829,9 @@
         "messages": {
           "updated": "Audit settings updated successfully",
           "updateFailed": "Failed to update audit settings"
-        }
+        },
+        "browserOperationsLabel": "Browser Operations",
+        "browserOperationsDescription": "Log pages opened, clicks, inputs and script evaluations in browser tabs"
       },
       "pendingInvitations": "Pending Invitations",
       "invitedBy": "Invited by: {{name}}",
@@ -1558,6 +1562,39 @@
       "deleteConfirm": "This will permanently delete the role \"{{name}}\" and remove it from all members.",
       "inheritsAllow": "Inherits: Allowed",
       "inheritsDeny": "Inherits: Denied"
+    },
+    "browser": {
+      "loading": "Loading browser settings...",
+      "title": "Browser container",
+      "description": "Browser tabs run in a separate container (Chromium under Xvfb). Its DevTools port has no authentication: keep it on a Docker network of its own that only Outpost shares.",
+      "enabled": {
+        "title": "Enable browser tabs",
+        "description": "Without a running container the feature stays absent."
+      },
+      "launcherUrl": {
+        "title": "Launcher address",
+        "description": "Address of the launcher inside the browser container, e.g. http://outpost-browser:9300"
+      },
+      "callbackHost": {
+        "title": "Outpost address seen from the container",
+        "description": "Host name under which the browser container reaches this server. Needed for sessions opened with via."
+      },
+      "maxSessions": {
+        "title": "Concurrent sessions",
+        "description": "Further sessions are refused with a list of the open ones."
+      },
+      "idleMinutes": {
+        "title": "Idle timeout",
+        "description": "A session without viewers and without agent calls ends after this time."
+      },
+      "minutes": "minutes",
+      "sessions": "sessions",
+      "saveSettings": "Save settings",
+      "saveSuccess": "Browser settings saved",
+      "errors": {
+        "loadSettings": "Could not load the browser settings",
+        "saveSettings": "Could not save the browser settings"
+      }
     }
   },
   "tunnel": {
@@ -1716,8 +1753,11 @@
         "sftp": "SFTP",
         "notes": "Notes",
         "onedrive": "OneDrive",
-        "remoteDesktop": "Remote desktop"
-      }
+        "remoteDesktop": "Remote desktop",
+        "browser": "Browser"
+      },
+      "browserAgentActive": "Claude is driving",
+      "blankPage": "New tab"
     },
     "wol": {
       "successDescription": "Magic packet sent to {{name}}",
@@ -2321,6 +2361,24 @@
       "sessions_other": "{{count}} sessions",
       "sleeping_one": "1 sleeping",
       "sleeping_other": "{{count}} sleeping"
+    },
+    "webRenderer": {
+      "address": "Address",
+      "back": "Back",
+      "forward": "Forward",
+      "reload": "Reload",
+      "close": "End browser session",
+      "agentIdle": "Nobody is driving",
+      "agentActive": "Claude: {{tool}}",
+      "pause": "Pause agent",
+      "resume": "Resume agent",
+      "paused": "Agent paused",
+      "dialogAccept": "OK",
+      "dialogFrom": "{{origin}} says",
+      "download": "Download {{filename}}: {{state}}",
+      "closed": "The browser session has ended ({{reason}})",
+      "connecting": "Connecting to the browser session...",
+      "keyboard": "Keyboard"
     }
   },
   "support": {

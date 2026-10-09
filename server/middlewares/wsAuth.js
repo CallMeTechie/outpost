@@ -8,6 +8,8 @@ const SessionManager = require("../lib/SessionManager");
 const { validateEntryAccess } = require("../controllers/entry");
 const { getOrganizationAuditSettingsInternal } = require("../controllers/audit");
 const { resolveIdentity } = require("../utils/identityResolver");
+const { hasAccountPermission } = require("../utils/permission");
+const { Permission } = require("../permissions/registry");
 
 const SHARED_ENTRY_ATTRIBUTES = ["id", "type", "config", "integrationId"];
 
@@ -148,6 +150,27 @@ const authenticateWebSocket = async (ws, query) => {
     return { user, entry, session, serverSession };
 }
 
+// Browser sessions have no Entry, so validateEntryAccess has nothing to check; what stands in its
+// place is the permission and the session's owner. Kept beside the entry path instead of
+// punching exceptions into it.
+const authenticateBrowserSession = async (ws, query) => {
+    const auth = await authenticateToken(ws, query.sessionToken);
+    if (!auth) return null;
+
+    if (!(await hasAccountPermission(auth.user.id, Permission.CONNECT_BROWSER))) {
+        ws.close(4403, "You don't have permission to use browser sessions");
+        return null;
+    }
+
+    const browserSession = require("../lib/browser").getBrowserPool().getOwned(auth.user.id, query.browserSessionId);
+    if (!browserSession) {
+        ws.close(4007, "Browser session not found");
+        return null;
+    }
+
+    return { user: auth.user, session: auth.session, browserSession };
+};
+
 module.exports = async (ws, req) => {
     const sharedAuth = await authenticateSharedSession(ws, req.query);
     if (sharedAuth) return sharedAuth;
@@ -208,3 +231,4 @@ module.exports = async (ws, req) => {
 module.exports.authenticateWebSocket = authenticateWebSocket;
 module.exports.authenticateToken = authenticateToken;
 module.exports.resolveSessionToken = resolveSessionToken;
+module.exports.authenticateBrowserSession = authenticateBrowserSession;

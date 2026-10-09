@@ -813,6 +813,9 @@ module.exports = {
     getSessionPassword,
     buildSSHParams,
     resolveJumpHosts,
+    resolveCredentials,
+    openEngineSession,
+    extractIdentity,
     IdentityAccessDeniedError,
     CROSS_TRANSFER_CONNECT_TIMEOUT_MS,
     // Test helpers (fix round 3): pure-ish timing primitives, exported so their deadline behavior

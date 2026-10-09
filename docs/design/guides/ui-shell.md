@@ -26,6 +26,7 @@ Bestehend und vollständig gebaut. Diese Anleitung schreibt fest, was bisher nur
 ### UI-SHELL-NAV
 - `data-ui-id` an `<nav>`, nicht an den einzelnen Einträgen — geprüft wird, dass die Bereiche vollständig und in dieser Reihenfolge erscheinen.
 - Quelle ist `getSidebarNavigation(t)`, gefiltert über `hasPermission(item.permission)`. Audit fehlt ohne `AUDIT_VIEW`, und das ist richtig so, kein Ladefehler.
+- Browser ist kein Ort, sondern eine Aktion: der Eintrag führt nach `/servers?openBrowser=1`, dort öffnet sich ein neuer Browser-Tab, und er wird nie als aktiv hervorgehoben. Er fehlt, solange `GET /api/browser/available` nicht `enabled: true` liefert.
 - Icon 2 rem in einer Fläche von 3,25 rem, Radius 1 rem, Abstand 0,75 rem. Aktiv: `--dark-gray` Fläche, 1 px `--gray` Rand, Icon in `--primary`.
 - Die Icons kommen aus `lucide-react`, nicht aus `@mdi/js`. Neue Bereiche nehmen ebenfalls Lucide; MDI bleibt allein den Marken- und Systemlogos vorbehalten (siehe `client/src/common/components/Icon/Icon.jsx`).
 

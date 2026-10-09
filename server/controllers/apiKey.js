@@ -3,7 +3,9 @@ const ApiKey = require("../models/ApiKey");
 const Account = require("../models/Account");
 const logger = require("../utils/logger");
 
-const TOKEN_PREFIX = "nxt_";
+const TOKEN_PREFIX = "outpost_";
+// Keys issued before the rename from Nexterm keep working until they are revoked.
+const LEGACY_PREFIXES = ["nxt_"];
 
 const hashToken = (token) => crypto.createHash("sha256").update(token).digest("hex");
 
@@ -12,7 +14,7 @@ const generateToken = () => {
     return `${TOKEN_PREFIX}${random}`;
 };
 
-const isApiKeyToken = (token) => typeof token === "string" && token.startsWith(TOKEN_PREFIX);
+const isApiKeyToken = (token) => typeof token === "string" && [TOKEN_PREFIX, ...LEGACY_PREFIXES].some((prefix) => token.startsWith(prefix));
 
 const serialize = (key) => ({
     id: key.id,

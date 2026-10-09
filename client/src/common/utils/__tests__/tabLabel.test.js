@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert";
 import { buildTabLabel, assignNumbers, diffAssignments, tabGroupKey, tabIdentitySignature, idsNeedingNumber } from "../tabLabel.js";
 
-// buildTabLabel only ever calls t() for the notes suffix and the tooltip's type value - both
+// buildTabLabel only ever calls t() for the notes suffix, a blank browser tab and the tooltip's type value - all
 // static label keys with no interpolation - so a small stub is enough, in the style
 // transferDetail.test.js already uses to check translation-key composition without pulling in
 // react-i18next or the locale files.
@@ -13,6 +13,9 @@ const t = (key) => ({
     "servers.tabLabel.type.notes": "Notes",
     "servers.tabLabel.type.onedrive": "OneDrive",
     "servers.tabLabel.type.remoteDesktop": "Remote desktop",
+    "servers.tabLabel.type.browser": "Browser",
+    "servers.tabLabel.browserAgentActive": "Claude is driving",
+    "servers.tabLabel.blankPage": "New tab",
 })[key];
 
 const ssh = { id: "s1", type: "terminal", server: { name: "pve-01" } };
@@ -451,4 +454,22 @@ test("assignNumbers: groups are counted apart", () => {
     assert.equal(result.a, 1);
     assert.equal(result.b, 2);
     assert.equal(result.c, 1);
+});
+
+test("a browser tab is named after its sanitised page title and says when Claude is driving", () => {
+    const idle = buildTabLabel({ id: "browser-1", type: "browser", browser: { title: "Grafana\u0007 Home‮", url: "https://grafana.test/d/x" } }, {}, t);
+    assert.deepStrictEqual([idle.name, idle.kind], ["Grafana Home", "(Browser)"]);
+
+    const busy = buildTabLabel({ id: "browser-1", type: "browser", browser: { title: "", url: "https://grafana.test/d/x", agentActive: true } }, {}, t);
+    assert.deepStrictEqual([busy.name, busy.kind], ["grafana.test", "(Claude is driving)"]);
+    assert.ok(busy.tooltip.some(({ key, value }) => key === "servers.tabLabel.tooltip.type" && value === "Browser"));
+
+    const blank = buildTabLabel({ id: "browser-1", type: "browser", browser: { title: "", url: "about:blank" } }, {}, t);
+    assert.deepStrictEqual([blank.name, blank.kind], ["New tab", "(Browser)"]);
+});
+
+test("a browser tab and a server tab with the same base name are not numbered as one group", () => {
+    const page = { id: "browser-2", type: "browser", browser: { title: "pve-01", url: "https://pve.test/" } };
+    assert.strictEqual(idsNeedingNumber([ssh, page], {}).size, 0);
+    assert.notStrictEqual(tabGroupKey(ssh), tabGroupKey(page));
 });

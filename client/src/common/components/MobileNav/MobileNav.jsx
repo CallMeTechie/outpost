@@ -3,16 +3,13 @@ import { UserCog as IconUserCog } from "lucide-react";
 import Icon from "@/common/components/Icon";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useContext } from "react";
-import { UserContext } from "@/common/contexts/UserContext.jsx";
-import { getSidebarNavigation } from "@/common/utils/navigationConfig.jsx";
+import { useSidebarNavigation } from "@/common/hooks/useSidebarNavigation.js";
 
 export const MobileNav = () => {
     const { t } = useTranslation();
     const { pathname } = useLocation();
     const navigate = useNavigate();
-    const { hasPermission } = useContext(UserContext);
-    const navigation = getSidebarNavigation(t).filter(item => !item.permission || hasPermission(item.permission));
+    const navigation = useSidebarNavigation();
 
     const handleClick = (item) => {
         if (pathname.startsWith(item.path) && item.toggleEvent) window.dispatchEvent(new CustomEvent(item.toggleEvent));
@@ -23,7 +20,8 @@ export const MobileNav = () => {
         <nav className="mobile-nav" data-ui-id="UI-SHELL-MOBILE-NAV">
             <div className="mobile-nav-scroll">
                 {navigation.map((item, i) => (
-                    <div key={i} onClick={() => handleClick(item)} className={`mobile-nav-item${pathname.startsWith(item.path) ? " active" : ""}`}>
+                    <div key={i} role="link" tabIndex={0} onClick={() => handleClick(item)}
+                         onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), handleClick(item))} className={`mobile-nav-item${pathname.startsWith(item.path) ? " active" : ""}`}>
                         <Icon icon={item.icon} /><span>{item.title}</span>
                     </div>
                 ))}

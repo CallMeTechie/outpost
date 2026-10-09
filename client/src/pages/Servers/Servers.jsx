@@ -1,6 +1,6 @@
 import "./styles.sass";
 import ServerList from "@/pages/Servers/components/ServerList";
-import { useContext, useEffect, useState, useCallback, useRef } from "react";
+import { useContext, useEffect, useState, useCallback, useRef, useEffectEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import WelcomePanel from "@/pages/Servers/components/WelcomePanel";
@@ -24,6 +24,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import { StateStreamContext, STATE_TYPES } from "@/common/contexts/StateStreamContext.jsx";
 import { isTauri } from "@/common/utils/TauriUtil.js";
+import { syncBrowserTabs, toBrowserTab, BROWSER_SESSION_TYPE } from "@/common/utils/browserTabs.js";
 import { getTabId, getBrowserId, requiresIdentity, canConnectWithoutPrompt, getDisplayDpi } from "@/common/utils/ConnectionUtil.js";
 import { getRequest, postRequest, deleteRequest } from "@/common/utils/RequestUtil";
 import {
@@ -36,7 +37,7 @@ import { assignNumbers, diffAssignments, tabGroupKey, tabIdentitySignature } fro
 // A session the server does not know about: it lives in this browser only. The poll below
 // replaces the session list with what the server reports, so anything matching this has to be
 // carried over by hand — otherwise it vanishes without anyone closing it.
-const isLocalSession = (session) => session?.type === "notes" || session?.type === "onedrive";
+const isLocalSession = (session) => session?.type === "notes" || session?.type === "onedrive" || session?.type === BROWSER_SESSION_TYPE;
 
 export const Servers = () => {
 
@@ -300,6 +301,28 @@ export const Servers = () => {
     useEffect(() => {
         if (servers) return registerHandler(STATE_TYPES.CONNECTIONS, handleConnectionsUpdate);
     }, [servers, registerHandler, handleConnectionsUpdate]);
+
+    // Tabs the user closed in this page load; without it the next push would reopen them at once.
+    // A reload starts empty on purpose, so a returning client finds running sessions again.
+    const dismissedBrowserSessionsRef = useRef(new Set());
+
+    const handleBrowserSessions = useCallback((list) => {
+        const dismissed = dismissedBrowserSessionsRef.current;
+        setActiveSessions(prev => {
+            const { sessions, activate } = syncBrowserTabs(prev, list, dismissed);
+            if (sessions === prev) return prev;
+            const keptIds = new Set(sessions.map(session => session.id));
+            const removedIds = new Set(prev.filter(session => !keptIds.has(session.id)).map(session => session.id));
+            setActiveSessionId(currentActiveId => {
+                if (activate) return activate;
+                if (removedIds.has(currentActiveId)) return sessions.at(-1)?.id || null;
+                return currentActiveId;
+            });
+            return sessions;
+        });
+    }, [setActiveSessions, setActiveSessionId]);
+
+    useEffect(() => registerHandler(STATE_TYPES.BROWSER_SESSIONS, handleBrowserSessions), [registerHandler, handleBrowserSessions]);
 
     // Persist whatever local-only tabs (OneDrive, notes) are open right now, on every change -
     // but only once restore has read a complete picture (see canPersistLocalSessions). Writing
@@ -806,6 +829,7 @@ export const Servers = () => {
 
     const closeSession = (sessionId) => {
         const session = activeSessions.find(s => s.id === sessionId);
+        if (session?.type === BROWSER_SESSION_TYPE) dismissedBrowserSessionsRef.current.add(sessionId);
         if (!isLocalSession(session) && !session?.isJoined) {
             closingSessionsRef.current.add(sessionId);
             deleteRequest(`/connections/${sessionId}`).catch(error => {
@@ -864,6 +888,25 @@ export const Servers = () => {
         }]);
         setActiveSessionId(sessionId);
     };
+
+    const openBrowser = () => postRequest("/browser/sessions").then((item) => {
+        setActiveSessions(prev => prev.some(s => s.id === item.id) ? prev : [...prev, toBrowserTab(item)]);
+        setActiveSessionId(item.id);
+        setMobileServerListOpen(false);
+    }, (error) => sendToast("Error", error?.message || t("servers.unknownError")));
+
+    // The sidebar's browser entry arrives as ?openBrowser=1, so it works from any page.
+    const onOpenBrowserParam = useEffectEvent(() => {
+        navigate("/servers", { replace: true });
+        openBrowser();
+    });
+    // StrictMode runs this effect twice for one navigation; each run would open a session.
+    const handledBrowserParamRef = useRef(null);
+    useEffect(() => {
+        if (!new URLSearchParams(location.search).has("openBrowser") || handledBrowserParamRef.current === location.key) return;
+        handledBrowserParamRef.current = location.key;
+        onOpenBrowserParam();
+    }, [location.search, location.key]);
 
     const hibernateSession = async (sessionId) => {
         try {

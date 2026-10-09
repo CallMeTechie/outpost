@@ -8,7 +8,8 @@ import Fuse from "fuse.js";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import { SnippetContext } from "@/common/contexts/SnippetContext.jsx";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
-import { getSidebarNavigation, getAllSettingsPages } from "@/common/utils/navigationConfig.jsx";
+import { getAllSettingsPages } from "@/common/utils/navigationConfig.jsx";
+import { useSidebarNavigation } from "@/common/hooks/useSidebarNavigation.js";
 import "./styles.sass";
 
 export const QuickAction = ({ isOpen, onClose }) => {
@@ -17,6 +18,7 @@ export const QuickAction = ({ isOpen, onClose }) => {
     const { allSnippets } = useContext(SnippetContext);
     const { hasPermission } = useContext(UserContext);
     const navigate = useNavigate();
+    const navigation = useSidebarNavigation();
     const inputRef = useRef(null), containerRef = useRef(null);
     const isKeyboardNav = useRef(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -32,9 +34,9 @@ export const QuickAction = ({ isOpen, onClose }) => {
     const allItems = useMemo(() => [
         ...flattenServers(servers),
         ...(allSnippets || []).map(snippet => ({ id: `snippet-${snippet.id}`, type: "snippet", name: snippet.name, path: snippet.description || "", icon: IconCode, data: snippet })),
-        ...getSidebarNavigation(t).filter(nav => !nav.permission || hasPermission(nav.permission)).map(nav => ({ id: `nav-${nav.path.slice(1)}`, type: "navigation", name: nav.title, icon: nav.icon, route: nav.path, path: t("common.quickAction.navigation") })),
+        ...navigation.map(nav => ({ id: `nav-${nav.key}`, type: "navigation", name: nav.title, icon: nav.icon, route: nav.path, path: t("common.quickAction.navigation") })),
         ...getAllSettingsPages(t).filter(page => !page.permission || hasPermission(page.permission)).map(page => ({ id: `settings-${page.key}`, type: "settings", name: page.title, icon: page.icon, settingsTab: page.key, path: t("common.quickAction.settings") }))
-    ], [servers, allSnippets, t, hasPermission]);
+    ], [servers, allSnippets, t, hasPermission, navigation]);
 
     const filteredItems = useMemo(() => {
         if (!searchQuery.trim()) return allItems.slice(0, 10);
