@@ -28,6 +28,7 @@ import { initDiagnostics } from "@/pages/Servers/components/ViewContainer/utils/
 import Icon from "@/common/components/Icon";
 import { ChevronRight as IconChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import VaultApprovalStack from "@/common/components/VaultApprovalCard";
 
 const Sidebar = lazy(() => import("@/common/components/Sidebar"));
 
@@ -144,6 +145,7 @@ const AppContent = () => {
                                                             </div>
                                                         </div>
                                                         <MobileNav />
+                                                        <VaultApprovalStack />
                                                     </div>
                                                 </QuickActionProvider>
                                             </SessionProvider>

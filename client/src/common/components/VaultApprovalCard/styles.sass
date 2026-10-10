@@ -1,0 +1,86 @@
+@use "@/common/styles/colors"
+@use "@/common/styles/tokens"
+@use "@/common/styles/breakpoints"
+
+.vault-approval-stack
+  position: fixed
+  right: tokens.$space-4
+  bottom: tokens.$space-4
+  // Above Dialog (10000), its confirm overlay (10001) and the toasts (10002).
+  z-index: 10003
+  width: 24rem
+  display: flex
+  flex-direction: column
+  gap: tokens.$space-2
+
+  @media (max-width: breakpoints.$mobile)
+    left: 0
+    right: 0
+    bottom: var(--mobile-nav-height)
+    width: auto
+
+.vault-approval-count
+  font: tokens.$type-caption
+  color: colors.$subtext
+  text-align: right
+
+.vault-approval-card
+  position: relative
+  display: flex
+  flex-direction: column
+  gap: tokens.$space-2
+  padding: tokens.$space-4 tokens.$space-4 tokens.$space-6
+  overflow: hidden
+  background: colors.$lighter-background
+  color: colors.$white
+  border-left: 3px solid colors.$warning
+  border-radius: tokens.$radius-lg
+  box-shadow: colors.$shadow-xl
+
+  @media (max-width: breakpoints.$mobile)
+    border-radius: tokens.$radius-lg tokens.$radius-lg 0 0
+
+  h3
+    margin: 0
+    font: tokens.$type-heading
+
+  .vault-approval-who,
+  .vault-approval-status
+    font: tokens.$type-body
+
+  .vault-approval-target
+    font: tokens.$type-mono
+    overflow-wrap: anywhere
+
+  .vault-approval-actions
+    display: flex
+    flex-wrap: wrap
+    gap: tokens.$space-2
+    margin-top: tokens.$space-2
+
+    .btn:disabled
+      opacity: 0.45
+      cursor: default
+
+  .vault-approval-timer
+    display: flex
+    justify-content: flex-end
+    font: tokens.$type-caption
+    color: colors.$subtext
+
+  .vault-approval-bar
+    position: absolute
+    left: 0
+    right: 0
+    bottom: 0
+    height: 2px
+    background: colors.$gray
+
+    i
+      display: block
+      height: 100%
+      background: colors.$subtext
+      transition: width 1s linear
+
+      @media (prefers-reduced-motion: reduce)
+        transition: none
