@@ -162,7 +162,7 @@ const authenticateBrowserSession = async (ws, query) => {
         return null;
     }
 
-    const browserSession = require("../lib/browser").getBrowserPool().getOwned(auth.user.id, query.browserSessionId);
+    const browserSession = require("../lib/browser").getBrowserPool().getOwned(auth.user.id, query.browserSessionId, { keyId: null });
     if (!browserSession) {
         ws.close(4007, "Browser session not found");
         return null;

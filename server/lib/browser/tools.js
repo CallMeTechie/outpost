@@ -96,7 +96,12 @@ const recordBrowserAudit = (audit, ctx, session, action, details) => audit({
     userAgent: ctx.userAgent ?? null,
 });
 
-const callerOf = (ctx) => ({ accountId: ctx.accountId, keyId: ctx.agent ? ctx.agent.keyId : null });
+const callerOf = (ctx) => {
+    if (!ctx.agent) return { accountId: ctx.accountId, keyId: null };
+    if (!Number.isInteger(ctx.agent.keyId) || !Number.isInteger(ctx.agent.entryId))
+        throw new TypeError("An agent caller needs a numeric keyId and entryId");
+    return { accountId: ctx.accountId, keyId: ctx.agent.keyId };
+};
 
 const createBrowserTools = ({
     getPool,
