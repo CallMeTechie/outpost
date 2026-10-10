@@ -21,6 +21,7 @@ const Permission = Object.freeze({
     SETTINGS_AI: "settings.ai",
     SETTINGS_MICROSOFT: "settings.microsoft",
     SETTINGS_BROWSER: "settings.browser",
+    SETTINGS_VAULT: "settings.vault",
 
     RESOURCES_MANAGE: "resources.manage",
     IDENTITIES_MANAGE: "identities.manage",
@@ -38,6 +39,10 @@ const Permission = Object.freeze({
     FILES_DOWNLOAD: "files.download",
     FILES_MODIFY: "files.modify",
     SCRIPTS_EXECUTE: "scripts.execute",
+
+    VAULT_USE: "vault.use",
+    VAULT_MANAGE: "vault.manage",
+    VAULT_REVEAL: "vault.reveal",
 
     ORG_MANAGE: "org.manage",
     ORG_DELETE: "org.delete",
@@ -57,6 +62,7 @@ const CATEGORIES = [
     { key: "resources", label: "Resources", icon: "mdiServerOutline" },
     { key: "connections", label: "Connections", icon: "mdiConsoleNetworkOutline" },
     { key: "files", label: "File Transfer", icon: "mdiFolderNetworkOutline" },
+    { key: "vault", label: "Vault", icon: "mdiShieldKeyOutline" },
     { key: "general", label: "Organization", icon: "mdiDomain" },
     { key: "members", label: "Members", icon: "mdiAccountMultipleOutline" },
     { key: "audit", label: "Auditing", icon: "mdiShieldCheckOutline" },
@@ -84,6 +90,7 @@ const PERMISSIONS = [
     { id: P.SETTINGS_AI, scopes: [SYSTEM], category: "settings", label: "AI Settings", description: "Configure the AI assistant integration." },
     { id: P.SETTINGS_MICROSOFT, scopes: [SYSTEM], category: "settings", label: "Microsoft Integration", description: "Configure the Azure app registration used for OneDrive access." },
     { id: P.SETTINGS_BROWSER, scopes: [SYSTEM], category: "settings", label: "Browser", description: "Configure the browser container used for browser tabs." },
+    { id: P.SETTINGS_VAULT, scopes: [SYSTEM], category: "settings", label: "Vault", description: "See whether the vault key is active and set the Outpost address agents use.", dangerous: true },
 
     { id: P.RESOURCES_MANAGE, scopes: BOTH, category: "resources", default: true, label: "Manage Resources", description: "Create, edit and delete servers and folders." },
     { id: P.IDENTITIES_MANAGE, scopes: BOTH, category: "resources", default: true, label: "Manage Identities", description: "Create, edit and delete identities." },
@@ -103,6 +110,10 @@ const PERMISSIONS = [
     { id: P.FILES_UPLOAD, scopes: BOTH, category: "files", default: true, label: "Upload Files", description: "Upload files to servers." },
     { id: P.FILES_DOWNLOAD, scopes: BOTH, category: "files", default: true, label: "Download Files", description: "Download files and folders from servers." },
     { id: P.FILES_MODIFY, scopes: BOTH, category: "files", default: true, label: "Modify Files", description: "Create, rename, move, delete and change permissions of files.", dangerous: true },
+
+    { id: P.VAULT_USE, scopes: [SYSTEM], category: "vault", default: false, label: "Use the Vault", description: "Keep personal credentials in the vault and let your own agents fill them in. Agents act with these credentials, so it is off by default.", dangerous: true },
+    { id: P.VAULT_MANAGE, scopes: [ORGANIZATION], category: "vault", label: "Manage Vault Items", description: "Create, edit and delete the organization's vault items." },
+    { id: P.VAULT_REVEAL, scopes: [ORGANIZATION], category: "vault", label: "Reveal Vault Values", description: "Show and copy the stored values of the organization's vault items.", dangerous: true },
 
     { id: P.ORG_MANAGE, scopes: [ORGANIZATION], category: "general", label: "Manage Organization", description: "Edit the organization name, description and settings." },
     { id: P.ORG_DELETE, scopes: [ORGANIZATION], category: "general", label: "Delete Organization", description: "Permanently delete this organization.", dangerous: true },
