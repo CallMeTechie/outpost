@@ -4,6 +4,7 @@ const { Permission } = require("../permissions/registry");
 const { createMcpServer } = require("../lib/mcp/server");
 const { createBrowserTools } = require("../lib/browser/tools");
 const { getBrowserPool } = require("../lib/browser");
+const { createVaultProvider } = require("../lib/vault/mcpProvider");
 const logger = require("../utils/logger");
 
 const browserTools = createBrowserTools({ getPool: getBrowserPool });
@@ -12,8 +13,9 @@ const browserProvider = {
     name: "browser",
     available: (ctx) => hasAccountPermission(ctx.accountId, Permission.CONNECT_BROWSER),
 };
+const vaultProvider = createVaultProvider({ getBrowserTools: () => browserTools });
 
-const mcp = createMcpServer({ providers: [browserProvider] });
+const mcp = createMcpServer({ providers: [browserProvider, vaultProvider] });
 
 const callerOf = (req) => ({ accountId: req.user.id, keyId: req.apiKey?.id ?? null });
 
