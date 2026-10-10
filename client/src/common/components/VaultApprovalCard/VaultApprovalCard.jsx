@@ -40,6 +40,7 @@ export const VaultApprovalCard = ({ approval, now, sending, onAnswer }) => {
                         : agent}
                 </div>
             )}
+            {approval.impersonated && <div className="vault-approval-who">{t("vault.approval.impersonated")}</div>}
             <div className="vault-approval-target">{approval.item}</div>
             <div className="vault-approval-target">{approval.target}</div>
             {(sending || expired) && (
@@ -50,7 +51,9 @@ export const VaultApprovalCard = ({ approval, now, sending, onAnswer }) => {
             <div className="vault-approval-actions">
                 <Button type="primary" text={t("vault.approval.actions.once")} disabled={disabled} loading={sending}
                         onClick={() => onAnswer("once")} />
-                <Button text={t("vault.approval.actions.session")} disabled={disabled} onClick={() => onAnswer("session")} />
+                {!approval.impersonated && (
+                    <Button text={t("vault.approval.actions.session")} disabled={disabled} onClick={() => onAnswer("session")} />
+                )}
                 <Button text={t("vault.approval.actions.deny")} disabled={disabled} onClick={() => onAnswer("deny")} />
             </div>
             <div className="vault-approval-timer">{formatRemaining(remaining)}</div>

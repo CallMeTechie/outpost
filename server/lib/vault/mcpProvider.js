@@ -191,7 +191,7 @@ const createVaultProvider = ({ getBrowserTools, approvals = require("./approvals
                 approval = await approvals.requestApproval({
                     accountId: ctx.accountId, keyId: ctx.keyId ?? null, transportId: ctx.transportId,
                     agentType: ctx.agent?.agentType ?? null, entryName: await entryNameOf(ctx.agent),
-                    item, target: note.target, signal: ctx.signal,
+                    impersonated: Boolean(ctx.impersonatorId), item, target: note.target, signal: ctx.signal,
                 }).catch((err) => {
                     // approvals.js audits answers, timeouts and withdrawn cards itself; only early refusals come back unaudited.
                     auditedByApprovals = APPROVAL_CODES.has(err?.code) && !err.details?.early;

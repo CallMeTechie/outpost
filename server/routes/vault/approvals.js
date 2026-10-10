@@ -4,6 +4,7 @@ const { authenticate } = require("../../middlewares/auth");
 const { requireLoginSession } = require("../../middlewares/requireLoginSession");
 const { requireVaultEnabled } = require("../../lib/vault/state");
 const { answerApproval } = require("../../lib/vault/approvals");
+const { VaultErrorMessage } = require("../../lib/vault/errors");
 const { validateSchema } = require("../../utils/schema");
 const { sendError } = require("../../utils/error");
 const { answerVaultApprovalValidation } = require("../../validations/vaultApprovals");
@@ -35,6 +36,7 @@ const MESSAGES = {
  * @param {string} id.path.required - Approval request id
  * @param {AnswerVaultApproval} request.body.required - { decision: "once" | "session" | "deny" }
  * @return {object} 200 - { success: true }
+ * @return {object} 400 - Invalid decision, or session for a request from an impersonation session (vault.session_not_allowed)
  * @return {object} 403 - Signed-in session required
  * @return {object} 404 - Unknown request or not owned by the account
  * @return {object} 409 - Already answered
@@ -43,8 +45,9 @@ const MESSAGES = {
 app.post("/approvals/:id", authenticate, requireVaultEnabled, requireLoginSession, answerLimiter, (req, res) => {
     const body = req.body ?? {};
     if (validateSchema(res, answerVaultApprovalValidation, body)) return;
-    const { status } = answerApproval(req.params.id, req.user.id, body.decision,
+    const { status, code } = answerApproval(req.params.id, req.user.id, body.decision,
         { ipAddress: req.ip, userAgent: req.header("user-agent") ?? null });
+    if (code) return sendError(res, status, code, VaultErrorMessage[code]);
     if (status !== 200) return sendError(res, status, status, MESSAGES[status]);
     res.json({ success: true });
 });
