@@ -79,6 +79,8 @@ const recordBrowserAudit = (audit, ctx, session, action, details) => audit({
     userAgent: ctx.userAgent ?? null,
 });
 
+const callerOf = (ctx) => ({ accountId: ctx.accountId, keyId: ctx.agent ? ctx.agent.keyId : null });
+
 const createBrowserTools = ({
     getPool,
     audit = defaultAudit,
@@ -86,30 +88,32 @@ const createBrowserTools = ({
 }) => {
     const defaults = new Map();
 
-    const resolveSession = ({ accountId, transportId }, sessionId) => {
+    const resolveSession = (ctx, sessionId) => {
         const pool = getPool();
+        const caller = callerOf(ctx);
+        const owned = (id) => pool.getOwned(caller.accountId, id, { keyId: caller.keyId });
         if (sessionId) {
-            const session = pool.getOwned(accountId, sessionId);
+            const session = owned(sessionId);
             if (!session)
-                throw new BrowserError(BrowserErrorCode.UNKNOWN_SESSION, `No open browser session ${sessionId} for this account.`, { sessions: pool.listForAccount(accountId) });
+                throw new BrowserError(BrowserErrorCode.UNKNOWN_SESSION, `No open browser session ${sessionId} for this account.`, { sessions: pool.listForCaller(caller) });
             return session;
         }
-        const remembered = defaults.get(transportId);
+        const remembered = defaults.get(ctx.transportId);
         if (remembered) {
-            const session = pool.getOwned(accountId, remembered);
+            const session = owned(remembered);
             if (session) return session;
             // Falling back to "the only open session" here would hand this connection another
             // process's session exactly when its own is gone.
             throw new BrowserError(BrowserErrorCode.SESSION_CLOSED,
                 `Your browser session ${remembered} has ended. Open a new one with browser_open or pass a sessionId.`,
-                { sessions: pool.listForAccount(accountId) });
+                { sessions: pool.listForCaller(caller) });
         }
         // A session another connection opened stays its own: otherwise a connection whose own session
         // is gone (server restart, transport sweep) would act on someone else's (A11).
         const claimed = new Set(defaults.values());
-        const all = pool.listForAccount(accountId);
+        const all = pool.listForCaller(caller);
         const open = all.filter((session) => !claimed.has(session.id));
-        if (open.length === 1) return pool.getOwned(accountId, open[0].id);
+        if (open.length === 1) return owned(open[0].id);
         if (open.length === 0) {
             throw new BrowserError(BrowserErrorCode.NO_SESSION, all.length === 0
                 ? "No browser session is open. Call browser_open first."
@@ -162,8 +166,11 @@ const createBrowserTools = ({
         browser_open: async (args, ctx) => {
             if (args.url == null)
                 throw new BrowserError(BrowserErrorCode.INVALID_URL, "browser_open needs a url. Include the scheme, e.g. https://example.com");
+            if (ctx.agent && args.profile === "persistent")
+                throw new BrowserError(BrowserErrorCode.INVALID_PROFILE, "Agent keys can only open ephemeral sessions; call browser_open without profile=persistent.");
             const { session, navigationError } = await getPool().open({
                 accountId: ctx.accountId, url: args.url, via: args.via ?? null, profile: args.profile ?? "ephemeral", origin: "agent",
+                keyId: ctx.keyId ?? null, allowVia: ctx.agent ? (entryId) => entryId === ctx.agent.entryId : null,
             });
             defaults.set(ctx.transportId, session.id);
             await record(ctx, session, "browser.open", { url: auditUrl(args.url), tool: "browser_open", via: session.via ?? null });
@@ -227,7 +234,7 @@ const createBrowserTools = ({
             return textResult(`Closed ${session.id}.`);
         }),
         browser_list: async (args, ctx) => {
-            const open = getPool().listForAccount(ctx.accountId);
+            const open = getPool().listForCaller(callerOf(ctx));
             return textResult(open.length > 0 ? formatSessions(open) : "No browser sessions are open.");
         },
     };
@@ -243,6 +250,7 @@ const createBrowserTools = ({
             }
         },
         forgetTransport: (transportId) => defaults.delete(transportId),
+        resolveSession,
     };
 };
 

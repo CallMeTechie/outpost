@@ -28,15 +28,24 @@ class BrowserPool extends EventEmitter {
         return this.sessions.get(sessionId)?.session ?? null;
     }
 
-    getOwned(accountId, sessionId) {
+    getOwned(accountId, sessionId, { keyId = null } = {}) {
         const session = this.get(sessionId);
-        return session && session.accountId === accountId ? session : null;
+        return session && session.accountId === accountId && (keyId === null || session.keyId === keyId) ? session : null;
     }
 
     listForAccount(accountId) {
+        return this.listForCaller({ accountId });
+    }
+
+    listForCaller({ accountId, keyId = null }) {
         return [...this.sessions.values()]
-            .filter(({ session }) => session.accountId === accountId)
+            .filter(({ session }) => session.accountId === accountId && (keyId === null || session.keyId === keyId))
             .map(({ session }) => session.summary());
+    }
+
+    onContextEnded(listener) {
+        this.on("contextEnded", listener);
+        return () => this.off("contextEnded", listener);
     }
 
     async close(sessionId, reason) {
@@ -60,7 +69,7 @@ class BrowserPool extends EventEmitter {
         await this.launcher.removeProfile(`account-${accountId}`);
     }
 
-    async open({ accountId, url, profile = "ephemeral", via = null, origin = "agent" }) {
+    async open({ accountId, url, profile = "ephemeral", via = null, origin = "agent", keyId = null, allowVia = null }) {
         const href = url == null ? null : assertNavigableUrl(url);
         if (!PROFILES.has(profile))
             throw new BrowserError(BrowserErrorCode.INVALID_PROFILE, `Unknown profile "${profile}"; use "ephemeral" or "persistent"`);
@@ -74,7 +83,7 @@ class BrowserPool extends EventEmitter {
             throw new BrowserError(BrowserErrorCode.UNAVAILABLE,
                 "Browser tabs are not enabled. The outpost-browser container has to run, and an administrator has to enable it under Settings > Browser.");
         if (this.sessions.size + this.opening >= settings.maxSessions) {
-            const own = this.listForAccount(accountId);
+            const own = this.listForCaller({ accountId, keyId });
             throw new BrowserError(BrowserErrorCode.LIMIT_REACHED, own.length > 0
                 ? `The limit of ${settings.maxSessions} concurrent browser sessions is reached. Close one of yours with browser_close first.`
                 : `The limit of ${settings.maxSessions} concurrent browser sessions is reached by other accounts. Try again later or ask an administrator to raise it under Settings > Browser.`,
@@ -90,6 +99,9 @@ class BrowserPool extends EventEmitter {
         let browserContextId = null;
         try {
             if (via) viaHandle = await this.createVia({ accountId, via, url: href, settings });
+            if (viaHandle && allowVia && !allowVia(viaHandle.entryId))
+                throw new BrowserError(BrowserErrorCode.VIA_NOT_ALLOWED,
+                    "An agent key can only tunnel through the server it was set up for. Pass that server's name or id as via, or leave out via.");
             const kind = via ? "ephemeral" : profile === "persistent" ? "persistent" : "default";
             instance = await this.#instance(instanceKey, { kind, hostResolverRules: viaHandle?.resolverRule ?? null });
             // Reserved before the next await: a session closing meanwhile must not retire the instance under us.
@@ -102,11 +114,12 @@ class BrowserPool extends EventEmitter {
                 ({ browserContextId } = await instance.cdp.send("Target.createBrowserContext", { disposeOnDetach: true }));
                 await instance.cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: DOWNLOAD_PATH, browserContextId, eventsEnabled: true });
             }
+            const contextKey = ownsContext ? browserContextId : instanceKey;
             const session = await this.#attach(instance, {
-                id, accountId, profile: via ? "ephemeral" : profile, via: viaHandle?.label ?? null, origin,
+                id, accountId, keyId, contextKey, profile: via ? "ephemeral" : profile, via: viaHandle?.label ?? null, origin,
                 organizationId: viaHandle?.organizationId ?? null, browserContextId,
             });
-            this.#register(session, instance, { ownsContext, browserContextId });
+            this.#register(session, instance, { ownsContext, browserContextId, contextKey });
             this.opening--;
             counted = false;
             let navigationError = null;
@@ -171,14 +184,14 @@ class BrowserPool extends EventEmitter {
         return this.instances.get(key);
     }
 
-    async #attach(instance, { id, accountId, profile, via, origin, organizationId, browserContextId = null, targetId = null }) {
+    async #attach(instance, { id, accountId, keyId, contextKey, profile, via, origin, organizationId, browserContextId = null, targetId = null }) {
         // A tab behind another tab of its window is hidden and paints nothing, so the screencast stays black.
         const target = targetId
             ?? (await instance.cdp.send("Target.createTarget", { url: "about:blank", newWindow: true, ...(browserContextId && { browserContextId }) })).targetId;
         let session = null;
         try {
             const { sessionId: cdpSessionId } = await instance.cdp.send("Target.attachToTarget", { targetId: target, flatten: true });
-            session = new BrowserSession({ id, accountId, profile, via, origin, organizationId, cdp: instance.cdp, targetId: target, cdpSessionId });
+            session = new BrowserSession({ id, accountId, keyId, contextKey, profile, via, origin, organizationId, cdp: instance.cdp, targetId: target, cdpSessionId });
             await session.start();
             return session;
         } catch (err) {
@@ -188,13 +201,13 @@ class BrowserPool extends EventEmitter {
         }
     }
 
-    #register(session, instance, { ownsContext, browserContextId }) {
+    #register(session, instance, { ownsContext, browserContextId, contextKey }) {
         if (session.closed || this.live.get(instance.key) !== instance) {
             session.close("browser instance ended");
             instance.cdp.send("Target.closeTarget", { targetId: session.targetId }).catch(() => {});
             throw new BrowserError(BrowserErrorCode.UNAVAILABLE, "The browser instance ended while the session was starting. Try again.");
         }
-        const record = { session, instanceKey: instance.key, ownsContext, browserContextId };
+        const record = { session, instanceKey: instance.key, ownsContext, browserContextId, contextKey };
         this.sessions.set(session.id, record);
         instance.users.add(session.id);
         session.on("change", () => this.emit("change", session.accountId));
@@ -203,11 +216,18 @@ class BrowserPool extends EventEmitter {
         this.emit("change", session.accountId);
     }
 
-    async #onClosed({ session, instanceKey, ownsContext, browserContextId }, instance) {
+    async #onClosed({ session, instanceKey, ownsContext, browserContextId, contextKey }, instance) {
         this.sessions.delete(session.id);
         this.#forgetDownloads(new Set([session.id]));
         this.emit("change", session.accountId);
         instance.users.delete(session.id);
+        if (ownsContext) {
+            // Disposing the context below takes its popups with it; their sessions must not outlive the context.
+            for (const record of [...this.sessions.values()]) if (record.contextKey === contextKey) record.session.close("opener closed");
+            this.emit("contextEnded", contextKey);
+        } else if (contextKey === instanceKey && ![...this.sessions.values()].some((record) => record.contextKey === contextKey)) {
+            this.emit("contextEnded", contextKey);
+        }
         if (this.live.get(instanceKey) !== instance) return;
         if (ownsContext) await instance.cdp.send("Target.disposeBrowserContext", { browserContextId }).catch(() => {});
         else await instance.cdp.send("Target.closeTarget", { targetId: session.targetId }).catch(() => {});
@@ -318,12 +338,12 @@ class BrowserPool extends EventEmitter {
             this.opening++;
             counted = true;
             const session = await this.#attach(instance, {
-                id, accountId: parent.accountId, profile: parent.profile, via: parent.via,
+                id, accountId: parent.accountId, keyId: parent.keyId, contextKey: opener.contextKey, profile: parent.profile, via: parent.via,
                 origin: parent.origin, organizationId: parent.organizationId, targetId,
             });
             // A popup is often the login the user paused the agent for; it must not arrive unpaused.
             session.agentPaused = parent.agentPaused;
-            this.#register(session, instance, { ownsContext: false, browserContextId: null });
+            this.#register(session, instance, { ownsContext: false, browserContextId: null, contextKey: opener.contextKey });
             registered = true;
         } finally {
             if (counted) this.opening--;
