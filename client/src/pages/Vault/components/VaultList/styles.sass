@@ -1,0 +1,89 @@
+@use "@/common/styles/colors"
+@use "@/common/styles/tokens"
+
+.vault-list
+  flex: 1
+  min-height: 0
+  overflow-y: auto
+  list-style: none
+  margin: 0
+  padding: tokens.$space-1 0
+
+.vault-row
+  display: flex
+  align-items: center
+  gap: tokens.$space-2
+  min-height: 2.5rem
+  padding: tokens.$space-1 tokens.$space-2
+  color: colors.$subtext
+  cursor: pointer
+  border-radius: tokens.$radius-sm
+
+  &:hover
+    background: colors.$dark-gray
+
+  &--selected, &--selected:hover
+    background: colors.$primary-opacity
+
+  .vault-row-type, .vault-row-shield
+    width: 1rem
+    height: 1rem
+    flex: none
+
+  .vault-row-text
+    flex: 1
+    min-width: 0
+    display: flex
+    flex-direction: column
+
+  .vault-row-name
+    font: tokens.$type-body
+    color: colors.$white
+
+  .vault-row-subject
+    font: tokens.$type-mono
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.vault-list-skeleton
+  height: 2.5rem
+  margin: tokens.$space-1 tokens.$space-2
+  display: flex
+  align-items: center
+  gap: tokens.$space-2
+
+  span
+    display: block
+    border-radius: tokens.$radius-sm
+    background: colors.$gray
+    animation: vaultSkeleton 1.4s ease-in-out infinite
+
+    &:first-child
+      width: 1rem
+      height: 1rem
+
+    &:last-child
+      width: 9rem
+      height: 0.75rem
+
+.vault-list-note
+  padding: tokens.$space-4
+  color: colors.$subtext
+  display: flex
+  flex-direction: column
+  align-items: flex-start
+  gap: tokens.$space-3
+
+  p
+    margin: 0
+
+  &--error
+    margin: 0
+    color: colors.$error
+
+@keyframes vaultSkeleton
+  0%, 100%
+    opacity: 0.5
+  50%
+    opacity: 1

@@ -1,0 +1,65 @@
+@use "@/common/styles/colors"
+@use "@/common/styles/tokens"
+@use "@/common/styles/breakpoints"
+
+.vault-page
+  display: flex
+  flex-direction: column
+  height: 100%
+  background-color: colors.$background
+
+  .vault-split
+    flex: 1
+    min-height: 0
+    display: grid
+    grid-template-columns: minmax(20rem, 26rem) 1fr
+    border-top: 1px solid colors.$gray
+
+    @media (max-width: breakpoints.$mobile)
+      grid-template-columns: 1fr
+
+  .vault-sidebar
+    display: flex
+    flex-direction: column
+    min-height: 0
+    min-width: 0
+    background: colors.$lighter-background
+    border-right: 1px solid colors.$gray
+
+    @media (max-width: breakpoints.$mobile)
+      border-right: 0
+
+  .vault-main
+    min-width: 0
+    min-height: 0
+    background: colors.$background
+
+  @media (max-width: breakpoints.$mobile)
+    .vault-main
+      display: none
+
+    &.vault-page--detail
+      .vault-sidebar
+        display: none
+
+      .vault-main
+        display: block
+
+  .vault-scope, .vault-search, .vault-types
+    padding: tokens.$space-2
+
+  .vault-types
+    border-bottom: 1px solid colors.$gray
+
+    .tab-switcher-container
+      overflow-x: auto
+
+    .tab-switcher-tab
+      flex: none
+      padding: tokens.$space-1 tokens.$space-2
+      font: tokens.$type-caption
+
+  .vault-hint
+    margin: tokens.$space-2 0 0
+    font: tokens.$type-caption
+    color: colors.$subtext
