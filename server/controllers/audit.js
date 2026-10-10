@@ -13,6 +13,7 @@ const { Op } = require("sequelize");
 const logger = require("../utils/logger");
 const { getRecordingInfo } = require("../utils/recordingService");
 const { normalizeIp } = require("../utils/ip");
+const auditContext = require("../utils/auditContext");
 
 const RESOURCE_CONFIG = {
     entry: { model: Entry, detailsKey: "name" },
@@ -253,6 +254,9 @@ const createAuditLog = async ({
             const settings = await getOrgAuditSettings(organizationId);
             if (!shouldAudit(action, settings)) return;
         }
+
+        const impersonatorId = auditContext.getStore()?.impersonatorId;
+        if (impersonatorId && details?.impersonatorId == null) details = { ...details, impersonatorId };
 
         const auditLog = await AuditLog.create({
             accountId, organizationId, action, resource, resourceId, details,

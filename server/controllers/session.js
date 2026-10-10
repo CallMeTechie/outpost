@@ -9,13 +9,13 @@ module.exports.listSessions = async (accountId, currentSessionId) => {
             current: session.id === currentSessionId }));
 }
 
-module.exports.createSession = async (accountId, userAgent) => {
+module.exports.createSession = async (accountId, userAgent, { impersonatorId = null } = {}) => {
     const account = await Account.findByPk(accountId);
 
     if (account === null)
         return { code: 102, message: "The provided account does not exist" };
 
-    const session = await Session.create({ accountId, ip: "Admin", userAgent });
+    const session = await Session.create({ accountId, ip: "Admin", userAgent, impersonatorId });
 
     return { token: session.token };
 }

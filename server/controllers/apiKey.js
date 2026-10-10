@@ -29,7 +29,7 @@ const createApiKey = async (accountId, { name, expiresAt = null }) => {
     if (!name || typeof name !== "string" || name.trim().length === 0)
         return { code: 400, message: "A name is required" };
 
-    if (await ApiKey.count({ where: { accountId } }) >= 50)
+    if (await ApiKey.count({ where: { accountId, kind: "account" } }) >= 50)
         return { code: 400, message: "You have reached the maximum number of API keys (50)" };
 
     let parsedExpiry = null;
@@ -59,18 +59,23 @@ const createApiKey = async (accountId, { name, expiresAt = null }) => {
 };
 
 const listApiKeys = async (accountId) => {
-    const keys = await ApiKey.findAll({ where: { accountId }, order: [["createdAt", "DESC"]] });
+    const keys = await ApiKey.findAll({ where: { accountId, kind: "account" }, order: [["createdAt", "DESC"]] });
     return keys.map(serialize);
 };
 
 const deleteApiKey = async (accountId, id) => {
-    const key = await ApiKey.findOne({ where: { id, accountId } });
+    const key = await ApiKey.findOne({ where: { id, accountId, kind: "account" } });
     if (!key) return { code: 404, message: "API key not found" };
 
     await ApiKey.destroy({ where: { id: key.id } });
     logger.system("API key deleted", { accountId, apiKeyId: id });
     return { success: true };
 };
+
+const touchApiKey = async (id) => {
+    await ApiKey.update({ lastUsedAt: new Date() }, { where: { id } });
+};
+
 
 const validateApiKey = async (token) => {
     if (!isApiKeyToken(token)) return null;
@@ -86,15 +91,19 @@ const validateApiKey = async (token) => {
     const account = await Account.findByPk(key.accountId);
     if (!account) return null;
 
-    await ApiKey.update({ lastUsedAt: new Date() }, { where: { id: key.id } });
+    if (key.kind !== "agent") await touchApiKey(key.id);
 
     return { account, apiKey: key };
 };
 
 module.exports = {
+    TOKEN_PREFIX,
+    hashToken,
+    generateToken,
     isApiKeyToken,
     createApiKey,
     listApiKeys,
     deleteApiKey,
+    touchApiKey,
     validateApiKey,
 };
