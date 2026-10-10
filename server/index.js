@@ -28,6 +28,7 @@ const { ensureLocalEngine } = require("./controllers/engine");
 const { ensureCPCerts } = require("./utils/controlPlaneCerts");
 const { mountStaticSite } = require("./lib/staticSite");
 const { initVaultState } = require("./lib/vault/state");
+const { startPendingSweeper } = require("./controllers/agentKeys");
 require("./utils/folder");
 
 process.on("uncaughtException", (err) => require("./utils/errorHandling")(err));
@@ -152,6 +153,7 @@ db.authenticate()
         } catch (err) {
             logger.error("Could not determine the vault key status; the vault stays off", { error: err.message });
         }
+        startPendingSweeper();
 
         await ensureInternalProvider();
 

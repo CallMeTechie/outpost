@@ -5,7 +5,7 @@ const { buildSSHParams, resolveJumpHosts } = require("../lib/ConnectionService")
 const { validateEntryAccess } = require("./entry");
 const controlPlane = require("../lib/controlPlane/ControlPlaneServer");
 
-const execCommand = async (accountId, entryId, identityId, command) => {
+const execCommand = async (accountId, entryId, identityId, command, { engineId = null } = {}) => {
     const entry = await Entry.findByPk(entryId);
     if (!entry) {
         return { code: 404, message: "Entry not found" };
@@ -45,7 +45,7 @@ const execCommand = async (accountId, entryId, identityId, command) => {
     }
 
     const jumpHosts = await resolveJumpHosts(entry);
-    const execResult = await controlPlane.execCommand(host, port, params, command, jumpHosts);
+    const execResult = await controlPlane.execCommand(host, port, params, command, jumpHosts, engineId);
 
     return {
         success: execResult.success,
