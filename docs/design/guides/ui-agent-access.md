@@ -1,6 +1,6 @@
 # Agenten-Zugang — Umsetzungsanleitung (UI-AGENT-ACCESS)
 
-Artboard: docs/design/mockups/ui-agent-access.html · Manifest-Revision: 13
+Artboard: docs/design/mockups/ui-agent-access.html · Manifest-Revision: 14
 
 Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dialog, ein Menüpunkt im Bestandsmenü `UI-SERVERS-LIST-MENU`. Nicht neu gebaut werden: Dialog-Rahmen, Kontextmenü, Clipboard-Helfer, Toggle.
 
@@ -28,6 +28,8 @@ Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dial
 - Zeile: Icon `KeyRound`, Agent als Klartext („Claude Code“, „Codex“, kein eigenes Icon), Meta in `--type-mono` `--subtext`: „angelegt 09.10. · zuletzt vor 5 Min. · nur 192.168.2.40“; rechts Ghost-Button „Entziehen“ → `ActionConfirmDialog`, dann `DELETE /api/vault/agent-keys/:id`.
 - Nur bestätigte Keys listen; `pending` (noch nicht übernommen) erscheinen nicht.
 - Zustände: `default` Zeilen; `empty` „Noch kein Agent auf diesem Server eingerichtet.“; `loading` Skeleton-Zeile mit `aria-busy`; `selected` Bestätigung im `ActionConfirmDialog`-Muster (Warnrand links): „Zugang von Claude Code auf web01 entziehen? Der Agent verliert sofort den Zugriff.“ mit „Abbrechen“ / „Entziehen“; `error` Zeile bleibt, darunter „Entziehen fehlgeschlagen.“ (`--error`, `role="alert"`).
+- `partial` Entziehen ließ eine fremde Registrierung stehen: unter der Liste Hinweis in `--warning`: „Zugang entzogen. Die Registrierung auf web01 trägt den Key eines anderen Kontos und bleibt stehen.“ Datenquelle: Antwort von `DELETE /api/vault/agent-keys/:id` mit `registration === "foreign"`. Servername im Text = Server des Eintrags.
+- `disabled` Registrierung nicht entfernbar: unter der Liste Hinweis in `--warning`: „Zugang entzogen. Die Registrierung konnte nicht entfernt werden — Befehl kopieren und auf dem Server ausführen.“, darunter der Entfernbefehl in `--type-mono` in einem Block mit Button „Kopieren“ (`copyToClipboard`; Rückgabe `false` → Toast), z. B. `claude mcp remove --scope user outpost`. Datenquelle: Antwort von `DELETE /api/vault/agent-keys/:id` mit `registration === "unknown"` und `commands` (der Befehl kommt aus `commands`, nicht aus dem Client).
 
 ### UI-AGENT-ACCESS-SETUP — Einrichten (neu)
 - `data-ui-id` am Formular.

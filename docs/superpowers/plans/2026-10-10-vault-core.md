@@ -8,15 +8,15 @@
 
 **Tech Stack:** Node.js ≥ 22 (Express 5, Sequelize, Joi, express-rate-limit 8, `node:test`), Chromium über CDP, React 19 + Vite, vitest/jsdom/Testing Library (`*.test.jsx`), lucide-react.
 
-**Spec:** `docs/superpowers/specs/2026-10-09-vault-core-design.md` (inkl. mockingbird-Block Manifest-Revision 13 und preflight-Sicherheitsblock). Die Spec ist maßgeblich; dieser Plan argumentiert aus ihr. Abweichungen und Ergänzungen stehen ausdrücklich unter „Abweichungen und Ergänzungen zur Spec“.
+**Spec:** `docs/superpowers/specs/2026-10-09-vault-core-design.md` (inkl. mockingbird-Block Manifest-Revision 14 und preflight-Sicherheitsblock). Die Spec ist maßgeblich; dieser Plan argumentiert aus ihr. Abweichungen und Ergänzungen stehen ausdrücklich unter „Abweichungen und Ergänzungen zur Spec“.
 
-**Design:** `docs/design/manifest.yaml` (rev 13) — Design-System: `docs/design/design-system.md` — Artboards: `docs/design/mockups/index.html`
+**Design:** `docs/design/manifest.yaml` (rev 14) — Design-System: `docs/design/design-system.md` — Artboards: `docs/design/mockups/index.html`
 
 **Design Scope:** UI-VAULT, UI-VAULT-DIALOG, UI-AGENT-ACCESS, UI-VAULT-SETTINGS, UI-API-KEYS, UI-VAULT-APPROVAL (übernommen, nicht zu bauen: UI-SHELL-NAV, UI-SHELL-MOBILE-NAV, UI-SHELL-ACCOUNT, UI-SERVERS-LIST-MENU — die beiden Navigationen und das Server-Kontextmenü werden laut Spec „Geänderter Bestand in der Oberfläche“ um je einen Eintrag ergänzt)
 
 ## Global Constraints
 
-- Design-Quelle: `docs/design/manifest.yaml` (rev 13). Bei Konflikt zwischen Plan-Text und Manifest gilt das Manifest; melde den Konflikt, statt ihn still aufzulösen.
+- Design-Quelle: `docs/design/manifest.yaml` (rev 14). Bei Konflikt zwischen Plan-Text und Manifest gilt das Manifest; melde den Konflikt, statt ihn still aufzulösen.
 - Jedes gebaute UI-Element trägt seine Manifest-ID im Code: Web `data-ui-id="UI-…"`, andere Medien nach `adapters:` im Manifest. Ohne ID ist das Element nicht prüfbar.
 - Design-Tokens ausschließlich aus `docs/design/mockups/tokens.css` bzw. `docs/design/design-system.md`. Keine neuen Farben, Abstände, Radien oder Schriftgrößen.
 - Sichtbare Texte (Labels, Leer-, Lade- und Fehlerzustände) wörtlich aus dem Manifest (`label`, `states[].copy`). Keine eigenen Formulierungen.
@@ -31,7 +31,7 @@
 - MCP-Transporte: höchstens 50 je Aufrufer (`accountId`, `keyId`); fremder Aufrufer bekommt `404` wie bei unbekanntem Transport.
 - Reveal, `POST /api/vault/approvals/:id`, Einrichten/Bestätigen/Entziehen von Agenten-Keys verlangen eine Login-Session ohne `impersonatorId`; Konto-Keys und Impersonation bekommen `403`.
 - Neue Berechtigungen: `vault.use` (System, Standard aus, dangerous), `vault.manage` (Organisation), `vault.reveal` (Organisation, dangerous), `settings.vault` (System). Kategorie `vault` in `CATEGORIES`. Client-Spiegel `client/src/common/utils/permissions.js` nachziehen.
-- Audit-Aktionen (Kategorie `vault`, eigene Zeile in `ACTION_CATEGORIES`): `vault.item_create`, `vault.item_update`, `vault.item_delete`, `vault.reveal`, `vault.use`, `vault.approve`, `vault.deny`, `vault.agent_key_create`, `vault.agent_key_revoke`, `vault.agent_ip_denied`, `vault.use_denied`, `vault.approval_timeout`, `vault.item_unreadable`, `vault.evaluate_locked`, `vault.screenshot_locked`, `vault.persistent_not_allowed`. Audit-Details nennen Eintrag, Agent, Server, Ziel — nie Werte; aus Impersonations-Sitzungen zusätzlich `impersonatorId`.
+- Audit-Aktionen (Kategorie `vault`, eigene Zeile in `ACTION_CATEGORIES`): `vault.item_create`, `vault.item_update`, `vault.item_delete`, `vault.reveal`, `vault.use`, `vault.approve`, `vault.deny`, `vault.agent_key_create`, `vault.agent_key_revoke`, `vault.agent_ip_denied`, `vault.use_denied`, `vault.approval_timeout`, `vault.item_unreadable`, `vault.evaluate_locked`, `vault.screenshot_locked`, `vault.input_locked`, `vault.persistent_not_allowed`. Audit-Details nennen Eintrag, Agent, Server, Ziel — nie Werte; aus Impersonations-Sitzungen zusätzlich `impersonatorId` (alle Audits aus HTTP-Anfragen; WebSocket-Handler wie Terminal, SFTP, AI tragen ihn in Teilprojekt 1 noch nicht).
 - Sicherheitsanforderungen aus dem preflight-Block der Spec gelten für jeden Task in ihrem Geltungsbereich, insbesondere SEC-INJECT-01 (Einrichtungsbefehle nur über `server/lib/vault/provision.js`), SEC-TENANT-01 (jede Abfrage nach Organisation beschränkt), SEC-IDOR-01, SEC-RATE-01, SEC-TOKEN-01 (Token im Query-String des Zustandsstroms nicht loggen), SEC-CSP-01 (Report-Only zuerst).
 - Keine neuen Abhängigkeiten, außer wo ein Task es ausdrücklich nennt.
 - Code-Kommentare: fast keine — nur nicht offensichtliches Warum, Fallstricke, externe Constraints. Bestehende Kommentardichte einer Datei wird nicht erhöht.
@@ -55,7 +55,7 @@
 Beim Lesen des Codes gefunden; im Plan so umgesetzt, beim Review bitte bestätigen:
 
 1. **`impersonatorId` braucht einen eigenen Weg in `createSession`.** Heute markiert nur `ip: "Admin"` eine Impersonation, und `authenticate` überschreibt die IP beim ersten Request (`server/middlewares/auth.js:31`). `createSession(accountId, userAgent, { impersonatorId })` setzt die neue Spalte; der Impersonations-Route-Handler übergibt `req.user.id`.
-2. **`blockApiKeyAuth` ist nicht exportiert** (`server/routes/apiKey.js:8-11`). Statt es zu kopieren, entsteht `server/middlewares/requireLoginSession.js`, das Konto-Keys **und** Impersonations-Sitzungen abweist; `routes/apiKey.js` bleibt unverändert.
+2. **`blockApiKeyAuth` ist nicht exportiert** (`server/routes/apiKey.js:8-11`). Statt es zu kopieren, entsteht `server/middlewares/requireLoginSession.js`, das Konto-Keys **und** Impersonations-Sitzungen abweist; `routes/apiKey.js` hängt es zusätzlich vor `POST /`, damit eine Impersonation keine Konto-Keys anlegt.
 3. **Der Mount `/api/vault` hängt ohne `authenticate` im Mount**, weil `GET /agent-keys/probe` den `pending`-Key durchlassen muss, den `authenticate` sonst abweist. `authenticate` erhält stattdessen die Ausnahme für genau diesen Pfad, und jede Vault-Route trägt `authenticate` selbst (Muster `entryBookmarks`, `server/index.js:94-103`).
 4. **`execCommand` bekommt einen optionalen fünften Parameter `{ engineId }`**, statt die Signatur zu brechen; nur die Einrichtung nutzt ihn.
 5. **Browser-Sitzungen kennen keine Frames außer dem Hauptframe** (`BrowserSession.snapshot()` ruft `Accessibility.getFullAXTree` ohne `frameId`). Die Ursprungsprüfung (Spec Prüfung 4) läuft deshalb über das Ziel-Element selbst: `DOM.resolveNode({ backendNodeId })` und `Runtime.callFunctionOn` lesen im Frame des Elements das globale `location.origin` und `location.ancestorOrigins` (beide in Chromium nicht überschreibbar; `ownerDocument.location` könnte Seitenskript fälschen). Die Schwärzung sucht Passwortfelder über `DOM.getFlattenedDocument({ depth: -1, pierce: true })`.
@@ -63,41 +63,47 @@ Beim Lesen des Codes gefunden; im Plan so umgesetzt, beim Review bitte bestätig
 7. **CSP (SEC-CSP-01)** wird als `Content-Security-Policy-Report-Only` mit Meldeendpunkt `POST /api/csp-report` ausgeliefert; scharf geschaltet wird über `CSP_ENFORCE=true`, nachdem die Meldungen ausgewertet sind (Task 16).
 
 8. **Entziehen prüft den Key auf dem Zielserver** (Spec angepasst): Das Skript vergleicht das nicht geheime Präfix und entfernt nur bei Übereinstimmung im selben Exec; Outpost liest nur `REMOVED`/`FOREIGN`/`ABSENT`. So verlässt ein fremder Key den Server nie.
-9. **`browser_wait` setzt keinen Taint.** Es nutzt eigene CDP-Abfragen (`readyState()`, `containsText()`) statt `evaluate`, sonst scheiterte schon „warten, dann ausfüllen“. Rest: `containsText` verrät im befüllten Kontext per Ja/Nein, ob der Seitentext etwas enthält; Werte in Eingabefeldern gehören nicht dazu.
+9. **`browser_wait` setzt keinen Taint.** Es nutzt eigene CDP-Abfragen (`readyState()`, `containsText()`) statt `evaluate`, sonst scheiterte schon „warten, dann ausfüllen“. `containsText` vergleicht gegen den mit `redactText` geschwärzten Seitentext; Teile eines eingetragenen Werts finden sich darin nicht.
 10. **Popups schließen mit ihrem Öffner**, wenn dieser einen ephemeren Kontext angelegt hat (Grund „opener closed“). Chromium verwirft sie mit dem Kontext ohnehin; so endet der Kontext eindeutig.
 11. **Organisationseinträge verlangen aktive Mitgliedschaft auch für Systemadmins** (Verwalten, Anzeigen, Anlegen), obwohl die Rechte-Engine Systemadmins alle Organisationsrechte gibt — SEC-TENANT-01.
 12. **API-Key-Suche bleibt ein Hash-Lookup** (`SHA-256` als DB-Schlüssel, kein `timingSafeEqual`): Der Vergleich findet auf einem 256-Bit-Hash eines 256-Bit-Zufallswerts statt; ein Zeitkanal verrät nichts Verwertbares (SEC-APIKEY-01, im Review bestätigen).
 13. **Vault-Audits sind nicht per Organisationsschalter abschaltbar** (`shouldAudit` kennt `vault.*` nicht) — Zugriffe auf Geheimnisse werden immer protokolliert.
 14. **Ursprünge werden normalisiert gespeichert** (`new URL(x).origin`, nur http/https); `agentUrl` ohne abschließenden Schrägstrich.
-15. **Verwaiste Bindungen außerhalb der drei Löschpfade** (Integrationsabgleich `server/controllers/integration.js`, Kontolöschung, Organisationslöschung per CASCADE) werden nicht entfernt. Sequelize legt SQLite-Primärschlüssel mit `AUTOINCREMENT` an, IDs werden nicht wiederverwendet; eine Bindung an eine gelöschte ID wirkt nie.
+15. **Löschpfade:** Neben `deleteEntry`, `deleteFolder` und `deleteTag` entfernt auch der Integrationsabgleich (`server/controllers/integration.js`) Bindungen (MySQL < 8 vergibt IDs nach einem Neustart erneut). Verwaiste Bindungen entstehen nur noch bei Konto- und Organisationslöschung; dort verschwinden die Einträge selbst per CASCADE.
 16. **Feldbeschriftungen im Eintrag-Dialog** (Benutzer, Ursprünge, Passwort …) kommen aus den Artboards, nicht aus `states[].copy` — das Manifest führt sie nicht als Copy. Zwei Fehlertexte ohne Manifest-Vorgabe: `vault.detail.deleteFailed`, `vault.secret.copyFailed`.
-17. **Neue Fehlercodes** über die Spec hinaus: `vault.rate_limited` (20 Ausfüllungen je Minute und Aufrufer, SEC-RATE-01) und `vault.no_secret` (Login-Eintrag ohne gespeichertes Passwort, z. B. nach Zieländerung).
+17. **Neue Fehlercodes** über die Spec hinaus: `vault.rate_limited` (20 Ausfüllungen je Minute und Aufrufer, SEC-RATE-01) und `vault.no_secret` (Login-Eintrag ohne gespeichertes Passwort, z. B. nach Zieländerung). `vault.input_locked` steht inzwischen in der Spec.
+18. **`api_keys.pending` hat den DB-Standard `false`** (Spec: `true`), damit Bestands-Keys nicht `pending` werden; neue Agenten-Keys setzen `true` ausdrücklich.
+19. **Antwort ohne `usernameRef`:** „Passwort von `<item>` eingetragen.“ (die Spec nennt nur die Fassung mit Benutzername).
+20. **`initVaultState` meldet `mismatch` nur bei vorhandenen Werten** (Spec „bei vorhandenen Daten“): Ohne gespeicherte Werte schreibt ein neuer Schlüssel einen neuen Prüfwert; mit Werten entscheidet die Probe-Entschlüsselung eines gespeicherten Werts.
+21. **Bewusst nicht in Teilprojekt 1:** Sperre der Freigabe-Knöpfe kurz nach dem Erscheinen (wäre ein Manifest-Zustand); Erkennung „Probe misst einen Proxy“ über den Abgleich mit der Browser-Adresse hinaus.
 
 ---
 
 ## Dateistruktur und Parallelgruppen
 
-| Task | Phase | Dateien (Create/Modify/Test) | Parallel |
+| Task | Welle | Dateien (Kurzfassung aus **Files:**) | Parallel |
 |---|---|---|---|
-| 1 Vault-Grundlage (Server) — Migration, Modelle, Verschlüsselung, Schlüsselstatus, Rechte, Audit, Router-Gerüst | A | `server/migrations/0047-add-vault.js`, `server/models/VaultItem.js`, `server/models/ApiKey.js`, `server/lib/vault/errors.js`, `server/permissions/registry.js`, `server/controllers/audit.js`, `server/routes/vault/index.js`, `server/index.js`, `server/lib/vault/__tests__/crypto.test.js` | Task 2, Task 10 (keine gemeinsamen Dateien). |
-| 2 MCP-Rahmen — Werkzeug-Anbieter, Transport je Schlüssel, Abbruchsignal | A | `server/lib/browser/mcpServer.js`, `server/lib/mcp/__tests__/mcpRoute.test.js`, `server/routes/mcp.js` | Task 1, Task 10 (keine gemeinsamen Dateien). |
-| 10 Client-Grundlage — Texte, Rechte-Spiegel, Verfügbarkeit, Navigation, Route, Marker | A | `client/public/assets/locales/en.json`, `client/public/assets/locales/de_DE.json`, `client/src/common/utils/permissions.js`, `client/src/common/hooks/useVaultAvailable.js`, `client/src/common/hooks/useSidebarNavigation.js`, `client/src/common/utils/navigationConfig.jsx`, `client/src/App.jsx`, `client/src/pages/Vault/index.js`, `client/src/pages/Settings/pages/Vault/index.js`, `client/src/common/hooks/useStateStream.js:6`, `client/src/common/components/TabSwitcher/TabSwitcher.jsx:5, 29`, `client/src/common/hooks/__tests__/useSidebarNavigation.test.jsx` | Task 1, 2, 3, 4, 5, 6, 7, 8, 9 (keine gemeinsamen Dateien; Task 10 fasst nur `client/` an, die Server-Tasks nur `server/`). |
-| 3 Sichtbarkeit und Bindungen | B | `server/lib/vault/visibility.js`, `server/lib/vault/bindings.js`, `server/controllers/entry.js`, `server/controllers/folder.js`, `server/controllers/tag.js`, `server/lib/vault/__tests__/visibility.test.js`, `server/lib/vault/__tests__/bindings.test.js` | Task 4, Task 10 (keine gemeinsamen Dateien). |
-| 4 Agenten-Authentifizierung | B | `server/middlewares/auth.js`, `server/lib/vault/ipBinding.js`, `server/controllers/apiKey.js`, `server/controllers/session.js`, `server/routes/users.js`, `server/middlewares/requireLoginSession.js`, `server/utils/database.js`, `server/lib/vault/__tests__/agentAuth.test.js` | Task 3, Task 10 (keine gemeinsamen Dateien). |
-| 5 REST: Einträge, Reveal, Einstellungen, Verfügbarkeit | C | `server/validations/vault.js`, `server/controllers/vaultItems.js`, `server/controllers/vaultSettings.js`, `server/routes/vault/items.js`, `server/routes/vault/settings.js`, `server/lib/vault/visibility.js`, `server/lib/vault/__tests__/validation.test.js`, `server/lib/vault/__tests__/itemsRoute.test.js` | Task 6, Task 7, Task 8, Task 10 (keine gemeinsamen Dateien; `visibility.js` aus Task 3 fasst in Phase C nur dieser Task an). |
-| 6 Freigaben | C | `server/lib/vault/approvals.js`, `server/lib/StateBroadcaster.js`, `server/routes/state.js`, `server/routes/vault/approvals.js`, `server/lib/vault/__tests__/approvals.test.js` | Task 5, Task 7, Task 8, Task 10 (keine gemeinsamen Dateien). Setzt Task 1, Task 3 (`itemRef` aus `server/lib/vault/visibility.js`, abweichend von der Vertragstabelle, die nur 1, 2, 4 nennt) und Task 4 voraus; Task 3 ist Phase B und liegt vor Phase C fertig vor. |
-| 7 Browser I: Sitzungsbesitz für Agenten-Keys | C | `server/lib/browser/BrowserSession.js`, `server/lib/browser/BrowserPool.js`, `server/lib/browser/tools.js`, `server/lib/browser/errors.js`, `server/lib/browser/proxy.js`, `server/lib/browser/__tests__/tools.test.js`, `server/lib/browser/__tests__/agentScope.test.js` | Task 5, Task 6, Task 8, Task 10 (keine gemeinsamen Dateien). |
-| 8 Agenten-Einrichtung (Server) | C | `server/lib/vault/provision.js`, `server/controllers/agentKeys.js`, `server/validations/vaultAgentKeys.js`, `server/routes/vault/agentKeys.js`, `server/controllers/execCommand.js`, `server/index.js`, `server/lib/vault/__tests__/provision.test.js` | Task 5, 6, 7, 10 (keine gemeinsamen Dateien: Task 5 schreibt `routes/vault/items.js`, `settings.js`, `validations/vault.js`, `controllers/vaultItems.js`, `vaultSettings.js`; Task 6 `approvals.js`, `StateBroadcaster.js`, `routes/state.js`; Task 7 `server/lib/browser/*`; Task 10 nur `client/`; `server/index.js` fasst in Phase C nur Task 8 an). |
-| 9 Browser II: Schwärzung und Sperren | D | `server/lib/browser/vaultGuard.js`, `server/lib/browser/snapshot.js`, `server/lib/browser/BrowserSession.js`, `server/lib/browser/tools.js`, `server/lib/browser/index.js`, `server/lib/browser/__tests__/tools.test.js`, `server/lib/browser/__tests__/vaultGuard.test.js` | Task 10, Task 12, Task 13, Task 14, Task 15 (keine gemeinsamen Dateien). |
-| 11 Vault-MCP-Anbieter (`vault_list`, `browser_fill_credential`) | E | `server/lib/vault/fill.js`, `server/lib/vault/mcpProvider.js`, `server/lib/vault/__tests__/helpers/vaultBed.js`, `server/lib/vault/__tests__/mcpProvider.test.js`, `server/routes/mcp.js`, `server/lib/mcp/__tests__/mcpRoute.test.js`, `server/lib/browser/__tests__/chromium.e2e.test.js` | Task 12, 13, 14, 15 (keine gemeinsamen Dateien). |
-| 12 Client — Vault-Seite und Eintrag-Dialog | E | `client/src/pages/Vault/Vault.jsx`, `client/src/pages/Vault/styles.sass`, `client/src/pages/Vault/components/VaultList/{index.js, VaultList.jsx, styles.sass}`, `client/src/pages/Vault/components/VaultDetail/{index.js, VaultDetail.jsx, SecretRow.jsx, styles.sass}`, `client/src/pages/Vault/components/VaultItemDialog/{index.js, VaultItemDialog.jsx, styles.sass}`, `client/src/pages/Vault/components/VaultDetail/__tests__/VaultDetail.test.jsx` | Task 9, 11, 13, 14, 15 (keine gemeinsamen Dateien; Task 12 fasst nur `client/src/pages/Vault/` an). |
-| 13 Client: Freigabe-Karte | E | `client/src/common/components/VaultApprovalCard/VaultApprovalStack.jsx`, `client/src/common/components/VaultApprovalCard/VaultApprovalCard.jsx`, `client/src/common/components/VaultApprovalCard/styles.sass`, `client/src/common/components/VaultApprovalCard/__tests__/VaultApprovalStack.test.jsx`, `client/src/common/layouts/Root.jsx`, `client/src/common/layouts/PopoutRoot.jsx` | Task 9, Task 11, Task 12, Task 14, Task 15 (keine gemeinsamen Dateien; Task 14/15 teilen nur die i18n-Schlüssel aus Task 10, die hier nur gelesen werden). |
-| 14 Client: Agenten-Zugang und Kontextmenü | E | `client/src/pages/Servers/components/AgentAccessDialog/AgentAccessDialog.jsx`, `client/src/pages/Servers/components/AgentAccessDialog/styles.sass`, `client/src/pages/Servers/components/AgentAccessDialog/index.js`, `client/src/pages/Servers/components/AgentAccessDialog/__tests__/AgentAccessDialog.test.jsx`, `client/src/pages/Servers/components/ServerList/ServerList.jsx` | Task 9, Task 11, Task 12, Task 13, Task 15 (keine gemeinsamen Dateien; Task 15 importiert den Dialog nur, siehe dort). |
-| 15 Client: Einstellungen Vault und Agenten-Schlüssel | E | `client/src/pages/Settings/pages/Vault/Vault.jsx`, `client/src/pages/Settings/pages/Vault/styles.sass`, `client/src/pages/Settings/pages/Vault/__tests__/VaultSettings.test.jsx`, `client/src/pages/Settings/pages/Account/components/AgentKeysSection/AgentKeysSection.jsx`, `client/src/pages/Settings/pages/Account/components/AgentKeysSection/index.js`, `client/src/pages/Settings/pages/Account/components/AgentKeysSection/styles.sass`, `client/src/pages/Settings/pages/Account/Account.jsx` | Task 9, Task 11, Task 12, Task 13, Task 14 (keine gemeinsamen Dateien; `AgentKeysSection` importiert nur den Dialog aus Task 14, der Test dieses Tasks braucht ihn nicht). |
-| 16 CSP Report-Only und Doku | F | `server/lib/staticSite.js`, `server/routes/cspReport.js`, `server/index.js`, `server/lib/__tests__/cspHeader.test.js`, `docs/vault.md`, `docs/.vitepress/config.mjs` | none — Phase F; die Doku beschreibt das Verhalten aus Tasks 1–15 und braucht deren Stand, und `server/index.js` teilen sich Task 1 und Task 8. Task 17 wartet auf diesen Task. |
-| 17 Volle Prüfung, Sicherheitsabgleich, manuelle Tests mit Claude Code und Codex | F |  | none — prüft den gemergten Gesamtstand aller Tasks. |
+| 1 Vault-Grundlage (Server) — Migration, Modelle, Verschlüsselung, Schlüsselstatus, Rechte, Audit, Router-Gerüst | A | `server/migrations/0047-add-vault.js`, `server/models/VaultItem.js`, `server/models/VaultSecret.js`, `server/models/VaultBinding.js`, `server/models/VaultSettings.js`, `server/models/ApiKey.js`, `server/models/Session.js`, `server/lib/vault/errors.js`, `server/lib/vault/crypto.js`, `server/lib/vault/secrets.js`, `server/lib/vault/state.js`, `server/permissions/registry.js`, `server/controllers/audit.js`, `server/routes/vault/index.js`, `server/routes/vault/items.js`, `server/routes/vault/approvals.js`, `server/routes/vault/agentKeys.js`, `server/routes/vault/settings.js`, `server/index.js`, `server/lib/vault/__tests__/crypto.test.js`, `server/lib/vault/__tests__/state.test.js` | Task 2, 7, 10 (Welle A; keine gemeinsamen Dateien: Task 2 schreibt `server/lib/mcp/*` und `server/routes/mcp.js`, Task 7 `server/lib/browser/*`, Task 10 nur `client/`). |
+| 2 MCP-Rahmen — Werkzeug-Anbieter, Transport je Schlüssel, Abbruchsignal | A | `server/lib/mcp/server.js`, `server/lib/browser/mcpServer.js`, `server/lib/mcp/__tests__/server.test.js`, `server/lib/browser/__tests__/mcpServer.test.js`, `server/lib/mcp/__tests__/mcpRoute.test.js`, `server/routes/mcp.js` | Task 1, 7, 10 (Welle A; keine gemeinsamen Dateien: Task 1 schreibt `server/lib/vault/*`, Modelle, `server/index.js`, Task 7 `server/lib/browser/*` ohne `mcpServer.js`, Task 10 nur `client/`; der Test dieses Tasks fakt `server/lib/browser/tools.js` und hängt nicht von Task 7 ab). |
+| 10 Client-Grundlage — Texte, Rechte-Spiegel, Verfügbarkeit, Navigation, Route, Marker | A | `client/public/assets/locales/en.json`, `client/public/assets/locales/de_DE.json`, `client/src/common/utils/permissions.js`, `client/src/common/hooks/useVaultAvailable.js`, `client/src/common/hooks/useSidebarNavigation.js`, `client/src/common/utils/navigationConfig.jsx`, `client/src/App.jsx`, `client/src/pages/Vault/index.js`, `client/src/pages/Vault/Vault.jsx`, `client/src/pages/Settings/pages/Vault/index.js`, `client/src/pages/Settings/pages/Vault/Vault.jsx`, `client/src/common/hooks/__tests__/useSidebarNavigation.test.jsx` | Task 1, 2, 7 (Welle A; keine gemeinsamen Dateien: Task 10 fasst nur `client/` an, die drei anderen nur `server/`). Tasks 12–15 (Welle B und C) setzen diesen Task voraus. |
+| 7 Browser I: Sitzungsbesitz für Agenten-Keys | A | `server/lib/browser/BrowserSession.js`, `server/lib/browser/BrowserPool.js`, `server/lib/browser/tools.js`, `server/lib/browser/errors.js`, `server/lib/browser/proxy.js`, `server/lib/browser/__tests__/tools.test.js`, `server/lib/browser/__tests__/agentScope.test.js` | Task 1, Task 2, Task 10 (Welle A; keine gemeinsamen Dateien — Task 2 verschiebt nur `server/lib/browser/mcpServer.js` samt Test, dieser Task fasst beide nicht an; von Task 2 und Task 4 braucht er nur die Form von `ctx`, der Test baut `ctx` selbst). |
+| 3 Sichtbarkeit und Bindungen | B | `server/lib/vault/visibility.js`, `server/lib/vault/bindings.js`, `server/controllers/entry.js`, `server/controllers/folder.js`, `server/controllers/tag.js`, `server/controllers/integration.js`, `server/lib/vault/__tests__/visibility.test.js`, `server/lib/vault/__tests__/bindings.test.js` | Task 4, Task 9, Task 12, Task 13, Task 14 (Welle B; keine gemeinsamen Dateien). |
+| 4 Agenten-Authentifizierung | B | `server/middlewares/auth.js`, `server/lib/vault/ipBinding.js`, `server/controllers/apiKey.js`, `server/controllers/session.js`, `server/routes/users.js`, `server/middlewares/requireLoginSession.js`, `server/routes/apiKey.js`, `server/utils/auditContext.js`, `server/controllers/audit.js`, `server/utils/database.js`, `server/lib/vault/__tests__/agentAuth.test.js` | Task 3, Task 9, Task 12, Task 13, Task 14 (Welle B; keine gemeinsamen Dateien). |
+| 9 Browser II: Schwärzung und Sperren | B | `server/lib/browser/vaultGuard.js`, `server/lib/browser/snapshot.js`, `server/lib/browser/BrowserSession.js`, `server/lib/browser/actions.js`, `server/lib/browser/tools.js`, `server/lib/browser/index.js`, `server/lib/browser/__tests__/tools.test.js`, `server/lib/browser/__tests__/vaultGuard.test.js`, `server/lib/browser/__tests__/chromium.e2e.test.js` | Task 3, Task 4, Task 12, Task 13, Task 14 (Welle B; keine gemeinsamen Dateien — Task 3 und Task 4 fassen `server/lib/browser/` nicht an, Tasks 12–14 nur `client/`; setzt Task 1 und Task 7 aus Welle A voraus). |
+| 12 Client — Vault-Seite und Eintrag-Dialog | B | `client/src/pages/Vault/Vault.jsx`, `client/src/pages/Vault/styles.sass`, `client/src/pages/Vault/vaultTypes.js`, `client/src/pages/Vault/components/VaultDetail/__tests__/VaultDetail.test.jsx`, `client/src/pages/Vault/components/VaultItemDialog/__tests__/VaultItemDialog.test.jsx` | Task 3, 4, 9, 13, 14 (Welle B; keine gemeinsamen Dateien; Task 12 fasst nur `client/src/pages/Vault/` an). Setzt Task 10 (Welle A) voraus; die REST-Form aus Task 5 (Welle C) steht im Vertrag oben fest, die Tests laufen gegen `requestDouble`. |
+| 13 Client: Freigabe-Karte | B | `client/src/common/components/VaultApprovalCard/VaultApprovalStack.jsx`, `client/src/common/components/VaultApprovalCard/VaultApprovalCard.jsx`, `client/src/common/components/VaultApprovalCard/styles.sass`, `client/src/common/components/VaultApprovalCard/index.js`, `client/src/common/components/VaultApprovalCard/__tests__/VaultApprovalStack.test.jsx`, `client/src/common/layouts/Root.jsx`, `client/src/common/layouts/PopoutRoot.jsx` | Task 3, Task 4, Task 9, Task 12, Task 14 (Welle B; keine gemeinsamen Dateien; Task 14 teilt nur die i18n-Schlüssel aus Task 10, die hier nur gelesen werden). Setzt Task 10 (Welle A) voraus; Zustandsstrom und Route aus Task 6 (Welle C) stehen im Vertrag oben fest, die Tests laufen gegen `requestDouble` und einen eigenen `registerHandler`. |
+| 14 Client: Agenten-Zugang und Kontextmenü | B | `client/src/pages/Servers/components/AgentAccessDialog/AgentAccessDialog.jsx`, `client/src/pages/Servers/components/AgentAccessDialog/styles.sass`, `client/src/pages/Servers/components/AgentAccessDialog/index.js`, `client/src/pages/Servers/components/AgentAccessDialog/__tests__/AgentAccessDialog.test.jsx`, `client/src/pages/Servers/components/ServerList/ServerList.jsx` | Task 3, Task 4, Task 9, Task 12, Task 13 (Welle B; keine gemeinsamen Dateien). Nicht neben Task 15: der importiert `AgentAccessDialog` und übernimmt die Entziehen-Auswertung dieses Tasks; Task 15 startet erst nach dem Merge dieses Tasks (Welle C). Setzt Task 10 (Welle A) voraus; die REST-Form aus Task 8 (Welle C) steht im Vertrag oben fest, die Tests laufen gegen `requestDouble`. |
+| 5 REST: Einträge, Reveal, Einstellungen, Verfügbarkeit | C | `server/validations/vault.js`, `server/controllers/vaultItems.js`, `server/controllers/vaultSettings.js`, `server/routes/vault/items.js`, `server/routes/vault/settings.js`, `server/lib/vault/__tests__/validation.test.js`, `server/lib/vault/__tests__/itemsRoute.test.js` | Task 6, Task 8, Task 15 (Welle C; keine gemeinsamen Dateien: Task 6 schreibt `lib/vault/approvals.js`, `StateBroadcaster.js`, `routes/state.js`, `routes/vault/approvals.js`, `validations/vaultApprovals.js`; Task 8 `provision.js`, `controllers/agentKeys.js`, `routes/vault/agentKeys.js`, `validations/vaultAgentKeys.js`, `execCommand.js`, `server/index.js`; Task 15 nur `client/`). `visibility.js` und `secrets.js` liest dieser Task nur. |
+| 6 Freigaben | C | `server/lib/vault/approvals.js`, `server/lib/StateBroadcaster.js`, `server/routes/state.js`, `server/routes/vault/approvals.js`, `server/validations/vaultApprovals.js`, `server/lib/vault/__tests__/approvals.test.js` | Task 5, Task 8, Task 15 (Welle C; keine gemeinsamen Dateien: Task 5 schreibt `validations/vault.js`, `controllers/vaultItems.js`, `controllers/vaultSettings.js`, `routes/vault/items.js`, `routes/vault/settings.js`; Task 8 `provision.js`, `controllers/agentKeys.js`, `routes/vault/agentKeys.js`, `validations/vaultAgentKeys.js`, `execCommand.js`, `server/index.js`; Task 15 nur `client/`). Setzt Task 1, Task 3 (`itemRef` aus `server/lib/vault/visibility.js`) und Task 4 voraus, alle aus Wellen A/B. |
+| 8 Agenten-Einrichtung (Server) | C | `server/lib/vault/provision.js`, `server/controllers/agentKeys.js`, `server/validations/vaultAgentKeys.js`, `server/validations/vault.js`, `server/routes/vault/agentKeys.js`, `server/controllers/execCommand.js`, `server/index.js`, `server/lib/vault/__tests__/provision.test.js`, `server/lib/vault/__tests__/agentKeysRoute.test.js` | Task 5, Task 6, Task 15 (Welle C; keine gemeinsamen Dateien: Task 5 schreibt `routes/vault/items.js`, `routes/vault/settings.js`, `validations/vault.js`, `controllers/vaultItems.js`, `controllers/vaultSettings.js`; Task 6 `lib/vault/approvals.js`, `StateBroadcaster.js`, `routes/state.js`, `routes/vault/approvals.js`, `validations/vaultApprovals.js`; Task 15 nur `client/`; `server/index.js` fasst in Welle C nur Task 8 an). `visibility.js` (Task 3) und `ipBinding.js` (Task 4) liest dieser Task nur; beide stammen aus Welle B. |
+| 15 Client: Einstellungen Vault und Agenten-Schlüssel | C | `client/src/pages/Settings/pages/Vault/Vault.jsx`, `client/src/pages/Settings/pages/Vault/styles.sass`, `client/src/pages/Settings/pages/Vault/__tests__/VaultSettings.test.jsx`, `client/src/pages/Settings/pages/Account/components/AgentKeysSection/AgentKeysSection.jsx`, `client/src/pages/Settings/pages/Account/components/AgentKeysSection/index.js`, `client/src/pages/Settings/pages/Account/components/AgentKeysSection/styles.sass`, `client/src/pages/Settings/pages/Account/Account.jsx` | Task 5, Task 6, Task 8 (Welle C; keine gemeinsamen Dateien). Nicht neben Task 14: `AgentKeysSection` importiert `AgentAccessDialog` und übernimmt dessen Entziehen-Auswertung, deshalb startet dieser Task erst nach dem Merge von Task 14 (Welle B). Setzt Task 10 (Welle A) voraus; die REST-Form aus Task 5 und Task 8 steht im Vertrag oben fest, die Tests laufen gegen `requestDouble`. |
+| 11 Vault-MCP-Anbieter (`vault_list`, `browser_fill_credential`) | D | `server/lib/vault/fill.js`, `server/lib/vault/mcpProvider.js`, `server/lib/vault/__tests__/helpers/vaultBed.js`, `server/lib/vault/__tests__/mcpProvider.test.js`, `server/routes/mcp.js`, `server/lib/mcp/__tests__/mcpRoute.test.js`, `server/lib/browser/__tests__/chromium.e2e.test.js` | none — Welle D enthält nur diesen Task: Er setzt `approvals.js` (Task 6, Welle C), `resolveSession` (Task 7) und `vaultGuard` samt `assertInputAllowed` (Task 9) voraus und ändert `chromium.e2e.test.js` nach Task 9; Task 16 (Welle E) beschreibt sein Verhalten. |
+| 16 CSP Report-Only, Einbettungsschutz und Doku | E | `server/lib/staticSite.js`, `server/index.js`, `server/routes/cspReport.js`, `server/lib/__tests__/cspHeader.test.js`, `server/lib/fileContent/download.js`, `server/lib/fileContent/__tests__/download.test.js`, `docs/vault.md`, `docs/.vitepress/config.mjs` | none — einziger Task der Welle E. Die Doku beschreibt das gebaute Verhalten der Tasks 1–15 (Fehlercodes, Sperren, Freigabe- und Entziehen-Regeln) und Schritt 11 gleicht sie gegen das fertige `en.json` aus Task 10 ab; das geht erst, wenn Welle D (Task 11) gemergt ist. `server/index.js` haben Task 1 und Task 8 in früheren Wellen schon geändert, daher hier nur über Code-Anker. Task 17 (Welle F) wartet auf diesen Task. |
+| 17 Volle Prüfung, Sicherheitsabgleich, manuelle Tests mit Claude Code und Codex | F | `docs/vault.md` | none — einziger Task der Welle F; prüft den gemergten Gesamtstand aller Tasks einschließlich der Doku aus Task 16 (Welle E). |
 
-Reihenfolge der Abschnitte folgt den Phasen; die Task-Nummern bleiben Kennungen (Phase A: 1, 2, 10 · B: 3, 4 · C: 5, 6, 7, 8 · D: 9 · E: 11–15 · F: 16, 17). Innerhalb einer Phase laufen die genannten Tasks parallel in eigenen Worktrees; die Phase endet mit dem Merge aller ihrer Tasks.
+Die Task-Nummern bleiben Kennungen; maßgeblich ist die Wellen-Spalte (Welle A: 1, 2, 7, 10 · B: 3, 4, 9, 12, 13, 14 · C: 5, 6, 8, 15 · D: 11 · E: 16 · F: 17), die Abschnitte stehen in dieser Reihenfolge. Innerhalb einer Welle laufen die Tasks parallel in eigenen Worktrees; eine Welle endet mit dem Merge aller ihrer Tasks. Die Spalte „Dateien“ ist eine Kurzfassung; maßgeblich für die Parallelität ist der **Files:**-Block des Tasks. Task 15 startet erst nach dem Merge von Task 14 (er importiert dessen Dialog).
+
+**Phasenabschluss:** nach dem letzten Merge einer Welle `cd /root/outpost && yarn test && yarn lint && yarn --cwd client lint`; rot → Befund im besitzenden Task beheben, bevor die nächste Welle startet. Danach ein kurzer Zwischenstand (was steht, was offen ist). Review-Ketten (preflight, footgun, design-verify, code-review) laufen einmal am Ende (Task 17), nicht nach jedem Task.
 
 ---
 
@@ -118,25 +124,25 @@ Reihenfolge der Abschnitte folgt den Phasen; die Task-Nummern bleiben Kennungen 
 - Consumes: nichts aus anderen Tasks. Bestand: `sendError(res, httpCode, errorCode, message)` aus `server/utils/error.js`, `logger` aus `server/utils/logger.js`, der Loader `loadSecrets()` (`server/utils/secrets.js`) macht aus `/run/secrets/vault_key` bereits `process.env.VAULT_KEY`.
 - Produces (von Tasks 3–11 genutzt):
   - `server/lib/vault/crypto.js`: `encryptValue(plaintext: string, aad: string) → { encrypted: Buffer, iv: string(hex, 24 Zeichen), authTag: string(hex, 32 Zeichen) }`; `decryptValue({ encrypted: Buffer|string(hex), iv, authTag }, aad) → string` — wirft bei falschem Schlüssel, falscher AAD oder gekürztem Tag; `hasValidKey() → boolean`. Der Schlüssel wird bei jedem Aufruf aus `process.env.VAULT_KEY` gelesen.
-  - `server/lib/vault/state.js`: `initVaultState() → Promise<{ keyStatus }>`; `getKeyStatus() → "active"|"missing"|"mismatch"`; `isVaultEnabled() → boolean`; `requireVaultEnabled(req, res, next)` (Vault aus → `404 { code: 404, message: "Not found" }`); `_resetForTests()`.
-  - `server/lib/vault/secrets.js`: `writeSecret(itemId, field, value) → Promise<void>` (Update, sonst Insert); `readSecret(itemId, field) → Promise<string|null>` (wirft `VaultError(ITEM_UNREADABLE)`, AAD aus der gelesenen Zeile); `clearSecrets(itemId) → Promise<number>`; `listSecretFields(itemId) → Promise<string[]>` (sortiert).
-  - `server/lib/vault/errors.js`: `class VaultError extends Error { constructor(code, message = VaultErrorMessage[code], details = {}) }` mit `name = "VaultError"`, `code`, `details`; `VaultErrorCode` (eingefroren, Werte laut Vertrag); **zusätzlich** `VaultErrorMessage` (eingefroren, Code → englische Meldung an den Agenten mit nächstem Schritt). Aufrufer schreiben `new VaultError(VaultErrorCode.X)` oder `new VaultError(VaultErrorCode.X, undefined, details)`.
-  - Modelle (Tabellen mit `freezeTableName`): `VaultItem` (`vault_items`), `VaultSecret` (`vault_secrets`, ohne Zeitstempel, ohne `afterFind`), `VaultBinding` (`vault_bindings`, ohne Zeitstempel), `VaultSettings` (`vault_settings`, `getOrCreate()`); Felder exakt laut Vertrag. `ApiKey` mit `kind`, `pending`, `entryId`, `agentType`, `ipBinding`, `allowedCidrs`, `identityId`, `remoteUser`, `seenIp`, `seenIpAdopted` und einem `afterFind`-Hook (Muster `Snippet.js`): Er macht bei rohen Zeilen aus dem JSON-Text `allowedCidrs` ein Array und aus `pending`, `ipBinding`, `seenIpAdopted` (`0`/`1`) Booleans; Instanzen und schon normalisierte Werte bleiben unberührt. `Session.impersonatorId`.
-  - `VaultErrorCode.RATE_LIMITED = "vault.rate_limited"` (Task 11: mehr als 20 Ausfüllversuche je Aufrufer und Minute) und `VaultErrorCode.NO_SECRET = "vault.no_secret"` (Task 11: Login-Eintrag ohne gespeichertes Passwort), beide mit Text in `VaultErrorMessage`.
-  - `Permission.VAULT_USE`, `VAULT_MANAGE`, `VAULT_REVEAL`, `SETTINGS_VAULT`; Kategorie `vault`.
-  - `AUDIT_ACTIONS.VAULT_ITEM_CREATE` … `VAULT_PERSISTENT_NOT_ALLOWED` (16 Aktionen), `RESOURCE_TYPES.VAULT = "vault"`. **Konvention für alle Vault-Audits:** `resource: "vault"`, `resourceId: item.id` (falls ein Eintrag betroffen ist), `details.item: itemRef(item)` — `RESOURCE_CONFIG.vault` liest den Namen darüber nach, auch nach dem Löschen.
+  - `server/lib/vault/state.js`: `initVaultState() → Promise<{ keyStatus }>`; `getKeyStatus() → "active"|"missing"|"mismatch"`; `isVaultEnabled() → boolean`; `requireVaultEnabled(req, res, next)` (Vault aus → `404 { code: 404, message: "Not found" }`); `_resetForTests()`. `mismatch` nur, wenn der Prüfwert nicht passt **und** der erste gespeicherte `VaultSecret` sich mit dem Schlüssel nicht entschlüsseln lässt; ohne gespeicherte Werte (oder wenn dieser Wert sich entschlüsseln lässt) schreibt `initVaultState` den Prüfwert mit dem aktuellen Schlüssel neu und meldet `active`. `server/index.js` ruft es beim Start in `try`/`catch`: ein Datenbankfehler loggt und lässt den Vault aus (`missing`), der Start läuft weiter.
+  - `server/lib/vault/secrets.js`: `writeSecret(itemId, field, value) → Promise<void>` (Update, sonst Insert); `readSecret(itemId, field) → Promise<string|null>` (wirft `VaultError(ITEM_UNREADABLE)`, AAD aus der gelesenen Zeile); `clearSecrets(itemId) → Promise<number>`; `listSecretFields(itemId) → Promise<string[]>` (sortiert); `isUnreadable(itemId) → boolean` — `true`, sobald `readSecret` für den Eintrag an der Entschlüsselung scheitert, bis `writeSecret` oder `clearSecrets` für ihn läuft (Set im Prozessspeicher, nach einem Neustart leer; Task 5 liefert es als `Item.unreadable`).
+  - `server/lib/vault/errors.js`: `class VaultError extends Error { constructor(code, message = VaultErrorMessage[code], details = {}) }` mit `name = "VaultError"`, `code`, `details`; `VaultErrorCode` (eingefroren, Werte wie in Step 3); **zusätzlich** `VaultErrorMessage` (eingefroren, Code → englische Meldung an den Agenten mit nächstem Schritt). Aufrufer schreiben `new VaultError(VaultErrorCode.X)` oder `new VaultError(VaultErrorCode.X, undefined, details)`. Für `WRONG_TYPE`, `VIA_NOT_ALLOWED`, `PERSISTENT_NOT_ALLOWED`, `ORIGIN_MISMATCH`, `NOT_PASSWORD_FIELD`, `BAD_USERNAME_FIELD` und `FOCUS_LOST` gibt Task 11 immer eine situationsgenaue Meldung mit; deren Texte in `VaultErrorMessage` sind nur der Rückfall.
+  - Modelle (Tabellen mit `freezeTableName`): `VaultItem` (`vault_items`), `VaultSecret` (`vault_secrets`, ohne Zeitstempel, ohne `afterFind`), `VaultBinding` (`vault_bindings`, ohne Zeitstempel), `VaultSettings` (`vault_settings`, `getOrCreate()`); Felder wie in Step 5. `VaultItem` hat einen `afterFind`-Hook (Muster `Snippet.js`): Er macht bei rohen Zeilen aus dem JSON-Text `fields` ein Objekt und aus `approvalRequired`, `allServers` (`0`/`1`) Booleans; Tasks 3, 5, 8 und 11 lesen die Werte ohne eigene Normalisierung. `ApiKey` mit `kind`, `pending`, `entryId`, `agentType`, `ipBinding`, `allowedCidrs`, `identityId`, `remoteUser`, `seenIp`, `seenIpAdopted` und einem `afterFind`-Hook derselben Art: `allowedCidrs` wird zum Array (Text, der kein JSON ist, zur leeren Liste), `pending`, `ipBinding`, `seenIpAdopted` (`0`/`1`) zu Booleans; Tasks 4 und 8 lesen `allowedCidrs ?? []` als Array. Bei beiden Hooks bleiben Instanzen und schon normalisierte Werte unberührt. `Session.impersonatorId`.
+  - `VaultErrorCode.RATE_LIMITED = "vault.rate_limited"` (Task 11: mehr als 20 Ausfüllversuche je Aufrufer und Minute), `VaultErrorCode.NO_SECRET = "vault.no_secret"` (Task 11: Login-Eintrag ohne gespeichertes Passwort) und `VaultErrorCode.INPUT_LOCKED = "vault.input_locked"` (Task 9 `vaultGuard.assertInputAllowed`: Mittelklick, Tastenkombination mit Strg/Meta/Umschalt außer `Shift+Tab` oder Mehrfachklick im befüllten Kontext), alle mit Text in `VaultErrorMessage`.
+  - `Permission.VAULT_USE`, `VAULT_MANAGE`, `VAULT_REVEAL`, `SETTINGS_VAULT` (`dangerous: true`: die Agenten-Adresse bestimmt, wohin eingerichtete Agenten ihre Keys schicken); Kategorie `vault`.
+  - `AUDIT_ACTIONS.VAULT_ITEM_CREATE` … `VAULT_PERSISTENT_NOT_ALLOWED` (17 Aktionen, darunter `VAULT_INPUT_LOCKED = "vault.input_locked"`), `RESOURCE_TYPES.VAULT = "vault"`. **Konvention für alle Vault-Audits:** `resource: "vault"`, `resourceId: item.id` (falls ein Eintrag betroffen ist), `details.item: itemRef(item)` — `RESOURCE_CONFIG.vault` liest den Namen darüber nach, auch nach dem Löschen. Ausnahme: Die Sperr-Audits `vault.evaluate_locked`, `vault.screenshot_locked` und `vault.input_locked` schreibt Task 9 über `recordBrowserAudit` mit `resource: "browser"` und `details: { url, sessionId, tool }`, weil sie eine Browser-Session betreffen, keinen Eintrag.
   - Router `server/routes/vault/index.js` hängt `./items`, `./approvals`, `./agentKeys`, `./settings` ein; die vier sind leere `Router()`-Module für Tasks 5, 6, 8.
 
 **Design:** kein UI-Anteil.
 
-**Tests:** 3 Tests, test-first (fester Vertrag aus Spec und `plan-contracts.md`):
-- `crypto.test.js` (1 Test, über die Naht `secrets.js` + In-Memory-SQLite): Ein Chiffretext, in eine andere Zeile oder ein anderes Feld kopiert, lässt sich nicht entschlüsseln (`VaultError` `vault.item_unreadable`, ohne Wert in der Meldung); kein Wert → `null`; ein gekürzter Auth-Tag wird abgewiesen. Deckt SEC-SECRET-01 (Bindung über Associated Data) und SEC-ERR-01 (Fehler ohne Details).
-- `state.test.js` (2 Tests): (1) Migration 0047 läuft zweimal auf einer DB mit Bestands-Key, der Bestands-Key wird `kind = account`, `pending = false`, `ipBinding = true`, `seenIpAdopted = false`; `sessions.impersonatorId` und die vier Unique-Indizes existieren. (2) `initVaultState`: ohne bzw. mit ungültigem Schlüssel `missing`, erster Start schreibt den Prüfwert und ist `active`, Neustart mit demselben Schlüssel bleibt `active`, anderer Schlüssel → `mismatch`, `isVaultEnabled() === false`, Prüfwert unverändert.
-- Kein eigener Test für den `afterFind`-Hook an `ApiKey`: Er läuft in Task 4 (`agentAuth.test.js`, Tests 2–4: `pending`-Key, CIDR-Bereiche, `ipBinding: false`, jeder Key-Lookup über `validateApiKey`) und Task 8 (`findByPk` nach `allowedCidrs`) mit; ein falsch normalisierter Wert bricht dort die IP-Bindung. Sein Fehlen fiele dort nicht auf, weil `ipBinding.js` und `cidrsOf` Text und Array bewusst selbst lesen; der Hook macht die Form für jeden weiteren Leser einheitlich.
-- Nicht getestet: Rechte- und Audit-Konstanten, die Fehlertexte in `VaultErrorMessage` (Konstanten; Task 11 prüft die Codes in der Agenten-Antwort), `requireVaultEnabled` (eine Zeile), `clearSecrets`/`listSecretFields` (einzelne Sequelize-Aufrufe; Task 5 deckt sie über die Route ab), Router-Gerüst und die Verdrahtung in `server/index.js`.
+**Tests:** 3 Tests, test-first (fester Vertrag aus der Spec):
+- `crypto.test.js` (1 Test, über die Naht `secrets.js` + In-Memory-SQLite): Ein Chiffretext, in eine andere Zeile oder ein anderes Feld kopiert, lässt sich nicht entschlüsseln (`VaultError` `vault.item_unreadable`, ohne Wert in der Meldung); kein Wert → `null`; ein gekürzter Auth-Tag wird abgewiesen; ein Eintrag mit gescheitertem Lesen ist `isUnreadable`, bis `writeSecret` bzw. `clearSecrets` für ihn läuft. Deckt SEC-SECRET-01 (Bindung über Associated Data) und SEC-ERR-01 (Fehler ohne Details).
+- `state.test.js` (2 Tests): (1) Migration 0047 läuft zweimal auf einer DB mit Bestands-Key und setzt danach einen Halbstand fort (Unique-Index und Spalte `api_keys.seenIpAdopted` entfernt, dritter Lauf legt beide wieder an); der Bestands-Key wird `kind = account`, `pending = false`, `ipBinding = true`, `seenIpAdopted = false`; `sessions.impersonatorId` und die vier Unique-Indizes existieren. (2) `initVaultState`: ohne bzw. mit ungültigem Schlüssel `missing`, erster Start schreibt den Prüfwert und ist `active`, Neustart mit demselben Schlüssel bleibt `active`; anderer Schlüssel ohne gespeicherte Werte → `active`, Prüfwert neu geschrieben; anderer Schlüssel bei gespeichertem Wert → `mismatch`, `isVaultEnabled() === false`, Prüfwert unverändert.
+- Kein eigener Test für die `afterFind`-Hooks an `ApiKey` und `VaultItem`: Die Leser in den späteren Tasks verlassen sich auf ihre Form (Array, Objekt, Booleans) und lesen keinen JSON-Text mehr selbst. Fehlt ein Hook oder normalisiert er falsch, scheitern auf SQLite die CIDR-Tests in Task 4 (`agentAuth.test.js`), `addSeenIp` und die CIDR-Prüfung in Task 8 (`agentKeysRoute.test.js`) sowie die Sichtbarkeits- und Routen-Tests in Task 3 (`visibility.test.js`) und Task 5 (`itemsRoute.test.js`).
+- Nicht getestet: Rechte- und Audit-Konstanten, die Fehlertexte in `VaultErrorMessage` (Konstanten; Task 11 prüft die Codes in der Agenten-Antwort), `requireVaultEnabled` (eine Zeile), `listSecretFields` (ein Sequelize-Aufruf; Task 5 deckt ihn über die Route ab), Router-Gerüst und die Verdrahtung in `server/index.js` samt `try`/`catch` um `initVaultState`.
 - SEC-Abdeckung dieses Tasks: SEC-SECRET-01, SEC-ERR-01, SEC-RBAC-01 (Rechte angelegt), SEC-SQLI-01 (nur Sequelize mit `where`-Objekten), SEC-PII-01 (CASCADE an Konto/Organisation, Audit-Aktionen ohne Werte).
 
-**Parallel:** Task 2, Task 10 (keine gemeinsamen Dateien).
+**Parallel:** Task 2, 7, 10 (Welle A; keine gemeinsamen Dateien: Task 2 schreibt `server/lib/mcp/*` und `server/routes/mcp.js`, Task 7 `server/lib/browser/*`, Task 10 nur `client/`).
 
 - [ ] **Step 1: Failing test für die AAD-Bindung schreiben**
 
@@ -155,7 +161,7 @@ require.cache[databasePath] = { id: databasePath, filename: databasePath, loaded
 
 const VaultItem = require("../../../models/VaultItem");
 const VaultSecret = require("../../../models/VaultSecret");
-const { writeSecret, readSecret } = require("../secrets");
+const { writeSecret, readSecret, clearSecrets, isUnreadable } = require("../secrets");
 const { decryptValue } = require("../crypto");
 const { VaultError, VaultErrorCode } = require("../errors");
 
@@ -165,7 +171,7 @@ test.before(async () => {
     await db.sync();
 });
 
-test("a ciphertext only decrypts in its own row and field, and only with the full auth tag", async () => {
+test("a ciphertext only decrypts in its own row and field, and only with the full auth tag; a failed read marks the item until it is rewritten", async () => {
     const login = { username: "deploy", origins: ["https://git.example.com"] };
     const own = await VaultItem.create({ name: "git", type: "login", fields: login });
     const other = await VaultItem.create({ name: "wiki", type: "login", fields: login });
@@ -179,12 +185,19 @@ test("a ciphertext only decrypts in its own row and field, and only with the ful
     await VaultSecret.create({ itemId: own.id, field: "passphrase", ...copy });
 
     assert.strictEqual(await readSecret(own.id, "password"), "hunter2");
+    assert.deepStrictEqual([isUnreadable(own.id), isUnreadable(other.id)], [false, false]);
     for (const [itemId, field] of [[other.id, "password"], [own.id, "passphrase"]]) {
         await assert.rejects(readSecret(itemId, field), (err) =>
             err instanceof VaultError && err.code === VaultErrorCode.ITEM_UNREADABLE && !err.message.includes("hunter2"));
     }
     assert.strictEqual(await readSecret(other.id, "token"), null);
     assert.throws(() => decryptValue({ encrypted: sealed.valueEncrypted, iv: sealed.valueIV, authTag: sealed.valueAuthTag.slice(0, 8) }, `vault:${own.id}:password`));
+
+    assert.deepStrictEqual([isUnreadable(own.id), isUnreadable(other.id)], [true, true]);
+    await writeSecret(other.id, "password", "hunter3");
+    await clearSecrets(own.id);
+    assert.deepStrictEqual([isUnreadable(own.id), isUnreadable(other.id)], [false, false]);
+    assert.strictEqual(await readSecret(other.id, "password"), "hunter3");
 });
 ```
 
@@ -220,6 +233,7 @@ const VaultErrorCode = Object.freeze({
     FOCUS_LOST: "vault.focus_lost",
     EVALUATE_LOCKED: "vault.evaluate_locked",
     SCREENSHOT_LOCKED: "vault.screenshot_locked",
+    INPUT_LOCKED: "vault.input_locked",
     APPROVAL_TIMEOUT: "vault.approval_timeout",
     APPROVAL_UNAVAILABLE: "vault.approval_unavailable",
     APPROVAL_PENDING: "vault.approval_pending",
@@ -244,6 +258,7 @@ const VaultErrorMessage = Object.freeze({
     [C.FOCUS_LOST]: "The target field lost focus before anything was typed, so nothing was filled. Take a browser_snapshot and try again.",
     [C.EVALUATE_LOCKED]: "browser_evaluate is locked in this session because credentials were filled in its browser context. Use browser_snapshot and browser_click instead.",
     [C.SCREENSHOT_LOCKED]: "browser_screenshot is locked while a field filled by browser_fill_credential shows its value in plain text. Use browser_snapshot instead.",
+    [C.INPUT_LOCKED]: "Selecting text and middle-click paste are locked in this session because credentials were filled in its browser context. Use browser_click and browser_type on single fields instead.",
     [C.APPROVAL_TIMEOUT]: "The user did not answer the approval request within 2 minutes, so nothing was filled. Ask the user, then try again.",
     [C.APPROVAL_UNAVAILABLE]: "No Outpost window of this account is open to approve the request. Ask the user to open Outpost, then try again.",
     [C.APPROVAL_PENDING]: "An approval request for this item is already open on this connection. Wait for the user to answer it before calling again.",
@@ -335,8 +350,24 @@ module.exports = db.define("vault_items", {
         { unique: true, fields: ["accountId", "name"], name: "vault_items_account_name_unique" },
         { unique: true, fields: ["organizationId", "name"], name: "vault_items_organization_name_unique" },
     ],
+    hooks: {
+        afterFind: (results) => {
+            const normalize = (item) => {
+                if (!item) return;
+                if (typeof item.fields === "string") {
+                    try { item.fields = JSON.parse(item.fields); } catch {}
+                }
+                for (const flag of ["approvalRequired", "allServers"]) {
+                    if (typeof item[flag] === "number") item[flag] = item[flag] === 1;
+                }
+            };
+            Array.isArray(results) ? results.forEach(normalize) : normalize(results);
+        },
+    },
 });
 ```
+
+Muster `server/models/Snippet.js` (`afterFind` für `osFilter`): Unter dem globalen `query: { raw: true }` liefert SQLite `fields` als JSON-Text und Booleans als `0`/`1`. Der Hook läuft nur für Abfragen auf `VaultItem` selbst, nicht für `include` aus einem anderen Modell.
 
 `server/models/VaultSecret.js`:
 
@@ -425,11 +456,14 @@ const logger = require("../../utils/logger");
 
 const aadFor = (itemId, field) => `vault:${itemId}:${field}`;
 
+const unreadable = new Set();
+
 const writeSecret = async (itemId, field, value) => {
     const { encrypted, iv, authTag } = encryptValue(value, aadFor(itemId, field));
     const values = { valueEncrypted: encrypted, valueIV: iv, valueAuthTag: authTag };
     const [updated] = await VaultSecret.update(values, { where: { itemId, field } });
     if (updated === 0) await VaultSecret.create({ itemId, field, ...values });
+    unreadable.delete(Number(itemId));
 };
 
 const readSecret = async (itemId, field) => {
@@ -439,22 +473,31 @@ const readSecret = async (itemId, field) => {
         return decryptValue({ encrypted: row.valueEncrypted, iv: row.valueIV, authTag: row.valueAuthTag }, aadFor(row.itemId, row.field));
     } catch {
         logger.error("Vault secret could not be decrypted", { itemId: row.itemId, field: row.field });
+        unreadable.add(Number(row.itemId));
         throw new VaultError(VaultErrorCode.ITEM_UNREADABLE, undefined, { itemId: row.itemId });
     }
 };
 
-const clearSecrets = (itemId) => VaultSecret.destroy({ where: { itemId } });
+const clearSecrets = async (itemId) => {
+    const removed = await VaultSecret.destroy({ where: { itemId } });
+    unreadable.delete(Number(itemId));
+    return removed;
+};
+
+const isUnreadable = (itemId) => unreadable.has(Number(itemId));
 
 const listSecretFields = async (itemId) =>
     (await VaultSecret.findAll({ where: { itemId }, attributes: ["field"], order: [["field", "ASC"]] })).map((row) => row.field);
 
-module.exports = { writeSecret, readSecret, clearSecrets, listSecretFields };
+module.exports = { writeSecret, readSecret, clearSecrets, listSecretFields, isUnreadable };
 ```
+
+`Number(...)` hält die Marke unabhängig davon, ob ein Aufrufer die Id aus `req.params` (Text) oder aus einer Zeile (Zahl) übergibt.
 
 - [ ] **Step 7: Test laufen lassen, Erfolg prüfen**
 
 Run: `cd /root/outpost && node --test server/lib/vault/__tests__/crypto.test.js`
-Expected: PASS (1 Test). Die Log-Zeile „Vault secret could not be decrypted itemId=… field=…“ ist erwartet und enthält keinen Wert.
+Expected: PASS (1 Test). Die zwei Log-Zeilen „Vault secret could not be decrypted itemId=… field=…“ sind erwartet und enthalten keinen Wert.
 
 - [ ] **Step 8: Failing tests für Migration und Schlüsselstatus schreiben**
 
@@ -472,6 +515,7 @@ require.cache[databasePath] = { id: databasePath, filename: databasePath, loaded
 const VaultSettings = require("../../../models/VaultSettings");
 const migration = require("../../../migrations/0047-add-vault");
 const { initVaultState, getKeyStatus, isVaultEnabled, _resetForTests } = require("../state");
+const { writeSecret } = require("../secrets");
 const { decryptValue } = require("../crypto");
 
 const KEY_A = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
@@ -479,6 +523,8 @@ const KEY_B = "ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100"
 
 test.before(async () => {
     const queryInterface = db.getQueryInterface();
+    for (const table of ["accounts", "organizations", "entries", "identities"])
+        await queryInterface.createTable(table, { id: { type: DataTypes.INTEGER, primaryKey: true } });
     await queryInterface.createTable("api_keys", {
         id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
         accountId: { type: DataTypes.INTEGER, allowNull: false },
@@ -498,12 +544,17 @@ test.afterEach(() => {
     _resetForTests();
 });
 
-test("migration 0047 runs twice and turns existing API keys into ordinary account keys", async () => {
+test("migration 0047 runs twice, resumes a half-applied run and turns existing API keys into ordinary account keys", async () => {
     const queryInterface = db.getQueryInterface();
+    await queryInterface.removeIndex("vault_bindings", "vault_bindings_item_kind_target_unique");
+    await queryInterface.removeColumn("api_keys", "seenIpAdopted");
+    await migration.up(queryInterface, DataTypes);
+
     const [legacy] = await db.query("SELECT kind, pending, ipBinding, seenIpAdopted, entryId FROM api_keys", { type: QueryTypes.SELECT });
     assert.deepStrictEqual(
         [legacy.kind, Boolean(legacy.pending), Boolean(legacy.ipBinding), Boolean(legacy.seenIpAdopted), legacy.entryId],
         ["account", false, true, false, null]);
+    assert.ok((await queryInterface.describeTable("api_keys")).seenIpAdopted);
     assert.ok((await queryInterface.describeTable("sessions")).impersonatorId);
     const indexes = (await Promise.all(["vault_items", "vault_secrets", "vault_bindings"].map((t) => queryInterface.showIndex(t))))
         .flat().map((i) => i.name);
@@ -512,7 +563,7 @@ test("migration 0047 runs twice and turns existing API keys into ordinary accoun
         assert.ok(indexes.includes(name), name);
 });
 
-test("without a key the vault is off; the first start with a key writes the check value; another key switches it off", async () => {
+test("without a key the vault is off; the first start with a key writes the check value; another key switches it off only once values are stored", async () => {
     assert.deepStrictEqual(await initVaultState(), { keyStatus: "missing" });
     process.env.VAULT_KEY = "not-a-key";
     assert.deepStrictEqual(await initVaultState(), { keyStatus: "missing" });
@@ -526,10 +577,20 @@ test("without a key the vault is off; the first start with a key writes the chec
     assert.deepStrictEqual(await initVaultState(), { keyStatus: "active" });
 
     process.env.VAULT_KEY = KEY_B;
+    assert.deepStrictEqual(await initVaultState(), { keyStatus: "active" });
+    const rewritten = await VaultSettings.findByPk(1);
+    assert.notStrictEqual(rewritten.keyCheck, stored.keyCheck);
+    assert.strictEqual(decryptValue({ encrypted: rewritten.keyCheck, iv: rewritten.keyCheckIV, authTag: rewritten.keyCheckAuthTag }, "vault:keycheck"), "outpost-vault");
+
+    await db.getQueryInterface().bulkInsert("vault_items", [{ name: "git", type: "login", fields: "{}", approvalRequired: true, allServers: false, createdAt: new Date(), updatedAt: new Date() }]);
+    const [{ id: itemId }] = await db.query("SELECT id FROM vault_items", { type: QueryTypes.SELECT });
+    await writeSecret(itemId, "password", "hunter2");
+
+    process.env.VAULT_KEY = KEY_A;
     assert.deepStrictEqual(await initVaultState(), { keyStatus: "mismatch" });
     assert.strictEqual(getKeyStatus(), "mismatch");
     assert.strictEqual(isVaultEnabled(), false);
-    assert.strictEqual((await VaultSettings.findByPk(1)).keyCheck, stored.keyCheck);
+    assert.strictEqual((await VaultSettings.findByPk(1)).keyCheck, rewritten.keyCheck);
 });
 ```
 
@@ -678,12 +739,11 @@ nachher:
     timestamps: true,
     updatedAt: false,
     hooks: {
-        // Queries run with the global raw: true, so SQLite and MariaDB hand back JSON as text and booleans as 0/1.
         afterFind: (results) => {
             const normalize = (key) => {
                 if (!key) return;
                 if (typeof key.allowedCidrs === "string") {
-                    try { key.allowedCidrs = JSON.parse(key.allowedCidrs); } catch {}
+                    try { key.allowedCidrs = JSON.parse(key.allowedCidrs); } catch { key.allowedCidrs = []; }
                 }
                 for (const flag of ["pending", "ipBinding", "seenIpAdopted"]) {
                     if (typeof key[flag] === "number") key[flag] = key[flag] === 1;
@@ -695,7 +755,7 @@ nachher:
 });
 ```
 
-Muster `server/models/Snippet.js` (`afterFind` für `osFilter`). Ein `allowedCidrs`-Text, der kein JSON ist, bleibt Text; `checkAgentIp` (Task 4) und `cidrsOf` (Task 8) behandeln ihn als leere Liste.
+Muster `server/models/Snippet.js` (`afterFind` für `osFilter`); `ApiKey.js` bleibt wie im Bestand ohne Kommentar. Unter dem globalen `query: { raw: true }` liefern SQLite und MariaDB JSON als Text und Booleans als `0`/`1`. Ein `allowedCidrs`-Text, der kein JSON ist, wird zur leeren Liste, damit Task 4 (`isAddressAllowed`) und Task 8 `allowedCidrs ?? []` ohne eigene Prüfung als Array lesen.
 
 `server/models/Session.js`, vorher (Z. 38-42):
 
@@ -727,6 +787,7 @@ nachher:
 
 ```js
 const VaultSettings = require("../../models/VaultSettings");
+const VaultSecret = require("../../models/VaultSecret");
 const { encryptValue, decryptValue, hasValidKey } = require("./crypto");
 const { sendError } = require("../../utils/error");
 const logger = require("../../utils/logger");
@@ -736,13 +797,27 @@ const KEYCHECK_AAD = "vault:keycheck";
 
 let keyStatus = "missing";
 
-const checkStoredKey = (settings) => {
+const decrypts = (sealed, aad, expected) => {
     try {
-        const plaintext = decryptValue({ encrypted: settings.keyCheck, iv: settings.keyCheckIV, authTag: settings.keyCheckAuthTag }, KEYCHECK_AAD);
-        return plaintext === KEYCHECK_PLAINTEXT ? "active" : "mismatch";
+        const plaintext = decryptValue(sealed, aad);
+        return expected === undefined || plaintext === expected;
     } catch {
-        return "mismatch";
+        return false;
     }
+};
+
+const checkStoredKey = (settings) =>
+    decrypts({ encrypted: settings.keyCheck, iv: settings.keyCheckIV, authTag: settings.keyCheckAuthTag }, KEYCHECK_AAD, KEYCHECK_PLAINTEXT);
+
+// A changed key only locks data that exists: without stored values nothing is lost by adopting it.
+const storedValuesReadable = async () => {
+    const row = await VaultSecret.findOne({ order: [["id", "ASC"]] });
+    return !row || decrypts({ encrypted: row.valueEncrypted, iv: row.valueIV, authTag: row.valueAuthTag }, `vault:${row.itemId}:${row.field}`);
+};
+
+const writeKeyCheck = async (settings) => {
+    const { encrypted, iv, authTag } = encryptValue(KEYCHECK_PLAINTEXT, KEYCHECK_AAD);
+    await settings.update({ keyCheck: encrypted.toString("hex"), keyCheckIV: iv, keyCheckAuthTag: authTag });
 };
 
 const initVaultState = async () => {
@@ -753,12 +828,14 @@ const initVaultState = async () => {
         return { keyStatus };
     }
     const settings = await VaultSettings.getOrCreate();
-    if (settings.keyCheck) {
-        keyStatus = checkStoredKey(settings);
-    } else {
-        const { encrypted, iv, authTag } = encryptValue(KEYCHECK_PLAINTEXT, KEYCHECK_AAD);
-        await settings.update({ keyCheck: encrypted.toString("hex"), keyCheckIV: iv, keyCheckAuthTag: authTag });
+    if (settings.keyCheck && checkStoredKey(settings)) {
         keyStatus = "active";
+    } else if (!settings.keyCheck || await storedValuesReadable()) {
+        if (settings.keyCheck) logger.warn("VAULT_KEY changed while no stored value depends on the old key; the check value is rewritten");
+        await writeKeyCheck(settings);
+        keyStatus = "active";
+    } else {
+        keyStatus = "mismatch";
     }
     if (keyStatus === "mismatch") logger.error("VAULT_KEY does not match the stored vault data; the vault stays off");
     else logger.system("Vault enabled");
@@ -812,7 +889,7 @@ In `CATEGORIES` nach Z. 59 (`files`); das Symbol `mdiShieldKeyOutline` kennt der
 In `PERMISSIONS` nach Z. 86 (`P.SETTINGS_BROWSER`):
 
 ```js
-    { id: P.SETTINGS_VAULT, scopes: [SYSTEM], category: "settings", label: "Vault", description: "See whether the vault key is active and set the Outpost address agents use." },
+    { id: P.SETTINGS_VAULT, scopes: [SYSTEM], category: "settings", label: "Vault", description: "See whether the vault key is active and set the Outpost address agents use.", dangerous: true },
 ```
 
 nach Z. 105 (`P.FILES_MODIFY`):
@@ -824,7 +901,7 @@ nach Z. 105 (`P.FILES_MODIFY`):
     { id: P.VAULT_REVEAL, scopes: [ORGANIZATION], category: "vault", label: "Reveal Vault Values", description: "Show and copy the stored values of the organization's vault items.", dangerous: true },
 ```
 
-Org-Eigentümer erhalten `vault.manage` und `vault.reveal` über `registry.allOrgIds()` (`server/permissions/engine.js:76`), andere Mitglieder nur per Override; das entspricht der Spec.
+Org-Eigentümer erhalten `vault.manage` und `vault.reveal` über `registry.allOrgIds()` (`server/permissions/engine.js:76`), andere Mitglieder nur per Override; das entspricht der Spec. `settings.vault` ist `dangerous` wie `settings.backup`: Wer die Agenten-Adresse setzt, bestimmt, an welche Adresse künftig eingerichtete Agenten ihre Keys senden.
 
 - [ ] **Step 15: Audit-Aktionen eintragen**
 
@@ -876,6 +953,7 @@ nachher:
     VAULT_ITEM_UNREADABLE: "vault.item_unreadable",
     VAULT_EVALUATE_LOCKED: "vault.evaluate_locked",
     VAULT_SCREENSHOT_LOCKED: "vault.screenshot_locked",
+    VAULT_INPUT_LOCKED: "vault.input_locked",
     VAULT_PERSISTENT_NOT_ALLOWED: "vault.persistent_not_allowed",
 };
 ```
@@ -915,6 +993,7 @@ nachher:
     "vault.item_unreadable": "Vault item could not be decrypted",
     "vault.evaluate_locked": "Script blocked after a credential fill",
     "vault.screenshot_locked": "Screenshot blocked while a password is shown",
+    "vault.input_locked": "Text selection or paste blocked after a credential fill",
     "vault.persistent_not_allowed": "Credential fill refused in the persistent profile",
 };
 ```
@@ -1000,10 +1079,16 @@ nachher:
         const migrationRunner = new MigrationRunner();
         await migrationRunner.runMigrations();
 
-        await initVaultState();
+        try {
+            await initVaultState();
+        } catch (err) {
+            logger.error("Could not determine the vault key status; the vault stays off", { error: err.message });
+        }
 
         await ensureInternalProvider();
 ```
+
+Ein Fehler in `initVaultState` (etwa eine gesperrte SQLite-Datei) hält damit nicht den ganzen Start an; `keyStatus` bleibt `missing`, also bleibt der Vault aus. `logger` ist in `server/index.js` bereits importiert.
 
 - [ ] **Step 18: Prüfen, dass Bestand und Gerüst laden**
 
@@ -1028,7 +1113,7 @@ git commit -m "Vault: Grundlage mit Migration, Verschlüsselung, Schlüsselstatu
 - Create (per `git mv`): `server/lib/mcp/server.js` aus `server/lib/browser/mcpServer.js` (ganze Datei umgebaut)
 - Delete: `server/lib/browser/mcpServer.js` (durch den `git mv`)
 - Create (per `git mv`): `server/lib/mcp/__tests__/server.test.js` aus `server/lib/browser/__tests__/mcpServer.test.js` (angepasst, zwei neue Tests)
-- Create: `server/lib/mcp/__tests__/mcpRoute.test.js` (Ergänzung zum Vertrag: der Abbruch hängt an `res.on("close")` in der Route und lässt sich nur dort prüfen)
+- Create: `server/lib/mcp/__tests__/mcpRoute.test.js` (zusätzlich: der Abbruch hängt an `res.on("close")` in der Route und lässt sich nur dort prüfen)
 - Modify: `server/routes/mcp.js` (Kopf Z. 1-11, `POST /` Z. 33-45, `DELETE /` Z. 56)
 
 **Interfaces:**
@@ -1045,11 +1130,11 @@ git commit -m "Vault: Grundlage mit Migration, Verschlüsselung, Schlüsselstatu
 
 **Tests:** 7 Tests, test-first (Vertrag fest; die Bestandstests ziehen mit um).
 - `server.test.js` (6): die vier Bestandstests, angepasst an Anbieter (Handshake ohne verfügbaren Anbieter → keine Werkzeuge, `-32602`; unbekannter/fremder Transport `404`, fehlender Header `400`, `DELETE` beendet und meldet `forgetTransport`; voller `ctx` je Transport, einschließlich `impersonatorId`; `"params": null`). Neu: (a) Transport eines anderen Keys desselben Kontos und der Login-Session → `404`, auch für `end`; 50 Transporte eines Keys verdrängen den Transport eines anderen Keys nicht. (b) `tools/list` vereinigt die verfügbaren Anbieter; das Werkzeug eines nicht verfügbaren Anbieters antwortet bei `tools/call` wie ein unbekanntes und erreicht den Anbieter nicht.
-- `mcpRoute.test.js` (1, Route über HTTP mit gefakten Browser-Werkzeugen): (c) Das `signal` im `ctx` bricht ab, wenn der Client die Verbindung während des Werkzeugaufrufs schließt, und bleibt bei einer normal beantworteten Anfrage unberührt; `keyId` kommt aus `req.apiKey.id`. `timeout: 2000`, damit ein fehlender Abbruch als Fehlschlag statt als hängender Test endet.
+- `mcpRoute.test.js` (1, Route über HTTP mit gefakten Browser-Werkzeugen): (c) Das `signal` im `ctx` bricht ab, wenn der Client die Verbindung während des Werkzeugaufrufs schließt, und bleibt bei einer normal beantworteten Anfrage unberührt; `keyId` kommt aus `req.apiKey.id` — ein zweiter Request mit anderem `req.apiKey.id` und derselben `mcp-session-id` bekommt über HTTP `404` (`-32001`) und erreicht das Werkzeug nicht. `timeout: 2000`, damit ein fehlender Abbruch als Fehlschlag statt als hängender Test endet.
 - Nicht getestet: Verdrahtung `browserProvider` (reine Weiterreichung an `createBrowserTools`), das Auslesen von `req.session?.impersonatorId` in der Route (Weiterreichung), `GET /mcp` → 405, das Aufräumen nach 12 h (unverändert aus dem Bestand), der generische 500-Text.
 - SEC-Abdeckung dieses Tasks: SEC-IDOR-01 und SEC-SESS-02 (Transport gehört dem Key, der ihn geöffnet hat; fremder Aufrufer `404`), SEC-ERR-01 (500-Antwort ohne `err.message`, die Meldung geht nur ins Server-Log).
 
-**Parallel:** Task 1, Task 10 (keine gemeinsamen Dateien).
+**Parallel:** Task 1, 7, 10 (Welle A; keine gemeinsamen Dateien: Task 1 schreibt `server/lib/vault/*`, Modelle, `server/index.js`, Task 7 `server/lib/browser/*` ohne `mcpServer.js`, Task 10 nur `client/`; der Test dieses Tasks fakt `server/lib/browser/tools.js` und hängt nicht von Task 7 ab).
 
 - [ ] **Step 1: Test umziehen und auf Anbieter umschreiben**
 
@@ -1217,8 +1302,6 @@ const createMcpServer = ({ providers, now = Date.now }) => {
         }
     };
 
-    // The caller is the key, not only the account: an agent key must not reach a transport the
-    // account's other keys or its login session opened.
     const ownedBy = (transport, accountId, keyId) => !!transport && transport.accountId === accountId && transport.keyId === keyId;
 
     const availableProviders = async (ctx) => {
@@ -1335,7 +1418,7 @@ const listen = async (t) => {
     app.use(express.json());
     app.use((req, res, next) => {
         req.user = { id: 7 };
-        req.apiKey = { id: 3 };
+        req.apiKey = { id: Number(req.header("x-test-key") ?? 3) };
         next();
     });
     app.use("/api/mcp", router);
@@ -1361,7 +1444,7 @@ const post = (server, body, headers = {}) => {
     return { req, response };
 };
 
-test("the tool's signal aborts when the client hangs up before the answer, and only then", { timeout: 2000 }, async (t) => {
+test("the tool's signal aborts when the client hangs up before the answer, and only then; another key cannot use the transport", { timeout: 2000 }, async (t) => {
     const server = await listen(t);
     const init = await post(server, { jsonrpc: "2.0", id: 1, method: "initialize", params: {} }).response;
     const headers = { "mcp-session-id": init.headers["mcp-session-id"] };
@@ -1370,6 +1453,11 @@ test("the tool's signal aborts when the client hangs up before the answer, and o
     assert.strictEqual(done.body.result.content[0].text, "done");
     assert.strictEqual(seen[0].keyId, 3);
     assert.strictEqual(seen[0].signal.aborted, false);
+
+    const foreign = await post(server, { jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "browser_wait", arguments: {} } }, { ...headers, "x-test-key": "4" }).response;
+    assert.strictEqual(foreign.status, 404);
+    assert.strictEqual(foreign.body.error.code, -32001);
+    assert.strictEqual(seen.length, 1);
 
     const reached = new Promise((resolve) => { reachedTool = resolve; });
     const hanging = post(server, { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "browser_wait", arguments: { hang: true } } }, headers);
@@ -1510,7 +1598,7 @@ git commit -m "Vault: MCP-Rahmen mit Werkzeug-Anbietern, Transport je Schlüssel
 **Files:**
 - Modify: `client/public/assets/locales/en.json` (`common.sidebar` Z. 144–158, Wurzel zwischen `scripts` Z. 447 und `monitoring` Z. 448, `servers.contextMenu` Z. 1663–1706, `settings.pages` Z. 592–611, `settings.account.apiKeys` Ende Z. 749, `settings.browser` Ende Z. 1598)
 - Modify: `client/public/assets/locales/de_DE.json` (dieselben Stellen; `servers.contextMenu` dort Z. 1661–1704)
-- Modify: `client/src/common/utils/permissions.js` (Z. 16, 26–27, 32)
+- Modify: `client/src/common/utils/permissions.js` (Z. 16, 32)
 - Create: `client/src/common/hooks/useVaultAvailable.js`
 - Modify: `client/src/common/hooks/useSidebarNavigation.js` (Import Z. 5, Hook Z. 22–37)
 - Modify: `client/src/common/utils/navigationConfig.jsx` (Import Z. 1 und Z. 20, `getSidebarNavigation` Z. 26, `getSettingsAdminPages` Z. 52)
@@ -1524,8 +1612,8 @@ git commit -m "Vault: MCP-Rahmen mit Werkzeug-Anbietern, Transport je Schlüssel
 **Interfaces:**
 - Consumes: nichts aus anderen Tasks. `GET /api/vault/available` (Task 5) wird erst zur Laufzeit gebraucht; bis dahin antwortet der Server `404`, und der Hook liefert „nicht verfügbar“.
 - Produces (von Tasks 12–15 genutzt):
-  - `useVaultAvailable()` (Named Export aus `@/common/hooks/useVaultAvailable.js`) `→ { loading: boolean, enabled: boolean, canUse: boolean, canManageOrgs: number[], canProvision: boolean, agentUrlSet: boolean, impersonating: boolean, trustProxyUnsafe: boolean, refresh: () => Promise<void> }`. Eine geteilte Anfrage je Konto (Modul-Cache wie `loadBrowserAvailable`); Fehler oder `404` → alle Felder `false` bzw. `[]`. `refresh()` lädt neu und aktualisiert nur den aufrufenden Hook.
-  - `Permission.VAULT_USE = "vault.use"`, `Permission.VAULT_MANAGE = "vault.manage"`, `Permission.VAULT_REVEAL = "vault.reveal"`, `Permission.SETTINGS_VAULT = "settings.vault"`, nachgezogen `Permission.CONNECT_DIRECT = "connect.direct"`.
+  - `useVaultAvailable()` (Named Export aus `@/common/hooks/useVaultAvailable.js`) `→ { loading: boolean, enabled: boolean, canUse: boolean, canManageOrgs: number[], canProvision: boolean, agentUrlSet: boolean, impersonating: boolean, trustProxyUnsafe: boolean, refresh: () => Promise<void> }`. Eine geteilte Anfrage je Konto (Modul-Cache wie `loadBrowserAvailable`); Fehler oder `404` → alle Felder `false` bzw. `[]`. Scheitert das erste Laden an einem Netzfehler (`fetch` wirft `TypeError`, etwa während eines Server-Neustarts), lädt der Hook nach 30 s genau einmal neu; eine HTTP-Antwort wie `404` oder `403` wird nicht wiederholt. `refresh()` lädt neu und aktualisiert alle eingehängten Hooks desselben Kontos (Listener je Konto im Modul), etwa die Seitenleiste nach dem Speichern in den Vault-Einstellungen.
+  - `Permission.VAULT_USE = "vault.use"`, `Permission.VAULT_MANAGE = "vault.manage"`, `Permission.VAULT_REVEAL = "vault.reveal"`, `Permission.SETTINGS_VAULT = "settings.vault"`.
   - `STATE_TYPES.VAULT_APPROVALS = "VAULT_APPROVALS"` (Client; `StateStreamContext` legt den Handler-Satz daraus automatisch an).
   - `TabSwitcher` und `IconInput` nehmen das optionale Prop `dataUiId` und setzen es als `data-ui-id` auf ihr Wurzelelement (`div.tab-switcher` bzw. `div.input-container`); ohne Prop unverändert.
   - Navigation: `{ key: "vault", path: "/vault", icon: IconKeyRound }` zwischen `snippets` und `browser`, gefiltert über `useVaultAvailable().canUse`. Einstellungsseite `{ key: "vault", permission: Permission.SETTINGS_VAULT, content: <VaultSettings /> }` aus `@/pages/Settings/pages/Vault` (Default-Export, Task 15 füllt die Komponente `Vault` in `Vault.jsx`).
@@ -1534,10 +1622,10 @@ git commit -m "Vault: MCP-Rahmen mit Werkzeug-Anbietern, Transport je Schlüssel
     - `common.sidebar.vault`
     - `vault.page.{title, subtitle, addItem}`, `vault.scope.personal`, `vault.search.{placeholder, empty}`, `vault.types.{all, login, apiKey, ssh, database, other}`, `vault.list.{title, empty, error}`, `vault.detail.{empty, error, fields, secrets, scope, edit, delete, deleteConfirm, deleteFailed}`, `vault.fields.{name, description, username, origin, origins, hosts, header, headerName, headerTemplate, engine, host, port, database}`, `vault.secretFields.{password, token, privateKey, passphrase, value}`, `vault.secret.{show, hide, copy, copied, copyFailed, revealed, agentOnly}`, `vault.bindings.{entry, folder, tag, allServers, empty, emptyDialog, addServer, addFolder, addTag}`, `vault.policy.{required, notRequired, lastUsed}`, `vault.dialog.{title.create, title.edit, type, owner, ownerPersonal, fixed, enterSecret, secretStored, secretCleared, secretMissing, nameTaken, create, save, saving, saveFailed}` (Task 12)
     - `vault.agents.{claude, codex}`, `vault.approval.{title, who, pending, sending, expired, actions.once, actions.session, actions.deny}` (Task 13, 14, 15)
-    - `servers.contextMenu.agentAccess`, `servers.agentAccess.title`, `servers.agentAccess.keys.{title, empty, created, lastUsed, boundTo, anywhere, revoke, revokeConfirm, revokeError}`, `servers.agentAccess.setup.{cidrLabel, cidrInvalid, submit, loading, urlMissing, foreignAccount}`, `servers.agentAccess.ipBind.{label, on, off, seenOther, probeFailed, adopt, decline, trustProxy}`, `servers.agentAccess.result.{empty, configured, failed, success, successCodex, error, manual, copy, keyNotice, replaced}` (Task 14; `probeFailed` = Manifest rev 13 `UI-AGENT-ACCESS-IPBIND` `disabled`, `replaced` = `UI-AGENT-ACCESS-RESULT` `partial`, `seenOther` = erweiterte `partial`-Copy von `UI-AGENT-ACCESS-IPBIND`)
-    - `settings.pages.vault`, `settings.vault.{loading, title, description, key.title, key.active, key.missing, key.missingText, key.mismatch, key.mismatchText, agentUrl.title, agentUrl.description, agentUrl.invalid, proxy.warning, saveSettings, saveSuccess, errors.loadSettings, errors.saveSettings}`, `settings.account.agentKeys.{sectionTitle, sectionDescription, edit, revoke, revokeConfirm, lastUsed, boundTo, unbound, anywhere, empty}` (Task 15)
+    - `servers.contextMenu.agentAccess`, `servers.agentAccess.title`, `servers.agentAccess.keys.{title, empty, created, lastUsed, boundTo, anywhere, revoke, revokeConfirm, revokeError, revokedForeign, revokedUnknown}`, `servers.agentAccess.setup.{cidrLabel, cidrInvalid, submit, loading, urlMissing, foreignAccount}`, `servers.agentAccess.ipBind.{label, on, off, seenOther, probeFailed, adopt, decline, trustProxy}`, `servers.agentAccess.result.{empty, configured, failed, success, successCodex, error, manual, copy, keyNotice, replaced}` (Task 14; `probeFailed` = Manifest rev 13 `UI-AGENT-ACCESS-IPBIND` `disabled`, `replaced` = `UI-AGENT-ACCESS-RESULT` `partial`, `seenOther` = erweiterte `partial`-Copy von `UI-AGENT-ACCESS-IPBIND`; `keys.revokedForeign` = Manifest rev 14 `UI-AGENT-ACCESS-KEYS` `partial` bei `registration === "foreign"`, `keys.revokedUnknown` = `disabled` bei `registration === "unknown"`, die Befehle aus `commands` mit dem Kopieren-Knopf `servers.agentAccess.result.copy`)
+    - `settings.pages.vault`, `settings.vault.{loading, title, description, key.title, key.active, key.missing, key.missingText, key.mismatch, key.mismatchText, agentUrl.title, agentUrl.description, agentUrl.invalid, proxy.warning, saveSettings, saveSuccess, errors.loadSettings, errors.saveSettings}`, `settings.account.agentKeys.{sectionTitle, sectionDescription, edit, revoke, revokeConfirm, revokedForeign, revokedUnknown, lastUsed, boundTo, unbound, anywhere, empty}` (Task 15; `revokedForeign`/`revokedUnknown` = Manifest rev 14 `UI-API-KEYS-AGENTS` `partial`/`disabled`, gleiche Bedingungen wie in Task 14; Kopieren-Knopf ebenfalls `servers.agentAccess.result.copy`)
     - Wiederverwendet, nicht neu: `common.error`, `common.success`, `common.actions.cancel`, `common.actions.back`, `settings.account.apiKeys.neverUsed`, `settings.account.apiKeys.copyError`, `servers.time.*`.
-    - Platzhalter: `vault.policy.lastUsed` `{{time}}`, `vault.detail.deleteConfirm` `{{name}}`, `vault.dialog.ownerPersonal` `{{username}}`, `vault.dialog.enterSecret` `{{field}}`, `vault.approval.who` `{{agent}}`/`{{server}}`, `vault.approval.pending` `{{count}}`, `servers.agentAccess.title` `{{name}}`, `…keys.created` `{{date}}`, `…keys.lastUsed` `{{time}}`, `…keys.boundTo` `{{address}}`, `…keys.revokeConfirm` `{{agent}}`/`{{server}}`, `…setup.foreignAccount` `{{user}}`/`{{server}}`, `…ipBind.seenOther` `{{seen}}`/`{{expected}}`, `…result.success`/`successCodex` `{{user}}`, `…result.error` `{{cli}}`, `settings.account.agentKeys.revokeConfirm` `{{agent}}`/`{{server}}`, `…boundTo` `{{address}}`, `…lastUsed` `{{time}}`.
+    - Platzhalter: `vault.policy.lastUsed` `{{time}}`, `vault.detail.deleteConfirm` `{{name}}`, `vault.dialog.ownerPersonal` `{{username}}`, `vault.dialog.enterSecret` `{{field}}`, `vault.approval.who` `{{agent}}`/`{{server}}`, `vault.approval.pending` `{{count}}`, `servers.agentAccess.title` `{{name}}`, `…keys.created` `{{date}}`, `…keys.lastUsed` `{{time}}`, `…keys.boundTo` `{{address}}`, `…keys.revokeConfirm` `{{agent}}`/`{{server}}`, `…keys.revokedForeign` `{{server}}`, `…setup.foreignAccount` `{{user}}`/`{{server}}`, `…ipBind.seenOther` `{{seen}}`/`{{expected}}`, `…result.success`/`successCodex` `{{user}}`, `…result.error` `{{cli}}`, `settings.account.agentKeys.revokeConfirm` `{{agent}}`/`{{server}}`, `…revokedForeign` `{{server}}`, `…boundTo` `{{address}}`, `…lastUsed` `{{time}}`. Im Deutschen steht `{{server}}` dort, wo die Manifest-Copy das Beispiel `web01` zeigt.
 
 **Design:**
 - Screen: `UI-SHELL` (übernommen, nur ergänzt) — Artboard `docs/design/mockups/ui-shell.html` — Anleitung `docs/design/guides/ui-shell.md`; für Seite und Dialog nur die Grundlage: `docs/design/guides/ui-vault.md` (Abschnitte „Wo im Code“, „i18n“), `ui-vault-dialog.md`, `ui-agent-access.md`, `ui-api-keys.md`, `ui-vault-settings.md`, `ui-vault-approval.md` (je Abschnitt „i18n“), `ui-servers.md` Z. 37–39
@@ -1552,10 +1640,10 @@ git commit -m "Vault: MCP-Rahmen mit Werkzeug-Anbietern, Transport je Schlüssel
 - Icon: Lucide `KeyRound` für den Navigationseintrag (`ui-shell.md` Z. 32, `ui-shell.html`); die Einstellungsseite nimmt `Lock`.
 - Tokens: keine neuen (Platzhalterseiten ohne Styles).
 
-**Tests:** 1 Test `useSidebarNavigation.test.jsx` über die Naht Hook → `getSidebarNavigation` → `useVaultAvailable` → (gedoubeltes) `RequestUtil`: „Vault“ erscheint nach Snippets genau dann, wenn `vault/available` `canUse: true` liefert (zwei Konten, weil der Modul-Cache je Konto gilt). Der Test läuft mit dem echten `en.json` und deckt damit `common.sidebar.vault` mit ab. Test-first (fester Vertrag aus Spec und Guide). Nicht getestet: Rechte-Konstanten, `STATE_TYPES`-Eintrag, `dataUiId`-Weiterreichung, Route und Platzhalterseiten (reine Verdrahtung), `refresh()`. Die übrigen Schlüssel prüft ein Paritätsbefehl (Step 5), kein Test; ihre Nutzung testen Tasks 12–15 mit `src/test/i18n.js`, das bei fehlenden Schlüsseln wirft.
+**Tests:** 1 Test `useSidebarNavigation.test.jsx` über die Naht Hook → `getSidebarNavigation` → `useVaultAvailable` → (gedoubeltes) `RequestUtil`: „Vault“ erscheint nach Snippets genau dann, wenn `vault/available` `canUse: true` liefert (zwei Konten, weil der Modul-Cache je Konto gilt); ein `refresh()` aus einem zweiten, eigenständig eingehängten `useVaultAvailable` desselben Kontos bringt den Eintrag auch in der schon eingehängten Navigation. Der Test läuft mit dem echten `en.json` und deckt damit `common.sidebar.vault` mit ab. Test-first (fester Vertrag aus Spec und Guide). Nicht getestet: Rechte-Konstanten, `STATE_TYPES`-Eintrag, `dataUiId`-Weiterreichung, Route und Platzhalterseiten (reine Verdrahtung), der einmalige Neuversuch nach 30 s (ein Timer um denselben Lader; ein Test bräuchte Fake-Timer und einen gedoubelten `fetch`-Fehler und prüfte nur `setTimeout`). Die übrigen Schlüssel prüft ein Paritätsbefehl (Step 5), kein Test; ihre Nutzung testen Tasks 12–15 mit `src/test/i18n.js`, das bei fehlenden Schlüsseln wirft.
 SEC: SEC-RBAC-01 nur als Spiegel — Navigation und Rechte im Client blenden aus, durchgesetzt wird serverseitig (Tasks 1, 5). SEC-XSS-01: alle neuen Texte laufen über `t()` mit `escapeValue`-freier Interpolation nur in React-Textknoten, kein `dangerouslySetInnerHTML`.
 
-**Parallel:** Task 1, 2, 3, 4, 5, 6, 7, 8, 9 (keine gemeinsamen Dateien; Task 10 fasst nur `client/` an, die Server-Tasks nur `server/`).
+**Parallel:** Task 1, 2, 7 (Welle A; keine gemeinsamen Dateien: Task 10 fasst nur `client/` an, die drei anderen nur `server/`). Tasks 12–15 (Welle B und C) setzen diesen Task voraus.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1563,11 +1651,12 @@ SEC: SEC-RBAC-01 nur als Spiegel — Navigation und Rechte im Client blenden aus
 
 ```jsx
 import { beforeEach, expect, test, vi } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import testI18n from "@/test/i18n.js";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { useSidebarNavigation } from "../useSidebarNavigation.js";
+import { useVaultAvailable } from "../useVaultAvailable.js";
 
 const requestDouble = await vi.hoisted(async () => {
     const { createRequestDouble } = await import("@/test/requestDouble.js");
@@ -1581,22 +1670,23 @@ vi.mock("@/common/utils/RequestUtil.js", () => requestDouble.asModule());
 vi.mock("monaco-editor", () => ({}));
 vi.mock("@monaco-editor/react", () => ({ default: () => null, loader: { config: () => {} } }));
 
-const navigationFor = (accountId) => {
+const wrapperFor = (accountId) => {
     const user = { id: accountId, isAdmin: false, permissions: [] };
-    const wrapper = ({ children }) => (
+    return ({ children }) => (
         <I18nextProvider i18n={testI18n}>
             <UserContext.Provider value={{ user, hasPermission: () => false }}>{children}</UserContext.Provider>
         </I18nextProvider>
     );
-    return renderHook(() => useSidebarNavigation(), { wrapper });
 };
+
+const navigationFor = (accountId) => renderHook(() => useSidebarNavigation(), { wrapper: wrapperFor(accountId) });
 
 beforeEach(() => {
     requestDouble.reset();
     requestDouble.stub("getRequest", "browser/available", { enabled: false });
 });
 
-test("Vault erscheint nach Snippets nur, wenn vault/available canUse meldet", async () => {
+test("Vault erscheint nach Snippets nur, wenn vault/available canUse meldet; refresh() erreicht jeden eingehängten Hook des Kontos", async () => {
     requestDouble.stub("getRequest", "vault/available", { enabled: true, canUse: true });
     const allowed = navigationFor(1);
     await waitFor(() => expect(allowed.result.current.map((item) => item.key)).toEqual(["servers", "monitoring", "snippets", "vault"]));
@@ -1606,13 +1696,18 @@ test("Vault erscheint nach Snippets nur, wenn vault/available canUse meldet", as
     const denied = navigationFor(2);
     await waitFor(() => expect(requestDouble.calls.filter((call) => call.path === "vault/available")).toHaveLength(2));
     expect(denied.result.current.map((item) => item.key)).toEqual(["servers", "monitoring", "snippets"]);
+
+    requestDouble.stub("getRequest", "vault/available", { enabled: true, canUse: true });
+    const settingsPage = renderHook(() => useVaultAvailable(), { wrapper: wrapperFor(2) });
+    await act(() => settingsPage.result.current.refresh());
+    await waitFor(() => expect(denied.result.current.map((item) => item.key)).toEqual(["servers", "monitoring", "snippets", "vault"]));
 });
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `yarn --cwd client vitest run src/common/hooks/__tests__/useSidebarNavigation.test.jsx`
-Expected: FAIL — `AssertionError: expected [ 'servers', 'monitoring', 'snippets' ] to deeply equal [ 'servers', 'monitoring', 'snippets', 'vault' ]` (nach dem `waitFor`-Timeout von 1 s).
+Expected: FAIL — Vitest kann `../useVaultAvailable.js` nicht auflösen (`Failed to resolve import "../useVaultAvailable.js"`); die Datei entsteht erst in Step 7.
 
 - [ ] **Step 3: Texte in `en.json`**
 
@@ -1769,7 +1864,9 @@ Expected: FAIL — `AssertionError: expected [ 'servers', 'monitoring', 'snippet
         "anywhere": "from anywhere",
         "revoke": "Revoke",
         "revokeConfirm": "Revoke access of {{agent}} on {{server}}? The agent loses access immediately.",
-        "revokeError": "Revoking failed."
+        "revokeError": "Revoking failed.",
+        "revokedForeign": "Access revoked. The registration on {{server}} carries another account's key and stays in place.",
+        "revokedUnknown": "Access revoked. The registration could not be removed — copy the command and run it on the server."
       },
       "setup": {
         "cidrLabel": "Additional address ranges",
@@ -1819,6 +1916,8 @@ Expected: FAIL — `AssertionError: expected [ 'servers', 'monitoring', 'snippet
         "edit": "Edit",
         "revoke": "Revoke",
         "revokeConfirm": "Revoke access of {{agent}} on {{server}}? The agent loses access immediately.",
+        "revokedForeign": "Access revoked. The registration on {{server}} carries another account's key and stays in place.",
+        "revokedUnknown": "Access revoked. The registration could not be removed — copy the command and run it on the server.",
         "lastUsed": "last used {{time}}",
         "boundTo": "only {{address}}",
         "unbound": "Binding removed",
@@ -2014,7 +2113,9 @@ Expected: FAIL — `AssertionError: expected [ 'servers', 'monitoring', 'snippet
         "anywhere": "von überall",
         "revoke": "Entziehen",
         "revokeConfirm": "Zugang von {{agent}} auf {{server}} entziehen? Der Agent verliert sofort den Zugriff.",
-        "revokeError": "Entziehen fehlgeschlagen."
+        "revokeError": "Entziehen fehlgeschlagen.",
+        "revokedForeign": "Zugang entzogen. Die Registrierung auf {{server}} trägt den Key eines anderen Kontos und bleibt stehen.",
+        "revokedUnknown": "Zugang entzogen. Die Registrierung konnte nicht entfernt werden — Befehl kopieren und auf dem Server ausführen."
       },
       "setup": {
         "cidrLabel": "Zusätzliche Adressbereiche",
@@ -2064,6 +2165,8 @@ Expected: FAIL — `AssertionError: expected [ 'servers', 'monitoring', 'snippet
         "edit": "Bearbeiten",
         "revoke": "Entziehen",
         "revokeConfirm": "Zugang von {{agent}} auf {{server}} entziehen? Der Agent verliert sofort den Zugriff.",
+        "revokedForeign": "Zugang entzogen. Die Registrierung auf {{server}} trägt den Key eines anderen Kontos und bleibt stehen.",
+        "revokedUnknown": "Zugang entzogen. Die Registrierung konnte nicht entfernt werden — Befehl kopieren und auf dem Server ausführen.",
         "lastUsed": "zuletzt {{time}}",
         "boundTo": "nur {{address}}",
         "unbound": "Bindung gelöst",
@@ -2116,7 +2219,7 @@ const en = pick("en.json"), de = pick("de_DE.json");
 console.log(en.length, de.length, en.filter((k) => !de.includes(k)), de.filter((k) => !en.includes(k)));'
 ```
 
-Expected: `150 150 [] []`
+Expected: `154 154 [] []`
 
 - [ ] **Step 6: Rechte-Spiegel** — `client/src/common/utils/permissions.js`
 
@@ -2131,21 +2234,6 @@ Nachher:
 ```js
     SETTINGS_BROWSER: "settings.browser",
     SETTINGS_VAULT: "settings.vault",
-```
-
-Vorher (Z. 26–27):
-
-```js
-    CONNECT_TUNNEL: "connect.tunnel",
-    CONNECT_BROWSER: "connect.browser",
-```
-
-Nachher:
-
-```js
-    CONNECT_TUNNEL: "connect.tunnel",
-    CONNECT_DIRECT: "connect.direct",
-    CONNECT_BROWSER: "connect.browser",
 ```
 
 Vorher (Z. 32):
@@ -2175,15 +2263,18 @@ const UNAVAILABLE = Object.freeze({
     agentUrlSet: false, impersonating: false, trustProxyUnsafe: false,
 });
 
+const RETRY_MS = 30_000;
+
 // Sidebar, mobile bar, quick action, the vault page and the server menu all mount this hook;
 // they share one request per account, like loadBrowserAvailable.
 let availability = { accountId: undefined, request: null };
+const listeners = new Map();
 const loadVaultAvailable = (accountId, force = false) => {
     if (force || availability.accountId !== accountId || !availability.request) {
-        const request = getRequest("vault/available").then((answer) => ({ ...UNAVAILABLE, ...answer }), (error) => {
+        const request = getRequest("vault/available").then((answer) => ({ answer: { ...UNAVAILABLE, ...answer }, offline: false }), (error) => {
             console.debug("vault/available failed:", error);
             if (availability.request === request) availability = { accountId: undefined, request: null };
-            return UNAVAILABLE;
+            return { answer: UNAVAILABLE, offline: error instanceof TypeError };
         });
         availability = { accountId, request };
     }
@@ -2198,13 +2289,27 @@ export const useVaultAvailable = () => {
     useEffect(() => {
         if (!accountId) return;
         let active = true;
-        loadVaultAvailable(accountId).then((answer) => { if (active) setState({ loading: false, ...answer }); });
-        return () => { active = false; };
+        let retry;
+        const apply = (answer) => { if (active) setState({ loading: false, ...answer }); };
+        if (!listeners.has(accountId)) listeners.set(accountId, new Set());
+        const accountListeners = listeners.get(accountId);
+        accountListeners.add(apply);
+        loadVaultAvailable(accountId).then((result) => {
+            apply(result.answer);
+            if (active && result.offline) retry = setTimeout(() => loadVaultAvailable(accountId).then(({ answer }) => apply(answer)), RETRY_MS);
+        });
+        return () => {
+            active = false;
+            clearTimeout(retry);
+            accountListeners.delete(apply);
+            if (!accountListeners.size) listeners.delete(accountId);
+        };
     }, [accountId]);
 
     const refresh = useCallback(async () => {
         if (!accountId) return;
-        setState({ loading: false, ...(await loadVaultAvailable(accountId, true)) });
+        const { answer } = await loadVaultAvailable(accountId, true);
+        for (const listener of listeners.get(accountId) ?? []) listener(answer);
     }, [accountId]);
 
     return { ...state, refresh };
@@ -2383,2773 +2488,12 @@ git commit -m "Vault: Client-Grundlage mit Texten, Rechten, Navigation und Route
 
 ---
 
-### Task 3: Sichtbarkeit und Bindungen
-
-**Files:**
-- Create: `server/lib/vault/visibility.js`
-- Create: `server/lib/vault/bindings.js`
-- Modify: `server/controllers/entry.js` (Importe Z. 1-18; `deleteEntry` Z. 190-212: Bindungen vor `Entry.destroy` entfernen)
-- Modify: `server/controllers/folder.js` (Importe Z. 1-13; `deleteFolder` Z. 131-168: nach der Rekursion Z. 147-150 und vor `Entry.destroy` Z. 152 Bindungen der Einträge dieses Ordners und des Ordners selbst entfernen)
-- Modify: `server/controllers/tag.js` (Importe Z. 1-7; `deleteTag` Z. 48-60: Bindungen vor `Tag.destroy` entfernen)
-- Test: `server/lib/vault/__tests__/visibility.test.js` (test-first)
-- Test: `server/lib/vault/__tests__/bindings.test.js`
-
-**Interfaces:**
-- Consumes (Task 1):
-  - Modelle `VaultItem { id, accountId, organizationId, name, type, description, fields, approvalRequired, allServers, createdBy, lastUsedAt }` und `VaultBinding { id, itemId, kind, targetId }` (`server/models/VaultItem.js`, `server/models/VaultBinding.js`). Bei `query: { raw: true }` liefert SQLite `fields` als JSON-Text und Booleans als `0`/`1`; `visibility.js` normalisiert das selbst (`toPlain`).
-  - `VaultError`, `VaultErrorCode.ITEM_UNKNOWN` aus `server/lib/vault/errors.js`; `new VaultError(VaultErrorCode.ITEM_UNKNOWN)` nimmt den Standardtext aus `VaultErrorMessage` (Task 1), dieser Task setzt keinen eigenen.
-  - `Permission.VAULT_USE`, `Permission.VAULT_MANAGE`, `Permission.VAULT_REVEAL` aus `server/permissions/registry.js`.
-- Consumes (Bestand): `resolveEntryScope(entry) → { organizationId, ownerAccountId }` und `validateEntryAccess(accountId, entry) → { valid: true, entry } | { code, message }` aus `server/controllers/entry.js`; `hasAccountPermission`, `hasOrganizationAccess`, `hasOrganizationPermission`, `validateFolderAccess(accountId, folderId) → { valid, folder } | { valid: false, error }` aus `server/utils/permission.js`.
-- Produces (`server/lib/vault/visibility.js`, genutzt von Task 5 und Task 11):
-  - `itemRef(item) → string` — `<name>` bzw. `org:<organizationId>/<name>`.
-  - `parseItemRef(ref) → { organizationId: number|null, name: string }` — wirft `VaultError(ITEM_UNKNOWN)` bei ungültiger Form (kein String, Name verletzt `^[a-z0-9][a-z0-9._-]{0,63}$`, Organisations-ID keine positive Ganzzahl).
-  - `visibleItems({ accountId, agent }) → Promise<VaultItem[]>` — Plain Objects, nach `name` sortiert, `fields` als Objekt, `approvalRequired`/`allServers` als Boolean. `agent = { keyId, entryId, agentType } | null`. Regeln: Kandidaten = persönliche Einträge des Kontos (nur mit `vault.use`) plus Einträge der Organisationen mit `status = "active"`. Ohne `agent.entryId` nur persönliche Einträge mit `allServers`. Mit Server: Server muss per `validateEntryAccess` erreichbar sein, sonst `[]`; Organisationseinträge nur, wenn `resolveEntryScope(entry).organizationId` gleich ihrer Organisation ist; dann `allServers` oder eine passende Bindung (`entry` = Server, `folder` = Ordner des Servers oder ein Vorfahre über `Folder.parentId`, `tag` = Tag des Servers über `EntryTag`, nur bei persönlichen Einträgen).
-  - `findVisibleItem({ accountId, agent }, ref) → Promise<VaultItem>` — wirft `VaultError(ITEM_UNKNOWN)` mit identischer Meldung (Standardtext aus `VaultErrorMessage`) für ungültig, unbekannt und unsichtbar.
-  - `canManageItem(accountId, item) → Promise<boolean>` — persönlich: Besitzer und `vault.use`; Organisation: aktive Mitgliedschaft **und** `vault.manage`.
-  - `canRevealItem(accountId, item) → Promise<boolean>` — persönlich wie `canManageItem`; Organisation: aktive Mitgliedschaft **und** `vault.reveal`.
-  - `canCreateFor(accountId, { organizationId }) → Promise<boolean>` — ohne Organisation `vault.use`; mit Organisation aktive Mitgliedschaft **und** `vault.manage`.
-- Produces (`server/lib/vault/bindings.js`, genutzt von Task 5):
-  - `removeBindings(kind: "entry"|"folder"|"tag", ids: number[]) → Promise<number>` (Anzahl gelöschter Zeilen; leere Liste → `0` ohne Abfrage).
-  - `validateBindings({ accountId, organizationId }, bindings: { kind, targetId }[]) → Promise<{ valid: true } | { valid: false, message }>` — `tag` nur bei persönlichen Einträgen und nur Tags des Kontos; `entry` muss per `validateEntryAccess` erreichbar sein, bei Organisationseinträgen mit `resolveEntryScope(...).organizationId` gleich der Organisation; `folder` muss per `validateFolderAccess` erreichbar sein, bei Organisationseinträgen mit `folder.organizationId` gleich der Organisation; jede andere Art ist ungültig. Meldungen englisch, ohne Interna.
-  - `setBindings(itemId, bindings) → Promise<void>` — ersetzt alle Bindungen des Eintrags in einer Transaktion, Duplikate werden zusammengefasst.
-- Produces (Bestand geändert): `deleteEntry` entfernt `entry`-Bindungen des Servers; `deleteFolder` entfernt je Rekursionsebene vor dem Löschen die `entry`-Bindungen aller Einträge des Ordners und die `folder`-Bindung des Ordners — über die Rekursion also für den ganzen Teilbaum samt mitgelöschter Einträge; `deleteTag` entfernt `tag`-Bindungen. Entfernt wird jeweils **vor** dem Löschen der Zeilen, damit ein Abbruch keine Bindung an eine verwaiste ID hinterlässt.
-
-**Design:** kein UI-Anteil.
-
-**Tests:** 6 Tests, zwei Dateien, In-Memory-SQLite mit echten Modellen; gefakt wird nur `permissions/engine` (Rechte) und `utils/database` (In-Memory-Instanz).
-- `visibility.test.js` (test-first, Kernlogik mit festem Vertrag aus der Spec): (1) Sichtbarkeit als Tabelle (Spec-Test 4: Server, Ordner mit Unterordner, Tag, `allServers` persönlich und Organisation inkl. Server außerhalb der Organisation, keine Bindung, Konto-Key/Login-Session ohne Server, ohne `vault.use`, Einladung `pending`, Organisation verlassen = Server ohne Zugriff), (2) Kennungen: Organisationskennung löst auf, unbekannt/unsichtbar/fremd/ungültig ergeben denselben `vault.item_unknown`, (3) Verwalten/Anzeigen/Anlegen als Tabelle inkl. „Rechte ohne aktive Mitgliedschaft“.
-- `bindings.test.js`: (4) Review Focus 5 — Ordner mit Unterordnern löschen entfernt Bindungen an Ordner, Unterordner und mitgelöschte Server, fremde Bindungen bleiben, (5) Server und Tag löschen entfernen genau ihre Bindungen, (6) `validateBindings` als Tabelle.
-- Nicht getestet: `setBindings` für sich (wird in Test 4 und 5 als Fixture benutzt und dort über den Tabellenstand mitgeprüft), `removeBindings` für sich (Weiterreichung an `destroy`), Audit und Broadcast in den Löschpfaden (Bestand).
-- SEC-Abdeckung: SEC-TENANT-01 (Organisationsfilter in `visibleItems`, Mitgliedschaftspflicht in `can*`, Bindungen nur in derselben Organisation — Tests 1, 3, 6), SEC-IDOR-01 (ein Fehler für unbekannt und unsichtbar — Test 2; `canManageItem`/`canRevealItem` für Task 5 — Test 3), SEC-RBAC-01 (`vault.use`/`vault.manage`/`vault.reveal` — Tests 1, 3), SEC-SQLI-01 (nur Sequelize-`where`-Objekte, keine SQL-Strings), SEC-PII-01 (Löschkonzept: Bindungen verschwinden mit ihren Zielen — Tests 4, 5).
-
-**Parallel:** Task 4, Task 10 (keine gemeinsamen Dateien).
-
-- [ ] **Step 1: Write the failing test**
-
-`server/lib/vault/__tests__/visibility.test.js`:
-
-```js
-const test = require("node:test");
-const assert = require("node:assert");
-const { Sequelize } = require("sequelize");
-
-const db = new Sequelize({ dialect: "sqlite", storage: ":memory:", logging: false, query: { raw: true }, foreignKeys: false });
-const fake = (path, exports) => {
-    const resolved = require.resolve(path);
-    require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports };
-};
-
-const systemPermissions = new Map();
-const organizationPermissions = new Map();
-fake("../../../utils/database", db);
-fake("../../../permissions/engine", {
-    getSystemPermissions: async (accountId) => ({ isAdmin: false, permissions: systemPermissions.get(accountId) ?? [] }),
-    getOrganizationPermissions: async (accountId, organizationId) => ({
-        isOwner: false, isAdmin: false, permissions: organizationPermissions.get(`${accountId}:${organizationId}`) ?? [],
-    }),
-});
-
-const Entry = require("../../../models/Entry");
-const Folder = require("../../../models/Folder");
-const Tag = require("../../../models/Tag");
-const EntryTag = require("../../../models/EntryTag");
-const OrganizationMember = require("../../../models/OrganizationMember");
-const VaultItem = require("../../../models/VaultItem");
-const VaultBinding = require("../../../models/VaultBinding");
-const { visibleItems, findVisibleItem, itemRef, canManageItem, canRevealItem, canCreateFor } = require("../visibility");
-const { VaultErrorCode } = require("../errors");
-
-const ANNA = 1;
-const BEN = 2;
-const world = {};
-
-const server = (values) => Entry.create({ type: "server", name: "server", config: { ip: "192.0.2.1", protocol: "ssh" }, ...values });
-const item = (values) => VaultItem.create({
-    type: "login", fields: { username: "admin", origins: ["https://nas.lan"] }, approvalRequired: true, allServers: false, ...values,
-});
-const bind = (vaultItem, kind, target) => VaultBinding.create({ itemId: vaultItem.id, kind, targetId: target.id });
-const member = (accountId, organizationId, status = "active") =>
-    OrganizationMember.create({ organizationId, accountId, status, role: "member", invitedBy: 99 });
-const agentOn = (entry) => ({ keyId: 1, entryId: entry.id, agentType: "claude" });
-const names = async (caller) => (await visibleItems(caller)).map((visible) => visible.name).sort();
-
-test.before(async () => {
-    await db.sync();
-    systemPermissions.set(ANNA, ["vault.use"]);
-    systemPermissions.set(BEN, ["vault.use"]);
-    await member(ANNA, 10);
-    await member(ANNA, 20, "pending");
-
-    const home = await Folder.create({ name: "home", accountId: ANNA });
-    const lab = await Folder.create({ name: "lab", accountId: ANNA, parentId: home.id });
-    const team = await Folder.create({ name: "team", organizationId: 10 });
-    const teamNas = await Folder.create({ name: "team-nas", organizationId: 10, parentId: team.id });
-    const other = await Folder.create({ name: "other", organizationId: 20 });
-    const prod = await Tag.create({ accountId: ANNA, name: "prod", color: "#ff0000" });
-
-    world.sDirect = await server({ accountId: ANNA });
-    world.sNested = await server({ accountId: ANNA, folderId: lab.id });
-    world.sTagged = await server({ accountId: ANNA });
-    world.sPlain = await server({ accountId: ANNA });
-    world.sOrg = await server({ folderId: teamNas.id });
-    world.sOrg20 = await server({ folderId: other.id });
-    await EntryTag.create({ entryId: world.sTagged.id, tagId: prod.id });
-
-    await bind(await item({ accountId: ANNA, name: "direct" }), "entry", world.sDirect);
-    await bind(await item({ accountId: ANNA, name: "folder" }), "folder", home);
-    await bind(await item({ accountId: ANNA, name: "tagged" }), "tag", prod);
-    await item({ accountId: ANNA, name: "everywhere", allServers: true });
-    await item({ accountId: ANNA, name: "unbound" });
-    await bind(await item({ organizationId: 10, name: "org-folder" }), "folder", team);
-    await item({ organizationId: 10, name: "org-all", allServers: true });
-    await item({ organizationId: 20, name: "org20-all", allServers: true });
-    await item({ accountId: BEN, name: "foreign-all", allServers: true });
-});
-
-test("Sichtbarkeit je Aufrufer und Server (Spec-Test 4)", async (t) => {
-    t.after(async () => {
-        systemPermissions.set(ANNA, ["vault.use"]);
-        await OrganizationMember.destroy({ where: { accountId: ANNA, organizationId: 10 } });
-        await member(ANNA, 10);
-    });
-
-    const cases = [
-        ["Konto-Key oder Login-Session ohne Server: nur persönliche Einträge mit allServers", null, ["everywhere"]],
-        ["Server direkt gebunden", "sDirect", ["direct", "everywhere"]],
-        ["Ordnerbindung gilt auch für Server im Unterordner", "sNested", ["everywhere", "folder"]],
-        ["Tag des Servers", "sTagged", ["everywhere", "tagged"]],
-        ["keine Bindung; allServers der Organisation gilt nicht außerhalb der Organisation", "sPlain", ["everywhere"]],
-        ["Server im Ordner der Organisation (entry.organizationId leer)", "sOrg", ["everywhere", "org-all", "org-folder"]],
-        ["Organisation mit offener Einladung", "sOrg20", []],
-    ];
-    for (const [label, serverKey, expected] of cases) {
-        const agent = serverKey ? agentOn(world[serverKey]) : null;
-        assert.deepStrictEqual(await names({ accountId: ANNA, agent }), expected, label);
-    }
-
-    systemPermissions.set(ANNA, []);
-    assert.deepStrictEqual(await names({ accountId: ANNA, agent: agentOn(world.sOrg) }), ["org-all", "org-folder"],
-        "ohne vault.use keine persönlichen Einträge");
-    assert.deepStrictEqual(await names({ accountId: ANNA, agent: null }), [], "ohne vault.use und ohne Server nichts");
-    systemPermissions.set(ANNA, ["vault.use"]);
-
-    await OrganizationMember.destroy({ where: { accountId: ANNA, organizationId: 10 } });
-    assert.deepStrictEqual(await names({ accountId: ANNA, agent: agentOn(world.sOrg) }), [],
-        "Organisation verlassen: der Server ist nicht mehr erreichbar, der Key sieht nichts, auch keine persönlichen Einträge");
-    assert.deepStrictEqual(await names({ accountId: ANNA, agent: agentOn(world.sDirect) }), ["direct", "everywhere"]);
-});
-
-test("Kennungen: unbekannt, unsichtbar, fremd und ungültig ergeben denselben Fehler", async () => {
-    const onOrg = { accountId: ANNA, agent: agentOn(world.sOrg) };
-    assert.strictEqual(itemRef(await findVisibleItem(onOrg, "org:10/org-all")), "org:10/org-all");
-    assert.strictEqual(itemRef(await findVisibleItem(onOrg, "everywhere")), "everywhere");
-
-    const attempts = [
-        [{ accountId: ANNA, agent: agentOn(world.sDirect) }, "org:10/org-all"],
-        [onOrg, "missing"],
-        [onOrg, "foreign-all"],
-        [onOrg, "org-all"],
-        [onOrg, "org:10/../org-all"],
-        [onOrg, 42],
-    ];
-    const failures = [];
-    for (const [caller, ref] of attempts) {
-        const error = await findVisibleItem(caller, ref).then(() => null, (thrown) => thrown);
-        failures.push({ ref, code: error?.code, message: error?.message });
-    }
-    for (const failure of failures) assert.strictEqual(failure.code, VaultErrorCode.ITEM_UNKNOWN, String(failure.ref));
-    assert.strictEqual(new Set(failures.map((failure) => failure.message)).size, 1);
-});
-
-test("Verwalten, Anzeigen und Anlegen verlangen Besitz bzw. aktive Mitgliedschaft und Recht", async () => {
-    const CARL = 3;
-    const DORA = 4;
-    const ADMIN = 5;
-    systemPermissions.set(CARL, ["vault.use"]);
-    await member(CARL, 30);
-    organizationPermissions.set(`${CARL}:30`, ["vault.manage"]);
-    await member(DORA, 30);
-    organizationPermissions.set(`${DORA}:30`, ["vault.reveal"]);
-    organizationPermissions.set(`${ADMIN}:30`, ["vault.manage", "vault.reveal"]);
-    const own = { id: 900, accountId: CARL, organizationId: null };
-    const doras = { id: 901, accountId: DORA, organizationId: null };
-    const shared = { id: 902, accountId: null, organizationId: 30 };
-
-    const rows = [
-        ["Besitzer eines persönlichen Eintrags", CARL, own, true, true],
-        ["persönlicher Eintrag eines anderen Kontos", CARL, doras, false, false],
-        ["Besitzer ohne vault.use", DORA, doras, false, false],
-        ["Mitglied mit vault.manage", CARL, shared, true, false],
-        ["Mitglied mit vault.reveal", DORA, shared, false, true],
-        ["Rechte ohne aktive Mitgliedschaft", ADMIN, shared, false, false],
-    ];
-    for (const [label, accountId, vaultItem, manage, reveal] of rows)
-        assert.deepStrictEqual([await canManageItem(accountId, vaultItem), await canRevealItem(accountId, vaultItem)], [manage, reveal], label);
-
-    assert.deepStrictEqual([
-        await canCreateFor(CARL, { organizationId: null }),
-        await canCreateFor(CARL, { organizationId: 30 }),
-        await canCreateFor(DORA, { organizationId: 30 }),
-        await canCreateFor(ADMIN, { organizationId: 30 }),
-    ], [true, true, false, false]);
-});
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `node --test server/lib/vault/__tests__/visibility.test.js`
-Expected: FAIL — `Error: Cannot find module '../visibility'`.
-
-- [ ] **Step 3: Implement `server/lib/vault/visibility.js`**
-
-```js
-const { Op } = require("sequelize");
-const VaultItem = require("../../models/VaultItem");
-const VaultBinding = require("../../models/VaultBinding");
-const Entry = require("../../models/Entry");
-const Folder = require("../../models/Folder");
-const EntryTag = require("../../models/EntryTag");
-const OrganizationMember = require("../../models/OrganizationMember");
-const { hasAccountPermission, hasOrganizationAccess, hasOrganizationPermission } = require("../../utils/permission");
-const { Permission } = require("../../permissions/registry");
-const { resolveEntryScope, validateEntryAccess } = require("../../controllers/entry");
-const { VaultError, VaultErrorCode } = require("./errors");
-
-const NAME_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
-const REF_PATTERN = /^(?:org:([1-9][0-9]{0,9})\/)?([^/]+)$/;
-
-const unknownItem = () => new VaultError(VaultErrorCode.ITEM_UNKNOWN);
-
-const itemRef = (item) => (item.organizationId ? `org:${item.organizationId}/${item.name}` : item.name);
-
-const parseItemRef = (ref) => {
-    const match = typeof ref === "string" ? REF_PATTERN.exec(ref) : null;
-    if (!match || !NAME_PATTERN.test(match[2])) throw unknownItem();
-    return { organizationId: match[1] ? Number(match[1]) : null, name: match[2] };
-};
-
-const toPlain = (item) => ({
-    ...item,
-    fields: typeof item.fields === "string" ? JSON.parse(item.fields) : item.fields,
-    approvalRequired: !!item.approvalRequired,
-    allServers: !!item.allServers,
-});
-
-const activeOrganizationIds = async (accountId) =>
-    (await OrganizationMember.findAll({ where: { accountId, status: "active" } })).map((membership) => membership.organizationId);
-
-const candidateItems = async (accountId) => {
-    const owners = [];
-    if (await hasAccountPermission(accountId, Permission.VAULT_USE)) owners.push({ accountId, organizationId: null });
-    const organizationIds = await activeOrganizationIds(accountId);
-    if (organizationIds.length) owners.push({ organizationId: { [Op.in]: organizationIds } });
-    if (!owners.length) return [];
-    return (await VaultItem.findAll({ where: { [Op.or]: owners }, order: [["name", "ASC"]] })).map(toPlain);
-};
-
-const folderLineage = async (folderId) => {
-    const ids = [];
-    let current = folderId;
-    while (current && !ids.includes(current)) {
-        const folder = await Folder.findByPk(current);
-        if (!folder) break;
-        ids.push(folder.id);
-        current = folder.parentId;
-    }
-    return ids;
-};
-
-const serverContext = async (accountId, entryId) => {
-    const entry = await Entry.findByPk(entryId);
-    if (!entry || !(await validateEntryAccess(accountId, entry)).valid) return null;
-    const { organizationId } = await resolveEntryScope(entry);
-    const tagIds = (await EntryTag.findAll({ where: { entryId: entry.id } })).map((row) => row.tagId);
-    return { entryId: entry.id, organizationId: organizationId ?? null, folderIds: await folderLineage(entry.folderId), tagIds };
-};
-
-const bindingMatches = (binding, server, item) => {
-    if (binding.kind === "entry") return binding.targetId === server.entryId;
-    if (binding.kind === "folder") return server.folderIds.includes(binding.targetId);
-    return binding.kind === "tag" && !item.organizationId && server.tagIds.includes(binding.targetId);
-};
-
-const visibleItems = async ({ accountId, agent = null }) => {
-    if (!agent?.entryId)
-        return (await candidateItems(accountId)).filter((item) => !item.organizationId && item.allServers);
-
-    const server = await serverContext(accountId, agent.entryId);
-    if (!server) return [];
-
-    const items = (await candidateItems(accountId))
-        .filter((item) => !item.organizationId || item.organizationId === server.organizationId);
-    if (!items.length) return [];
-
-    const bindings = await VaultBinding.findAll({ where: { itemId: { [Op.in]: items.map((item) => item.id) } } });
-    return items.filter((item) => item.allServers
-        || bindings.some((binding) => binding.itemId === item.id && bindingMatches(binding, server, item)));
-};
-
-const findVisibleItem = async (caller, ref) => {
-    const { organizationId, name } = parseItemRef(ref);
-    const item = (await visibleItems(caller))
-        .find((candidate) => candidate.name === name && (candidate.organizationId ?? null) === organizationId);
-    if (!item) throw unknownItem();
-    return item;
-};
-
-const memberWith = async (accountId, organizationId, permission) =>
-    (await hasOrganizationAccess(accountId, organizationId)) && hasOrganizationPermission(accountId, organizationId, permission);
-
-const canManageItem = async (accountId, item) => {
-    if (item.organizationId) return memberWith(accountId, item.organizationId, Permission.VAULT_MANAGE);
-    return item.accountId === accountId && hasAccountPermission(accountId, Permission.VAULT_USE);
-};
-
-const canRevealItem = async (accountId, item) => {
-    if (item.organizationId) return memberWith(accountId, item.organizationId, Permission.VAULT_REVEAL);
-    return canManageItem(accountId, item);
-};
-
-const canCreateFor = async (accountId, { organizationId = null } = {}) => {
-    if (organizationId) return memberWith(accountId, organizationId, Permission.VAULT_MANAGE);
-    return hasAccountPermission(accountId, Permission.VAULT_USE);
-};
-
-module.exports = {
-    itemRef,
-    parseItemRef,
-    visibleItems,
-    findVisibleItem,
-    canManageItem,
-    canRevealItem,
-    canCreateFor,
-};
-```
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `node --test server/lib/vault/__tests__/visibility.test.js`
-Expected: PASS — `# pass 3`, `# fail 0`.
-
-- [ ] **Step 5: Write the failing test for bindings**
-
-`server/lib/vault/__tests__/bindings.test.js`:
-
-```js
-const test = require("node:test");
-const assert = require("node:assert");
-const { Sequelize } = require("sequelize");
-
-const db = new Sequelize({ dialect: "sqlite", storage: ":memory:", logging: false, query: { raw: true }, foreignKeys: false });
-const fake = (path, exports) => {
-    const resolved = require.resolve(path);
-    require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports };
-};
-
-const systemPermissions = new Map();
-fake("../../../utils/database", db);
-fake("../../../permissions/engine", {
-    getSystemPermissions: async (accountId) => ({ isAdmin: false, permissions: systemPermissions.get(accountId) ?? [] }),
-    getOrganizationPermissions: async () => ({ isOwner: false, isAdmin: false, permissions: [] }),
-});
-
-const Entry = require("../../../models/Entry");
-const Folder = require("../../../models/Folder");
-const Tag = require("../../../models/Tag");
-const OrganizationMember = require("../../../models/OrganizationMember");
-const VaultItem = require("../../../models/VaultItem");
-const VaultBinding = require("../../../models/VaultBinding");
-const { deleteEntry } = require("../../../controllers/entry");
-const { deleteFolder } = require("../../../controllers/folder");
-const { deleteTag } = require("../../../controllers/tag");
-const { setBindings, validateBindings } = require("../bindings");
-
-const ANNA = 1;
-const BEN = 2;
-
-const login = (name) => VaultItem.create({
-    accountId: ANNA, name, type: "login", fields: { username: "admin", origins: ["https://nas.lan"] }, approvalRequired: true, allServers: false,
-});
-const remaining = async (itemId) =>
-    (await VaultBinding.findAll({ where: { itemId } })).map((binding) => `${binding.kind}:${binding.targetId}`).sort();
-
-test.before(async () => {
-    await db.sync();
-    systemPermissions.set(ANNA, ["vault.use", "resources.manage"]);
-});
-
-test("Ordner mit Unterordnern löschen entfernt Bindungen an Ordner, Unterordner und mitgelöschte Server (Review Focus 5)", async () => {
-    const root = await Folder.create({ name: "lab", accountId: ANNA });
-    const sub = await Folder.create({ name: "nas", accountId: ANNA, parentId: root.id });
-    const subSub = await Folder.create({ name: "backup", accountId: ANNA, parentId: sub.id });
-    const outside = await Folder.create({ name: "prod", accountId: ANNA });
-    const servers = [];
-    for (const folder of [root, sub, subSub, outside])
-        servers.push(await Entry.create({ accountId: ANNA, folderId: folder.id, type: "server", name: folder.name }));
-    const kept = servers[3];
-    const item = await login("nas-admin");
-    await setBindings(item.id, [
-        ...[root, sub, subSub, outside].map((folder) => ({ kind: "folder", targetId: folder.id })),
-        ...servers.map((entry) => ({ kind: "entry", targetId: entry.id })),
-    ]);
-
-    assert.deepStrictEqual(await deleteFolder(ANNA, root.id), { success: true });
-
-    assert.deepStrictEqual(await remaining(item.id), [`entry:${kept.id}`, `folder:${outside.id}`].sort());
-    assert.strictEqual(await Entry.count({ where: { id: servers.slice(0, 3).map((entry) => entry.id) } }), 0);
-});
-
-test("Server oder Tag löschen entfernt genau deren Bindungen", async () => {
-    const gone = await Entry.create({ accountId: ANNA, type: "server", name: "old-nas" });
-    const stays = await Entry.create({ accountId: ANNA, type: "server", name: "new-nas" });
-    const tag = await Tag.create({ accountId: ANNA, name: "prod", color: "#ff0000" });
-    const item = await login("router");
-    await setBindings(item.id, [
-        { kind: "entry", targetId: gone.id },
-        { kind: "entry", targetId: stays.id },
-        { kind: "tag", targetId: tag.id },
-    ]);
-
-    assert.deepStrictEqual(await deleteEntry(ANNA, gone.id), { success: true });
-    assert.deepStrictEqual(await deleteTag(ANNA, tag.id), { success: true });
-
-    assert.deepStrictEqual(await remaining(item.id), [`entry:${stays.id}`]);
-});
-
-test("Bindungen nur an zugängliche Ziele, Organisationseinträge nur an Server und Ordner der eigenen Organisation", async () => {
-    await OrganizationMember.create({ organizationId: 10, accountId: ANNA, status: "active", role: "member", invitedBy: 99 });
-    const own = await Entry.create({ accountId: ANNA, type: "server", name: "own" });
-    const ownFolder = await Folder.create({ name: "own", accountId: ANNA });
-    const ownTag = await Tag.create({ accountId: ANNA, name: "own", color: "#00ff00" });
-    const foreign = await Entry.create({ accountId: BEN, type: "server", name: "foreign" });
-    const foreignTag = await Tag.create({ accountId: BEN, name: "foreign", color: "#0000ff" });
-    const teamFolder = await Folder.create({ name: "team", organizationId: 10 });
-    const teamServer = await Entry.create({ folderId: teamFolder.id, type: "server", name: "team" });
-    const otherFolder = await Folder.create({ name: "other", organizationId: 20 });
-    const personal = { accountId: ANNA, organizationId: null };
-    const team = { accountId: ANNA, organizationId: 10 };
-    const to = (kind, target) => ({ kind, targetId: typeof target === "number" ? target : target.id });
-
-    const cases = [
-        ["persönlich: eigener Server, Ordner und Tag", personal, [to("entry", own), to("folder", ownFolder), to("tag", ownTag)], true],
-        ["persönlich: zugänglicher Server der Organisation", personal, [to("entry", teamServer)], true],
-        ["persönlich: Server eines anderen Kontos", personal, [to("entry", foreign)], false],
-        ["persönlich: Tag eines anderen Kontos", personal, [to("tag", foreignTag)], false],
-        ["persönlich: Ziel existiert nicht", personal, [to("entry", 999999)], false],
-        ["persönlich: unbekannte Art", personal, [to("group", 1)], false],
-        ["Organisation: Server und Ordner der Organisation", team, [to("entry", teamServer), to("folder", teamFolder)], true],
-        ["Organisation: Tag", team, [to("tag", ownTag)], false],
-        ["Organisation: persönlicher Server", team, [to("entry", own)], false],
-        ["Organisation: Ordner einer anderen Organisation", team, [to("folder", otherFolder)], false],
-    ];
-    for (const [label, owner, bindings, valid] of cases) {
-        const result = await validateBindings(owner, bindings);
-        assert.strictEqual(result.valid, valid, label);
-        if (!valid) assert.match(result.message, /\S/, label);
-    }
-});
-```
-
-- [ ] **Step 6: Run test to verify it fails**
-
-Run: `node --test server/lib/vault/__tests__/bindings.test.js`
-Expected: FAIL — `Error: Cannot find module '../bindings'`.
-
-- [ ] **Step 7: Implement `server/lib/vault/bindings.js`**
-
-```js
-const { Op } = require("sequelize");
-const db = require("../../utils/database");
-const VaultBinding = require("../../models/VaultBinding");
-const Entry = require("../../models/Entry");
-const Tag = require("../../models/Tag");
-const { validateFolderAccess } = require("../../utils/permission");
-
-const removeBindings = async (kind, ids) => {
-    const targetIds = (ids ?? []).filter((id) => id !== null && id !== undefined);
-    if (!targetIds.length) return 0;
-    return VaultBinding.destroy({ where: { kind, targetId: { [Op.in]: targetIds } } });
-};
-
-const bindingProblem = async ({ accountId, organizationId }, { kind, targetId }) => {
-    // controllers/entry requires this module, so it is only complete once both have loaded.
-    const { validateEntryAccess, resolveEntryScope } = require("../../controllers/entry");
-
-    if (kind === "tag") {
-        if (organizationId) return "Organization items cannot apply to tags";
-        const tag = await Tag.findByPk(targetId);
-        return tag && tag.accountId === accountId ? null : "Tag not found";
-    }
-    if (kind === "entry") {
-        const entry = await Entry.findByPk(targetId);
-        if (!entry || !(await validateEntryAccess(accountId, entry)).valid) return "Server not found";
-        if (organizationId && (await resolveEntryScope(entry)).organizationId !== organizationId)
-            return "Organization items can only apply to servers of the same organization";
-        return null;
-    }
-    if (kind === "folder") {
-        const access = await validateFolderAccess(accountId, targetId);
-        if (!access.valid) return "Folder not found";
-        if (organizationId && access.folder.organizationId !== organizationId)
-            return "Organization items can only apply to folders of the same organization";
-        return null;
-    }
-    return "Unknown binding kind";
-};
-
-const validateBindings = async ({ accountId, organizationId = null }, bindings = []) => {
-    const owner = { accountId, organizationId: organizationId ? Number(organizationId) : null };
-    for (const binding of bindings) {
-        const message = await bindingProblem(owner, binding);
-        if (message) return { valid: false, message };
-    }
-    return { valid: true };
-};
-
-const setBindings = async (itemId, bindings = []) => {
-    const rows = new Map();
-    for (const { kind, targetId } of bindings) rows.set(`${kind}:${Number(targetId)}`, { itemId, kind, targetId: Number(targetId) });
-
-    await db.transaction(async (transaction) => {
-        await VaultBinding.destroy({ where: { itemId }, transaction });
-        if (rows.size) await VaultBinding.bulkCreate([...rows.values()], { transaction });
-    });
-};
-
-module.exports = { removeBindings, validateBindings, setBindings };
-```
-
-- [ ] **Step 8: Hook the three delete paths**
-
-`server/controllers/entry.js` — Import nach Z. 18 (`const SessionManager = require("../lib/SessionManager");`):
-
-```js
-const { removeBindings } = require("../lib/vault/bindings");
-```
-
-`deleteEntry` (Z. 190-197) vorher:
-
-```js
-    if (!accessCheck.valid) return accessCheck;
-
-    await Entry.destroy({ where: { id: entryId } });
-```
-
-nachher:
-
-```js
-    if (!accessCheck.valid) return accessCheck;
-
-    await removeBindings("entry", [entry.id]);
-    await Entry.destroy({ where: { id: entryId } });
-```
-
-`server/controllers/folder.js` — Import nach Z. 13 (`const SessionManager = require("../lib/SessionManager");`):
-
-```js
-const { removeBindings } = require("../lib/vault/bindings");
-```
-
-`deleteFolder` (Z. 147-152) vorher:
-
-```js
-    let subfolders = await Folder.findAll({ where: { parentId: folderId } });
-    for (let subfolder of subfolders) {
-        await module.exports.deleteFolder(accountId, subfolder.id);
-    }
-
-    await Entry.destroy({ where: { folderId: folderId } });
-```
-
-nachher:
-
-```js
-    let subfolders = await Folder.findAll({ where: { parentId: folderId } });
-    for (let subfolder of subfolders) {
-        await module.exports.deleteFolder(accountId, subfolder.id);
-    }
-
-    const entryIds = (await Entry.findAll({ where: { folderId: folder.id }, attributes: ["id"] })).map((entry) => entry.id);
-    await removeBindings("entry", entryIds);
-    await removeBindings("folder", [folder.id]);
-
-    await Entry.destroy({ where: { folderId: folderId } });
-```
-
-`server/controllers/tag.js` — Import nach Z. 7 (`const { Op } = require("sequelize");`):
-
-```js
-const { removeBindings } = require("../lib/vault/bindings");
-```
-
-`deleteTag` (Z. 55-57) vorher:
-
-```js
-    await EntryTag.destroy({ where: { tagId } });
-
-    await Tag.destroy({ where: { id: tagId } });
-```
-
-nachher:
-
-```js
-    await EntryTag.destroy({ where: { tagId } });
-
-    await removeBindings("tag", [tag.id]);
-    await Tag.destroy({ where: { id: tagId } });
-```
-
-- [ ] **Step 9: Run tests to verify they pass**
-
-Run: `node --test server/lib/vault/__tests__/bindings.test.js server/lib/vault/__tests__/visibility.test.js`
-Expected: PASS — `# pass 6`, `# fail 0`.
-
-- [ ] **Step 10: Run the affected existing tests**
-
-Die drei Controller laden jetzt `server/lib/vault/bindings.js`; diese Bestandstests laden die echten Controller bzw. `controllers/entry` mit gefaktem `Folder`:
-
-Run: `node --test server/lib/__tests__/entryScope.test.js server/lib/__tests__/reconnectSession.test.js server/lib/__tests__/directConnect.test.js server/lib/__tests__/directConnectReason.test.js`
-Expected: PASS, `# fail 0`.
-
-- [ ] **Step 11: Commit**
-
-```bash
-git add server/lib/vault/visibility.js server/lib/vault/bindings.js server/controllers/entry.js server/controllers/folder.js server/controllers/tag.js server/lib/vault/__tests__/visibility.test.js server/lib/vault/__tests__/bindings.test.js
-git commit -m "Vault: Sichtbarkeit je Server und Bindungen, Aufräumen beim Löschen von Servern, Ordnern und Tags"
-```
-
----
-
-### Task 4: Agenten-Authentifizierung
-
-**Files:**
-- Modify: `server/middlewares/auth.js` (Importe Z. 1-3; `authenticate` Z. 5-24, API-Key-Zweig)
-- Create: `server/lib/vault/ipBinding.js`
-- Modify: `server/controllers/apiKey.js` (`createApiKey` Z. 32, `listApiKeys` Z. 61-64, `deleteApiKey` Z. 66-73, `module.exports` Z. 94-100)
-- Modify: `server/controllers/session.js` (`createSession` Z. 12-21)
-- Modify: `server/routes/users.js` (Impersonations-Route Z. 62-67)
-- Create: `server/middlewares/requireLoginSession.js`
-- Modify: `server/utils/database.js` (SQL-Log-Callback Z. 34 und Z. 41 — SEC-TOKEN-01, siehe Step 9; im Vertrag nicht genannt, als Ergänzung gemeldet)
-- Test: `server/lib/vault/__tests__/agentAuth.test.js` (test-first)
-
-**Interfaces:**
-- Consumes (Task 1):
-  - `api_keys`-Spalten am Modell `ApiKey`: `kind` (`"account"|"agent"`, Standard `"account"`), `pending` (Standard `false`), `entryId`, `agentType`, `ipBinding` (Standard `true`), `allowedCidrs` (JSON; bei `raw: true` liefert SQLite Text, den der `afterFind`-Hook aus Task 1 zum Array macht — `ipBinding.js` liest trotzdem beide Formen), `identityId`, `remoteUser`, `seenIp`, `seenIpAdopted`.
-  - `Session.impersonatorId` (INTEGER null).
-  - `AUDIT_ACTIONS.VAULT_AGENT_IP_DENIED = "vault.agent_ip_denied"`, `RESOURCE_TYPES.VAULT = "vault"` aus `server/controllers/audit.js`.
-- Produces:
-  - `authenticate` (`server/middlewares/auth.js`): Für `apiKey.kind === "agent"` setzt es `req.apiKey`, `req.user` und `req.agent = { keyId, entryId, agentType }`. Ein endgültiger Agenten-Key passiert nur, wenn der Pfad von `req.originalUrl` (ohne Query) `/api/mcp` ist oder mit `/api/mcp/` beginnt, sonst `403 { code: 403, message: "Agent keys can only access the MCP endpoint" }`; danach IP-Bindung über `checkAgentIp`, Verstoß `403 { code: 403, message: "This agent key is not allowed from this address" }`. Ein `pending`-Agenten-Key passiert nur `GET /api/vault/agent-keys/probe`, ohne IP-Prüfung; sonst `401 { message: "The provided API key is not valid" }` wie ein ungültiger Key. Konto-Keys und Login-Sessions unverändert; bei Login-Sessions steht `req.session` (mit `impersonatorId`) wie bisher.
-  - `server/lib/vault/ipBinding.js`:
-    - `checkAgentIp(apiKey, entry, rawIp) → Promise<boolean>` — `true` bei `!apiKey.ipBinding`; sonst `normalizeIp(rawIp)` gegen `allowedCidrs` und gegen `resolveHostAddresses(entry?.config?.ip)`. Bei `false` Audit `vault.agent_ip_denied` (`accountId` des Keys, `details: { keyId, agentType, entryId, entryName, ip }`, `ipAddress`), höchstens einmal je (`keyId`, Adresse) in 10 min.
-    - `matchesCidr(ip, cidr) → boolean` — IPv4/IPv6 über `net.BlockList`; Präfix `0..32` bzw. `0..128`; eine Adresse ohne Präfix gilt als `/32` bzw. `/128`; unterschiedliche Familien oder ungültige Angaben → `false`.
-    - `resolveHostAddresses(host) → Promise<string[]>` — IP-Literal direkt, sonst `dns.promises.lookup(host, { all: true })` (A und AAAA), normalisiert; Cache 60 s je Host, auch für fehlgeschlagene Auflösungen (dann `[]` = Verstoß).
-    - `_resetForTests()`.
-  - `server/controllers/apiKey.js`: `listApiKeys`, `deleteApiKey` und die Obergrenze 50 in `createApiKey` gelten nur für `kind = "account"`; zusätzlich exportiert `hashToken(token) → string`, `generateToken() → string`, `TOKEN_PREFIX = "outpost_"`. `validateApiKey(token) → { account, apiKey } | null` unverändert (liefert die neuen Spalten mit).
-  - `createSession(accountId, userAgent, { impersonatorId = null } = {}) → { token } | { code, message }` (`server/controllers/session.js`); `POST /api/users/:accountId/login` übergibt `{ impersonatorId: req.user.id }`.
-  - `server/middlewares/requireLoginSession.js`: `module.exports = { requireLoginSession }`; `requireLoginSession(req, res, next)` antwortet `403 { code: 403, message: "This action requires a signed-in session" }`, wenn `req.apiKey` gesetzt ist, `req.session` fehlt oder `req.session.impersonatorId` gesetzt ist. Genutzt von Task 5 (Reveal), Task 6 (`POST /approvals/:id`), Task 8 (Einrichten, Bestätigen, Entziehen).
-
-**Design:** kein UI-Anteil.
-
-**Tests:** 5 Tests in `agentAuth.test.js`, test-first (Spec-Tests 1 und 2 sind fester Vertrag), alle über die Naht `authenticate` mit echtem Express-Server, In-Memory-SQLite und echten Modellen `Account`, `Session`, `ApiKey`, `Entry`. Die Quelladresse kommt über `X-Forwarded-For` bei `trust proxy = true` im Test-App. Gefakt: `utils/database` (In-Memory), `controllers/audit` (Audit-Liste), `dns.promises.lookup` per `t.mock.method`.
-1. Endgültiger Agenten-Key: `/api/mcp` durch mit `req.agent`; `/api/entries`, `probe` und eine Reveal-Route → `403`; ein Konto-Key erreicht `/api/entries` weiter (Spec-Test 1).
-2. `pending`-Key: `probe` durch von fremder Adresse ohne Audit; `/api/mcp` und `/api/entries` → `401` (Spec-Test 1, Einrichtung Schritt 1a).
-3. IP-Bindung erlaubt: eigene Adresse, Hostname mit A- und AAAA-Eintrag (eine Auflösung für zwei Anfragen), IPv4-CIDR, IPv6-CIDR, `ipBinding: false` (Spec-Test 2).
-4. Fremde Adresse (Docker-Gateway eines NAS): `403`, genau ein Audit je (Key, Adresse) über zwei Anfragen; nach Eintrag der Gateway-Adresse als `/32` durch (Spec-Test 2, Review Focus 3 Teil „ohne Übernahme 403“; die Übernahme per `confirm` testet Task 8).
-5. `requireLoginSession` weist Impersonation (Sitzung aus `createSession(..., { impersonatorId })`) und Konto-Key ab, lässt die Login-Session durch.
-- Kein `ipBinding.test.js`: CIDR- und IPv6-Abgleich sind über die Naht abgedeckt (Tests 3 und 4).
-- Nicht getestet: Ablauf der Audit-Drossel nach 10 min und des DNS-Caches nach 60 s (Konstanten; ein Fake-`Date` im selben Prozess wie der HTTP-Server wäre unzuverlässig), die Weitergabe von `req.user.id` in `routes/users.js` (Weiterreichung), die SQL-Log-Schwärzung (Log-Ausgabe; manuelle Prüfung in Step 10). Die `Mcp-Session-Id` eines fremden Keys (Spec-Test 1, letzter Teil) testet Task 2.
-- SEC-Abdeckung: SEC-TOKEN-01 (Bearer-Pfad, IP-Bindung — Tests 1–4; Query-Token des Zustandsstroms — Step 9/10), SEC-APIKEY-01 (Agenten-Keys gehasht und widerrufbar wie Konto-Keys, `pending` nur an `probe` — Test 2; Vergleich siehe Step 9), SEC-SESS-02 (Agenten-Key nur am MCP-Endpunkt — Test 1), SEC-RBAC-01 und SEC-IDOR-01 vorbereitend über `requireLoginSession` (Test 5), SEC-ERR-01 (Antworten ohne Interna, keine Auflösungsdetails in der `403`).
-
-**Parallel:** Task 3, Task 10 (keine gemeinsamen Dateien).
-
-- [ ] **Step 1: Write the failing test**
-
-`server/lib/vault/__tests__/agentAuth.test.js`:
-
-```js
-const test = require("node:test");
-const assert = require("node:assert");
-const dns = require("node:dns");
-const express = require("express");
-const { Sequelize } = require("sequelize");
-
-const db = new Sequelize({ dialect: "sqlite", storage: ":memory:", logging: false, query: { raw: true }, foreignKeys: false });
-const fake = (path, exports) => {
-    const resolved = require.resolve(path);
-    require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports };
-};
-
-const audits = [];
-fake("../../../utils/database", db);
-fake("../../../controllers/audit", {
-    createAuditLog: async (entry) => { audits.push(entry); },
-    AUDIT_ACTIONS: { VAULT_AGENT_IP_DENIED: "vault.agent_ip_denied" },
-    RESOURCE_TYPES: { VAULT: "vault" },
-});
-
-const Account = require("../../../models/Account");
-const ApiKey = require("../../../models/ApiKey");
-const Entry = require("../../../models/Entry");
-const Session = require("../../../models/Session");
-const { authenticate } = require("../../../middlewares/auth");
-const { requireLoginSession } = require("../../../middlewares/requireLoginSession");
-const { createSession } = require("../../../controllers/session");
-const { createApiKey, generateToken, hashToken } = require("../../../controllers/apiKey");
-const ipBinding = require("../ipBinding");
-
-const REVEAL_PATH = "/api/vault/items/1/secrets/password";
-const echo = (req, res) => res.json({ accountId: req.user.id, agent: req.agent ?? null });
-
-const app = express();
-app.set("trust proxy", true);
-app.use("/api/mcp", authenticate, echo);
-app.get("/api/vault/agent-keys/probe", authenticate, (req, res) => res.json({ seenIp: req.ip }));
-app.use("/api/entries", authenticate, echo);
-app.get(REVEAL_PATH, authenticate, requireLoginSession, echo);
-
-let server;
-let anna;
-const servers = {};
-
-const call = async (method, path, token, ip = "192.0.2.10") => {
-    const response = await fetch(`http://127.0.0.1:${server.address().port}${path}`, {
-        method, headers: { authorization: `Bearer ${token}`, "x-forwarded-for": ip },
-    });
-    return { status: response.status, body: await response.json() };
-};
-
-const agentKey = async (entry, values = {}) => {
-    const token = generateToken();
-    const key = await ApiKey.create({
-        accountId: anna.id, name: `claude@${entry.name}`, tokenHash: hashToken(token), prefix: `${token.slice(0, 14)}…`,
-        kind: "agent", pending: false, entryId: entry.id, agentType: "claude", ipBinding: true, allowedCidrs: null, ...values,
-    });
-    return { token, id: key.id };
-};
-
-test.before(async () => {
-    await db.sync();
-    anna = await Account.create({ firstName: "Anna", lastName: "Admin", username: "anna", password: "x" });
-    const ssh = (name, ip) => Entry.create({ accountId: anna.id, type: "server", name, config: { ip, protocol: "ssh" } });
-    servers.nas = await ssh("nas", "192.0.2.10");
-    servers.dockerNas = await ssh("docker-nas", "192.0.2.20");
-    servers.named = await ssh("named", "nas.lan");
-    server = await new Promise((resolve) => { const listening = app.listen(0, () => resolve(listening)); });
-});
-
-test.after(() => {
-    server.closeAllConnections();
-    server.close();
-});
-
-test.beforeEach(() => {
-    audits.length = 0;
-    ipBinding._resetForTests();
-});
-
-test("ein endgültiger Agenten-Key erreicht nur /api/mcp, ein Konto-Key weiter alles (Spec-Test 1)", async () => {
-    const key = await agentKey(servers.nas);
-
-    const mcp = await call("POST", "/api/mcp", key.token);
-    assert.deepStrictEqual([mcp.status, mcp.body.agent], [200, { keyId: key.id, entryId: servers.nas.id, agentType: "claude" }]);
-
-    for (const [method, path] of [["GET", "/api/entries"], ["GET", "/api/vault/agent-keys/probe"], ["GET", REVEAL_PATH]]) {
-        const denied = await call(method, path, key.token);
-        assert.deepStrictEqual(denied, { status: 403, body: { code: 403, message: "Agent keys can only access the MCP endpoint" } }, path);
-    }
-
-    const accountKey = await createApiKey(anna.id, { name: "cli" });
-    assert.strictEqual((await call("GET", "/api/entries", accountKey.token)).status, 200);
-});
-
-test("ein pending-Key passiert nur probe, dort ohne IP-Bindung (Spec-Test 1, Einrichtung 1a)", async () => {
-    const key = await agentKey(servers.nas, { pending: true });
-
-    const probe = await call("GET", "/api/vault/agent-keys/probe", key.token, "172.17.0.1");
-    assert.deepStrictEqual([probe.status, probe.body], [200, { seenIp: "172.17.0.1" }]);
-
-    assert.strictEqual((await call("POST", "/api/mcp", key.token)).status, 401);
-    assert.strictEqual((await call("GET", "/api/entries", key.token)).status, 401);
-    assert.strictEqual(audits.length, 0);
-});
-
-test("die IP-Bindung lässt eigene Adressen, eingetragene Bereiche und gelöste Bindungen zu (Spec-Test 2)", async (t) => {
-    const lookups = [];
-    t.mock.method(dns.promises, "lookup", async (host, options) => {
-        lookups.push([host, options]);
-        return [{ address: "192.0.2.30", family: 4 }, { address: "2001:db8::30", family: 6 }];
-    });
-
-    const cases = [
-        ["eigene Adresse, IP im Server-Eintrag", await agentKey(servers.nas), "192.0.2.10"],
-        ["Hostname, A-Eintrag", await agentKey(servers.named), "192.0.2.30"],
-        ["Hostname, AAAA-Eintrag", await agentKey(servers.named), "2001:db8::30"],
-        ["zusätzlicher IPv4-Bereich", await agentKey(servers.nas, { allowedCidrs: ["198.51.100.0/24"] }), "198.51.100.7"],
-        ["zusätzlicher IPv6-Bereich", await agentKey(servers.nas, { allowedCidrs: ["2001:db8:1::/64"] }), "2001:db8:1::5"],
-        ["IP-Bindung aus", await agentKey(servers.nas, { ipBinding: false }), "203.0.113.9"],
-    ];
-    for (const [label, key, ip] of cases)
-        assert.strictEqual((await call("POST", "/api/mcp", key.token, ip)).status, 200, label);
-
-    assert.deepStrictEqual(lookups, [["nas.lan", { all: true }]], "eine Auflösung je Host innerhalb von 60 s");
-    assert.strictEqual(audits.length, 0);
-});
-
-test("fremde Adresse: 403 und ein Audit je Key und Adresse; die übernommene Gateway-Adresse gilt (Spec-Test 2, Review Focus 3)", async () => {
-    const key = await agentKey(servers.dockerNas);
-
-    for (let attempt = 0; attempt < 2; attempt++) {
-        const denied = await call("POST", "/api/mcp", key.token, "172.17.0.1");
-        assert.deepStrictEqual(denied, { status: 403, body: { code: 403, message: "This agent key is not allowed from this address" } });
-    }
-    assert.strictEqual((await call("POST", "/api/mcp", key.token, "172.17.0.2")).status, 403);
-
-    assert.deepStrictEqual(audits.map((audit) => [audit.action, audit.accountId, audit.details.keyId, audit.details.ip]), [
-        ["vault.agent_ip_denied", anna.id, key.id, "172.17.0.1"],
-        ["vault.agent_ip_denied", anna.id, key.id, "172.17.0.2"],
-    ]);
-
-    await ApiKey.update({ allowedCidrs: ["172.17.0.1/32"] }, { where: { id: key.id } });
-    assert.strictEqual((await call("POST", "/api/mcp", key.token, "172.17.0.1")).status, 200);
-});
-
-test("requireLoginSession weist Impersonation und Konto-Keys ab", async () => {
-    const ben = await Account.create({ firstName: "Ben", lastName: "User", username: "ben", password: "x" });
-    const own = await Session.create({ accountId: ben.id, ip: "192.0.2.50", userAgent: "test" });
-    const impersonated = await createSession(ben.id, "test", { impersonatorId: anna.id });
-    const accountKey = await createApiKey(ben.id, { name: "cli" });
-
-    assert.strictEqual((await call("GET", REVEAL_PATH, own.token)).status, 200);
-    assert.deepStrictEqual(await call("GET", REVEAL_PATH, impersonated.token),
-        { status: 403, body: { code: 403, message: "This action requires a signed-in session" } });
-    assert.strictEqual((await call("GET", REVEAL_PATH, accountKey.token)).status, 403);
-});
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `node --test server/lib/vault/__tests__/agentAuth.test.js`
-Expected: FAIL — `Error: Cannot find module '../../../middlewares/requireLoginSession'` (bzw. `'../ipBinding'`).
-
-- [ ] **Step 3: Restrict and extend `server/controllers/apiKey.js`**
-
-`createApiKey` Z. 32 vorher:
-
-```js
-    if (await ApiKey.count({ where: { accountId } }) >= 50)
-```
-
-nachher:
-
-```js
-    if (await ApiKey.count({ where: { accountId, kind: "account" } }) >= 50)
-```
-
-`listApiKeys` und `deleteApiKey` (Z. 61-73) nachher:
-
-```js
-const listApiKeys = async (accountId) => {
-    const keys = await ApiKey.findAll({ where: { accountId, kind: "account" }, order: [["createdAt", "DESC"]] });
-    return keys.map(serialize);
-};
-
-const deleteApiKey = async (accountId, id) => {
-    const key = await ApiKey.findOne({ where: { id, accountId, kind: "account" } });
-    if (!key) return { code: 404, message: "API key not found" };
-
-    await ApiKey.destroy({ where: { id: key.id } });
-    logger.system("API key deleted", { accountId, apiKeyId: id });
-    return { success: true };
-};
-```
-
-`module.exports` (Z. 94-100) nachher:
-
-```js
-module.exports = {
-    TOKEN_PREFIX,
-    hashToken,
-    generateToken,
-    isApiKeyToken,
-    createApiKey,
-    listApiKeys,
-    deleteApiKey,
-    validateApiKey,
-};
-```
-
-SEC-APIKEY-01, Vergleich: `validateApiKey` sucht per `tokenHash = SHA-256(token)` in der Datenbank. Der Angreifer steuert damit nur die Eingabe des Hashs, nicht dessen Präfix; Zeitunterschiede im Index-Vergleich verraten keinen nutzbaren Teil eines gültigen Tokens. Bleibt unverändert; Agenten-Keys nutzen denselben Weg (`hashToken`, 256 Bit aus `generateToken`).
-
-- [ ] **Step 4: Create `server/lib/vault/ipBinding.js`**
-
-```js
-const dns = require("node:dns");
-const net = require("node:net");
-const { normalizeIp } = require("../../utils/ip");
-
-const RESOLVE_TTL_MS = 60 * 1000;
-const DENIAL_AUDIT_INTERVAL_MS = 10 * 60 * 1000;
-const MAX_TRACKED_DENIALS = 10000;
-
-const resolved = new Map();
-const deniedAt = new Map();
-
-const familyOf = (ip) => ({ 4: "ipv4", 6: "ipv6" })[net.isIP(ip)];
-
-const matchesCidr = (ip, cidr) => {
-    const [network, prefixText, ...rest] = String(cidr).split("/");
-    const family = familyOf(network);
-    if (rest.length || !family || family !== familyOf(ip)) return false;
-    const maxPrefix = family === "ipv4" ? 32 : 128;
-    if (prefixText !== undefined && !/^\d{1,3}$/.test(prefixText)) return false;
-    const prefix = prefixText === undefined ? maxPrefix : Number(prefixText);
-    if (prefix > maxPrefix) return false;
-    const list = new net.BlockList();
-    list.addSubnet(network, prefix, family);
-    return list.check(ip, family);
-};
-
-const resolveHostAddresses = async (host) => {
-    if (!host || typeof host !== "string") return [];
-    const name = host.trim();
-    if (net.isIP(name)) return [normalizeIp(name)];
-
-    const cached = resolved.get(name);
-    if (cached && cached.expiresAt > Date.now()) return cached.addresses;
-
-    const addresses = dns.promises.lookup(name, { all: true })
-        .then((results) => results.map((result) => normalizeIp(result.address)), () => []);
-    resolved.set(name, { addresses, expiresAt: Date.now() + RESOLVE_TTL_MS });
-    return addresses;
-};
-
-const allowedCidrsOf = (apiKey) => {
-    if (Array.isArray(apiKey.allowedCidrs)) return apiKey.allowedCidrs;
-    try {
-        const parsed = JSON.parse(apiKey.allowedCidrs ?? "[]");
-        return Array.isArray(parsed) ? parsed : [];
-    } catch {
-        return [];
-    }
-};
-
-const recordDenial = async (apiKey, entry, ip) => {
-    const key = `${apiKey.id}|${ip}`;
-    const now = Date.now();
-    if (deniedAt.get(key) > now - DENIAL_AUDIT_INTERVAL_MS) return;
-
-    if (deniedAt.size >= MAX_TRACKED_DENIALS) {
-        for (const [tracked, at] of deniedAt) if (at <= now - DENIAL_AUDIT_INTERVAL_MS) deniedAt.delete(tracked);
-    }
-    deniedAt.set(key, now);
-
-    // Lazy like defaultAudit in lib/browser/tools.js: auth.js loads this module, and tests that fake
-    // utils/database without define() load auth.js.
-    const { createAuditLog, AUDIT_ACTIONS, RESOURCE_TYPES } = require("../../controllers/audit");
-    await createAuditLog({
-        accountId: apiKey.accountId,
-        action: AUDIT_ACTIONS.VAULT_AGENT_IP_DENIED,
-        resource: RESOURCE_TYPES.VAULT,
-        details: { keyId: apiKey.id, agentType: apiKey.agentType, entryId: apiKey.entryId, entryName: entry?.name ?? null, ip },
-        ipAddress: ip,
-    });
-};
-
-const checkAgentIp = async (apiKey, entry, rawIp) => {
-    if (!apiKey.ipBinding) return true;
-
-    const ip = normalizeIp(rawIp);
-    if (familyOf(ip)) {
-        if (allowedCidrsOf(apiKey).some((cidr) => matchesCidr(ip, cidr))) return true;
-        if ((await resolveHostAddresses(entry?.config?.ip)).some((address) => matchesCidr(ip, address))) return true;
-    }
-
-    await recordDenial(apiKey, entry, ip);
-    return false;
-};
-
-const _resetForTests = () => {
-    resolved.clear();
-    deniedAt.clear();
-};
-
-module.exports = { checkAgentIp, matchesCidr, resolveHostAddresses, _resetForTests };
-```
-
-- [ ] **Step 5: Teach `authenticate` about agent keys**
-
-`server/middlewares/auth.js` Z. 1-24 vorher:
-
-```js
-const Account = require("../models/Account");
-const Session = require("../models/Session");
-const { isApiKeyToken, validateApiKey } = require("../controllers/apiKey");
-
-module.exports.authenticate = async (req, res, next) => {
-    const authHeader = req.header("authorization");
-    if (!authHeader)
-        return res.status(400).json({ message: "You need to provide the 'authorization' header" });
-
-    const headerTrimmed = authHeader.split(" ");
-    if (headerTrimmed.length !== 2)
-        return res.status(400).json({ message: "You need to provide the token in the 'authorization' header" });
-
-    const token = headerTrimmed[1];
-
-    if (isApiKeyToken(token)) {
-        const result = await validateApiKey(token);
-        if (!result)
-            return res.status(401).json({ message: "The provided API key is not valid" });
-
-        req.apiKey = result.apiKey;
-        req.user = result.account;
-        return next();
-    }
-```
-
-nachher (Rest der Datei ab `req.session = await Session.findOne(...)` unverändert):
-
-```js
-const Account = require("../models/Account");
-const Session = require("../models/Session");
-const Entry = require("../models/Entry");
-const { isApiKeyToken, validateApiKey } = require("../controllers/apiKey");
-const { checkAgentIp } = require("../lib/vault/ipBinding");
-
-const PROBE_PATH = "/api/vault/agent-keys/probe";
-const INVALID_API_KEY = { message: "The provided API key is not valid" };
-
-const pathOf = (req) => req.originalUrl.split("?")[0];
-const isMcpPath = (path) => path === "/api/mcp" || path.startsWith("/api/mcp/");
-
-const rejectAgentKey = async (req, apiKey) => {
-    const path = pathOf(req);
-    if (apiKey.pending)
-        return req.method === "GET" && path === PROBE_PATH ? null : { status: 401, body: INVALID_API_KEY };
-
-    if (!isMcpPath(path))
-        return { status: 403, body: { code: 403, message: "Agent keys can only access the MCP endpoint" } };
-
-    const entry = await Entry.findByPk(apiKey.entryId);
-    if (!(await checkAgentIp(apiKey, entry, req.ip)))
-        return { status: 403, body: { code: 403, message: "This agent key is not allowed from this address" } };
-
-    return null;
-};
-
-module.exports.authenticate = async (req, res, next) => {
-    const authHeader = req.header("authorization");
-    if (!authHeader)
-        return res.status(400).json({ message: "You need to provide the 'authorization' header" });
-
-    const headerTrimmed = authHeader.split(" ");
-    if (headerTrimmed.length !== 2)
-        return res.status(400).json({ message: "You need to provide the token in the 'authorization' header" });
-
-    const token = headerTrimmed[1];
-
-    if (isApiKeyToken(token)) {
-        const result = await validateApiKey(token);
-        if (!result)
-            return res.status(401).json(INVALID_API_KEY);
-
-        if (result.apiKey.kind === "agent") {
-            const rejection = await rejectAgentKey(req, result.apiKey);
-            if (rejection) return res.status(rejection.status).json(rejection.body);
-            req.agent = { keyId: result.apiKey.id, entryId: result.apiKey.entryId, agentType: result.apiKey.agentType };
-        }
-
-        req.apiKey = result.apiKey;
-        req.user = result.account;
-        return next();
-    }
-```
-
-`authenticateQuery` und `authenticateDownload` bleiben unverändert: Sie kennen nur Session-Tokens, ein Agenten-Key scheitert dort mit `401`. Dasselbe gilt für `wsAuth.resolveSessionToken` und `routes/state.js` — Agenten-Keys öffnen keine WebSockets.
-
-- [ ] **Step 6: Create `server/middlewares/requireLoginSession.js`**
-
-```js
-const { sendError } = require("../utils/error");
-
-const requireLoginSession = (req, res, next) => {
-    if (req.apiKey || !req.session || req.session.impersonatorId)
-        return sendError(res, 403, 403, "This action requires a signed-in session");
-    next();
-};
-
-module.exports = { requireLoginSession };
-```
-
-`server/routes/apiKey.js` bleibt unverändert (Abweichung 2 im Plan-Kopf).
-
-- [ ] **Step 7: Mark impersonation sessions**
-
-`server/controllers/session.js` Z. 12-21 nachher:
-
-```js
-module.exports.createSession = async (accountId, userAgent, { impersonatorId = null } = {}) => {
-    const account = await Account.findByPk(accountId);
-
-    if (account === null)
-        return { code: 102, message: "The provided account does not exist" };
-
-    const session = await Session.create({ accountId, ip: "Admin", userAgent, impersonatorId });
-
-    return { token: session.token };
-}
-```
-
-`server/routes/users.js` Z. 63 vorher:
-
-```js
-    const account = await createSession(req.params.accountId, req.headers["user-agent"]);
-```
-
-nachher:
-
-```js
-    const account = await createSession(req.params.accountId, req.headers["user-agent"], { impersonatorId: req.user.id });
-```
-
-- [ ] **Step 8: Run test to verify it passes**
-
-Run: `node --test server/lib/vault/__tests__/agentAuth.test.js`
-Expected: PASS — `# pass 5`, `# fail 0`.
-
-- [ ] **Step 9: SEC-TOKEN-01 — Token aus dem SQL-Log halten**
-
-Befund der Prüfung (im Commit festhalten):
-- Es gibt keinen Request-Logger: kein `morgan`/`express-winston` in `package.json`, keine Middleware in `server/index.js`, die URLs schreibt; `express-ws` loggt nicht. Die einzigen `req.originalUrl`-Logs (`routes/entryBookmarks.js:96`, `routes/bookmarks.js:61`) betreffen Pfade ohne Token. `?sessionToken=` aus `/api/ws/state` erreicht keinen Logger über die URL.
-- Aber: Sequelize loggt jede Abfrage auf Stufe `debug` (`server/utils/database.js:34`, `:41`) und setzt `WHERE`-Werte inline ein, `INSERT`/`UPDATE` dagegen als `$1`. `routes/state.js:9` (`Session.findOne({ where: { token: sessionToken } })`), `middlewares/auth.js` (Bearer-Pfad), `wsAuth.js:27`, `routes/sftp.js:42`, `controllers/auth.js:67-68` und `controllers/deviceCode.js:67` landen damit bei `LOG_LEVEL=debug` als ``WHERE `sessions`.`token` = '<token>'`` im Log (geprüft mit Sequelize 6.37.8). Standard ist `LOG_LEVEL=system` (`Dockerfile.server:68`), dann wird nichts geschrieben.
-- Maßnahme: Werte von Spalten namens `token` im SQL-Log schwärzen.
-
-`server/utils/database.js` — nach `getCallerFromStack` (Z. 24) einfügen:
-
-```js
-// Sequelize inlines WHERE values into the logged SQL; session tokens must not reach the log (SEC-TOKEN-01).
-const redactSql = (sql) => sql.replace(/(`token`\s*=\s*)'(?:[^'\\]|\\.|'')*'/g, "$1'[redacted]'");
-const logSql = (msg) => logger.baseLogger.debug(redactSql(msg), { caller: getCallerFromStack() });
-```
-
-Z. 34 und Z. 41 vorher:
-
-```js
-        logging: (msg) => logger.baseLogger.debug(msg, { caller: getCallerFromStack() }),
-```
-
-nachher (beide Stellen):
-
-```js
-        logging: logSql,
-```
-
-- [ ] **Step 10: Manuell prüfen, dass kein Token im Debug-Log steht**
-
-Run: `LOG_LEVEL=debug yarn dev`, im Browser anmelden, einmal neu laden (öffnet `/api/ws/state?sessionToken=…`), dann:
-`grep -c "\`token\` = '[0-9a-f]" data/logs/$(date +%F).log`
-Expected: `0`. Gegenprobe: `grep -c "\`token\` = '\[redacted\]'" data/logs/$(date +%F).log` liefert mindestens `1`.
-
-- [ ] **Step 11: Run the affected existing tests**
-
-`middlewares/auth.js` lädt jetzt `models/Entry` und `lib/vault/ipBinding`; `bookmarkRoutes.test.js` lädt `auth.js` mit einer Datenbank-Attrappe ohne `define()` (deshalb lädt `ipBinding.js` das Audit erst bei Bedarf). `apiKeyPrefix.test.js` nutzt `createApiKey`, `oidcLogout.test.js` das `Session`-Modell.
-
-Run: `node --test server/lib/__tests__/bookmarkRoutes.test.js server/lib/__tests__/apiKeyPrefix.test.js server/lib/__tests__/oidcLogout.test.js server/lib/__tests__/browserSocketAuth.test.js`
-Expected: PASS, `# fail 0`.
-
-- [ ] **Step 12: Commit**
-
-```bash
-git add server/middlewares/auth.js server/lib/vault/ipBinding.js server/controllers/apiKey.js server/controllers/session.js server/routes/users.js server/middlewares/requireLoginSession.js server/utils/database.js server/lib/vault/__tests__/agentAuth.test.js
-git commit -m "Vault: Agenten-Keys nur am MCP-Endpunkt mit IP-Bindung, Login-Session-Pflicht, Impersonation markiert, Token aus dem SQL-Log"
-```
-
----
-
-### Task 5: REST: Einträge, Reveal, Einstellungen, Verfügbarkeit
-
-**Files:**
-- Create: `server/validations/vault.js`
-- Create: `server/controllers/vaultItems.js`
-- Create: `server/controllers/vaultSettings.js`
-- Modify: `server/routes/vault/items.js` (leeren `Router()`-Platzhalter aus Task 1 vollständig ersetzen)
-- Modify: `server/routes/vault/settings.js` (leeren `Router()`-Platzhalter aus Task 1 vollständig ersetzen)
-- Modify: `server/lib/vault/visibility.js` (nur `module.exports`: die interne Normalisierung `toPlain` aus Task 3 zusätzlich als `normalizeItem` exportieren)
-- Test: `server/lib/vault/__tests__/validation.test.js`
-- Test: `server/lib/vault/__tests__/itemsRoute.test.js`
-
-**Interfaces:**
-- Consumes:
-  - Task 1: Modelle `VaultItem`, `VaultSecret`, `VaultBinding`, `VaultSettings.getOrCreate()`; aus `server/lib/vault/state.js` `initVaultState() → Promise<{ keyStatus }>`, `getKeyStatus() → "active"|"missing"|"mismatch"`, `isVaultEnabled() → boolean`, `requireVaultEnabled(req, res, next)`, `_resetForTests()`; aus `server/lib/vault/secrets.js` `writeSecret(itemId, field, value) → Promise<void>`, `readSecret(itemId, field) → Promise<string|null>` (wirft `VaultError(ITEM_UNREADABLE)`), `clearSecrets(itemId) → Promise<number>`; `VaultError`, `VaultErrorCode` aus `server/lib/vault/errors.js`; `Permission.VAULT_USE`, `Permission.SETTINGS_VAULT`; `AUDIT_ACTIONS.VAULT_ITEM_CREATE|VAULT_ITEM_UPDATE|VAULT_ITEM_DELETE|VAULT_REVEAL|VAULT_ITEM_UNREADABLE`, `RESOURCE_TYPES.VAULT`.
-  - Task 3: aus `server/lib/vault/visibility.js` `itemRef(item) → string`, `normalizeItem(row) → object` (bisher internes `toPlain`: `fields` aus JSON-Text, `approvalRequired`/`allServers` als Boolean; dieser Task exportiert es nur), `canManageItem(accountId, item) → Promise<boolean>`, `canRevealItem(accountId, item) → Promise<boolean>`, `canCreateFor(accountId, { organizationId }) → Promise<boolean>`; aus `server/lib/vault/bindings.js` `validateBindings({ accountId, organizationId }, bindings) → Promise<{ valid: true } | { valid: false, message }>`, `setBindings(itemId, bindings) → Promise<void>`.
-  - Task 4: `const { requireLoginSession } = require("../../middlewares/requireLoginSession")` (benannter Export wie `authenticate`/`requirePermission`); `authenticate` setzt bei Login-Sessions `req.session` (mit `impersonatorId`), bei Konto-Keys `req.apiKey`.
-- Produces (von Tasks 8, 10, 12, 15 genutzt):
-  - `GET /api/vault/available` → immer `200 { enabled, canUse, canManageOrgs: number[], canProvision, agentUrlSet, impersonating, trustProxyUnsafe }`; bei ausgeschaltetem Vault `canUse:false`, `canManageOrgs:[]`, `canProvision:false` (`agentUrlSet`, `impersonating`, `trustProxyUnsafe` bleiben echte Werte).
-  - `GET /api/vault/items` → `{ items: Item[] }`, `Item = { id, ref, accountId, organizationId, ownerName (Organisationsname, bei persönlichen Einträgen null), name, type, description, fields, approvalRequired, allServers, bindings: [{ kind, targetId, label|null }], secretFields: string[], lastUsedAt, canManage, canReveal }`. `canReveal` ist in Impersonations-Sitzungen und mit Konto-Key immer `false`.
-  - `POST /api/vault/items` → `201 { item }`; `400` (Joi, Bindung), `403` (kein Recht für diesen Besitzer), `409` (Name beim Besitzer vergeben).
-  - `PATCH /api/vault/items/:id` → `{ item, secretsCleared }`; `404` unbekannt oder fremder Mandant, `403` ohne Verwaltungsrecht, `409` Name vergeben.
-  - `DELETE /api/vault/items/:id` → `{ success: true }` (Werte und Bindungen werden mitgelöscht).
-  - `GET /api/vault/items/:id/secrets/:field` → `{ value }` mit `Cache-Control: no-store`; `403` ohne Recht/ohne Login-Session/Impersonation, `404` unbekannt, fremder Mandant, Feld nicht vom Typ oder kein Wert, `422 { code: 422, message }` wenn der Wert nicht entschlüsselt werden kann (Audit `vault.item_unreadable`; Grundlage für den Zustand `error` von `UI-VAULT-DETAIL`), `429` ab dem 31. Abruf je Minute und Konto.
-  - `GET`/`PATCH /api/vault/settings` (Recht `settings.vault`, auch bei ausgeschaltetem Vault) → `{ keyStatus, agentUrl, trustProxyUnsafe }`; `agentUrl` wird ohne abschließenden Schrägstrich gespeichert, `""`/`null` löscht sie.
-  - `server/lib/vault/visibility.js` exportiert zusätzlich `normalizeItem(row)`.
-  - `server/controllers/vaultSettings.js`: `getVaultSettings() → Promise<{ keyStatus, agentUrl }>`, `updateVaultSettings({ agentUrl }) → Promise<{ keyStatus, agentUrl }>`, `getAgentUrl() → Promise<string|null>`, zusätzlich `getVaultAvailability(accountId, { impersonating, trustProxyUnsafe }) → Promise<object>` (Antwort von `available`).
-  - `server/validations/vault.js`: `SECRET_FIELDS` (`{ login: ["password"], api_key: ["token"], ssh: ["privateKey","password","passphrase"], database: ["password"], generic: ["value"] }`), `createVaultItemValidation`, `updateVaultItemSchema(type) → Joi.ObjectSchema`, `updateVaultSettingsValidation`. Ursprünge werden auf `new URL(x).origin` normalisiert gespeichert (Kleinschreibung, Standardport entfernt) — Task 11 vergleicht gegen genau diese Form.
-
-**Design:** kein UI-Anteil.
-
-**Tests:** 5 Tests in 2 Dateien, test-first (Vertrag steht in Spec und `plan-contracts.md`).
-- `validation.test.js`, 1 Test mit Tabellenfällen: Felder je Typ, Ursprungsform und -normalisierung, Namensmuster, Geheimfelder je Typ (auch beim Ändern), Bindungsarten, `agentUrl` (SEC-INPUT-01).
-- `itemsRoute.test.js`, 4 Tests über die Naht Router → Controller → echte Task-1/3/4-Module → In-Memory-SQLite; gefälscht werden nur `utils/database`, `permissions/engine`, `middlewares/auth` (setzt `req.user`/`req.session`/`req.apiKey` je Token) und `createAuditLog`:
-  1. Spec-Test 3: Reveal als Besitzer persönlich `200`, mit `vault.reveal` in der Organisation `200`, aktives Mitglied ohne Recht `403`, nur eingeladenes Konto mit Org-Rechten `404`, fremdes persönliches Konto `404`, Feld eines anderen Typs `404`; genau zwei Audits `vault.reveal`, kein Wert im Audit (SEC-IDOR-01, SEC-TENANT-01, SEC-RBAC-01, SEC-SECRET-01).
-  2. Spec-Test 11 Teil 2 (Reveal): Impersonations-Sitzung und Konto-Key `403` ohne Audit; die Liste meldet dort `canReveal:false`.
-  3. Spec-Test 11 Teil 1: `PATCH` mit gleichem Ursprung in anderer Schreibweise behält den Wert, mit neuem Ursprung löscht er ihn im selben Vorgang (Audit `secretsCleared:true`), mit neuem Ursprung und neuem Wert steht nur der neue Wert; `GET /items` und Audit enthalten keinen der Werte.
-  4. `available` inkl. `trustProxyUnsafe` (`trust proxy` `true` vs. Hop-Zahl), `impersonating`, `canManageOrgs` (nur aktive Mitgliedschaft), `agentUrlSet` nach `PATCH /settings`; Vault aus → Rechte leer, `/items` `404`, `/settings` meldet `missing`.
-- Nicht getestet: Rate-Limit (Framework-Zusage von express-rate-limit, Konfiguration wie `bookmarkRateLimiter`), `DELETE` und Bindungs-Labels (reine Weiterreichung an `setBindings`/`clearSecrets`, deren Verhalten Task 1/3 testen), Rechte-Matrix von `canCreateFor`/`canManageItem` (Task 3), OpenAPI-Kommentare.
-- SEC-Abdeckung dieses Tasks: SEC-INPUT-01, SEC-ERR-01 (500 ohne Details, 422 ohne Details), SEC-SECRET-01, SEC-RATE-01 (Reveal), SEC-SQLI-01 (nur Sequelize-`where`), SEC-IDOR-01, SEC-TENANT-01, SEC-RBAC-01, SEC-PII-01 (Löschen entfernt Werte und Bindungen; Audit ohne Werte).
-
-**Parallel:** Task 6, Task 7, Task 8, Task 10 (keine gemeinsamen Dateien; `visibility.js` aus Task 3 fasst in Phase C nur dieser Task an).
-
-- [ ] **Step 1: Validierungstest schreiben**
-
-`server/lib/vault/__tests__/validation.test.js`:
-
-```js
-const test = require("node:test");
-const assert = require("node:assert");
-const {
-    createVaultItemValidation, updateVaultItemSchema, updateVaultSettingsValidation,
-} = require("../../../validations/vault");
-
-const validate = (schema, value) => schema.validate(value, { allowUnknown: false });
-
-const login = (overrides = {}) => ({
-    name: "portal-login", type: "login",
-    fields: { username: "ma", origins: ["https://portal.example.com"] },
-    secrets: { password: "pw" },
-    ...overrides,
-});
-const apiKey = (fields) => ({ name: "gh", type: "api_key", fields: { hosts: ["api.github.com"], ...fields }, secrets: { token: "t" } });
-
-test("Einträge, Änderungen und Einstellungen werden je Typ per Whitelist geprüft und Ursprünge normalisiert", () => {
-    const accepted = [
-        [login({ fields: { username: "ma", origins: ["HTTPS://Portal.Example.com:443", "http://10.0.0.5:8080"] } }),
-            (value) => assert.deepStrictEqual(value.fields.origins, ["https://portal.example.com", "http://10.0.0.5:8080"])],
-        [{ name: "gh.token_1", type: "api_key", fields: { hosts: ["api.github.com"] }, secrets: { token: "t" } },
-            (value) => assert.deepStrictEqual(
-                [value.fields.headerName, value.fields.headerTemplate, value.organizationId, value.approvalRequired, value.allServers, value.bindings],
-                ["Authorization", "Bearer {{secret}}", null, true, false, []])],
-        [{ name: "nas-root", type: "ssh", fields: { username: "root" }, secrets: { privateKey: "-----BEGIN OPENSSH PRIVATE KEY-----" } }],
-        [{ name: "local-db", type: "database", fields: { engine: "sqlite", database: "/data/app.db" } },
-            (value) => assert.deepStrictEqual(value.secrets, {})],
-        [{ name: "misc", type: "generic", secrets: { value: "x" }, organizationId: 20, bindings: [{ kind: "folder", targetId: 3 }] },
-            (value) => assert.deepStrictEqual(value.fields, {})],
-    ];
-    for (const [input, check] of accepted) {
-        const { error, value } = validate(createVaultItemValidation, input);
-        assert.strictEqual(error, undefined, `${input.name}: ${error?.message}`);
-        check?.(value);
-    }
-
-    const rejected = [
-        ["Ursprung mit Pfad", login({ fields: { origins: ["https://portal.example.com/login"] } })],
-        ["Ursprung mit Benutzerteil", login({ fields: { origins: ["https://u:p@portal.example.com"] } })],
-        ["Ursprung mit Schema ftp", login({ fields: { origins: ["ftp://portal.example.com"] } })],
-        ["Ursprung ohne Host", login({ fields: { origins: ["https://"] } })],
-        ["kein Ursprung", login({ fields: { origins: [] } })],
-        ["Großbuchstaben im Namen", login({ name: "Portal" })],
-        ["Name beginnt mit Punkt", login({ name: ".portal" })],
-        ["Name mit 65 Zeichen", login({ name: "a".repeat(65) })],
-        ["Geheimfeld eines anderen Typs", login({ secrets: { password: "pw", token: "t" } })],
-        ["Login ohne Passwort", login({ secrets: {} })],
-        ["leeres Passwort", login({ secrets: { password: "" } })],
-        ["SSH ohne Schlüssel und Passwort", { name: "nas", type: "ssh", fields: { username: "root" }, secrets: { passphrase: "p" } }],
-        ["unbekannte Engine", { name: "db", type: "database", fields: { engine: "oracle", host: "db", database: "x" } }],
-        ["Postgres ohne Host", { name: "db", type: "database", fields: { engine: "postgres", database: "x" } }],
-        ["Header-Vorlage ohne {{secret}}", apiKey({ headerTemplate: "Bearer" })],
-        ["Host mit Pfad", apiKey({ hosts: ["api.github.com/v3"] })],
-        ["Angaben bei Sonstiges", { name: "misc", type: "generic", fields: { note: "x" }, secrets: { value: "x" } }],
-        ["Bindung an eine Gruppe", login({ bindings: [{ kind: "group", targetId: 1 }] })],
-        ["unbekannter Typ", login({ type: "note" })],
-        ["unbekanntes Feld", login({ owner: 3 })],
-    ];
-    for (const [label, input] of rejected) {
-        assert.ok(validate(createVaultItemValidation, input).error, label);
-    }
-
-    const update = updateVaultItemSchema("login");
-    assert.strictEqual(validate(update, { secrets: { password: "neu" } }).error, undefined);
-    assert.deepStrictEqual(validate(update, { fields: { origins: ["https://Login.Example.net:443"] } }).value.fields.origins, ["https://login.example.net"]);
-    for (const [label, input] of [
-        ["Typwechsel", { type: "api_key" }],
-        ["Besitzerwechsel", { organizationId: 20 }],
-        ["leere Änderung", {}],
-        ["Ursprung mit Pfad", { fields: { origins: ["https://login.example.net/path"] } }],
-        ["Geheimfeld eines anderen Typs", { secrets: { token: "t" } }],
-    ]) {
-        assert.ok(validate(update, input).error, label);
-    }
-
-    const settings = (agentUrl) => validate(updateVaultSettingsValidation, { agentUrl });
-    assert.strictEqual(settings("https://outpost.example.com/").value.agentUrl, "https://outpost.example.com");
-    assert.strictEqual(settings("http://10.0.0.2:6989/outpost/").value.agentUrl, "http://10.0.0.2:6989/outpost");
-    assert.strictEqual(settings("").error, undefined);
-    for (const agentUrl of ["ftp://outpost.example.com", "https://outpost.example.com/?x=1", "https://u:p@outpost.example.com", "outpost.example.com"]) {
-        assert.ok(settings(agentUrl).error, agentUrl);
-    }
-});
-```
-
-- [ ] **Step 2: Test laufen lassen, Fehlschlag prüfen**
-
-Run: `cd /root/outpost && node --test server/lib/vault/__tests__/validation.test.js`
-Expected: FAIL — `Cannot find module '../../../validations/vault'`.
-
-- [ ] **Step 3: `server/validations/vault.js` anlegen**
-
-```js
-const Joi = require("joi");
-
-const TYPES = ["login", "api_key", "ssh", "database", "generic"];
-
-const SECRET_FIELDS = Object.freeze({
-    login: ["password"],
-    api_key: ["token"],
-    ssh: ["privateKey", "password", "passphrase"],
-    database: ["password"],
-    generic: ["value"],
-});
-const SECRET_MAX_LENGTH = { password: 4096, token: 8192, privateKey: 16384, passphrase: 4096, value: 65536 };
-
-const name = Joi.string().pattern(/^[a-z0-9][a-z0-9._-]{0,63}$/)
-    .messages({ "string.pattern.base": "name may only contain lowercase letters, digits, dot, dash and underscore (max. 64)" });
-const description = Joi.string().max(2000).allow("", null);
-
-// Only scheme, host and port: a path, credentials or a query would never match the frame origin
-// browser_fill_credential compares against, and new URL().origin lowercases and drops default ports.
-const origin = Joi.string().max(2048).custom((value, helpers) => {
-    if (!/^https?:\/\/[^/?#@\s]+$/i.test(value)) return helpers.error("any.invalid");
-    try {
-        return new URL(value).origin;
-    } catch {
-        return helpers.error("any.invalid");
-    }
-}).messages({ "any.invalid": "origins must look like https://host[:port]" });
-
-const FIELDS = {
-    login: Joi.object({
-        username: Joi.string().max(255).allow(""),
-        origins: Joi.array().items(origin).min(1).max(20).required(),
-    }),
-    api_key: Joi.object({
-        hosts: Joi.array().items(Joi.string().hostname()).min(1).max(20).required(),
-        headerName: Joi.string().pattern(/^[A-Za-z0-9-]{1,64}$/).default("Authorization"),
-        headerTemplate: Joi.string().max(512).pattern(/\{\{secret\}\}/).default("Bearer {{secret}}"),
-    }),
-    ssh: Joi.object({
-        username: Joi.string().max(255).required(),
-    }),
-    database: Joi.object({
-        engine: Joi.string().valid("postgres", "mysql", "sqlite").required(),
-        host: Joi.string().hostname().when("engine", { is: "sqlite", then: Joi.optional(), otherwise: Joi.required() }),
-        port: Joi.number().integer().min(1).max(65535),
-        database: Joi.string().max(1024).required(),
-        username: Joi.string().max(255),
-    }),
-    generic: Joi.object({}),
-};
-
-const secretsOf = (type) => Joi.object(Object.fromEntries(
-    SECRET_FIELDS[type].map((field) => [field, Joi.string().min(1).max(SECRET_MAX_LENGTH[field])]),
-));
-
-const CREATE_SECRETS = {
-    login: secretsOf("login").fork(["password"], (schema) => schema.required()).required(),
-    api_key: secretsOf("api_key").fork(["token"], (schema) => schema.required()).required(),
-    ssh: secretsOf("ssh").or("privateKey", "password").required(),
-    database: secretsOf("database").default({}),
-    generic: secretsOf("generic").fork(["value"], (schema) => schema.required()).required(),
-};
-
-const CREATE_FIELDS = {
-    login: FIELDS.login.required(),
-    api_key: FIELDS.api_key.required(),
-    ssh: FIELDS.ssh.required(),
-    database: FIELDS.database.required(),
-    generic: FIELDS.generic.default({}),
-};
-
-const byType = (schemas) => Joi.when("type", { switch: TYPES.map((type) => ({ is: type, then: schemas[type] })) });
-
-const bindings = Joi.array().items(Joi.object({
-    kind: Joi.string().valid("entry", "folder", "tag").required(),
-    targetId: Joi.number().integer().positive().required(),
-})).max(200);
-
-module.exports.SECRET_FIELDS = SECRET_FIELDS;
-
-module.exports.createVaultItemValidation = Joi.object({
-    organizationId: Joi.number().integer().positive().allow(null).default(null),
-    name: name.required(),
-    type: Joi.string().valid(...TYPES).required(),
-    description,
-    fields: byType(CREATE_FIELDS),
-    secrets: byType(CREATE_SECRETS),
-    approvalRequired: Joi.boolean().default(true),
-    allServers: Joi.boolean().default(false),
-    bindings: bindings.default([]),
-});
-
-module.exports.updateVaultItemSchema = (type) => Joi.object({
-    name,
-    description,
-    fields: FIELDS[type],
-    secrets: secretsOf(type),
-    approvalRequired: Joi.boolean(),
-    allServers: Joi.boolean(),
-    bindings,
-}).min(1);
-
-const agentUrl = Joi.string().max(2048).custom((value, helpers) => {
-    let url;
-    try {
-        url = new URL(value);
-    } catch {
-        return helpers.error("any.invalid");
-    }
-    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash)
-        return helpers.error("any.invalid");
-    return url.origin + url.pathname.replace(/\/+$/, "");
-}).messages({ "any.invalid": "agentUrl must be an http or https address without credentials, query or fragment" });
-
-module.exports.updateVaultSettingsValidation = Joi.object({
-    agentUrl: agentUrl.allow(null, "").required(),
-});
-```
-
-`updateVaultItemSchema` ist eine Funktion (der Typ eines Eintrags steht erst nach dem Laden fest) und taucht deshalb nicht in der OpenAPI-Ausgabe auf; `extractSchemasFromValidation` (`server/utils/joiToOpenApi.js`) überspringt alles ohne `describe`. `CreateVaultItem` und `UpdateVaultSettings` erscheinen dort.
-
-- [ ] **Step 4: Validierungstest grün**
-
-Run: `cd /root/outpost && node --test server/lib/vault/__tests__/validation.test.js`
-Expected: PASS (1 Test).
-
-- [ ] **Step 5: Routentest schreiben**
-
-`server/lib/vault/__tests__/itemsRoute.test.js`:
-
-```js
-process.env.ENCRYPTION_KEY = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
-process.env.VAULT_KEY = "ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100";
-
-const test = require("node:test");
-const assert = require("node:assert");
-const express = require("express");
-const { Sequelize } = require("sequelize");
-
-// foreignKeys: false - the vault models reference accounts and organizations; this test creates no accounts.
-const db = new Sequelize({ dialect: "sqlite", storage: ":memory:", logging: false, query: { raw: true }, foreignKeys: false });
-const fake = (path, exports) => {
-    const resolved = require.resolve(path);
-    require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports };
-};
-
-// 1: vault.use, active member of 20 without org rights. 3: active member of 20 with vault.reveal and
-// vault.manage, settings.vault. 4: vault.use, only invited to 20 - the engine would grant org rights,
-// the membership must not.
-const SYSTEM = { 1: ["vault.use"], 3: ["settings.vault"], 4: ["vault.use"] };
-const ORG = { "3:20": ["vault.reveal", "vault.manage"], "4:20": ["vault.reveal", "vault.manage"] };
-const CALLERS = {
-    "s-owner": { user: { id: 1 }, session: { id: 11, accountId: 1, impersonatorId: null } },
-    "s-imp": { user: { id: 1 }, session: { id: 12, accountId: 1, impersonatorId: 99 } },
-    "k-owner": { user: { id: 1 }, apiKey: { id: 5, kind: "account" } },
-    "s-revealer": { user: { id: 3 }, session: { id: 13, accountId: 3, impersonatorId: null } },
-    "s-invited": { user: { id: 4 }, session: { id: 14, accountId: 4, impersonatorId: null } },
-};
-
-fake("../../../utils/database", db);
-fake("../../../permissions/engine", {
-    getSystemPermissions: async (accountId) => ({ isAdmin: false, permissions: SYSTEM[accountId] ?? [] }),
-    getOrganizationPermissions: async (accountId, organizationId) =>
-        ({ isOwner: false, isAdmin: false, permissions: ORG[`${accountId}:${organizationId}`] ?? [] }),
-    hasSystemPermission: async (accountId, permission) => (SYSTEM[accountId] ?? []).includes(permission),
-    hasOrganizationPermission: async (accountId, organizationId, permission) =>
-        (ORG[`${accountId}:${organizationId}`] ?? []).includes(permission),
-});
-fake("../../../middlewares/auth", {
-    authenticate: (req, res, next) => {
-        const caller = CALLERS[(req.header("authorization") ?? "").replace(/^Bearer /, "")];
-        if (!caller) return res.status(401).json({ message: "The provided token is not valid" });
-        Object.assign(req, caller);
-        next();
-    },
-});
-
-const audits = [];
-const audit = require("../../../controllers/audit");
-audit.createAuditLog = async (entry) => { audits.push(entry); };
-
-const state = require("../state");
-const { writeSecret, readSecret } = require("../secrets");
-const VaultItem = require("../../../models/VaultItem");
-const Organization = require("../../../models/Organization");
-const OrganizationMember = require("../../../models/OrganizationMember");
-const itemsRouter = require("../../../routes/vault/items");
-const settingsRouter = require("../../../routes/vault/settings");
-
-let personal;
-let shared;
-
-test.before(async () => {
-    await db.sync();
-    await state.initVaultState();
-    await Organization.create({ id: 20, name: "Ops" });
-    await OrganizationMember.bulkCreate([
-        { organizationId: 20, accountId: 1, role: "member", status: "active", invitedBy: 3 },
-        { organizationId: 20, accountId: 3, role: "member", status: "active", invitedBy: 3 },
-        { organizationId: 20, accountId: 4, role: "member", status: "pending", invitedBy: 3 },
-    ]);
-    personal = await VaultItem.create({
-        accountId: 1, name: "portal-login", type: "login",
-        fields: { username: "ma", origins: ["https://portal.example.com"] }, approvalRequired: true, allServers: false, createdBy: 1,
-    });
-    await writeSecret(personal.id, "password", "hunter2-personal");
-    shared = await VaultItem.create({
-        organizationId: 20, name: "backup-db", type: "database",
-        fields: { engine: "postgres", host: "db.internal", port: 5432, database: "backup", username: "backup" },
-        approvalRequired: true, allServers: false, createdBy: 3,
-    });
-    await writeSecret(shared.id, "password", "hunter2-shared");
-});
-
-test.beforeEach(() => { audits.length = 0; });
-
-const listen = async (t, { trustProxy = false } = {}) => {
-    const app = express();
-    app.set("trust proxy", trustProxy);
-    app.use(express.json());
-    app.use("/api/vault", itemsRouter);
-    app.use("/api/vault", settingsRouter);
-    const server = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)); });
-    t.after(() => server.close());
-    const call = (method) => async (path, token, body) => {
-        const res = await fetch(`http://127.0.0.1:${server.address().port}/api/vault${path}`, {
-            method,
-            headers: { authorization: `Bearer ${token}`, ...(body ? { "content-type": "application/json" } : {}) },
-            body: body ? JSON.stringify(body) : undefined,
-        });
-        const text = await res.text();
-        return { status: res.status, text, body: res.headers.get("content-type")?.includes("json") ? JSON.parse(text) : null };
-    };
-    return { get: call("GET"), post: call("POST"), patch: call("PATCH") };
-};
-
-test("Reveal: Besitzer persönlich und vault.reveal in der Organisation ja, Mitglied ohne Recht 403, fremder Mandant 404; jeder Abruf auditiert", async (t) => {
-    const { get } = await listen(t);
-    const reveal = (token, item, field = "password") => get(`/items/${item.id}/secrets/${field}`, token);
-
-    assert.deepStrictEqual((await reveal("s-owner", personal)).body, { value: "hunter2-personal" });
-    assert.deepStrictEqual((await reveal("s-revealer", shared)).body, { value: "hunter2-shared" });
-    assert.strictEqual((await reveal("s-owner", shared)).status, 403);
-    assert.strictEqual((await reveal("s-invited", shared)).status, 404);
-    assert.strictEqual((await reveal("s-revealer", personal)).status, 404);
-    assert.strictEqual((await reveal("s-owner", personal, "token")).status, 404);
-
-    assert.deepStrictEqual(
-        audits.map((a) => [a.action, a.accountId, a.organizationId, a.resourceId, a.details.item, a.details.field]),
-        [
-            ["vault.reveal", 1, null, personal.id, "portal-login", "password"],
-            ["vault.reveal", 3, 20, shared.id, "org:20/backup-db", "password"],
-        ],
-    );
-    assert.doesNotMatch(JSON.stringify(audits), /hunter2/);
-});
-
-test("Reveal verlangt eine Login-Session ohne Impersonation: Impersonation und Konto-Key bekommen 403, ohne Audit", async (t) => {
-    const { get } = await listen(t);
-
-    for (const token of ["s-imp", "k-owner"]) {
-        const { status, text } = await get(`/items/${personal.id}/secrets/password`, token);
-        assert.strictEqual(status, 403, token);
-        assert.doesNotMatch(text, /hunter2/);
-    }
-    assert.deepStrictEqual(audits, []);
-    const listed = (await get("/items", "s-imp")).body.items.find((item) => item.id === personal.id);
-    assert.deepStrictEqual([listed.canManage, listed.canReveal], [true, false]);
-});
-
-test("PATCH mit geändertem Ursprung löscht die gespeicherten Werte im selben Vorgang; dieselbe Adresse anders geschrieben nicht; Listen tragen nie Werte", async (t) => {
-    const { get, post, patch } = await listen(t);
-    const created = await post("/items", "s-owner", {
-        name: "shop-login", type: "login", fields: { username: "ma", origins: ["https://shop.example.com"] }, secrets: { password: "pw-one" },
-    });
-    assert.strictEqual(created.status, 201);
-    const { item } = created.body;
-    assert.deepStrictEqual([item.ref, item.secretFields, item.approvalRequired, item.canManage, item.canReveal], ["shop-login", ["password"], true, true, true]);
-
-    const sameOrigin = await patch(`/items/${item.id}`, "s-owner", { fields: { username: "ma.backes", origins: ["HTTPS://Shop.Example.com:443"] } });
-    assert.deepStrictEqual(
-        [sameOrigin.body.secretsCleared, sameOrigin.body.item.secretFields, sameOrigin.body.item.fields],
-        [false, ["password"], { username: "ma.backes", origins: ["https://shop.example.com"] }],
-    );
-
-    const moved = await patch(`/items/${item.id}`, "s-owner", { fields: { username: "ma.backes", origins: ["https://shop.example.net"] } });
-    assert.deepStrictEqual([moved.status, moved.body.secretsCleared, moved.body.item.secretFields], [200, true, []]);
-    assert.strictEqual(await readSecret(item.id, "password"), null);
-    assert.strictEqual(audits.at(-1).action, "vault.item_update");
-    assert.strictEqual(audits.at(-1).details.secretsCleared, true);
-
-    const movedWithValue = await patch(`/items/${item.id}`, "s-owner", {
-        fields: { username: "ma.backes", origins: ["https://login.example.net"] }, secrets: { password: "pw-two" },
-    });
-    assert.deepStrictEqual([movedWithValue.body.secretsCleared, movedWithValue.body.item.secretFields], [true, ["password"]]);
-    assert.strictEqual(await readSecret(item.id, "password"), "pw-two");
-
-    const list = await get("/items", "s-owner");
-    assert.deepStrictEqual(list.body.items.map((entry) => entry.ref).sort(), ["org:20/backup-db", "portal-login", "shop-login"]);
-    assert.doesNotMatch(list.text + JSON.stringify(audits), /pw-one|pw-two|hunter2/);
-});
-
-test("available meldet Schalter, Rechte, Agenten-Adresse, Impersonation und TRUST_PROXY=true; bei ausgeschaltetem Vault sind alle Rechte leer", async (t) => {
-    const { get, patch } = await listen(t, { trustProxy: true });
-
-    assert.strictEqual((await patch("/settings", "s-owner", { agentUrl: "https://outpost.example.com" })).status, 403);
-    assert.deepStrictEqual((await patch("/settings", "s-revealer", { agentUrl: "https://outpost.example.com/" })).body,
-        { keyStatus: "active", agentUrl: "https://outpost.example.com", trustProxyUnsafe: true });
-
-    assert.deepStrictEqual((await get("/available", "s-imp")).body, {
-        enabled: true, canUse: true, canManageOrgs: [], canProvision: true, agentUrlSet: true, impersonating: true, trustProxyUnsafe: true,
-    });
-    assert.deepStrictEqual((await get("/available", "s-revealer")).body, {
-        enabled: true, canUse: true, canManageOrgs: [20], canProvision: true, agentUrlSet: true, impersonating: false, trustProxyUnsafe: true,
-    });
-    assert.deepStrictEqual((await get("/available", "s-invited")).body.canManageOrgs, []);
-
-    const key = process.env.VAULT_KEY;
-    try {
-        process.env.VAULT_KEY = "";
-        state._resetForTests();
-        await state.initVaultState();
-        assert.deepStrictEqual((await get("/available", "s-revealer")).body, {
-            enabled: false, canUse: false, canManageOrgs: [], canProvision: false, agentUrlSet: true, impersonating: false, trustProxyUnsafe: true,
-        });
-        assert.strictEqual((await get("/items", "s-revealer")).status, 404);
-        assert.strictEqual((await get("/settings", "s-revealer")).body.keyStatus, "missing");
-    } finally {
-        process.env.VAULT_KEY = key;
-        state._resetForTests();
-        await state.initVaultState();
-    }
-
-    const behindOneProxy = await listen(t, { trustProxy: 1 });
-    assert.strictEqual((await behindOneProxy.get("/available", "s-owner")).body.trustProxyUnsafe, false);
-});
-```
-
-- [ ] **Step 6: Routentest laufen lassen, Fehlschlag prüfen**
-
-Run: `cd /root/outpost && node --test server/lib/vault/__tests__/itemsRoute.test.js`
-Expected: FAIL — alle 4 Tests; die Platzhalter-Router aus Task 1 antworten `404` (z. B. `Expected values to be strictly deep-equal: null !== { value: 'hunter2-personal' }`).
-
-- [ ] **Step 7: `normalizeItem` aus `visibility.js` exportieren**
-
-Task 3 normalisiert rohe `VaultItem`-Zeilen bereits in `toPlain` (SQLite liefert unter `query: { raw: true }` `fields` als JSON-Text und Booleans als `0`/`1`). Der Controller nutzt dieselbe Funktion statt einer zweiten. In `server/lib/vault/visibility.js` nur den Export ergänzen.
-
-Vorher:
-
-```js
-module.exports = {
-    itemRef,
-    parseItemRef,
-```
-
-Nachher:
-
-```js
-module.exports = {
-    itemRef,
-    normalizeItem: toPlain,
-    parseItemRef,
-```
-
-- [ ] **Step 8: `server/controllers/vaultSettings.js` anlegen**
-
-```js
-const VaultSettings = require("../models/VaultSettings");
-const OrganizationMember = require("../models/OrganizationMember");
-const { getKeyStatus, isVaultEnabled } = require("../lib/vault/state");
-const { canCreateFor } = require("../lib/vault/visibility");
-const { hasAccountPermission } = require("../utils/permission");
-const { Permission } = require("../permissions/registry");
-
-const getAgentUrl = async () => (await VaultSettings.getOrCreate()).agentUrl || null;
-
-const getVaultSettings = async () => ({ keyStatus: getKeyStatus(), agentUrl: await getAgentUrl() });
-
-const updateVaultSettings = async ({ agentUrl }) => {
-    const settings = await VaultSettings.getOrCreate();
-    await settings.update({ agentUrl: agentUrl || null });
-    return getVaultSettings();
-};
-
-const getVaultAvailability = async (accountId, { impersonating, trustProxyUnsafe }) => {
-    const enabled = isVaultEnabled();
-    const result = {
-        enabled, canUse: false, canManageOrgs: [], canProvision: false,
-        agentUrlSet: Boolean(await getAgentUrl()), impersonating, trustProxyUnsafe,
-    };
-    if (!enabled) return result;
-    const organizationIds = (await OrganizationMember.findAll({ where: { accountId, status: "active" }, attributes: ["organizationId"] }))
-        .map((member) => member.organizationId);
-    const canUse = organizationIds.length > 0 || await hasAccountPermission(accountId, Permission.VAULT_USE);
-    for (const organizationId of organizationIds) {
-        if (await canCreateFor(accountId, { organizationId })) result.canManageOrgs.push(organizationId);
-    }
-    return { ...result, canUse, canProvision: canUse };
-};
-
-module.exports = { getAgentUrl, getVaultSettings, updateVaultSettings, getVaultAvailability };
-```
-
-- [ ] **Step 9: `server/controllers/vaultItems.js` anlegen**
-
-Jede Abfrage nach ID läuft über `findScopedItem` (eigene Einträge oder Organisationen mit aktiver Mitgliedschaft) und antwortet sonst `404` wie bei unbekannter ID; erst danach prüft `canManageItem`/`canRevealItem` das Recht (`403`). Diese Mandantenprüfung ersetzt keine Rechteprüfung, sie unterscheidet nur `404` von `403`; die Rechte kommen ausschließlich aus `canManageItem`/`canRevealItem`/`canCreateFor` (Task 3, inkl. aktiver Mitgliedschaft). Geheime Werte verlassen den Controller nur in `revealSecret`. Jede gelesene Zeile läuft durch `normalizeItem` (Step 7).
-
-```js
-const { Op } = require("sequelize");
-const VaultItem = require("../models/VaultItem");
-const VaultSecret = require("../models/VaultSecret");
-const VaultBinding = require("../models/VaultBinding");
-const Organization = require("../models/Organization");
-const OrganizationMember = require("../models/OrganizationMember");
-const Entry = require("../models/Entry");
-const Folder = require("../models/Folder");
-const Tag = require("../models/Tag");
-const { hasAccountPermission } = require("../utils/permission");
-const { Permission } = require("../permissions/registry");
-const { createAuditLog, AUDIT_ACTIONS, RESOURCE_TYPES } = require("./audit");
-const { itemRef, normalizeItem, canManageItem, canRevealItem, canCreateFor } = require("../lib/vault/visibility");
-const { validateBindings, setBindings } = require("../lib/vault/bindings");
-const { readSecret, writeSecret, clearSecrets } = require("../lib/vault/secrets");
-const { VaultError, VaultErrorCode } = require("../lib/vault/errors");
-const { SECRET_FIELDS, updateVaultItemSchema } = require("../validations/vault");
-const logger = require("../utils/logger");
-
-const NOT_FOUND = { code: 404, message: "Vault entry not found" };
-const FORBIDDEN = { code: 403, message: "You are not allowed to do this with this vault entry" };
-const NAME_TAKEN = { code: 409, message: "A vault entry with this name already exists for this owner" };
-const TARGET_FIELD = { login: "origins", api_key: "hosts", database: "host" };
-const LABEL_MODELS = { entry: Entry, folder: Folder, tag: Tag };
-const ITEM_COLUMNS = ["name", "description", "fields", "approvalRequired", "allServers"];
-
-const targetOf = (type, fields) => JSON.stringify([].concat(fields?.[TARGET_FIELD[type]] ?? []).sort());
-
-const activeOrganizationIds = async (accountId) =>
-    (await OrganizationMember.findAll({ where: { accountId, status: "active" }, attributes: ["organizationId"] }))
-        .map((member) => member.organizationId);
-
-// SEC-TENANT-01: every lookup by id is scoped to the caller's own entries and active memberships.
-const findScopedItem = async (accountId, id) => {
-    if (!Number.isInteger(id)) return null;
-    const row = await VaultItem.findOne({
-        where: { id, [Op.or]: [{ accountId }, { organizationId: { [Op.in]: await activeOrganizationIds(accountId) } }] },
-    });
-    return row ? normalizeItem(row) : null;
-};
-
-const nameTaken = async ({ accountId, organizationId }, name, exceptId = null) => Boolean(await VaultItem.findOne({
-    where: {
-        name, ...(organizationId ? { organizationId } : { accountId }),
-        ...(exceptId ? { id: { [Op.ne]: exceptId } } : {}),
-    },
-    attributes: ["id"],
-}));
-
-const bindingLabels = async (bindings) => {
-    const labels = {};
-    for (const [kind, Model] of Object.entries(LABEL_MODELS)) {
-        const ids = bindings.filter((binding) => binding.kind === kind).map((binding) => binding.targetId);
-        if (!ids.length) continue;
-        for (const row of await Model.findAll({ where: { id: ids }, attributes: ["id", "name"] })) labels[`${kind}:${row.id}`] = row.name;
-    }
-    return labels;
-};
-
-const serializeItems = async (caller, rows) => {
-    if (!rows.length) return [];
-    const items = rows.map(normalizeItem);
-    const ids = items.map((item) => item.id);
-    const organizationIds = [...new Set(items.map((item) => item.organizationId).filter(Boolean))];
-    const [secrets, bindings, organizations] = await Promise.all([
-        VaultSecret.findAll({ where: { itemId: ids }, attributes: ["itemId", "field"] }),
-        VaultBinding.findAll({ where: { itemId: ids }, attributes: ["itemId", "kind", "targetId"] }),
-        organizationIds.length ? Organization.findAll({ where: { id: organizationIds }, attributes: ["id", "name"] }) : [],
-    ]);
-    const labels = await bindingLabels(bindings);
-    return Promise.all(items.map(async (item) => ({
-        id: item.id,
-        ref: itemRef(item),
-        accountId: item.accountId ?? null,
-        organizationId: item.organizationId ?? null,
-        ownerName: organizations.find((organization) => organization.id === item.organizationId)?.name ?? null,
-        name: item.name,
-        type: item.type,
-        description: item.description ?? null,
-        fields: item.fields ?? {},
-        approvalRequired: item.approvalRequired,
-        allServers: item.allServers,
-        bindings: bindings.filter((binding) => binding.itemId === item.id)
-            .map(({ kind, targetId }) => ({ kind, targetId, label: labels[`${kind}:${targetId}`] ?? null })),
-        secretFields: secrets.filter((secret) => secret.itemId === item.id).map((secret) => secret.field).sort(),
-        lastUsedAt: item.lastUsedAt ?? null,
-        canManage: await canManageItem(caller.accountId, item),
-        canReveal: caller.revealAllowed && await canRevealItem(caller.accountId, item),
-    })));
-};
-
-const serializeOne = async (caller, id) => (await serializeItems(caller, [await VaultItem.findByPk(id)]))[0];
-
-const audit = (caller, item, action, details = {}) => createAuditLog({
-    accountId: caller.accountId,
-    organizationId: item.organizationId ?? null,
-    action,
-    resource: RESOURCE_TYPES.VAULT,
-    resourceId: item.id,
-    details: {
-        item: itemRef(item), type: item.type, ...details,
-        ...(caller.impersonatorId ? { impersonatorId: caller.impersonatorId } : {}),
-    },
-    ipAddress: caller.ipAddress ?? null,
-    userAgent: caller.userAgent ?? null,
-});
-
-const removeItem = async (id) => {
-    await clearSecrets(id);
-    await setBindings(id, []);
-    await VaultItem.destroy({ where: { id } });
-};
-
-module.exports.listItems = async (caller) => {
-    const organizationIds = await activeOrganizationIds(caller.accountId);
-    const owners = [{ organizationId: { [Op.in]: organizationIds } }];
-    if (await hasAccountPermission(caller.accountId, Permission.VAULT_USE)) owners.push({ accountId: caller.accountId });
-    const items = await VaultItem.findAll({ where: { [Op.or]: owners }, order: [["name", "ASC"]] });
-    return { items: await serializeItems(caller, items) };
-};
-
-module.exports.createItem = async (caller, body) => {
-    const { organizationId, name, type, description, fields, secrets, approvalRequired, allServers, bindings } = body;
-    if (!(await canCreateFor(caller.accountId, { organizationId }))) return FORBIDDEN;
-    const check = await validateBindings({ accountId: caller.accountId, organizationId }, bindings);
-    if (!check.valid) return { code: 400, message: check.message };
-    const owner = organizationId ? { accountId: null, organizationId } : { accountId: caller.accountId, organizationId: null };
-    if (await nameTaken(owner, name)) return NAME_TAKEN;
-
-    let item;
-    try {
-        item = await VaultItem.create({
-            ...owner, name, type, description: description || null, fields, approvalRequired, allServers, createdBy: caller.accountId,
-        });
-    } catch (error) {
-        if (error.name === "SequelizeUniqueConstraintError") return NAME_TAKEN;
-        throw error;
-    }
-    try {
-        for (const [field, value] of Object.entries(secrets)) await writeSecret(item.id, field, value);
-        await setBindings(item.id, bindings);
-    } catch (error) {
-        await removeItem(item.id);
-        throw error;
-    }
-    await audit(caller, item, AUDIT_ACTIONS.VAULT_ITEM_CREATE, { name, secretFields: Object.keys(secrets) });
-    return { item: await serializeOne(caller, item.id) };
-};
-
-module.exports.updateItem = async (caller, id, body) => {
-    const item = await findScopedItem(caller.accountId, id);
-    if (!item) return NOT_FOUND;
-    if (!(await canManageItem(caller.accountId, item))) return FORBIDDEN;
-    const { error, value } = updateVaultItemSchema(item.type).validate(body, { errors: { wrap: { label: "" } }, allowUnknown: false });
-    if (error) return { code: 400, message: error.details[0].message };
-    if (value.name !== undefined && value.name !== item.name && await nameTaken(item, value.name, item.id)) return NAME_TAKEN;
-    if (value.bindings) {
-        const check = await validateBindings({ accountId: caller.accountId, organizationId: item.organizationId ?? null }, value.bindings);
-        if (!check.valid) return { code: 400, message: check.message };
-    }
-
-    // A new target with the old value would let vault.manage without vault.reveal send an
-    // organization's password to a page of their choosing.
-    const secretsCleared = value.fields !== undefined && targetOf(item.type, value.fields) !== targetOf(item.type, item.fields);
-    if (secretsCleared) await clearSecrets(item.id);
-    for (const [field, secret] of Object.entries(value.secrets ?? {})) await writeSecret(item.id, field, secret);
-    const changes = Object.fromEntries(ITEM_COLUMNS.filter((column) => value[column] !== undefined).map((column) => [column, value[column]]));
-    if (changes.description === "") changes.description = null;
-    if (Object.keys(changes).length) await VaultItem.update(changes, { where: { id: item.id } });
-    if (value.bindings) await setBindings(item.id, value.bindings);
-
-    await audit(caller, item, AUDIT_ACTIONS.VAULT_ITEM_UPDATE, {
-        name: value.name ?? item.name,
-        changed: [...Object.keys(changes), ...(value.bindings ? ["bindings"] : [])],
-        secretFields: Object.keys(value.secrets ?? {}),
-        secretsCleared,
-    });
-    return { item: await serializeOne(caller, item.id), secretsCleared };
-};
-
-module.exports.deleteItem = async (caller, id) => {
-    const item = await findScopedItem(caller.accountId, id);
-    if (!item) return NOT_FOUND;
-    if (!(await canManageItem(caller.accountId, item))) return FORBIDDEN;
-    await removeItem(item.id);
-    await audit(caller, item, AUDIT_ACTIONS.VAULT_ITEM_DELETE, { name: item.name });
-    return { success: true };
-};
-
-module.exports.revealSecret = async (caller, id, field) => {
-    const item = await findScopedItem(caller.accountId, id);
-    if (!item || !SECRET_FIELDS[item.type]?.includes(field)) return NOT_FOUND;
-    if (!(await canRevealItem(caller.accountId, item))) return FORBIDDEN;
-    let value;
-    try {
-        value = await readSecret(item.id, field);
-    } catch (error) {
-        if (!(error instanceof VaultError) || error.code !== VaultErrorCode.ITEM_UNREADABLE) throw error;
-        logger.warn("Vault entry cannot be decrypted", { itemId: item.id });
-        await audit(caller, item, AUDIT_ACTIONS.VAULT_ITEM_UNREADABLE, { field });
-        return { code: 422, message: "This vault entry cannot be read with the current vault key" };
-    }
-    if (value === null) return NOT_FOUND;
-    await audit(caller, item, AUDIT_ACTIONS.VAULT_REVEAL, { field });
-    return { value };
-};
-```
-
-- [ ] **Step 10: `server/routes/vault/settings.js` füllen**
-
-Den Platzhalter aus Task 1 vollständig ersetzen. `available` und `settings` tragen kein `requireVaultEnabled` (Spec „REST-Endpunkte“: beide antworten auch bei ausgeschaltetem Vault).
-
-```js
-const { Router } = require("express");
-const { authenticate } = require("../../middlewares/auth");
-const { requirePermission } = require("../../middlewares/permission");
-const { Permission } = require("../../permissions/registry");
-const { validateSchema } = require("../../utils/schema");
-const { sendError } = require("../../utils/error");
-const { updateVaultSettingsValidation } = require("../../validations/vault");
-const { getVaultSettings, updateVaultSettings, getVaultAvailability } = require("../../controllers/vaultSettings");
-const logger = require("../../utils/logger");
-
-const app = Router();
-
-const trustProxyUnsafe = (req) => req.app.get("trust proxy") === true;
-
-const failed = (res, error) => {
-    logger.error("Vault settings request failed", { error: error.message });
-    sendError(res, 500, 500, "Internal server error");
-};
-
-/**
- * GET /vault/available
- * @summary Vault Available
- * @description Whether the vault is on and what the account may do with it. Always answers 200, also while the vault is off; then every permission field is false or empty.
- * @tags Vault
- * @produces application/json
- * @security BearerAuth
- * @return {object} 200 - { enabled, canUse, canManageOrgs, canProvision, agentUrlSet, impersonating, trustProxyUnsafe }
- */
-app.get("/available", authenticate, async (req, res) => {
-    try {
-        res.json(await getVaultAvailability(req.user.id, {
-            impersonating: Boolean(req.session?.impersonatorId), trustProxyUnsafe: trustProxyUnsafe(req),
-        }));
-    } catch (error) {
-        failed(res, error);
-    }
-});
-
-/**
- * GET /vault/settings
- * @summary Get Vault Settings
- * @description Status of VAULT_KEY and the Outpost address agents use. Answers while the vault is off, so the page can show why.
- * @tags Vault
- * @produces application/json
- * @security BearerAuth
- * @return {object} 200 - { keyStatus, agentUrl, trustProxyUnsafe }
- * @return {object} 403 - Permission required
- */
-app.get("/settings", authenticate, requirePermission(Permission.SETTINGS_VAULT), async (req, res) => {
-    try {
-        res.json({ ...(await getVaultSettings()), trustProxyUnsafe: trustProxyUnsafe(req) });
-    } catch (error) {
-        failed(res, error);
-    }
-});
-
-/**
- * PATCH /vault/settings
- * @summary Update Vault Settings
- * @description Sets the Outpost address agents use (http or https; empty clears it). Works while the vault is off.
- * @tags Vault
- * @produces application/json
- * @security BearerAuth
- * @param {UpdateVaultSettings} request.body.required - { agentUrl }
- * @return {object} 200 - { keyStatus, agentUrl, trustProxyUnsafe }
- * @return {object} 400 - Invalid address
- * @return {object} 403 - Permission required
- */
-app.patch("/settings", authenticate, requirePermission(Permission.SETTINGS_VAULT), async (req, res) => {
-    try {
-        const body = req.body ?? {};
-        if (validateSchema(res, updateVaultSettingsValidation, body)) return;
-        res.json({ ...(await updateVaultSettings(body)), trustProxyUnsafe: trustProxyUnsafe(req) });
-    } catch (error) {
-        failed(res, error);
-    }
-});
-
-module.exports = app;
-```
-
-- [ ] **Step 11: `server/routes/vault/items.js` füllen**
-
-Den Platzhalter aus Task 1 vollständig ersetzen. Reihenfolge der Middleware am Reveal: `authenticate` → `requireVaultEnabled` → `requireLoginSession` → Rate-Limit, damit Konto-Keys und Impersonation das Kontingent nicht verbrauchen.
-
-```js
-const { Router } = require("express");
-const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
-const { authenticate } = require("../../middlewares/auth");
-const { requireLoginSession } = require("../../middlewares/requireLoginSession");
-const { requireVaultEnabled } = require("../../lib/vault/state");
-const { validateSchema } = require("../../utils/schema");
-const { sendError } = require("../../utils/error");
-const { createVaultItemValidation } = require("../../validations/vault");
-const { listItems, createItem, updateItem, deleteItem, revealSecret } = require("../../controllers/vaultItems");
-const logger = require("../../utils/logger");
-
-const app = Router();
-
-const revealLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 30,
-    keyGenerator: (req) => (req.user ? `acc:${req.user.id}` : `ip:${ipKeyGenerator(req.ip)}`),
-    message: { code: 429, message: "Too many reveals. Please try again in a minute." },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
-const callerOf = (req) => ({
-    accountId: req.user.id,
-    impersonatorId: req.session?.impersonatorId ?? null,
-    ipAddress: req.ip,
-    userAgent: req.header("user-agent") ?? null,
-    revealAllowed: !req.apiKey && !req.session?.impersonatorId,
-});
-
-const itemIdOf = (req) => (/^\d+$/.test(req.params.id) ? Number(req.params.id) : null);
-
-const handle = (action, status = 200) => async (req, res) => {
-    try {
-        const result = await action(req, res);
-        if (res.headersSent) return;
-        if (result.code) return sendError(res, result.code, result.code, result.message);
-        res.status(status).json(result);
-    } catch (error) {
-        logger.error("Vault request failed", { error: error.message });
-        sendError(res, 500, 500, "Internal server error");
-    }
-};
-
-/**
- * GET /vault/items
- * @summary List Vault Entries
- * @description Lists the vault entries the account owns (with vault.use) and those of organizations it is an active member of. Never contains secret values, only the names of the stored secret fields.
- * @tags Vault
- * @produces application/json
- * @security BearerAuth
- * @return {object} 200 - { items }
- * @return {object} 404 - Vault is disabled
- */
-app.get("/items", authenticate, requireVaultEnabled, handle((req) => listItems(callerOf(req))));
-
-/**
- * POST /vault/items
- * @summary Create Vault Entry
- * @description Creates a personal entry (vault.use) or an organization entry (vault.manage in that organization) with its secret values and server bindings.
- * @tags Vault
- * @produces application/json
- * @security BearerAuth
- * @param {CreateVaultItem} request.body.required - The entry
- * @return {object} 201 - { item }
- * @return {object} 400 - Invalid input or binding
- * @return {object} 403 - Not allowed for this owner
- * @return {object} 409 - Name already taken for this owner
- */
-app.post("/items", authenticate, requireVaultEnabled, handle((req, res) => {
-    const body = req.body ?? {};
-    if (validateSchema(res, createVaultItemValidation, body)) return null;
-    return createItem(callerOf(req), body);
-}, 201));
-
-/**
- * PATCH /vault/items/{id}
- * @summary Update Vault Entry
- * @description Updates an entry. Changing its target (origins, hosts or host) deletes all stored secret values in the same request; only values sent along are stored again.
- * @tags Vault
- * @produces application/json
- * @security BearerAuth
- * @param {number} id.path.required - Entry id
- * @param {object} request.body.required - name, description, fields, secrets, approvalRequired, allServers, bindings
- * @return {object} 200 - { item, secretsCleared }
- * @return {object} 403 - Not allowed to manage this entry
- * @return {object} 404 - Unknown entry
- */
-app.patch("/items/:id", authenticate, requireVaultEnabled, handle((req) => updateItem(callerOf(req), itemIdOf(req), req.body ?? {})));
-
-/**
- * DELETE /vault/items/{id}
- * @summary Delete Vault Entry
- * @description Deletes an entry with its secret values and bindings.
- * @tags Vault
- * @produces application/json
- * @security BearerAuth
- * @param {number} id.path.required - Entry id
- * @return {object} 200 - { success: true }
- * @return {object} 403 - Not allowed to manage this entry
- * @return {object} 404 - Unknown entry
- */
-app.delete("/items/:id", authenticate, requireVaultEnabled, handle((req) => deleteItem(callerOf(req), itemIdOf(req))));
-
-/**
- * GET /vault/items/{id}/secrets/{field}
- * @summary Reveal Vault Secret
- * @description Returns one secret value. Owner of a personal entry or vault.reveal in the organization; signed-in session only (API keys and impersonation get 403). Every reveal is audited.
- * @tags Vault
- * @produces application/json
- * @security BearerAuth
- * @param {number} id.path.required - Entry id
- * @param {string} field.path.required - password, token, privateKey, passphrase or value
- * @return {object} 200 - { value }
- * @return {object} 403 - Not allowed to reveal
- * @return {object} 404 - Unknown entry or no value stored
- * @return {object} 422 - The value cannot be decrypted with the current vault key
- * @return {object} 429 - Too many reveals
- */
-app.get("/items/:id/secrets/:field", authenticate, requireVaultEnabled, requireLoginSession, revealLimiter, handle((req, res) => {
-    res.set("Cache-Control", "no-store");
-    return revealSecret(callerOf(req), itemIdOf(req), req.params.field);
-}));
-
-module.exports = app;
-```
-
-- [ ] **Step 12: Beide Testdateien grün**
-
-Run: `cd /root/outpost && node --test server/lib/vault/__tests__/validation.test.js server/lib/vault/__tests__/itemsRoute.test.js`
-Expected: PASS (5 Tests).
-
-- [ ] **Step 13: Lint der neuen Dateien**
-
-Run: `cd /root/outpost && npx eslint server/validations/vault.js server/lib/vault/visibility.js server/controllers/vaultItems.js server/controllers/vaultSettings.js server/routes/vault/items.js server/routes/vault/settings.js server/lib/vault/__tests__/validation.test.js server/lib/vault/__tests__/itemsRoute.test.js`
-Expected: keine Meldungen.
-
-- [ ] **Step 14: Commit**
-
-```bash
-git add server/validations/vault.js server/lib/vault/visibility.js server/controllers/vaultItems.js server/controllers/vaultSettings.js server/routes/vault/items.js server/routes/vault/settings.js server/lib/vault/__tests__/validation.test.js server/lib/vault/__tests__/itemsRoute.test.js
-git commit -m "Vault: REST für Einträge, Reveal, Einstellungen und Verfügbarkeit"
-```
-
----
-
-### Task 6: Freigaben
-
-**Files:**
-- Create: `server/lib/vault/approvals.js`
-- Modify: `server/lib/StateBroadcaster.js` (`STATE_TYPES`/`BROADCASTABLE_TYPES` Z. 4-5, `register` Z. 15-21, neue Methode `hasConnection` danach, `getStateData` Z. 55-56, `sendStateToConnection` Z. 62-63)
-- Modify: `server/routes/state.js` (Z. 17-18: `register` mit Impersonations-Flag, gemeinsames `conn`)
-- Modify: `server/routes/vault/approvals.js` (leeren `Router()`-Platzhalter aus Task 1 vollständig ersetzen)
-- Test: `server/lib/vault/__tests__/approvals.test.js`
-
-**Interfaces:**
-- Consumes:
-  - Task 1: `VaultError`, `VaultErrorCode` aus `server/lib/vault/errors.js` (`new VaultError(VaultErrorCode.X)` nimmt den Text aus `VaultErrorMessage`); `AUDIT_ACTIONS.VAULT_APPROVE|VAULT_DENY|VAULT_APPROVAL_TIMEOUT`, `RESOURCE_TYPES.VAULT`; `requireVaultEnabled(req, res, next)` aus `server/lib/vault/state.js`; Spalte `sessions.impersonatorId`.
-  - Task 3: `itemRef(item) → string` aus `server/lib/vault/visibility.js` (Phase B, liegt vor Phase C bereit).
-  - Task 4: `const { requireLoginSession } = require("../../middlewares/requireLoginSession")`.
-- Produces (von Task 11 und Task 13 genutzt):
-  - `server/lib/vault/approvals.js`:
-    - `APPROVAL_TTL_MS = 120000`
-    - `requestApproval({ accountId, keyId = null, transportId, agentType = null, entryName = null, item, target, signal }) → Promise<"once"|"session">` — sofort `"session"`, wenn `hasSessionApproval(transportId, item.id)`; sonst Prüfreihenfolge ohne `await` dazwischen: Sperre nach `deny` (60 s je `accountId`+`keyId`+Eintrag, transportübergreifend) → `APPROVAL_DENIED`; offene Anfrage für (`transportId`, Eintrag) → `APPROVAL_PENDING`; drei offene Anfragen dieses Aufrufers (`accountId`, `keyId`) → `APPROVAL_BUSY`; kein nicht impersonierendes Fenster → `APPROVAL_UNAVAILABLE`; `signal` schon abgebrochen → `CLIENT_GONE`. Danach Karte; nach 120 s `APPROVAL_TIMEOUT`, bei `signal`-Abbruch `CLIENT_GONE`.
-    - `answerApproval(id, accountId, decision: "once"|"session"|"deny", meta = { ipAddress, userAgent }) → { status: 200|404|409|410 }` — `404` unbekannt oder fremdes Konto, `409` schon beantwortet, `410` abgelaufen oder zurückgezogen. Der optionale vierte Parameter (IP/User-Agent fürs Audit) ist eine Ergänzung zum Vertrag.
-    - `listOpenApprovals(accountId) → [{ id, agentType, entryName, item, target, expiresAt }]` — `item` ist die Kennung (`itemRef`), `expiresAt` ISO-String, `agentType` darf `null` sein (Konto-Key/Login-Session), älteste zuerst.
-    - `hasSessionApproval(transportId, itemId) → boolean`; `forgetTransport(transportId) → void` (vergisst `session`-Freigaben und zieht offene Anfragen des Transports als `client_gone` zurück); `_resetForTests()`.
-    - Audit (`resource: "vault"`, `resourceId: item.id`, `details.item: itemRef(item)`, dazu `agentType`, `entryName`, `keyId`, `target`): `vault.approve` mit `decision`, `vault.deny`, `vault.approval_timeout` mit `reason: "expired"|"client_gone"`.
-  - `StateBroadcaster`: `STATE_TYPES.VAULT_APPROVALS = "VAULT_APPROVALS"` (auch in `BROADCASTABLE_TYPES`); `register(accountId, sessionId, ws, tabId = null, browserId = null, { impersonating = false } = {}) → conn` (gibt jetzt die Verbindung zurück); `hasConnection(accountId) → boolean` (nur offene, nicht impersonierende Fenster); Impersonations-Fenster bekommen `VAULT_APPROVALS` nie, auch nicht über `refresh` oder beim Verbinden.
-  - `POST /api/vault/approvals/:id` body `{ decision }` → `200 { success: true }` | `400` | `403` (Konto-Key, Impersonation) | `404` | `409` | `410` | `429` (60 Antworten je Minute und Konto).
-
-**Design:** kein UI-Anteil.
-
-**Tests:** 9 Tests in `approvals.test.js`, test-first (Spec „Freigabe“ und Global Constraints legen den Vertrag fest). Echte `approvals.js` und echter `StateBroadcaster` mit gefälschten Fenstern (`{ readyState: 1, send }`), damit Verteilung, `hasConnection` und das Impersonations-Flag über die Naht laufen; Fake-Uhr über `t.mock.timers` (`setTimeout`, `Date`); `createAuditLog` wird vor dem Laden ersetzt.
-1. `once` füllt genau einmal, eine weitere Anfrage zeigt wieder eine Karte; Antwort eines fremden Kontos `404`, zweite Antwort `409`; Kartenform ohne interne Felder (SEC-IDOR-01, SEC-TENANT-01).
-2. `session` gilt für denselben Transport ohne neue Karte, nicht für einen anderen; `forgetTransport` vergisst sie (SEC-SESS-02).
-3. `deny` → `approval_denied`; 60 s Sperre auch über einen neuen Transport, ohne Karte; ein anderer Key desselben Kontos ist nicht gesperrt; nach 60 s wieder Karte.
-4. Ablauf nach genau 120 s → `approval_timeout`, Audit `reason: "expired"`, Karte weg, spätere Antwort `410`.
-5. `signal` bricht ab → `client_gone`, Audit `reason: "client_gone"`, Karte weg, spätere Antwort `410`.
-6. Kein Fenster → `approval_unavailable`; nur ein Impersonations-Fenster → ebenfalls; es erhält keine `VAULT_APPROVALS`-Nachricht.
-7. Zweiter Aufruf für dieselbe offene Anfrage → `approval_pending`; derselbe Eintrag über einen anderen Transport bekommt eine eigene Karte.
-8. Vierte offene Anfrage desselben Aufrufers → `approval_busy`; ein anderer Key ist davon unberührt (SEC-RATE-01 für die Werkzeugseite).
-9. Route: Impersonation und Konto-Key `403`, ungültige Entscheidung `400`, Login-Session `200`, danach `409` (Spec-Test 11, Teil Freigabe).
-- Nicht getestet: Rate-Limit der Route (Framework-Zusage, Muster `bookmarkRateLimiter`), `routes/state.js` (eine Zeile Weiterreichung des Flags; das Verhalten des Flags deckt Test 6 ab), „Freigabe nach mehr als 90 s füllt noch aus“ und `session_tainted` während der Wartezeit (Task 11, dort mit `runAgent`).
-- SEC-Abdeckung dieses Tasks: SEC-IDOR-01, SEC-TENANT-01 (Anfragen und Antworten je Konto), SEC-RATE-01 (Antwort-Endpunkt, Obergrenze drei offene Anfragen, Sperre nach `deny`), SEC-SESS-02 (`session`-Freigabe endet mit dem Transport), SEC-ERR-01 (Fehler nur mit Code und festem Text), SEC-SECRET-01 (keine Werte in Karte oder Audit).
-
-**Parallel:** Task 5, Task 7, Task 8, Task 10 (keine gemeinsamen Dateien). Setzt Task 1, Task 3 (`itemRef` aus `server/lib/vault/visibility.js`, abweichend von der Vertragstabelle, die nur 1, 2, 4 nennt) und Task 4 voraus; Task 3 ist Phase B und liegt vor Phase C fertig vor.
-
-- [ ] **Step 1: Test schreiben**
-
-`server/lib/vault/__tests__/approvals.test.js`:
-
-```js
-const test = require("node:test");
-const assert = require("node:assert");
-const express = require("express");
-const { Sequelize } = require("sequelize");
-
-const db = new Sequelize({ dialect: "sqlite", storage: ":memory:", logging: false });
-const fake = (path, exports) => {
-    const resolved = require.resolve(path);
-    require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports };
-};
-
-const CALLERS = {
-    "s-owner": { user: { id: 1 }, session: { id: 11, accountId: 1, impersonatorId: null } },
-    "s-imp": { user: { id: 1 }, session: { id: 12, accountId: 1, impersonatorId: 99 } },
-    "k-owner": { user: { id: 1 }, apiKey: { id: 5, kind: "account" } },
-};
-fake("../../../utils/database", db);
-fake("../../../middlewares/auth", {
-    authenticate: (req, res, next) => {
-        const caller = CALLERS[(req.header("authorization") ?? "").replace(/^Bearer /, "")];
-        if (!caller) return res.status(401).json({ message: "The provided token is not valid" });
-        Object.assign(req, caller);
-        next();
-    },
-});
-fake("../state", { requireVaultEnabled: (req, res, next) => next(), isVaultEnabled: () => true });
-
-const audits = [];
-const audit = require("../../../controllers/audit");
-audit.createAuditLog = async (entry) => { audits.push(entry); };
-
-const stateBroadcaster = require("../../StateBroadcaster");
-const approvals = require("../approvals");
-const router = require("../../../routes/vault/approvals");
-
-const ITEM = { id: 7, accountId: 1, organizationId: null, name: "portal-login", type: "login" };
-const OTHER_ITEMS = [8, 9, 10].map((id) => ({ ...ITEM, id, name: `login-${id}` }));
-const call = (overrides = {}) => ({
-    accountId: 1, keyId: 5, transportId: "t-1", agentType: "claude", entryName: "web-01",
-    item: ITEM, target: "https://portal.example.com", signal: new AbortController().signal, ...overrides,
-});
-const flush = () => new Promise((resolve) => setImmediate(resolve));
-
-let nextWindow = 100;
-const openWindow = (t, accountId, { impersonating = false } = {}) => {
-    const messages = [];
-    const ws = { readyState: 1, send: (raw) => messages.push(JSON.parse(raw)) };
-    stateBroadcaster.register(accountId, nextWindow++, ws, null, null, { impersonating });
-    t.after(() => stateBroadcaster.unregister(accountId, ws));
-    const approvalsSeen = () => messages.filter((m) => m.type === "VAULT_APPROVALS");
-    return { approvalsSeen, cards: () => approvalsSeen().at(-1)?.data ?? [] };
-};
-
-test.beforeEach(() => {
-    approvals._resetForTests();
-    audits.length = 0;
-});
-test.after(() => approvals._resetForTests());
-
-test("Einmal gibt genau ein Ausfüllen frei; die erste Antwort gewinnt, jede weitere bekommt 409, ein fremdes Konto 404", async (t) => {
-    const window = openWindow(t, 1);
-    const first = approvals.requestApproval(call());
-    await flush();
-    const [card] = window.cards();
-    assert.deepStrictEqual(Object.keys(card).sort(), ["agentType", "entryName", "expiresAt", "id", "item", "target"]);
-    assert.deepStrictEqual([card.item, card.agentType, card.entryName, card.target], ["portal-login", "claude", "web-01", "https://portal.example.com"]);
-
-    assert.deepStrictEqual(approvals.answerApproval(card.id, 2, "once"), { status: 404 });
-    assert.deepStrictEqual(approvals.answerApproval(card.id, 1, "once"), { status: 200 });
-    assert.deepStrictEqual(approvals.answerApproval(card.id, 1, "deny"), { status: 409 });
-    assert.strictEqual(await first, "once");
-    await flush();
-    assert.deepStrictEqual(window.cards(), []);
-    assert.deepStrictEqual(audits.map((a) => [a.action, a.resource, a.resourceId, a.details.decision, a.details.item]), [["vault.approve", "vault", 7, "once", "portal-login"]]);
-
-    const second = approvals.requestApproval(call());
-    await flush();
-    assert.strictEqual(window.cards().length, 1, "once is not remembered");
-    approvals.answerApproval(window.cards()[0].id, 1, "once");
-    assert.strictEqual(await second, "once");
-});
-
-test("Für diese Sitzung gilt bis zum Ende des Transports und nur für ihn", async (t) => {
-    const window = openWindow(t, 1);
-    const first = approvals.requestApproval(call());
-    await flush();
-    approvals.answerApproval(window.cards()[0].id, 1, "session");
-    assert.strictEqual(await first, "session");
-
-    assert.strictEqual(await approvals.requestApproval(call()), "session");
-    assert.strictEqual(approvals.hasSessionApproval("t-1", ITEM.id), true);
-    await flush();
-    assert.deepStrictEqual(window.cards(), []);
-
-    const otherTransport = approvals.requestApproval(call({ transportId: "t-2" }));
-    await flush();
-    assert.strictEqual(window.cards().length, 1);
-    approvals.answerApproval(window.cards()[0].id, 1, "once");
-    await otherTransport;
-
-    approvals.forgetTransport("t-1");
-    assert.strictEqual(approvals.hasSessionApproval("t-1", ITEM.id), false);
-});
-
-test("Ablehnen sperrt denselben Aufrufer für denselben Eintrag 60 s, auch über einen neuen Transport", async (t) => {
-    t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 1_000_000 });
-    const window = openWindow(t, 1);
-    const first = approvals.requestApproval(call());
-    await flush();
-    approvals.answerApproval(window.cards()[0].id, 1, "deny");
-    await assert.rejects(first, { code: "vault.approval_denied" });
-    assert.deepStrictEqual(audits.map((a) => a.action), ["vault.deny"]);
-
-    t.mock.timers.tick(59_999);
-    await assert.rejects(approvals.requestApproval(call({ transportId: "t-2" })), { code: "vault.approval_denied" });
-    await flush();
-    assert.deepStrictEqual(window.cards(), []);
-
-    const otherCaller = approvals.requestApproval(call({ keyId: 6, transportId: "t-3" }));
-    await flush();
-    assert.strictEqual(window.cards().length, 1, "another key of the account is not locked");
-    approvals.answerApproval(window.cards()[0].id, 1, "once");
-    await otherCaller;
-
-    t.mock.timers.tick(1);
-    const afterLock = approvals.requestApproval(call({ transportId: "t-2" }));
-    await flush();
-    assert.strictEqual(window.cards().length, 1);
-    approvals.answerApproval(window.cards()[0].id, 1, "once");
-    assert.strictEqual(await afterLock, "once");
-});
-
-test("ohne Antwort läuft die Anfrage nach 120 s ab; eine spätere Antwort bekommt 410", async (t) => {
-    t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 1_000_000 });
-    const window = openWindow(t, 1);
-    const pending = approvals.requestApproval(call());
-    const outcome = assert.rejects(pending, { code: "vault.approval_timeout" });
-    await flush();
-    const [card] = window.cards();
-    assert.strictEqual(card.expiresAt, new Date(1_000_000 + approvals.APPROVAL_TTL_MS).toISOString());
-
-    t.mock.timers.tick(approvals.APPROVAL_TTL_MS - 1);
-    await flush();
-    assert.strictEqual(window.cards().length, 1);
-    t.mock.timers.tick(1);
-    await outcome;
-    await flush();
-    assert.deepStrictEqual(window.cards(), []);
-    assert.deepStrictEqual(audits.map((a) => [a.action, a.details.reason]), [["vault.approval_timeout", "expired"]]);
-    assert.deepStrictEqual(approvals.answerApproval(card.id, 1, "once"), { status: 410 });
-});
-
-test("bricht der Client ab, wird die Anfrage sofort zurückgezogen und als client_gone auditiert", async (t) => {
-    const window = openWindow(t, 1);
-    const controller = new AbortController();
-    const pending = approvals.requestApproval(call({ signal: controller.signal }));
-    await flush();
-    const [card] = window.cards();
-
-    controller.abort();
-    await assert.rejects(pending, { code: "vault.client_gone" });
-    await flush();
-    assert.deepStrictEqual(window.cards(), []);
-    assert.deepStrictEqual(audits.map((a) => [a.action, a.details.reason]), [["vault.approval_timeout", "client_gone"]]);
-    assert.deepStrictEqual(approvals.answerApproval(card.id, 1, "once"), { status: 410 });
-});
-
-test("ohne verbundenes Fenster sofort approval_unavailable; ein Impersonations-Fenster zählt nicht und sieht keine Karte", async (t) => {
-    await assert.rejects(approvals.requestApproval(call()), { code: "vault.approval_unavailable" });
-
-    const impersonated = openWindow(t, 1, { impersonating: true });
-    await assert.rejects(approvals.requestApproval(call()), { code: "vault.approval_unavailable" });
-
-    const window = openWindow(t, 1);
-    const pending = approvals.requestApproval(call());
-    await flush();
-    assert.strictEqual(window.cards().length, 1);
-    approvals.answerApproval(window.cards()[0].id, 1, "once");
-    await pending;
-    await flush();
-    assert.deepStrictEqual(impersonated.approvalsSeen(), []);
-});
-
-test("ein zweiter Aufruf für dieselbe offene Anfrage bekommt sofort approval_pending", async (t) => {
-    const window = openWindow(t, 1);
-    const first = approvals.requestApproval(call());
-    await assert.rejects(approvals.requestApproval(call()), { code: "vault.approval_pending" });
-    const otherTransport = approvals.requestApproval(call({ transportId: "t-2" }));
-    await flush();
-    assert.strictEqual(window.cards().length, 2);
-    for (const card of window.cards()) approvals.answerApproval(card.id, 1, "once");
-    assert.deepStrictEqual(await Promise.all([first, otherTransport]), ["once", "once"]);
-});
-
-test("ab der vierten offenen Anfrage desselben Aufrufers approval_busy", async (t) => {
-    const window = openWindow(t, 1);
-    const open = OTHER_ITEMS.map((item) => approvals.requestApproval(call({ item })));
-    await assert.rejects(approvals.requestApproval(call()), { code: "vault.approval_busy" });
-    const otherKey = approvals.requestApproval(call({ keyId: 6, transportId: "t-9" }));
-    await flush();
-    assert.strictEqual(window.cards().length, 4);
-    for (const card of window.cards()) approvals.answerApproval(card.id, 1, "once");
-    await Promise.all([...open, otherKey]);
-});
-
-test("Freigabe-Antworten nur aus einer Login-Session: Impersonation und Konto-Key bekommen 403", async (t) => {
-    openWindow(t, 1);
-    const app = express();
-    app.use(express.json());
-    app.use("/api/vault", router);
-    const server = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)); });
-    t.after(() => server.close());
-    const pending = approvals.requestApproval(call());
-    const [{ id }] = approvals.listOpenApprovals(1);
-    const answer = (token, body = { decision: "once" }) => fetch(`http://127.0.0.1:${server.address().port}/api/vault/approvals/${id}`, {
-        method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify(body),
-    });
-
-    assert.strictEqual((await answer("s-imp")).status, 403);
-    assert.strictEqual((await answer("k-owner")).status, 403);
-    assert.strictEqual((await answer("s-owner", { decision: "always" })).status, 400);
-    assert.strictEqual((await answer("s-owner")).status, 200);
-    assert.strictEqual(await pending, "once");
-    assert.strictEqual((await answer("s-owner")).status, 409);
-});
-```
-
-- [ ] **Step 2: Test laufen lassen, Fehlschlag prüfen**
-
-Run: `cd /root/outpost && node --test server/lib/vault/__tests__/approvals.test.js`
-Expected: FAIL — `Cannot find module '../approvals'`.
-
-- [ ] **Step 3: `StateBroadcaster` um `VAULT_APPROVALS`, Impersonations-Flag und `hasConnection` erweitern**
-
-`server/lib/StateBroadcaster.js` Z. 4-5, vorher:
-
-```js
-const STATE_TYPES = { ENTRIES: "ENTRIES", IDENTITIES: "IDENTITIES", SNIPPETS: "SNIPPETS", CONNECTIONS: "CONNECTIONS", LIVE_SESSIONS: "LIVE_SESSIONS", SESSION_PRESENCE: "SESSION_PRESENCE", BROWSER_SESSIONS: "BROWSER_SESSIONS", LOGOUT: "LOGOUT" };
-const BROADCASTABLE_TYPES = [STATE_TYPES.ENTRIES, STATE_TYPES.IDENTITIES, STATE_TYPES.SNIPPETS, STATE_TYPES.CONNECTIONS, STATE_TYPES.LIVE_SESSIONS, STATE_TYPES.BROWSER_SESSIONS];
-```
-
-nachher:
-
-```js
-const STATE_TYPES = { ENTRIES: "ENTRIES", IDENTITIES: "IDENTITIES", SNIPPETS: "SNIPPETS", CONNECTIONS: "CONNECTIONS", LIVE_SESSIONS: "LIVE_SESSIONS", SESSION_PRESENCE: "SESSION_PRESENCE", BROWSER_SESSIONS: "BROWSER_SESSIONS", VAULT_APPROVALS: "VAULT_APPROVALS", LOGOUT: "LOGOUT" };
-const BROADCASTABLE_TYPES = [STATE_TYPES.ENTRIES, STATE_TYPES.IDENTITIES, STATE_TYPES.SNIPPETS, STATE_TYPES.CONNECTIONS, STATE_TYPES.LIVE_SESSIONS, STATE_TYPES.BROWSER_SESSIONS, STATE_TYPES.VAULT_APPROVALS];
-```
-
-`register` (Z. 15-21), vorher:
-
-```js
-    register(accountId, sessionId, ws, tabId = null, browserId = null) {
-        if (!this.connections.has(accountId)) this.connections.set(accountId, new Set());
-        const conn = { ws, tabId, browserId, sessionId };
-        this.connections.get(accountId).add(conn);
-        if (!this.sessionIndex.has(sessionId)) this.sessionIndex.set(sessionId, new Set());
-        this.sessionIndex.get(sessionId).add(conn);
-    }
-```
-
-nachher (gibt `conn` zurück und bekommt `hasConnection` dahinter):
-
-```js
-    register(accountId, sessionId, ws, tabId = null, browserId = null, { impersonating = false } = {}) {
-        if (!this.connections.has(accountId)) this.connections.set(accountId, new Set());
-        const conn = { ws, tabId, browserId, sessionId, impersonating };
-        this.connections.get(accountId).add(conn);
-        if (!this.sessionIndex.has(sessionId)) this.sessionIndex.set(sessionId, new Set());
-        this.sessionIndex.get(sessionId).add(conn);
-        return conn;
-    }
-
-    hasConnection(accountId) {
-        for (const conn of this.connections.get(accountId) ?? []) {
-            if (!conn.impersonating && conn.ws.readyState === 1) return true;
-        }
-        return false;
-    }
-```
-
-`getStateData`, nach dem `case STATE_TYPES.BROWSER_SESSIONS` (Z. 55-56) einfügen:
-
-```js
-            case STATE_TYPES.VAULT_APPROVALS:
-                return require("./vault/approvals").listOpenApprovals(accountId);
-```
-
-`sendStateToConnection` (Z. 62-63), vorher:
-
-```js
-    async sendStateToConnection(accountId, conn, stateType) {
-        if (conn.ws.readyState !== 1) return;
-```
-
-nachher (deckt Verbinden, `refresh` und jede Verteilung ab):
-
-```js
-    async sendStateToConnection(accountId, conn, stateType) {
-        if (conn.ws.readyState !== 1) return;
-        if (conn.impersonating && stateType === STATE_TYPES.VAULT_APPROVALS) return;
-```
-
-- [ ] **Step 4: `server/routes/state.js` übergibt die Impersonation**
-
-Z. 17-18, vorher:
-
-```js
-    const conn = { ws, tabId: tabId || null, browserId: browserId || null, sessionId: session.id };
-    stateBroadcaster.register(user.id, session.id, ws, tabId || null, browserId || null);
-```
-
-nachher (dasselbe `conn`-Objekt für Registrierung und Erstversand, sonst trüge der Erstversand das Flag nicht):
-
-```js
-    const conn = stateBroadcaster.register(user.id, session.id, ws, tabId || null, browserId || null,
-        { impersonating: Boolean(session.impersonatorId) });
-```
-
-- [ ] **Step 5: `server/lib/vault/approvals.js` anlegen**
-
-Prüfen und Eintragen einer Anfrage laufen ohne `await` dazwischen (der `Promise`-Executor läuft synchron), damit zwei gleichzeitige Aufrufe die Obergrenzen nicht gemeinsam überspringen. Erledigte Anfragen bleiben `APPROVAL_TTL_MS` lang in `closed`, damit späte Antworten `409`/`410` statt `404` bekommen.
-
-```js
-const { randomUUID } = require("node:crypto");
-const stateBroadcaster = require("../StateBroadcaster");
-const { createAuditLog, AUDIT_ACTIONS, RESOURCE_TYPES } = require("../../controllers/audit");
-const { VaultError, VaultErrorCode } = require("./errors");
-const { itemRef } = require("./visibility");
-
-const APPROVAL_TTL_MS = 120000;
-const DENY_LOCK_MS = 60000;
-const MAX_OPEN_PER_CALLER = 3;
-
-let open = new Map();
-let closed = new Map();
-let sessionGrants = new Map();
-let denials = new Map();
-
-const callerKey = (accountId, keyId) => `${accountId}:${keyId ?? "session"}`;
-const denialKey = (accountId, keyId, itemId) => `${callerKey(accountId, keyId)}:${itemId}`;
-
-const publish = (accountId) =>
-    stateBroadcaster.sendStateToAccount(accountId, stateBroadcaster.STATE_TYPES.VAULT_APPROVALS).catch(() => {});
-
-const audit = (request, action, details = {}, meta = {}) => createAuditLog({
-    accountId: request.accountId, organizationId: request.organizationId, action,
-    resource: RESOURCE_TYPES.VAULT, resourceId: request.itemId,
-    details: { item: request.item, agentType: request.agentType, entryName: request.entryName, keyId: request.keyId, target: request.target, ...details },
-    ipAddress: meta.ipAddress ?? null, userAgent: meta.userAgent ?? null,
-});
-
-const prune = (now) => {
-    for (const [id, entry] of closed) if (entry.until <= now) closed.delete(id);
-    for (const [key, until] of denials) if (until <= now) denials.delete(key);
-};
-
-const close = (request, status) => {
-    open.delete(request.id);
-    clearTimeout(request.timer);
-    request.signal?.removeEventListener("abort", request.onAbort);
-    closed.set(request.id, { accountId: request.accountId, status, until: Date.now() + APPROVAL_TTL_MS });
-    publish(request.accountId);
-};
-
-const expire = (request, reason) => {
-    if (!open.has(request.id)) return;
-    close(request, 410);
-    audit(request, AUDIT_ACTIONS.VAULT_APPROVAL_TIMEOUT, { reason });
-    request.reject(new VaultError(reason === "expired" ? VaultErrorCode.APPROVAL_TIMEOUT : VaultErrorCode.CLIENT_GONE));
-};
-
-const hasSessionApproval = (transportId, itemId) => sessionGrants.get(transportId)?.has(itemId) ?? false;
-
-const requestApproval = async ({ accountId, keyId = null, transportId, agentType = null, entryName = null, item, target, signal }) => {
-    if (hasSessionApproval(transportId, item.id)) return "session";
-    const now = Date.now();
-    prune(now);
-    if ((denials.get(denialKey(accountId, keyId, item.id)) ?? 0) > now) throw new VaultError(VaultErrorCode.APPROVAL_DENIED);
-    const waiting = [...open.values()];
-    if (waiting.some((request) => request.transportId === transportId && request.itemId === item.id))
-        throw new VaultError(VaultErrorCode.APPROVAL_PENDING);
-    if (waiting.filter((request) => request.caller === callerKey(accountId, keyId)).length >= MAX_OPEN_PER_CALLER)
-        throw new VaultError(VaultErrorCode.APPROVAL_BUSY);
-    if (!stateBroadcaster.hasConnection(accountId)) throw new VaultError(VaultErrorCode.APPROVAL_UNAVAILABLE);
-    if (signal?.aborted) throw new VaultError(VaultErrorCode.CLIENT_GONE);
-
-    return new Promise((resolve, reject) => {
-        const request = {
-            id: randomUUID(), accountId, keyId, caller: callerKey(accountId, keyId), transportId,
-            itemId: item.id, organizationId: item.organizationId ?? null, item: itemRef(item),
-            agentType, entryName, target, expiresAt: now + APPROVAL_TTL_MS, resolve, reject, signal,
-        };
-        request.timer = setTimeout(() => expire(request, "expired"), APPROVAL_TTL_MS);
-        request.onAbort = () => expire(request, "client_gone");
-        signal?.addEventListener("abort", request.onAbort, { once: true });
-        open.set(request.id, request);
-        publish(accountId);
-    });
-};
-
-const answerApproval = (id, accountId, decision, meta = {}) => {
-    const now = Date.now();
-    prune(now);
-    const request = open.get(id);
-    if (!request) {
-        const done = closed.get(id);
-        return { status: done && Number(done.accountId) === Number(accountId) ? done.status : 404 };
-    }
-    if (Number(request.accountId) !== Number(accountId)) return { status: 404 };
-    if (now >= request.expiresAt) {
-        expire(request, "expired");
-        return { status: 410 };
-    }
-    close(request, 409);
-    if (decision === "deny") {
-        denials.set(denialKey(request.accountId, request.keyId, request.itemId), now + DENY_LOCK_MS);
-        audit(request, AUDIT_ACTIONS.VAULT_DENY, {}, meta);
-        request.reject(new VaultError(VaultErrorCode.APPROVAL_DENIED));
-    } else {
-        if (decision === "session") {
-            if (!sessionGrants.has(request.transportId)) sessionGrants.set(request.transportId, new Set());
-            sessionGrants.get(request.transportId).add(request.itemId);
-        }
-        audit(request, AUDIT_ACTIONS.VAULT_APPROVE, { decision }, meta);
-        request.resolve(decision);
-    }
-    return { status: 200 };
-};
-
-const listOpenApprovals = (accountId) => [...open.values()]
-    .filter((request) => Number(request.accountId) === Number(accountId))
-    .sort((a, b) => a.expiresAt - b.expiresAt)
-    .map(({ id, agentType, entryName, item, target, expiresAt }) => ({ id, agentType, entryName, item, target, expiresAt: new Date(expiresAt).toISOString() }));
-
-const forgetTransport = (transportId) => {
-    sessionGrants.delete(transportId);
-    for (const request of [...open.values()]) if (request.transportId === transportId) expire(request, "client_gone");
-};
-
-const _resetForTests = () => {
-    for (const request of open.values()) clearTimeout(request.timer);
-    open = new Map();
-    closed = new Map();
-    sessionGrants = new Map();
-    denials = new Map();
-};
-
-module.exports = {
-    APPROVAL_TTL_MS, requestApproval, answerApproval, listOpenApprovals, hasSessionApproval, forgetTransport, _resetForTests,
-};
-```
-
-- [ ] **Step 6: `server/routes/vault/approvals.js` füllen**
-
-Den Platzhalter aus Task 1 vollständig ersetzen. Das Joi-Schema steht in der Route, weil `server/validations/vault.js` zum parallel laufenden Task 5 gehört.
-
-```js
-const { Router } = require("express");
-const Joi = require("joi");
-const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
-const { authenticate } = require("../../middlewares/auth");
-const { requireLoginSession } = require("../../middlewares/requireLoginSession");
-const { requireVaultEnabled } = require("../../lib/vault/state");
-const { answerApproval } = require("../../lib/vault/approvals");
-const { validateSchema } = require("../../utils/schema");
-const { sendError } = require("../../utils/error");
-
-const app = Router();
-
-const answerLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 60,
-    keyGenerator: (req) => (req.user ? `acc:${req.user.id}` : `ip:${ipKeyGenerator(req.ip)}`),
-    message: { code: 429, message: "Too many approval answers. Please try again in a moment." },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
-const answerApprovalValidation = Joi.object({ decision: Joi.string().valid("once", "session", "deny").required() });
-
-const MESSAGES = {
-    404: "Approval request not found",
-    409: "This approval request has already been answered",
-    410: "This approval request has expired",
-};
-
-/**
- * POST /vault/approvals/{id}
- * @summary Answer Vault Approval
- * @description Answers an open approval request of the authenticated account: once allows exactly one fill, session allows the entry for the rest of the agent's MCP session, deny blocks the same caller for this entry for 60 seconds. Requires a signed-in session; API keys and impersonation sessions get 403.
- * @tags Vault
- * @produces application/json
- * @security BearerAuth
- * @param {string} id.path.required - Approval request id
- * @param {object} request.body.required - { decision: "once" | "session" | "deny" }
- * @return {object} 200 - { success: true }
- * @return {object} 403 - Signed-in session required
- * @return {object} 404 - Unknown request or not owned by the account
- * @return {object} 409 - Already answered
- * @return {object} 410 - Expired or withdrawn
- */
-app.post("/approvals/:id", authenticate, requireVaultEnabled, requireLoginSession, answerLimiter, (req, res) => {
-    const body = req.body ?? {};
-    if (validateSchema(res, answerApprovalValidation, body)) return;
-    const { status } = answerApproval(req.params.id, req.user.id, body.decision,
-        { ipAddress: req.ip, userAgent: req.header("user-agent") ?? null });
-    if (status !== 200) return sendError(res, status, status, MESSAGES[status]);
-    res.json({ success: true });
-});
-
-module.exports = app;
-```
-
-- [ ] **Step 7: Test grün**
-
-Run: `cd /root/outpost && node --test server/lib/vault/__tests__/approvals.test.js`
-Expected: PASS (9 Tests; die Warnung `ExperimentalWarning: The MockTimers API` ist erwartet).
-
-- [ ] **Step 8: Bestehende Tests rund um den Zustandsstrom**
-
-Run: `cd /root/outpost && node --test server/lib/__tests__/reconnectSession.test.js`
-Expected: PASS (nutzt `StateBroadcaster`; `register` liefert jetzt zusätzlich `conn`, sonst unverändert).
-
-- [ ] **Step 9: Lint**
-
-Run: `cd /root/outpost && npx eslint server/lib/vault/approvals.js server/lib/StateBroadcaster.js server/routes/state.js server/routes/vault/approvals.js server/lib/vault/__tests__/approvals.test.js`
-Expected: keine Meldungen.
-
-- [ ] **Step 10: Commit**
-
-```bash
-git add server/lib/vault/approvals.js server/lib/StateBroadcaster.js server/routes/state.js server/routes/vault/approvals.js server/lib/vault/__tests__/approvals.test.js
-git commit -m "Vault: Freigaben mit Karte, Ablauf, Sperre und Antwort-Endpunkt"
-```
-
----
-
 ### Task 7: Browser I: Sitzungsbesitz für Agenten-Keys
 
 **Files:**
 - Modify: `server/lib/browser/BrowserSession.js` (Konstruktor Z. 45-48: Felder `keyId`, `contextKey`)
 - Modify: `server/lib/browser/BrowserPool.js` (`getOwned` Z. 31-34, `listForAccount` Z. 36-40, neu `listForCaller` und `onContextEnded`; `open` Z. 63-131; `#attach` Z. 174-189; `#register` Z. 191-204; `#onClosed` Z. 206-217; `#adoptPopup` Z. 303-332)
-- Modify: `server/lib/browser/tools.js` (`resolveSession` Z. 89-121 wird zum Modul-Export `resolveCallerSession`; `browser_open` Z. 165-167; `browser_list` Z. 229-232; Rückgabeobjekt Z. 235-246; `module.exports` Z. 249)
+- Modify: `server/lib/browser/tools.js` (neu `callerOf` vor Z. 82; `resolveSession` Z. 89-121 mit Aufrufer-Regeln; `browser_open` Z. 162-167; `browser_list` Z. 229-232; Rückgabeobjekt Z. 235-246)
 - Modify: `server/lib/browser/errors.js` (Z. 14: neuer Code `VIA_NOT_ALLOWED`)
 - Modify: `server/lib/browser/proxy.js` (`createEngineVia`, Rückgabe Z. 202-207: zusätzlich `entryId`)
 - Modify: `server/lib/browser/__tests__/tools.test.js` (Fake-Pool Z. 41: `listForCaller` statt `listForAccount`)
@@ -5158,7 +2502,7 @@ git commit -m "Vault: Freigaben mit Karte, Ablauf, Sperre und Antwort-Endpunkt"
 **Interfaces:**
 - Consumes:
   - Task 2: `ctx = { accountId, agent, keyId, impersonatorId, transportId, ipAddress, userAgent, signal }` an `provider.call(name, args, ctx)`; der Browser-Anbieter reicht `ctx` unverändert an `createBrowserTools().call`.
-  - Task 4: `req.agent = { keyId, entryId, agentType }` (über Task 2 als `ctx.agent`; `null` bei Login-Session und Konto-Key).
+  - Task 4: nur die Form `ctx.agent = { keyId, entryId, agentType }` (`null` bei Login-Session und Konto-Key); gesetzt wird sie aus `req.agent` (Task 4) über Task 2. Dieser Task braucht Task 4 nicht fertig, der Test baut `ctx` selbst.
 - Produces (von Task 9 und Task 11 genutzt):
   - `new BrowserSession({ …, keyId = null, contextKey = null })`; `session.keyId: number|null` (Id des API-Keys, der die Sitzung geöffnet hat; Popups erben sie), `session.contextKey: string` (`browserContextId` bei eigener ephemerer Sitzung, sonst `instanceKey`, also `account-<accountId>` bzw. `via-<uuid>`; Popups erben ihn).
   - `pool.open({ accountId, url, profile = "ephemeral", via = null, origin = "agent", keyId = null, allowVia = null }) → { session, navigationError }`. `allowVia: ((entryId: number) => boolean) | null` wird mit der aufgelösten Eintrags-ID des `via`-Ziels aufgerufen; `false` → `BrowserError(VIA_NOT_ALLOWED)`, bevor eine Instanz startet. `LIMIT_REACHED` nennt in `details.sessions` nur die Sitzungen von (`accountId`, `keyId`).
@@ -5168,15 +2512,15 @@ git commit -m "Vault: Freigaben mit Karte, Ablauf, Sperre und Antwort-Endpunkt"
   - Pool-Record `{ session, instanceKey, ownsContext, browserContextId, contextKey }`.
   - `createEngineVia(…) → { label, entryId, organizationId, resolverRule, close }` (neu `entryId`).
   - `BrowserErrorCode.VIA_NOT_ALLOWED = "VIA_NOT_ALLOWED"`.
-  - `tools.js`: Export `resolveCallerSession(pool, ctx, sessionId, defaults: Map<transportId, sessionId>) → BrowserSession` (wirft `BrowserError` `UNKNOWN_SESSION` / `SESSION_CLOSED` / `NO_SESSION` / `AMBIGUOUS_SESSION`, `details.sessions` nur eigene Sitzungen des Aufrufers). Aufrufer mit `ctx.agent` sehen nur Sitzungen mit `session.keyId === ctx.agent.keyId`; sonst wie bisher alle des Kontos.
-  - `createBrowserTools(…)` liefert zusätzlich `getDefaultSession(transportId) → string|null` und `defaultSessions` (die `Map` der Standard-Sitzungen, nur lesen) — Task 11 ruft `resolveCallerSession(getPool(), ctx, args.sessionId, browserTools.defaultSessions)`.
-  - `browser_open` setzt `keyId: ctx.keyId ?? null` (jede Sitzung trägt den Key, der sie geöffnet hat; eingeschränkt wird nur bei `ctx.agent`).
+  - `createBrowserTools(…)` liefert zusätzlich `resolveSession(ctx, sessionId) → BrowserSession` (Agenten-Regeln eingeschlossen; wirft `BrowserError` `UNKNOWN_SESSION` / `SESSION_CLOSED` / `NO_SESSION` / `AMBIGUOUS_SESSION`, `details.sessions` nur eigene Sitzungen des Aufrufers). Aufrufer mit `ctx.agent` sehen nur Sitzungen mit `session.keyId === ctx.agent.keyId`; sonst wie bisher alle des Kontos. Dieselbe Funktion nutzt `act` (Task 9); Task 11 ruft `getBrowserTools().resolveSession(ctx, sessionId)`. Kein weiterer Export aus `tools.js`, `module.exports` bleibt.
+  - `tools.js`: modulweiter Helfer `callerOf(ctx) → { accountId, keyId }` (`keyId` nur bei `ctx.agent`, sonst `null`; Task 9 nutzt ihn in `browser_list`).
+  - `browser_open` setzt `keyId: ctx.keyId ?? null` (jede Sitzung trägt den Key, der sie geöffnet hat; eingeschränkt wird nur bei `ctx.agent`). Mit `ctx.agent` und `profile: "persistent"` wirft es vor dem Pool `BrowserError(BrowserErrorCode.INVALID_PROFILE, "Agent keys can only open ephemeral sessions; call browser_open without profile=persistent.")`.
 
 **Design:** kein UI-Anteil.
 
-**Tests:** 2 Tests in `agentScope.test.js`, test-first (Vertrag steht in der Spec, Spec-Test 10 ohne den `browser_fill_credential`-Teil, den Task 11 prüft). Über die Naht `createBrowserTools` + echter `BrowserPool` mit `helpers/fakeCdp.js`, keine Pool-Fakes: (1) Agenten-Key sieht in `browser_list` nur eigene Sitzungen samt Popup, fremde `sessionId` (Nutzer, anderer Key) antwortet Wort für Wort wie eine unbekannte, ohne `sessionId` wird keine Nutzersitzung genommen, die Liste im `LIMIT_REACHED`-Fehler nennt nur eigene Sitzungen; Login-Session und Konto-Key sehen weiter alle. (2) `via` zu einem fremden Server wird abgelehnt, bevor eine Instanz startet; zum eigenen Server geht es. Nicht getestet: `getDefaultSession`/`defaultSessions` (Getter), `entryId` in `createEngineVia` (Weiterreichung), `onContextEnded` (über die Naht in Task 9, Test „Kontextende“). Bestehende Browser-Tests laufen unverändert mit (`tools.test.js` nur Fake-Anpassung). SEC-IDOR-01 (fremde Sitzung wie unbekannt), SEC-TENANT-01 (Agenten-Keys auf eigene Sitzungen und eigenen Server beschränkt).
+**Tests:** 2 Tests in `agentScope.test.js`, test-first (Vertrag steht in der Spec, Spec-Test 10 ohne den `browser_fill_credential`-Teil, den Task 11 prüft). Über die Naht `createBrowserTools` + echter `BrowserPool` mit `helpers/fakeCdp.js`, keine Pool-Fakes: (1) Agenten-Key sieht in `browser_list` nur eigene Sitzungen samt Popup, fremde `sessionId` (Nutzer, anderer Key) antwortet Wort für Wort wie eine unbekannte, ohne `sessionId` wird keine Nutzersitzung genommen, die Liste im `LIMIT_REACHED`-Fehler nennt nur eigene Sitzungen; Login-Session und Konto-Key sehen weiter alle. (2) `profile: "persistent"` und `via` zu einem fremden Server werden für einen Agenten-Key abgelehnt, bevor eine Instanz startet; `via` zum eigenen Server geht. Nicht getestet: `resolveSession` im Rückgabeobjekt einzeln (dieselbe Funktion, die Test 1 über `tools.call` prüft), `entryId` in `createEngineVia` (Weiterreichung), `onContextEnded` (über die Naht in Task 9, Test „Kontextende“). Bestehende Browser-Tests laufen unverändert mit (`tools.test.js` nur Fake-Anpassung). SEC-IDOR-01 (fremde Sitzung wie unbekannt), SEC-TENANT-01 (Agenten-Keys auf eigene Sitzungen, eigenen Server und ephemere Profile beschränkt).
 
-**Parallel:** Task 5, Task 6, Task 8, Task 10 (keine gemeinsamen Dateien).
+**Parallel:** Task 1, Task 2, Task 10 (Welle A; keine gemeinsamen Dateien — Task 2 verschiebt nur `server/lib/browser/mcpServer.js` samt Test, dieser Task fasst beide nicht an; von Task 2 und Task 4 braucht er nur die Form von `ctx`, der Test baut `ctx` selbst).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -5264,8 +2608,11 @@ test("an agent key lists, resolves and defaults to its own sessions and their po
     assert.match(text(await tools.call("browser_snapshot", { sessionId: theirs }, login("TL"))), new RegExp(`^Session: ${theirs}`));
 });
 
-test("an agent key tunnels only through the server it belongs to", async () => {
+test("an agent key opens only ephemeral sessions and tunnels only through the server it belongs to", async () => {
     const { pool, tools, launcher, agent, text, opened } = setup();
+    const persistent = await tools.call("browser_open", { url: "https://a.test/", profile: "persistent" }, agent(41, 7, "T41"));
+    assert.strictEqual(persistent.isError, true);
+    assert.match(text(persistent), /^Agent keys can only open ephemeral sessions; call browser_open without profile=persistent\.$/);
     const refused = await tools.call("browser_open", { url: "http://localhost:5173/", via: "web" }, agent(41, 7, "T41"));
     assert.strictEqual(refused.isError, true);
     assert.match(text(refused), /only tunnel through the server it was set up for/);
@@ -5280,7 +2627,7 @@ test("an agent key tunnels only through the server it belongs to", async () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `node --test server/lib/browser/__tests__/agentScope.test.js`
-Expected: FAIL in beiden Tests — (1) `noOwn.isError` ist `undefined`, weil `browser_snapshot` ohne `sessionId` die einzige freie Sitzung des Kontos nimmt (die des Nutzers); (2) `refused.isError` ist `undefined`, weil `via: "web"` ohne Prüfung geöffnet wird.
+Expected: FAIL in beiden Tests — (1) `noOwn.isError` ist `undefined`, weil `browser_snapshot` ohne `sessionId` die einzige freie Sitzung des Kontos nimmt (die des Nutzers); (2) `persistent.isError` ist `undefined`, weil der Agenten-Key ein `persistent`-Profil ohne Prüfung öffnet.
 
 - [ ] **Step 3: `keyId` und `contextKey` an der Sitzung**
 
@@ -5462,58 +2809,64 @@ nachher (`opener` ist der Pool-Record des Öffners):
             this.#register(session, instance, { ownsContext: false, browserContextId: null, contextKey: opener.contextKey });
 ```
 
-- [ ] **Step 6: Werkzeuge — Auflösung je Aufrufer, `via` nur zum eigenen Server**
+- [ ] **Step 6: Werkzeuge — Auflösung je Aufrufer, nur ephemer, `via` nur zum eigenen Server**
 
-`server/lib/browser/tools.js`: vor `const createBrowserTools = ({` (Z. 82) einfügen — der Körper ist der bisherige `resolveSession` (Z. 89-121), mit `pool`/`defaults` als Parameter und `listForCaller`/`getOwned(…, { keyId })` statt `listForAccount`/`getOwned(…)`:
+`server/lib/browser/tools.js`: vor `const createBrowserTools = ({` (Z. 82) einfügen:
 
 ```js
 const callerOf = (ctx) => ({ accountId: ctx.accountId, keyId: ctx.agent ? ctx.agent.keyId : null });
-
-const resolveCallerSession = (pool, ctx, sessionId, defaults) => {
-    const caller = callerOf(ctx);
-    const owned = (id) => pool.getOwned(caller.accountId, id, { keyId: caller.keyId });
-    if (sessionId) {
-        const session = owned(sessionId);
-        if (!session)
-            throw new BrowserError(BrowserErrorCode.UNKNOWN_SESSION, `No open browser session ${sessionId} for this account.`, { sessions: pool.listForCaller(caller) });
-        return session;
-    }
-    const remembered = defaults.get(ctx.transportId);
-    if (remembered) {
-        const session = owned(remembered);
-        if (session) return session;
-        // Falling back to "the only open session" here would hand this connection another
-        // process's session exactly when its own is gone.
-        throw new BrowserError(BrowserErrorCode.SESSION_CLOSED,
-            `Your browser session ${remembered} has ended. Open a new one with browser_open or pass a sessionId.`,
-            { sessions: pool.listForCaller(caller) });
-    }
-    // A session another connection opened stays its own: otherwise a connection whose own session
-    // is gone (server restart, transport sweep) would act on someone else's (A11).
-    const claimed = new Set(defaults.values());
-    const all = pool.listForCaller(caller);
-    const open = all.filter((session) => !claimed.has(session.id));
-    if (open.length === 1) return owned(open[0].id);
-    if (open.length === 0) {
-        throw new BrowserError(BrowserErrorCode.NO_SESSION, all.length === 0
-            ? "No browser session is open. Call browser_open first."
-            : "No browser session of this connection is open; the open ones belong to other connections. Call browser_open, or pass sessionId.",
-        { sessions: all });
-    }
-    throw new BrowserError(BrowserErrorCode.AMBIGUOUS_SESSION,
-        "More than one browser session is open and this connection has none of its own. Pass sessionId.", { sessions: open });
-};
 ```
 
-In `createBrowserTools` den bisherigen `resolveSession` (Z. 89-121) ersetzen durch:
+In `createBrowserTools` den bisherigen `resolveSession` (Z. 89-121) ersetzen durch — derselbe Ablauf, mit `listForCaller`/`getOwned(…, { keyId })` statt `listForAccount`/`getOwned(…)`:
 
 ```js
-    const resolveSession = (ctx, sessionId) => resolveCallerSession(getPool(), ctx, sessionId, defaults);
+    const resolveSession = (ctx, sessionId) => {
+        const pool = getPool();
+        const caller = callerOf(ctx);
+        const owned = (id) => pool.getOwned(caller.accountId, id, { keyId: caller.keyId });
+        if (sessionId) {
+            const session = owned(sessionId);
+            if (!session)
+                throw new BrowserError(BrowserErrorCode.UNKNOWN_SESSION, `No open browser session ${sessionId} for this account.`, { sessions: pool.listForCaller(caller) });
+            return session;
+        }
+        const remembered = defaults.get(ctx.transportId);
+        if (remembered) {
+            const session = owned(remembered);
+            if (session) return session;
+            // Falling back to "the only open session" here would hand this connection another
+            // process's session exactly when its own is gone.
+            throw new BrowserError(BrowserErrorCode.SESSION_CLOSED,
+                `Your browser session ${remembered} has ended. Open a new one with browser_open or pass a sessionId.`,
+                { sessions: pool.listForCaller(caller) });
+        }
+        // A session another connection opened stays its own: otherwise a connection whose own session
+        // is gone (server restart, transport sweep) would act on someone else's (A11).
+        const claimed = new Set(defaults.values());
+        const all = pool.listForCaller(caller);
+        const open = all.filter((session) => !claimed.has(session.id));
+        if (open.length === 1) return owned(open[0].id);
+        if (open.length === 0) {
+            throw new BrowserError(BrowserErrorCode.NO_SESSION, all.length === 0
+                ? "No browser session is open. Call browser_open first."
+                : "No browser session of this connection is open; the open ones belong to other connections. Call browser_open, or pass sessionId.",
+            { sessions: all });
+        }
+        throw new BrowserError(BrowserErrorCode.AMBIGUOUS_SESSION,
+            "More than one browser session is open and this connection has none of its own. Pass sessionId.", { sessions: open });
+    };
 ```
 
-`browser_open` (Z. 165-167) nachher:
+`act` (Z. 130-133) bleibt unverändert und ruft weiter `resolveSession(ctx, args.sessionId)`.
+
+`browser_open` (Z. 162-167) nachher:
 
 ```js
+        browser_open: async (args, ctx) => {
+            if (args.url == null)
+                throw new BrowserError(BrowserErrorCode.INVALID_URL, "browser_open needs a url. Include the scheme, e.g. https://example.com");
+            if (ctx.agent && args.profile === "persistent")
+                throw new BrowserError(BrowserErrorCode.INVALID_PROFILE, "Agent keys can only open ephemeral sessions; call browser_open without profile=persistent.");
             const { session, navigationError } = await getPool().open({
                 accountId: ctx.accountId, url: args.url, via: args.via ?? null, profile: args.profile ?? "ephemeral", origin: "agent",
                 keyId: ctx.keyId ?? null, allowVia: ctx.agent ? (entryId) => entryId === ctx.agent.entryId : null,
@@ -5529,15 +2882,10 @@ In `createBrowserTools` den bisherigen `resolveSession` (Z. 89-121) ersetzen dur
 Rückgabeobjekt (Z. 245) nach `forgetTransport: (transportId) => defaults.delete(transportId),` ergänzen:
 
 ```js
-        getDefaultSession: (transportId) => defaults.get(transportId) ?? null,
-        defaultSessions: defaults,
+        resolveSession,
 ```
 
-`module.exports` (Z. 249):
-
-```js
-module.exports = { createBrowserTools, resolveCallerSession, recordBrowserAudit, defaultAudit };
-```
+`module.exports` (Z. 249) bleibt unverändert.
 
 `server/lib/browser/__tests__/tools.test.js`, Fake-Pool Z. 41 vorher:
 
@@ -5570,1177 +2918,1400 @@ git commit -m "Vault: Browser-Sitzungen gehören dem Agenten-Key, der sie geöff
 
 ---
 
-### Task 8: Agenten-Einrichtung (Server)
+### Task 3: Sichtbarkeit und Bindungen
 
 **Files:**
-- Create: `server/lib/vault/provision.js` (einziger Ort, an dem Einrichtungs-, Probe- und Entfernbefehle entstehen; SEC-INJECT-01)
-- Create: `server/controllers/agentKeys.js`
-- Create: `server/validations/vaultAgentKeys.js` (Ergänzung zum Vertrag: `server/validations/vault.js` gehört Task 5, der parallel läuft)
-- Modify: `server/routes/vault/agentKeys.js` (leerer `Router()`-Platzhalter aus Task 1 → ganze Datei ersetzen)
-- Modify: `server/controllers/execCommand.js` (Signatur Z. 8, Aufruf `controlPlane.execCommand` Z. 48)
-- Modify: `server/index.js` (eine Zeile direkt nach dem `initVaultState()`-Aufruf, den Task 1 nach `await migrationRunner.runMigrations();` Z. 144 einfügt, plus der Import)
-- Test: `server/lib/vault/__tests__/provision.test.js`, `server/lib/vault/__tests__/agentKeysRoute.test.js`
+- Create: `server/lib/vault/visibility.js`
+- Create: `server/lib/vault/bindings.js`
+- Modify: `server/controllers/entry.js` (Importe Z. 1-18; `deleteEntry` Z. 190-212: Bindungen vor `Entry.destroy` entfernen)
+- Modify: `server/controllers/folder.js` (Importe Z. 1-13; `deleteFolder` Z. 131-168: nach der Rekursion Z. 147-150 und vor `Entry.destroy` Z. 152 Bindungen der Einträge dieses Ordners und des Ordners selbst entfernen)
+- Modify: `server/controllers/tag.js` (Importe Z. 1-7; `deleteTag` Z. 48-60: Bindungen vor `Tag.destroy` entfernen)
+- Modify: `server/controllers/integration.js` (Importe Z. 1-8; `reconcileIntegration` Z. 167-174: Bindungen veralteter Server und Knotenordner vor `Entry.destroy` Z. 168 bzw. `Folder.destroy` Z. 173 entfernen; `deleteIntegration` Z. 265-278: Bindungen aller Server und Ordner der Integration vor `Entry.destroy` Z. 271 und `Folder.destroy` Z. 272 entfernen)
+- Test: `server/lib/vault/__tests__/visibility.test.js` (test-first)
+- Test: `server/lib/vault/__tests__/bindings.test.js`
 
 **Interfaces:**
-- Consumes:
-  - Task 1: `ApiKey`-Spalten `kind`, `pending`, `entryId`, `agentType`, `ipBinding`, `allowedCidrs`, `identityId`, `remoteUser`, `seenIp`, `seenIpAdopted`; `Session.impersonatorId`; `VaultSettings.getOrCreate() → { agentUrl, … }` (Instanz, `raw: false`); `initVaultState()`, `requireVaultEnabled(req, res, next)` aus `server/lib/vault/state.js`; `Permission.VAULT_USE`; `AUDIT_ACTIONS.VAULT_AGENT_KEY_CREATE`, `AUDIT_ACTIONS.VAULT_AGENT_KEY_REVOKE`, `RESOURCE_TYPES.VAULT`; Platzhalter `server/routes/vault/agentKeys.js`, den `server/routes/vault/index.js` schon per `router.use(require("./agentKeys"))` einhängt.
-  - Task 4: `authenticate` (lässt `pending`-Agenten-Keys nur an `GET /api/vault/agent-keys/probe` durch, endgültige Agenten-Keys nur unter `/api/mcp` mit IP-Bindung, setzt bei Login-Sessions `req.session`); `requireLoginSession(req, res, next)` als **benannter** Export von `server/middlewares/requireLoginSession.js` (Muster `middlewares/permission.js`); `resolveHostAddresses(host) → Promise<string[]>`, `matchesCidr(ip, cidr) → boolean` aus `server/lib/vault/ipBinding.js`; `hashToken`, `generateToken`, `TOKEN_PREFIX` aus `server/controllers/apiKey.js`.
-  - Bestand: `execCommand` (`server/controllers/execCommand.js`), `resolveIdentity(entry, null, null, accountId)` (`server/utils/identityResolver.js:7`), `validateEntryAccess`, `resolveEntryScope` (`server/controllers/entry.js`), `normalizeIp` (`server/utils/ip.js`), `hasAccountPermission` (`server/utils/permission.js`), `sendError`, `validateSchema`.
-  - Nicht genutzt: `getAgentUrl()` aus Task 5 (läuft parallel); die Agenten-Adresse wird direkt aus `VaultSettings.getOrCreate()` gelesen.
-- Produces:
-  - `provision.js` (alle Befehle laufen als `/bin/sh -c '<Skript>'` mit `umask 077` als erster Zeile, damit eine nicht-POSIX-Login-Shell des entfernten Benutzers sie nicht bricht):
-    - `shQuote(value: string) → string` — `'…'` mit `'\''`; wirft `TypeError` bei Nicht-String oder NUL.
-    - `findCliScript(name: "claude"|"codex") → string` — Snippet (Subshell), gibt den absoluten Pfad aus, Exit 0; sonst Exit 1 ohne Ausgabe. Sucht `command -v` in `bash -lc`, ersatzweise `sh -lc`, dann `~/.local/bin`, `~/.claude/local`, `~/.npm-global/bin`.
-    - **Ergänzung:** `findCliCommand(name) → string` — `findCliScript` als ausführbarer Befehl.
-    - `claudeSetupCommand({ cliPath, url, key }) → string` — `claude mcp get outpost`; vorhanden → `claude mcp remove --scope user outpost` (Fehler ignoriert); `claude mcp add --scope user --transport http outpost <url> --header "Authorization: Bearer <key>"`; `chmod 600 ~/.claude.json`; Ausgabe `OUTPOST_REPLACED=0|1`.
-    - `codexEnvCommand({ key }) → string` — schreibt `~/.codex/outpost.env` (`export OUTPOST_MCP_TOKEN='<key>'`, Modus 0600) und die Zeile `[ -f ~/.codex/outpost.env ] && . ~/.codex/outpost.env` je einmal in `~/.bashrc`, `~/.profile` und, falls vorhanden, `~/.bash_profile`, `~/.zshrc`.
-    - `codexSetupCommand({ cliPath, url }) → string` — `codex mcp get/remove outpost`, dann `codex mcp add outpost --url <url> --bearer-token-env-var OUTPOST_MCP_TOKEN`; Ausgabe `OUTPOST_REPLACED=0|1`.
-    - **Ergänzung:** `setupCommand({ agentType, cliPath, url, key }) → string` — Claude: `claudeSetupCommand`; Codex: `codexEnvCommand && codexSetupCommand`. Wird auch als Kopierbefehl ausgegeben (dann `cliPath` = `"claude"`/`"codex"`).
-    - `probeCommand({ url, key }) → string` — `url` ist die volle Probe-URL; Key nur in einer `mktemp`-Datei (0600), `curl -fsS -H @<datei>`, sonst `wget -qO- --config=<datei>`, sonst Exit 127; die Datei wird per `trap … EXIT` gelöscht.
-    - `revokeCommands({ agentType, keyPrefix }) → string` — `keyPrefix` = `apiKey.prefix` ohne `…` (`/^[A-Za-z0-9_]{8,64}$/`, sonst `TypeError`); gibt genau eine Zeile `REMOVED`, `FOREIGN` oder `ABSENT` aus; entfernt nur, wenn die Registrierung mit `keyPrefix` beginnt; Exit 3 (CLI fehlt) bzw. 4 (Entfernen scheiterte) ohne Marker.
-  - `agentKeys.js` (Controller; Fehler als `{ code, message }`):
-    - `createAgentKeys({ accountId, entryId, agentTypes, ipBinding = true, allowedCidrs = [], ipAddress = null, userAgent = null }) → { results: [{ id, agentType, status: "configured"|"manual", reason: "cli_missing"|"exec_failed"|null, remoteUser, command?, probe: { seenIp, matches }|null, replacedRegistration }] }` — `ipAddress`/`userAgent` sind eine Ergänzung (nur fürs Audit); `reason` ist `null` bei `configured`, `cli_missing` wenn die CLI an keiner Stelle gefunden wurde, sonst `exec_failed` (keine Identität, Exec- oder Einrichtungsfehler); `command` (mit Key) nur bei `manual`. Fehler: `409` Agenten-Adresse fehlt, `403` weder `vault.use` noch aktive Organisationsmitgliedschaft, `404` Eintrag fehlt/kein Zugriff, `400` kein SSH-Eintrag.
-    - `probe(apiKey, rawIp) → { seenIp }` — speichert `normalizeIp(rawIp)` nur an einem `pending`-Agenten-Key.
-    - `confirm(accountId, id, { addSeenIp = false } = {}, now = Date.now()) → { success: true }` — `404` fremder/unbekannter Key; mit `addSeenIp`: `409` ohne Messung, nach 15 min oder bei zweiter Übernahme; trägt `<seenIp>/32` bzw. `/128` ein. Macht `pending` endgültig und löscht danach die eigenen alten Keys für (Server, Agent, entfernter Benutzer) ohne Entfernbefehle.
-    - `revoke(accountId, id, { ipAddress, userAgent } = {}) → { success: true, registration: "removed"|"foreign"|"absent"|"unknown", commands? }` — löscht zuerst den Key; `pending` → `absent` ohne Exec; sonst Entfernbefehl mit der gespeicherten `identityId`; Identität weg oder Exec gescheitert → `unknown` plus `commands` (Kopierbefehl).
-    - `listAgentKeys(accountId, { entryId = null } = {}) → { keys, remoteUser?, otherAccountConfigured? }` — nur endgültige Keys; Key-Form `{ id, name, prefix, agentType, pending, entryId, entryName, remoteUser, ipBinding, allowedCidrs, createdAt, lastUsedAt }` (`pending` ist hier immer `false`); mit `entryId` zusätzlich `remoteUser` (Benutzer der Identität, die `resolveIdentity` wählen würde) und `otherAccountConfigured`.
-    - `sweepPending(now = Date.now()) → Promise<number>`; `startPendingSweeper() → Timeout` (60 s, `unref`); `PENDING_TTL_MS = 900000`.
-  - Routen unter `/api/vault` (alle mit `requireVaultEnabled` vor `authenticate`): `GET /agent-keys/probe` (nur `req.apiKey.kind === "agent"` und `pending`, sonst `403`; Rate-Limit 10/min je Key), `GET /agent-keys` (`?entryId=`), `POST /agent-keys` → `201`, `POST /agent-keys/:id/confirm`, `DELETE /agent-keys/:id` (die drei letzten mit `requireLoginSession` und Rate-Limit 30/min je Konto).
-  - `execCommand(accountId, entryId, identityId, command, { engineId = null } = {})`.
-  - Audit `vault.agent_key_create`, `vault.agent_key_revoke` mit `resource: "vault"`, `resourceId: null`, `details: { keyId, agentType, entryId, entryName, remoteUser, … }` (create zusätzlich `ipBinding`, revoke zusätzlich `registration`, `pending`), `organizationId` aus `resolveEntryScope` des Servers. Nie Key, Präfix-Vergleichsausgabe oder Exec-Ausgabe.
-  - Joi: `createAgentKeysValidation`, `confirmAgentKeyValidation`, `listAgentKeysValidation`, `agentKeyIdValidation` (OpenAPI-Schemas `CreateAgentKeys`, `ConfirmAgentKey`, …).
+- Consumes (Task 1):
+  - Modelle `VaultItem { id, accountId, organizationId, name, type, description, fields, approvalRequired, allServers, createdBy, lastUsedAt }` und `VaultBinding { id, itemId, kind, targetId }` (`server/models/VaultItem.js`, `server/models/VaultBinding.js`). Der `afterFind`-Hook an `VaultItem` (Task 1) macht auch bei `query: { raw: true }` aus `fields` ein Objekt und aus `approvalRequired`/`allServers` Booleans; `visibility.js` normalisiert nichts selbst.
+  - `VaultError`, `VaultErrorCode.ITEM_UNKNOWN` aus `server/lib/vault/errors.js`; `new VaultError(VaultErrorCode.ITEM_UNKNOWN)` nimmt den Standardtext aus `VaultErrorMessage` (Task 1), dieser Task setzt keinen eigenen.
+  - `Permission.VAULT_USE`, `Permission.VAULT_MANAGE`, `Permission.VAULT_REVEAL` aus `server/permissions/registry.js`.
+- Consumes (Bestand): `async resolveEntryScope(entry) → Promise<{ organizationId, ownerAccountId }>` und `async validateEntryAccess(accountId, entry) → Promise<{ valid: true, entry } | { code, message }>` aus `server/controllers/entry.js`; `hasAccountPermission`, `hasOrganizationAccess`, `hasOrganizationPermission`, `async validateFolderAccess(accountId, folderId) → Promise<{ valid, folder } | { valid: false, error }>` aus `server/utils/permission.js`.
+- Produces (`server/lib/vault/visibility.js`, genutzt von Task 5, Task 8 und Task 11):
+  - `activeOrganizationIds(accountId) → Promise<number[]>` — Organisationen mit `OrganizationMember.status = "active"`.
+  - `ownedItems(accountId) → Promise<VaultItem[]>` — alle Einträge, die das Konto verwalten oder sehen darf: persönliche (nur mit `vault.use`) plus die seiner aktiven Organisationen, nach `name` sortiert, ohne Server- und Bindungsfilter.
+  - `canUseVault(accountId) → Promise<boolean>` — `vault.use` oder aktives Mitglied mindestens einer Organisation.
+  - `itemRef(item) → string` — `<name>` bzw. `org:<organizationId>/<name>`.
+  - `parseItemRef(ref) → { organizationId: number|null, name: string }` — wirft `VaultError(ITEM_UNKNOWN)` bei ungültiger Form (kein String, Name verletzt `^[a-z0-9][a-z0-9._-]{0,63}$`, Organisations-ID keine positive Ganzzahl).
+  - `visibleItems({ accountId, agent }) → Promise<VaultItem[]>` — Plain Objects, nach `name` sortiert, `fields` als Objekt, `approvalRequired`/`allServers` als Boolean (Hook aus Task 1). `agent = { keyId, entryId, agentType } | null`. Regeln: Kandidaten = `ownedItems(accountId)`. Ohne `agent.entryId` nur persönliche Einträge mit `allServers`. Mit Server: Server muss per `validateEntryAccess` erreichbar sein, sonst `[]`; Organisationseinträge nur, wenn `resolveEntryScope(entry).organizationId` gleich ihrer Organisation ist; dann `allServers` oder eine passende Bindung (`entry` = Server, `folder` = Ordner des Servers oder ein Vorfahre über `Folder.parentId`, `tag` = Tag des Servers über `EntryTag`, nur bei persönlichen Einträgen).
+  - `findVisibleItem({ accountId, agent }, ref) → Promise<VaultItem>` — wirft `VaultError(ITEM_UNKNOWN)` mit identischer Meldung (Standardtext aus `VaultErrorMessage`) für ungültig, unbekannt und unsichtbar.
+  - `canManageItem(accountId, item) → Promise<boolean>` — persönlich: Besitzer und `vault.use`; Organisation: aktive Mitgliedschaft **und** `vault.manage`.
+  - `canRevealItem(accountId, item) → Promise<boolean>` — persönlich wie `canManageItem`; Organisation: aktive Mitgliedschaft **und** `vault.reveal`.
+  - `canCreateFor(accountId, { organizationId }) → Promise<boolean>` — ohne Organisation `vault.use`; mit Organisation aktive Mitgliedschaft **und** `vault.manage`.
+- Produces (`server/lib/vault/bindings.js`, genutzt von Task 5):
+  - `removeBindings(kind: "entry"|"folder"|"tag", ids: number[]) → Promise<number>` (Anzahl gelöschter Zeilen; leere Liste → `0` ohne Abfrage).
+  - `validateBindings({ accountId, organizationId }, bindings: { kind, targetId }[]) → Promise<{ valid: true } | { valid: false, message }>` — `tag` nur bei persönlichen Einträgen und nur Tags des Kontos; `entry` muss per `validateEntryAccess` erreichbar sein, bei Organisationseinträgen mit `resolveEntryScope(...).organizationId` gleich der Organisation; `folder` muss per `validateFolderAccess` erreichbar sein, bei Organisationseinträgen mit `folder.organizationId` gleich der Organisation; jede andere Art ist ungültig. Meldungen englisch, ohne Interna.
+  - `setBindings(itemId, bindings) → Promise<void>` — ersetzt alle Bindungen des Eintrags in einer Transaktion, Duplikate werden zusammengefasst.
+- Produces (Bestand geändert): `deleteEntry` entfernt `entry`-Bindungen des Servers; `deleteFolder` entfernt je Rekursionsebene vor dem Löschen die `entry`-Bindungen aller Einträge des Ordners und die `folder`-Bindung des Ordners — über die Rekursion also für den ganzen Teilbaum samt mitgelöschter Einträge; `deleteTag` entfernt `tag`-Bindungen; `deleteIntegration` entfernt die `entry`- und `folder`-Bindungen aller Server und Ordner der Integration, `reconcileIntegration` die der veralteten Server und Knotenordner. Entfernt wird jeweils **vor** dem Löschen der Zeilen, damit ein Abbruch keine Bindung an eine verwaiste ID hinterlässt.
 
 **Design:** kein UI-Anteil.
 
-**Tests:** 13 Tests in zwei Dateien. Die Befehle in `provision.test.js` werden **wirklich** in `/bin/sh` ausgeführt, in einem Temp-HOME mit Stub-Binaries (Node-Skripte für `claude`, `codex`, `curl`, `wget`; ein `sh`-Stub simuliert die Login-Shell) und einem PATH, der nur Stubs und sieben Coreutils enthält — keine CLI, kein `curl` und kein `bash` der Testmaschine kann hineinwirken. Test-first, weil der Vertrag feststeht.
-- `provision.test.js` (5): Spec-Test 9 für Claude (Argumente mit Sonderzeichen in URL und Key kommen unverändert an, keine Befehlsausführung aus den Werten, `~/.claude.json` danach 0600, `OUTPOST_REPLACED`); Spec-Test 9 für Codex (eingelesener Wert gleich Key, 0600, Source-Zeile genau einmal, `.zshrc` nur wenn vorhanden, auch ohne Zeilenende); Probe (Key nie in der Argumentliste, Datei 0600 und danach gelöscht, `wget`-Ersatz, Exit 127 ohne Werkzeug); CLI-Suche (Login-Shell vor Installationsorten, sonst Exit 1); Review Focus 4 (fremde Registrierung bleibt stehen → `FOREIGN`, eigene → `REMOVED`, danach `ABSENT`, für Claude und Codex; eine Projekt-Registrierung mit dem eigenen Key in `~/.claude.json` zählt nicht).
-- `agentKeysRoute.test.js` (8), über die HTTP-Naht mit echtem `authenticate` (Task 4), echtem `execCommand` und In-Memory-SQLite; gefakt sind nur `controlPlane` (spielt den entfernten Server: die Probe ruft Outpost per `fetch` mit dem Key aus der Befehlszeile zurück), `identityResolver`, `controllers/entry`, `ConnectionService`, Audit und Rechte-Engine: Review Focus 3 (probe nur mit `pending`-Key, andere `403`; gesehene Adresse; `engineId` erreicht `controlPlane`; ohne Übernahme `403` an `/api/mcp`, nach `confirm` mit `addSeenIp` `200`, zweite Übernahme `409`); `addSeenIp` nach 15 min `409`; manuelle Einrichtung (`cli_missing`, Befehl, Key bleibt `pending` bis `confirm`); `sweepPending`; Ersetzen eigener alter Keys ohne Entfernbefehle plus `otherAccountConfigured` für das zweite Konto; Spec-Test 11 Teil 2/3 (Impersonation und Konto-Key `403`, fremde Key-ID `404`); CIDR-Prüfung; Entziehen mit gespeicherter Identität bzw. Kopierbefehl ohne Identität.
-- Nicht getestet: `listAgentKeys` ohne `entryId` (Weiterreichung), `startPendingSweeper` (Timer), Rate-Limiter (Framework), Joi-Standardfälle, Log-Ausgaben.
-- SEC-Abdeckung: SEC-INJECT-01 (`provision.js`, Spec-Test 9), SEC-IDOR-01 (jede Key-Abfrage mit `accountId`, fremde ID `404`), SEC-TENANT-01 (Server nur nach `validateEntryAccess`, Audit mit Organisation des Servers), SEC-RATE-01 (Limiter an Einrichtung/Bestätigung/Entziehen/Probe), SEC-INPUT-01 (Joi für `agentTypes`, CIDRs, IDs), SEC-APIKEY-01 und SEC-SESS-02 (256-Bit-Key gehasht, `pending`-Ablauf 15 min, Widerruf), SEC-SECRET-01 (Exec-Ausgaben nie geloggt, Key nur im Kopierbefehl einer `manual`-Antwort), SEC-ERR-01 (feste Meldungen ohne Exec-Details), SEC-SQLI-01 (nur Sequelize-`where`).
+**Tests:** 6 Tests, zwei Dateien, In-Memory-SQLite mit echten Modellen; gefakt wird nur `permissions/engine` (Rechte) und `utils/database` (In-Memory-Instanz).
+- `visibility.test.js` (test-first, Kernlogik mit festem Vertrag aus der Spec): (1) Sichtbarkeit als Tabelle (Spec-Test 4: Server, Ordner mit Unterordner, Tag, `allServers` persönlich und Organisation inkl. Server außerhalb der Organisation, keine Bindung, Konto-Key/Login-Session ohne Server, ohne `vault.use`, Einladung `pending`, Organisation verlassen = Server ohne Zugriff), (2) Kennungen: Organisationskennung löst auf und liefert `fields` als Objekt und `allServers` als Boolean (fehlt der Hook aus Task 1, scheitert dieser Test), unbekannt/unsichtbar/fremd/ungültig ergeben denselben `vault.item_unknown`, (3) Verwalten/Anzeigen/Anlegen als Tabelle inkl. „Rechte ohne aktive Mitgliedschaft“, dazu `canUseVault` (nur `vault.use`, nur aktive Mitgliedschaft, keins von beidem).
+- `bindings.test.js`: (4) Review Focus 5 — Ordner mit Unterordnern löschen entfernt Bindungen an Ordner, Unterordner und mitgelöschte Server, fremde Bindungen bleiben, (5) Server, Tag und Integration löschen entfernen genau ihre Bindungen, (6) `validateBindings` als Tabelle.
+- Nicht getestet: `setBindings` für sich (wird in Test 4 und 5 als Fixture benutzt und dort über den Tabellenstand mitgeprüft), `removeBindings` für sich (Weiterreichung an `destroy`), `ownedItems` und `activeOrganizationIds` für sich (Kandidaten von `visibleItems`, in Test 1 mitgeprüft), das Aufräumen in `reconcileIntegration` (derselbe Aufruf wie in `deleteIntegration`; ein Test bräuchte Fakes für Provider und Zugangsdaten), Audit und Broadcast in den Löschpfaden (Bestand).
+- SEC-Abdeckung: SEC-TENANT-01 (Organisationsfilter in `visibleItems`, Mitgliedschaftspflicht in `can*`, Bindungen nur in derselben Organisation — Tests 1, 3, 6), SEC-IDOR-01 (ein Fehler für unbekannt und unsichtbar — Test 2; `canManageItem`/`canRevealItem` für Task 5 — Test 3), SEC-RBAC-01 (`vault.use`/`vault.manage`/`vault.reveal` — Tests 1, 3), SEC-SQLI-01 (nur Sequelize-`where`-Objekte, keine SQL-Strings), SEC-PII-01 (Löschkonzept: Bindungen verschwinden mit ihren Zielen — Tests 4, 5).
 
-**Parallel:** Task 5, 6, 7, 10 (keine gemeinsamen Dateien: Task 5 schreibt `routes/vault/items.js`, `settings.js`, `validations/vault.js`, `controllers/vaultItems.js`, `vaultSettings.js`; Task 6 `approvals.js`, `StateBroadcaster.js`, `routes/state.js`; Task 7 `server/lib/browser/*`; Task 10 nur `client/`; `server/index.js` fasst in Phase C nur Task 8 an).
+**Parallel:** Task 4, Task 9, Task 12, Task 13, Task 14 (Welle B; keine gemeinsamen Dateien).
 
-- [ ] **Step 1: Failing test für die Befehle schreiben**
+- [ ] **Step 1: Write the failing test**
 
-`server/lib/vault/__tests__/provision.test.js`:
+`server/lib/vault/__tests__/visibility.test.js`:
 
 ```js
 const test = require("node:test");
 const assert = require("node:assert");
-const fs = require("node:fs");
-const os = require("node:os");
-const path = require("node:path");
-const crypto = require("node:crypto");
-const { execFile, execFileSync } = require("node:child_process");
-const provision = require("../provision");
-
-// The commands run for real in /bin/sh. PATH holds only the stub directory and a handful of
-// coreutils, so no CLI, curl, wget or bash of the test machine can leak in.
-const TOOLS = ["awk", "chmod", "grep", "mkdir", "mktemp", "rm", "tail"];
-const SOURCE_LINE = "[ -f ~/.codex/outpost.env ] && . ~/.codex/outpost.env";
-const ODD_URL = "https://out post.example/a'b\"c$(touch \"$HOME/pwned\")`touch \"$HOME/pwned2\"`;&|*?!#\\x/api/mcp";
-const ODD_KEY = "outpost_k'e\"y$(touch \"$HOME/pwned3\") `id` ;&|\\";
-
-const node = (body) => `#!${process.execPath}\n${body}`;
-const LOGIN_SH = `#!/bin/sh
-if [ "$1" = "-lc" ]; then PATH="$HOME/login-bin:$PATH"; export PATH; exec /bin/sh -c "$2"; fi
-exec /bin/sh "$@"
-`;
-const STUBS = {
-    claude: node(`
-const fs = require("fs");
-const file = process.env.HOME + "/.claude.json";
-fs.appendFileSync(process.env.HOME + "/claude-calls.log", JSON.stringify(process.argv.slice(2)) + "\\n");
-const config = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : { numStartups: 1 };
-const servers = config.mcpServers || {};
-const save = () => { config.mcpServers = servers; fs.writeFileSync(file, JSON.stringify(config, null, 2)); fs.chmodSync(file, 0o644); };
-const [command, sub, ...rest] = process.argv.slice(2);
-if (command !== "mcp") process.exit(2);
-if (sub === "get") process.exit(servers[rest[0]] ? 0 : 1);
-if (sub === "remove") { const name = rest[rest.length - 1]; if (!servers[name]) process.exit(1); delete servers[name]; save(); process.exit(0); }
-if (sub !== "add") process.exit(2);
-const options = {}; const positional = [];
-for (let i = 0; i < rest.length; i++) { if (rest[i].startsWith("--")) options[rest[i]] = rest[++i]; else positional.push(rest[i]); }
-const [headerName, ...headerValue] = options["--header"].split(": ");
-servers[positional[0]] = { type: options["--transport"], url: positional[1], headers: { [headerName]: headerValue.join(": ") } };
-save();
-`),
-    codex: node(`
-const fs = require("fs");
-const file = process.env.HOME + "/.codex/registrations.json";
-fs.appendFileSync(process.env.HOME + "/codex-calls.log", JSON.stringify(process.argv.slice(2)) + "\\n");
-const servers = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : {};
-const save = () => { fs.mkdirSync(process.env.HOME + "/.codex", { recursive: true }); fs.writeFileSync(file, JSON.stringify(servers)); };
-const [command, sub, name, ...rest] = process.argv.slice(2);
-if (command !== "mcp") process.exit(2);
-if (sub === "get") process.exit(servers[name] ? 0 : 1);
-if (sub === "remove") { if (!servers[name]) process.exit(1); delete servers[name]; save(); process.exit(0); }
-if (sub !== "add") process.exit(2);
-servers[name] = rest;
-save();
-`),
-    curl: node(`
-const fs = require("fs");
-const args = process.argv.slice(2);
-const file = args[args.indexOf("-H") + 1].slice(1);
-fs.writeFileSync(process.env.HOME + "/curl-call.json", JSON.stringify({ args, file, content: fs.readFileSync(file, "utf8"), mode: fs.statSync(file).mode & 0o777 }));
-process.stdout.write('{"seenIp":"192.0.2.7"}');
-`),
-    wget: node(`
-const fs = require("fs");
-const args = process.argv.slice(2);
-const file = args.find((arg) => arg.startsWith("--config=")).slice("--config=".length);
-fs.writeFileSync(process.env.HOME + "/wget-call.json", JSON.stringify({ args, file, content: fs.readFileSync(file, "utf8"), mode: fs.statSync(file).mode & 0o777 }));
-process.stdout.write('{"seenIp":"192.0.2.7"}');
-`),
-};
-
-const makeHome = (t) => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-provision-"));
-    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-    const [home, bin, tools, tmp] = ["home", "bin", "tools", "tmp"].map((name) => path.join(root, name));
-    for (const dir of [home, bin, tools, tmp]) fs.mkdirSync(dir);
-    for (const tool of TOOLS)
-        fs.symlinkSync(execFileSync("/bin/sh", ["-c", `command -v ${tool}`], { encoding: "utf8" }).trim(), path.join(tools, tool));
-    fs.writeFileSync(path.join(bin, "sh"), LOGIN_SH, { mode: 0o755 });
-
-    const install = (name, dir = path.join(home, ".local/bin")) => {
-        fs.mkdirSync(dir, { recursive: true });
-        const file = path.join(dir, name);
-        fs.writeFileSync(file, STUBS[name], { mode: 0o755 });
-        return file;
-    };
-    const run = (command) => new Promise((resolve) => {
-        execFile("/bin/sh", ["-c", command], { env: { HOME: home, PATH: `${bin}:${tools}`, TMPDIR: tmp } },
-            (error, stdout) => resolve({ code: error ? error.code : 0, stdout }));
-    });
-    const read = (name) => fs.readFileSync(path.join(home, name), "utf8");
-    const calls = (name) => read(`${name}-calls.log`).trim().split("\n").map((line) => JSON.parse(line));
-    const pwned = () => fs.readdirSync(home).filter((name) => name.startsWith("pwned"));
-    return { home, bin, install, run, read, calls, pwned };
-};
-
-const newKey = () => `outpost_${crypto.randomBytes(32).toString("hex")}`;
-const prefixOf = (key) => key.slice(0, "outpost_".length + 6);
-
-test("Spec-Test 9: der Claude-Befehl reicht URL und Key mit Sonderzeichen unverändert weiter und macht ~/.claude.json privat", async (t) => {
-    const env = makeHome(t);
-    const cliPath = env.install("claude");
-    fs.writeFileSync(path.join(env.home, ".claude.json"), JSON.stringify({
-        mcpServers: { outpost: { type: "http", url: "http://old", headers: { Authorization: "Bearer outpost_old" } } },
-    }, null, 2));
-
-    const { code, stdout } = await env.run(provision.claudeSetupCommand({ cliPath, url: ODD_URL, key: ODD_KEY }));
-
-    assert.strictEqual(code, 0);
-    assert.match(stdout, /^OUTPOST_REPLACED=1$/m);
-    assert.deepStrictEqual(env.calls("claude"), [
-        ["mcp", "get", "outpost"],
-        ["mcp", "remove", "--scope", "user", "outpost"],
-        ["mcp", "add", "--scope", "user", "--transport", "http", "outpost", ODD_URL, "--header", `Authorization: Bearer ${ODD_KEY}`],
-    ]);
-    assert.strictEqual(fs.statSync(path.join(env.home, ".claude.json")).mode & 0o777, 0o600);
-    assert.deepStrictEqual(env.pwned(), []);
-});
-
-test("Spec-Test 9: Codex liest den Key aus einer privaten Datei, die jede Shell genau einmal einbindet", async (t) => {
-    const env = makeHome(t);
-    const cliPath = env.install("codex");
-    fs.writeFileSync(path.join(env.home, ".zshrc"), "export ZSH_SEEN=1");
-    const command = provision.setupCommand({ agentType: "codex", cliPath, url: ODD_URL, key: ODD_KEY });
-
-    assert.strictEqual((await env.run(command)).code, 0);
-    const second = await env.run(command);
-
-    assert.strictEqual(second.code, 0);
-    assert.match(second.stdout, /^OUTPOST_REPLACED=1$/m);
-    assert.strictEqual(fs.statSync(path.join(env.home, ".codex/outpost.env")).mode & 0o777, 0o600);
-    assert.strictEqual((await env.run(". \"$HOME/.codex/outpost.env\"; printf '%s' \"$OUTPOST_MCP_TOKEN\"")).stdout, ODD_KEY);
-    assert.strictEqual(env.read(".bashrc"), `${SOURCE_LINE}\n`);
-    assert.strictEqual(env.read(".profile"), `${SOURCE_LINE}\n`);
-    assert.strictEqual(env.read(".zshrc"), `export ZSH_SEEN=1\n${SOURCE_LINE}\n`);
-    assert.strictEqual(fs.existsSync(path.join(env.home, ".bash_profile")), false);
-    const add = ["mcp", "add", "outpost", "--url", ODD_URL, "--bearer-token-env-var", "OUTPOST_MCP_TOKEN"];
-    assert.deepStrictEqual(env.calls("codex"), [["mcp", "get", "outpost"], add, ["mcp", "get", "outpost"], ["mcp", "remove", "outpost"], add]);
-    assert.deepStrictEqual(env.pwned(), []);
-});
-
-test("die Probe gibt den Key nur über eine 0600-Datei an curl bzw. wget und löscht die Datei danach", async (t) => {
-    const env = makeHome(t);
-    const url = "https://outpost.example/x'y$(touch \"$HOME/pwned\")/api/vault/agent-keys/probe";
-    const command = provision.probeCommand({ url, key: ODD_KEY });
-
-    env.install("curl", env.bin);
-    assert.deepStrictEqual(await env.run(command), { code: 0, stdout: "{\"seenIp\":\"192.0.2.7\"}" });
-    const curl = JSON.parse(env.read("curl-call.json"));
-    assert.deepStrictEqual([curl.content, curl.mode, curl.args.at(-1)], [`Authorization: Bearer ${ODD_KEY}\n`, 0o600, url]);
-    assert.ok(!curl.args.some((arg) => arg.includes(ODD_KEY)));
-    assert.strictEqual(fs.existsSync(curl.file), false);
-
-    fs.rmSync(path.join(env.bin, "curl"));
-    env.install("wget", env.bin);
-    assert.strictEqual((await env.run(command)).code, 0);
-    const wget = JSON.parse(env.read("wget-call.json"));
-    assert.deepStrictEqual([wget.content, wget.mode, wget.args.at(-1)], [`header = Authorization: Bearer ${ODD_KEY}\n`, 0o600, url]);
-    assert.strictEqual(fs.existsSync(wget.file), false);
-
-    fs.rmSync(path.join(env.bin, "wget"));
-    assert.strictEqual((await env.run(command)).code, 127);
-    assert.deepStrictEqual(env.pwned(), []);
-});
-
-test("die CLI-Suche nimmt den Pfad der Login-Shell, sonst die bekannten Installationsorte", async (t) => {
-    const env = makeHome(t);
-
-    assert.deepStrictEqual(await env.run(provision.findCliCommand("codex")), { code: 1, stdout: "" });
-    const fallback = env.install("codex");
-    assert.strictEqual((await env.run(provision.findCliCommand("codex"))).stdout, `${fallback}\n`);
-    const login = env.install("codex", path.join(env.home, "login-bin"));
-    assert.strictEqual((await env.run(provision.findCliCommand("codex"))).stdout, `${login}\n`);
-});
-
-test("Review Focus 4: Entziehen entfernt nur eine Registrierung, die noch den eigenen Key trägt", async (t) => {
-    const env = makeHome(t);
-    const [mine, theirs] = [newKey(), newKey()];
-    fs.writeFileSync(path.join(env.home, ".claude.json"), JSON.stringify({
-        projects: { "/srv": { mcpServers: { outpost: { type: "http", url: "x", headers: { Authorization: `Bearer ${mine}` } } } } },
-    }, null, 2));
-    const registered = {
-        claude: () => JSON.parse(env.read(".claude.json")).mcpServers?.outpost?.headers.Authorization ?? null,
-        codex: () => (fs.existsSync(path.join(env.home, ".codex/outpost.env")) ? env.read(".codex/outpost.env") : null),
-    };
-
-    for (const agentType of ["claude", "codex"]) {
-        const cliPath = env.install(agentType);
-        assert.strictEqual((await env.run(provision.setupCommand({ agentType, cliPath, url: "https://outpost.example/api/mcp", key: theirs }))).code, 0);
-        const revokeMine = provision.revokeCommands({ agentType, keyPrefix: prefixOf(mine) });
-        const revokeTheirs = provision.revokeCommands({ agentType, keyPrefix: prefixOf(theirs) });
-
-        assert.strictEqual((await env.run(revokeMine)).stdout, "FOREIGN\n", agentType);
-        assert.match(registered[agentType](), new RegExp(theirs), agentType);
-        assert.ok(!env.calls(agentType).some(([, sub]) => sub === "remove"), agentType);
-
-        assert.strictEqual((await env.run(revokeTheirs)).stdout, "REMOVED\n", agentType);
-        assert.strictEqual(registered[agentType](), null, agentType);
-        assert.strictEqual((await env.run(revokeMine)).stdout, "ABSENT\n", agentType);
-    }
-});
-```
-
-- [ ] **Step 2: Test laufen lassen, Fehlschlag prüfen**
-
-Run: `cd /root/outpost && node --test server/lib/vault/__tests__/provision.test.js`
-Expected: FAIL — `Cannot find module '../provision'`.
-
-- [ ] **Step 3: `server/lib/vault/provision.js` anlegen**
-
-Hinweis zum Entziehen: Der Vertrag lässt das Skript selbst entscheiden („entfernt nur, wenn die gefundene Registrierung mit `keyPrefix` beginnt“). Verglichen wird auf dem Zielserver gegen das nicht geheime Präfix; der dort gefundene Key verlässt den Server nie, und Prüfen und Entfernen geschehen in einem Exec ohne Lücke dazwischen. Outpost liest nur den Marker, die übrige Ausgabe wird verworfen. Siehe die Meldung am Ende des Tasks (Abweichung vom Spec-Wortlaut „Vergleich im Outpost-Server“).
-
-```js
-const CLI_NAMES = new Set(["claude", "codex"]);
-const CLI_DIRS = ["$HOME/.local/bin", "$HOME/.claude/local", "$HOME/.npm-global/bin"];
-const CODEX_ENV = "$HOME/.codex/outpost.env";
-const SOURCE_LINE = "[ -f ~/.codex/outpost.env ] && . ~/.codex/outpost.env";
-const RC_FILES = ["$HOME/.bashrc", "$HOME/.profile", "$HOME/.bash_profile", "$HOME/.zshrc"];
-const KEY_PREFIX = /^[A-Za-z0-9_]{8,64}$/;
-
-// Relies on the layout Claude Code writes (JSON.stringify with two spaces): only the user-scope
-// registration sits at this depth, project registrations are nested deeper and never match.
-const CLAUDE_REGISTRATION_AWK = [
-    "/^  \"mcpServers\": \\{/ { m = 1; next }",
-    "m && /^  \\}/ { exit }",
-    "m && /^    \"outpost\": \\{/ { o = 1; s = \"OTHER\"; next }",
-    "o && /^    \\}/ { exit }",
-    "o && index($0, p) { s = \"MATCH\"; exit }",
-    "END { print s }",
-].join("\n");
-
-const shQuote = (value) => {
-    if (typeof value !== "string" || value.includes("\0")) throw new TypeError("shQuote needs a string without NUL bytes");
-    return `'${value.replace(/'/g, "'\\''")}'`;
-};
-
-const cliName = (name) => {
-    if (!CLI_NAMES.has(name)) throw new TypeError(`Unknown agent CLI: ${name}`);
-    return name;
-};
-
-// execCommand hands the string to the login shell of the remote user, which need not be POSIX.
-const asCommand = (lines) => `/bin/sh -c ${shQuote(["umask 077", ...lines].join("\n"))}`;
-
-const findCliScript = (name) => {
-    const lookup = shQuote(`command -v ${cliName(name)}`);
-    const candidates = ["\"$p\"", ...CLI_DIRS.map((dir) => `"${dir}/${name}"`)].join(" ");
-    return [
-        "(",
-        `p=$(bash -lc ${lookup} 2>/dev/null </dev/null | tail -n 1)`,
-        `[ -n "$p" ] || p=$(sh -lc ${lookup} 2>/dev/null </dev/null | tail -n 1)`,
-        `for c in ${candidates}; do`,
-        "case \"$c\" in /*) if [ -x \"$c\" ] && [ ! -d \"$c\" ]; then printf '%s\\n' \"$c\"; exit 0; fi ;; esac",
-        "done",
-        "exit 1",
-        ")",
-    ].join("\n");
-};
-
-const findCliCommand = (name) => asCommand([findCliScript(name)]);
-
-const claudeSetupCommand = ({ cliPath, url, key }) => asCommand([
-    `cli=${shQuote(cliPath)}`,
-    "replaced=0",
-    "if \"$cli\" mcp get outpost >/dev/null 2>&1; then",
-    "replaced=1",
-    "\"$cli\" mcp remove --scope user outpost >/dev/null 2>&1 || true",
-    "fi",
-    `"$cli" mcp add --scope user --transport http outpost ${shQuote(url)} --header ${shQuote(`Authorization: Bearer ${key}`)} >/dev/null || exit 1`,
-    "if [ -f \"$HOME/.claude.json\" ]; then chmod 600 \"$HOME/.claude.json\" || exit 1; fi",
-    "echo \"OUTPOST_REPLACED=$replaced\"",
-]);
-
-const codexEnvCommand = ({ key }) => asCommand([
-    "mkdir -p \"$HOME/.codex\" || exit 1",
-    `f="${CODEX_ENV}"`,
-    "rm -f \"$f\"",
-    `printf '%s\\n' ${shQuote(`export OUTPOST_MCP_TOKEN=${shQuote(key)}`)} > "$f" || exit 1`,
-    "chmod 600 \"$f\" || exit 1",
-    `line=${shQuote(SOURCE_LINE)}`,
-    `for rc in ${RC_FILES.map((file) => `"${file}"`).join(" ")}; do`,
-    "case \"$rc\" in */.bash_profile|*/.zshrc) [ -f \"$rc\" ] || continue ;; esac",
-    "grep -qxF \"$line\" \"$rc\" 2>/dev/null && continue",
-    "if [ -s \"$rc\" ] && [ -n \"$(tail -c 1 \"$rc\")\" ]; then echo >> \"$rc\"; fi",
-    "printf '%s\\n' \"$line\" >> \"$rc\" || exit 1",
-    "done",
-]);
-
-const codexSetupCommand = ({ cliPath, url }) => asCommand([
-    `cli=${shQuote(cliPath)}`,
-    "replaced=0",
-    "if \"$cli\" mcp get outpost >/dev/null 2>&1; then",
-    "replaced=1",
-    "\"$cli\" mcp remove outpost >/dev/null 2>&1 || true",
-    "fi",
-    `"$cli" mcp add outpost --url ${shQuote(url)} --bearer-token-env-var OUTPOST_MCP_TOKEN >/dev/null || exit 1`,
-    "echo \"OUTPOST_REPLACED=$replaced\"",
-]);
-
-const setupCommand = ({ agentType, cliPath, url, key }) => (cliName(agentType) === "claude"
-    ? claudeSetupCommand({ cliPath, url, key })
-    : `${codexEnvCommand({ key })} && ${codexSetupCommand({ cliPath, url })}`);
-
-const probeCommand = ({ url, key }) => asCommand([
-    "f=$(mktemp) || exit 1",
-    "trap 'rm -f \"$f\"' EXIT",
-    "if command -v curl >/dev/null 2>&1; then",
-    `printf '%s\\n' ${shQuote(`Authorization: Bearer ${key}`)} > "$f" || exit 1`,
-    `curl -fsS --max-time 10 -H @"$f" ${shQuote(url)}`,
-    "elif command -v wget >/dev/null 2>&1; then",
-    `printf '%s\\n' ${shQuote(`header = Authorization: Bearer ${key}`)} > "$f" || exit 1`,
-    `wget -qO- -T 10 --config="$f" ${shQuote(url)}`,
-    "else",
-    "exit 127",
-    "fi",
-]);
-
-const revokeCommands = ({ agentType, keyPrefix }) => {
-    if (!KEY_PREFIX.test(keyPrefix)) throw new TypeError("Invalid key prefix");
-    const findCli = `cli=$( ${findCliScript(cliName(agentType))} ) || exit 3`;
-    if (agentType === "claude") return asCommand([
-        "f=\"$HOME/.claude.json\"",
-        `state=$([ -f "$f" ] && awk -v p=${shQuote(`Bearer ${keyPrefix}`)} ${shQuote(CLAUDE_REGISTRATION_AWK)} "$f")`,
-        "case \"$state\" in",
-        "MATCH) ;;",
-        "OTHER) echo FOREIGN; exit 0 ;;",
-        "*) echo ABSENT; exit 0 ;;",
-        "esac",
-        findCli,
-        "\"$cli\" mcp remove --scope user outpost >/dev/null 2>&1 || exit 4",
-        "echo REMOVED",
-    ]);
-    return asCommand([
-        `f="${CODEX_ENV}"`,
-        "[ -f \"$f\" ] || { echo ABSENT; exit 0; }",
-        `grep -Eq ${shQuote(`^export OUTPOST_MCP_TOKEN='?${keyPrefix}`)} "$f" || { echo FOREIGN; exit 0; }`,
-        findCli,
-        "\"$cli\" mcp remove outpost >/dev/null 2>&1 || exit 4",
-        "rm -f \"$f\"",
-        "echo REMOVED",
-    ]);
-};
-
-module.exports = {
-    shQuote,
-    findCliScript,
-    findCliCommand,
-    claudeSetupCommand,
-    codexEnvCommand,
-    codexSetupCommand,
-    setupCommand,
-    probeCommand,
-    revokeCommands,
-};
-```
-
-- [ ] **Step 4: Test laufen lassen, Erfolg prüfen**
-
-Run: `cd /root/outpost && node --test server/lib/vault/__tests__/provision.test.js`
-Expected: PASS — `# pass 5`, `# fail 0`.
-
-- [ ] **Step 5: `execCommand` reicht `engineId` weiter**
-
-`server/controllers/execCommand.js` Z. 8, vorher:
-
-```js
-const execCommand = async (accountId, entryId, identityId, command) => {
-```
-
-nachher:
-
-```js
-const execCommand = async (accountId, entryId, identityId, command, { engineId = null } = {}) => {
-```
-
-Z. 48, vorher:
-
-```js
-    const execResult = await controlPlane.execCommand(host, port, params, command, jumpHosts);
-```
-
-nachher:
-
-```js
-    const execResult = await controlPlane.execCommand(host, port, params, command, jumpHosts, engineId);
-```
-
-Die bestehende Route `POST /api/connections/:entryId/exec` (`server/routes/serverSession.js:323`) bleibt unverändert und übergibt weiter keine Engine.
-
-- [ ] **Step 6: Joi-Schemas anlegen**
-
-`server/validations/vaultAgentKeys.js`:
-
-```js
-const net = require("node:net");
-const Joi = require("joi");
-
-const cidr = Joi.string().trim().max(64).custom((value, helpers) => {
-    const [address, bits, ...rest] = value.split("/");
-    const family = net.isIP(address);
-    const max = family === 6 ? 128 : 32;
-    if (!family || rest.length > 0) return helpers.error("any.invalid");
-    if (bits === undefined) return `${address}/${max}`;
-    if (!/^\d{1,3}$/.test(bits) || Number(bits) > max) return helpers.error("any.invalid");
-    return `${address}/${Number(bits)}`;
-}).messages({ "any.invalid": "{{#label}} must be an IP address or a CIDR range" });
-
-module.exports.createAgentKeysValidation = Joi.object({
-    entryId: Joi.number().integer().positive().required(),
-    agentTypes: Joi.array().items(Joi.string().valid("claude", "codex")).min(1).unique().required(),
-    ipBinding: Joi.boolean().default(true),
-    allowedCidrs: Joi.array().items(cidr).max(16).unique().default([]),
-});
-
-module.exports.confirmAgentKeyValidation = Joi.object({
-    addSeenIp: Joi.boolean().default(false),
-});
-
-module.exports.listAgentKeysValidation = Joi.object({
-    entryId: Joi.number().integer().positive(),
-});
-
-module.exports.agentKeyIdValidation = Joi.object({
-    id: Joi.number().integer().positive().required(),
-});
-```
-
-- [ ] **Step 7: Failing Routentest schreiben**
-
-`server/lib/vault/__tests__/agentKeysRoute.test.js`:
-
-```js
-process.env.VAULT_KEY = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
-
-const test = require("node:test");
-const assert = require("node:assert");
-const express = require("express");
 const { Sequelize } = require("sequelize");
 
-// Foreign keys off: the fixtures create api_keys rows without the accounts/entries graph behind them.
 const db = new Sequelize({ dialect: "sqlite", storage: ":memory:", logging: false, query: { raw: true }, foreignKeys: false });
 const fake = (path, exports) => {
     const resolved = require.resolve(path);
     require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports };
 };
 
-const ENTRY_ID = 5;
-const ACCOUNT_A = 1;
-const ACCOUNT_B = 2;
-const audits = [];
-const execs = [];
-const state = { base: null, identityOf: {}, cliFound: true, revokeOutput: "REMOVED\n" };
-
+const systemPermissions = new Map();
+const organizationPermissions = new Map();
 fake("../../../utils/database", db);
-fake("../../../controllers/audit", {
-    createAuditLog: async (entry) => { audits.push(entry); },
-    AUDIT_ACTIONS: {
-        VAULT_AGENT_KEY_CREATE: "vault.agent_key_create",
-        VAULT_AGENT_KEY_REVOKE: "vault.agent_key_revoke",
-        VAULT_AGENT_IP_DENIED: "vault.agent_ip_denied",
-    },
-    RESOURCE_TYPES: { VAULT: "vault" },
-});
 fake("../../../permissions/engine", {
-    getSystemPermissions: async () => ({ isAdmin: false, permissions: ["vault.use"] }),
-    getOrganizationPermissions: async () => ({ isOwner: false, isAdmin: false, permissions: [] }),
-});
-fake("../../../controllers/entry", {
-    validateEntryAccess: async (accountId, entry) => ([ACCOUNT_A, ACCOUNT_B].includes(accountId)
-        ? { valid: true, entry } : { code: 403, message: "no" }),
-    resolveEntryScope: async (entry) => ({ organizationId: entry.organizationId ?? null, ownerAccountId: entry.accountId }),
-});
-fake("../../../controllers/identity", { getIdentityCredentials: async () => ({ password: "pw" }) });
-fake("../../ConnectionService", {
-    buildSSHParams: (identity) => ({ username: identity.username }),
-    resolveJumpHosts: async () => [],
-});
-fake("../../../utils/identityResolver", {
-    resolveIdentity: async (entry, identityId, direct, accountId) => {
-        const id = identityId ?? state.identityOf[accountId];
-        return (id && (await Identity.findByPk(id))) || { identity: null, requiresIdentity: true };
-    },
-});
-// Plays the remote server: the probe really calls Outpost back with the key from the command line.
-fake("../../controlPlane/ControlPlaneServer", {
-    hasEngine: () => true,
-    execCommand: async (host, port, params, command, jumpHosts, engineId) => {
-        execs.push({ host, username: params.username, command, engineId });
-        const ok = (stdout) => ({ success: true, stdout, stderr: "", exitCode: 0 });
-        if (command.includes("/api/vault/agent-keys/probe")) {
-            const [token] = /outpost_[0-9a-f]{64}/.exec(command);
-            const res = await fetch(`${state.base}/api/vault/agent-keys/probe`, { headers: { authorization: `Bearer ${token}` } });
-            return { success: true, stdout: await res.text(), stderr: "", exitCode: res.ok ? 0 : 22 };
-        }
-        if (command.includes("mcp add")) return ok("OUTPOST_REPLACED=1\n");
-        if (command.includes("echo FOREIGN")) return ok(state.revokeOutput);
-        if (command.includes("command -v")) return state.cliFound ? ok("/home/deploy/.local/bin/claude\n") : { success: true, stdout: "", stderr: "", exitCode: 1 };
-        throw new Error(`unexpected command ${command}`);
-    },
+    getSystemPermissions: async (accountId) => ({ isAdmin: false, permissions: systemPermissions.get(accountId) ?? [] }),
+    getOrganizationPermissions: async (accountId, organizationId) => ({
+        isOwner: false, isAdmin: false, permissions: organizationPermissions.get(`${accountId}:${organizationId}`) ?? [],
+    }),
 });
 
-const ApiKey = require("../../../models/ApiKey");
-const Account = require("../../../models/Account");
-const Session = require("../../../models/Session");
 const Entry = require("../../../models/Entry");
-const Identity = require("../../../models/Identity");
-const VaultSettings = require("../../../models/VaultSettings");
-const { createApiKey } = require("../../../controllers/apiKey");
-const { initVaultState } = require("../state");
-const { authenticate } = require("../../../middlewares/auth");
-const { sweepPending } = require("../../../controllers/agentKeys");
-const router = require("../../../routes/vault/agentKeys");
+const Folder = require("../../../models/Folder");
+const Tag = require("../../../models/Tag");
+const EntryTag = require("../../../models/EntryTag");
+const OrganizationMember = require("../../../models/OrganizationMember");
+const VaultItem = require("../../../models/VaultItem");
+const VaultBinding = require("../../../models/VaultBinding");
+const { visibleItems, findVisibleItem, itemRef, canManageItem, canRevealItem, canCreateFor, canUseVault } = require("../visibility");
+const { VaultErrorCode } = require("../errors");
 
-const tokens = {};
+const ANNA = 1;
+const BEN = 2;
+const world = {};
+
+const server = (values) => Entry.create({ type: "server", name: "server", config: { ip: "192.0.2.1", protocol: "ssh" }, ...values });
+const item = (values) => VaultItem.create({
+    type: "login", fields: { username: "admin", origins: ["https://nas.lan"] }, approvalRequired: true, allServers: false, ...values,
+});
+const bind = (vaultItem, kind, target) => VaultBinding.create({ itemId: vaultItem.id, kind, targetId: target.id });
+const member = (accountId, organizationId, status = "active") =>
+    OrganizationMember.create({ organizationId, accountId, status, role: "member", invitedBy: 99 });
+const agentOn = (entry) => ({ keyId: 1, entryId: entry.id, agentType: "claude" });
+const names = async (caller) => (await visibleItems(caller)).map((visible) => visible.name).sort();
 
 test.before(async () => {
     await db.sync();
-    await initVaultState();
-    await (await VaultSettings.getOrCreate()).update({ agentUrl: "https://outpost.example/" });
-    for (const id of [ACCOUNT_A, ACCOUNT_B])
-        await Account.create({ id, firstName: "F", lastName: "L", username: `user${id}`, password: "x" });
-    await Entry.create({ id: ENTRY_ID, accountId: ACCOUNT_A, type: "server", name: "web01", config: { protocol: "ssh", ip: "192.0.2.10", engineId: "engine-7" } });
-    for (const [id, accountId] of [[11, ACCOUNT_A], [12, ACCOUNT_B]]) {
-        await Identity.create({ id, accountId, name: `deploy-${accountId}`, type: "password", username: "deploy" });
-        state.identityOf[accountId] = id;
+    systemPermissions.set(ANNA, ["vault.use"]);
+    systemPermissions.set(BEN, ["vault.use"]);
+    await member(ANNA, 10);
+    await member(ANNA, 20, "pending");
+
+    const home = await Folder.create({ name: "home", accountId: ANNA });
+    const lab = await Folder.create({ name: "lab", accountId: ANNA, parentId: home.id });
+    const team = await Folder.create({ name: "team", organizationId: 10 });
+    const teamNas = await Folder.create({ name: "team-nas", organizationId: 10, parentId: team.id });
+    const other = await Folder.create({ name: "other", organizationId: 20 });
+    const prod = await Tag.create({ accountId: ANNA, name: "prod", color: "#ff0000" });
+
+    world.sDirect = await server({ accountId: ANNA });
+    world.sNested = await server({ accountId: ANNA, folderId: lab.id });
+    world.sTagged = await server({ accountId: ANNA });
+    world.sPlain = await server({ accountId: ANNA });
+    world.sOrg = await server({ folderId: teamNas.id });
+    world.sOrg20 = await server({ folderId: other.id });
+    await EntryTag.create({ entryId: world.sTagged.id, tagId: prod.id });
+
+    await bind(await item({ accountId: ANNA, name: "direct" }), "entry", world.sDirect);
+    await bind(await item({ accountId: ANNA, name: "folder" }), "folder", home);
+    await bind(await item({ accountId: ANNA, name: "tagged" }), "tag", prod);
+    await item({ accountId: ANNA, name: "everywhere", allServers: true });
+    await item({ accountId: ANNA, name: "unbound" });
+    await bind(await item({ organizationId: 10, name: "org-folder" }), "folder", team);
+    await item({ organizationId: 10, name: "org-all", allServers: true });
+    await item({ organizationId: 20, name: "org20-all", allServers: true });
+    await item({ accountId: BEN, name: "foreign-all", allServers: true });
+});
+
+test("Sichtbarkeit je Aufrufer und Server (Spec-Test 4)", async (t) => {
+    t.after(async () => {
+        systemPermissions.set(ANNA, ["vault.use"]);
+        await OrganizationMember.destroy({ where: { accountId: ANNA, organizationId: 10 } });
+        await member(ANNA, 10);
+    });
+
+    const cases = [
+        ["Konto-Key oder Login-Session ohne Server: nur persönliche Einträge mit allServers", null, ["everywhere"]],
+        ["Server direkt gebunden", "sDirect", ["direct", "everywhere"]],
+        ["Ordnerbindung gilt auch für Server im Unterordner", "sNested", ["everywhere", "folder"]],
+        ["Tag des Servers", "sTagged", ["everywhere", "tagged"]],
+        ["keine Bindung; allServers der Organisation gilt nicht außerhalb der Organisation", "sPlain", ["everywhere"]],
+        ["Server im Ordner der Organisation (entry.organizationId leer)", "sOrg", ["everywhere", "org-all", "org-folder"]],
+        ["Organisation mit offener Einladung", "sOrg20", []],
+    ];
+    for (const [label, serverKey, expected] of cases) {
+        const agent = serverKey ? agentOn(world[serverKey]) : null;
+        assert.deepStrictEqual(await names({ accountId: ANNA, agent }), expected, label);
     }
-    tokens.a = (await Session.create({ accountId: ACCOUNT_A, ip: "x", userAgent: "t" })).token;
-    tokens.b = (await Session.create({ accountId: ACCOUNT_B, ip: "x", userAgent: "t" })).token;
-    tokens.impersonated = (await Session.create({ accountId: ACCOUNT_A, ip: "x", userAgent: "t", impersonatorId: ACCOUNT_B })).token;
-    tokens.accountKey = (await createApiKey(ACCOUNT_A, { name: "ci" })).token;
+
+    systemPermissions.set(ANNA, []);
+    assert.deepStrictEqual(await names({ accountId: ANNA, agent: agentOn(world.sOrg) }), ["org-all", "org-folder"],
+        "ohne vault.use keine persönlichen Einträge");
+    assert.deepStrictEqual(await names({ accountId: ANNA, agent: null }), [], "ohne vault.use und ohne Server nichts");
+    systemPermissions.set(ANNA, ["vault.use"]);
+
+    await OrganizationMember.destroy({ where: { accountId: ANNA, organizationId: 10 } });
+    assert.deepStrictEqual(await names({ accountId: ANNA, agent: agentOn(world.sOrg) }), [],
+        "Organisation verlassen: der Server ist nicht mehr erreichbar, der Key sieht nichts, auch keine persönlichen Einträge");
+    assert.deepStrictEqual(await names({ accountId: ANNA, agent: agentOn(world.sDirect) }), ["direct", "everywhere"]);
+});
+
+test("Kennungen: unbekannt, unsichtbar, fremd und ungültig ergeben denselben Fehler", async () => {
+    const onOrg = { accountId: ANNA, agent: agentOn(world.sOrg) };
+    const orgAll = await findVisibleItem(onOrg, "org:10/org-all");
+    assert.deepStrictEqual([itemRef(orgAll), orgAll.allServers, orgAll.fields.username], ["org:10/org-all", true, "admin"]);
+    assert.strictEqual(itemRef(await findVisibleItem(onOrg, "everywhere")), "everywhere");
+
+    const attempts = [
+        [{ accountId: ANNA, agent: agentOn(world.sDirect) }, "org:10/org-all"],
+        [onOrg, "missing"],
+        [onOrg, "foreign-all"],
+        [onOrg, "org-all"],
+        [onOrg, "org:10/../org-all"],
+        [onOrg, 42],
+    ];
+    const failures = [];
+    for (const [caller, ref] of attempts) {
+        const error = await findVisibleItem(caller, ref).then(() => null, (thrown) => thrown);
+        failures.push({ ref, code: error?.code, message: error?.message });
+    }
+    for (const failure of failures) assert.strictEqual(failure.code, VaultErrorCode.ITEM_UNKNOWN, String(failure.ref));
+    assert.strictEqual(new Set(failures.map((failure) => failure.message)).size, 1);
+});
+
+test("Verwalten, Anzeigen, Anlegen und Vault-Zugang verlangen Besitz bzw. aktive Mitgliedschaft und Recht", async () => {
+    const CARL = 3;
+    const DORA = 4;
+    const ADMIN = 5;
+    systemPermissions.set(CARL, ["vault.use"]);
+    await member(CARL, 30);
+    organizationPermissions.set(`${CARL}:30`, ["vault.manage"]);
+    await member(DORA, 30);
+    organizationPermissions.set(`${DORA}:30`, ["vault.reveal"]);
+    organizationPermissions.set(`${ADMIN}:30`, ["vault.manage", "vault.reveal"]);
+    const own = { id: 900, accountId: CARL, organizationId: null };
+    const doras = { id: 901, accountId: DORA, organizationId: null };
+    const shared = { id: 902, accountId: null, organizationId: 30 };
+
+    const rows = [
+        ["Besitzer eines persönlichen Eintrags", CARL, own, true, true],
+        ["persönlicher Eintrag eines anderen Kontos", CARL, doras, false, false],
+        ["Besitzer ohne vault.use", DORA, doras, false, false],
+        ["Mitglied mit vault.manage", CARL, shared, true, false],
+        ["Mitglied mit vault.reveal", DORA, shared, false, true],
+        ["Rechte ohne aktive Mitgliedschaft", ADMIN, shared, false, false],
+    ];
+    for (const [label, accountId, vaultItem, manage, reveal] of rows)
+        assert.deepStrictEqual([await canManageItem(accountId, vaultItem), await canRevealItem(accountId, vaultItem)], [manage, reveal], label);
+
+    assert.deepStrictEqual([
+        await canCreateFor(CARL, { organizationId: null }),
+        await canCreateFor(CARL, { organizationId: 30 }),
+        await canCreateFor(DORA, { organizationId: 30 }),
+        await canCreateFor(ADMIN, { organizationId: 30 }),
+    ], [true, true, false, false]);
+
+    assert.deepStrictEqual([await canUseVault(CARL), await canUseVault(DORA), await canUseVault(ADMIN)], [true, true, false],
+        "vault.use oder aktive Mitgliedschaft");
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `node --test server/lib/vault/__tests__/visibility.test.js`
+Expected: FAIL — `Error: Cannot find module '../visibility'`.
+
+- [ ] **Step 3: Implement `server/lib/vault/visibility.js`**
+
+```js
+const { Op } = require("sequelize");
+const VaultItem = require("../../models/VaultItem");
+const VaultBinding = require("../../models/VaultBinding");
+const Entry = require("../../models/Entry");
+const Folder = require("../../models/Folder");
+const EntryTag = require("../../models/EntryTag");
+const OrganizationMember = require("../../models/OrganizationMember");
+const { hasAccountPermission, hasOrganizationAccess, hasOrganizationPermission } = require("../../utils/permission");
+const { Permission } = require("../../permissions/registry");
+const { resolveEntryScope, validateEntryAccess } = require("../../controllers/entry");
+const { VaultError, VaultErrorCode } = require("./errors");
+
+const NAME_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const REF_PATTERN = /^(?:org:([1-9][0-9]{0,9})\/)?([^/]+)$/;
+
+const unknownItem = () => new VaultError(VaultErrorCode.ITEM_UNKNOWN);
+
+const itemRef = (item) => (item.organizationId ? `org:${item.organizationId}/${item.name}` : item.name);
+
+const parseItemRef = (ref) => {
+    const match = typeof ref === "string" ? REF_PATTERN.exec(ref) : null;
+    if (!match || !NAME_PATTERN.test(match[2])) throw unknownItem();
+    return { organizationId: match[1] ? Number(match[1]) : null, name: match[2] };
+};
+
+const activeOrganizationIds = async (accountId) =>
+    (await OrganizationMember.findAll({ where: { accountId, status: "active" } })).map((membership) => membership.organizationId);
+
+const canUseVault = async (accountId) =>
+    (await hasAccountPermission(accountId, Permission.VAULT_USE)) || (await activeOrganizationIds(accountId)).length > 0;
+
+const ownedItems = async (accountId) => {
+    const owners = [];
+    if (await hasAccountPermission(accountId, Permission.VAULT_USE)) owners.push({ accountId, organizationId: null });
+    const organizationIds = await activeOrganizationIds(accountId);
+    if (organizationIds.length) owners.push({ organizationId: { [Op.in]: organizationIds } });
+    if (!owners.length) return [];
+    return VaultItem.findAll({ where: { [Op.or]: owners }, order: [["name", "ASC"]] });
+};
+
+const folderLineage = async (folderId) => {
+    const ids = [];
+    let current = folderId;
+    while (current && !ids.includes(current)) {
+        const folder = await Folder.findByPk(current);
+        if (!folder) break;
+        ids.push(folder.id);
+        current = folder.parentId;
+    }
+    return ids;
+};
+
+const serverContext = async (accountId, entryId) => {
+    const entry = await Entry.findByPk(entryId);
+    if (!entry || !(await validateEntryAccess(accountId, entry)).valid) return null;
+    const { organizationId } = await resolveEntryScope(entry);
+    const tagIds = (await EntryTag.findAll({ where: { entryId: entry.id } })).map((row) => row.tagId);
+    return { entryId: entry.id, organizationId: organizationId ?? null, folderIds: await folderLineage(entry.folderId), tagIds };
+};
+
+const bindingMatches = (binding, server, item) => {
+    if (binding.kind === "entry") return binding.targetId === server.entryId;
+    if (binding.kind === "folder") return server.folderIds.includes(binding.targetId);
+    return binding.kind === "tag" && !item.organizationId && server.tagIds.includes(binding.targetId);
+};
+
+const visibleItems = async ({ accountId, agent = null }) => {
+    if (!agent?.entryId)
+        return (await ownedItems(accountId)).filter((item) => !item.organizationId && item.allServers);
+
+    const server = await serverContext(accountId, agent.entryId);
+    if (!server) return [];
+
+    const items = (await ownedItems(accountId))
+        .filter((item) => !item.organizationId || item.organizationId === server.organizationId);
+    if (!items.length) return [];
+
+    const bindings = await VaultBinding.findAll({ where: { itemId: { [Op.in]: items.map((item) => item.id) } } });
+    return items.filter((item) => item.allServers
+        || bindings.some((binding) => binding.itemId === item.id && bindingMatches(binding, server, item)));
+};
+
+const findVisibleItem = async (caller, ref) => {
+    const { organizationId, name } = parseItemRef(ref);
+    const item = (await visibleItems(caller))
+        .find((candidate) => candidate.name === name && (candidate.organizationId ?? null) === organizationId);
+    if (!item) throw unknownItem();
+    return item;
+};
+
+const memberWith = async (accountId, organizationId, permission) =>
+    (await hasOrganizationAccess(accountId, organizationId)) && hasOrganizationPermission(accountId, organizationId, permission);
+
+const canManageItem = async (accountId, item) => {
+    if (item.organizationId) return memberWith(accountId, item.organizationId, Permission.VAULT_MANAGE);
+    return item.accountId === accountId && hasAccountPermission(accountId, Permission.VAULT_USE);
+};
+
+const canRevealItem = async (accountId, item) => {
+    if (item.organizationId) return memberWith(accountId, item.organizationId, Permission.VAULT_REVEAL);
+    return canManageItem(accountId, item);
+};
+
+const canCreateFor = async (accountId, { organizationId = null } = {}) => {
+    if (organizationId) return memberWith(accountId, organizationId, Permission.VAULT_MANAGE);
+    return hasAccountPermission(accountId, Permission.VAULT_USE);
+};
+
+module.exports = {
+    itemRef,
+    parseItemRef,
+    activeOrganizationIds,
+    ownedItems,
+    canUseVault,
+    visibleItems,
+    findVisibleItem,
+    canManageItem,
+    canRevealItem,
+    canCreateFor,
+};
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `node --test server/lib/vault/__tests__/visibility.test.js`
+Expected: PASS — `# pass 3`, `# fail 0`.
+
+- [ ] **Step 5: Write the failing test for bindings**
+
+`server/lib/vault/__tests__/bindings.test.js`:
+
+```js
+const test = require("node:test");
+const assert = require("node:assert");
+const { Sequelize } = require("sequelize");
+
+const db = new Sequelize({ dialect: "sqlite", storage: ":memory:", logging: false, query: { raw: true }, foreignKeys: false });
+const fake = (path, exports) => {
+    const resolved = require.resolve(path);
+    require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports };
+};
+
+const systemPermissions = new Map();
+fake("../../../utils/database", db);
+fake("../../../permissions/engine", {
+    getSystemPermissions: async (accountId) => ({ isAdmin: false, permissions: systemPermissions.get(accountId) ?? [] }),
+    getOrganizationPermissions: async () => ({ isOwner: false, isAdmin: false, permissions: [] }),
+});
+
+const Entry = require("../../../models/Entry");
+const Folder = require("../../../models/Folder");
+const Tag = require("../../../models/Tag");
+const Integration = require("../../../models/Integration");
+const OrganizationMember = require("../../../models/OrganizationMember");
+const VaultItem = require("../../../models/VaultItem");
+const VaultBinding = require("../../../models/VaultBinding");
+const { deleteEntry } = require("../../../controllers/entry");
+const { deleteFolder } = require("../../../controllers/folder");
+const { deleteTag } = require("../../../controllers/tag");
+const { deleteIntegration } = require("../../../controllers/integration");
+const { setBindings, validateBindings } = require("../bindings");
+
+const ANNA = 1;
+const BEN = 2;
+
+const login = (name) => VaultItem.create({
+    accountId: ANNA, name, type: "login", fields: { username: "admin", origins: ["https://nas.lan"] }, approvalRequired: true, allServers: false,
+});
+const remaining = async (itemId) =>
+    (await VaultBinding.findAll({ where: { itemId } })).map((binding) => `${binding.kind}:${binding.targetId}`).sort();
+
+test.before(async () => {
+    await db.sync();
+    systemPermissions.set(ANNA, ["vault.use", "resources.manage"]);
+});
+
+test("Ordner mit Unterordnern löschen entfernt Bindungen an Ordner, Unterordner und mitgelöschte Server (Review Focus 5)", async () => {
+    const root = await Folder.create({ name: "lab", accountId: ANNA });
+    const sub = await Folder.create({ name: "nas", accountId: ANNA, parentId: root.id });
+    const subSub = await Folder.create({ name: "backup", accountId: ANNA, parentId: sub.id });
+    const outside = await Folder.create({ name: "prod", accountId: ANNA });
+    const servers = [];
+    for (const folder of [root, sub, subSub, outside])
+        servers.push(await Entry.create({ accountId: ANNA, folderId: folder.id, type: "server", name: folder.name }));
+    const kept = servers[3];
+    const item = await login("nas-admin");
+    await setBindings(item.id, [
+        ...[root, sub, subSub, outside].map((folder) => ({ kind: "folder", targetId: folder.id })),
+        ...servers.map((entry) => ({ kind: "entry", targetId: entry.id })),
+    ]);
+
+    assert.deepStrictEqual(await deleteFolder(ANNA, root.id), { success: true });
+
+    assert.deepStrictEqual(await remaining(item.id), [`entry:${kept.id}`, `folder:${outside.id}`].sort());
+    assert.strictEqual(await Entry.count({ where: { id: servers.slice(0, 3).map((entry) => entry.id) } }), 0);
+});
+
+test("Server, Tag oder Integration löschen entfernt genau deren Bindungen", async () => {
+    const gone = await Entry.create({ accountId: ANNA, type: "server", name: "old-nas" });
+    const stays = await Entry.create({ accountId: ANNA, type: "server", name: "new-nas" });
+    const tag = await Tag.create({ accountId: ANNA, name: "prod", color: "#ff0000" });
+    const pve = await Integration.create({ type: "proxmox", name: "pve", config: { ip: "192.0.2.80", port: 8006 }, status: "online" });
+    const pveRoot = await Folder.create({ name: "pve", accountId: ANNA, integrationId: pve.id, type: "integration-root" });
+    const pveVm = await Entry.create({ accountId: ANNA, folderId: pveRoot.id, integrationId: pve.id, type: "pve-qemu", name: "vm-100" });
+    const item = await login("router");
+    await setBindings(item.id, [
+        { kind: "entry", targetId: gone.id },
+        { kind: "entry", targetId: stays.id },
+        { kind: "tag", targetId: tag.id },
+        { kind: "folder", targetId: pveRoot.id },
+        { kind: "entry", targetId: pveVm.id },
+    ]);
+
+    assert.deepStrictEqual(await deleteEntry(ANNA, gone.id), { success: true });
+    assert.deepStrictEqual(await deleteTag(ANNA, tag.id), { success: true });
+    assert.deepStrictEqual(await deleteIntegration(ANNA, pve.id), { success: true });
+
+    assert.deepStrictEqual(await remaining(item.id), [`entry:${stays.id}`]);
+});
+
+test("Bindungen nur an zugängliche Ziele, Organisationseinträge nur an Server und Ordner der eigenen Organisation", async () => {
+    await OrganizationMember.create({ organizationId: 10, accountId: ANNA, status: "active", role: "member", invitedBy: 99 });
+    const own = await Entry.create({ accountId: ANNA, type: "server", name: "own" });
+    const ownFolder = await Folder.create({ name: "own", accountId: ANNA });
+    const ownTag = await Tag.create({ accountId: ANNA, name: "own", color: "#00ff00" });
+    const foreign = await Entry.create({ accountId: BEN, type: "server", name: "foreign" });
+    const foreignTag = await Tag.create({ accountId: BEN, name: "foreign", color: "#0000ff" });
+    const teamFolder = await Folder.create({ name: "team", organizationId: 10 });
+    const teamServer = await Entry.create({ folderId: teamFolder.id, type: "server", name: "team" });
+    const otherFolder = await Folder.create({ name: "other", organizationId: 20 });
+    const personal = { accountId: ANNA, organizationId: null };
+    const team = { accountId: ANNA, organizationId: 10 };
+    const to = (kind, target) => ({ kind, targetId: typeof target === "number" ? target : target.id });
+
+    const cases = [
+        ["persönlich: eigener Server, Ordner und Tag", personal, [to("entry", own), to("folder", ownFolder), to("tag", ownTag)], true],
+        ["persönlich: zugänglicher Server der Organisation", personal, [to("entry", teamServer)], true],
+        ["persönlich: Server eines anderen Kontos", personal, [to("entry", foreign)], false],
+        ["persönlich: Tag eines anderen Kontos", personal, [to("tag", foreignTag)], false],
+        ["persönlich: Ziel existiert nicht", personal, [to("entry", 999999)], false],
+        ["persönlich: unbekannte Art", personal, [to("group", 1)], false],
+        ["Organisation: Server und Ordner der Organisation", team, [to("entry", teamServer), to("folder", teamFolder)], true],
+        ["Organisation: Tag", team, [to("tag", ownTag)], false],
+        ["Organisation: persönlicher Server", team, [to("entry", own)], false],
+        ["Organisation: Ordner einer anderen Organisation", team, [to("folder", otherFolder)], false],
+    ];
+    for (const [label, owner, bindings, valid] of cases) {
+        const result = await validateBindings(owner, bindings);
+        assert.strictEqual(result.valid, valid, label);
+        if (!valid) assert.match(result.message, /\S/, label);
+    }
+});
+```
+
+- [ ] **Step 6: Run test to verify it fails**
+
+Run: `node --test server/lib/vault/__tests__/bindings.test.js`
+Expected: FAIL — `Error: Cannot find module '../bindings'`.
+
+- [ ] **Step 7: Implement `server/lib/vault/bindings.js`**
+
+```js
+const { Op } = require("sequelize");
+const db = require("../../utils/database");
+const VaultBinding = require("../../models/VaultBinding");
+const Entry = require("../../models/Entry");
+const Tag = require("../../models/Tag");
+const { validateFolderAccess } = require("../../utils/permission");
+
+const removeBindings = async (kind, ids) => {
+    const targetIds = (ids ?? []).filter((id) => id !== null && id !== undefined);
+    if (!targetIds.length) return 0;
+    return VaultBinding.destroy({ where: { kind, targetId: { [Op.in]: targetIds } } });
+};
+
+const bindingProblem = async ({ accountId, organizationId }, { kind, targetId }) => {
+    // controllers/entry requires this module, so it is only complete once both have loaded.
+    const { validateEntryAccess, resolveEntryScope } = require("../../controllers/entry");
+
+    if (kind === "tag") {
+        if (organizationId) return "Organization items cannot apply to tags";
+        const tag = await Tag.findByPk(targetId);
+        return tag && tag.accountId === accountId ? null : "Tag not found";
+    }
+    if (kind === "entry") {
+        const entry = await Entry.findByPk(targetId);
+        if (!entry || !(await validateEntryAccess(accountId, entry)).valid) return "Server not found";
+        if (organizationId && (await resolveEntryScope(entry)).organizationId !== organizationId)
+            return "Organization items can only apply to servers of the same organization";
+        return null;
+    }
+    if (kind === "folder") {
+        const access = await validateFolderAccess(accountId, targetId);
+        if (!access.valid) return "Folder not found";
+        if (organizationId && access.folder.organizationId !== organizationId)
+            return "Organization items can only apply to folders of the same organization";
+        return null;
+    }
+    return "Unknown binding kind";
+};
+
+const validateBindings = async ({ accountId, organizationId = null }, bindings = []) => {
+    const owner = { accountId, organizationId: organizationId ? Number(organizationId) : null };
+    for (const binding of bindings) {
+        const message = await bindingProblem(owner, binding);
+        if (message) return { valid: false, message };
+    }
+    return { valid: true };
+};
+
+const setBindings = async (itemId, bindings = []) => {
+    const rows = new Map();
+    for (const { kind, targetId } of bindings) rows.set(`${kind}:${Number(targetId)}`, { itemId, kind, targetId: Number(targetId) });
+
+    await db.transaction(async (transaction) => {
+        await VaultBinding.destroy({ where: { itemId }, transaction });
+        if (rows.size) await VaultBinding.bulkCreate([...rows.values()], { transaction });
+    });
+};
+
+module.exports = { removeBindings, validateBindings, setBindings };
+```
+
+- [ ] **Step 8: Hook the delete paths**
+
+`server/controllers/entry.js` — Import nach Z. 18 (`const SessionManager = require("../lib/SessionManager");`):
+
+```js
+const { removeBindings } = require("../lib/vault/bindings");
+```
+
+`deleteEntry` (Z. 190-197) vorher:
+
+```js
+    if (!accessCheck.valid) return accessCheck;
+
+    await Entry.destroy({ where: { id: entryId } });
+```
+
+nachher:
+
+```js
+    if (!accessCheck.valid) return accessCheck;
+
+    await removeBindings("entry", [entry.id]);
+    await Entry.destroy({ where: { id: entryId } });
+```
+
+`server/controllers/folder.js` — Import nach Z. 13 (`const SessionManager = require("../lib/SessionManager");`):
+
+```js
+const { removeBindings } = require("../lib/vault/bindings");
+```
+
+`deleteFolder` (Z. 147-152) vorher:
+
+```js
+    let subfolders = await Folder.findAll({ where: { parentId: folderId } });
+    for (let subfolder of subfolders) {
+        await module.exports.deleteFolder(accountId, subfolder.id);
+    }
+
+    await Entry.destroy({ where: { folderId: folderId } });
+```
+
+nachher:
+
+```js
+    let subfolders = await Folder.findAll({ where: { parentId: folderId } });
+    for (let subfolder of subfolders) {
+        await module.exports.deleteFolder(accountId, subfolder.id);
+    }
+
+    const entryIds = (await Entry.findAll({ where: { folderId: folder.id }, attributes: ["id"] })).map((entry) => entry.id);
+    await removeBindings("entry", entryIds);
+    await removeBindings("folder", [folder.id]);
+
+    await Entry.destroy({ where: { folderId: folderId } });
+```
+
+`server/controllers/tag.js` — Import nach Z. 7 (`const { Op } = require("sequelize");`):
+
+```js
+const { removeBindings } = require("../lib/vault/bindings");
+```
+
+`deleteTag` (Z. 55-57) vorher:
+
+```js
+    await EntryTag.destroy({ where: { tagId } });
+
+    await Tag.destroy({ where: { id: tagId } });
+```
+
+nachher:
+
+```js
+    await EntryTag.destroy({ where: { tagId } });
+
+    await removeBindings("tag", [tag.id]);
+    await Tag.destroy({ where: { id: tagId } });
+```
+
+`server/controllers/integration.js` — Import nach Z. 8 (`const { getProvider, entryKey } = require("../lib/hypervisors");`):
+
+```js
+const { removeBindings } = require("../lib/vault/bindings");
+```
+
+`reconcileIntegration` (Z. 167-174) vorher:
+
+```js
+    if (staleEntries.length > 0) {
+        await Entry.destroy({ where: { id: staleEntries.map((entry) => entry.id) } });
+    }
+
+    const staleFolders = nodeFolders.filter((folder) => !seenFolderIds.has(folder.id));
+    if (staleFolders.length > 0) {
+        await Folder.destroy({ where: { id: staleFolders.map((folder) => folder.id) } });
+    }
+```
+
+nachher:
+
+```js
+    if (staleEntries.length > 0) {
+        await removeBindings("entry", staleEntries.map((entry) => entry.id));
+        await Entry.destroy({ where: { id: staleEntries.map((entry) => entry.id) } });
+    }
+
+    const staleFolders = nodeFolders.filter((folder) => !seenFolderIds.has(folder.id));
+    if (staleFolders.length > 0) {
+        await removeBindings("folder", staleFolders.map((folder) => folder.id));
+        await Folder.destroy({ where: { id: staleFolders.map((folder) => folder.id) } });
+    }
+```
+
+`deleteIntegration` (Z. 271-272) vorher:
+
+```js
+    await Entry.destroy({ where: { integrationId } });
+    await Folder.destroy({ where: { integrationId } });
+```
+
+nachher:
+
+```js
+    const entryIds = (await Entry.findAll({ where: { integrationId }, attributes: ["id"] })).map((entry) => entry.id);
+    const folderIds = (await Folder.findAll({ where: { integrationId }, attributes: ["id"] })).map((folder) => folder.id);
+    await removeBindings("entry", entryIds);
+    await removeBindings("folder", folderIds);
+
+    await Entry.destroy({ where: { integrationId } });
+    await Folder.destroy({ where: { integrationId } });
+```
+
+- [ ] **Step 9: Run tests to verify they pass**
+
+Run: `node --test server/lib/vault/__tests__/bindings.test.js server/lib/vault/__tests__/visibility.test.js`
+Expected: PASS — `# pass 6`, `# fail 0`.
+
+- [ ] **Step 10: Run the affected existing tests**
+
+Die vier Controller laden jetzt `server/lib/vault/bindings.js`; diese Bestandstests laden die echten Controller bzw. `controllers/entry` mit gefaktem `Folder`, `connectionServiceTimeout.test.js` lädt `controllers/integration` über `lib/ConnectionService`:
+
+Run: `node --test server/lib/__tests__/entryScope.test.js server/lib/__tests__/reconnectSession.test.js server/lib/__tests__/directConnect.test.js server/lib/__tests__/directConnectReason.test.js server/lib/__tests__/connectionServiceTimeout.test.js`
+Expected: PASS, `# fail 0`.
+
+- [ ] **Step 11: Commit**
+
+```bash
+git add server/lib/vault/visibility.js server/lib/vault/bindings.js server/controllers/entry.js server/controllers/folder.js server/controllers/tag.js server/controllers/integration.js server/lib/vault/__tests__/visibility.test.js server/lib/vault/__tests__/bindings.test.js
+git commit -m "Vault: Sichtbarkeit je Server und Bindungen, Aufräumen beim Löschen von Servern, Ordnern, Tags und Integrationen"
+```
+
+---
+
+### Task 4: Agenten-Authentifizierung
+
+**Files:**
+- Modify: `server/middlewares/auth.js` (Importe Z. 1-3; `authenticate` Z. 5-24, API-Key-Zweig; Z. 37 `next()` am Ende des Session-Zweigs)
+- Create: `server/lib/vault/ipBinding.js`
+- Modify: `server/controllers/apiKey.js` (`createApiKey` Z. 32, `listApiKeys` Z. 61-64, `deleteApiKey` Z. 66-73, `validateApiKey` Z. 89, `module.exports` Z. 94-100)
+- Modify: `server/controllers/session.js` (`createSession` Z. 12-21)
+- Modify: `server/routes/users.js` (Impersonations-Route Z. 62-67)
+- Create: `server/middlewares/requireLoginSession.js`
+- Modify: `server/routes/apiKey.js` (Import Z. 2; `POST /` Z. 36)
+- Create: `server/utils/auditContext.js`
+- Modify: `server/controllers/audit.js` (Importe Z. 1-14; `createAuditLog` heute Z. 201-225, nach Task 1 verschoben: vor `AuditLog.create` `details.impersonatorId` ergänzen)
+- Modify: `server/utils/database.js` (SQL-Log-Callback Z. 34 und Z. 41 — SEC-TOKEN-01, siehe Step 9)
+- Test: `server/lib/vault/__tests__/agentAuth.test.js` (test-first)
+
+**Interfaces:**
+- Consumes (Task 1):
+  - `api_keys`-Spalten am Modell `ApiKey`: `kind` (`"account"|"agent"`, Standard `"account"`), `pending` (Standard `false`), `entryId`, `agentType`, `ipBinding` (Standard `true`), `allowedCidrs` (JSON; bei `raw: true` liefert SQLite Text, den der `afterFind`-Hook aus Task 1 zum Array macht — `ipBinding.js` verlässt sich darauf und parst nicht selbst; Text gilt als leere Liste), `identityId`, `remoteUser`, `seenIp`, `seenIpAdopted`.
+  - `Session.impersonatorId` (INTEGER null).
+  - `AUDIT_ACTIONS.VAULT_AGENT_IP_DENIED = "vault.agent_ip_denied"`, `AUDIT_ACTIONS.VAULT_REVEAL` (nur im Test), `RESOURCE_TYPES.VAULT = "vault"` aus `server/controllers/audit.js`.
+  - `isVaultEnabled() → boolean` aus `server/lib/vault/state.js`.
+- Consumes (Bestand): `async validateEntryAccess(accountId, entry) → Promise<{ valid: true, entry } | { code, message }>` aus `server/controllers/entry.js`; `auth.js` lädt ihn wie `state.js` erst im Agenten-Zweig (`bookmarkRoutes.test.js` lädt `auth.js` mit einer Datenbank-Attrappe ohne `define()`).
+- Produces:
+  - `authenticate` (`server/middlewares/auth.js`): Für `apiKey.kind === "agent"` setzt es `req.apiKey`, `req.user` und `req.agent = { keyId, entryId, agentType }`. Reihenfolge der Prüfungen: Vault aus (`!isVaultEnabled()`) → `401 { message: "The provided API key is not valid" }` wie ein ungültiger Key, auch für `pending`-Keys. Ein `pending`-Agenten-Key passiert nur `GET /api/vault/agent-keys/probe`, ohne IP-Prüfung; sonst `401` wie ein ungültiger Key. Ein endgültiger Agenten-Key passiert nur, wenn der Pfad von `req.originalUrl` (ohne Query) `/api/mcp` ist oder mit `/api/mcp/` beginnt, sonst `403 { code: 403, message: "Agent keys can only access the MCP endpoint" }`; danach muss das Konto den Server des Keys per `validateEntryAccess` erreichen, sonst `403 { code: 403, message: "The server of this agent key is no longer accessible" }`; danach IP-Bindung über `checkAgentIp`, Verstoß `403 { code: 403, message: "This agent key is not allowed from this address" }`. `lastUsedAt` eines Agenten-Keys setzt erst `authenticate` nach diesen Prüfungen (`touchApiKey`). Konto-Keys unverändert. Login-Sessions: `req.session` (mit `impersonatorId`) wie bisher; trägt die Sitzung `impersonatorId`, läuft `next` in `auditContext.run({ impersonatorId }, next)`.
+  - `server/utils/auditContext.js`: `module.exports = new AsyncLocalStorage()` (`node:async_hooks`); Store `{ impersonatorId }`.
+  - `createAuditLog` (`server/controllers/audit.js`): ergänzt `details.impersonatorId` aus `auditContext.getStore()`, wenn dort gesetzt und in `details` noch nicht vorhanden; sonst unverändert. Damit nennen alle Audits aus HTTP-Anfragen einer Impersonations-Sitzung den Impersonator, ohne dass Aufrufer ihn durchreichen. Audits aus WebSocket-Verbindungen (Terminal, SFTP, AI) tragen ihn noch nicht: Deren Authentifizierung (`wsAuth.resolveSessionToken`) öffnet keinen `auditContext`.
+  - `server/lib/vault/ipBinding.js`:
+    - `isAddressAllowed(apiKey, entry, ip) → Promise<boolean>` — ohne Audit; `true` bei `!apiKey.ipBinding`; sonst `normalizeIp(ip)` gegen `allowedCidrs` (Array aus dem Hook, sonst leer) und gegen `resolveHostAddresses(entry?.config?.ip)`; keine gültige Adresse → `false`. Genutzt von `checkAgentIp` und Task 8.
+    - `checkAgentIp(apiKey, entry, rawIp) → Promise<boolean>` — `isAddressAllowed`; bei `false` Audit `vault.agent_ip_denied` (`accountId` des Keys, `details: { keyId, agentType, entryId, entryName, ip }`, `ipAddress`), höchstens einmal je (`keyId`, Adresse) in 10 min.
+    - `matchesCidr(ip, cidr) → boolean` — IPv4/IPv6 über `net.BlockList`; Präfix `0..32` bzw. `0..128`; eine Adresse ohne Präfix gilt als `/32` bzw. `/128`; unterschiedliche Familien oder ungültige Angaben → `false`.
+    - `resolveHostAddresses(host) → Promise<string[]>` — IP-Literal direkt, sonst `dns.promises.lookup(host, { all: true })` (A und AAAA), normalisiert; Cache 60 s je Host, auch für fehlgeschlagene Auflösungen (dann `[]` = Verstoß).
+    - `_resetForTests()`.
+  - `server/controllers/apiKey.js`: `listApiKeys`, `deleteApiKey` und die Obergrenze 50 in `createApiKey` gelten nur für `kind = "account"`; zusätzlich exportiert `hashToken(token) → string`, `generateToken() → string`, `TOKEN_PREFIX = "outpost_"`, `touchApiKey(id) → Promise<void>` (setzt `lastUsedAt`). `validateApiKey(token) → { account, apiKey } | null` liefert die neuen Spalten mit und setzt `lastUsedAt` nur noch für Konto-Keys.
+  - `createSession(accountId, userAgent, { impersonatorId = null } = {}) → { token } | { code, message }` (`server/controllers/session.js`); `POST /api/users/:accountId/login` übergibt `{ impersonatorId: req.user.id }`.
+  - `server/middlewares/requireLoginSession.js`: `module.exports = { requireLoginSession }`; `requireLoginSession(req, res, next)` antwortet `403 { code: 403, message: "This action requires a signed-in session" }`, wenn `req.apiKey` gesetzt ist, `req.session` fehlt oder `req.session.impersonatorId` gesetzt ist. Genutzt von Task 5 (Reveal), Task 6 (`POST /approvals/:id`), Task 8 (Einrichten, Bestätigen, Entziehen) und hier in `POST /api/accounts/api-keys` (`server/routes/apiKey.js`: wer impersoniert, legt keine dauerhaften Konto-Keys für das fremde Konto an).
+
+**Design:** kein UI-Anteil.
+
+**Tests:** 5 Tests in `agentAuth.test.js`, test-first (Spec-Tests 1 und 2 sind fester Vertrag), alle über die Naht `authenticate` mit echtem Express-Server, In-Memory-SQLite und echten Modellen `Account`, `Session`, `ApiKey`, `Entry`, `AuditLog` samt echtem `createAuditLog`. Die Quelladresse kommt über `X-Forwarded-For` bei `trust proxy = true` im Test-App. Gefakt: `utils/database` (In-Memory), `lib/vault/state` (`isVaultEnabled` schaltbar), `dns.promises.lookup` per `t.mock.method`. Keys werden über `validateApiKey` mit `raw: true` gelesen; fehlt der `afterFind`-Hook aus Task 1, kommt `allowedCidrs` als Text an und die CIDR-Fälle in Test 3 und 4 scheitern mit `403`.
+1. Endgültiger Agenten-Key: `/api/entries`, `probe` und eine Reveal-Route → `403`; Vault aus → `401` wie ein ungültiger Key; Server inzwischen einem anderen Konto zugeordnet → `403`; nach diesen Abweisungen ist `lastUsedAt` noch leer; `/api/mcp` durch mit `req.agent` und gesetztem `lastUsedAt`; ein Konto-Key erreicht `/api/entries` weiter (Spec-Test 1).
+2. `pending`-Key: `probe` durch von fremder Adresse ohne Audit; `/api/mcp` und `/api/entries` → `401` (Spec-Test 1, Einrichtung Schritt 1a).
+3. IP-Bindung erlaubt: eigene Adresse, Hostname mit A- und AAAA-Eintrag (eine Auflösung für zwei Anfragen), IPv4-CIDR, IPv6-CIDR, `ipBinding: false` (Spec-Test 2).
+4. Fremde Adresse (Docker-Gateway eines NAS): `403`, genau ein Audit je (Key, Adresse) über zwei Anfragen; nach Eintrag der Gateway-Adresse als `/32` durch (Spec-Test 2, Review Focus 3 Teil „ohne Übernahme 403“; die Übernahme per `confirm` testet Task 8).
+5. `requireLoginSession` weist Impersonation (Sitzung aus `createSession(..., { impersonatorId })`) und Konto-Key ab, lässt die Login-Session durch; `POST /api/accounts/api-keys` (echter Router `routes/apiKey.js` im Test-App) antwortet der Impersonation `403`, der eigenen Sitzung `400` (fehlender Name, Wächter passiert); ein Audit aus der Impersonations-Sitzung trägt `details.impersonatorId`, das der anschließenden eigenen Sitzung nicht.
+- Kein `ipBinding.test.js`: CIDR- und IPv6-Abgleich sind über die Naht abgedeckt (Tests 3 und 4); `isAddressAllowed` läuft in jedem dieser Fälle über `checkAgentIp` mit.
+- Nicht getestet: Ablauf der Audit-Drossel nach 10 min und des DNS-Caches nach 60 s (Konstanten; ein Fake-`Date` im selben Prozess wie der HTTP-Server wäre unzuverlässig), die Weitergabe von `req.user.id` in `routes/users.js` (Weiterreichung), die SQL-Log-Schwärzung (Log-Ausgabe; manuelle Prüfung in Step 10). Die `Mcp-Session-Id` eines fremden Keys (Spec-Test 1, letzter Teil) testet Task 2.
+- SEC-Abdeckung: SEC-TOKEN-01 (Bearer-Pfad, IP-Bindung — Tests 1–4; Query-Token des Zustandsstroms — Step 9/10), SEC-APIKEY-01 (Agenten-Keys gehasht und widerrufbar wie Konto-Keys, `pending` nur an `probe` — Test 2; Vergleich siehe Step 3), SEC-SESS-02 (Agenten-Key nur am MCP-Endpunkt, nur bei laufendem Vault und solange der Server zugänglich ist — Test 1), SEC-RBAC-01 und SEC-IDOR-01 vorbereitend über `requireLoginSession`, dazu kein Konto-Key-Anlegen aus Impersonation (Test 5), SEC-PII-01 (Impersonator in jedem Audit aus HTTP-Anfragen der Sitzung — Test 5), SEC-ERR-01 (Antworten ohne Interna, keine Auflösungsdetails in der `403`).
+
+**Parallel:** Task 3, Task 9, Task 12, Task 13, Task 14 (Welle B; keine gemeinsamen Dateien).
+
+- [ ] **Step 1: Write the failing test**
+
+`server/lib/vault/__tests__/agentAuth.test.js`:
+
+```js
+const test = require("node:test");
+const assert = require("node:assert");
+const dns = require("node:dns");
+const express = require("express");
+const { Sequelize } = require("sequelize");
+
+const db = new Sequelize({ dialect: "sqlite", storage: ":memory:", logging: false, query: { raw: true }, foreignKeys: false });
+const fake = (path, exports) => {
+    const resolved = require.resolve(path);
+    require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports };
+};
+
+const vault = { enabled: true };
+fake("../../../utils/database", db);
+fake("../state", { isVaultEnabled: () => vault.enabled });
+
+const Account = require("../../../models/Account");
+const ApiKey = require("../../../models/ApiKey");
+const AuditLog = require("../../../models/AuditLog");
+const Entry = require("../../../models/Entry");
+const Session = require("../../../models/Session");
+const { createAuditLog, AUDIT_ACTIONS } = require("../../../controllers/audit");
+const { authenticate } = require("../../../middlewares/auth");
+const { requireLoginSession } = require("../../../middlewares/requireLoginSession");
+const { createSession } = require("../../../controllers/session");
+const { createApiKey, generateToken, hashToken } = require("../../../controllers/apiKey");
+const ipBinding = require("../ipBinding");
+
+const REVEAL_PATH = "/api/vault/items/1/secrets/password";
+const echo = (req, res) => res.json({ accountId: req.user.id, agent: req.agent ?? null });
+
+const app = express();
+app.set("trust proxy", true);
+app.use("/api/mcp", authenticate, echo);
+app.get("/api/vault/agent-keys/probe", authenticate, (req, res) => res.json({ seenIp: req.ip }));
+app.use("/api/entries", authenticate, echo);
+app.get(REVEAL_PATH, authenticate, requireLoginSession, echo);
+app.use("/api/accounts/api-keys", require("../../../routes/apiKey"));
+app.post("/api/audited", authenticate, async (req, res) => {
+    await createAuditLog({ accountId: req.user.id, action: AUDIT_ACTIONS.VAULT_REVEAL, resource: "vault", details: { item: "nas-admin" } });
+    res.json({});
+});
+
+const audits = () => AuditLog.findAll({ order: [["id", "ASC"]] });
+
+let server;
+let anna;
+const servers = {};
+
+const call = async (method, path, token, ip = "192.0.2.10") => {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}${path}`, {
+        method, headers: { authorization: `Bearer ${token}`, "x-forwarded-for": ip },
+    });
+    return { status: response.status, body: await response.json() };
+};
+
+const agentKey = async (entry, values = {}) => {
+    const token = generateToken();
+    const key = await ApiKey.create({
+        accountId: anna.id, name: `claude@${entry.name}`, tokenHash: hashToken(token), prefix: `${token.slice(0, 14)}…`,
+        kind: "agent", pending: false, entryId: entry.id, agentType: "claude", ipBinding: true, allowedCidrs: null, ...values,
+    });
+    return { token, id: key.id };
+};
+
+test.before(async () => {
+    await db.sync();
+    anna = await Account.create({ firstName: "Anna", lastName: "Admin", username: "anna", password: "x" });
+    const ssh = (name, ip) => Entry.create({ accountId: anna.id, type: "server", name, config: { ip, protocol: "ssh" } });
+    servers.nas = await ssh("nas", "192.0.2.10");
+    servers.dockerNas = await ssh("docker-nas", "192.0.2.20");
+    servers.named = await ssh("named", "nas.lan");
+    servers.handedOver = await ssh("handed-over", "192.0.2.40");
+    server = await new Promise((resolve) => { const listening = app.listen(0, () => resolve(listening)); });
+});
+
+test.after(() => {
+    server.closeAllConnections();
+    server.close();
 });
 
 test.beforeEach(async () => {
-    execs.length = 0;
-    audits.length = 0;
-    Object.assign(state, { cliFound: true, revokeOutput: "REMOVED\n" });
-    await ApiKey.destroy({ where: { kind: "agent" } });
+    await AuditLog.destroy({ where: {} });
+    ipBinding._resetForTests();
 });
 
-const listen = async (t) => {
-    const app = express();
-    app.use(express.json());
-    app.use("/api/vault", router);
-    app.post("/api/mcp", authenticate, (req, res) => res.json({ keyId: req.agent?.keyId ?? null }));
-    const server = await new Promise((resolve) => { const s = app.listen(0, "127.0.0.1", () => resolve(s)); });
-    state.base = `http://127.0.0.1:${server.address().port}`;
-    t.after(() => { server.closeAllConnections(); server.close(); });
-};
+test("ein endgültiger Agenten-Key erreicht nur /api/mcp, nur bei laufendem Vault und zugänglichem Server; ein Konto-Key weiter alles (Spec-Test 1)", async (t) => {
+    t.after(() => { vault.enabled = true; });
+    const key = await agentKey(servers.nas);
+    const handedOver = await agentKey(servers.handedOver);
+    const lastUsedAt = async ({ id }) => (await ApiKey.findByPk(id)).lastUsedAt;
 
-const call = async (method, path, token, body) => {
-    const res = await fetch(`${state.base}${path}`, {
-        method,
-        headers: { authorization: `Bearer ${token}`, ...(body ? { "content-type": "application/json" } : {}) },
-        body: body ? JSON.stringify(body) : undefined,
-    });
-    return { status: res.status, body: await res.json() };
-};
-
-const setUp = async (token = tokens.a, body = {}) => call("POST", "/api/vault/agent-keys", token, { entryId: ENTRY_ID, agentTypes: ["claude"], ...body });
-const keyFrom = (command) => /outpost_[0-9a-f]{64}/.exec(command)[0];
-const PROBE = "/api/vault/agent-keys/probe";
-
-test("Review Focus 3: probe misst die Adresse des pending-Keys, confirm übernimmt sie einmal, danach gilt der Key", async (t) => {
-    await listen(t);
-
-    const { status, body } = await setUp();
-
-    assert.strictEqual(status, 201);
-    const [result] = body.results;
-    assert.deepStrictEqual(
-        { agentType: result.agentType, status: result.status, reason: result.reason, remoteUser: result.remoteUser, probe: result.probe, replacedRegistration: result.replacedRegistration, command: result.command },
-        { agentType: "claude", status: "configured", reason: null, remoteUser: "deploy", probe: { seenIp: "127.0.0.1", matches: false }, replacedRegistration: true, command: undefined },
-    );
-    assert.ok(execs.every((exec) => exec.engineId === "engine-7" && exec.host === "192.0.2.10" && exec.username === "deploy"));
-    const key = keyFrom(execs[0].command);
-
-    assert.strictEqual((await call("GET", PROBE, key)).status, 403);
-    assert.strictEqual((await call("GET", PROBE, tokens.a)).status, 403);
-    assert.strictEqual((await call("GET", PROBE, tokens.accountKey)).status, 403);
-
-    assert.strictEqual((await call("POST", "/api/mcp", key)).status, 403);
-    assert.deepStrictEqual((await call("POST", `/api/vault/agent-keys/${result.id}/confirm`, tokens.a, { addSeenIp: true })).body, { success: true });
-    assert.deepStrictEqual(await call("POST", "/api/mcp", key), { status: 200, body: { keyId: result.id } });
-    assert.strictEqual((await call("POST", `/api/vault/agent-keys/${result.id}/confirm`, tokens.a, { addSeenIp: true })).status, 409);
-    const { allowedCidrs } = await ApiKey.findByPk(result.id);
-    assert.deepStrictEqual(typeof allowedCidrs === "string" ? JSON.parse(allowedCidrs) : allowedCidrs, ["127.0.0.1/32"]);
-});
-
-test("die gemessene Adresse lässt sich nur bis 15 Minuten nach dem Anlegen übernehmen", async (t) => {
-    await listen(t);
-    const [{ id }] = (await setUp()).body.results;
-    await db.query("UPDATE api_keys SET createdAt = :at WHERE id = :id",
-        { replacements: { at: new Date(Date.now() - 16 * 60 * 1000).toISOString(), id } });
-
-    assert.strictEqual((await call("POST", `/api/vault/agent-keys/${id}/confirm`, tokens.a, { addSeenIp: true })).status, 409);
-    assert.strictEqual((await ApiKey.findByPk(id)).allowedCidrs, null);
-});
-
-test("scheitert die Einrichtung, kommt der Befehl zum Kopieren und der Key bleibt pending bis zur Bestätigung", async (t) => {
-    await listen(t);
-    state.cliFound = false;
-
-    const [result] = (await setUp()).body.results;
-
-    assert.deepStrictEqual([result.status, result.reason], ["manual", "cli_missing"]);
-    const key = keyFrom(result.command);
-    assert.match(result.command, /mcp add --scope user --transport http outpost/);
-    assert.deepStrictEqual((await call("GET", `/api/vault/agent-keys?entryId=${ENTRY_ID}`, tokens.a)).body.keys, []);
-    assert.strictEqual((await call("POST", "/api/mcp", key)).status, 401);
-
-    assert.deepStrictEqual((await call("POST", `/api/vault/agent-keys/${result.id}/confirm`, tokens.a, {})).body, { success: true });
-    assert.deepStrictEqual((await call("GET", `/api/vault/agent-keys?entryId=${ENTRY_ID}`, tokens.a)).body.keys.map((k) => k.id), [result.id]);
-});
-
-test("sweepPending löscht nur pending-Keys, die älter als 15 Minuten sind", async (t) => {
-    await listen(t);
-    const [configured] = (await setUp()).body.results;
-    state.cliFound = false;
-    const [pending] = (await setUp()).body.results;
-
-    assert.strictEqual(await sweepPending(Date.now() + 14 * 60 * 1000), 0);
-    assert.strictEqual(await sweepPending(Date.now() + 16 * 60 * 1000), 1);
-    assert.strictEqual(await ApiKey.findByPk(pending.id), null);
-    assert.ok(await ApiKey.findByPk(configured.id));
-});
-
-test("erneutes Einrichten ersetzt den eigenen alten Key ohne Entfernbefehle, ein anderes Konto sieht die Warnung", async (t) => {
-    await listen(t);
-    const [first] = (await setUp()).body.results;
-    const [second] = (await setUp()).body.results;
-
-    assert.strictEqual(await ApiKey.findByPk(first.id), null);
-    assert.ok(!execs.some((exec) => exec.command.includes("echo FOREIGN")));
-    const own = (await call("GET", `/api/vault/agent-keys?entryId=${ENTRY_ID}`, tokens.a)).body;
-    assert.deepStrictEqual([own.keys.map((k) => k.id), own.remoteUser, own.otherAccountConfigured], [[second.id], "deploy", false]);
-    const other = (await call("GET", `/api/vault/agent-keys?entryId=${ENTRY_ID}`, tokens.b)).body;
-    assert.deepStrictEqual(other, { keys: [], remoteUser: "deploy", otherAccountConfigured: true });
-});
-
-test("Spec-Test 11: Einrichten, Bestätigen und Entziehen antworten in Impersonation und mit Konto-Key mit 403", async (t) => {
-    await listen(t);
-    const [{ id }] = (await setUp()).body.results;
-    execs.length = 0;
-
-    for (const token of [tokens.impersonated, tokens.accountKey]) {
-        assert.strictEqual((await setUp(token)).status, 403);
-        assert.strictEqual((await call("POST", `/api/vault/agent-keys/${id}/confirm`, token, { addSeenIp: true })).status, 403);
-        assert.strictEqual((await call("DELETE", `/api/vault/agent-keys/${id}`, token)).status, 403);
+    for (const [method, path] of [["GET", "/api/entries"], ["GET", "/api/vault/agent-keys/probe"], ["GET", REVEAL_PATH]]) {
+        const denied = await call(method, path, key.token);
+        assert.deepStrictEqual(denied, { status: 403, body: { code: 403, message: "Agent keys can only access the MCP endpoint" } }, path);
     }
-    assert.strictEqual((await call("POST", `/api/vault/agent-keys/${id}/confirm`, tokens.b, {})).status, 404);
-    assert.strictEqual((await call("DELETE", `/api/vault/agent-keys/${id}`, tokens.b)).status, 404);
-    assert.deepStrictEqual(execs, []);
-    assert.strictEqual(await ApiKey.count({ where: { kind: "agent" } }), 1);
+
+    vault.enabled = false;
+    assert.deepStrictEqual(await call("POST", "/api/mcp", key.token),
+        { status: 401, body: { message: "The provided API key is not valid" } }, "Vault aus: wie ein ungültiger Key");
+    vault.enabled = true;
+
+    await Entry.update({ accountId: 999 }, { where: { id: servers.handedOver.id } });
+    assert.deepStrictEqual(await call("POST", "/api/mcp", handedOver.token, "192.0.2.40"),
+        { status: 403, body: { code: 403, message: "The server of this agent key is no longer accessible" } });
+    assert.deepStrictEqual([await lastUsedAt(key), await lastUsedAt(handedOver)], [null, null], "abgewiesene Anfragen setzen lastUsedAt nicht");
+
+    const mcp = await call("POST", "/api/mcp", key.token);
+    assert.deepStrictEqual([mcp.status, mcp.body.agent], [200, { keyId: key.id, entryId: servers.nas.id, agentType: "claude" }]);
+    assert.notStrictEqual(await lastUsedAt(key), null);
+
+    const accountKey = await createApiKey(anna.id, { name: "cli" });
+    assert.strictEqual((await call("GET", "/api/entries", accountKey.token)).status, 200);
 });
 
-test("zusätzliche Adressbereiche werden geprüft und eine einzelne Adresse wird zu /32 bzw. /128", async (t) => {
-    await listen(t);
+test("ein pending-Key passiert nur probe, dort ohne IP-Bindung (Spec-Test 1, Einrichtung 1a)", async () => {
+    const key = await agentKey(servers.nas, { pending: true });
 
-    for (const allowedCidrs of [["10.0.0.0/33"], ["web01"], ["10.0.0.1/8/1"]])
-        assert.strictEqual((await setUp(tokens.a, { allowedCidrs })).status, 400, JSON.stringify(allowedCidrs));
-    const [{ id }] = (await setUp(tokens.a, { allowedCidrs: ["10.1.2.3", "2001:db8::/32"] })).body.results;
+    const probe = await call("GET", "/api/vault/agent-keys/probe", key.token, "172.17.0.1");
+    assert.deepStrictEqual([probe.status, probe.body], [200, { seenIp: "172.17.0.1" }]);
 
-    const { allowedCidrs } = await ApiKey.findByPk(id);
-    assert.deepStrictEqual(typeof allowedCidrs === "string" ? JSON.parse(allowedCidrs) : allowedCidrs, ["10.1.2.3/32", "2001:db8::/32"]);
+    assert.strictEqual((await call("POST", "/api/mcp", key.token)).status, 401);
+    assert.strictEqual((await call("GET", "/api/entries", key.token)).status, 401);
+    assert.strictEqual(await AuditLog.count(), 0);
 });
 
-test("Entziehen läuft mit der gespeicherten Identität; ist sie gelöscht, kommt der Entfernbefehl zum Kopieren", async (t) => {
-    await listen(t);
-    const [first] = (await setUp()).body.results;
-    state.revokeOutput = "FOREIGN\n";
-    execs.length = 0;
+test("die IP-Bindung lässt eigene Adressen, eingetragene Bereiche und gelöste Bindungen zu (Spec-Test 2)", async (t) => {
+    const lookups = [];
+    t.mock.method(dns.promises, "lookup", async (host, options) => {
+        lookups.push([host, options]);
+        return [{ address: "192.0.2.30", family: 4 }, { address: "2001:db8::30", family: 6 }];
+    });
 
-    assert.deepStrictEqual((await call("DELETE", `/api/vault/agent-keys/${first.id}`, tokens.a)).body, { success: true, registration: "foreign" });
-    assert.deepStrictEqual(execs.map((exec) => [exec.username, exec.engineId]), [["deploy", "engine-7"]]);
-    assert.strictEqual(await ApiKey.findByPk(first.id), null);
-    assert.deepStrictEqual([audits.at(-1).action, audits.at(-1).resourceId, audits.at(-1).details.keyId], ["vault.agent_key_revoke", null, first.id]);
+    const cases = [
+        ["eigene Adresse, IP im Server-Eintrag", await agentKey(servers.nas), "192.0.2.10"],
+        ["Hostname, A-Eintrag", await agentKey(servers.named), "192.0.2.30"],
+        ["Hostname, AAAA-Eintrag", await agentKey(servers.named), "2001:db8::30"],
+        ["zusätzlicher IPv4-Bereich", await agentKey(servers.nas, { allowedCidrs: ["198.51.100.0/24"] }), "198.51.100.7"],
+        ["zusätzlicher IPv6-Bereich", await agentKey(servers.nas, { allowedCidrs: ["2001:db8:1::/64"] }), "2001:db8:1::5"],
+        ["IP-Bindung aus", await agentKey(servers.nas, { ipBinding: false }), "203.0.113.9"],
+    ];
+    for (const [label, key, ip] of cases)
+        assert.strictEqual((await call("POST", "/api/mcp", key.token, ip)).status, 200, label);
 
-    const [second] = (await setUp()).body.results;
-    t.after(() => Identity.create({ id: 11, accountId: ACCOUNT_A, name: "deploy-1", type: "password", username: "deploy" }));
-    await Identity.destroy({ where: { id: 11 } });
-    execs.length = 0;
-    const revoked = (await call("DELETE", `/api/vault/agent-keys/${second.id}`, tokens.a)).body;
+    assert.deepStrictEqual(lookups, [["nas.lan", { all: true }]], "eine Auflösung je Host innerhalb von 60 s");
+    assert.strictEqual(await AuditLog.count(), 0);
+});
 
-    assert.deepStrictEqual([revoked.registration, execs.length], ["unknown", 0]);
-    assert.match(revoked.commands, /mcp remove --scope user outpost/);
-    assert.strictEqual(await ApiKey.findByPk(second.id), null);
+test("fremde Adresse: 403 und ein Audit je Key und Adresse; die übernommene Gateway-Adresse gilt (Spec-Test 2, Review Focus 3)", async () => {
+    const key = await agentKey(servers.dockerNas);
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+        const denied = await call("POST", "/api/mcp", key.token, "172.17.0.1");
+        assert.deepStrictEqual(denied, { status: 403, body: { code: 403, message: "This agent key is not allowed from this address" } });
+    }
+    assert.strictEqual((await call("POST", "/api/mcp", key.token, "172.17.0.2")).status, 403);
+
+    assert.deepStrictEqual((await audits()).map((audit) => [audit.action, audit.accountId, audit.details.keyId, audit.details.ip]), [
+        ["vault.agent_ip_denied", anna.id, key.id, "172.17.0.1"],
+        ["vault.agent_ip_denied", anna.id, key.id, "172.17.0.2"],
+    ]);
+
+    await ApiKey.update({ allowedCidrs: ["172.17.0.1/32"] }, { where: { id: key.id } });
+    assert.strictEqual((await call("POST", "/api/mcp", key.token, "172.17.0.1")).status, 200);
+});
+
+test("requireLoginSession weist Impersonation und Konto-Keys ab; Audits der Impersonation nennen den Impersonator", async () => {
+    const ben = await Account.create({ firstName: "Ben", lastName: "User", username: "ben", password: "x" });
+    const own = await Session.create({ accountId: ben.id, ip: "192.0.2.50", userAgent: "test" });
+    const impersonated = await createSession(ben.id, "test", { impersonatorId: anna.id });
+    const accountKey = await createApiKey(ben.id, { name: "cli" });
+
+    assert.strictEqual((await call("GET", REVEAL_PATH, own.token)).status, 200);
+    assert.deepStrictEqual(await call("GET", REVEAL_PATH, impersonated.token),
+        { status: 403, body: { code: 403, message: "This action requires a signed-in session" } });
+    assert.strictEqual((await call("GET", REVEAL_PATH, accountKey.token)).status, 403);
+
+    assert.deepStrictEqual(await call("POST", "/api/accounts/api-keys", impersonated.token),
+        { status: 403, body: { code: 403, message: "This action requires a signed-in session" } });
+    assert.deepStrictEqual(await call("POST", "/api/accounts/api-keys", own.token),
+        { status: 400, body: { message: "A name is required" } }, "eigene Sitzung passiert den Wächter");
+
+    for (const token of [impersonated.token, own.token])
+        assert.strictEqual((await call("POST", "/api/audited", token)).status, 200);
+    assert.deepStrictEqual((await audits()).map((audit) => audit.details), [
+        { item: "nas-admin", impersonatorId: anna.id },
+        { item: "nas-admin" },
+    ]);
 });
 ```
 
-- [ ] **Step 8: Test laufen lassen, Fehlschlag prüfen**
+- [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /root/outpost && node --test server/lib/vault/__tests__/agentKeysRoute.test.js`
-Expected: FAIL — `Cannot find module '../../../controllers/agentKeys'`.
+Run: `node --test server/lib/vault/__tests__/agentAuth.test.js`
+Expected: FAIL — `Error: Cannot find module '../../../middlewares/requireLoginSession'` (bzw. `'../ipBinding'`).
 
-- [ ] **Step 9: Controller `server/controllers/agentKeys.js` anlegen**
+- [ ] **Step 3: Restrict and extend `server/controllers/apiKey.js`**
 
-`ApiKey`-Abfragen laufen mit dem globalen `raw: true`: Booleans kommen auf SQLite als `0`/`1`, `allowedCidrs` als Text. Task 1 normalisiert beides im `afterFind`-Hook von `ApiKey`; der Controller prüft Booleans trotzdem nur auf Wahrheit und liest CIDRs über `cidrsOf`, damit er von dem Hook nicht abhängt.
+`createApiKey` Z. 32 vorher:
 
 ```js
-const net = require("node:net");
-const { Op } = require("sequelize");
-const ApiKey = require("../models/ApiKey");
-const Entry = require("../models/Entry");
-const Identity = require("../models/Identity");
-const OrganizationMember = require("../models/OrganizationMember");
-const VaultSettings = require("../models/VaultSettings");
-const { generateToken, hashToken, TOKEN_PREFIX } = require("./apiKey");
-const { execCommand } = require("./execCommand");
-const { validateEntryAccess, resolveEntryScope } = require("./entry");
-const { createAuditLog, AUDIT_ACTIONS, RESOURCE_TYPES } = require("./audit");
-const { resolveIdentity } = require("../utils/identityResolver");
-const { hasAccountPermission } = require("../utils/permission");
-const { normalizeIp } = require("../utils/ip");
-const { Permission } = require("../permissions/registry");
-const { resolveHostAddresses, matchesCidr } = require("../lib/vault/ipBinding");
-const provision = require("../lib/vault/provision");
-const logger = require("../utils/logger");
+    if (await ApiKey.count({ where: { accountId } }) >= 50)
+```
 
-const PENDING_TTL_MS = 15 * 60 * 1000;
-const SWEEP_INTERVAL_MS = 60 * 1000;
-const REGISTRATION_MARKERS = new Set(["REMOVED", "FOREIGN", "ABSENT"]);
+nachher:
 
-const identityOf = (result) => (result?.identity === undefined ? result : result.identity);
-const keyPrefixOf = (key) => key.prefix.replace(/…$/, "");
-const hostCidr = (ip) => `${ip}/${net.isIP(ip) === 6 ? 128 : 32}`;
-const endpoint = (agentUrl, path) => `${agentUrl.replace(/\/+$/, "")}${path}`;
-const outputLines = (stdout) => String(stdout ?? "").split(/\r?\n/).map((line) => line.trim());
+```js
+    if (await ApiKey.count({ where: { accountId, kind: "account" } }) >= 50)
+```
 
-// Raw queries hand JSON columns back as text on SQLite.
-const cidrsOf = (value) => {
-    if (Array.isArray(value)) return value;
-    if (typeof value !== "string") return [];
-    try {
-        const parsed = JSON.parse(value);
-        return Array.isArray(parsed) ? parsed : [];
-    } catch {
-        return [];
-    }
+`listApiKeys` und `deleteApiKey` (Z. 61-73) nachher:
+
+```js
+const listApiKeys = async (accountId) => {
+    const keys = await ApiKey.findAll({ where: { accountId, kind: "account" }, order: [["createdAt", "DESC"]] });
+    return keys.map(serialize);
 };
 
-const serialize = (key, entryNames) => ({
-    id: key.id,
-    name: key.name,
-    prefix: key.prefix,
-    agentType: key.agentType,
-    pending: !!key.pending,
-    entryId: key.entryId,
-    entryName: entryNames.get(key.entryId) ?? null,
-    remoteUser: key.remoteUser,
-    ipBinding: !!key.ipBinding,
-    allowedCidrs: cidrsOf(key.allowedCidrs),
-    createdAt: key.createdAt,
-    lastUsedAt: key.lastUsedAt,
-});
+const deleteApiKey = async (accountId, id) => {
+    const key = await ApiKey.findOne({ where: { id, accountId, kind: "account" } });
+    if (!key) return { code: 404, message: "API key not found" };
 
-const canProvision = async (accountId) =>
-    (await hasAccountPermission(accountId, Permission.VAULT_USE))
-    || (await OrganizationMember.count({ where: { accountId, status: "active" } })) > 0;
-
-const findEntry = async (accountId, entryId) => {
-    const entry = await Entry.findByPk(entryId);
-    if (!entry || !(await validateEntryAccess(accountId, entry)).valid) return null;
-    return entry;
-};
-
-const remoteIdentity = async (entry, accountId) => identityOf(await resolveIdentity(entry, null, null, accountId)) || null;
-
-// Never log stdout or stderr: the setup commands echo the key back on some CLIs.
-const runRemote = async (accountId, entry, identityId, command) => {
-    try {
-        const result = await execCommand(accountId, entry.id, identityId, command, { engineId: entry.config?.engineId ?? null });
-        if (result?.code || !result.success) return { ran: false, exitCode: null, stdout: "" };
-        return { ran: true, exitCode: result.exitCode, stdout: result.stdout };
-    } catch (err) {
-        logger.warn("Agent key command could not run", { entryId: entry.id, error: err.message });
-        return { ran: false, exitCode: null, stdout: "" };
-    }
-};
-
-const addressMatches = async (key, entry, ip) => {
-    if (!key.ipBinding) return true;
-    if (cidrsOf(key.allowedCidrs).some((cidr) => matchesCidr(ip, cidr))) return true;
-    try {
-        return (await resolveHostAddresses(entry.config?.ip)).map(normalizeIp).includes(ip);
-    } catch {
-        return false;
-    }
-};
-
-const probeResult = async (keyId, entry) => {
-    const key = await ApiKey.findByPk(keyId);
-    if (!key?.seenIp) return null;
-    return { seenIp: key.seenIp, matches: await addressMatches(key, entry, key.seenIp) };
-};
-
-const finalize = async (key) => {
-    const [updated] = await ApiKey.update({ pending: false }, { where: { id: key.id, pending: true } });
-    if (!updated) return false;
-    await ApiKey.destroy({
-        where: {
-            accountId: key.accountId, kind: "agent", pending: false, entryId: key.entryId,
-            agentType: key.agentType, remoteUser: key.remoteUser, id: { [Op.ne]: key.id },
-        },
-    });
-    return true;
-};
-
-const setupAgent = async ({ accountId, entry, identity, agentUrl, key, token }) => {
-    const url = endpoint(agentUrl, "/api/mcp");
-    const manual = (reason, probe = null) => ({
-        status: "manual", reason, probe, replacedRegistration: false,
-        command: provision.setupCommand({ agentType: key.agentType, cliPath: key.agentType, url, key: token }),
-    });
-    if (!identity) return manual("exec_failed");
-
-    const run = (command) => runRemote(accountId, entry, identity.id, command);
-    await run(provision.probeCommand({ url: endpoint(agentUrl, "/api/vault/agent-keys/probe"), key: token }));
-    const probe = await probeResult(key.id, entry);
-
-    const found = await run(provision.findCliCommand(key.agentType));
-    if (!found.ran) return manual("exec_failed", probe);
-    const cliPath = found.exitCode === 0 ? outputLines(found.stdout).filter((line) => line.startsWith("/")).pop() : null;
-    if (!cliPath) return manual("cli_missing", probe);
-
-    const setup = await run(provision.setupCommand({ agentType: key.agentType, cliPath, url, key: token }));
-    if (!setup.ran || setup.exitCode !== 0) return manual("exec_failed", probe);
-    return { status: "configured", reason: null, probe, replacedRegistration: outputLines(setup.stdout).includes("OUTPOST_REPLACED=1") };
-};
-
-const createAgentKeys = async ({ accountId, entryId, agentTypes, ipBinding = true, allowedCidrs = [], ipAddress = null, userAgent = null }) => {
-    const { agentUrl } = await VaultSettings.getOrCreate();
-    if (!agentUrl) return { code: 409, message: "Set the Outpost address for agents in Settings › Vault first" };
-    if (!(await canProvision(accountId))) return { code: 403, message: "You are not allowed to set up agent access" };
-
-    const entry = await findEntry(accountId, entryId);
-    if (!entry) return { code: 404, message: "Entry not found" };
-    if (entry.config?.protocol !== "ssh") return { code: 400, message: "Agent access needs an SSH server" };
-
-    const identity = await remoteIdentity(entry, accountId);
-    const remoteUser = identity?.username || null;
-    const { organizationId } = await resolveEntryScope(entry);
-
-    const results = [];
-    for (const agentType of agentTypes) {
-        const token = generateToken();
-        const key = await ApiKey.create({
-            accountId, name: `${agentType}@${entry.name}`, tokenHash: hashToken(token),
-            prefix: `${token.slice(0, TOKEN_PREFIX.length + 6)}…`, kind: "agent", pending: true,
-            entryId: entry.id, agentType, ipBinding, allowedCidrs: allowedCidrs.length > 0 ? allowedCidrs : null,
-            identityId: identity?.id ?? null, remoteUser,
-        });
-        await createAuditLog({
-            accountId, organizationId: organizationId ?? null, action: AUDIT_ACTIONS.VAULT_AGENT_KEY_CREATE,
-            resource: RESOURCE_TYPES.VAULT, resourceId: null,
-            details: { keyId: key.id, agentType, entryId: entry.id, entryName: entry.name, remoteUser, ipBinding },
-            ipAddress, userAgent,
-        });
-
-        const outcome = await setupAgent({ accountId, entry, identity, agentUrl, key, token });
-        if (outcome.status === "configured") await finalize(key);
-        results.push({ id: key.id, agentType, remoteUser, ...outcome });
-    }
-    return { results };
-};
-
-const probe = async (apiKey, rawIp) => {
-    const seenIp = normalizeIp(rawIp);
-    await ApiKey.update({ seenIp }, { where: { id: apiKey.id, kind: "agent", pending: true } });
-    return { seenIp };
-};
-
-const confirm = async (accountId, id, { addSeenIp = false } = {}, now = Date.now()) => {
-    const key = await ApiKey.findOne({ where: { id, accountId, kind: "agent" } });
-    if (!key) return { code: 404, message: "Agent key not found" };
-
-    if (addSeenIp) {
-        if (!key.seenIp) return { code: 409, message: "No measured address to adopt" };
-        if (now - new Date(key.createdAt).getTime() > PENDING_TTL_MS)
-            return { code: 409, message: "The measured address can only be adopted within 15 minutes of the setup" };
-        const allowedCidrs = [...new Set([...cidrsOf(key.allowedCidrs), hostCidr(key.seenIp)])];
-        const [updated] = await ApiKey.update({ allowedCidrs, seenIpAdopted: true }, { where: { id: key.id, seenIpAdopted: false } });
-        if (!updated) return { code: 409, message: "The measured address was already adopted" };
-    }
-
-    if (key.pending) await finalize(key);
+    await ApiKey.destroy({ where: { id: key.id } });
+    logger.system("API key deleted", { accountId, apiKeyId: id });
     return { success: true };
 };
 
-const parseRegistration = (stdout) => {
-    const marker = outputLines(stdout).filter((line) => REGISTRATION_MARKERS.has(line)).pop();
-    return marker ? marker.toLowerCase() : "unknown";
+const touchApiKey = async (id) => {
+    await ApiKey.update({ lastUsedAt: new Date() }, { where: { id } });
+};
+```
+
+`validateApiKey` Z. 89 vorher:
+
+```js
+    await ApiKey.update({ lastUsedAt: new Date() }, { where: { id: key.id } });
+```
+
+nachher (Agenten-Keys stempelt `authenticate` erst nach seinen Prüfungen):
+
+```js
+    if (key.kind !== "agent") await touchApiKey(key.id);
+```
+
+`module.exports` (Z. 94-100) nachher:
+
+```js
+module.exports = {
+    TOKEN_PREFIX,
+    hashToken,
+    generateToken,
+    isApiKeyToken,
+    createApiKey,
+    listApiKeys,
+    deleteApiKey,
+    touchApiKey,
+    validateApiKey,
+};
+```
+
+SEC-APIKEY-01, Vergleich: `validateApiKey` sucht per `tokenHash = SHA-256(token)` in der Datenbank. Der Angreifer steuert damit nur die Eingabe des Hashs, nicht dessen Präfix; Zeitunterschiede im Index-Vergleich verraten keinen nutzbaren Teil eines gültigen Tokens. Bleibt unverändert; Agenten-Keys nutzen denselben Weg (`hashToken`, 256 Bit aus `generateToken`).
+
+- [ ] **Step 4: Create `server/lib/vault/ipBinding.js`**
+
+```js
+const dns = require("node:dns");
+const net = require("node:net");
+const { normalizeIp } = require("../../utils/ip");
+
+const RESOLVE_TTL_MS = 60 * 1000;
+const DENIAL_AUDIT_INTERVAL_MS = 10 * 60 * 1000;
+const MAX_TRACKED_DENIALS = 10000;
+
+const resolved = new Map();
+const deniedAt = new Map();
+
+const familyOf = (ip) => ({ 4: "ipv4", 6: "ipv6" })[net.isIP(ip)];
+
+const matchesCidr = (ip, cidr) => {
+    const [network, prefixText, ...rest] = String(cidr).split("/");
+    const family = familyOf(network);
+    if (rest.length || !family || family !== familyOf(ip)) return false;
+    const maxPrefix = family === "ipv4" ? 32 : 128;
+    if (prefixText !== undefined && !/^\d{1,3}$/.test(prefixText)) return false;
+    const prefix = prefixText === undefined ? maxPrefix : Number(prefixText);
+    if (prefix > maxPrefix) return false;
+    const list = new net.BlockList();
+    list.addSubnet(network, prefix, family);
+    return list.check(ip, family);
 };
 
-const revoke = async (accountId, id, { ipAddress = null, userAgent = null } = {}) => {
-    const key = await ApiKey.findOne({ where: { id, accountId, kind: "agent" } });
-    if (!key) return { code: 404, message: "Agent key not found" };
-    await ApiKey.destroy({ where: { id: key.id } });
+const resolveHostAddresses = async (host) => {
+    if (!host || typeof host !== "string") return [];
+    const name = host.trim();
+    if (net.isIP(name)) return [normalizeIp(name)];
 
-    const entry = await Entry.findByPk(key.entryId);
-    let registration = "absent";
-    let commands = null;
-    if (!key.pending) {
-        const command = provision.revokeCommands({ agentType: key.agentType, keyPrefix: keyPrefixOf(key) });
-        const identity = key.identityId ? await Identity.findByPk(key.identityId) : null;
-        const result = entry && identity ? await runRemote(accountId, entry, identity.id, command) : { ran: false, stdout: "" };
-        registration = result.ran ? parseRegistration(result.stdout) : "unknown";
-        if (registration === "unknown") commands = command;
+    const cached = resolved.get(name);
+    if (cached && cached.expiresAt > Date.now()) return cached.addresses;
+
+    const addresses = dns.promises.lookup(name, { all: true })
+        .then((results) => results.map((result) => normalizeIp(result.address)), () => []);
+    resolved.set(name, { addresses, expiresAt: Date.now() + RESOLVE_TTL_MS });
+    return addresses;
+};
+
+const allowedCidrsOf = (apiKey) => (Array.isArray(apiKey.allowedCidrs) ? apiKey.allowedCidrs : []);
+
+const recordDenial = async (apiKey, entry, ip) => {
+    const key = `${apiKey.id}|${ip}`;
+    const now = Date.now();
+    if (deniedAt.get(key) > now - DENIAL_AUDIT_INTERVAL_MS) return;
+
+    if (deniedAt.size >= MAX_TRACKED_DENIALS) {
+        for (const [tracked, at] of deniedAt) if (at <= now - DENIAL_AUDIT_INTERVAL_MS) deniedAt.delete(tracked);
     }
+    deniedAt.set(key, now);
 
+    // Lazy like defaultAudit in lib/browser/tools.js: auth.js loads this module, and tests that fake
+    // utils/database without define() load auth.js.
+    const { createAuditLog, AUDIT_ACTIONS, RESOURCE_TYPES } = require("../../controllers/audit");
     await createAuditLog({
-        accountId, organizationId: entry ? (await resolveEntryScope(entry)).organizationId ?? null : null,
-        action: AUDIT_ACTIONS.VAULT_AGENT_KEY_REVOKE, resource: RESOURCE_TYPES.VAULT, resourceId: null,
-        details: {
-            keyId: key.id, agentType: key.agentType, entryId: key.entryId, entryName: entry?.name ?? null,
-            remoteUser: key.remoteUser, registration, pending: !!key.pending,
-        },
-        ipAddress, userAgent,
+        accountId: apiKey.accountId,
+        action: AUDIT_ACTIONS.VAULT_AGENT_IP_DENIED,
+        resource: RESOURCE_TYPES.VAULT,
+        details: { keyId: apiKey.id, agentType: apiKey.agentType, entryId: apiKey.entryId, entryName: entry?.name ?? null, ip },
+        ipAddress: ip,
     });
-    return commands ? { success: true, registration, commands } : { success: true, registration };
 };
 
-const listAgentKeys = async (accountId, { entryId = null } = {}) => {
-    const entry = entryId ? await findEntry(accountId, entryId) : null;
-    if (entryId && !entry) return { code: 404, message: "Entry not found" };
+const isAddressAllowed = async (apiKey, entry, rawIp) => {
+    if (!apiKey.ipBinding) return true;
 
-    const keys = await ApiKey.findAll({
-        where: { accountId, kind: "agent", pending: false, ...(entry ? { entryId: entry.id } : {}) },
-        order: [["createdAt", "DESC"]],
-    });
-    const entryIds = [...new Set(keys.map((key) => key.entryId))];
-    const entries = entryIds.length > 0 ? await Entry.findAll({ where: { id: entryIds }, attributes: ["id", "name"] }) : [];
-    const names = new Map(entries.map((row) => [row.id, row.name]));
-    const result = { keys: keys.map((key) => serialize(key, names)) };
-    if (!entry) return result;
-
-    const remoteUser = (await remoteIdentity(entry, accountId))?.username || null;
-    const otherAccountConfigured = !!remoteUser && (await ApiKey.count({
-        where: { kind: "agent", pending: false, entryId: entry.id, remoteUser, accountId: { [Op.ne]: accountId } },
-    })) > 0;
-    return { ...result, remoteUser, otherAccountConfigured };
+    const ip = normalizeIp(rawIp);
+    if (!familyOf(ip)) return false;
+    if (allowedCidrsOf(apiKey).some((cidr) => matchesCidr(ip, cidr))) return true;
+    return (await resolveHostAddresses(entry?.config?.ip)).some((address) => matchesCidr(ip, address));
 };
 
-const sweepPending = async (now = Date.now()) => ApiKey.destroy({
-    where: { kind: "agent", pending: true, createdAt: { [Op.lt]: new Date(now - PENDING_TTL_MS) } },
-});
+const checkAgentIp = async (apiKey, entry, rawIp) => {
+    if (await isAddressAllowed(apiKey, entry, rawIp)) return true;
 
-const startPendingSweeper = () => {
-    const timer = setInterval(() => {
-        sweepPending().catch((err) => logger.warn("Pending agent key sweep failed", { error: err.message }));
-    }, SWEEP_INTERVAL_MS);
-    timer.unref?.();
-    return timer;
+    await recordDenial(apiKey, entry, normalizeIp(rawIp));
+    return false;
 };
 
-module.exports = { createAgentKeys, probe, confirm, revoke, listAgentKeys, sweepPending, startPendingSweeper, PENDING_TTL_MS };
+const _resetForTests = () => {
+    resolved.clear();
+    deniedAt.clear();
+};
+
+module.exports = { isAddressAllowed, checkAgentIp, matchesCidr, resolveHostAddresses, _resetForTests };
 ```
 
-- [ ] **Step 10: Router `server/routes/vault/agentKeys.js` füllen**
+- [ ] **Step 5: Teach `authenticate` about agent keys**
 
-Ganze Datei ersetzen (der Platzhalter aus Task 1 enthält nur einen leeren `Router()`):
+`server/middlewares/auth.js` Z. 1-24 vorher:
 
 ```js
-const { Router } = require("express");
-const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
-const { authenticate } = require("../../middlewares/auth");
-const { requireLoginSession } = require("../../middlewares/requireLoginSession");
-const { requireVaultEnabled } = require("../../lib/vault/state");
-const { validateSchema } = require("../../utils/schema");
-const { sendError } = require("../../utils/error");
-const {
-    createAgentKeysValidation, confirmAgentKeyValidation, listAgentKeysValidation, agentKeyIdValidation,
-} = require("../../validations/vaultAgentKeys");
-const { createAgentKeys, probe, confirm, revoke, listAgentKeys } = require("../../controllers/agentKeys");
+const Account = require("../models/Account");
+const Session = require("../models/Session");
+const { isApiKeyToken, validateApiKey } = require("../controllers/apiKey");
 
-const router = Router();
+module.exports.authenticate = async (req, res, next) => {
+    const authHeader = req.header("authorization");
+    if (!authHeader)
+        return res.status(400).json({ message: "You need to provide the 'authorization' header" });
 
-// Every setup runs several remote commands through the engine; the account bucket bounds that.
-const agentKeyLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 30,
-    keyGenerator: (req) => (req.user ? `acc:${req.user.id}` : `ip:${ipKeyGenerator(req.ip)}`),
-    message: { code: 429, message: "Too many agent key changes. Please try again in a moment." },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
+    const headerTrimmed = authHeader.split(" ");
+    if (headerTrimmed.length !== 2)
+        return res.status(400).json({ message: "You need to provide the token in the 'authorization' header" });
 
-const probeLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 10,
-    keyGenerator: (req) => (req.apiKey ? `key:${req.apiKey.id}` : `ip:${ipKeyGenerator(req.ip)}`),
-    message: { code: 429, message: "Too many probes. Please try again in a moment." },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
+    const token = headerTrimmed[1];
 
-const reply = (res, result, status = 200) => {
-    if (result?.code) return sendError(res, result.code, result.code, result.message);
-    res.status(status).json(result);
+    if (isApiKeyToken(token)) {
+        const result = await validateApiKey(token);
+        if (!result)
+            return res.status(401).json({ message: "The provided API key is not valid" });
+
+        req.apiKey = result.apiKey;
+        req.user = result.account;
+        return next();
+    }
+```
+
+nachher (Session-Zweig ab `req.session = await Session.findOne(...)` bis auf das abschließende `next()` unverändert, siehe unten):
+
+```js
+const Account = require("../models/Account");
+const Session = require("../models/Session");
+const Entry = require("../models/Entry");
+const { isApiKeyToken, validateApiKey, touchApiKey } = require("../controllers/apiKey");
+const { checkAgentIp } = require("../lib/vault/ipBinding");
+const auditContext = require("../utils/auditContext");
+
+const PROBE_PATH = "/api/vault/agent-keys/probe";
+const INVALID_API_KEY = { message: "The provided API key is not valid" };
+
+const pathOf = (req) => req.originalUrl.split("?")[0];
+const isMcpPath = (path) => path === "/api/mcp" || path.startsWith("/api/mcp/");
+
+const rejectAgentKey = async (req, apiKey) => {
+    const { isVaultEnabled } = require("../lib/vault/state");
+    if (!isVaultEnabled()) return { status: 401, body: INVALID_API_KEY };
+
+    const path = pathOf(req);
+    if (apiKey.pending)
+        return req.method === "GET" && path === PROBE_PATH ? null : { status: 401, body: INVALID_API_KEY };
+
+    if (!isMcpPath(path))
+        return { status: 403, body: { code: 403, message: "Agent keys can only access the MCP endpoint" } };
+
+    const { validateEntryAccess } = require("../controllers/entry");
+    const entry = await Entry.findByPk(apiKey.entryId);
+    if (!(await validateEntryAccess(apiKey.accountId, entry)).valid)
+        return { status: 403, body: { code: 403, message: "The server of this agent key is no longer accessible" } };
+
+    if (!(await checkAgentIp(apiKey, entry, req.ip)))
+        return { status: 403, body: { code: 403, message: "This agent key is not allowed from this address" } };
+
+    return null;
 };
 
-const auditContext = (req) => ({ ipAddress: req.ip, userAgent: req.headers["user-agent"] ?? null });
+module.exports.authenticate = async (req, res, next) => {
+    const authHeader = req.header("authorization");
+    if (!authHeader)
+        return res.status(400).json({ message: "You need to provide the 'authorization' header" });
 
-/**
- * GET /vault/agent-keys/probe
- * @summary Probe Agent Key Address
- * @description Called by the setup itself, with the pending agent key, from the server being set up. Answers with the address Outpost sees and stores it at the key. Any other caller gets 403.
- * @tags Vault
- * @produces application/json
- * @security BearerAuth
- * @return {object} 200 - The seen address
- */
-router.get("/agent-keys/probe", requireVaultEnabled, authenticate, probeLimiter, async (req, res) => {
-    if (req.apiKey?.kind !== "agent" || !req.apiKey.pending)
-        return sendError(res, 403, 403, "Only a pending agent key can probe");
-    res.json(await probe(req.apiKey, req.ip));
-});
+    const headerTrimmed = authHeader.split(" ");
+    if (headerTrimmed.length !== 2)
+        return res.status(400).json({ message: "You need to provide the token in the 'authorization' header" });
 
-/**
- * GET /vault/agent-keys
- * @summary List Agent Keys
- * @description Lists the confirmed agent keys of the account. With entryId only those of one server, plus the remote user and whether another account already set up a key for it.
- * @tags Vault
- * @produces application/json
- * @security BearerAuth
- * @param {number} entryId.query - Server entry ID
- * @return {object} 200 - Agent keys
- */
-router.get("/agent-keys", requireVaultEnabled, authenticate, async (req, res) => {
-    const query = { ...req.query };
-    if (validateSchema(res, listAgentKeysValidation, query)) return;
-    reply(res, await listAgentKeys(req.user.id, { entryId: query.entryId ?? null }));
-});
+    const token = headerTrimmed[1];
 
-/**
- * POST /vault/agent-keys
- * @summary Set Up Agent Access
- * @description Creates one pending agent key per agent and sets it up on the server. The key is returned only inside a manual command, only in this response.
- * @tags Vault
- * @produces application/json
- * @security BearerAuth
- * @param {CreateAgentKeys} request.body.required - Server, agents and IP binding
- * @return {object} 201 - Result per agent
- */
-router.post("/agent-keys", requireVaultEnabled, authenticate, requireLoginSession, agentKeyLimiter, async (req, res) => {
-    if (validateSchema(res, createAgentKeysValidation, req.body)) return;
-    reply(res, await createAgentKeys({ accountId: req.user.id, ...req.body, ...auditContext(req) }), 201);
-});
+    if (isApiKeyToken(token)) {
+        const result = await validateApiKey(token);
+        if (!result)
+            return res.status(401).json(INVALID_API_KEY);
 
-/**
- * POST /vault/agent-keys/{id}/confirm
- * @summary Confirm Agent Key
- * @description Makes a pending agent key final. With addSeenIp the address measured by the probe is added to the allowed ranges, once and only within 15 minutes of the setup.
- * @tags Vault
- * @produces application/json
- * @security BearerAuth
- * @param {number} id.path.required - Agent key ID
- * @param {ConfirmAgentKey} request.body - Options
- * @return {object} 200 - Confirmation
- */
-router.post("/agent-keys/:id/confirm", requireVaultEnabled, authenticate, requireLoginSession, agentKeyLimiter, async (req, res) => {
-    const params = { ...req.params };
-    if (validateSchema(res, agentKeyIdValidation, params)) return;
-    const body = { ...(req.body ?? {}) };
-    if (validateSchema(res, confirmAgentKeyValidation, body)) return;
-    reply(res, await confirm(req.user.id, params.id, body));
-});
+        if (result.apiKey.kind === "agent") {
+            const rejection = await rejectAgentKey(req, result.apiKey);
+            if (rejection) return res.status(rejection.status).json(rejection.body);
+            await touchApiKey(result.apiKey.id);
+            req.agent = { keyId: result.apiKey.id, entryId: result.apiKey.entryId, agentType: result.apiKey.agentType };
+        }
 
-/**
- * DELETE /vault/agent-keys/{id}
- * @summary Revoke Agent Key
- * @description Deletes the agent key, then removes the registration on the server if it still carries this key.
- * @tags Vault
- * @produces application/json
- * @security BearerAuth
- * @param {number} id.path.required - Agent key ID
- * @return {object} 200 - Revocation result
- */
-router.delete("/agent-keys/:id", requireVaultEnabled, authenticate, requireLoginSession, agentKeyLimiter, async (req, res) => {
-    const params = { ...req.params };
-    if (validateSchema(res, agentKeyIdValidation, params)) return;
-    reply(res, await revoke(req.user.id, params.id, auditContext(req)));
-});
-
-module.exports = router;
+        req.apiKey = result.apiKey;
+        req.user = result.account;
+        return next();
+    }
 ```
 
-- [ ] **Step 11: Test laufen lassen, Erfolg prüfen**
-
-Run: `cd /root/outpost && node --test server/lib/vault/__tests__/agentKeysRoute.test.js server/lib/vault/__tests__/provision.test.js`
-Expected: PASS — `# pass 13`, `# fail 0`.
-
-- [ ] **Step 12: Sweeper beim Start einhängen**
-
-In `server/index.js` neben dem Import, den Task 1 für `initVaultState` anlegt:
+Ende des Session-Zweigs, Z. 33-37 vorher:
 
 ```js
-const { startPendingSweeper } = require("./controllers/agentKeys");
+    req.user = await Account.findByPk(req.session.accountId);
+    if (req.user === null)
+        return res.status(401).json({ message: "The account associated to the token is not registered" });
+
+    next();
 ```
 
-und direkt nach dem Aufruf `await initVaultState();` (Task 1, nach `await migrationRunner.runMigrations();`):
+nachher:
 
 ```js
-        startPendingSweeper();
+    req.user = await Account.findByPk(req.session.accountId);
+    if (req.user === null)
+        return res.status(401).json({ message: "The account associated to the token is not registered" });
+
+    if (req.session.impersonatorId)
+        return auditContext.run({ impersonatorId: req.session.impersonatorId }, next);
+
+    next();
 ```
 
-Der Sweeper läuft auch bei ausgeschaltetem Vault: `pending`-Keys aus der Zeit davor sollen trotzdem verschwinden.
+`state.js` (lädt `VaultSettings`) und `controllers/entry` lädt `rejectAgentKey` erst im Agenten-Zweig, wie `authenticateDownload` die Rechte-Module: `bookmarkRoutes.test.js` lädt `auth.js` mit einer Datenbank-Attrappe ohne `define()`.
 
-- [ ] **Step 13: Lint und betroffene Tests**
+`authenticateQuery` und `authenticateDownload` bleiben unverändert: Sie kennen nur Session-Tokens, ein Agenten-Key scheitert dort mit `401`. Dasselbe gilt für `wsAuth.resolveSessionToken` und `routes/state.js` — Agenten-Keys öffnen keine WebSockets.
 
-Run: `cd /root/outpost && npx eslint server/lib/vault/provision.js server/lib/vault/__tests__/provision.test.js server/lib/vault/__tests__/agentKeysRoute.test.js server/controllers/agentKeys.js server/controllers/execCommand.js server/routes/vault/agentKeys.js server/validations/vaultAgentKeys.js server/index.js && node --test server/lib/vault/__tests__/provision.test.js server/lib/vault/__tests__/agentKeysRoute.test.js server/lib/vault/__tests__/agentAuth.test.js`
-Expected: keine Lint-Meldung; alle Tests PASS (`agentAuth.test.js` aus Task 4 bleibt grün, weil `authenticate` nicht angefasst wurde).
+- [ ] **Step 6: Create `server/middlewares/requireLoginSession.js`**
 
-- [ ] **Step 14: Commit**
+```js
+const { sendError } = require("../utils/error");
+
+const requireLoginSession = (req, res, next) => {
+    if (req.apiKey || !req.session || req.session.impersonatorId)
+        return sendError(res, 403, 403, "This action requires a signed-in session");
+    next();
+};
+
+module.exports = { requireLoginSession };
+```
+
+`server/routes/apiKey.js`: `blockApiKeyAuth` bleibt lokal (nicht exportiert, Abweichung 2 im Plan-Kopf); nur `POST /` bekommt zusätzlich `requireLoginSession`, damit niemand während einer Impersonation einen dauerhaften Konto-Key für das fremde Konto anlegt. `GET /` und `DELETE /:id` bleiben unverändert.
+
+Z. 2 vorher:
+
+```js
+const { authenticate } = require("../middlewares/auth");
+```
+
+nachher:
+
+```js
+const { authenticate } = require("../middlewares/auth");
+const { requireLoginSession } = require("../middlewares/requireLoginSession");
+```
+
+Z. 36 vorher:
+
+```js
+app.post("/", authenticate, blockApiKeyAuth, async (req, res) => {
+```
+
+nachher (Konto-Keys erhalten weiter die bisherige Meldung von `blockApiKeyAuth`):
+
+```js
+app.post("/", authenticate, blockApiKeyAuth, requireLoginSession, async (req, res) => {
+```
+
+- [ ] **Step 7: Mark impersonation sessions and name the impersonator in every HTTP audit**
+
+`server/controllers/session.js` Z. 12-21 nachher:
+
+```js
+module.exports.createSession = async (accountId, userAgent, { impersonatorId = null } = {}) => {
+    const account = await Account.findByPk(accountId);
+
+    if (account === null)
+        return { code: 102, message: "The provided account does not exist" };
+
+    const session = await Session.create({ accountId, ip: "Admin", userAgent, impersonatorId });
+
+    return { token: session.token };
+}
+```
+
+`server/routes/users.js` Z. 63 vorher:
+
+```js
+    const account = await createSession(req.params.accountId, req.headers["user-agent"]);
+```
+
+nachher:
+
+```js
+    const account = await createSession(req.params.accountId, req.headers["user-agent"], { impersonatorId: req.user.id });
+```
+
+`server/utils/auditContext.js` (`authenticate` öffnet den Kontext, siehe Step 5):
+
+```js
+module.exports = new (require("node:async_hooks").AsyncLocalStorage)();
+```
+
+`server/controllers/audit.js` — Import nach Z. 14 (`const { normalizeIp } = require("../utils/ip");`):
+
+```js
+const auditContext = require("../utils/auditContext");
+```
+
+`createAuditLog` vorher (heute Z. 211-216):
+
+```js
+        if (organizationId) {
+            const settings = await getOrgAuditSettings(organizationId);
+            if (!shouldAudit(action, settings)) return;
+        }
+
+        const auditLog = await AuditLog.create({
+```
+
+nachher:
+
+```js
+        if (organizationId) {
+            const settings = await getOrgAuditSettings(organizationId);
+            if (!shouldAudit(action, settings)) return;
+        }
+
+        const impersonatorId = auditContext.getStore()?.impersonatorId;
+        if (impersonatorId && details?.impersonatorId == null) details = { ...details, impersonatorId };
+
+        const auditLog = await AuditLog.create({
+```
+
+- [ ] **Step 8: Run test to verify it passes**
+
+Run: `node --test server/lib/vault/__tests__/agentAuth.test.js`
+Expected: PASS — `# pass 5`, `# fail 0`.
+
+- [ ] **Step 9: SEC-TOKEN-01 — Token aus dem SQL-Log halten**
+
+Befund der Prüfung (im Commit festhalten):
+- Es gibt keinen Request-Logger: kein `morgan`/`express-winston` in `package.json`, keine Middleware in `server/index.js`, die URLs schreibt; `express-ws` loggt nicht. Die einzigen `req.originalUrl`-Logs (`routes/entryBookmarks.js:96`, `routes/bookmarks.js:61`) betreffen Pfade ohne Token. `?sessionToken=` aus `/api/ws/state` erreicht keinen Logger über die URL.
+- Aber: Sequelize loggt jede Abfrage auf Stufe `debug` (`server/utils/database.js:34`, `:41`) und setzt `WHERE`-Werte inline ein, `INSERT`/`UPDATE` dagegen als `$1`. `routes/state.js:9` (`Session.findOne({ where: { token: sessionToken } })`), `middlewares/auth.js` (Bearer-Pfad), `wsAuth.js:27`, `routes/sftp.js:42`, `controllers/auth.js:67-68` und `controllers/deviceCode.js:67` landen damit bei `LOG_LEVEL=debug` als ``WHERE `sessions`.`token` = '<token>'`` im Log (geprüft mit Sequelize 6.37.8). Standard ist `LOG_LEVEL=system` (`Dockerfile.server:68`), dann wird nichts geschrieben.
+- Maßnahme: Werte von Spalten namens `token` im SQL-Log schwärzen.
+
+`server/utils/database.js` — nach `getCallerFromStack` (Z. 24) einfügen:
+
+```js
+const redactSql = (sql) => sql.replace(/(`token`\s*=\s*)'(?:[^'\\]|\\.|'')*'/g, "$1'[redacted]'");
+const logSql = (msg) => logger.baseLogger.debug(redactSql(msg), { caller: getCallerFromStack() });
+```
+
+Z. 34 und Z. 41 vorher:
+
+```js
+        logging: (msg) => logger.baseLogger.debug(msg, { caller: getCallerFromStack() }),
+```
+
+nachher (beide Stellen):
+
+```js
+        logging: logSql,
+```
+
+- [ ] **Step 10: Manuell prüfen, dass kein Token im Debug-Log steht**
+
+Run: `LOG_LEVEL=debug yarn dev`, im Browser anmelden, einmal neu laden (öffnet `/api/ws/state?sessionToken=…`), dann:
+`grep -c "\`token\` = '[0-9a-f]" data/logs/$(date +%F).log`
+Expected: `0`. Gegenprobe: `grep -c "\`token\` = '\[redacted\]'" data/logs/$(date +%F).log` liefert mindestens `1`.
+
+- [ ] **Step 11: Run the affected existing tests**
+
+`middlewares/auth.js` lädt jetzt `models/Entry`, `lib/vault/ipBinding` und `utils/auditContext`; `bookmarkRoutes.test.js` lädt `auth.js` mit einer Datenbank-Attrappe ohne `define()` (deshalb laden `ipBinding.js` das Audit und `rejectAgentKey` `state.js` und `controllers/entry` erst bei Bedarf). `apiKeyPrefix.test.js` nutzt `createApiKey`, `oidcLogout.test.js` das `Session`-Modell, `browserAudit.test.js` lädt das echte `controllers/audit.js`.
+
+Run: `node --test server/lib/__tests__/bookmarkRoutes.test.js server/lib/__tests__/apiKeyPrefix.test.js server/lib/__tests__/oidcLogout.test.js server/lib/__tests__/browserSocketAuth.test.js server/lib/__tests__/browserAudit.test.js`
+Expected: PASS, `# fail 0`.
+
+- [ ] **Step 12: Commit**
 
 ```bash
-git add server/lib/vault/provision.js server/lib/vault/__tests__/provision.test.js server/lib/vault/__tests__/agentKeysRoute.test.js server/controllers/agentKeys.js server/controllers/execCommand.js server/routes/vault/agentKeys.js server/validations/vaultAgentKeys.js server/index.js
-git commit -m "Vault: Agenten-Einrichtung per Exec mit Probe, Bestätigung und Entziehen"
+git add server/middlewares/auth.js server/lib/vault/ipBinding.js server/controllers/apiKey.js server/controllers/session.js server/routes/users.js server/middlewares/requireLoginSession.js server/routes/apiKey.js server/utils/auditContext.js server/controllers/audit.js server/utils/database.js server/lib/vault/__tests__/agentAuth.test.js
+git commit -m "Vault: Agenten-Keys nur am MCP-Endpunkt mit Vault-, Server- und IP-Prüfung, Login-Session-Pflicht (auch für neue Konto-Keys), Impersonator in HTTP-Audits, Token aus dem SQL-Log"
 ```
 
 ---
@@ -6750,35 +4321,39 @@ git commit -m "Vault: Agenten-Einrichtung per Exec mit Probe, Bestätigung und E
 **Files:**
 - Create: `server/lib/browser/vaultGuard.js`
 - Modify: `server/lib/browser/snapshot.js` (`MAX_TEXT` Z. 9, `describe` Z. 68-87, `buildSnapshot` Z. 89 und Z. 99, `module.exports` Z. 114)
-- Modify: `server/lib/browser/BrowserSession.js` (Require Z. 6, `snapshot()` Z. 222-225, `screenshot()` Z. 257-267, `evaluate()` Z. 269-274 plus neue `readyState()`, `containsText()`, `#evaluate()`; Task 7 ändert dort keine Zeilenzahl)
+- Modify: `server/lib/browser/BrowserSession.js` (Require Z. 6, `snapshot()` Z. 222-225, `type()` Z. 237-242, `screenshot()` Z. 257-267, `evaluate()` Z. 269-274 plus neue `readyState()`, `containsText()`, `#evaluate()`; Task 7 ändert dort keine Zeilenzahl)
+- Modify: `server/lib/browser/actions.js` (`typeText` Z. 95-103: Option `clearWithoutSelection`; `module.exports` Z. 126: zusätzlich `parseKey`, `MODIFIERS`)
 - Modify: `server/lib/browser/tools.js` (Requires, `formatSessions`/`errorResult`/`pageResult` Z. 62-68, `recordBrowserAudit` Z. 72-80 — beide nach Task 7 unverschoben, in `createBrowserTools`: `act`, `waitFor`-Prüfungen `load`/`text`, `catch` in `browser_open`, `browser_list`, `call`)
 - Modify: `server/lib/browser/index.js` (Z. 3 Require, vor Z. 17: `pool.onContextEnded(vaultGuard.forgetContext)`)
 - Modify: `server/lib/browser/__tests__/tools.test.js` (Fake-Pool: `get`)
 - Create: `server/lib/browser/__tests__/vaultGuard.test.js`
+- Modify: `server/lib/browser/__tests__/chromium.e2e.test.js` (ein neuer Test am Dateiende nach Z. 102; Requires, Testseite und Wert stehen im Testkörper, damit die Einfügungen von Task 11 nach Z. 8 und Z. 22 und dessen Namen `SECRET`/`createBrowserTools` auf Dateiebene gültig bleiben)
 
 **Interfaces:**
 - Consumes:
-  - Task 1: `encryptValue(plaintext, aad) → { encrypted: Buffer, iv, authTag }`, `decryptValue({ encrypted, iv, authTag }, aad) → string` aus `server/lib/vault/crypto.js`; `VaultError`, `VaultErrorCode.SESSION_TAINTED`, `.EVALUATE_LOCKED`, `.SCREENSHOT_LOCKED` aus `server/lib/vault/errors.js`; `new VaultError(VaultErrorCode.X)` nimmt den Standardtext aus `VaultErrorMessage` (Task 1), `vaultGuard.js` schreibt keine eigenen Meldungen.
-  - Task 7: `session.contextKey`, `pool.get(id)`, `pool.listForCaller(…)`, `pool.onContextEnded(listener)`, `resolveCallerSession`, Pool-Record `contextKey`.
+  - Task 1: `encryptValue(plaintext, aad) → { encrypted: Buffer, iv, authTag }`, `decryptValue({ encrypted, iv, authTag }, aad) → string` aus `server/lib/vault/crypto.js`; `VaultError`, `VaultErrorCode.SESSION_TAINTED`, `.EVALUATE_LOCKED`, `.SCREENSHOT_LOCKED`, `.INPUT_LOCKED` (`"vault.input_locked"`) aus `server/lib/vault/errors.js`; Audit-Aktionen `vault.evaluate_locked`, `vault.screenshot_locked`, `vault.input_locked` (`AUDIT_ACTIONS.VAULT_INPUT_LOCKED`, Task 1, `resource: "browser"`); `new VaultError(VaultErrorCode.X)` nimmt den Standardtext aus `VaultErrorMessage` (Task 1), `vaultGuard.js` schreibt keine eigenen Meldungen.
+  - Task 7: `session.contextKey`, `pool.get(id)`, `pool.listForCaller(…)`, `pool.onContextEnded(listener)`, `resolveSession(ctx, sessionId)` und `callerOf(ctx)` in `tools.js` (beide modulintern, `act` und `browser_list` nutzen sie), Pool-Record `contextKey`.
 - Produces (`server/lib/browser/vaultGuard.js`, Zustand je `contextKey` im Prozess; von Task 11 genutzt):
   - `markTainted(contextKey) → void`; `isTainted(contextKey) → boolean`.
   - `markFilled(contextKey, { backendNodeIds: number[], secret: string }) → void` — prüft im selben synchronen Schritt den Taint und wirft dann `VaultError(SESSION_TAINTED)`, ohne etwas zu merken; legt sonst die Kopie `encryptValue(secret, "vault:ctx:<contextKey>")` an und merkt die Knoten. Wirft, wenn `VAULT_KEY` fehlt (Fehler aus `encryptValue`). Task 11 ruft es unmittelbar vor dem ersten `Input.insertText`.
   - `isFilled(contextKey) → boolean`; `filledNodeIds(contextKey) → number[]`.
-  - `redactText(contextKey | contextKey[], text) → string` — ersetzt den Wert jeder Kopie roh, mit `encodeURIComponent` und formular-kodiert (`application/x-www-form-urlencoded`, Leerzeichen als `+`) durch `••••`, längste Form zuerst; Nicht-Strings unverändert; lässt sich eine Kopie nicht entschlüsseln, ist das Ergebnis nur `••••`.
+  - `redactText(contextKey | contextKey[], text) → string` — ersetzt den Wert jeder Kopie roh, mit `encodeURIComponent` und formular-kodiert (`application/x-www-form-urlencoded`, Leerzeichen als `+`) und whitespace-normalisiert (Folgen von Leerraum zu einem Leerzeichen, außen getrimmt, wie `document.title` und `innerText` sie zeigen) durch `••••`, längste Form zuerst, leere Formen ausgelassen; Nicht-Strings unverändert; lässt sich eine Kopie nicht entschlüsseln, ist das Ergebnis nur `••••`.
   - `forgetContext(contextKey) → void` (in `server/lib/browser/index.js` an `pool.onContextEnded` gehängt).
   - `assertEvaluateAllowed(session) → void` — markiert zuerst den Taint, wirft dann im befüllten Kontext `VaultError(EVALUATE_LOCKED)`; synchron.
   - `assertScreenshotAllowed(session) → Promise<void>` — wirft `VaultError(SCREENSHOT_LOCKED)`, wenn ein befüllter Knoten per `DOM.describeNode` noch existiert und `type` nicht `password` ist.
+  - `assertInputAllowed(session, tool, args) → void` — synchron: `browser_click` mit `button: "middle"` wirft immer `VaultError(INPUT_LOCKED)` (Mittelklick fügt die primäre Auswahl ein, die alle Kontexte einer Instanz teilen); im befüllten Kontext auch `browser_key` mit Control, Meta oder Shift (außer genau `Shift+Tab`, Zerlegung mit `parseKey` aus `actions.js` wie beim Senden) und `browser_click` mit `clickCount > 1`. Andere Werkzeuge und Argumente passieren.
   - `findPasswordFieldIds(session) → Promise<number[]>` — `DOM.getFlattenedDocument({ depth: -1, pierce: true })`, alle `<input type=password>` (auch Same-Process-iframes, Shadow-DOM).
   - `_resetForTests()`.
   - `snapshot.js`: `buildSnapshot(nodes, refs, { redactBackendIds = new Set() } = {})`, Export `REDACTED = "••••"`.
-  - `BrowserSession`: `evaluate(expression)` geht durch `assertEvaluateAllowed`; neu `readyState() → Promise<string>` und `containsText(text) → Promise<boolean>` für `browser_wait` (eigene, feste Ausdrücke, setzen keinen Taint und sind im befüllten Kontext erlaubt); `screenshot()` prüft unmittelbar vor `Page.captureScreenshot`; `snapshot()` schwärzt Passwortfelder und befüllte Knoten.
-  - `tools.js`: `vault.evaluate_locked` und `vault.screenshot_locked` schreibt `act` ins Audit (`details: { url, sessionId, tool }`); `call` reicht `VaultError` mit Meldung durch statt `INTERNAL`; `recordBrowserAudit` filtert jeden String in `details` mit `redactText(session.contextKey, …)`. Task 11 schreibt diese beiden Audit-Aktionen nicht noch einmal.
+  - `actions.js`: zusätzliche Exporte `parseKey(combo) → { key, code, keyCode, text, modifiers }` und `MODIFIERS` (unverändert, nur exportiert); `typeText(send, backendNodeId, text, { submit = false, clearWithoutSelection = false } = {})` — mit `clearWithoutSelection` leert es das Ziel nach dem Klick per `DOM.resolveNode` + `Runtime.callFunctionOn("function () { this.value = ''; }")` statt Strg+A (`selectAll`), dann `Input.insertText`; ohne die Option unverändert.
+  - `BrowserSession`: `evaluate(expression)` geht durch `assertEvaluateAllowed`; neu `readyState() → Promise<string>` und `containsText(text) → Promise<boolean>` für `browser_wait` (eigene, feste Ausdrücke, setzen keinen Taint und sind im befüllten Kontext erlaubt; `containsText` sucht im mit `redactText` geschwärzten `innerText`, ein Teilstring des Werts ist also nicht zu finden); `type()` setzt `clearWithoutSelection: vaultGuard.isFilled(this.contextKey)` (nur für Textfelder, die Auswahl in `<select>` bleibt); `screenshot()` prüft unmittelbar vor `Page.captureScreenshot`; `snapshot()` schwärzt Passwortfelder und befüllte Knoten.
+  - `tools.js`: `act` ruft `vaultGuard.assertInputAllowed(session, name, args)` als Erstes nach dem Auflösen der Sitzung, vor `runAgent`; `vault.evaluate_locked`, `vault.screenshot_locked` und `vault.input_locked` schreibt `act` ins Audit (`LOCK_AUDIT`, `details: { url, sessionId, tool }`); `call` reicht `VaultError` als `<Meldung> (<vault-Code>)` durch statt `INTERNAL` (wie `browser_fill_credential` in Task 11; `BrowserError` bleibt ohne Code); `recordBrowserAudit` filtert jeden String in `details` mit `redactText(session.contextKey, …)`. Task 11 schreibt diese drei Audit-Aktionen nicht noch einmal.
 
 **Design:** kein UI-Anteil.
 
-**Tests:** 5 Tests in `vaultGuard.test.js` über die Naht `createBrowserTools` + echter `BrowserPool` + echte `BrowserSession` mit `helpers/fakeCdp.js` (Spec-Test 8 und 12 im Kleinen, Review Focus 1); die Chromium-Reihe in Task 11 prüft dieselben Annahmen gegen den echten AX-Baum und das echte DOM. (1) Snapshot schwärzt das Passwortfeld mit Nutzereingabe und das befüllte Feld nach dem Typwechsel auf `text`; Screenshot erlaubt, solange das Feld `password` ist, danach `vault.screenshot_locked` mit Audit und ohne Aufnahme. (2) Eine GET-Formular-URL mit dem Wert (formular-kodiert und mit `encodeURIComponent`) und ein Titel mit dem Rohwert erscheinen in `URL:`, `Title:`, `browser_list`, der Liste „Open sessions:“ eines anderen Aufrufers und im Audit (`details.url`) nur als `••••`; der Test hat keinen Vault-Eintrag, die Schwärzung lebt allein aus der Kontextkopie (der Fall „Werte nach `PATCH` gelöscht“ läuft in Task 11 gegen Chromium). (3) `browser_evaluate` im Popup eines befüllten Kontexts: `vault.evaluate_locked`, Audit, kein `Runtime.evaluate` erreicht die Seite. (4) `browser_evaluate` markiert den Kontext, bevor `Runtime.evaluate` gesendet wird, auch wenn der Ausdruck dann scheitert; ein anschließendes `markFilled` wirft `vault.session_tainted`; ein anderer Kontext bleibt sauber. (5) Kontextende: ein Popup allein beendet nichts, der Öffner beendet Kontext und Popups, `persistent` endet mit der letzten Sitzung, danach ist der Zustand weg. Nicht getestet: `redactText` je Kodierung einzeln (steckt in Test 2), `_resetForTests`, die Verdrahtung in `index.js` (eine Zeile Weiterreichung; der Test hängt `forgetContext` genauso an). SEC-SECRET-01 (kein Wert in Antwort, Audit, Fehlermeldung), SEC-ERR-01 (Fehlermeldungen gefiltert).
+**Tests:** 7 Tests: 6 in `vaultGuard.test.js` über die Naht `createBrowserTools` + echter `BrowserPool` + echte `BrowserSession` mit `helpers/fakeCdp.js` (Spec-Test 8 und 12 im Kleinen, Review Focus 1), 1 in `chromium.e2e.test.js` gegen echtes Chromium; die Chromium-Reihe in Task 11 prüft das Ausfüllen selbst. (1) Snapshot schwärzt das Passwortfeld mit Nutzereingabe und das befüllte Feld nach dem Typwechsel auf `text`; Screenshot erlaubt, solange das Feld `password` ist, danach `vault.screenshot_locked` mit Audit und ohne Aufnahme. (2) Eine GET-Formular-URL mit dem Wert (formular-kodiert und mit `encodeURIComponent`) und ein Titel mit dem Rohwert erscheinen in `URL:`, `Title:`, `browser_list`, der Liste „Open sessions:“ eines anderen Aufrufers und im Audit (`details.url`) nur als `••••`; `browser_wait` auf `text` findet sichtbaren Text, ein Teilstring des Werts endet mit `TIMEOUT`; der Test hat keinen Vault-Eintrag, die Schwärzung lebt allein aus der Kontextkopie (der Fall „Werte nach `PATCH` gelöscht“ läuft in Task 11 gegen Chromium). (3) `browser_evaluate` im Popup eines befüllten Kontexts: `vault.evaluate_locked`, Audit, kein `Runtime.evaluate` erreicht die Seite. (4) `browser_evaluate` markiert den Kontext, bevor `Runtime.evaluate` gesendet wird, auch wenn der Ausdruck dann scheitert; ein anschließendes `markFilled` wirft `vault.session_tainted`; ein anderer Kontext bleibt sauber. (5) Kontextende: ein Popup allein beendet nichts, der Öffner beendet Kontext und Popups, `persistent` endet mit der letzten Sitzung, danach ist der Zustand weg. (6) Auswahlsperre: Mittelklick ist schon vor dem Ausfüllen gesperrt (Antwort endet auf `(vault.input_locked)`), `Control+a` und Doppelklick erst danach; im befüllten Kontext enden `Control+a`, `Shift+ArrowLeft`, `clickCount: 2` und Mittelklick mit `vault.input_locked`, Audit je Versuch, kein `Input.*`-Ereignis erreicht die Seite; `Shift+Tab` und ein einfacher Klick gehen weiter; `browser_type` sendet vor dem Ausfüllen wie bisher Strg+A mit `selectAll`, im befüllten Kontext kein `Input.dispatchKeyEvent` mit `selectAll`, sondern leert per `Runtime.callFunctionOn` und tippt dann. (7) Chromium (per `OUTPOST_BROWSER_E2E_LAUNCHER` zugeschaltet): `browser_type` in ein echtes Passwortfeld, `markFilled` direkt auf dessen Knoten, Screenshot erlaubt; nach „Show password“ zeigt der Snapshot `value="••••"`, Screenshot und `browser_evaluate` sind gesperrt, Audit ohne Wert. Nicht getestet: `redactText` je Kodierung einzeln (steckt in Test 2) und für die whitespace-normalisierte Form (ein Eintrag in `variantsOf`), `_resetForTests`, die Verdrahtung in `index.js` (eine Zeile Weiterreichung; der Test hängt `forgetContext` genauso an), die Exporte in `actions.js` (Weiterreichung), `clearWithoutSelection` einzeln in `actions.test.js` (steckt in Test 6). SEC-SECRET-01 (kein Wert in Antwort, Audit, Fehlermeldung, Auswahl oder Zwischenablage), SEC-ERR-01 (Fehlermeldungen gefiltert).
 
-**Parallel:** Task 10, Task 12, Task 13, Task 14, Task 15 (keine gemeinsamen Dateien).
+**Parallel:** Task 3, Task 4, Task 12, Task 13, Task 14 (Welle B; keine gemeinsamen Dateien — Task 3 und Task 4 fassen `server/lib/browser/` nicht an, Tasks 12–14 nur `client/`; setzt Task 1 und Task 7 aus Welle A voraus).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -6839,6 +4414,7 @@ const setup = () => {
                 return { node };
             },
             "DOM.getContentQuads": { quads: [[0, 0, 20, 0, 20, 20, 0, 20]] },
+            "DOM.resolveNode": ({ backendNodeId }) => ({ object: { objectId: `obj-${backendNodeId}` } }),
             "Page.getLayoutMetrics": { cssLayoutViewport: { clientWidth: 1280, clientHeight: 800 } },
             "Page.captureScreenshot": { data: "UE5H" },
             "Runtime.evaluate": (params) => page.evaluate(params),
@@ -6849,7 +4425,7 @@ const setup = () => {
     const pool = new BrowserPool({ getSettings: async () => ({ enabled: true, maxSessions: 10, idleMinutes: 30 }), launcher, connectCdp });
     pool.onContextEnded(vaultGuard.forgetContext);
     const audit = [];
-    const tools = createBrowserTools({ getPool: () => pool, audit: async (entry) => { audit.push(entry); } });
+    const tools = createBrowserTools({ getPool: () => pool, audit: async (entry) => { audit.push(entry); }, sleep: async () => {} });
     const agent = (transportId) => ({ accountId: 1, keyId: 41, agent: { keyId: 41, entryId: 7, agentType: "claude" }, transportId, ipAddress: "10.0.0.5", userAgent: "claude-code" });
     const login = (transportId) => ({ accountId: 1, keyId: null, agent: null, transportId, ipAddress: "10.0.0.9", userAgent: "firefox" });
     const text = (result) => result.content.map((c) => c.text ?? "").join("");
@@ -6897,6 +4473,7 @@ test("a GET form that put the filled password into the URL leaks it neither to U
     });
     instances[0].emitEvent("Page.frameNavigated", { frame: { id: filled.targetId, url: "https://login.test/done" } }, filled.cdpSessionId);
     await flush();
+    page.evaluate = () => ({ result: { type: "string", value: `Welcome ${SECRET}\nSigned in` } });
 
     const snapshot = text(await tools.call("browser_snapshot", {}, agent("T")));
     const outputs = [
@@ -6904,10 +4481,15 @@ test("a GET form that put the filled password into the URL leaks it neither to U
         text(await tools.call("browser_click", { ref: /Username" \[ref=(e\d+)\]/.exec(snapshot)[1] }, agent("T"))),
         text(await tools.call("browser_list", {}, agent("T"))),
         text(await tools.call("browser_snapshot", { sessionId: "browser-unknown" }, login("L"))),
+        text(await tools.call("browser_wait", { condition: "text", value: "Signed in", timeoutMs: 1 }, agent("T"))),
     ];
     assert.match(outputs[0], /^URL: https:\/\/login\.test\/done\?user=alice&pw=••••&echo=••••$/m);
     assert.match(outputs[0], /^Title: Welcome ••••$/m);
     assert.match(outputs[3], /Open sessions:[\s\S]*pw=••••/);
+    assert.match(outputs[4], /^Title: Welcome ••••$/m, "browser_wait finds visible text");
+    const probe = await tools.call("browser_wait", { condition: "text", value: "ss wo", timeoutMs: 1 }, agent("T"));
+    assert.strictEqual(probe.isError, true);
+    assert.strictEqual(text(probe), 'Condition text "ss wo" not met within 1 ms', "a part of the filled value is not on the page for browser_wait");
     for (const leaked of ["p@ss", "%40ss", "word&1", "word%261"]) {
         assert.ok(outputs.every((output) => !output.includes(leaked)), `${leaked} reached the agent`);
         assert.ok(!JSON.stringify(audit).includes(leaked), `${leaked} reached the audit log`);
@@ -6981,12 +4563,109 @@ test("the guard forgets a context when it ends: an ephemeral one with its opener
     await flush();
     assert.strictEqual(vaultGuard.isTainted(p2.contextKey), false);
 });
+
+test("selecting text is locked once the context is filled and middle-click paste always; Shift+Tab, a plain click and browser_type without selection go on", async () => {
+    const { tools, audit, instances, agent, text, openSession } = setup();
+    const session = await openSession(agent("T"));
+    const ref = /Username" \[ref=(e\d+)\]/.exec(text(await tools.call("browser_snapshot", {}, agent("T"))))[1];
+    const locked = /^Selecting text and middle-click paste are locked in this session/;
+
+    const early = await tools.call("browser_click", { ref, button: "middle" }, agent("T"));
+    assert.strictEqual(early.isError, true);
+    assert.match(text(early), locked, "middle-click pastes the selection another context may hold");
+    assert.match(text(early), /\(vault\.input_locked\)$/, "the agent gets the code with the message");
+    assert.ok(!(await tools.call("browser_key", { key: "Control+a" }, agent("T"))).isError, "before a fill, select-all is fine");
+    assert.ok(!(await tools.call("browser_click", { ref, clickCount: 2 }, agent("T"))).isError);
+    const callsDuring = async (call) => {
+        const from = instances[0].calls.length;
+        assert.ok(!(await call()).isError);
+        return instances[0].calls.slice(from);
+    };
+    const selectsAll = (calls) => calls.some((c) => c.method === "Input.dispatchKeyEvent" && c.params.commands?.includes("selectAll"));
+    assert.ok(selectsAll(await callsDuring(() => tools.call("browser_type", { ref, text: "bob" }, agent("T")))), "before a fill, browser_type selects as before");
+
+    vaultGuard.markFilled(session.contextKey, { backendNodeIds: [33], secret: SECRET });
+    const input = () => instances[0].calls.filter((c) => c.method.startsWith("Input.")).length;
+    const before = input();
+    for (const [tool, args] of [
+        ["browser_key", { key: "Control+a" }],
+        ["browser_key", { key: "Shift+ArrowLeft" }],
+        ["browser_click", { ref, clickCount: 2 }],
+        ["browser_click", { ref, button: "middle" }],
+    ]) {
+        const refused = await tools.call(tool, args, agent("T"));
+        assert.strictEqual(refused.isError, true, `${tool} ${JSON.stringify(args)}`);
+        assert.match(text(refused), locked);
+    }
+    assert.strictEqual(input(), before, "no input event reached the page");
+    const typing = await callsDuring(() => tools.call("browser_type", { ref, text: "carol" }, agent("T")));
+    assert.ok(!selectsAll(typing), "in a filled context browser_type clears without selecting");
+    assert.deepStrictEqual(typing.filter((c) => c.method === "Runtime.callFunctionOn").map((c) => [c.params.objectId, c.params.functionDeclaration]),
+        [["obj-31", "function () { this.value = ''; }"]]);
+    assert.deepStrictEqual(typing.filter((c) => c.method === "Input.insertText").map((c) => c.params.text), ["carol"]);
+    assert.ok(!(await tools.call("browser_key", { key: "Shift+Tab" }, agent("T"))).isError);
+    assert.ok(!(await tools.call("browser_click", { ref }, agent("T"))).isError);
+    assert.deepStrictEqual(audit.filter((e) => e.action === "vault.input_locked").map((e) => e.details.tool),
+        ["browser_click", "browser_key", "browser_key", "browser_click", "browser_click"]);
+});
+```
+
+`server/lib/browser/__tests__/chromium.e2e.test.js`, am Dateiende nach Z. 102 anhängen (mit einer Leerzeile davor):
+
+```js
+test("against a real Chromium: a filled field stays masked after Show password, and screenshot and evaluate lock",
+    { skip: !LAUNCHER && "set OUTPOST_BROWSER_E2E_LAUNCHER and OUTPOST_BROWSER_E2E_PAGE_HOST" }, async (t) => {
+        process.env.VAULT_KEY ??= "5a".repeat(32);
+        const vaultGuard = require("../vaultGuard");
+        const value = "guard pa55&word";
+        const page = `<!doctype html><title>Guard</title>
+<input id="pass" type="password" aria-label="Password">
+<button type="button" onclick="const f = document.getElementById('pass'); f.type = f.type === 'password' ? 'text' : 'password'">Show password</button>`;
+        const server = http.createServer((req, res) => {
+            res.setHeader("content-type", "text/html");
+            res.end(page);
+        });
+        await new Promise((resolve) => server.listen(0, "0.0.0.0", resolve));
+        t.after(() => server.close());
+        const pool = new BrowserPool({
+            getSettings: async () => ({ enabled: true, maxSessions: 4, idleMinutes: 30, callbackHost: PAGE_HOST }),
+            launcher: createLauncherClient(async () => LAUNCHER),
+            createVia: async () => { throw new Error("via is part of the manual acceptance"); },
+        });
+        t.after(() => {
+            for (const instance of pool.live.values()) instance.cdp.close();
+        });
+        const audit = [];
+        const tools = require("../tools").createBrowserTools({ getPool: () => pool, audit: async (entry) => { audit.push(entry); } });
+        const ctx = { accountId: 1, keyId: null, agent: null, transportId: "E2E-GUARD", ipAddress: "127.0.0.1", userAgent: "e2e" };
+        const text = (result) => result.content.map((c) => c.text ?? "").join("");
+
+        const opened = text(await tools.call("browser_open", { url: `http://${PAGE_HOST}:${server.address().port}/` }, ctx));
+        const session = pool.get(/^Session: (\S+)/m.exec(opened)[1]);
+        const typed = text(await tools.call("browser_type", { ref: refOf(opened, 'textbox "Password"'), text: value }, ctx));
+        assert.ok(!typed.includes("pa55"), "the typed password does not reach the snapshot");
+        vaultGuard.markFilled(session.contextKey, { backendNodeIds: [session.refs.resolve(refOf(typed, 'textbox "Password"')).backendNodeId], secret: value });
+        assert.strictEqual((await tools.call("browser_screenshot", {}, ctx)).content[0].type, "image", "the filled field is still a password field");
+
+        const shown = text(await tools.call("browser_click", { ref: refOf(typed, 'button "Show password"') }, ctx));
+        assert.match(shown, /- textbox "Password" \[ref=e\d+\] value="••••"/);
+        assert.ok(!shown.includes("pa55"), "the value in plain text does not reach the snapshot");
+        const shot = await tools.call("browser_screenshot", {}, ctx);
+        assert.strictEqual(shot.isError, true);
+        assert.match(text(shot), /browser_screenshot is locked/);
+        const evaluated = await tools.call("browser_evaluate", { expression: "document.getElementById('pass').value" }, ctx);
+        assert.strictEqual(evaluated.isError, true);
+        assert.match(text(evaluated), /browser_evaluate is locked/);
+        assert.deepStrictEqual(audit.filter((e) => e.action.startsWith("vault.")).map((e) => e.action), ["vault.screenshot_locked", "vault.evaluate_locked"]);
+        assert.ok(!JSON.stringify(audit).includes("pa55"));
+        await pool.close(session.id, "test");
+    });
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `node --test server/lib/browser/__tests__/vaultGuard.test.js`
-Expected: FAIL — `Cannot find module '../vaultGuard'`.
+Run: `node --test server/lib/browser/__tests__/vaultGuard.test.js server/lib/browser/__tests__/chromium.e2e.test.js`
+Expected: FAIL — `vaultGuard.test.js`: `Cannot find module '../vaultGuard'`; der neue Chromium-Test ist ohne `OUTPOST_BROWSER_E2E_LAUNCHER` übersprungen (mit Umgebung scheitert er am selben `require`).
 
 - [ ] **Step 3: `buildSnapshot` schwärzt Werte nach `backendNodeId`**
 
@@ -7031,6 +4710,7 @@ module.exports = { RefTable, buildSnapshot, REDACTED };
 const { encryptValue, decryptValue } = require("../vault/crypto");
 const { VaultError, VaultErrorCode } = require("../vault/errors");
 const { REDACTED } = require("./snapshot");
+const { parseKey, MODIFIERS } = require("./actions");
 
 const GONE = /No node (found|with given id)|detached from document/i;
 const contexts = new Map();
@@ -7069,8 +4749,13 @@ const isFilled = (contextKey) => contexts.get(contextKey)?.filled === true;
 
 const filledNodeIds = (contextKey) => [...(contexts.get(contextKey)?.nodeIds ?? [])];
 
-const variantsOf = (secret) => [...new Set([secret, encodeURIComponent(secret), new URLSearchParams([["", secret]]).toString().slice(1)])]
-    .sort((a, b) => b.length - a.length);
+// document.title and innerText collapse runs of whitespace, so the value can show up in that form too.
+const variantsOf = (secret) => [...new Set([
+    secret,
+    encodeURIComponent(secret),
+    new URLSearchParams([["", secret]]).toString().slice(1),
+    secret.replace(/\s+/g, " ").trim(),
+])].filter(Boolean).sort((a, b) => b.length - a.length);
 
 const redactText = (contextKeys, text) => {
     if (typeof text !== "string") return text;
@@ -7115,6 +4800,22 @@ const assertScreenshotAllowed = async (session) => {
     }
 };
 
+const SELECTING = MODIFIERS.Control | MODIFIERS.Meta | MODIFIERS.Shift;
+
+const assertInputAllowed = (session, tool, args) => {
+    // Middle-click pastes the primary selection, which every context of the instance shares: a fill elsewhere may have put the value there.
+    if (tool === "browser_click" && args.button === "middle")
+        throw new VaultError(VaultErrorCode.INPUT_LOCKED);
+    if (!isFilled(session.contextKey)) return;
+    if (tool === "browser_click" && Math.trunc(Number(args.clickCount)) > 1)
+        throw new VaultError(VaultErrorCode.INPUT_LOCKED);
+    if (tool === "browser_key") {
+        const { key, modifiers } = parseKey(args.key);
+        if (modifiers & SELECTING && !(modifiers === MODIFIERS.Shift && key === "Tab"))
+            throw new VaultError(VaultErrorCode.INPUT_LOCKED);
+    }
+};
+
 const findPasswordFieldIds = async (session) => {
     const { nodes } = await session.agentSend("DOM.getFlattenedDocument", { depth: -1, pierce: true });
     return (nodes ?? [])
@@ -7126,11 +4827,37 @@ const _resetForTests = () => contexts.clear();
 
 module.exports = {
     markTainted, isTainted, markFilled, isFilled, filledNodeIds, redactText, forgetContext,
-    assertEvaluateAllowed, assertScreenshotAllowed, findPasswordFieldIds, _resetForTests,
+    assertEvaluateAllowed, assertScreenshotAllowed, assertInputAllowed, findPasswordFieldIds, _resetForTests,
 };
 ```
 
-- [ ] **Step 5: `BrowserSession` — Snapshot, Screenshot, evaluate**
+`server/lib/browser/actions.js`, `typeText` (Z. 95-103) nachher:
+
+```js
+const typeText = async (send, backendNodeId, text, { submit = false, clearWithoutSelection = false } = {}) => {
+    await click(send, backendNodeId);
+    if (clearWithoutSelection) {
+        // A selection of a filled field lands in the primary selection, which other contexts can paste.
+        const { object } = await send("DOM.resolveNode", { backendNodeId });
+        await send("Runtime.callFunctionOn", { objectId: object.objectId, functionDeclaration: "function () { this.value = ''; }" });
+    } else {
+        // "commands" makes select-all work regardless of the platform's shortcut mapping.
+        const selectAll = { key: "a", code: "KeyA", windowsVirtualKeyCode: 65, modifiers: MODIFIERS.Control };
+        await send("Input.dispatchKeyEvent", { type: "rawKeyDown", ...selectAll, commands: ["selectAll"] });
+        await send("Input.dispatchKeyEvent", { type: "keyUp", ...selectAll });
+    }
+    await send("Input.insertText", { text: String(text) });
+    if (submit) await pressKey(send, "Enter");
+};
+```
+
+`module.exports` (Z. 126) nachher — die Sperre zerlegt Tastenkombinationen mit demselben Parser wie `pressKey`:
+
+```js
+module.exports = { clickablePoint, click, typeText, selectOption, pressKey, scroll, parseKey, MODIFIERS };
+```
+
+- [ ] **Step 5: `BrowserSession` — Snapshot, Eingabe, Screenshot, evaluate**
 
 `server/lib/browser/BrowserSession.js`, nach `const actions = require("./actions");` (Z. 6):
 
@@ -7149,6 +4876,17 @@ const vaultGuard = require("./vaultGuard");
         ]);
         const redactBackendIds = new Set([...passwordFieldIds, ...vaultGuard.filledNodeIds(this.contextKey)]);
         return buildSnapshot(nodes ?? [], this.refs, { redactBackendIds });
+    }
+```
+
+`type()` (Z. 237-242) nachher — im befüllten Kontext leert `browser_type` das Feld ohne Auswahl:
+
+```js
+    async type(ref, text, options = {}) {
+        const { backendNodeId, label, options: choices } = this.refs.resolve(ref);
+        if (choices) await actions.selectOption(this.agentSend, backendNodeId, choices, text);
+        else await actions.typeText(this.agentSend, backendNodeId, text, { ...options, clearWithoutSelection: vaultGuard.isFilled(this.contextKey) });
+        return label;
     }
 ```
 
@@ -7172,7 +4910,9 @@ const vaultGuard = require("./vaultGuard");
     }
 
     async containsText(text) {
-        return (await this.#evaluate(`(document.body?.innerText ?? '').includes(${JSON.stringify(String(text))})`)) === true;
+        // Searching the redacted text: otherwise waiting for parts of the filled value would read it back guess by guess.
+        const visible = vaultGuard.redactText(this.contextKey, await this.#evaluate("document.body?.innerText ?? ''"));
+        return typeof visible === "string" && visible.includes(String(text));
     }
 
     async #evaluate(expression) {
@@ -7183,7 +4923,7 @@ const vaultGuard = require("./vaultGuard");
     }
 ```
 
-- [ ] **Step 6: Werkzeuge — Textfilter, Sperr-Audit, `browser_wait` ohne Taint**
+- [ ] **Step 6: Werkzeuge — Textfilter, Eingabesperre, Sperr-Audit, `browser_wait` ohne Taint**
 
 `server/lib/browser/tools.js`, nach `const { BrowserError, BrowserErrorCode } = require("./errors");`:
 
@@ -7201,7 +4941,8 @@ const formatSessions = (sessions, pool) => sessions
     .join("\n");
 const errorResult = (err, pool) => {
     const list = err.details?.sessions?.length ? `\nOpen sessions:\n${formatSessions(err.details.sessions, pool)}` : "";
-    return { isError: true, content: [{ type: "text", text: `${err.message}${list}` }] };
+    const code = err instanceof VaultError ? ` (${err.code})` : "";
+    return { isError: true, content: [{ type: "text", text: `${err.message}${code}${list}` }] };
 };
 const pageResult = (session, snapshot, note = "") =>
     textResult(vaultGuard.redactText(session.contextKey, `Session: ${session.id}\nURL: ${session.state.url}\nTitle: ${session.state.title}${note}\n\n${snapshot}`));
@@ -7212,6 +4953,7 @@ const redactError = (session, err) => {
 const LOCK_AUDIT = Object.freeze({
     [VaultErrorCode.EVALUATE_LOCKED]: "vault.evaluate_locked",
     [VaultErrorCode.SCREENSHOT_LOCKED]: "vault.screenshot_locked",
+    [VaultErrorCode.INPUT_LOCKED]: "vault.input_locked",
 });
 ```
 
@@ -7222,12 +4964,13 @@ const LOCK_AUDIT = Object.freeze({
         .map(([key, value]) => [key, vaultGuard.redactText(session.contextKey, value)])),
 ```
 
-`act` in `createBrowserTools` nachher (Seitentexte in Fehlern, etwa ein `alert` mit dem Wert in `DIALOG_PENDING`, laufen durch denselben Filter):
+`act` in `createBrowserTools` nachher (Seitentexte in Fehlern, etwa ein `alert` mit dem Wert in `DIALOG_PENDING`, laufen durch denselben Filter; die Eingabesperre steht im `try`, damit ihr Audit über `LOCK_AUDIT` läuft, und vor `runAgent`, damit nichts die Seite erreicht):
 
 ```js
     const act = (name, fn) => async (args, ctx) => {
         const session = resolveSession(ctx, args.sessionId);
         try {
+            vaultGuard.assertInputAllowed(session, name, args);
             return await session.runAgent(name, () => fn(session, args, ctx));
         } catch (err) {
             if (Object.hasOwn(LOCK_AUDIT, err?.code)) await record(ctx, session, LOCK_AUDIT[err.code], { tool: name });
@@ -7290,1049 +5033,21 @@ In `getBrowserPool`, vor `pool.reconcile();` (Z. 17):
 - [ ] **Step 8: Run test to verify it passes**
 
 Run: `node --test server/lib/browser/__tests__/vaultGuard.test.js`
-Expected: PASS, 5 Tests.
+Expected: PASS, 6 Tests.
+
+Run (mit laufendem `outpost-browser`-Container): `OUTPOST_BROWSER_E2E_LAUNCHER=<Launcher-Adresse wie unter Einstellungen › Browser> OUTPOST_BROWSER_E2E_PAGE_HOST=<vom Container aus erreichbare Adresse dieses Rechners> node --test server/lib/browser/__tests__/chromium.e2e.test.js`
+Expected: PASS, 2 Tests (der bestehende und der neue). Ohne Container bleibt der Lauf in Step 9 übersprungen; dann diesen Lauf in der Abnahme (Task 17) nachholen.
 
 - [ ] **Step 9: Browser-Tests gegenprüfen**
 
 Run: `node --test server/lib/browser/__tests__/*.test.js`
-Expected: PASS (Chromium-Test übersprungen ohne `OUTPOST_BROWSER_E2E_LAUNCHER`). `snapshot.test.js` und `snapshotStale.test.js` belegen, dass `buildSnapshot` ohne Optionen unverändert arbeitet; `sessionState.test.js` läuft mit dem zusätzlichen `DOM.getFlattenedDocument` (Fake antwortet `{}`); `tools.test.js` belegt, dass das Audit ohne befüllten Kontext unverändert bleibt.
+Expected: PASS (beide Chromium-Tests übersprungen ohne `OUTPOST_BROWSER_E2E_LAUNCHER`). `snapshot.test.js` und `snapshotStale.test.js` belegen, dass `buildSnapshot` ohne Optionen unverändert arbeitet; `sessionState.test.js` läuft mit dem zusätzlichen `DOM.getFlattenedDocument` (Fake antwortet `{}`); `tools.test.js` belegt, dass das Audit ohne befüllten Kontext unverändert bleibt.
 
 - [ ] **Step 10: Commit**
 
 ```bash
-git add server/lib/browser/vaultGuard.js server/lib/browser/snapshot.js server/lib/browser/BrowserSession.js server/lib/browser/tools.js server/lib/browser/index.js server/lib/browser/__tests__/tools.test.js server/lib/browser/__tests__/vaultGuard.test.js
-git commit -m "Vault: Browser schwärzt Passwörter und sperrt evaluate und Screenshot nach dem Ausfüllen"
-```
-
----
-
-### Task 11: Vault-MCP-Anbieter (`vault_list`, `browser_fill_credential`)
-
-**Files:**
-- Create: `server/lib/vault/fill.js` (Prüfungen 3a/3b, 4, 5, Fokusprüfung, Ausfüllen per CDP)
-- Create: `server/lib/vault/mcpProvider.js` (`createVaultProvider`, Werkzeugdefinitionen, Ablauf mit Freigabe, Audit)
-- Create: `server/lib/vault/__tests__/helpers/vaultBed.js` (Test-Helfer: ersetzt Sichtbarkeit, Werte, Rechte und Modelle über `require.cache`; von beiden Testdateien dieses Tasks genutzt, kein `*.test.js`, läuft also nicht selbst)
-- Test: `server/lib/vault/__tests__/mcpProvider.test.js`
-- Modify: `server/routes/mcp.js` (Stand nach Task 2: Kopf mit `browserTools`/`browserProvider`/`createMcpServer`)
-- Modify: `server/lib/mcp/__tests__/mcpRoute.test.js` (aus Task 2: Fakes für die Vault-Module vor `require("../../../routes/mcp")`)
-- Modify: `server/lib/browser/__tests__/chromium.e2e.test.js` (neue `require`-Zeilen nach Z. 8, Testseiten und Helfer nach Z. 22, zwei neue Tests am Dateiende; der bestehende Test ab Z. 24 bleibt unverändert)
-
-**Interfaces:**
-- Consumes:
-  - Task 1: `VaultError(code, message = VaultErrorMessage[code], details = {})` (ohne Meldung gilt der Standardtext), `VaultErrorCode.{ITEM_UNKNOWN, WRONG_TYPE, ITEM_UNREADABLE, SESSION_TAINTED, VIA_NOT_ALLOWED, PERSISTENT_NOT_ALLOWED, ORIGIN_MISMATCH, NOT_PASSWORD_FIELD, BAD_USERNAME_FIELD, FOCUS_LOST, APPROVAL_TIMEOUT, APPROVAL_UNAVAILABLE, APPROVAL_PENDING, APPROVAL_BUSY, APPROVAL_DENIED, CLIENT_GONE, RATE_LIMITED, NO_SECRET}` (`server/lib/vault/errors.js`); `readSecret(itemId, field) → Promise<string|null>` (`secrets.js`); `isVaultEnabled() → boolean` (`state.js`); `Permission.VAULT_USE`; Audit-Aktionen `vault.use`, `vault.use_denied`, `vault.item_unreadable`, `vault.persistent_not_allowed`, Audit-Konvention `resource: "vault"`, `resourceId: item.id` (falls ein Eintrag feststeht), `details.item: itemRef(item)`; Modell `VaultItem` (`lastUsedAt`); `process.env.VAULT_KEY` (64 Hex) für `vaultGuard.markFilled`.
-  - Task 2: `createMcpServer({ providers, now })` aus `server/lib/mcp/server.js`; `Provider = { name, available(ctx) → Promise<boolean>, list(ctx) → Tool[], has(name, ctx) → boolean, call(name, args, ctx) → Promise<ToolResult>, forgetTransport(transportId) → void }`; `ctx = { accountId, agent, keyId, impersonatorId, transportId, ipAddress, userAgent, signal }` (`impersonatorId` = `req.session?.impersonatorId ?? null`); `handle({ body, transportId, accountId, keyId = null, agent = null, impersonatorId = null, ipAddress, userAgent, signal })`. Der Rahmen ruft je Anfrage `await provider.available(ctx)` vor `list(ctx)`/`has(name, ctx)` mit demselben `ctx`-Objekt (Task 2, `availableProviders`); der Vault-Anbieter merkt sich darin `connect.browser` je `ctx` in einer `WeakMap`. Modulweite Konstante `browserTools` in `server/routes/mcp.js`; Testdatei `server/lib/mcp/__tests__/mcpRoute.test.js`.
-  - Task 3: `itemRef(item) → string`, `visibleItems({ accountId, agent }) → Promise<VaultItem[]>`, `findVisibleItem({ accountId, agent }, ref) → Promise<VaultItem>` (wirft `VaultError(ITEM_UNKNOWN)`).
-  - Task 6: `requestApproval({ accountId, keyId, transportId, agentType, entryName, item, target, signal }) → Promise<"once"|"session">`, `forgetTransport(transportId)`.
-  - Task 7: `resolveCallerSession(pool, ctx, sessionId, defaults: Map<transportId, sessionId>) → BrowserSession` (Export aus `server/lib/browser/tools.js`); `createBrowserTools(…).defaultSessions` (die Map, nur lesen), Aufruf `resolveCallerSession(getPool(), ctx, args.sessionId, browserTools.defaultSessions)`; `session.keyId`, `session.contextKey`; `pool.getOwned(accountId, sessionId, { keyId } = {})`, `pool.listForCaller({ accountId, keyId })`; Popups übernehmen `contextKey` vom Öffner. Der `via`-Verstoß beim Öffnen ist dort ein Browser-Fehler; Prüfung 3b dieses Tasks (Sitzung läuft bereits über `via` bzw. `persistent`) wirft `VaultError(VIA_NOT_ALLOWED|PERSISTENT_NOT_ALLOWED)`.
-  - Task 9: `vaultGuard.isTainted(contextKey) → boolean`; `vaultGuard.markFilled(contextKey, { backendNodeIds, secret }) → void` (synchron; prüft im selben Schritt den Taint und wirft `VaultError(SESSION_TAINTED)`, ohne etwas zu merken — dieser Task ruft es unmittelbar vor dem ersten `Input.insertText` und behandelt den Wurf wie Prüfung 3a); `vaultGuard.isFilled(contextKey) → boolean`; `BrowserSession.evaluate()` ruft `assertEvaluateAllowed(session)` (markiert Taint); Schwärzung in `buildSnapshot` und den Textfiltern von `tools.js`; Screenshot-Sperre. Die Audits `vault.evaluate_locked`/`vault.screenshot_locked` schreibt `tools.js`, nicht dieser Task.
-- Produces:
-  - `createVaultProvider({ getPool, getBrowserTools, approvals = require("./approvals"), audit = defaultAudit }) → Provider` mit `name: "vault"`; `available(ctx)` = `isVaultEnabled()` und (`vault.use` oder aktives Mitglied einer Organisation); `list(ctx)` → `[vault_list]` bzw. `[vault_list, browser_fill_credential]` mit `connect.browser`; `has(name, ctx)` entsprechend; `forgetTransport(id)` → `approvals.forgetTransport(id)`.
-  - `vault_list` → `{ content: [{ type: "text", text: JSON }] }`, JSON-Liste von `{ item, owner: "personal"|<Organisationsname>, type, description, username?, host?, origins?, hosts?, approvalRequired, usableBy: string[] }`; nie Werte.
-  - `browser_fill_credential({ item, passwordRef, usernameRef?, sessionId? })` → Text exakt `Benutzername und Passwort von <item> eingetragen.` bzw. ohne `usernameRef` `Passwort von <item> eingetragen.`; Fehler als `{ isError: true }` mit `<Meldung> (<vault-Code>)`.
-  - `fill.js`: `checkFillTarget(session, { passwordRef, usernameRef }, origins) → Promise<{ passwordNodeId, usernameNodeId|null }>`; `fillCredential(session, { passwordNodeId, usernameNodeId, username, password }) → Promise<void>` (je Feld `DOM.focus`, Alles-Markieren, Fokusprüfung über `backendNodeId` durch Shadow-Roots und Frames, dann `vaultGuard.markFilled` unmittelbar vor dem ersten `Input.insertText`, nur mit dem Passwortfeld); **zusätzlich** `assertFillableSession(session) → void` (Prüfungen 3a, 3b) und `normalizeOrigin(value) → string|null` (`new URL(value).origin`, also dieselbe Form, in der Task 5 `origins` speichert — auf gespeicherte Ursprünge angewandt ändert sie nichts; `null` bei opaken/ungültigen Ursprüngen). Verglichen wird `normalizeOrigin` des Frames und jedes Vorfahren-Frames gegen die Menge `origins.map(normalizeOrigin)`.
-  - Fehler `VaultError(RATE_LIMITED)` bei mehr als 20 Ausfüllversuchen je Aufrufer (`accountId`, `keyId`) und Minute (SEC-RATE-01) und `VaultError(NO_SECRET)` für einen Login-Eintrag ohne gespeichertes Passwort; beide mit dem Standardtext aus `VaultErrorMessage`. `NO_SECRET` geht als `vault.use_denied` mit `code: "vault.no_secret"` ins Audit, nicht als `vault.item_unreadable` (das bleibt dem Entschlüsselungsfehler aus `readSecret`).
-  - Audit-Details von `vault.use`/`vault.use_denied`/`vault.item_unreadable`/`vault.persistent_not_allowed` enthalten `impersonatorId`, wenn `ctx.impersonatorId` gesetzt ist (Impersonations-Session), sonst fehlt das Feld.
-  - Test-Helfer `vaultBed.js`: `state`, `reset({ items, secrets, permissions, memberships, orgs, entries })`.
-
-**Design:** kein UI-Anteil.
-
-**Tests:** test-first für `mcpProvider.test.js` (der Vertrag steht in der Spec). Fünf Tests über die Naht echte `BrowserSession` auf `createFakeCdp` + echte `createBrowserTools` + Fake-Pool + Fake-Freigaben mit steuerbarer Antwort: (1) Spec-Test 5: serialisierte `vault_list`-Antwort enthält keinen gespeicherten Wert, `readSecret` wird nie aufgerufen, Organisationseintrag als `org:3/shop-api` mit Organisationsname; (2) Freigabe nach 100 s (Fake-Uhr) füllt noch, die Sitzung ist während der Wartezeit frei, ein zweiter Aufruf bekommt `vault.approval_pending` statt `BUSY`, Audit `vault.use` ohne Wert, `lastUsedAt` gesetzt; (3) Review Focus 2: `browser_evaluate` während der Wartezeit → `vault.session_tainted`, nichts getippt, Audit `vault.use_denied` mit Code, `after_approval`, Ziel; (4) über `createMcpServer`: ohne `connect.browser` nur `vault_list`, `browser_fill_credential` ist `-32602`; (5) Fokusverlust → `vault.focus_lost` ohne `Input.insertText`. Chromium-Reihe (per `OUTPOST_BROWSER_E2E_LAUNCHER` zugeschaltet): (6) Spec-Test 7 inkl. Erfolg im eigenen iframe (Fokusprüfung durch Frames); (7) Spec-Test 8 + Review Focus 1 + Spec-Test 12. Nicht getestet: Werkzeug-Schemas und Beschreibungen (Konstanten), Registrierung in `mcp.js` (Weiterreichung), Weiterreichung der übrigen Freigabe-Fehler (Task 6 testet sie), Nachschlagen des Servernamens für die Karte, die Drossel von 20 Ausfüllungen je Minute (eine Zeile Zählung, Konfig-nah), `vault.no_secret` (eine Verzweigung mit Standardtext), die Übernahme von `ctx.impersonatorId` in die Audit-Details (Weiterreichung; Task 17 prüft sie manuell). SEC: SEC-INPUT-01 (Argumentprüfung), SEC-ERR-01 (unerwartete Fehler nur generisch), SEC-SECRET-01 (Tests 1, 2, 7), SEC-IDOR-01/SEC-TENANT-01 (`findVisibleItem`, `resolveCallerSession`), SEC-RATE-01 (Drossel), SEC-SESS-02 (`forgetTransport` an Freigaben), SEC-PII-01 (Audit ohne Benutzernamen und Werte).
-
-**Parallel:** Task 12, 13, 14, 15 (keine gemeinsamen Dateien).
-
-- [ ] **Step 1: Test-Helfer anlegen**
-
-`server/lib/vault/__tests__/helpers/vaultBed.js`:
-
-```js
-const { Sequelize } = require("sequelize");
-const { VaultError, VaultErrorCode } = require("../../errors");
-
-const fake = (path, exports) => {
-    const resolved = require.resolve(path);
-    require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports };
-};
-
-const state = {
-    enabled: true, items: [], secrets: new Map(), permissions: new Set(), memberships: 0,
-    orgs: [], entries: new Map(), updates: [], secretReads: 0,
-};
-
-const itemRef = (item) => (item.organizationId ? `org:${item.organizationId}/${item.name}` : item.name);
-
-// Installed on require, before the provider is loaded: it destructures these modules.
-fake("../../../../utils/database", new Sequelize({ dialect: "sqlite", storage: ":memory:", logging: false }));
-fake("../../state", { isVaultEnabled: () => state.enabled });
-fake("../../visibility", {
-    itemRef,
-    visibleItems: async () => state.items.map((item) => ({ ...item })),
-    findVisibleItem: async (caller, ref) => {
-        const item = state.items.find((candidate) => itemRef(candidate) === ref);
-        if (!item) throw new VaultError(VaultErrorCode.ITEM_UNKNOWN, `No vault entry ${ref} is available to this connection.`);
-        return { ...item };
-    },
-});
-fake("../../secrets", {
-    readSecret: async (itemId, field) => {
-        state.secretReads += 1;
-        return state.secrets.get(`${itemId}:${field}`) ?? null;
-    },
-});
-fake("../../../../utils/permission", { hasAccountPermission: async (accountId, permission) => state.permissions.has(permission) });
-fake("../../../../models/VaultItem", {
-    update: async (values, options) => {
-        state.updates.push({ values, where: options.where });
-        return [1];
-    },
-});
-fake("../../../../models/Organization", { findAll: async () => state.orgs });
-fake("../../../../models/OrganizationMember", { count: async () => state.memberships });
-fake("../../../../models/Entry", { findByPk: async (id) => state.entries.get(id) ?? null });
-
-const reset = ({ items = [], secrets = {}, permissions = [], memberships = 0, orgs = [], entries = [] } = {}) => {
-    Object.assign(state, {
-        enabled: true, items, secrets: new Map(Object.entries(secrets)), permissions: new Set(permissions), memberships,
-        orgs, entries: new Map(entries.map((entry) => [entry.id, entry])), updates: [], secretReads: 0,
-    });
-};
-
-module.exports = { state, reset };
-```
-
-- [ ] **Step 2: Write the failing test**
-
-`server/lib/vault/__tests__/mcpProvider.test.js`:
-
-```js
-process.env.VAULT_KEY = "ab".repeat(32);
-const test = require("node:test");
-const assert = require("node:assert");
-const bed = require("./helpers/vaultBed");
-const { BrowserSession } = require("../../browser/BrowserSession");
-const { createFakeCdp, flush } = require("../../browser/__tests__/helpers/fakeCdp");
-const { createBrowserTools } = require("../../browser/tools");
-const vaultGuard = require("../../browser/vaultGuard");
-const { createMcpServer } = require("../../mcp/server");
-const { Permission } = require("../../../permissions/registry");
-const { VaultError, VaultErrorCode } = require("../errors");
-const { createVaultProvider } = require("../mcpProvider");
-
-const FILL = "browser_fill_credential";
-const SECRET = "hunter2-vault";
-const LOGIN = {
-    id: 41, accountId: 1, organizationId: null, name: "github", type: "login", description: null,
-    fields: { username: "ada", origins: ["https://login.test"] }, approvalRequired: false, allServers: true,
-};
-const ORG_API = {
-    id: 42, accountId: null, organizationId: 3, name: "shop-api", type: "api_key", description: "Shop API",
-    fields: { hosts: ["api.shop.test"], headerName: "Authorization", headerTemplate: "Bearer {{secret}}" }, approvalRequired: true, allServers: true,
-};
-
-const fakePage = () => {
-    const page = {
-        nodes: new Map([
-            [11, { origin: "https://login.test", ancestors: [], input: true, type: "password", connected: true }],
-            [12, { origin: "https://login.test", ancestors: [], input: true, type: "text", connected: true }],
-        ]),
-        focused: null,
-        holdFocus: false,
-    };
-    const nodeId = (objectId) => Number(objectId.slice("node-".length));
-    const cdp = createFakeCdp({
-        "DOM.resolveNode": ({ backendNodeId }) => ({ object: { objectId: `node-${backendNodeId}` } }),
-        "Runtime.evaluate": ({ expression }) => (expression === "document" ? { result: { objectId: "document" } } : { result: { value: 1 } }),
-        "Runtime.callFunctionOn": ({ objectId }) => {
-            if (objectId !== "document") return { result: { value: page.nodes.get(nodeId(objectId)) } };
-            return { result: page.focused === null ? { type: "object", subtype: "null", value: null } : { objectId: `node-${page.focused}` } };
-        },
-        "DOM.describeNode": ({ objectId }) => ({ node: { backendNodeId: nodeId(objectId), nodeName: "INPUT" } }),
-        "DOM.focus": ({ backendNodeId }) => {
-            if (!page.holdFocus) page.focused = backendNodeId;
-            return {};
-        },
-    });
-    return { page, cdp };
-};
-
-let opened = 0;
-const openSession = (cdp) => {
-    opened += 1;
-    const session = new BrowserSession({
-        id: `browser-${opened}`, accountId: 1, profile: "ephemeral", origin: "agent", cdp, targetId: `T${opened}`, cdpSessionId: `S${opened}`,
-    });
-    session.keyId = null;
-    session.contextKey = `ctx-${opened}`;
-    session.state.url = "https://login.test/signin";
-    session.refs.assign(11, 'textbox "Password"');
-    session.refs.assign(12, 'textbox "User"');
-    return session;
-};
-
-const fakePool = (sessions) => {
-    const mine = (accountId, keyId) => sessions.filter((s) => s.accountId === accountId && (keyId === null || s.keyId === keyId));
-    return {
-        getOwned: (accountId, id, { keyId = null } = {}) => mine(accountId, keyId).find((s) => s.id === id) ?? null,
-        listForCaller: ({ accountId, keyId = null }) => mine(accountId, keyId).map((s) => s.summary()),
-        listForAccount: (accountId) => mine(accountId, null).map((s) => s.summary()),
-    };
-};
-
-const fakeApprovals = () => {
-    const open = [];
-    return {
-        open,
-        requestApproval: (request) => {
-            if (open.some((o) => o.request.transportId === request.transportId && o.request.item.id === request.item.id))
-                return Promise.reject(new VaultError(VaultErrorCode.APPROVAL_PENDING, "Wait for the open approval."));
-            return new Promise((resolve) => {
-                const pending = {
-                    request,
-                    answer: (decision) => {
-                        open.splice(open.indexOf(pending), 1);
-                        resolve(decision);
-                    },
-                };
-                open.push(pending);
-            });
-        },
-        forgetTransport: () => {},
-    };
-};
-
-const setup = ({ items = [LOGIN], permissions = [Permission.VAULT_USE, Permission.CONNECT_BROWSER] } = {}) => {
-    bed.reset({ items, secrets: { "41:password": SECRET, "42:token": "tok-123-secret" }, permissions, orgs: [{ id: 3, name: "Shop GmbH" }] });
-    const { page, cdp } = fakePage();
-    const session = openSession(cdp);
-    const pool = fakePool([session]);
-    const audit = [];
-    const record = async (entry) => { audit.push(entry); };
-    const browserTools = createBrowserTools({ getPool: () => pool, audit: record });
-    const approvals = fakeApprovals();
-    const provider = createVaultProvider({ getPool: () => pool, getBrowserTools: () => browserTools, approvals, audit: record });
-    const ctx = (transportId = "A") => ({
-        accountId: 1, keyId: null, agent: null, impersonatorId: null, transportId, ipAddress: "10.0.0.1", userAgent: "claude-code", signal: new AbortController().signal,
-    });
-    const text = (result) => result.content.map((c) => c.text).join("");
-    const typed = () => cdp.callsOf("Input.insertText").map((call) => call.params.text);
-    const vaultAudit = () => audit.filter((entry) => entry.action.startsWith("vault."));
-    return { page, cdp, session, pool, audit, vaultAudit, browserTools, approvals, provider, ctx, text, typed };
-};
-
-const until = async (condition) => {
-    for (let i = 0; i < 200 && !condition(); i++) await flush();
-    assert.ok(condition(), "condition not reached");
-};
-
-const rpc = (id, method, params = {}) => ({ jsonrpc: "2.0", id, method, params });
-
-test("vault_list names every visible entry without a stored value; organization entries as org:<id>/<name>", async () => {
-    const { provider, ctx, text } = setup({ items: [LOGIN, ORG_API] });
-    const result = await provider.call("vault_list", {}, ctx());
-
-    const serialized = JSON.stringify(result);
-    for (const value of [SECRET, "tok-123-secret"]) assert.ok(!serialized.includes(value), `vault_list leaks ${value}`);
-    assert.strictEqual(bed.state.secretReads, 0, "vault_list never decrypts");
-    assert.deepStrictEqual(JSON.parse(text(result)), [
-        {
-            item: "github", owner: "personal", type: "login", description: null, username: "ada",
-            origins: ["https://login.test"], approvalRequired: false, usableBy: ["browser_fill_credential"],
-        },
-        {
-            item: "org:3/shop-api", owner: "Shop GmbH", type: "api_key", description: "Shop API",
-            hosts: ["api.shop.test"], approvalRequired: true, usableBy: [],
-        },
-    ]);
-});
-
-test("an approval answered after more than 90 s still fills: the wait runs outside runAgent and leaves the session free", async (t) => {
-    t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
-    const env = setup({ items: [{ ...LOGIN, approvalRequired: true }] });
-    const pending = env.provider.call(FILL, { item: "github", passwordRef: "e1", usernameRef: "e2" }, env.ctx("A"));
-    await until(() => env.approvals.open.length === 1);
-    assert.strictEqual(env.session.agentTool, null, "nobody holds the session while the user decides");
-    assert.strictEqual(env.approvals.open[0].request.target, "https://login.test");
-
-    const second = await env.provider.call(FILL, { item: "github", passwordRef: "e1" }, env.ctx("A"));
-    assert.match(env.text(second), /\(vault\.approval_pending\)$/, "a second call meets the open approval, not a busy session");
-
-    t.mock.timers.tick(100_000);
-    env.approvals.open[0].answer("once");
-    const result = await pending;
-
-    assert.strictEqual(env.text(result), "Benutzername und Passwort von github eingetragen.");
-    assert.deepStrictEqual(env.typed(), ["ada", SECRET]);
-    assert.ok(vaultGuard.isFilled(env.session.contextKey));
-    assert.deepStrictEqual(env.vaultAudit().map((entry) => entry.action), ["vault.use"]);
-    const [use] = env.vaultAudit();
-    assert.deepStrictEqual([use.resource, use.resourceId, use.details.item, use.details.target, use.details.approval],
-        ["vault", 41, "github", "https://login.test", "once"]);
-    assert.ok(!JSON.stringify(env.audit).includes(SECRET));
-    assert.deepStrictEqual(bed.state.updates.map((update) => update.where), [{ id: 41 }]);
-});
-
-test("browser_evaluate while the approval is open makes the fill fail with vault.session_tainted; nothing is typed", async () => {
-    const env = setup({ items: [{ ...LOGIN, approvalRequired: true }] });
-    const pending = env.provider.call(FILL, { item: "github", passwordRef: "e1", usernameRef: "e2" }, env.ctx("A"));
-    await until(() => env.approvals.open.length === 1);
-
-    const evaluated = await env.browserTools.call("browser_evaluate", { expression: "1", sessionId: env.session.id }, env.ctx("A"));
-    assert.ok(!evaluated.isError, "the session is free for other tools while the user decides");
-    env.approvals.open[0].answer("once");
-    const result = await pending;
-
-    assert.strictEqual(result.isError, true);
-    assert.match(env.text(result), /\(vault\.session_tainted\)$/);
-    assert.deepStrictEqual(env.typed(), []);
-    const denied = env.vaultAudit().find((entry) => entry.action === "vault.use_denied");
-    assert.deepStrictEqual([denied.details.code, denied.details.stage, denied.details.target, denied.details.item],
-        ["vault.session_tainted", "after_approval", "https://login.test", "github"]);
-});
-
-test("without connect.browser the MCP endpoint lists only vault_list and answers browser_fill_credential as an unknown tool", async () => {
-    const env = setup({ permissions: [Permission.VAULT_USE] });
-    const mcp = createMcpServer({ providers: [env.provider] });
-    const init = await mcp.handle({
-        body: rpc(1, "initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "claude-code", version: "1" } }), accountId: 1,
-    });
-    const transportId = init.headers["Mcp-Session-Id"];
-    const names = async () => (await mcp.handle({ body: rpc(2, "tools/list"), transportId, accountId: 1 })).body.result.tools.map((tool) => tool.name);
-
-    assert.deepStrictEqual(await names(), ["vault_list"]);
-    const called = await mcp.handle({ body: rpc(3, "tools/call", { name: FILL, arguments: { item: "github", passwordRef: "e1" } }), transportId, accountId: 1 });
-    assert.strictEqual(called.body.error.code, -32602);
-    assert.deepStrictEqual(env.typed(), []);
-
-    bed.state.permissions.add(Permission.CONNECT_BROWSER);
-    assert.deepStrictEqual(await names(), ["vault_list", FILL]);
-});
-
-test("when the page keeps the focus on another element the fill stops with vault.focus_lost before Input.insertText", async () => {
-    const env = setup();
-    env.page.focused = 99;
-    env.page.holdFocus = true;
-    const result = await env.provider.call(FILL, { item: "github", passwordRef: "e1" }, env.ctx("A"));
-
-    assert.match(env.text(result), /\(vault\.focus_lost\)$/);
-    assert.strictEqual(env.cdp.callsOf("Input.insertText").length, 0);
-    assert.strictEqual(env.vaultAudit().find((entry) => entry.action === "vault.use_denied").details.code, "vault.focus_lost");
-});
-```
-
-- [ ] **Step 3: Run test to verify it fails**
-
-Run: `node --test server/lib/vault/__tests__/mcpProvider.test.js`
-Expected: FAIL, alle Tests brechen beim Laden ab mit `Error: Cannot find module '../mcpProvider'`.
-
-- [ ] **Step 4: Implement `server/lib/vault/fill.js`**
-
-```js
-const vaultGuard = require("../browser/vaultGuard");
-const { BrowserError, BrowserErrorCode } = require("../browser/errors");
-const { VaultError, VaultErrorCode } = require("./errors");
-
-const OBJECT_GROUP = "vault-fill";
-const USERNAME_TYPES = new Set(["text", "email", "tel"]);
-const FRAME_OWNERS = new Set(["IFRAME", "FRAME"]);
-const MAX_FRAME_DEPTH = 16;
-const SELECT_ALL = { key: "a", code: "KeyA", windowsVirtualKeyCode: 65, modifiers: 2 };
-const GONE = /No node (found|with given id)|detached from document|Could not find node/i;
-
-// Runs in the realm of the element's own frame and reads only the global location, which is
-// unforgeable there. Getters such as ownerDocument can be replaced by page script to fake an origin.
-const INSPECT = `function () {
-    const ancestors = [];
-    for (let i = 0; i < location.ancestorOrigins.length; i++) ancestors.push(location.ancestorOrigins[i]);
-    const input = this instanceof HTMLInputElement;
-    return { origin: location.origin, ancestors, input, type: input ? this.type : null, connected: this.isConnected };
-}`;
-const DEEPEST_ACTIVE = `function () {
-    let el = this.activeElement;
-    while (el && el.shadowRoot && el.shadowRoot.activeElement) el = el.shadowRoot.activeElement;
-    return el;
-}`;
-
-const normalizeOrigin = (value) => {
-    try {
-        const { origin } = new URL(String(value));
-        return origin === "null" ? null : origin;
-    } catch {
-        return null;
-    }
-};
-
-const staleRef = () => new BrowserError(BrowserErrorCode.STALE_REF, "The element no longer exists; take a new snapshot");
-const unlessGone = (err) => {
-    if (err instanceof BrowserError || err instanceof VaultError) throw err;
-    if (GONE.test(err?.message ?? "")) throw staleRef();
-    throw err;
-};
-
-const assertFillableSession = (session) => {
-    if (vaultGuard.isTainted(session.contextKey)) throw new VaultError(VaultErrorCode.SESSION_TAINTED);
-    if (session.via)
-        throw new VaultError(VaultErrorCode.VIA_NOT_ALLOWED,
-            `Session ${session.id} runs via ${session.via}; a password is never typed into a tunneled page. Open the login page with browser_open without via.`);
-    if (session.profile === "persistent")
-        throw new VaultError(VaultErrorCode.PERSISTENT_NOT_ALLOWED,
-            `Session ${session.id} uses the persistent profile, where prepared pages survive on disk. Open a new session with browser_open without profile=persistent and fill there.`);
-};
-
-const inspect = async (session, ref) => {
-    const { backendNodeId } = session.refs.resolve(ref);
-    const info = await (async () => {
-        const { object } = await session.agentSend("DOM.resolveNode", { backendNodeId, objectGroup: OBJECT_GROUP });
-        const { result, exceptionDetails } = await session.agentSend("Runtime.callFunctionOn", {
-            objectId: object.objectId, functionDeclaration: INSPECT, returnByValue: true, objectGroup: OBJECT_GROUP,
-        });
-        return exceptionDetails ? null : result?.value;
-    })().catch(unlessGone);
-    if (!info?.connected) throw staleRef();
-    return { ref, backendNodeId, ...info };
-};
-
-const assertOrigins = (field, allowed) => {
-    if ([field.origin, ...field.ancestors].every((origin) => allowed.has(normalizeOrigin(origin)))) return;
-    const where = field.ancestors.length > 0 ? `${field.origin}, embedded in ${field.ancestors.join(" < ")}` : field.origin;
-    throw new VaultError(VaultErrorCode.ORIGIN_MISMATCH,
-        `${field.ref} is in a frame of ${where}, but this entry only fills on ${[...allowed].join(", ")}. Open the entry's login page directly; an embedding origin has to be added to the entry by the user.`);
-};
-
-const checkFillTarget = async (session, { passwordRef, usernameRef = null }, origins) => {
-    const allowed = new Set(origins.map(normalizeOrigin).filter(Boolean));
-    try {
-        const password = await inspect(session, passwordRef);
-        const username = usernameRef ? await inspect(session, usernameRef) : null;
-        assertOrigins(password, allowed);
-        if (username) assertOrigins(username, allowed);
-        if (!password.input || password.type !== "password")
-            throw new VaultError(VaultErrorCode.NOT_PASSWORD_FIELD,
-                `${passwordRef} is not an <input type="password">; pass the ref of the password field from the latest snapshot.`);
-        if (username && (!username.input || !USERNAME_TYPES.has(username.type) || username.origin !== password.origin))
-            throw new VaultError(VaultErrorCode.BAD_USERNAME_FIELD,
-                `${usernameRef} is not a text, email or tel input in the frame of the password field; pass another usernameRef or leave it out.`);
-        return { passwordNodeId: password.backendNodeId, usernameNodeId: username?.backendNodeId ?? null };
-    } finally {
-        session.send("Runtime.releaseObjectGroup", { objectGroup: OBJECT_GROUP }).catch(() => {});
-    }
-};
-
-const focusedNodeId = async (session) => {
-    const top = await session.agentSend("Runtime.evaluate", { expression: "document", objectGroup: OBJECT_GROUP });
-    let objectId = top.result?.objectId;
-    for (let depth = 0; objectId && depth < MAX_FRAME_DEPTH; depth++) {
-        const { result: active } = await session.agentSend("Runtime.callFunctionOn", { objectId, functionDeclaration: DEEPEST_ACTIVE, objectGroup: OBJECT_GROUP });
-        if (!active?.objectId) return null;
-        const { node } = await session.agentSend("DOM.describeNode", { objectId: active.objectId, depth: 1, pierce: true });
-        if (!FRAME_OWNERS.has(node.nodeName)) return node.backendNodeId;
-        if (!node.contentDocument) return null;
-        ({ object: { objectId } } = await session.agentSend("DOM.resolveNode", { backendNodeId: node.contentDocument.backendNodeId, objectGroup: OBJECT_GROUP }));
-    }
-    return null;
-};
-
-const typeInto = async (session, backendNodeId, text, beforeInsert) => {
-    await session.agentSend("DOM.focus", { backendNodeId }).catch((err) => {
-        if (GONE.test(err?.message ?? "")) throw staleRef();
-        throw new VaultError(VaultErrorCode.FOCUS_LOST, "The field cannot take the focus (hidden or disabled); nothing was typed into it. Take a new snapshot and pass the visible field.");
-    });
-    await session.agentSend("Input.dispatchKeyEvent", { type: "rawKeyDown", ...SELECT_ALL, commands: ["selectAll"] });
-    await session.agentSend("Input.dispatchKeyEvent", { type: "keyUp", ...SELECT_ALL });
-    if ((await focusedNodeId(session)) !== backendNodeId)
-        throw new VaultError(VaultErrorCode.FOCUS_LOST,
-            "The page moved the focus away from the field before typing; nothing was typed into it. Take a new snapshot and call browser_fill_credential again.");
-    beforeInsert();
-    await session.agentSend("Input.insertText", { text });
-};
-
-const fillCredential = async (session, { passwordNodeId, usernameNodeId = null, username = null, password }) => {
-    let marked = false;
-    // markFilled checks the taint in the same synchronous step, so no browser_evaluate in a popup of
-    // this context can slip in between the check and the first keystroke. Only the password field is
-    // marked: a filled field that is no longer type=password locks screenshots.
-    const markOnce = () => {
-        if (marked) return;
-        vaultGuard.markFilled(session.contextKey, { backendNodeIds: [passwordNodeId], secret: password });
-        marked = true;
-    };
-    try {
-        if (usernameNodeId !== null) await typeInto(session, usernameNodeId, username, markOnce);
-        await typeInto(session, passwordNodeId, password, markOnce);
-    } finally {
-        session.send("Runtime.releaseObjectGroup", { objectGroup: OBJECT_GROUP }).catch(() => {});
-    }
-};
-
-module.exports = { checkFillTarget, fillCredential, assertFillableSession, normalizeOrigin };
-```
-
-- [ ] **Step 5: Implement `server/lib/vault/mcpProvider.js`**
-
-```js
-const { VaultError, VaultErrorCode } = require("./errors");
-const { isVaultEnabled } = require("./state");
-const { itemRef, visibleItems, findVisibleItem } = require("./visibility");
-const { readSecret } = require("./secrets");
-const { checkFillTarget, fillCredential, assertFillableSession, normalizeOrigin } = require("./fill");
-const { resolveCallerSession, defaultAudit } = require("../browser/tools");
-const { BrowserError, BrowserErrorCode } = require("../browser/errors");
-const permission = require("../../utils/permission");
-const { Permission } = require("../../permissions/registry");
-const VaultItem = require("../../models/VaultItem");
-const Organization = require("../../models/Organization");
-const OrganizationMember = require("../../models/OrganizationMember");
-const Entry = require("../../models/Entry");
-const logger = require("../../utils/logger");
-
-const LIST = "vault_list";
-const FILL = "browser_fill_credential";
-const FILL_WINDOW_MS = 60 * 1000;
-const FILL_LIMIT = 20;
-const REF_PATTERN = /^e\d{1,9}$/;
-const APPROVAL_CODES = new Set([
-    VaultErrorCode.APPROVAL_TIMEOUT, VaultErrorCode.APPROVAL_UNAVAILABLE, VaultErrorCode.APPROVAL_PENDING,
-    VaultErrorCode.APPROVAL_BUSY, VaultErrorCode.APPROVAL_DENIED, VaultErrorCode.CLIENT_GONE,
-]);
-const DENIAL_ACTIONS = {
-    [VaultErrorCode.ITEM_UNREADABLE]: "vault.item_unreadable",
-    [VaultErrorCode.PERSISTENT_NOT_ALLOWED]: "vault.persistent_not_allowed",
-};
-
-const TOOL_DEFS = [
-    {
-        name: LIST,
-        description: "List the vault entries this connection may use. Never returns a secret value: per entry its id for browser_fill_credential (item), owner, type, username or host, origins or hosts, whether the user approves each use, and the tools that can use it (usableBy).",
-        inputSchema: { type: "object", properties: {} },
-    },
-    {
-        name: FILL,
-        description: "Type a login entry from the vault into the password field, and optionally the username field, of a browser session. You never see the password: snapshots show it as ••••, and browser_evaluate stays locked in this browser context afterwards. The field's frame and all frames around it must be one of the entry's origins. If the entry needs approval, this call waits up to 2 minutes for the user.",
-        inputSchema: {
-            type: "object",
-            properties: {
-                item: { type: "string", description: "Entry id as vault_list shows it, e.g. github or org:3/shop" },
-                passwordRef: { type: "string", description: "ref of the <input type=password> from the latest snapshot" },
-                usernameRef: { type: "string", description: "ref of the username field (text, email or tel input); optional" },
-                sessionId: { type: "string", description: "Browser session id. Defaults to the session this connection opened last; may be left out while only one session is open." },
-            },
-            required: ["item", "passwordRef"],
-        },
-    },
-];
-
-const textResult = (text) => ({ content: [{ type: "text", text }] });
-const errorResult = (err) => ({
-    isError: true,
-    content: [{ type: "text", text: err instanceof VaultError ? `${err.message} (${err.code})` : err.message }],
-});
-const fieldsOf = (item) => (typeof item.fields === "string" ? JSON.parse(item.fields) : item.fields ?? {});
-
-const describeItem = (item, orgNames, canFill) => {
-    const fields = fieldsOf(item);
-    return {
-        item: itemRef(item),
-        owner: item.organizationId ? orgNames.get(item.organizationId) ?? `organization ${item.organizationId}` : "personal",
-        type: item.type,
-        description: item.description ?? null,
-        ...(typeof fields.username === "string" && { username: fields.username }),
-        ...(typeof fields.host === "string" && { host: fields.host }),
-        ...(Array.isArray(fields.origins) && { origins: fields.origins.map(String) }),
-        ...(Array.isArray(fields.hosts) && { hosts: fields.hosts.map(String) }),
-        approvalRequired: !!item.approvalRequired,
-        usableBy: item.type === "login" && canFill ? [FILL] : [],
-    };
-};
-
-const assertFillArgs = ({ item, passwordRef, usernameRef, sessionId }) => {
-    const invalid = (message) => new BrowserError(BrowserErrorCode.INVALID_ARGUMENT, message);
-    if (typeof item !== "string" || item.length === 0 || item.length > 200)
-        throw invalid("item needs an entry id as vault_list shows it, e.g. github or org:3/shop");
-    if (typeof passwordRef !== "string" || !REF_PATTERN.test(passwordRef))
-        throw invalid("passwordRef needs the [ref=eN] of the password field from the latest snapshot");
-    if (usernameRef != null && (typeof usernameRef !== "string" || !REF_PATTERN.test(usernameRef)))
-        throw invalid("usernameRef, if given, needs the [ref=eN] of the username field from the latest snapshot");
-    if (sessionId != null && typeof sessionId !== "string") throw invalid("sessionId needs a session id as browser_list shows it");
-};
-
-const createVaultProvider = ({ getPool, getBrowserTools, approvals = require("./approvals"), audit = defaultAudit }) => {
-    const browserAllowed = new WeakMap();
-    const recentFills = new Map();
-
-    const canUseVault = async (accountId) =>
-        (await permission.hasAccountPermission(accountId, Permission.VAULT_USE))
-        || (await OrganizationMember.count({ where: { accountId, status: "active" } })) > 0;
-
-    const canUseBrowser = (accountId) => permission.hasAccountPermission(accountId, Permission.CONNECT_BROWSER);
-
-    const assertFillRate = ({ accountId, keyId = null }) => {
-        const key = `${accountId}:${keyId}`;
-        const now = Date.now();
-        const recent = (recentFills.get(key) ?? []).filter((at) => now - at < FILL_WINDOW_MS);
-        if (recent.length >= FILL_LIMIT)
-            throw new VaultError(VaultErrorCode.RATE_LIMITED);
-        recent.push(now);
-        recentFills.set(key, recent);
-    };
-
-    const entryNameOf = async (agent) => {
-        if (!agent?.entryId) return null;
-        return (await Entry.findByPk(agent.entryId, { attributes: ["name"] }))?.name ?? null;
-    };
-
-    const record = (ctx, item, action, details) => audit({
-        accountId: ctx.accountId,
-        organizationId: item?.organizationId ?? null,
-        action,
-        resource: "vault",
-        resourceId: item?.id ?? null,
-        details,
-        ipAddress: ctx.ipAddress ?? null,
-        userAgent: ctx.userAgent ?? null,
-    });
-
-    const describeCall = (note, ctx) => ({
-        item: note.item, sessionId: note.sessionId, target: note.target,
-        agentType: ctx.agent?.agentType ?? null, keyId: ctx.keyId ?? null, entryId: ctx.agent?.entryId ?? null,
-        ...(ctx.impersonatorId ? { impersonatorId: ctx.impersonatorId } : {}),
-    });
-
-    const listItems = async (args, ctx) => {
-        const items = await visibleItems({ accountId: ctx.accountId, agent: ctx.agent ?? null });
-        const orgIds = [...new Set(items.map((item) => item.organizationId).filter(Boolean))];
-        const orgs = orgIds.length > 0 ? await Organization.findAll({ where: { id: orgIds }, attributes: ["id", "name"], raw: true }) : [];
-        const orgNames = new Map(orgs.map((org) => [org.id, org.name]));
-        const canFill = await canUseBrowser(ctx.accountId);
-        return textResult(items.length > 0
-            ? JSON.stringify(items.map((item) => describeItem(item, orgNames, canFill)), null, 2)
-            : "No vault entries are available to this connection.");
-    };
-
-    const fill = async (args, ctx) => {
-        assertFillArgs(args);
-        assertFillRate(ctx);
-        const note = { item: args.item, sessionId: null, target: null, stage: "before_approval" };
-        let item = null;
-        try {
-            item = await findVisibleItem({ accountId: ctx.accountId, agent: ctx.agent ?? null }, args.item);
-            note.item = itemRef(item);
-            if (item.type !== "login")
-                throw new VaultError(VaultErrorCode.WRONG_TYPE, `${note.item} is a ${item.type} entry; browser_fill_credential fills login entries only.`);
-            const fields = fieldsOf(item);
-            const usernameRef = args.usernameRef ?? null;
-            if (usernameRef && !fields.username)
-                throw new VaultError(VaultErrorCode.BAD_USERNAME_FIELD, `${note.item} stores no username; call again without usernameRef.`);
-            const refs = { passwordRef: args.passwordRef, usernameRef };
-            const locate = (sessionId) => resolveCallerSession(getPool(), ctx, sessionId, getBrowserTools().defaultSessions);
-            const verify = (current) => {
-                assertFillableSession(current);
-                return checkFillTarget(current, refs, fields.origins ?? []);
-            };
-
-            let session = locate(args.sessionId ?? null);
-            Object.assign(note, { sessionId: session.id, target: normalizeOrigin(session.state.url) });
-            let approval = null;
-            if (item.approvalRequired) {
-                await session.runAgent(FILL, () => verify(session));
-                // Waited for outside runAgent: its 90 s limit is shorter than the 2 minutes of an approval,
-                // so every check runs again afterwards.
-                approval = await approvals.requestApproval({
-                    accountId: ctx.accountId, keyId: ctx.keyId ?? null, transportId: ctx.transportId,
-                    agentType: ctx.agent?.agentType ?? null, entryName: await entryNameOf(ctx.agent),
-                    item, target: note.target, signal: ctx.signal,
-                });
-                note.stage = "after_approval";
-                session = locate(session.id);
-            }
-            await session.runAgent(FILL, async () => {
-                const nodes = await verify(session);
-                const password = await readSecret(item.id, "password");
-                if (password === null)
-                    throw new VaultError(VaultErrorCode.NO_SECRET);
-                await fillCredential(session, { ...nodes, username: usernameRef ? fields.username : null, password });
-            });
-            await VaultItem.update({ lastUsedAt: new Date() }, { where: { id: item.id } });
-            await record(ctx, item, "vault.use", { ...describeCall(note, ctx), approval });
-            return textResult(usernameRef ? `Benutzername und Passwort von ${note.item} eingetragen.` : `Passwort von ${note.item} eingetragen.`);
-        } catch (err) {
-            if (!APPROVAL_CODES.has(err.code)) {
-                if (err.code === VaultErrorCode.ITEM_UNREADABLE) logger.warn("Vault entry unreadable", { itemId: item?.id ?? null });
-                await record(ctx, item, DENIAL_ACTIONS[err.code] ?? "vault.use_denied", {
-                    ...describeCall(note, ctx), stage: note.stage, code: typeof err.code === "string" ? err.code : "INTERNAL",
-                });
-            }
-            throw err;
-        }
-    };
-
-    const handlers = { [LIST]: listItems, [FILL]: fill };
-
-    return {
-        name: "vault",
-        available: async (ctx) => {
-            if (!isVaultEnabled()) return false;
-            const [canUse, browser] = await Promise.all([canUseVault(ctx.accountId), canUseBrowser(ctx.accountId)]);
-            browserAllowed.set(ctx, browser);
-            return canUse;
-        },
-        list: (ctx) => (browserAllowed.get(ctx) === true ? TOOL_DEFS : TOOL_DEFS.filter((tool) => tool.name !== FILL)),
-        has: (name, ctx) => name === LIST || (name === FILL && browserAllowed.get(ctx) === true),
-        call: async (name, args, ctx) => {
-            try {
-                if (!Object.hasOwn(handlers, name) || (name === FILL && !(await canUseBrowser(ctx.accountId))))
-                    throw new BrowserError(BrowserErrorCode.INVALID_ARGUMENT, `Unknown tool: ${name}`);
-                return await handlers[name](args ?? {}, ctx);
-            } catch (err) {
-                if (err instanceof VaultError || err instanceof BrowserError) return errorResult(err);
-                logger.warn("Vault tool failed", { tool: name, error: err.message });
-                return errorResult(new BrowserError(BrowserErrorCode.INTERNAL, `${name} failed unexpectedly; try again.`));
-            }
-        },
-        forgetTransport: (transportId) => approvals.forgetTransport(transportId),
-    };
-};
-
-module.exports = { createVaultProvider };
-```
-
-- [ ] **Step 6: Run test to verify it passes**
-
-Run: `node --test server/lib/vault/__tests__/mcpProvider.test.js`
-Expected: PASS, `# tests 5`, `# pass 5`, `# fail 0`.
-
-- [ ] **Step 7: Vault-Anbieter in `server/routes/mcp.js` registrieren**
-
-Vorher (Stand nach Task 2, Kopf der Datei):
-
-```js
-const { createMcpServer } = require("../lib/mcp/server");
-const { createBrowserTools } = require("../lib/browser/tools");
-const { getBrowserPool } = require("../lib/browser");
-const logger = require("../utils/logger");
-
-const browserTools = createBrowserTools({ getPool: getBrowserPool });
-const browserProvider = {
-    ...browserTools,
-    name: "browser",
-    available: (ctx) => hasAccountPermission(ctx.accountId, Permission.CONNECT_BROWSER),
-};
-
-const mcp = createMcpServer({ providers: [browserProvider] });
-```
-
-Nachher:
-
-```js
-const { createMcpServer } = require("../lib/mcp/server");
-const { createBrowserTools } = require("../lib/browser/tools");
-const { getBrowserPool } = require("../lib/browser");
-const { createVaultProvider } = require("../lib/vault/mcpProvider");
-const logger = require("../utils/logger");
-
-const browserTools = createBrowserTools({ getPool: getBrowserPool });
-const browserProvider = {
-    ...browserTools,
-    name: "browser",
-    available: (ctx) => hasAccountPermission(ctx.accountId, Permission.CONNECT_BROWSER),
-};
-const vaultProvider = createVaultProvider({ getPool: getBrowserPool, getBrowserTools: () => browserTools });
-
-const mcp = createMcpServer({ providers: [browserProvider, vaultProvider] });
-```
-
-`approvals.forgetTransport` läuft über `vaultProvider.forgetTransport`, das der Rahmen beim Ende, beim Verdrängen und beim Aufräumen eines Transports für jeden Anbieter ruft.
-
-`server/lib/mcp/__tests__/mcpRoute.test.js` (aus Task 2) lädt die Route jetzt mit dem Vault-Anbieter; ohne Fakes zöge `mcpProvider` Modelle und Datenbank nach. Direkt nach der Zeile `fake("../../browser/tools", { … });` und vor `const router = require("../../../routes/mcp");` einfügen:
-
-```js
-fake("../../vault/state", { isVaultEnabled: () => false });
-fake("../../vault/approvals", { requestApproval: async () => "once", forgetTransport: () => {} });
-fake("../../vault/mcpProvider", {
-    createVaultProvider: () => ({
-        name: "vault", available: async () => false, list: () => [], has: () => false,
-        call: async () => ({ content: [] }), forgetTransport: () => {},
-    }),
-});
-```
-
-Run: `node --test server/lib/mcp/__tests__/server.test.js server/lib/mcp/__tests__/mcpRoute.test.js server/lib/vault/__tests__/mcpProvider.test.js`
-Expected: PASS, `# fail 0`.
-
-Run: `node -e "require('./server/routes/mcp')"` (aus `/root/outpost`)
-Expected: kein Fehler (die Route lädt mit beiden Anbietern).
-
-- [ ] **Step 8: Chromium-Reihe — `require`-Zeilen, Testseiten und Helfer**
-
-In `server/lib/browser/__tests__/chromium.e2e.test.js` direkt nach Z. 8 (`const { createFakeViewer, flush } = require("./helpers/fakeCdp");`) einfügen; `vaultBed` muss vor `mcpProvider` geladen werden:
-
-```js
-const vaultBed = require("../../vault/__tests__/helpers/vaultBed");
-const { createVaultProvider } = require("../../vault/mcpProvider");
-const { createBrowserTools } = require("../tools");
-const { Permission } = require("../../../permissions/registry");
-```
-
-Nach Z. 22 (`const sleep = …`) einfügen:
-
-```js
-const SECRET = "pa ss&wörd+1";
-const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-const LOGIN_PAGE = `<!doctype html><title>Vault login</title>
-<h1>Sign in</h1>
-<form method="get" action="/done">
-<input name="user" aria-label="User">
-<input name="pass" id="pass" type="password" aria-label="Password">
-<button type="button" onclick="const f = document.getElementById('pass'); f.type = f.type === 'password' ? 'text' : 'password'">Show password</button>
-<button type="submit">Sign in</button>
-</form>
-<button type="button" onclick="window.open('/popup', 'vault-popup', 'width=400,height=300')">Open popup</button>`;
-const POPUP_PAGE = "<!doctype html><title>Vault popup</title><h1>Popup</h1>";
-const FRAME_FIELD = `<!doctype html><title>Frame field</title>
-<input name="pass" type="password" aria-label="Frame password">`;
-const framePage = (src) => `<!doctype html><title>Frame host</title>
-<h1>Frame host</h1>
-<iframe src="${src}" width="600" height="320"></iframe>`;
-const donePage = (url) => `<!doctype html><title>Signed in ${escapeHtml(new URL(url, "http://page.invalid").searchParams.get("pass") ?? "")}</title>
-<h1>Signed in</h1>
-<a href="/login">Back</a>`;
-
-const startVaultPages = async (t) => {
-    const bases = {};
-    const serve = (other) => http.createServer((req, res) => {
-        const pages = {
-            "/login": () => LOGIN_PAGE,
-            "/popup": () => POPUP_PAGE,
-            "/frame": () => FRAME_FIELD,
-            "/done": () => donePage(req.url),
-            "/framed-self": () => framePage("/login"),
-            "/frame-other": () => framePage(`${bases[other]}/frame`),
-            "/embed-other": () => framePage(`${bases[other]}/login`),
-        };
-        const page = pages[req.url.split("?")[0]];
-        res.setHeader("content-type", "text/html; charset=utf-8");
-        res.end(page ? page() : "<!doctype html><title>Not found</title>");
-    });
-    for (const [name, server] of [["a", serve("b")], ["b", serve("a")]]) {
-        await new Promise((resolve) => server.listen(0, "0.0.0.0", resolve));
-        t.after(() => server.close());
-        bases[name] = `http://${PAGE_HOST}:${server.address().port}`;
-    }
-    return bases;
-};
-
-const startVaultBed = async (t) => {
-    process.env.VAULT_KEY ??= "5a".repeat(32);
-    const bases = await startVaultPages(t);
-    const pool = new BrowserPool({
-        getSettings: async () => ({ enabled: true, maxSessions: 8, idleMinutes: 30, callbackHost: PAGE_HOST }),
-        launcher: createLauncherClient(async () => LAUNCHER),
-        // A via instance without a tunnel: enough for the refusal, which never reaches the network.
-        createVia: async () => ({ label: "nas", organizationId: null, resolverRule: null, close() {} }),
-    });
-    t.after(() => {
-        for (const instance of pool.live.values()) instance.cdp.close();
-    });
-    const audit = [];
-    const record = async (entry) => { audit.push(entry); };
-    const browserTools = createBrowserTools({ getPool: () => pool, audit: record });
-    const vault = createVaultProvider({
-        getPool: () => pool, getBrowserTools: () => browserTools, audit: record,
-        approvals: { requestApproval: async () => "once", forgetTransport() {} },
-    });
-    vaultBed.reset({
-        items: [{
-            id: 41, accountId: 1, organizationId: null, name: "e2e-login", type: "login", description: null,
-            fields: { username: "ada", origins: [bases.a] }, approvalRequired: false, allServers: true,
-        }],
-        secrets: { "41:password": SECRET },
-        permissions: [Permission.VAULT_USE, Permission.CONNECT_BROWSER],
-    });
-    const ctx = { accountId: 1, keyId: null, agent: null, impersonatorId: null, transportId: "e2e", ipAddress: "127.0.0.1", userAgent: "e2e", signal: new AbortController().signal };
-    const call = (provider, name, args) => provider.call(name, args, ctx);
-    const open = async (url, options = {}) => {
-        const { session } = await pool.open({ accountId: 1, url, ...options });
-        await session.settle();
-        return session;
-    };
-    return {
-        bases, pool, audit, browserTools, call, open,
-        text: (result) => result.content.map((c) => c.text ?? "").join(""),
-        snapshotOf: (session) => session.runAgent("browser_snapshot", () => session.snapshot()),
-        fill: (session, args) => call(vault, "browser_fill_credential", { item: "e2e-login", sessionId: session.id, ...args }),
-    };
-};
-
-// Raw CDP: reads the page past the evaluate lock, which only guards the agent's tools.
-const valueIn = async (session, expression) => (await session.send("Runtime.evaluate", { expression, returnByValue: true })).result.value;
-
-const until = async (probe, ms = 5000) => {
-    for (const end = Date.now() + ms; Date.now() < end; await sleep(50)) {
-        const value = await probe();
-        if (value) return value;
-    }
-    throw new Error("timed out");
-};
-
-const attributeOf = (node, name) => {
-    const list = node.attributes ?? [];
-    for (let i = 0; i < list.length; i += 2) if (list[i] === name) return list[i + 1];
-    return null;
-};
-
-// The snapshot covers the main frame only; a ref into a frame is taken from the DOM, as a page could
-// hand one out once frames are part of the snapshot.
-const refInDocument = async (session, documentUrl, name) => {
-    const { root } = await session.send("DOM.getDocument", { depth: -1, pierce: true });
-    const stack = [[root, root.documentURL]];
-    while (stack.length > 0) {
-        const [node, url] = stack.pop();
-        const here = node.nodeName === "#document" ? node.documentURL : url;
-        if (node.nodeName === "INPUT" && here === documentUrl && attributeOf(node, "name") === name)
-            return session.refs.assign(node.backendNodeId, `textbox "${name}"`);
-        for (const child of [...(node.children ?? []), ...(node.shadowRoots ?? []), ...(node.contentDocument ? [node.contentDocument] : [])])
-            stack.push([child, here]);
-    }
-    throw new Error(`no input ${name} in ${documentUrl}; the frame may run out of process`);
-};
-
-const openPopup = async ({ pool, browserTools, call }, opener, buttonRef) => {
-    const before = new Set(pool.listForAccount(1).map((s) => s.id));
-    await call(browserTools, "browser_click", { sessionId: opener.id, ref: buttonRef });
-    return until(() => pool.listForAccount(1).map((s) => s.id).find((id) => !before.has(id)));
-};
-
-const refused = (text, result, code) => {
-    assert.strictEqual(result.isError, true, `expected ${code}, got: ${text(result)}`);
-    assert.ok(text(result).includes(code), text(result));
-};
-```
-
-- [ ] **Step 9: Chromium-Reihe — Spec-Test 7 am Dateiende**
-
-```js
-test("against a real Chromium: browser_fill_credential fills a matching origin and refuses foreign origins and frames, via, persistent and tainted contexts",
-    { skip: !LAUNCHER && "set OUTPOST_BROWSER_E2E_LAUNCHER and OUTPOST_BROWSER_E2E_PAGE_HOST" }, async (t) => {
-        const bed = await startVaultBed(t);
-        const { bases, pool, browserTools, call, open, text, snapshotOf, fill } = bed;
-        const PASS = "document.getElementById('pass').value";
-
-        const own = await open(`${bases.a}/login`);
-        let snapshot = await snapshotOf(own);
-        const filled = await fill(own, { usernameRef: refOf(snapshot, 'textbox "User"'), passwordRef: refOf(snapshot, 'textbox "Password"') });
-        assert.strictEqual(text(filled), "Benutzername und Passwort von e2e-login eingetragen.");
-        assert.deepStrictEqual([await valueIn(own, "document.querySelector('[name=user]').value"), await valueIn(own, PASS)], ["ada", SECRET]);
-        await pool.close(own.id, "test");
-
-        const framed = await open(`${bases.a}/framed-self`);
-        const inFrame = await fill(framed, { passwordRef: await refInDocument(framed, `${bases.a}/login`, "pass") });
-        assert.strictEqual(text(inFrame), "Passwort von e2e-login eingetragen.", "the focus check follows the focus into a frame of the same origin");
-        assert.strictEqual(await valueIn(framed, "document.querySelector('iframe').contentDocument.getElementById('pass').value"), SECRET);
-        await pool.close(framed.id, "test");
-
-        const foreign = await open(`${bases.b}/login`);
-        snapshot = await snapshotOf(foreign);
-        refused(text, await fill(foreign, { passwordRef: refOf(snapshot, 'textbox "Password"') }), "vault.origin_mismatch");
-        assert.strictEqual(await valueIn(foreign, PASS), "");
-        await pool.close(foreign.id, "test");
-
-        const foreignFrame = await open(`${bases.a}/frame-other`);
-        refused(text, await fill(foreignFrame, { passwordRef: await refInDocument(foreignFrame, `${bases.b}/frame`, "pass") }), "vault.origin_mismatch");
-        await pool.close(foreignFrame.id, "test");
-
-        const embedded = await open(`${bases.b}/embed-other`);
-        refused(text, await fill(embedded, { passwordRef: await refInDocument(embedded, `${bases.a}/login`, "pass") }), "vault.origin_mismatch");
-        assert.strictEqual(await valueIn(embedded, "document.querySelector('iframe') !== null"), true);
-        await pool.close(embedded.id, "test");
-
-        const wrongField = await open(`${bases.a}/login`);
-        snapshot = await snapshotOf(wrongField);
-        refused(text, await fill(wrongField, { passwordRef: refOf(snapshot, 'textbox "User"') }), "vault.not_password_field");
-        assert.strictEqual(await valueIn(wrongField, "document.querySelector('[name=user]').value"), "");
-        await pool.close(wrongField.id, "test");
-
-        for (const [options, code] of [[{ via: "nas" }, "vault.via_not_allowed"], [{ profile: "persistent" }, "vault.persistent_not_allowed"]]) {
-            const session = await open(`${bases.a}/login`, options);
-            snapshot = await snapshotOf(session);
-            refused(text, await fill(session, { passwordRef: refOf(snapshot, 'textbox "Password"') }), code);
-            assert.strictEqual(await valueIn(session, PASS), "");
-            await pool.close(session.id, "test");
-        }
-
-        const opener = await open(`${bases.a}/login`);
-        snapshot = await snapshotOf(opener);
-        const popupId = await openPopup(bed, opener, refOf(snapshot, 'button "Open popup"'));
-        assert.ok(!(await call(browserTools, "browser_evaluate", { sessionId: popupId, expression: "document.title" })).isError);
-        await call(browserTools, "browser_close", { sessionId: popupId });
-        refused(text, await fill(opener, { passwordRef: refOf(snapshot, 'textbox "Password"') }), "vault.session_tainted");
-        assert.strictEqual(await valueIn(opener, PASS), "");
-        await pool.close(opener.id, "test");
-    });
-```
-
-- [ ] **Step 10: Chromium-Reihe — Spec-Test 8, Review Focus 1 und Spec-Test 12 am Dateiende**
-
-```js
-test("against a real Chromium: after a fill the password stays out of evaluate, snapshots, screenshots, URL, Title, browser_list and audit",
-    { skip: !LAUNCHER && "set OUTPOST_BROWSER_E2E_LAUNCHER and OUTPOST_BROWSER_E2E_PAGE_HOST" }, async (t) => {
-        const bed = await startVaultBed(t);
-        const { bases, pool, audit, browserTools, call, open, text, snapshotOf, fill } = bed;
-        const session = await open(`${bases.a}/login`);
-        const snapshot = await snapshotOf(session);
-        const ref = (label) => refOf(snapshot, label);
-        const tool = (name, args = {}) => call(browserTools, name, { sessionId: session.id, ...args });
-
-        const filled = await fill(session, { usernameRef: ref('textbox "User"'), passwordRef: ref('textbox "Password"') });
-        assert.ok(!filled.isError, text(filled));
-
-        assert.ok(!(await tool("browser_screenshot")).isError, "a screenshot is allowed while the filled field still hides its value");
-        assert.strictEqual((await tool("browser_evaluate", { expression: "document.title = 'evaluated'" })).isError, true);
-        const popupId = await openPopup(bed, session, ref('button "Open popup"'));
-        const fromPopup = await call(browserTools, "browser_evaluate", { sessionId: popupId, expression: "window.opener.document.title = 'evaluated'" });
-        assert.strictEqual(fromPopup.isError, true, "the popup shares the filled context");
-        assert.strictEqual(await valueIn(session, "document.title"), "Vault login");
-        await call(browserTools, "browser_close", { sessionId: popupId });
-
-        const shown = await tool("browser_click", { ref: ref('button "Show password"') });
-        assert.strictEqual(await valueIn(session, "document.getElementById('pass').type"), "text");
-        assert.match(text(shown), /- textbox "Password" \[ref=e\d+\] value="••••"/);
-        assert.ok(!text(shown).includes(SECRET));
-        assert.strictEqual((await tool("browser_screenshot")).isError, true, "the shown password must not reach a screenshot");
-
-        // What a PATCH with a changed origin does: the entry's stored values are gone.
-        vaultBed.state.secrets.clear();
-        await tool("browser_click", { ref: ref('button "Sign in"') });
-        const after = await tool("browser_snapshot");
-        assert.match(text(after), /URL: \S*pass=••••/);
-        assert.match(text(after), /Title: Signed in ••••/);
-        const listed = await call(browserTools, "browser_list", {});
-        await tool("browser_click", { ref: refOf(text(after), 'link "Back"') });
-
-        const leaks = [SECRET, encodeURIComponent(SECRET), new URLSearchParams({ pass: SECRET }).toString().slice("pass=".length)];
-        for (const [where, output] of [["snapshot", text(after)], ["browser_list", text(listed)], ["audit", JSON.stringify(audit)]])
-            for (const leak of leaks) assert.ok(!output.includes(leak), `${where} contains the password as ${leak}`);
-        await pool.close(session.id, "test");
-    });
-```
-
-- [ ] **Step 11: Chromium-Reihe ausführen**
-
-Run (ohne Umgebung): `node --test server/lib/browser/__tests__/chromium.e2e.test.js`
-Expected: `# tests 3`, `# skipped 3`, `# fail 0` (die Datei lädt mit den neuen Modulen).
-
-Run (mit laufendem `outpost-browser`-Container): `OUTPOST_BROWSER_E2E_LAUNCHER=<Launcher-Adresse wie unter Einstellungen › Browser> OUTPOST_BROWSER_E2E_PAGE_HOST=<vom Container aus erreichbare Adresse dieses Rechners> node --test server/lib/browser/__tests__/chromium.e2e.test.js`
-Expected: `# pass 3`, `# fail 0`. Schlägt `refInDocument` mit „the frame may run out of process“ fehl, läuft das iframe in einem eigenen Prozess; dann erreicht auch ein Agent dessen Felder nicht. Der Test braucht dann für `a` und `b` denselben Host mit verschiedenen Ports (eine Site) und keinen zweiten Hostnamen.
-
-- [ ] **Step 12: Betroffene Tests gemeinsam ausführen**
-
-Run: `node --test server/lib/vault/__tests__/mcpProvider.test.js server/lib/mcp/__tests__/server.test.js server/lib/mcp/__tests__/mcpRoute.test.js server/lib/browser/__tests__/tools.test.js server/lib/browser/__tests__/vaultGuard.test.js server/lib/browser/__tests__/agentScope.test.js server/lib/browser/__tests__/chromium.e2e.test.js`
-Expected: `# fail 0`.
-
-Run: `yarn lint`
-Expected: keine Fehler in `server/lib/vault/fill.js`, `server/lib/vault/mcpProvider.js`, `server/routes/mcp.js` und den Testdateien.
-
-- [ ] **Step 13: Commit**
-
-```bash
-git add server/lib/vault/fill.js server/lib/vault/mcpProvider.js server/lib/vault/__tests__/helpers/vaultBed.js server/lib/vault/__tests__/mcpProvider.test.js server/routes/mcp.js server/lib/mcp/__tests__/mcpRoute.test.js server/lib/browser/__tests__/chromium.e2e.test.js
-git commit -m "Vault: MCP-Werkzeuge vault_list und browser_fill_credential"
+git add server/lib/browser/vaultGuard.js server/lib/browser/snapshot.js server/lib/browser/actions.js server/lib/browser/BrowserSession.js server/lib/browser/tools.js server/lib/browser/index.js server/lib/browser/__tests__/tools.test.js server/lib/browser/__tests__/vaultGuard.test.js server/lib/browser/__tests__/chromium.e2e.test.js
+git commit -m "Vault: Browser schwärzt Passwörter, sperrt evaluate, Screenshot und Textauswahl nach dem Ausfüllen und leert Felder dort ohne Auswahl"
 ```
 
 ---
@@ -8349,15 +5064,15 @@ git commit -m "Vault: MCP-Werkzeuge vault_list und browser_fill_credential"
 
 **Interfaces:**
 - Consumes (Task 5, REST unter `/api/vault`, über `RequestUtil` relativ als `vault/…`):
-  - `GET vault/items → { items: [{ id, ref, accountId, organizationId, ownerName, name, type, description, fields, approvalRequired, allServers, bindings: [{ kind, targetId, label }], secretFields: string[], lastUsedAt, canManage, canReveal }] }` — nie Werte.
+  - `GET vault/items → { items: [{ id, ref, accountId, organizationId, ownerName, name, type, description, fields, approvalRequired, allServers, bindings: [{ kind, targetId, label }], secretFields: string[], lastUsedAt, canManage, canReveal, unreadable }] }` — nie Werte; `unreadable: true`, wenn ein gespeicherter Wert des Eintrags mit dem aktuellen `VAULT_KEY` nicht entschlüsselt werden konnte (Task 5 über `secrets.isUnreadable`).
   - `POST vault/items` body `{ organizationId?, name, type, description?, fields, secrets, approvalRequired, allServers, bindings }` → `201 { item }`.
   - `PATCH vault/items/:id` body `{ name, description, fields, secrets?, approvalRequired, allServers, bindings }` → `{ item, secretsCleared }`. Der Dialog schickt `secrets` nur mit mindestens einem neuen Wert und `description: null` zum Leeren.
   - `DELETE vault/items/:id → { success: true }`; `GET vault/items/:id/secrets/:field → { value }`.
   - Fehlerformen (laut Task 5): Namenskonflikt bei POST/PATCH → `409 { code: 409, message }`; Reveal bei Entschlüsselungsfehler → `422 { code: 422, message }`. `RequestUtil` wirft den Antwortkörper als Objekt, der Client prüft `error.code`. `bindings[].label` kann `null` sein (Ziel nicht mehr auflösbar) — der Client zeigt dann die ID.
-  - `fields` je Typ: `login { username?, origins: string[] }`, `api_key { hosts: string[], headerName?, headerTemplate? }`, `ssh { username? }`, `database { engine, host?, port?: number, database?, username? }`, `generic {}`; leere Strings schickt der Client nicht mit. Geheimwerte beim Anlegen: `login` `password`, `api_key` `token`, `ssh` `privateKey` oder `password`, `generic` `value` Pflicht; `database` `password` optional (Task 5 `CREATE_SECRETS`).
+  - `fields` je Typ: `login { username?, origins: string[] }`, `api_key { hosts: string[], headerName?, headerTemplate? }`, `ssh { username }`, `database { engine, host (Pflicht außer bei `sqlite`), port?: number, database, username? }`, `generic {}`; leere Strings schickt der Client nicht mit. Pflicht wie in Task 5 (`server/validations/vault.js`, `FIELDS`): `login.origins` und `api_key.hosts` mit mindestens einem Wert, `ssh.username`, `database.engine`, `database.database`, `database.host` außer bei `engine: "sqlite"`; solange eines fehlt, ist Speichern gesperrt (`missingFields`). Geheimwerte beim Anlegen: `login` `password`, `api_key` `token`, `ssh` `privateKey` oder `password`, `generic` `value` Pflicht; `database` `password` optional (Task 5 `CREATE_SECRETS`).
 - Consumes (Task 10): `useVaultAvailable()` (`canManageOrgs`, `impersonating`), `Permission.VAULT_USE`, `TabSwitcher`/`IconInput` mit `dataUiId`, Route `/vault` + `client/src/pages/Vault/index.js`, alle `vault.*`-Schlüssel aus Task 10.
 - Consumes (Bestand): `ServerContext` (`servers`-Baum aus `GET /entries/list`: Ordner `{ type: "folder", id, name, entries }`, Organisationen `{ type: "organization", id: "org-<id>", entries }`, Server `{ type: "server", id, name }`), `useTags()` (`tags: [{ id, name }]`), `getRequest("organizations") → [{ id, name }]`, `formatTimeAgo` (`common/utils/timeAgo.js`), `copyToClipboard` (`common/utils/clipboard.js`), `ActionConfirmDialog`, `DialogProvider`/`DialogCancelButton`, `SelectBox`, `ToggleSwitch`, `PageHeader`, `Button`.
-- Produces (nur innerhalb von `pages/Vault`): `<VaultDetail item impersonating onEdit onDelete />`, `<VaultList items loading failed ownerEmpty selectedId onSelect canCreate onCreate />`, `<VaultItemDialog open onClose item owners defaultOwner onSaved />` (`owners: [{ value: "personal" | "org-<id>", label, organizationId }]`; mit neuem `key` je Öffnen gemountet), `vaultTypes.js` (`VAULT_TYPES`, `TYPE_KEYS`, `NAME_PATTERN`, `DB_ENGINES`, `ownerKey`, `isSecretMissing`, `toFormFields`, `toPayloadFields`, `itemSubject`, `matchesSearch`, `detailRows`).
+- Produces (nur innerhalb von `pages/Vault`): `<VaultDetail item impersonating onEdit onDelete />`, `<VaultList items loading failed ownerEmpty selectedId onSelect canCreate onCreate />`, `<VaultItemDialog open onClose item owners defaultOwner onSaved />` (`owners: [{ value: "personal" | "org-<id>", label, organizationId }]`; mit neuem `key` je Öffnen gemountet), `vaultTypes.js` (`VAULT_TYPES`, `TYPE_KEYS`, `NAME_PATTERN`, `DB_ENGINES`, `ownerKey`, `isSecretMissing`, `missingFields`, `toFormFields`, `toPayloadFields`, `itemSubject`, `matchesSearch`, `detailRows`).
 
 **Design:**
 - Screen: `UI-VAULT` — Artboard `docs/design/mockups/ui-vault.html` — Anleitung `docs/design/guides/ui-vault.md`
@@ -8391,19 +5106,19 @@ git commit -m "Vault: MCP-Werkzeuge vault_list und browser_fill_credential"
 | UI-VAULT-DIALOG-SAVE | Speichern | Legt den Eintrag an bzw. speichert Änderungen und schließt den Dialog; Beschriftung Erstellen beim Anlegen. | default, disabled, loading, error | loading „Speichere …“ · error „Speichern fehlgeschlagen.“ |
 
 - Locator: jedes Element trägt `data-ui-id="<ID>"`. Zusätzlich `data-ui-id="UI-VAULT"` am Seiten-Wurzelknoten und `data-ui-id="UI-VAULT-DIALOG"` am Wurzel-`div` im `DialogProvider`. `UI-VAULT-DETAIL-SECRET` sitzt an jeder geheimen Zeile (`SecretRow`), `UI-VAULT-DETAIL-ACTIONS` am Wrapper der beiden Knöpfe (ohne Verwaltungsrecht nicht gerendert = Zustand `disabled`), `UI-VAULT-DIALOG-TYPE`/`-OWNER` am Wrapper um die `SelectBox`, `UI-VAULT-DIALOG-SAVE` am primären `Button` über `dataUiId`.
-- Zustände im Code: LIST `loading` = drei Skeleton-Zeilen mit `aria-busy`, `empty` = Text + Knopf „Neuer Eintrag“ (nur mit Anlegerecht), `error` mit `role="alert"`; SEARCH `empty` als Hinweis unter dem Feld, sobald Typ/Suche alles herausfiltern; DETAIL `error` erscheint, wenn Reveal mit `422` antwortet; SECRET `selected` = Klartext + „angezeigt, verbirgt sich in 30 s“, nach 30 s und beim Wechsel des Eintrags (Komponente mit `key` je Eintrag/Feld) wieder zwölf Punkte, `success` = „Kopiert“ 2 s + Toast; DIALOG-SECRET `partial` (gespeichertes Feld beim Bearbeiten: Platzhalter und Hilfetext), `empty` (Zielfeld `origins`/`hosts`/`host` geändert: Warnhinweis, Platzhalter „… eingeben“, Speichern gesperrt bis ein neuer Wert da ist), `error` „Wert fehlt.“ beim Anlegen ohne Wert; SAVE `loading` „Speichere …“ mit Spinner und gesperrt, `error` als Text neben dem Knopf; FIELDS `error` „Name schon vergeben.“ bei `409`.
+- Zustände im Code: LIST `loading` = drei Skeleton-Zeilen mit `aria-busy`, `empty` = Text + Knopf „Neuer Eintrag“ (nur mit Anlegerecht), `error` mit `role="alert"`; SEARCH `empty` als Hinweis unter dem Feld, sobald Typ/Suche alles herausfiltern; DETAIL `error` erscheint bei `item.unreadable` oder wenn Reveal mit `422` antwortet; SECRET `selected` = Klartext + „angezeigt, verbirgt sich in 30 s“, nach 30 s und beim Wechsel des Eintrags (Komponente mit `key` je Eintrag/Feld) wieder zwölf Punkte, `success` = „Kopiert“ 2 s + Toast; DIALOG-SECRET `partial` (gespeichertes Feld beim Bearbeiten: Platzhalter und Hilfetext), `empty` (Zielfeld `origins`/`hosts`/`host` geändert: Warnhinweis, Platzhalter „… eingeben“, Speichern gesperrt bis ein neuer Wert da ist), `error` „Wert fehlt.“ beim Anlegen ohne Wert; SAVE `loading` „Speichere …“ mit Spinner und gesperrt, `error` als Text neben dem Knopf; FIELDS `error` „Name schon vergeben.“ bei `409`.
 - Tastatur: Seite `N` (Neuer Eintrag, nur mit Anlegerecht), `↑`/`↓` (Auswahl), `E` (Bearbeiten, nur `canManage`), `Esc` (schmal: zurück zur Liste) — nicht, solange ein Eingabefeld fokussiert oder ein Dialog (`.dialog-area`) offen ist; Dialog `Ctrl+Enter` speichert (`onKeyDown` am Dialog-Wurzelknoten).
 - Schmal (`$mobile`, 768 px): eine Spalte; Tipp auf eine Zeile blendet die Liste aus und die Details ein, `PageHeader` zeigt dann `onBackClick` mit `ArrowLeft`.
 - Icons (Lucide, nie farbig): Login `LogIn`, API-Key `KeyRound`, SSH `SquareTerminal`, Datenbank `Database`, Sonstiges `Lock`; Freigabe `Shield`/`ShieldOff`; Anzeigen `Eye`/`EyeOff`, Kopieren `Copy`/`Check`.
 - Tokens: `--background`, `--lighter-background`, `--gray`, `--dark-gray`, `--primary`, `--primary-opacity`, `--subtext`, `--error`, `--warning`, `--success`, `--space-1…4`, `--radius-sm|md|lg`, `--type-title|body|caption|mono`, `--font-mono` (Sass über `@/common/styles/colors` und `@/common/styles/tokens`; Breakpoint `breakpoints.$mobile`). Keine Literale außer Layoutbreiten aus dem Artboard (20–26 rem Liste, 9 rem Labelspalte, 40 rem Dialog).
 
-**Tests:** 4 Testfälle in 2 Dateien, test-first (Verhalten steht in Spec und Manifest fest), über die Komponentengrenze mit gedoubeltem `RequestUtil` und echtem `en.json`:
+**Tests:** 5 Testfälle in 2 Dateien (4 Verhalten, (2) als `test.each` mit zwei Fällen), test-first (Verhalten steht in Spec und Manifest fest), über die Komponentengrenze mit gedoubeltem `RequestUtil` und echtem `en.json`:
 - `VaultDetail.test.jsx`: (1) Anzeigen holt den Wert per `GET vault/items/5/secrets/password`, zeigt ihn mit Hinweis, nach 29,999 s noch, nach 30 s wieder zwölf Punkte (Fake-Uhr, `fireEvent`); (2) Tabelle mit zwei Fällen — ohne `canReveal` und in einer Impersonations-Sitzung: weder „Show“ noch „Copy“, Hinweis „usable by agents only“, keine Anfrage.
-- `VaultItemDialog.test.jsx`: (3) Bearbeiten, Ursprung ändern → Zustand `empty`, Speichern gesperrt; mit neuem Passwort schickt `PATCH vault/items/5` neue `origins` und `secrets.password`; (4) Bearbeiten ohne Zieländerung schickt kein `secrets` (der gespeicherte Wert darf nicht durch einen leeren überschrieben werden).
-Nicht getestet: Filter/Suche/Reiter, Tastenkürzel, Layout und schmale Ansicht, Liste und Löschen (Darstellung/Weiterreichung — prüft `/design-verify`), Rechteprüfungen des Servers (Task 5).
-SEC: SEC-SECRET-01 (Wert nur auf Klick geholt, nur im Zustand der Zeile gehalten, nach 30 s und beim Wechsel verworfen, nie in Liste, Suche, Toast, Log oder URL; Dialog zeigt nie gespeicherte Werte, privater Schlüssel als `textarea` ohne Autovervollständigung); SEC-XSS-01 (alle Werte als React-Textknoten, kein `dangerouslySetInnerHTML`); SEC-RBAC-01/SEC-IDOR-01 nur als Spiegel über `canManage`/`canReveal`/`canManageOrgs`/`impersonating` — durchgesetzt wird in Task 5; SEC-INPUT-01 clientseitig nur als Hinweis (`NAME_PATTERN` sperrt Speichern), maßgeblich ist Joi in Task 5.
+- `VaultItemDialog.test.jsx`: (3) Bearbeiten, Ursprung leeren → Zustand `empty`, Speichern gesperrt, mit neuem Passwort weiter gesperrt (Pflichtfeld `origins` fehlt); mit neuem Ursprung schickt `PATCH vault/items/5` neue `origins` und `secrets.password`; (4) Bearbeiten ohne Zieländerung schickt kein `secrets` (der gespeicherte Wert darf nicht durch einen leeren überschrieben werden).
+Nicht getestet: Filter/Suche/Reiter, Tastenkürzel, Layout und schmale Ansicht, Liste und Löschen (Darstellung/Weiterreichung — prüft `/design-verify`), Zustand `error` bei `item.unreadable` (eine Bedingung auf ein Serverfeld), Rechteprüfungen des Servers (Task 5).
+SEC: SEC-SECRET-01 (Wert nur auf Klick geholt, nur im Zustand der Zeile gehalten, nach 30 s und beim Wechsel verworfen, nie in Liste, Suche, Toast, Log oder URL; Dialog zeigt nie gespeicherte Werte, privater Schlüssel als `textarea` ohne Autovervollständigung); SEC-XSS-01 (alle Werte als React-Textknoten, kein `dangerouslySetInnerHTML`); SEC-RBAC-01/SEC-IDOR-01 nur als Spiegel über `canManage`/`canReveal`/`canManageOrgs`/`impersonating` — durchgesetzt wird in Task 5; SEC-INPUT-01 clientseitig nur als Hinweis (`NAME_PATTERN` und `missingFields` sperren Speichern), maßgeblich ist Joi in Task 5.
 
-**Parallel:** Task 9, 11, 13, 14, 15 (keine gemeinsamen Dateien; Task 12 fasst nur `client/src/pages/Vault/` an).
+**Parallel:** Task 3, 4, 9, 13, 14 (Welle B; keine gemeinsamen Dateien; Task 12 fasst nur `client/src/pages/Vault/` an). Setzt Task 10 (Welle A) voraus; die REST-Form aus Task 5 (Welle C) steht im Vertrag oben fest, die Tests laufen gegen `requestDouble`.
 
 - [ ] **Step 1: Write the failing test** — `client/src/pages/Vault/components/VaultDetail/__tests__/VaultDetail.test.jsx`
 
@@ -8427,7 +5142,7 @@ const item = {
     id: 5, ref: "portal-login", accountId: 1, organizationId: null, ownerName: null, name: "portal-login", type: "login",
     description: "", fields: { username: "ma.backes", origins: ["https://portal.example.com"] },
     approvalRequired: true, allServers: false, bindings: [], secretFields: ["password"], lastUsedAt: null,
-    canManage: true, canReveal: true,
+    canManage: true, canReveal: true, unreadable: false,
 };
 
 const show = (shown, impersonating = false) => renderWithProviders(
@@ -8487,7 +5202,6 @@ export const DB_ENGINES = [
     { value: "sqlite", label: "SQLite" },
 ];
 
-// Form values are strings; origins and hosts are lists the dialog edits as comma-separated text.
 // `targets` are the fields whose change makes the server drop every stored secret of the item.
 export const VAULT_TYPES = {
     login: {
@@ -8513,6 +5227,11 @@ export const TYPE_KEYS = Object.keys(VAULT_TYPES);
 
 const LIST_FIELDS = ["origins", "hosts"];
 
+// Mirrors the required fields of Task 5 (`FIELDS` in server/validations/vault.js); the server stays authoritative.
+const REQUIRED_FIELDS = {
+    login: ["origins"], api_key: ["hosts"], ssh: ["username"], database: ["engine", "host", "database"], generic: [],
+};
+
 export const ownerKey = (item) => (item.organizationId ? `org-${item.organizationId}` : "personal");
 
 // A database password is optional: SQLite has none, and the server accepts a database entry without one.
@@ -8521,6 +5240,12 @@ export const isSecretMissing = (type, values) => {
     if (type === "ssh") return !values.privateKey && !values.password;
     return VAULT_TYPES[type].secrets.some((field) => !values[field]);
 };
+
+export const missingFields = (type, payloadFields) => REQUIRED_FIELDS[type].filter((field) => {
+    if (field === "host" && payloadFields.engine === "sqlite") return false;
+    const value = payloadFields[field];
+    return Array.isArray(value) ? value.length === 0 : value === undefined;
+});
 
 export const toFormFields = (type, fields = {}) => Object.fromEntries(
     Object.entries({ ...VAULT_TYPES[type].defaults, ...fields })
@@ -8588,7 +5313,6 @@ import { copyToClipboard } from "@/common/utils/clipboard.js";
 const MASK = "••••••••••••";
 const HIDE_AFTER_MS = 30000;
 const COPIED_MS = 2000;
-// The reveal route answers 422 when the stored value cannot be decrypted with the current VAULT_KEY.
 const UNREADABLE = 422;
 
 export const SecretRow = ({ itemId, field, canReveal, onUnreadable }) => {
@@ -8694,7 +5418,7 @@ export const VaultDetail = ({ item, impersonating, onEdit, onDelete }) => {
     const type = VAULT_TYPES[item.type];
     const owner = item.organizationId ? item.ownerName : t("vault.scope.personal");
     const rows = detailRows(item);
-    const lastUsed = item.lastUsedAt ? ` · ${t("vault.policy.lastUsed", { time: formatTimeAgo(item.lastUsedAt, t) })}` : "";
+    const lastUsed = item.lastUsedAt ? ` · ${t("vault.policy.lastUsed", { time: formatTimeAgo(item.lastUsedAt, t), interpolation: { escapeValue: false } })}` : "";
 
     return (
         <section className="vault-detail" data-ui-id="UI-VAULT-DETAIL">
@@ -8715,7 +5439,7 @@ export const VaultDetail = ({ item, impersonating, onEdit, onDelete }) => {
                 )}
             </header>
 
-            {unreadableId === item.id && (
+            {(item.unreadable || unreadableId === item.id) && (
                 <p className="vault-detail-error" role="alert">{t("vault.detail.error")}</p>
             )}
 
@@ -8765,7 +5489,7 @@ export const VaultDetail = ({ item, impersonating, onEdit, onDelete }) => {
             </div>
 
             <ActionConfirmDialog open={confirmOpen} setOpen={setConfirmOpen} onConfirm={() => onDelete(item)}
-                                 text={t("vault.detail.deleteConfirm", { name: item.name })} />
+                                 text={t("vault.detail.deleteConfirm", { name: item.name, interpolation: { escapeValue: false } })} />
         </section>
     );
 };
@@ -8955,7 +5679,7 @@ const item = {
     id: 5, ref: "portal-login", accountId: 1, organizationId: null, ownerName: null, name: "portal-login", type: "login",
     description: "", fields: { username: "ma.backes", origins: ["https://portal.example.com"] },
     approvalRequired: true, allServers: false, bindings: [], secretFields: ["password"], lastUsedAt: null,
-    canManage: true, canReveal: true,
+    canManage: true, canReveal: true, unreadable: false,
 };
 
 const Targets = ({ children }) => (
@@ -8975,20 +5699,22 @@ beforeEach(() => {
     requestDouble.stub("patchRequest", "vault/items/5", { item, secretsCleared: true });
 });
 
-test("ein geänderter Ursprung verwirft den gespeicherten Wert: Speichern erst mit neuem Passwort", async () => {
+test("ein geänderter Ursprung verwirft den gespeicherten Wert: Speichern erst mit neuem Passwort und Ursprung", async () => {
     const user = userEvent.setup();
     editItem();
     const save = screen.getByRole("button", { name: "Save" });
     expect(screen.getByLabelText("Password")).toHaveAttribute("placeholder", "stored — leave empty to keep");
 
     await user.clear(screen.getByLabelText("Origin"));
-    await user.type(screen.getByLabelText("Origin"), "https://login.example.com");
 
     expect(screen.getByText("Target changed — stored values will be discarded. Enter them again.")).toBeInTheDocument();
     expect(screen.getByLabelText("Password")).toHaveAttribute("placeholder", "Enter Password");
     expect(save).toBeDisabled();
 
     await user.type(screen.getByLabelText("Password"), "Wn4-eTq8");
+    expect(save).toBeDisabled();
+
+    await user.type(screen.getByLabelText("Origin"), "https://login.example.com");
     await user.click(save);
 
     expect(requestDouble.calls).toEqual([{
@@ -9040,7 +5766,7 @@ import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import { useTags } from "@/common/contexts/TagContext.jsx";
 import { patchRequest, postRequest } from "@/common/utils/RequestUtil.js";
 import {
-    DB_ENGINES, NAME_PATTERN, TYPE_KEYS, VAULT_TYPES, isSecretMissing, ownerKey, toFormFields, toPayloadFields,
+    DB_ENGINES, NAME_PATTERN, TYPE_KEYS, VAULT_TYPES, isSecretMissing, missingFields, ownerKey, toFormFields, toPayloadFields,
 } from "../../vaultTypes.js";
 
 const FIELD_INPUTS = {
@@ -9110,7 +5836,8 @@ export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwn
         JSON.stringify(payloadFields[field] ?? null) !== JSON.stringify(storedFields[field] ?? null));
     const secretsMissing = isSecretMissing(form.type, secrets);
     const nameValid = NAME_PATTERN.test(form.name);
-    const saveBlocked = saving || !nameValid || (targetChanged && secretsMissing);
+    const fieldsMissing = missingFields(form.type, payloadFields).length > 0;
+    const saveBlocked = saving || !nameValid || fieldsMissing || (targetChanged && secretsMissing);
 
     const targets = useMemo(() => {
         const found = collectTargets(ownerNodes(servers, form.owner));
@@ -9677,7 +6404,7 @@ export const Vault = () => {
     const filterEmpty = scopedItems.length > 0 && visibleItems.length === 0;
 
     const owners = useMemo(() => [
-        ...(personalAllowed ? [{ value: "personal", label: t("vault.dialog.ownerPersonal", { username: user?.username }), organizationId: null }] : []),
+        ...(personalAllowed ? [{ value: "personal", label: t("vault.dialog.ownerPersonal", { username: user?.username, interpolation: { escapeValue: false } }), organizationId: null }] : []),
         ...organizations.filter((org) => canManageOrgs.includes(org.id))
             .map((org) => ({ value: `org-${org.id}`, label: org.name, organizationId: org.id })),
     ], [personalAllowed, organizations, canManageOrgs, user?.username, t]);
@@ -9774,7 +6501,7 @@ export const Vault = () => {
             <VaultItemDialog key={dialog.key} open={dialog.open} onClose={closeDialog} item={dialog.item}
                              owners={dialog.item ? [{
                                  value: ownerKey(dialog.item),
-                                 label: dialog.item.organizationId ? dialog.item.ownerName : t("vault.dialog.ownerPersonal", { username: user?.username }),
+                                 label: dialog.item.organizationId ? dialog.item.ownerName : t("vault.dialog.ownerPersonal", { username: user?.username, interpolation: { escapeValue: false } }),
                                  organizationId: dialog.item.organizationId,
                              }] : owners}
                              defaultOwner={canCreate ? activeScope : owners[0]?.value} onSaved={saved} />
@@ -9879,15 +6606,16 @@ git commit -m "Vault: Seite mit Liste und Details, Eintrag-Dialog"
 - Create: `client/src/common/components/VaultApprovalCard/VaultApprovalStack.jsx` (Stapel, Zustandsstrom, Uhr, Antworten)
 - Create: `client/src/common/components/VaultApprovalCard/VaultApprovalCard.jsx` (eine Karte, Tastatur, Countdown-Anzeige)
 - Create: `client/src/common/components/VaultApprovalCard/styles.sass`
+- Create: `client/src/common/components/VaultApprovalCard/index.js` (Default-Export `VaultApprovalStack`)
 - Test: `client/src/common/components/VaultApprovalCard/__tests__/VaultApprovalStack.test.jsx`
 - Modify: `client/src/common/layouts/Root.jsx` (Import nach Z. 30, `<VaultApprovalStack />` nach `<MobileNav />` Z. 146)
 - Modify: `client/src/common/layouts/PopoutRoot.jsx` (Import nach Z. 21, `<VaultApprovalStack />` nach dem `<Suspense>` Z. 50-52)
 
 **Interfaces:**
-- Consumes (Task 6, über den Zustandsstrom): `STATE_TYPES.VAULT_APPROVALS` liefert die Liste aus `listOpenApprovals(accountId)` = `[{ id: string, agentType: "claude"|"codex"|null, entryName: string|null, item: string, target: string, expiresAt: number|string }]`. `item` ist die Kennung des Eintrags (`itemRef`, z. B. `portal-login` bzw. `org:3/portal-login`), kein Objekt; `expiresAt` wird mit `new Date(expiresAt).getTime()` gelesen und darf Millisekunden oder ISO-Text sein.
-- Consumes (Task 6, REST): `POST /api/vault/approvals/:id` mit `{ decision: "once"|"session"|"deny" }` → `200` bei Erfolg; `409` (schon beantwortet) bzw. `410` (abgelaufen) kommen über `RequestUtil` als geworfenes Objekt mit `code`.
+- Consumes (Task 6, über den Zustandsstrom): `STATE_TYPES.VAULT_APPROVALS` liefert die Liste aus `listOpenApprovals(accountId)` = `[{ id: string, agentType: "claude"|"codex"|null, entryName: string|null, item: string, target: string, expiresAt: number|string, remainingMs: number }]`. `item` ist die Kennung des Eintrags (`itemRef`, z. B. `portal-login` bzw. `org:3/portal-login`), kein Objekt. Die Karte rechnet ihre Frist lokal als Empfangszeit + `remainingMs` (`deadline`), damit eine abweichende Uhr zwischen Browser und Server den Countdown nicht verschiebt; `expiresAt` liest der Client nicht.
+- Consumes (Task 6, REST): `POST /api/vault/approvals/:id` mit `{ decision: "once"|"session"|"deny" }` → `200` bei Erfolg; `404` (unbekannt oder einem anderen Konto zugeordnet), `409` (schon beantwortet) bzw. `410` (abgelaufen oder zurückgezogen) kommen über `RequestUtil` als geworfenes Objekt mit `code`.
 - Consumes (Task 10): `STATE_TYPES.VAULT_APPROVALS` im Client (`@/common/hooks/useStateStream.js`, re-exportiert aus `@/common/contexts/StateStreamContext.jsx`); `useVaultAvailable()` als **benannter** Export aus `@/common/hooks/useVaultAvailable.js` (genutzt: `impersonating`); i18n-Schlüssel `vault.approval.*`, `vault.agents.*`, `common.error` (Liste am Ende dieses Tasks).
-- Produces: `<VaultApprovalStack />` (keine Props; rendert `null` ohne offene Anfrage oder in einer Impersonations-Sitzung, sonst ein Portal nach `document.body`); `<VaultApprovalCard approval now sending onAnswer(decision) />`.
+- Produces: `<VaultApprovalStack />` (keine Props; rendert `null` ohne offene Anfrage oder in einer Impersonations-Sitzung, sonst ein Portal nach `document.body`), als Default-Export von `client/src/common/components/VaultApprovalCard/index.js` und benannt aus `VaultApprovalStack.jsx`; `<VaultApprovalCard approval now sending onAnswer(decision) />` (`approval` trägt zusätzlich die lokale `deadline` in Millisekunden).
 
 **Design:**
 - Screen: `UI-VAULT-APPROVAL` — Artboard `docs/design/mockups/ui-vault-approval.html` — Anleitung `docs/design/guides/ui-vault-approval.md`
@@ -9902,9 +6630,9 @@ git commit -m "Vault: Seite mit Liste und Details, Eintrag-Dialog"
 - Stapelordnung: Wrapper `z-index: 10003` (Dialog `10000`, Bestätigungs-Overlay `10001` in `Dialog/styles.sass`; Toast `10002` in `common/styles/toast.sass`).
 - Reihenfolge im Stapel: neueste oben, älteste unten (Manifest). Das Artboard zeigt im `partial`-Rahmen die kürzeste Restzeit oben; das Manifest gilt (Konflikt gemeldet).
 
-**Tests:** 5 Tests in `VaultApprovalStack.test.jsx`, test-first (das Verhalten steht im Manifest und im Vertrag aus Task 6 fest): (1) Countdown aus `expiresAt`, Ablauf zeigt fünf Sekunden „abgelaufen“ mit gesperrten Knöpfen, danach ist die Karte weg (Fake-Uhr); (2) „Einmal“ sendet `POST vault/approvals/:id` mit `{ decision: "once" }`, zeigt währenddessen „Antwort wird gesendet …“ und nimmt die Karte nach `200` weg; (3) `409` und `410` nehmen die Karte ohne Toast weg (`test.each`); (4) Sendefehler zeigt einen Toast mit dem Grund, die Karte bleibt und ist wieder bedienbar; (5) Esc auf der fokussierten Karte sendet `deny`. Echte Seams: `StateStreamContext` (Provider mit eigenem `registerHandler`), `ToastProvider`, `en.json` über `src/test/i18n.js`. Gemockt: nur `RequestUtil` (requestDouble) und `useVaultAvailable` (Modul-Cache je Konto aus Task 10 gehört nicht in diesen Test). Nicht getestet: Position, Stapelreihenfolge und Mobil-Layout (prüft `/design-verify`), das Einhängen in `Root.jsx`/`PopoutRoot.jsx` (reine Verdrahtung), `prefers-reduced-motion`. SEC: SEC-XSS-01 (nur React-Text, kein `dangerouslySetInnerHTML`; Ziel und Kennung kommen vom Agenten), SEC-SECRET-01 (Karte und Antwort tragen nur Kennung und Ziel, nie einen Wert); SEC-IDOR-01 und SEC-RATE-01 deckt die Route aus Task 6, der Client schickt nur die Anfrage-ID.
+**Tests:** 5 Tests in `VaultApprovalStack.test.jsx`, test-first (das Verhalten steht im Manifest und im Vertrag aus Task 6 fest): (1) Countdown aus `remainingMs` ab Empfang, auch wenn `expiresAt` der Serveruhr eine Stunde vorausläuft; Ablauf zeigt fünf Sekunden „abgelaufen“ mit gesperrten Knöpfen, danach ist die Karte weg (Fake-Uhr); (2) „Einmal“ sendet `POST vault/approvals/:id` mit `{ decision: "once" }`, zeigt währenddessen „Antwort wird gesendet …“ und nimmt die Karte nach `200` weg; (3) `404`, `409` und `410` nehmen die Karte ohne Toast weg (`test.each`); (4) Sendefehler zeigt einen Toast mit dem Grund, die Karte bleibt und ist wieder bedienbar; (5) Esc auf der fokussierten Karte sendet `deny`. Echte Seams: `StateStreamContext` (Provider mit eigenem `registerHandler`), `ToastProvider`, `en.json` über `src/test/i18n.js`. Gemockt: nur `RequestUtil` (requestDouble) und `useVaultAvailable` (Modul-Cache je Konto aus Task 10 gehört nicht in diesen Test). Nicht getestet: Position, Stapelreihenfolge und Mobil-Layout (prüft `/design-verify`), das Einhängen in `Root.jsx`/`PopoutRoot.jsx` (reine Verdrahtung), `prefers-reduced-motion`. SEC: SEC-XSS-01 (nur React-Text, kein `dangerouslySetInnerHTML`; Ziel und Kennung kommen vom Agenten), SEC-SECRET-01 (Karte und Antwort tragen nur Kennung und Ziel, nie einen Wert); SEC-IDOR-01 und SEC-RATE-01 deckt die Route aus Task 6, der Client schickt nur die Anfrage-ID.
 
-**Parallel:** Task 9, Task 11, Task 12, Task 14, Task 15 (keine gemeinsamen Dateien; Task 14/15 teilen nur die i18n-Schlüssel aus Task 10, die hier nur gelesen werden).
+**Parallel:** Task 3, Task 4, Task 9, Task 12, Task 14 (Welle B; keine gemeinsamen Dateien; Task 14 teilt nur die i18n-Schlüssel aus Task 10, die hier nur gelesen werden). Setzt Task 10 (Welle A) voraus; Zustandsstrom und Route aus Task 6 (Welle C) stehen im Vertrag oben fest, die Tests laufen gegen `requestDouble` und einen eigenen `registerHandler`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -9947,9 +6675,11 @@ const Stream = ({ children }) => (
 
 const mount = () => renderWithProviders(<VaultApprovalStack />, { providers: [ToastProvider, Stream] });
 const push = (list) => act(() => { stream.handler(list); });
-const approval = (id, expiresAt) => ({
+// The server clock runs an hour ahead: only remainingMs may drive the countdown.
+const SERVER_CLOCK_AHEAD_MS = 3_600_000;
+const approval = (id, remainingMs) => ({
     id, agentType: "claude", entryName: "web01", item: "portal-login",
-    target: "https://portal.example.com", expiresAt,
+    target: "https://portal.example.com", expiresAt: Date.now() + SERVER_CLOCK_AHEAD_MS + remainingMs, remainingMs,
 });
 const stack = () => document.querySelector("[data-ui-id='UI-VAULT-APPROVAL-CARD']");
 const button = (key) => screen.getByRole("button", { name: t(key) });
@@ -9960,9 +6690,7 @@ beforeEach(() => {
 });
 afterEach(() => { vi.useRealTimers(); });
 
-// --- VaultApprovalStack ---
-
-test("the countdown runs from expiresAt; an expired card shows its error state for five seconds, then goes", () => {
+test("the countdown runs from remainingMs on receipt; an expired card shows its error state for five seconds, then goes", () => {
     vi.useFakeTimers({ now: 0 });
     mount();
     push([approval("a1", 90_000)]);
@@ -9986,7 +6714,7 @@ test("Once sends the decision, shows the sending state, and removes the card on 
     let resolve;
     requestDouble.stub("postRequest", "vault/approvals/a1", new Promise((r) => { resolve = r; }));
     mount();
-    push([approval("a1", Date.now() + 120_000)]);
+    push([approval("a1", 120_000)]);
 
     await user.click(button("vault.approval.actions.once"));
 
@@ -9998,11 +6726,11 @@ test("Once sends the decision, shows the sending state, and removes the card on 
     expect(stack()).toBeNull();
 });
 
-test.each([409, 410])("an answer the server refuses with %i removes the card without a toast", async (code) => {
+test.each([404, 409, 410])("an answer the server refuses with %i removes the card without a toast", async (code) => {
     const user = userEvent.setup();
     requestDouble.stub("postRequest", "vault/approvals/a1", Object.assign(new Error("Approval closed"), { code }));
     mount();
-    push([approval("a1", Date.now() + 120_000)]);
+    push([approval("a1", 120_000)]);
 
     await user.click(button("vault.approval.actions.deny"));
 
@@ -10014,7 +6742,7 @@ test("a failed send keeps the card, re-enables it and names the reason in a toas
     const user = userEvent.setup();
     requestDouble.stub("postRequest", "vault/approvals/a1", Object.assign(new Error("Too many requests"), { code: 429 }));
     mount();
-    push([approval("a1", Date.now() + 120_000)]);
+    push([approval("a1", 120_000)]);
 
     await user.click(button("vault.approval.actions.session"));
 
@@ -10027,7 +6755,7 @@ test("Esc on the focused card denies", async () => {
     const user = userEvent.setup();
     requestDouble.stub("postRequest", "vault/approvals/a1", { success: true });
     mount();
-    push([approval("a1", Date.now() + 120_000)]);
+    push([approval("a1", 120_000)]);
 
     act(() => { stack().querySelector(".vault-approval-card").focus(); });
     await user.keyboard("{Escape}");
@@ -10061,7 +6789,7 @@ const formatRemaining = (ms) => {
 
 export const VaultApprovalCard = ({ approval, now, sending, onAnswer }) => {
     const { t } = useTranslation();
-    const remaining = new Date(approval.expiresAt).getTime() - now;
+    const remaining = approval.deadline - now;
     const expired = remaining <= 0;
     const disabled = expired || sending;
     const agent = approval.agentType ? t(`vault.agents.${approval.agentType}`) : null;
@@ -10130,8 +6858,6 @@ import { VaultApprovalCard } from "./VaultApprovalCard.jsx";
 const EXPIRED_VISIBLE_MS = 5000;
 const DELIVERY_GRACE_MS = 1000;
 
-const expiresAtMs = (approval) => new Date(approval.expiresAt).getTime();
-
 export const VaultApprovalStack = () => {
     const { t } = useTranslation();
     const { registerHandler } = useContext(StateStreamContext);
@@ -10144,22 +6870,23 @@ export const VaultApprovalStack = () => {
 
     useEffect(() => registerHandler(STATE_TYPES.VAULT_APPROVALS, (list) => {
         const current = Date.now();
-        const next = Array.isArray(list) ? list : [];
+        const next = (Array.isArray(list) ? list : [])
+            .map((approval) => ({ ...approval, deadline: current + approval.remainingMs }));
         const ids = new Set(next.map((approval) => approval.id));
         // The server drops a request the moment it times out. Keeping it here lets the card
         // show its expired state for five seconds; one answered elsewhere goes at once.
         setApprovals((prev) => [
             ...next,
             ...prev.filter((approval) => !ids.has(approval.id)
-                && expiresAtMs(approval) <= current + DELIVERY_GRACE_MS
-                && expiresAtMs(approval) + EXPIRED_VISIBLE_MS > current),
+                && approval.deadline <= current + DELIVERY_GRACE_MS
+                && approval.deadline + EXPIRED_VISIBLE_MS > current),
         ]);
         setNow(current);
     }), [registerHandler]);
 
     const visible = approvals
-        .filter((approval) => !answered.has(approval.id) && now < expiresAtMs(approval) + EXPIRED_VISIBLE_MS)
-        .sort((a, b) => expiresAtMs(b) - expiresAtMs(a));
+        .filter((approval) => !answered.has(approval.id) && now < approval.deadline + EXPIRED_VISIBLE_MS)
+        .sort((a, b) => b.deadline - a.deadline);
     const hasCards = visible.length > 0;
 
     useEffect(() => {
@@ -10176,7 +6903,7 @@ export const VaultApprovalStack = () => {
             await postRequest(`vault/approvals/${id}`, { decision });
             markAnswered(id);
         } catch (err) {
-            if (err?.code === 409 || err?.code === 410) markAnswered(id);
+            if ([404, 409, 410].includes(err?.code)) markAnswered(id);
             else sendToast(t("common.error"), err?.message || t("common.error"));
         } finally {
             setSending((prev) => {
@@ -10203,6 +6930,12 @@ export const VaultApprovalStack = () => {
         document.body,
     );
 };
+```
+
+`client/src/common/components/VaultApprovalCard/index.js`:
+
+```js
+export { VaultApprovalStack as default } from "./VaultApprovalStack.jsx";
 ```
 
 - [ ] **Step 5: Styles**
@@ -10301,7 +7034,7 @@ export const VaultApprovalStack = () => {
 - [ ] **Step 6: Run test to verify it passes**
 
 Run: `yarn --cwd client vitest run src/common/components/VaultApprovalCard/__tests__/VaultApprovalStack.test.jsx`
-Expected: PASS (6 Tests: 4 einzelne + 2 aus `test.each`). Schlägt ein Test mit `i18n: missing key "vault.…"` fehl, fehlt der Schlüssel in `en.json` aus Task 10 — dort nachtragen, nicht hier umbenennen.
+Expected: PASS (7 Tests: 4 einzelne + 3 aus `test.each`). Schlägt ein Test mit `i18n: missing key "vault.…"` fehl, fehlt der Schlüssel aus Task 10: nicht nachtragen und nicht umbenennen, sondern anhalten und den fehlenden Schlüssel melden.
 
 - [ ] **Step 7: In `Root.jsx` einhängen**
 
@@ -10309,7 +7042,7 @@ Expected: PASS (6 Tests: 4 einzelne + 2 aus `test.each`). Schlägt ein Test mit 
 
 ```jsx
 import { useTranslation } from "react-i18next";
-import { VaultApprovalStack } from "@/common/components/VaultApprovalCard/VaultApprovalStack.jsx";
+import VaultApprovalStack from "@/common/components/VaultApprovalCard";
 ```
 
 Z. 146, vorher:
@@ -10335,7 +7068,7 @@ nachher:
 
 ```jsx
 import ThemeLoader from "@/common/components/ThemeLoader";
-import { VaultApprovalStack } from "@/common/components/VaultApprovalCard/VaultApprovalStack.jsx";
+import VaultApprovalStack from "@/common/components/VaultApprovalCard";
 ```
 
 Z. 50-52, vorher:
@@ -10398,14 +7131,14 @@ git commit -m "Vault: Freigabe-Karte über jeder Seite und im Popout"
 
 **Interfaces:**
 - Consumes (Task 8, REST):
-  - `GET /api/vault/agent-keys?entryId=<id>` → `{ keys: AgentKey[], remoteUser: string|null, otherAccountConfigured: boolean }` mit `AgentKey = { id, entryId, agentType: "claude"|"codex", pending: boolean, ipBinding: boolean, allowedCidrs: string[]|null, createdAt, lastUsedAt: string|null }` (der Vertrag nennt nur `keys`; diese Felder braucht die Liste — gemeldet).
-  - `POST /api/vault/agent-keys` body `{ entryId, agentTypes, ipBinding, allowedCidrs }` → `{ results: [{ id, agentType, status: "configured"|"manual", remoteUser, command?, probe: { seenIp, matches }|null, replacedRegistration, reason? }] }`. `reason: "cli_missing"|"exec_failed"` ist **optional und nicht im Vertrag** (gemeldet); fehlt es, zeigt das Ergebnis den allgemeinen Satz.
-  - `POST /api/vault/agent-keys/:id/confirm` body `{}` bzw. `{ addSeenIp: true }` → `{ success }`.
-  - `DELETE /api/vault/agent-keys/:id` → `{ success, registration, commands? }` (Entziehen und Verwerfen eines `pending`-Keys).
+  - `GET /api/vault/agent-keys?entryId=<id>` → `{ keys: AgentKey[], remoteUser: string|null, otherAccountConfigured: boolean }` mit `AgentKey = { id, entryId, agentType: "claude"|"codex", pending: boolean, ipBinding: boolean, allowedCidrs: string[], createdAt, lastUsedAt: string|null }` (`allowedCidrs` ohne Bereiche `[]`, nie `null`).
+  - `POST /api/vault/agent-keys` body `{ entryId, agentTypes, ipBinding, allowedCidrs }` → `{ results: [{ id, agentType, status: "configured"|"manual", remoteUser, command?, probe: { seenIp, matches }|null, replacedRegistration, reason? }] }`. `reason: "cli_missing"|"exec_failed"` ist optional; fehlt es, zeigt das Ergebnis den allgemeinen Satz. `409`, solange für diesen Server schon eine Einrichtung läuft.
+  - `POST /api/vault/agent-keys/:id/confirm` body `{}` bzw. `{ addSeenIp: true }` → `{ success }`; `404` (Key unbekannt oder schon weg) bzw. `410` (`pending`-Key abgelaufen oder nicht mehr übernehmbar) machen den Befehl mit diesem Key wertlos; `409` bei gescheiterter Übernahme der Messung.
+  - `DELETE /api/vault/agent-keys/:id` → `{ success, registration: "removed"|"foreign"|"absent"|"unknown", commands? }` (Entziehen und Verwerfen eines `pending`-Keys); `commands` (Entfernbefehl als Text, nur mit Key-Präfix, nie mit Key) nur bei `unknown`; `404`, wenn der Key schon entzogen ist.
 - Consumes (Task 10): `useVaultAvailable()` als **benannter** Export aus `@/common/hooks/useVaultAvailable.js` (genutzt: `agentUrlSet`, `trustProxyUnsafe`, `impersonating`, `canProvision`); i18n-Schlüssel `servers.agentAccess.*`, `servers.contextMenu.agentAccess`, `vault.agents.*` (Liste am Ende).
 - Consumes (Bestand): `ServerContext.getServerById(id) → { id, name, ip, protocol, … } | null`; `copyToClipboard(text) → Promise<boolean>` aus `@/common/utils/clipboard.js`; `formatTimeAgo(timestamp, t)` aus `@/common/utils/timeAgo.js`; `Checkbox`, `ToggleSwitch`, `IconInput`, `Button`, `DialogProvider`.
 - Produces: `<AgentAccessDialog open entryId onClose />` (Default-Export über `index.js`, benannt aus `AgentAccessDialog.jsx`). Task 15 öffnet ihn aus „Bearbeiten“ mit `entryId`. Name und Adresse des Servers holt der Dialog selbst aus `ServerContext`.
-- Produces: `isValidCidr(value) → boolean`, `parseCidrs(text) → string[]` (benannte Exporte aus `AgentAccessDialog.jsx`).
+- Produces: `isValidCidr(value) → boolean` (IPv4/IPv6-Adresse mit oder ohne Präfix; ohne Präfix gilt `/32` bzw. `/128` wie in der Joi-Regel aus Task 8), `parseCidrs(text) → string[]` (benannte Exporte aus `AgentAccessDialog.jsx`).
 
 **Design:**
 - Screen: `UI-AGENT-ACCESS` — Artboard `docs/design/mockups/ui-agent-access.html` — Anleitung `docs/design/guides/ui-agent-access.md`; Ergänzung `UI-SERVERS-LIST-MENU` — Artboard `docs/design/mockups/ui-servers.html` — Anleitung `docs/design/guides/ui-servers.md`
@@ -10413,21 +7146,21 @@ git commit -m "Vault: Freigabe-Karte über jeder Seite und im Popout"
 
 | ID | Element | Fachlicher Anker | Zustände | Copy |
 |----|---------|------------------|----------|------|
-| UI-AGENT-ACCESS-KEYS | Agenten auf diesem Server | Die Agenten-Keys dieses Servers — Agent, angelegt, zuletzt genutzt, IP-Bindung — je mit Entziehen. Entziehen widerruft den Key und entfernt die Registrierung auf dem Server. Nicht: api_key, vault_item, identity. | default, empty, loading, selected, error | empty „Noch kein Agent auf diesem Server eingerichtet.“ · selected „Zugang von Claude Code auf web01 entziehen? Der Agent verliert sofort den Zugriff.“ · error „Entziehen fehlgeschlagen.“ |
+| UI-AGENT-ACCESS-KEYS | Agenten auf diesem Server | Die Agenten-Keys dieses Servers — Agent, angelegt, zuletzt genutzt, IP-Bindung — je mit Entziehen. Entziehen widerruft den Key und entfernt die Registrierung auf dem Server. Nicht: api_key, vault_item, identity. | default, empty, loading, selected, error, partial, disabled | empty „Noch kein Agent auf diesem Server eingerichtet.“ · selected „Zugang von Claude Code auf web01 entziehen? Der Agent verliert sofort den Zugriff.“ · error „Entziehen fehlgeschlagen.“ · partial „Zugang entzogen. Die Registrierung auf web01 trägt den Key eines anderen Kontos und bleibt stehen.“ · disabled „Zugang entzogen. Die Registrierung konnte nicht entfernt werden — Befehl kopieren und auf dem Server ausführen.“ |
 | UI-AGENT-ACCESS-SETUP | Einrichten | Welche Agenten eingerichtet werden (Claude Code, Codex) und welche zusätzlichen Adressbereiche (CIDR) ihr Key neben der IP dieses Servers akzeptiert. Nicht: api_key, vault_binding. | default, loading, error, disabled, partial | loading „Richte ein …“ · error „Ungültiger Adressbereich.“ · disabled „Outpost-Adresse für Agenten fehlt — in Einstellungen › Vault setzen.“ · partial „Für root auf web01 hat bereits ein anderes Konto Agenten-Zugang eingerichtet — die Registrierung wird ersetzt.“ |
 | UI-AGENT-ACCESS-IPBIND | Nur von der IP dieses Servers | Ob der Key nur Anfragen von der Adresse dieses Servers (plus den eingetragenen Adressbereichen) akzeptiert. Standard an; aus heißt von überall. Nicht: vault_binding, allowed_origin. | default, selected, partial, disabled, error | selected „aus — von überall“ · partial „Gesehen wurde 172.17.0.1 statt 192.168.2.40 — als Adressbereich übernehmen? Ohne Übernahme weist Outpost den Key ab.“ · disabled „Adresse konnte nicht gemessen werden — der Key gilt für die aufgelöste Adresse des Servers.“ · error „TRUST_PROXY=true — die IP-Bindung ist wirkungslos.“ |
 | UI-AGENT-ACCESS-RESULT | Ergebnis | Je Agent das Ergebnis der Einrichtung — eingerichtet, oder der fertige Befehl zum Kopieren, wenn die automatische Einrichtung scheiterte (CLI fehlt, Exec-Fehler). Der Key ist nur hier und nur jetzt sichtbar; ein Key, der weder automatisch eingerichtet noch kopiert wurde, wird beim Schließen gelöscht. Nicht: agent_key, toast. | default, empty, success, partial, error | empty „erscheint erst nach dem Einrichten“ · success „Eingerichtet für root. Claude Code neu starten, dann /mcp.“ · partial „Bestehende Registrierung ersetzt — der alte Konto-Key bleibt gültig, bis du ihn unter API-Schlüssel löschst.“ · error „codex nicht gefunden. Befehl kopieren und auf dem Server ausführen.“ |
 | UI-SERVERS-LIST-MENU | Kontextmenü Server (übernommen, ergänzt) | Zweitweg für Aktionen auf einem Eintrag — Verbinden, SFTP öffnen, Notizen, Bearbeiten, Duplizieren, Session beitreten, Agenten-Zugang… (nur SSH, nur bei eingeschaltetem Vault), Löschen. Port weiterleiten erscheint nur in der Desktop-App (Tauri), im Web-Build nie. Nicht: primary_navigation. | default, disabled | Menüpunkt „Agenten-Zugang…“ |
 
-- Stand: `docs/design/manifest.yaml` Revision 13. Zustände daraus: IPBIND `partial` bei `probe.matches === false` (Übernahme-Angebot), IPBIND `disabled` bei eingeschalteter IP-Bindung und `probe === null` in einem Ergebnis (Messung gescheitert), RESULT `partial` je Ergebnis mit `replacedRegistration: true`.
+- Stand: `docs/design/manifest.yaml` Revision 14. Zustände daraus: IPBIND `partial` bei `probe.matches === false` (Übernahme-Angebot), IPBIND `disabled` bei eingeschalteter IP-Bindung und `probe === null` in einem Ergebnis (Messung gescheitert), RESULT `partial` je Ergebnis mit `replacedRegistration: true`, KEYS `partial` nach dem Entziehen bei `registration === "foreign"`, KEYS `disabled` nach dem Entziehen bei `registration === "unknown"` (darunter `commands` in `<pre>` mit „Kopieren“). Beide stehen unter der Liste, bis erneut entzogen oder der Dialog geschlossen wird.
 - Locator: jedes Element trägt `data-ui-id="<ID>"`; zusätzlich `data-ui-id="UI-AGENT-ACCESS"` genau einmal am Wurzelknoten innerhalb `DialogProvider`. `UI-SERVERS-LIST-MENU` sitzt schon am `ContextMenu` (Bestand), der Menüpunkt bekommt keine eigene ID.
 - Tokens: `--space-1/2/3/4/6`, `--radius-sm/md`, `--success` (eingerichtet), `--error` (gescheitert, Entziehen-Fehler, ungültiger Bereich), `--warning`/`--warning-opacity` (Warnrand: fremdes Konto, gemessene Adresse, Proxy, Key-Hinweis), `--subtext`, `--gray`, `--dark-gray`, `--type-title/heading/caption/mono`. Im Code über `@/common/styles/colors` und `@/common/styles/tokens`.
 - Layout: 40 rem, max. 85 vh; IPBIND liegt im DOM außerhalb von SETUP, optisch zwischen Agentenauswahl und Adressbereichen (SETUP-Formular `display: contents`, Reihenfolge über `order`).
 - Nicht im Manifest, aus der Spec übernommen (gemeldet): Erfolgssatz für Codex („Codex in einer neuen Shell starten; laufende Codex-Prozesse und tmux-Sitzungen kennen den Key nicht.“), Statuswörter „eingerichtet“/„gescheitert“ und der Key-Hinweis stammen aus dem Artboard.
 
-**Tests:** 3 Tests in `AgentAccessDialog.test.jsx`, test-first (Ablauf `pending`/`confirm`/`DELETE` steht in Spec Schritt 1a und 5): (1) Schließen ohne Übernahme löscht den `pending`-Key per `DELETE vault/agent-keys/:id`; (2) „Kopieren“ kopiert den Befehl, bestätigt per `POST …/confirm` mit `{}` und Schließen löscht danach nichts; (3) eine abweichende Messung bietet die Übernahme an, „Übernehmen“ sendet `confirm` mit `{ addSeenIp: true }`. Echte Seams: `DialogProvider` (Schließen über den Knopf plus `animationEnd`, das jsdom nicht feuert), `ToastProvider`, `ServerContext` (Provider mit festem `getServerById`), `en.json`. Gemockt: `RequestUtil` (requestDouble), `copyToClipboard` (jsdom hat keine Zwischenablage), `useVaultAvailable`. Nicht getestet: Menüpunkt in `ServerList.jsx` (reine Bedingung `protocol === "ssh" && canProvision`), Entziehen (Weiterreichung an `DELETE` plus Neuladen), CIDR-Prüfung im Client (Spiegel der Server-Validierung aus Task 8), die Hinweise `ipBind.probeFailed` und `result.replaced` (je eine Bedingung auf `probe === null` bzw. `replacedRegistration`), Darstellung (prüft `/design-verify`). SEC: SEC-SECRET-01 (Key nur im RESULT, nie in Liste, Toast oder Log; beim Schließen aus dem State gelöscht), SEC-APIKEY-01/SEC-SESS-02 (nicht übernommene `pending`-Keys werden beim Schließen verworfen), SEC-INPUT-01 (CIDR-Vorprüfung im Client; maßgeblich bleibt Task 8), SEC-XSS-01 (nur React-Text; Befehl in `<pre>` als Text).
+**Tests:** 4 Tests in `AgentAccessDialog.test.jsx`, test-first (Ablauf `pending`/`confirm`/`DELETE` steht in Spec Schritt 1a und 5, das Entziehen-Ergebnis im Manifest Revision 14): (1) Schließen ohne Übernahme löscht den `pending`-Key per `DELETE vault/agent-keys/:id`; (2) „Kopieren“ kopiert den Befehl, bestätigt per `POST …/confirm` mit `{}` und Schließen löscht danach nichts; (3) eine abweichende Messung bietet die Übernahme an, „Übernehmen“ sendet `confirm` mit `{ addSeenIp: true }`; (4) Entziehen mit `registration: "unknown"` zeigt nach dem Neuladen der Liste den Satz des Zustands `disabled` und den Entfernbefehl, „Kopieren“ kopiert ihn. Echte Seams: `DialogProvider` (Schließen über den Knopf plus `animationEnd`, das jsdom nicht feuert), `ToastProvider`, `ServerContext` (Provider mit festem `getServerById`), `en.json`. Gemockt: `RequestUtil` (requestDouble), `copyToClipboard` (jsdom hat keine Zwischenablage), `useVaultAvailable`. Nicht getestet: Menüpunkt in `ServerList.jsx` (reine Bedingung `protocol === "ssh" && canProvision && !impersonating`), Entziehen mit `registration: "foreign"` (dieselbe Verzweigung wie Test 4, nur ein anderer Satz ohne Befehl) und mit `404` (Neuladen der Liste), die Sperren `setupInFlight`/`revoking` gegen Doppelklick, die Fehlerzweige von `confirm` (`404`/`410` nimmt das Ergebnis samt Befehl weg; gescheitertes „Übernehmen“ stellt das Angebot wieder her) und das Neuladen im `catch` der Einrichtung (je eine Bedingung), CIDR-Prüfung im Client (Spiegel der Server-Validierung aus Task 8), die Hinweise `ipBind.probeFailed` und `result.replaced` (je eine Bedingung auf `probe === null` bzw. `replacedRegistration`), Darstellung (prüft `/design-verify`). SEC: SEC-SECRET-01 (Key nur im RESULT, nie in Liste, Toast oder Log; beim Schließen aus dem State gelöscht), SEC-APIKEY-01/SEC-SESS-02 (nicht übernommene `pending`-Keys werden beim Schließen verworfen), SEC-INPUT-01 (CIDR-Vorprüfung im Client; maßgeblich bleibt Task 8), SEC-XSS-01 (nur React-Text; Einrichtungs- und Entfernbefehl in `<pre>` als Text).
 
-**Parallel:** Task 9, Task 11, Task 12, Task 13, Task 15 (keine gemeinsamen Dateien; Task 15 importiert den Dialog nur, siehe dort).
+**Parallel:** Task 3, Task 4, Task 9, Task 12, Task 13 (Welle B; keine gemeinsamen Dateien). Nicht neben Task 15: der importiert `AgentAccessDialog` und übernimmt die Entziehen-Auswertung dieses Tasks; Task 15 startet erst nach dem Merge dieses Tasks (Welle C). Setzt Task 10 (Welle A) voraus; die REST-Form aus Task 8 (Welle C) steht im Vertrag oben fest, die Tests laufen gegen `requestDouble`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -10491,8 +7224,6 @@ beforeEach(() => {
     requestDouble.stub("getRequest", "vault/agent-keys?entryId=7", { keys: [], remoteUser: "root", otherAccountConfigured: false });
 });
 
-// --- AgentAccessDialog ---
-
 test("closing without copying or automatic setup deletes the pending key", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
@@ -10544,6 +7275,31 @@ test("a measured address that differs is offered for adoption and confirmed with
         { method: "postRequest", path: "vault/agent-keys/42/confirm", body: { addSeenIp: true } },
     ));
 });
+
+test("revoking a key whose registration could not be removed shows the command to run on the server", async () => {
+    const user = userEvent.setup();
+    clipboard.copyToClipboard.mockResolvedValue(true);
+    const commands = "codex mcp remove outpost";
+    requestDouble.stub("getRequest", "vault/agent-keys?entryId=7", {
+        keys: [{ id: 43, entryId: 7, agentType: "codex", pending: false, ipBinding: false, allowedCidrs: [],
+            createdAt: "2026-10-09T08:00:00.000Z", lastUsedAt: null }],
+        remoteUser: "root", otherAccountConfigured: false,
+    });
+    requestDouble.stub("deleteRequest", "vault/agent-keys/43", { success: true, registration: "unknown", commands });
+    open();
+    const keys = node("UI-AGENT-ACCESS-KEYS");
+
+    await user.click(await within(keys).findByRole("button", { name: t("servers.agentAccess.keys.revoke") }));
+    requestDouble.stub("getRequest", "vault/agent-keys?entryId=7", { keys: [], remoteUser: "root", otherAccountConfigured: false });
+    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: t("servers.agentAccess.keys.revoke") }));
+
+    expect(await within(keys).findByText(t("servers.agentAccess.keys.empty"))).toBeInTheDocument();
+    expect(within(keys).getByText(t("servers.agentAccess.keys.revokedUnknown"))).toBeInTheDocument();
+    expect(within(keys).getByText(commands)).toBeInTheDocument();
+
+    await user.click(within(keys).getByRole("button", { name: t("servers.agentAccess.result.copy") }));
+    expect(clipboard.copyToClipboard).toHaveBeenCalledWith(commands);
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -10557,7 +7313,7 @@ Expected: FAIL — `Failed to resolve import "../AgentAccessDialog.jsx"`.
 
 ```jsx
 import "./styles.sass";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Copy as IconCopy, KeyRound as IconKeyRound, Network as IconNetwork } from "lucide-react";
 import { DialogProvider } from "@/common/components/Dialog";
@@ -10576,14 +7332,15 @@ import { formatTimeAgo } from "@/common/utils/timeAgo.js";
 const AGENT_TYPES = ["claude", "codex"];
 const raw = { interpolation: { escapeValue: false } };
 
-const IPV4_CIDR = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d{1,2})$/;
-const IPV6_CIDR = /^([0-9a-f:]+)\/(\d{1,3})$/i;
+// The prefix is optional: Task 8 stores a bare address as /32 or /128.
+const IPV4_CIDR = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})(?:\/(\d{1,2}))?$/;
+const IPV6_CIDR = /^([0-9a-f:]+)(?:\/(\d{1,3}))?$/i;
 
 export const isValidCidr = (value) => {
     const v4 = IPV4_CIDR.exec(value);
-    if (v4) return v4.slice(1, 5).every((octet) => Number(octet) <= 255) && Number(v4[5]) <= 32;
+    if (v4) return v4.slice(1, 5).every((octet) => Number(octet) <= 255) && (v4[5] === undefined || Number(v4[5]) <= 32);
     const v6 = IPV6_CIDR.exec(value);
-    if (!v6 || Number(v6[2]) > 128) return false;
+    if (!v6 || (v6[2] !== undefined && Number(v6[2]) > 128)) return false;
     const address = v6[1];
     if ((address.match(/::/g) || []).length > 1) return false;
     const groups = address.split(":").filter(Boolean);
@@ -10616,6 +7373,9 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
     const [probeFailed, setProbeFailed] = useState(false);
     const [revokeTarget, setRevokeTarget] = useState(null);
     const [revokeErrorId, setRevokeErrorId] = useState(null);
+    const [revokeOutcome, setRevokeOutcome] = useState(null);
+    const setupInFlight = useRef(false);
+    const revoking = useRef(false);
 
     const agentLabel = (type) => t(`vault.agents.${type}`);
 
@@ -10643,13 +7403,14 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
     const setupDisabled = fieldsDisabled || !AGENT_TYPES.some((type) => agents[type]);
 
     const setup = async () => {
-        if (setupDisabled) return;
+        if (setupDisabled || setupInFlight.current) return;
         const allowedCidrs = parseCidrs(cidrText);
         if (!allowedCidrs.every(isValidCidr)) {
             setCidrInvalid(true);
             return;
         }
         setCidrInvalid(false);
+        setupInFlight.current = true;
         setSettingUp(true);
         try {
             await discardPending(results);
@@ -10670,7 +7431,9 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
             loadKeys();
         } catch (err) {
             sendToast(t("common.error"), err?.message || t("common.error"));
+            loadKeys();
         } finally {
+            setupInFlight.current = false;
             setSettingUp(false);
         }
     };
@@ -10678,6 +7441,7 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
     const confirmBody = (result, adopted) => (adopted && result.probe?.matches === false ? { addSeenIp: true } : {});
 
     const adopt = async () => {
+        const offer = adoptOffer;
         setAdoptOffer(null);
         setAdoptSeenIp(true);
         try {
@@ -10686,6 +7450,8 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
                 .map((result) => postRequest(`vault/agent-keys/${result.id}/confirm`, confirmBody(result, true))));
             loadKeys();
         } catch (err) {
+            setAdoptOffer(offer);
+            setAdoptSeenIp(false);
             sendToast(t("common.error"), err?.message || t("common.error"));
         }
     };
@@ -10701,18 +7467,37 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
             setResults((prev) => prev.map((entry) => (entry.id === result.id ? { ...entry, confirmed: true } : entry)));
             loadKeys();
         } catch (err) {
+            if (err?.code === 404 || err?.code === 410) {
+                setResults((prev) => prev.filter((entry) => entry.id !== result.id));
+                loadKeys();
+            }
             sendToast(t("common.error"), err?.message || t("common.error"));
         }
     };
 
     const revoke = async (key) => {
+        if (revoking.current) return;
+        revoking.current = true;
         setRevokeTarget(null);
+        setRevokeOutcome(null);
         try {
-            await deleteRequest(`vault/agent-keys/${key.id}`);
+            const data = await deleteRequest(`vault/agent-keys/${key.id}`);
             setRevokeErrorId(null);
+            if (data.registration === "foreign" || data.registration === "unknown") {
+                setRevokeOutcome({ registration: data.registration, commands: data.commands ?? null });
+            }
             loadKeys();
-        } catch {
-            setRevokeErrorId(key.id);
+        } catch (err) {
+            if (err?.code === 404) loadKeys();
+            else setRevokeErrorId(key.id);
+        } finally {
+            revoking.current = false;
+        }
+    };
+
+    const copyRevokeCommands = async () => {
+        if (!(await copyToClipboard(revokeOutcome.commands))) {
+            sendToast(t("common.error"), t("settings.account.apiKeys.copyError"));
         }
     };
 
@@ -10727,6 +7512,7 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
         setCidrInvalid(false);
         setRevokeTarget(null);
         setRevokeErrorId(null);
+        setRevokeOutcome(null);
         onClose();
     };
 
@@ -10745,7 +7531,7 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
             ? t("servers.agentAccess.keys.lastUsed", { time: formatTimeAgo(key.lastUsedAt, t), ...raw })
             : t("settings.account.apiKeys.neverUsed"),
         key.ipBinding
-            ? t("servers.agentAccess.keys.boundTo", { address: [address, ...(key.allowedCidrs || [])].filter(Boolean).join(", "), ...raw })
+            ? t("servers.agentAccess.keys.boundTo", { address: [address, ...key.allowedCidrs].filter(Boolean).join(", "), ...raw })
             : t("servers.agentAccess.keys.anywhere"),
     ].join(" · ");
 
@@ -10802,6 +7588,22 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
                             )}
                         </div>
                     ))}
+                    {revokeOutcome && (
+                        <div className="agent-access-revoked" role="status">
+                            <p className="agent-access-notice">
+                                {revokeOutcome.registration === "foreign"
+                                    ? t("servers.agentAccess.keys.revokedForeign", { server: serverName, ...raw })
+                                    : t("servers.agentAccess.keys.revokedUnknown")}
+                            </p>
+                            {revokeOutcome.commands && (
+                                <div className="agent-result-command">
+                                    <pre>{revokeOutcome.commands}</pre>
+                                    <Button type="secondary" buttonType="button" icon={IconCopy}
+                                            text={t("servers.agentAccess.result.copy")} onClick={copyRevokeCommands} />
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </section>
 
                 <form className="agent-access-setup" data-ui-id="UI-AGENT-ACCESS-SETUP" aria-busy={settingUp || undefined}
@@ -11057,6 +7859,12 @@ export { AgentAccessDialog as default } from "./AgentAccessDialog.jsx";
   .agent-access-error
     color: colors.$error
 
+  .agent-access-revoked
+    display: flex
+    flex-direction: column
+    gap: tokens.$space-1
+    margin-top: tokens.$space-2
+
   .agent-access-notice
     font: tokens.$type-caption
     color: colors.$warning
@@ -11102,7 +7910,7 @@ export { AgentAccessDialog as default } from "./AgentAccessDialog.jsx";
 - [ ] **Step 5: Run test to verify it passes**
 
 Run: `yarn --cwd client vitest run src/pages/Servers/components/AgentAccessDialog/__tests__/AgentAccessDialog.test.jsx`
-Expected: PASS (3 Tests). Fehlt ein Schlüssel in `en.json` (`i18n: missing key "servers.agentAccess.…"`), in Task 10 nachtragen.
+Expected: PASS (4 Tests). Fehlt ein Schlüssel aus Task 10 (`i18n: missing key "servers.agentAccess.…"`): nicht nachtragen und nicht umbenennen, sondern anhalten und den fehlenden Schlüssel melden.
 
 - [ ] **Step 6: Menüpunkt in `ServerList.jsx`**
 
@@ -11206,6 +8014,8 @@ git commit -m "Vault: Agenten-Zugang-Dialog und Menüpunkt im Server-Kontextmen�
 | `servers.agentAccess.keys.revoke` | Entziehen |
 | `servers.agentAccess.keys.revokeConfirm` | Zugang von {{agent}} auf {{server}} entziehen? Der Agent verliert sofort den Zugriff. |
 | `servers.agentAccess.keys.revokeError` | Entziehen fehlgeschlagen. |
+| `servers.agentAccess.keys.revokedForeign` | Zugang entzogen. Die Registrierung auf {{server}} trägt den Key eines anderen Kontos und bleibt stehen. |
+| `servers.agentAccess.keys.revokedUnknown` | Zugang entzogen. Die Registrierung konnte nicht entfernt werden — Befehl kopieren und auf dem Server ausführen. |
 | `servers.agentAccess.keys.created` | angelegt {{date}} |
 | `servers.agentAccess.keys.lastUsed` | zuletzt {{time}} |
 | `servers.agentAccess.keys.boundTo` | nur {{address}} |
@@ -11240,6 +8050,2884 @@ git commit -m "Vault: Agenten-Zugang-Dialog und Menüpunkt im Server-Kontextmen�
 
 ---
 
+### Task 5: REST: Einträge, Reveal, Einstellungen, Verfügbarkeit
+
+**Files:**
+- Create: `server/validations/vault.js`
+- Create: `server/controllers/vaultItems.js`
+- Create: `server/controllers/vaultSettings.js`
+- Modify: `server/routes/vault/items.js` (leeren `Router()`-Platzhalter aus Task 1 vollständig ersetzen)
+- Modify: `server/routes/vault/settings.js` (leeren `Router()`-Platzhalter aus Task 1 vollständig ersetzen)
+- Test: `server/lib/vault/__tests__/validation.test.js`
+- Test: `server/lib/vault/__tests__/itemsRoute.test.js`
+
+**Interfaces:**
+- Consumes:
+  - Task 1: Modelle `VaultItem` (mit `afterFind`-Hook: `fields` als Objekt, `approvalRequired`/`allServers` als Boolean, auch unter `query: { raw: true }`), `VaultSecret`, `VaultBinding`, `VaultSettings.getOrCreate()`; aus `server/lib/vault/state.js` `initVaultState() → Promise<{ keyStatus }>`, `getKeyStatus() → "active"|"missing"|"mismatch"`, `isVaultEnabled() → boolean`, `requireVaultEnabled(req, res, next)`, `_resetForTests()`; aus `server/lib/vault/secrets.js` `writeSecret(itemId, field, value) → Promise<void>`, `readSecret(itemId, field) → Promise<string|null>` (wirft `VaultError(ITEM_UNREADABLE)`), `clearSecrets(itemId) → Promise<number>`, `isUnreadable(itemId) → boolean` (Entschlüsselungsfehler von `readSecret` markiert, `writeSecret`/`clearSecrets` heben die Marke auf); `VaultError`, `VaultErrorCode` aus `server/lib/vault/errors.js`; `Permission.SETTINGS_VAULT`; `AUDIT_ACTIONS.VAULT_ITEM_CREATE|VAULT_ITEM_UPDATE|VAULT_ITEM_DELETE|VAULT_REVEAL|VAULT_ITEM_UNREADABLE`, `RESOURCE_TYPES.VAULT`.
+  - Task 3: aus `server/lib/vault/visibility.js` `itemRef(item) → string`, `activeOrganizationIds(accountId) → Promise<number[]>`, `ownedItems(accountId) → Promise<VaultItem[]>` (eigene Einträge mit `vault.use` und die der Organisationen mit aktiver Mitgliedschaft, nach Name sortiert), `canUseVault(accountId) → Promise<boolean>`, `canManageItem(accountId, item) → Promise<boolean>`, `canRevealItem(accountId, item) → Promise<boolean>`, `canCreateFor(accountId, { organizationId }) → Promise<boolean>`; aus `server/lib/vault/bindings.js` `validateBindings({ accountId, organizationId }, bindings) → Promise<{ valid: true } | { valid: false, message }>`, `setBindings(itemId, bindings) → Promise<void>`.
+  - Task 4: `const { requireLoginSession } = require("../../middlewares/requireLoginSession")` (benannter Export wie `authenticate`/`requirePermission`); `authenticate` setzt bei Login-Sessions `req.session` (mit `impersonatorId`), bei Konto-Keys `req.apiKey`.
+- Produces (von Tasks 10, 12, 15 genutzt; Task 8 liest die Agenten-Adresse selbst aus `VaultSettings.getOrCreate()`):
+  - `GET /api/vault/available` → immer `200 { enabled, canUse, canManageOrgs: number[], canProvision, agentUrlSet, impersonating, trustProxyUnsafe }`; bei ausgeschaltetem Vault `canUse:false`, `canManageOrgs:[]`, `canProvision:false` (`agentUrlSet`, `impersonating`, `trustProxyUnsafe` bleiben echte Werte).
+  - `GET /api/vault/items` → `{ items: Item[] }`, `Item = { id, ref, accountId, organizationId, ownerName (Organisationsname, bei persönlichen Einträgen null), name, type, description, fields, approvalRequired, allServers, bindings: [{ kind, targetId, label|null }], secretFields: string[], unreadable, lastUsedAt, canManage, canReveal }`. `canReveal` ist in Impersonations-Sitzungen und mit Konto-Key immer `false`. `unreadable` ist `isUnreadable(item.id)`: `true`, sobald ein Wert seit dem Start nicht entschlüsselt werden konnte, bis er neu geschrieben oder gelöscht wird (Grundlage für den Zustand `error` von `UI-VAULT-DETAIL`, Task 12).
+  - `POST /api/vault/items` → `201 { item }`; `400` (Joi, Bindung), `403` (kein Recht für diesen Besitzer; `approvalRequired: false` aus Impersonation oder mit Konto-Key → `403 { code: 403, message: "Turning off approvals requires a signed-in session" }`), `409` (Name beim Besitzer vergeben).
+  - `PATCH /api/vault/items/:id` → `{ item, secretsCleared }`; `404` unbekannt oder fremder Mandant, `403` ohne Verwaltungsrecht oder beim Umschalten von `approvalRequired` auf `false` (Eintrag steht noch auf `true`) aus Impersonation/mit Konto-Key (Meldung wie bei `POST`); steht der Eintrag schon auf `false`, geht ein `PATCH` mit `approvalRequired: false` auch von dort durch, `409` Name vergeben (Vorabprüfung und `SequelizeUniqueConstraintError` beim Schreiben; dann sind weder neue Werte noch Bindungen gespeichert, bei neuem Ziel schon gelöschte Werte bleiben gelöscht).
+  - `DELETE /api/vault/items/:id` → `{ success: true }` (Werte und Bindungen werden mitgelöscht).
+  - `GET /api/vault/items/:id/secrets/:field` → `{ value }` mit `Cache-Control: no-store`; `403` ohne Recht/ohne Login-Session/Impersonation, `404` unbekannt, fremder Mandant, Feld nicht vom Typ oder kein Wert, `422 { code: 422, message }` wenn der Wert nicht entschlüsselt werden kann (Audit `vault.item_unreadable`; Grundlage für den Zustand `error` von `UI-VAULT-DETAIL`), `429` ab dem 31. Abruf je Minute und Konto.
+  - `GET`/`PATCH /api/vault/settings` (Recht `settings.vault`, auch bei ausgeschaltetem Vault) → `{ keyStatus, agentUrl, trustProxyUnsafe }`; `agentUrl` wird ohne abschließenden Schrägstrich gespeichert, `""`/`null` löscht sie.
+  - `server/controllers/vaultSettings.js`: `getVaultSettings() → Promise<{ keyStatus, agentUrl }>`, `updateVaultSettings({ agentUrl }) → Promise<{ keyStatus, agentUrl }>`, `getAgentUrl() → Promise<string|null>` (nur innerhalb dieser Datei genutzt, von `getVaultSettings` und `getVaultAvailability`; Task 8 nutzt es nicht), zusätzlich `getVaultAvailability(accountId, { impersonating, trustProxyUnsafe }) → Promise<object>` (Antwort von `available`).
+  - `server/validations/vault.js`: `SECRET_FIELDS` (`{ login: ["password"], api_key: ["token"], ssh: ["privateKey","password","passphrase"], database: ["password"], generic: ["value"] }`), `createVaultItemValidation`, `updateVaultItemSchema(type) → Joi.ObjectSchema`, `updateVaultSettingsValidation`. Ursprünge werden auf `new URL(x).origin` normalisiert gespeichert (Kleinschreibung, Standardport entfernt) — Task 11 vergleicht gegen genau diese Form.
+
+**Design:** kein UI-Anteil.
+
+**Tests:** 5 Tests in 2 Dateien, test-first (der Vertrag steht in der Spec, Abschnitte „REST-Endpunkte“, „Impersonation“ und „Oberfläche“ → Eintrag-Dialog).
+- `validation.test.js`, 1 Test mit Tabellenfällen: Felder je Typ, Ursprungsform und -normalisierung, Namensmuster, Geheimfelder je Typ (auch beim Ändern), Bindungsarten, `agentUrl` (SEC-INPUT-01).
+- `itemsRoute.test.js`, 4 Tests über die Naht Router → Controller → echte Task-1/3/4-Module → In-Memory-SQLite; gefälscht werden nur `utils/database`, `permissions/engine`, `middlewares/auth` (setzt `req.user`/`req.session`/`req.apiKey` je Token) und `createAuditLog`:
+  1. Spec-Test 3: Reveal als Besitzer persönlich `200`, mit `vault.reveal` in der Organisation `200`, aktives Mitglied ohne Recht `403`, nur eingeladenes Konto mit Org-Rechten `404`, fremdes persönliches Konto `404`, Feld eines anderen Typs `404`; genau zwei Audits `vault.reveal`, kein Wert im Audit; ein Wert, der sich nicht entschlüsseln lässt, gibt `422` mit Audit `vault.item_unreadable`, die Liste meldet `unreadable:true`, bis der Wert neu geschrieben ist (SEC-IDOR-01, SEC-TENANT-01, SEC-RBAC-01, SEC-SECRET-01, SEC-ERR-01).
+  2. Spec-Test 11 Teil 2 (Reveal) und „Freigabe erforderlich“: Impersonations-Sitzung und Konto-Key bekommen beim Reveal `403`, beim Anlegen oder Umschalten auf `approvalRequired: false` `403` „Turning off approvals requires a signed-in session“ (nichts angelegt, Eintrag unverändert), alles ohne Audit; die Liste meldet dort `canReveal:false`; dieselbe Änderung aus der Login-Session gelingt; steht der Eintrag danach auf `false`, geht ein `PATCH` der Beschreibung mit `approvalRequired: false` auch aus der Impersonation durch (SEC-RBAC-01).
+  3. Spec-Test 11 Teil 1: `PATCH` mit gleichem Ursprung in anderer Schreibweise behält den Wert, mit neuem Ursprung löscht er ihn im selben Vorgang (Audit `secretsCleared:true`), mit neuem Ursprung und neuem Wert steht nur der neue Wert; `GET /items` und Audit enthalten keinen der Werte.
+  4. `available` inkl. `trustProxyUnsafe` (`trust proxy` `true` vs. Hop-Zahl), `impersonating`, `canManageOrgs` (nur aktive Mitgliedschaft), `agentUrlSet` nach `PATCH /settings`; Vault aus → Rechte leer, `/items` `404`, `/settings` meldet `missing`.
+- Nicht getestet: Rate-Limit (Framework-Zusage von express-rate-limit, Konfiguration wie `bookmarkRateLimiter`), `DELETE` und Bindungs-Labels (reine Weiterreichung an `setBindings`/`clearSecrets`, deren Verhalten Task 1/3 testen), Rechte-Matrix von `canCreateFor`/`canManageItem` (Task 3), der `409` aus `SequelizeUniqueConstraintError` (nur bei gleichzeitigem Anlegen desselben Namens nach der Vorabprüfung erreichbar) und das Protokollieren eines fehlgeschlagenen Aufräumens in `createItem` (Log-Ausgabe), OpenAPI-Kommentare.
+- SEC-Abdeckung dieses Tasks: SEC-INPUT-01, SEC-ERR-01 (500 ohne Details, 422 ohne Details), SEC-SECRET-01, SEC-RATE-01 (Reveal), SEC-SQLI-01 (nur Sequelize-`where`), SEC-IDOR-01, SEC-TENANT-01, SEC-RBAC-01, SEC-PII-01 (Löschen entfernt Werte und Bindungen; Audit ohne Werte).
+
+**Parallel:** Task 6, Task 8, Task 15 (Welle C; keine gemeinsamen Dateien: Task 6 schreibt `lib/vault/approvals.js`, `StateBroadcaster.js`, `routes/state.js`, `routes/vault/approvals.js`, `validations/vaultApprovals.js`; Task 8 `provision.js`, `controllers/agentKeys.js`, `routes/vault/agentKeys.js`, `validations/vaultAgentKeys.js`, `execCommand.js`, `server/index.js`; Task 15 nur `client/`). `visibility.js` und `secrets.js` liest dieser Task nur.
+
+- [ ] **Step 1: Validierungstest schreiben**
+
+`server/lib/vault/__tests__/validation.test.js`:
+
+```js
+const test = require("node:test");
+const assert = require("node:assert");
+const {
+    createVaultItemValidation, updateVaultItemSchema, updateVaultSettingsValidation,
+} = require("../../../validations/vault");
+
+const validate = (schema, value) => schema.validate(value, { allowUnknown: false });
+
+const login = (overrides = {}) => ({
+    name: "portal-login", type: "login",
+    fields: { username: "ma", origins: ["https://portal.example.com"] },
+    secrets: { password: "pw" },
+    ...overrides,
+});
+const apiKey = (fields) => ({ name: "gh", type: "api_key", fields: { hosts: ["api.github.com"], ...fields }, secrets: { token: "t" } });
+
+test("Einträge, Änderungen und Einstellungen werden je Typ per Whitelist geprüft und Ursprünge normalisiert", () => {
+    const accepted = [
+        [login({ fields: { username: "ma", origins: ["HTTPS://Portal.Example.com:443", "http://10.0.0.5:8080"] } }),
+            (value) => assert.deepStrictEqual(value.fields.origins, ["https://portal.example.com", "http://10.0.0.5:8080"])],
+        [{ name: "gh.token_1", type: "api_key", fields: { hosts: ["api.github.com"] }, secrets: { token: "t" } },
+            (value) => assert.deepStrictEqual(
+                [value.fields.headerName, value.fields.headerTemplate, value.organizationId, value.approvalRequired, value.allServers, value.bindings],
+                ["Authorization", "Bearer {{secret}}", null, true, false, []])],
+        [{ name: "nas-root", type: "ssh", fields: { username: "root" }, secrets: { privateKey: "-----BEGIN OPENSSH PRIVATE KEY-----" } }],
+        [{ name: "local-db", type: "database", fields: { engine: "sqlite", database: "/data/app.db" } },
+            (value) => assert.deepStrictEqual(value.secrets, {})],
+        [{ name: "misc", type: "generic", secrets: { value: "x" }, organizationId: 20, bindings: [{ kind: "folder", targetId: 3 }] },
+            (value) => assert.deepStrictEqual(value.fields, {})],
+    ];
+    for (const [input, check] of accepted) {
+        const { error, value } = validate(createVaultItemValidation, input);
+        assert.strictEqual(error, undefined, `${input.name}: ${error?.message}`);
+        check?.(value);
+    }
+
+    const rejected = [
+        ["Ursprung mit Pfad", login({ fields: { origins: ["https://portal.example.com/login"] } })],
+        ["Ursprung mit Benutzerteil", login({ fields: { origins: ["https://u:p@portal.example.com"] } })],
+        ["Ursprung mit Schema ftp", login({ fields: { origins: ["ftp://portal.example.com"] } })],
+        ["Ursprung ohne Host", login({ fields: { origins: ["https://"] } })],
+        ["kein Ursprung", login({ fields: { origins: [] } })],
+        ["Großbuchstaben im Namen", login({ name: "Portal" })],
+        ["Name beginnt mit Punkt", login({ name: ".portal" })],
+        ["Name mit 65 Zeichen", login({ name: "a".repeat(65) })],
+        ["Geheimfeld eines anderen Typs", login({ secrets: { password: "pw", token: "t" } })],
+        ["Login ohne Passwort", login({ secrets: {} })],
+        ["leeres Passwort", login({ secrets: { password: "" } })],
+        ["SSH ohne Schlüssel und Passwort", { name: "nas", type: "ssh", fields: { username: "root" }, secrets: { passphrase: "p" } }],
+        ["unbekannte Engine", { name: "db", type: "database", fields: { engine: "oracle", host: "db", database: "x" } }],
+        ["Postgres ohne Host", { name: "db", type: "database", fields: { engine: "postgres", database: "x" } }],
+        ["Header-Vorlage ohne {{secret}}", apiKey({ headerTemplate: "Bearer" })],
+        ["Host mit Pfad", apiKey({ hosts: ["api.github.com/v3"] })],
+        ["Angaben bei Sonstiges", { name: "misc", type: "generic", fields: { note: "x" }, secrets: { value: "x" } }],
+        ["Bindung an eine Gruppe", login({ bindings: [{ kind: "group", targetId: 1 }] })],
+        ["unbekannter Typ", login({ type: "note" })],
+        ["unbekanntes Feld", login({ owner: 3 })],
+    ];
+    for (const [label, input] of rejected) {
+        assert.ok(validate(createVaultItemValidation, input).error, label);
+    }
+
+    const update = updateVaultItemSchema("login");
+    assert.strictEqual(validate(update, { secrets: { password: "neu" } }).error, undefined);
+    assert.deepStrictEqual(validate(update, { fields: { origins: ["https://Login.Example.net:443"] } }).value.fields.origins, ["https://login.example.net"]);
+    for (const [label, input] of [
+        ["Typwechsel", { type: "api_key" }],
+        ["Besitzerwechsel", { organizationId: 20 }],
+        ["leere Änderung", {}],
+        ["Ursprung mit Pfad", { fields: { origins: ["https://login.example.net/path"] } }],
+        ["Geheimfeld eines anderen Typs", { secrets: { token: "t" } }],
+    ]) {
+        assert.ok(validate(update, input).error, label);
+    }
+
+    const settings = (agentUrl) => validate(updateVaultSettingsValidation, { agentUrl });
+    assert.strictEqual(settings("https://outpost.example.com/").value.agentUrl, "https://outpost.example.com");
+    assert.strictEqual(settings("http://10.0.0.2:6989/outpost/").value.agentUrl, "http://10.0.0.2:6989/outpost");
+    assert.strictEqual(settings("").error, undefined);
+    for (const agentUrl of ["ftp://outpost.example.com", "https://outpost.example.com/?x=1", "https://u:p@outpost.example.com", "outpost.example.com"]) {
+        assert.ok(settings(agentUrl).error, agentUrl);
+    }
+});
+```
+
+- [ ] **Step 2: Test laufen lassen, Fehlschlag prüfen**
+
+Run: `cd /root/outpost && node --test server/lib/vault/__tests__/validation.test.js`
+Expected: FAIL — `Cannot find module '../../../validations/vault'`.
+
+- [ ] **Step 3: `server/validations/vault.js` anlegen**
+
+```js
+const Joi = require("joi");
+
+const TYPES = ["login", "api_key", "ssh", "database", "generic"];
+
+const SECRET_FIELDS = Object.freeze({
+    login: ["password"],
+    api_key: ["token"],
+    ssh: ["privateKey", "password", "passphrase"],
+    database: ["password"],
+    generic: ["value"],
+});
+const SECRET_MAX_LENGTH = { password: 4096, token: 8192, privateKey: 16384, passphrase: 4096, value: 65536 };
+
+const name = Joi.string().pattern(/^[a-z0-9][a-z0-9._-]{0,63}$/)
+    .messages({ "string.pattern.base": "name may only contain lowercase letters, digits, dot, dash and underscore (max. 64)" });
+const description = Joi.string().max(2000).allow("", null);
+
+// Only scheme, host and port: a path, credentials or a query would never match the frame origin
+// browser_fill_credential compares against, and new URL().origin lowercases and drops default ports.
+const origin = Joi.string().max(2048).custom((value, helpers) => {
+    if (!/^https?:\/\/[^/?#@\s]+$/i.test(value)) return helpers.error("any.invalid");
+    try {
+        return new URL(value).origin;
+    } catch {
+        return helpers.error("any.invalid");
+    }
+}).messages({ "any.invalid": "origins must look like https://host[:port]" });
+
+const FIELDS = {
+    login: Joi.object({
+        username: Joi.string().max(255).allow(""),
+        origins: Joi.array().items(origin).min(1).max(20).required(),
+    }),
+    api_key: Joi.object({
+        hosts: Joi.array().items(Joi.string().hostname()).min(1).max(20).required(),
+        headerName: Joi.string().pattern(/^[A-Za-z0-9-]{1,64}$/).default("Authorization"),
+        headerTemplate: Joi.string().max(512).pattern(/\{\{secret\}\}/).default("Bearer {{secret}}"),
+    }),
+    ssh: Joi.object({
+        username: Joi.string().max(255).required(),
+    }),
+    database: Joi.object({
+        engine: Joi.string().valid("postgres", "mysql", "sqlite").required(),
+        host: Joi.string().hostname().when("engine", { is: "sqlite", then: Joi.optional(), otherwise: Joi.required() }),
+        port: Joi.number().integer().min(1).max(65535),
+        database: Joi.string().max(1024).required(),
+        username: Joi.string().max(255),
+    }),
+    generic: Joi.object({}),
+};
+
+const secretsOf = (type) => Joi.object(Object.fromEntries(
+    SECRET_FIELDS[type].map((field) => [field, Joi.string().min(1).max(SECRET_MAX_LENGTH[field])]),
+));
+
+const CREATE_SECRETS = {
+    login: secretsOf("login").fork(["password"], (schema) => schema.required()).required(),
+    api_key: secretsOf("api_key").fork(["token"], (schema) => schema.required()).required(),
+    ssh: secretsOf("ssh").or("privateKey", "password").required(),
+    database: secretsOf("database").default({}),
+    generic: secretsOf("generic").fork(["value"], (schema) => schema.required()).required(),
+};
+
+const CREATE_FIELDS = {
+    login: FIELDS.login.required(),
+    api_key: FIELDS.api_key.required(),
+    ssh: FIELDS.ssh.required(),
+    database: FIELDS.database.required(),
+    generic: FIELDS.generic.default({}),
+};
+
+const byType = (schemas) => Joi.when("type", { switch: TYPES.map((type) => ({ is: type, then: schemas[type] })) });
+
+const bindings = Joi.array().items(Joi.object({
+    kind: Joi.string().valid("entry", "folder", "tag").required(),
+    targetId: Joi.number().integer().positive().required(),
+})).max(200);
+
+module.exports.SECRET_FIELDS = SECRET_FIELDS;
+
+module.exports.createVaultItemValidation = Joi.object({
+    organizationId: Joi.number().integer().positive().allow(null).default(null),
+    name: name.required(),
+    type: Joi.string().valid(...TYPES).required(),
+    description,
+    fields: byType(CREATE_FIELDS),
+    secrets: byType(CREATE_SECRETS),
+    approvalRequired: Joi.boolean().default(true),
+    allServers: Joi.boolean().default(false),
+    bindings: bindings.default([]),
+});
+
+module.exports.updateVaultItemSchema = (type) => Joi.object({
+    name,
+    description,
+    fields: FIELDS[type],
+    secrets: secretsOf(type),
+    approvalRequired: Joi.boolean(),
+    allServers: Joi.boolean(),
+    bindings,
+}).min(1);
+
+const agentUrl = Joi.string().max(2048).custom((value, helpers) => {
+    let url;
+    try {
+        url = new URL(value);
+    } catch {
+        return helpers.error("any.invalid");
+    }
+    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash)
+        return helpers.error("any.invalid");
+    return url.origin + url.pathname.replace(/\/+$/, "");
+}).messages({ "any.invalid": "agentUrl must be an http or https address without credentials, query or fragment" });
+
+module.exports.updateVaultSettingsValidation = Joi.object({
+    agentUrl: agentUrl.allow(null, "").required(),
+});
+```
+
+`updateVaultItemSchema` ist eine Funktion (der Typ eines Eintrags steht erst nach dem Laden fest) und taucht deshalb nicht in der OpenAPI-Ausgabe auf; `extractSchemasFromValidation` (`server/utils/joiToOpenApi.js`) überspringt alles ohne `describe`. `CreateVaultItem` und `UpdateVaultSettings` erscheinen dort.
+
+- [ ] **Step 4: Validierungstest grün**
+
+Run: `cd /root/outpost && node --test server/lib/vault/__tests__/validation.test.js`
+Expected: PASS (1 Test).
+
+- [ ] **Step 5: Routentest schreiben**
+
+`server/lib/vault/__tests__/itemsRoute.test.js`:
+
+```js
+process.env.ENCRYPTION_KEY = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
+process.env.VAULT_KEY = "ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100";
+
+const test = require("node:test");
+const assert = require("node:assert");
+const express = require("express");
+const { Sequelize } = require("sequelize");
+
+// foreignKeys: false - the vault models reference accounts and organizations; this test creates no accounts.
+const db = new Sequelize({ dialect: "sqlite", storage: ":memory:", logging: false, query: { raw: true }, foreignKeys: false });
+const fake = (path, exports) => {
+    const resolved = require.resolve(path);
+    require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports };
+};
+
+// 1: vault.use, active member of 20 without org rights. 3: active member of 20 with vault.reveal and
+// vault.manage, settings.vault. 4: vault.use, only invited to 20 - the engine would grant org rights,
+// the membership must not.
+const SYSTEM = { 1: ["vault.use"], 3: ["settings.vault"], 4: ["vault.use"] };
+const ORG = { "3:20": ["vault.reveal", "vault.manage"], "4:20": ["vault.reveal", "vault.manage"] };
+const CALLERS = {
+    "s-owner": { user: { id: 1 }, session: { id: 11, accountId: 1, impersonatorId: null } },
+    "s-imp": { user: { id: 1 }, session: { id: 12, accountId: 1, impersonatorId: 99 } },
+    "k-owner": { user: { id: 1 }, apiKey: { id: 5, kind: "account" } },
+    "s-revealer": { user: { id: 3 }, session: { id: 13, accountId: 3, impersonatorId: null } },
+    "s-invited": { user: { id: 4 }, session: { id: 14, accountId: 4, impersonatorId: null } },
+};
+
+fake("../../../utils/database", db);
+fake("../../../permissions/engine", {
+    getSystemPermissions: async (accountId) => ({ isAdmin: false, permissions: SYSTEM[accountId] ?? [] }),
+    getOrganizationPermissions: async (accountId, organizationId) =>
+        ({ isOwner: false, isAdmin: false, permissions: ORG[`${accountId}:${organizationId}`] ?? [] }),
+    hasSystemPermission: async (accountId, permission) => (SYSTEM[accountId] ?? []).includes(permission),
+    hasOrganizationPermission: async (accountId, organizationId, permission) =>
+        (ORG[`${accountId}:${organizationId}`] ?? []).includes(permission),
+});
+fake("../../../middlewares/auth", {
+    authenticate: (req, res, next) => {
+        const caller = CALLERS[(req.header("authorization") ?? "").replace(/^Bearer /, "")];
+        if (!caller) return res.status(401).json({ message: "The provided token is not valid" });
+        Object.assign(req, caller);
+        next();
+    },
+});
+
+const audits = [];
+const audit = require("../../../controllers/audit");
+audit.createAuditLog = async (entry) => { audits.push(entry); };
+
+const state = require("../state");
+const { writeSecret, readSecret } = require("../secrets");
+const VaultItem = require("../../../models/VaultItem");
+const VaultSecret = require("../../../models/VaultSecret");
+const Organization = require("../../../models/Organization");
+const OrganizationMember = require("../../../models/OrganizationMember");
+const itemsRouter = require("../../../routes/vault/items");
+const settingsRouter = require("../../../routes/vault/settings");
+
+let personal;
+let shared;
+
+test.before(async () => {
+    await db.sync();
+    await state.initVaultState();
+    await Organization.create({ id: 20, name: "Ops" });
+    await OrganizationMember.bulkCreate([
+        { organizationId: 20, accountId: 1, role: "member", status: "active", invitedBy: 3 },
+        { organizationId: 20, accountId: 3, role: "member", status: "active", invitedBy: 3 },
+        { organizationId: 20, accountId: 4, role: "member", status: "pending", invitedBy: 3 },
+    ]);
+    personal = await VaultItem.create({
+        accountId: 1, name: "portal-login", type: "login",
+        fields: { username: "ma", origins: ["https://portal.example.com"] }, approvalRequired: true, allServers: false, createdBy: 1,
+    });
+    await writeSecret(personal.id, "password", "hunter2-personal");
+    shared = await VaultItem.create({
+        organizationId: 20, name: "backup-db", type: "database",
+        fields: { engine: "postgres", host: "db.internal", port: 5432, database: "backup", username: "backup" },
+        approvalRequired: true, allServers: false, createdBy: 3,
+    });
+    await writeSecret(shared.id, "password", "hunter2-shared");
+});
+
+test.beforeEach(() => { audits.length = 0; });
+
+const listen = async (t, { trustProxy = false } = {}) => {
+    const app = express();
+    app.set("trust proxy", trustProxy);
+    app.use(express.json());
+    app.use("/api/vault", itemsRouter);
+    app.use("/api/vault", settingsRouter);
+    const server = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)); });
+    t.after(() => server.close());
+    const call = (method) => async (path, token, body) => {
+        const res = await fetch(`http://127.0.0.1:${server.address().port}/api/vault${path}`, {
+            method,
+            headers: { authorization: `Bearer ${token}`, ...(body ? { "content-type": "application/json" } : {}) },
+            body: body ? JSON.stringify(body) : undefined,
+        });
+        const text = await res.text();
+        return { status: res.status, text, body: res.headers.get("content-type")?.includes("json") ? JSON.parse(text) : null };
+    };
+    return { get: call("GET"), post: call("POST"), patch: call("PATCH") };
+};
+
+test("Reveal: Besitzer persönlich und vault.reveal in der Organisation ja, Mitglied ohne Recht 403, fremder Mandant 404, unlesbarer Wert 422; jeder Abruf auditiert", async (t) => {
+    const { get } = await listen(t);
+    const reveal = (token, item, field = "password") => get(`/items/${item.id}/secrets/${field}`, token);
+
+    assert.deepStrictEqual((await reveal("s-owner", personal)).body, { value: "hunter2-personal" });
+    assert.deepStrictEqual((await reveal("s-revealer", shared)).body, { value: "hunter2-shared" });
+    assert.strictEqual((await reveal("s-owner", shared)).status, 403);
+    assert.strictEqual((await reveal("s-invited", shared)).status, 404);
+    assert.strictEqual((await reveal("s-revealer", personal)).status, 404);
+    assert.strictEqual((await reveal("s-owner", personal, "token")).status, 404);
+
+    assert.deepStrictEqual(
+        audits.map((a) => [a.action, a.accountId, a.organizationId, a.resourceId, a.details.item, a.details.field]),
+        [
+            ["vault.reveal", 1, null, personal.id, "portal-login", "password"],
+            ["vault.reveal", 3, 20, shared.id, "org:20/backup-db", "password"],
+        ],
+    );
+    assert.doesNotMatch(JSON.stringify(audits), /hunter2/);
+
+    audits.length = 0;
+    const { valueEncrypted, valueIV, valueAuthTag } = await VaultSecret.findOne({ where: { itemId: personal.id, field: "password" } });
+    await VaultSecret.update({ valueEncrypted, valueIV, valueAuthTag }, { where: { itemId: shared.id, field: "password" } });
+    const unreadable = await reveal("s-revealer", shared);
+    assert.deepStrictEqual([unreadable.status, unreadable.body.code], [422, 422]);
+    const unreadableFlag = async () => (await get("/items", "s-revealer")).body.items.find((item) => item.id === shared.id).unreadable;
+    assert.strictEqual(await unreadableFlag(), true);
+    await writeSecret(shared.id, "password", "hunter2-shared");
+    assert.strictEqual(await unreadableFlag(), false);
+    assert.deepStrictEqual(audits.map((a) => [a.action, a.details.item, a.details.field]), [["vault.item_unreadable", "org:20/backup-db", "password"]]);
+    assert.doesNotMatch(unreadable.text + JSON.stringify(audits), /hunter2/);
+});
+
+test("Reveal und das Abschalten der Freigabe verlangen eine Login-Session ohne Impersonation: Impersonation und Konto-Key bekommen 403, ohne Audit", async (t) => {
+    const { get, post, patch } = await listen(t);
+    const APPROVAL_OFF = "Turning off approvals requires a signed-in session";
+
+    for (const token of ["s-imp", "k-owner"]) {
+        const { status, text } = await get(`/items/${personal.id}/secrets/password`, token);
+        assert.strictEqual(status, 403, token);
+        assert.doesNotMatch(text, /hunter2/);
+
+        const created = await post("/items", token, { name: "no-approval", type: "generic", secrets: { value: "x" }, approvalRequired: false });
+        const patched = await patch(`/items/${personal.id}`, token, { approvalRequired: false });
+        assert.deepStrictEqual([created.status, created.body.message, patched.status, patched.body.message], [403, APPROVAL_OFF, 403, APPROVAL_OFF], token);
+    }
+    assert.deepStrictEqual(audits, []);
+    assert.strictEqual(await VaultItem.count({ where: { name: "no-approval" } }), 0);
+    const listed = (await get("/items", "s-imp")).body.items.find((item) => item.id === personal.id);
+    assert.deepStrictEqual([listed.canManage, listed.canReveal, listed.approvalRequired], [true, false, true]);
+
+    const fromSession = await patch(`/items/${personal.id}`, "s-owner", { approvalRequired: false });
+    assert.deepStrictEqual([fromSession.status, fromSession.body.item.approvalRequired], [200, false]);
+    const alreadyOff = await patch(`/items/${personal.id}`, "s-imp", { description: "edited while impersonating", approvalRequired: false });
+    assert.deepStrictEqual([alreadyOff.status, alreadyOff.body.item.description, alreadyOff.body.item.approvalRequired], [200, "edited while impersonating", false]);
+    assert.strictEqual((await patch(`/items/${personal.id}`, "s-owner", { approvalRequired: true, description: "" })).body.item.approvalRequired, true);
+});
+
+test("PATCH mit geändertem Ursprung löscht die gespeicherten Werte im selben Vorgang; dieselbe Adresse anders geschrieben nicht; Listen tragen nie Werte", async (t) => {
+    const { get, post, patch } = await listen(t);
+    const created = await post("/items", "s-owner", {
+        name: "shop-login", type: "login", fields: { username: "ma", origins: ["https://shop.example.com"] }, secrets: { password: "pw-one" },
+    });
+    assert.strictEqual(created.status, 201);
+    const { item } = created.body;
+    assert.deepStrictEqual([item.ref, item.secretFields, item.approvalRequired, item.canManage, item.canReveal], ["shop-login", ["password"], true, true, true]);
+
+    const sameOrigin = await patch(`/items/${item.id}`, "s-owner", { fields: { username: "ma.backes", origins: ["HTTPS://Shop.Example.com:443"] } });
+    assert.deepStrictEqual(
+        [sameOrigin.body.secretsCleared, sameOrigin.body.item.secretFields, sameOrigin.body.item.fields],
+        [false, ["password"], { username: "ma.backes", origins: ["https://shop.example.com"] }],
+    );
+
+    const moved = await patch(`/items/${item.id}`, "s-owner", { fields: { username: "ma.backes", origins: ["https://shop.example.net"] } });
+    assert.deepStrictEqual([moved.status, moved.body.secretsCleared, moved.body.item.secretFields], [200, true, []]);
+    assert.strictEqual(await readSecret(item.id, "password"), null);
+    assert.strictEqual(audits.at(-1).action, "vault.item_update");
+    assert.strictEqual(audits.at(-1).details.secretsCleared, true);
+
+    const movedWithValue = await patch(`/items/${item.id}`, "s-owner", {
+        fields: { username: "ma.backes", origins: ["https://login.example.net"] }, secrets: { password: "pw-two" },
+    });
+    assert.deepStrictEqual([movedWithValue.body.secretsCleared, movedWithValue.body.item.secretFields], [true, ["password"]]);
+    assert.strictEqual(await readSecret(item.id, "password"), "pw-two");
+
+    const list = await get("/items", "s-owner");
+    assert.deepStrictEqual(list.body.items.map((entry) => entry.ref).sort(), ["org:20/backup-db", "portal-login", "shop-login"]);
+    assert.doesNotMatch(list.text + JSON.stringify(audits), /pw-one|pw-two|hunter2/);
+});
+
+test("available meldet Schalter, Rechte, Agenten-Adresse, Impersonation und TRUST_PROXY=true; bei ausgeschaltetem Vault sind alle Rechte leer", async (t) => {
+    const { get, patch } = await listen(t, { trustProxy: true });
+
+    assert.strictEqual((await patch("/settings", "s-owner", { agentUrl: "https://outpost.example.com" })).status, 403);
+    assert.deepStrictEqual((await patch("/settings", "s-revealer", { agentUrl: "https://outpost.example.com/" })).body,
+        { keyStatus: "active", agentUrl: "https://outpost.example.com", trustProxyUnsafe: true });
+
+    assert.deepStrictEqual((await get("/available", "s-imp")).body, {
+        enabled: true, canUse: true, canManageOrgs: [], canProvision: true, agentUrlSet: true, impersonating: true, trustProxyUnsafe: true,
+    });
+    assert.deepStrictEqual((await get("/available", "s-revealer")).body, {
+        enabled: true, canUse: true, canManageOrgs: [20], canProvision: true, agentUrlSet: true, impersonating: false, trustProxyUnsafe: true,
+    });
+    assert.deepStrictEqual((await get("/available", "s-invited")).body.canManageOrgs, []);
+
+    const key = process.env.VAULT_KEY;
+    try {
+        process.env.VAULT_KEY = "";
+        state._resetForTests();
+        await state.initVaultState();
+        assert.deepStrictEqual((await get("/available", "s-revealer")).body, {
+            enabled: false, canUse: false, canManageOrgs: [], canProvision: false, agentUrlSet: true, impersonating: false, trustProxyUnsafe: true,
+        });
+        assert.strictEqual((await get("/items", "s-revealer")).status, 404);
+        assert.strictEqual((await get("/settings", "s-revealer")).body.keyStatus, "missing");
+    } finally {
+        process.env.VAULT_KEY = key;
+        state._resetForTests();
+        await state.initVaultState();
+    }
+
+    const behindOneProxy = await listen(t, { trustProxy: 1 });
+    assert.strictEqual((await behindOneProxy.get("/available", "s-owner")).body.trustProxyUnsafe, false);
+});
+```
+
+- [ ] **Step 6: Routentest laufen lassen, Fehlschlag prüfen**
+
+Run: `cd /root/outpost && node --test server/lib/vault/__tests__/itemsRoute.test.js`
+Expected: FAIL — alle 4 Tests; die Platzhalter-Router aus Task 1 antworten `404` (z. B. `Expected values to be strictly deep-equal: null !== { value: 'hunter2-personal' }`).
+
+- [ ] **Step 7: `server/controllers/vaultSettings.js` anlegen**
+
+```js
+const VaultSettings = require("../models/VaultSettings");
+const { getKeyStatus, isVaultEnabled } = require("../lib/vault/state");
+const { activeOrganizationIds, canUseVault, canCreateFor } = require("../lib/vault/visibility");
+
+const getAgentUrl = async () => (await VaultSettings.getOrCreate()).agentUrl || null;
+
+const getVaultSettings = async () => ({ keyStatus: getKeyStatus(), agentUrl: await getAgentUrl() });
+
+const updateVaultSettings = async ({ agentUrl }) => {
+    const settings = await VaultSettings.getOrCreate();
+    await settings.update({ agentUrl: agentUrl || null });
+    return getVaultSettings();
+};
+
+const getVaultAvailability = async (accountId, { impersonating, trustProxyUnsafe }) => {
+    const enabled = isVaultEnabled();
+    const result = {
+        enabled, canUse: false, canManageOrgs: [], canProvision: false,
+        agentUrlSet: Boolean(await getAgentUrl()), impersonating, trustProxyUnsafe,
+    };
+    if (!enabled) return result;
+    const canUse = await canUseVault(accountId);
+    for (const organizationId of await activeOrganizationIds(accountId)) {
+        if (await canCreateFor(accountId, { organizationId })) result.canManageOrgs.push(organizationId);
+    }
+    return { ...result, canUse, canProvision: canUse };
+};
+
+module.exports = { getAgentUrl, getVaultSettings, updateVaultSettings, getVaultAvailability };
+```
+
+- [ ] **Step 8: `server/controllers/vaultItems.js` anlegen**
+
+Jede Abfrage nach ID läuft über `findScopedItem` (eigene Einträge oder Organisationen mit aktiver Mitgliedschaft) und antwortet sonst `404` wie bei unbekannter ID; erst danach prüft `canManageItem`/`canRevealItem` das Recht (`403`). Diese Mandantenprüfung ersetzt keine Rechteprüfung, sie unterscheidet nur `404` von `403`; die Rechte kommen ausschließlich aus `canManageItem`/`canRevealItem`/`canCreateFor` (Task 3, inkl. aktiver Mitgliedschaft). Geheime Werte verlassen den Controller nur in `revealSecret`. Gelesene Zeilen kommen über den `afterFind`-Hook von `VaultItem` (Task 1) schon mit `fields` als Objekt und Booleans an. `approvalRequired: false` setzt nur eine Login-Session ohne Impersonation (`caller.revealAllowed`); ein Konto-Key oder ein Impersonator könnte sonst die Freigabe abschalten und danach ohne Karte ausfüllen lassen. `updateItem` sperrt nur das Umschalten (`item.approvalRequired !== false`): Der Eintrag-Dialog schickt `approvalRequired` bei jedem Speichern mit, ein schon abgeschalteter Eintrag bliebe aus der Impersonation sonst unbearbeitbar. `updateItem` schreibt in dieser Reihenfolge: Werte löschen (bei neuem Ziel) → Spalten (`409` bei `SequelizeUniqueConstraintError`) → neue Werte → Bindungen; scheitert das Spalten-Update, ist kein neuer Wert unter dem alten Ziel gespeichert; bei neuem Ziel schon gelöschte Werte bleiben gelöscht (sicherer Rückfall).
+
+```js
+const { Op } = require("sequelize");
+const VaultItem = require("../models/VaultItem");
+const VaultSecret = require("../models/VaultSecret");
+const VaultBinding = require("../models/VaultBinding");
+const Organization = require("../models/Organization");
+const Entry = require("../models/Entry");
+const Folder = require("../models/Folder");
+const Tag = require("../models/Tag");
+const { createAuditLog, AUDIT_ACTIONS, RESOURCE_TYPES } = require("./audit");
+const {
+    itemRef, activeOrganizationIds, ownedItems, canManageItem, canRevealItem, canCreateFor,
+} = require("../lib/vault/visibility");
+const { validateBindings, setBindings } = require("../lib/vault/bindings");
+const { readSecret, writeSecret, clearSecrets, isUnreadable } = require("../lib/vault/secrets");
+const { VaultError, VaultErrorCode } = require("../lib/vault/errors");
+const { SECRET_FIELDS, updateVaultItemSchema } = require("../validations/vault");
+const logger = require("../utils/logger");
+
+const NOT_FOUND = { code: 404, message: "Vault entry not found" };
+const FORBIDDEN = { code: 403, message: "You are not allowed to do this with this vault entry" };
+const NAME_TAKEN = { code: 409, message: "A vault entry with this name already exists for this owner" };
+const APPROVAL_OFF_FORBIDDEN = { code: 403, message: "Turning off approvals requires a signed-in session" };
+const TARGET_FIELD = { login: "origins", api_key: "hosts", database: "host" };
+const LABEL_MODELS = { entry: Entry, folder: Folder, tag: Tag };
+const ITEM_COLUMNS = ["name", "description", "fields", "approvalRequired", "allServers"];
+
+const targetOf = (type, fields) => JSON.stringify([].concat(fields?.[TARGET_FIELD[type]] ?? []).sort());
+
+// SEC-TENANT-01: every lookup by id is scoped to the caller's own entries and active memberships.
+const findScopedItem = async (accountId, id) => {
+    if (!Number.isInteger(id)) return null;
+    return VaultItem.findOne({
+        where: { id, [Op.or]: [{ accountId }, { organizationId: { [Op.in]: await activeOrganizationIds(accountId) } }] },
+    });
+};
+
+const nameTaken = async ({ accountId, organizationId }, name, exceptId = null) => Boolean(await VaultItem.findOne({
+    where: {
+        name, ...(organizationId ? { organizationId } : { accountId }),
+        ...(exceptId ? { id: { [Op.ne]: exceptId } } : {}),
+    },
+    attributes: ["id"],
+}));
+
+const bindingLabels = async (bindings) => {
+    const labels = {};
+    for (const [kind, Model] of Object.entries(LABEL_MODELS)) {
+        const ids = bindings.filter((binding) => binding.kind === kind).map((binding) => binding.targetId);
+        if (!ids.length) continue;
+        for (const row of await Model.findAll({ where: { id: ids }, attributes: ["id", "name"] })) labels[`${kind}:${row.id}`] = row.name;
+    }
+    return labels;
+};
+
+const serializeItems = async (caller, items) => {
+    if (!items.length) return [];
+    const ids = items.map((item) => item.id);
+    const organizationIds = [...new Set(items.map((item) => item.organizationId).filter(Boolean))];
+    const [secrets, bindings, organizations] = await Promise.all([
+        VaultSecret.findAll({ where: { itemId: ids }, attributes: ["itemId", "field"] }),
+        VaultBinding.findAll({ where: { itemId: ids }, attributes: ["itemId", "kind", "targetId"] }),
+        organizationIds.length ? Organization.findAll({ where: { id: organizationIds }, attributes: ["id", "name"] }) : [],
+    ]);
+    const labels = await bindingLabels(bindings);
+    return Promise.all(items.map(async (item) => ({
+        id: item.id,
+        ref: itemRef(item),
+        accountId: item.accountId ?? null,
+        organizationId: item.organizationId ?? null,
+        ownerName: organizations.find((organization) => organization.id === item.organizationId)?.name ?? null,
+        name: item.name,
+        type: item.type,
+        description: item.description ?? null,
+        fields: item.fields ?? {},
+        approvalRequired: item.approvalRequired,
+        allServers: item.allServers,
+        bindings: bindings.filter((binding) => binding.itemId === item.id)
+            .map(({ kind, targetId }) => ({ kind, targetId, label: labels[`${kind}:${targetId}`] ?? null })),
+        secretFields: secrets.filter((secret) => secret.itemId === item.id).map((secret) => secret.field).sort(),
+        unreadable: isUnreadable(item.id),
+        lastUsedAt: item.lastUsedAt ?? null,
+        canManage: await canManageItem(caller.accountId, item),
+        canReveal: caller.revealAllowed && await canRevealItem(caller.accountId, item),
+    })));
+};
+
+const serializeOne = async (caller, id) => (await serializeItems(caller, [await VaultItem.findByPk(id)]))[0];
+
+const audit = (caller, item, action, details = {}) => createAuditLog({
+    accountId: caller.accountId,
+    organizationId: item.organizationId ?? null,
+    action,
+    resource: RESOURCE_TYPES.VAULT,
+    resourceId: item.id,
+    details: {
+        item: itemRef(item), type: item.type, ...details,
+        ...(caller.impersonatorId ? { impersonatorId: caller.impersonatorId } : {}),
+    },
+    ipAddress: caller.ipAddress ?? null,
+    userAgent: caller.userAgent ?? null,
+});
+
+const removeItem = async (id) => {
+    await clearSecrets(id);
+    await setBindings(id, []);
+    await VaultItem.destroy({ where: { id } });
+};
+
+module.exports.listItems = async (caller) => ({ items: await serializeItems(caller, await ownedItems(caller.accountId)) });
+
+module.exports.createItem = async (caller, body) => {
+    const { organizationId, name, type, description, fields, secrets, approvalRequired, allServers, bindings } = body;
+    if (!(await canCreateFor(caller.accountId, { organizationId }))) return FORBIDDEN;
+    if (approvalRequired === false && !caller.revealAllowed) return APPROVAL_OFF_FORBIDDEN;
+    const check = await validateBindings({ accountId: caller.accountId, organizationId }, bindings);
+    if (!check.valid) return { code: 400, message: check.message };
+    const owner = organizationId ? { accountId: null, organizationId } : { accountId: caller.accountId, organizationId: null };
+    if (await nameTaken(owner, name)) return NAME_TAKEN;
+
+    let item;
+    try {
+        item = await VaultItem.create({
+            ...owner, name, type, description: description || null, fields, approvalRequired, allServers, createdBy: caller.accountId,
+        });
+    } catch (error) {
+        if (error.name === "SequelizeUniqueConstraintError") return NAME_TAKEN;
+        throw error;
+    }
+    try {
+        for (const [field, value] of Object.entries(secrets)) await writeSecret(item.id, field, value);
+        await setBindings(item.id, bindings);
+    } catch (error) {
+        await removeItem(item.id).catch((cleanupError) =>
+            logger.error("Could not remove a half-created vault entry", { itemId: item.id, error: cleanupError.message }));
+        throw error;
+    }
+    await audit(caller, item, AUDIT_ACTIONS.VAULT_ITEM_CREATE, { name, secretFields: Object.keys(secrets) });
+    return { item: await serializeOne(caller, item.id) };
+};
+
+module.exports.updateItem = async (caller, id, body) => {
+    const item = await findScopedItem(caller.accountId, id);
+    if (!item) return NOT_FOUND;
+    if (!(await canManageItem(caller.accountId, item))) return FORBIDDEN;
+    const { error, value } = updateVaultItemSchema(item.type).validate(body, { errors: { wrap: { label: "" } }, allowUnknown: false });
+    if (error) return { code: 400, message: error.details[0].message };
+    if (value.approvalRequired === false && item.approvalRequired !== false && !caller.revealAllowed) return APPROVAL_OFF_FORBIDDEN;
+    if (value.name !== undefined && value.name !== item.name && await nameTaken(item, value.name, item.id)) return NAME_TAKEN;
+    if (value.bindings) {
+        const check = await validateBindings({ accountId: caller.accountId, organizationId: item.organizationId ?? null }, value.bindings);
+        if (!check.valid) return { code: 400, message: check.message };
+    }
+
+    // A new target with the old value would let vault.manage without vault.reveal send an
+    // organization's password to a page of their choosing.
+    const secretsCleared = value.fields !== undefined && targetOf(item.type, value.fields) !== targetOf(item.type, item.fields);
+    if (secretsCleared) await clearSecrets(item.id);
+    const changes = Object.fromEntries(ITEM_COLUMNS.filter((column) => value[column] !== undefined).map((column) => [column, value[column]]));
+    if (changes.description === "") changes.description = null;
+    if (Object.keys(changes).length) {
+        try {
+            await VaultItem.update(changes, { where: { id: item.id } });
+        } catch (error) {
+            if (error.name === "SequelizeUniqueConstraintError") return NAME_TAKEN;
+            throw error;
+        }
+    }
+    for (const [field, secret] of Object.entries(value.secrets ?? {})) await writeSecret(item.id, field, secret);
+    if (value.bindings) await setBindings(item.id, value.bindings);
+
+    await audit(caller, item, AUDIT_ACTIONS.VAULT_ITEM_UPDATE, {
+        name: value.name ?? item.name,
+        changed: [...Object.keys(changes), ...(value.bindings ? ["bindings"] : [])],
+        secretFields: Object.keys(value.secrets ?? {}),
+        secretsCleared,
+    });
+    return { item: await serializeOne(caller, item.id), secretsCleared };
+};
+
+module.exports.deleteItem = async (caller, id) => {
+    const item = await findScopedItem(caller.accountId, id);
+    if (!item) return NOT_FOUND;
+    if (!(await canManageItem(caller.accountId, item))) return FORBIDDEN;
+    await removeItem(item.id);
+    await audit(caller, item, AUDIT_ACTIONS.VAULT_ITEM_DELETE, { name: item.name });
+    return { success: true };
+};
+
+module.exports.revealSecret = async (caller, id, field) => {
+    const item = await findScopedItem(caller.accountId, id);
+    if (!item || !SECRET_FIELDS[item.type]?.includes(field)) return NOT_FOUND;
+    if (!(await canRevealItem(caller.accountId, item))) return FORBIDDEN;
+    let value;
+    try {
+        value = await readSecret(item.id, field);
+    } catch (error) {
+        if (!(error instanceof VaultError) || error.code !== VaultErrorCode.ITEM_UNREADABLE) throw error;
+        logger.warn("Vault entry cannot be decrypted", { itemId: item.id });
+        await audit(caller, item, AUDIT_ACTIONS.VAULT_ITEM_UNREADABLE, { field });
+        return { code: 422, message: "This vault entry cannot be read with the current vault key" };
+    }
+    if (value === null) return NOT_FOUND;
+    await audit(caller, item, AUDIT_ACTIONS.VAULT_REVEAL, { field });
+    return { value };
+};
+```
+
+- [ ] **Step 9: `server/routes/vault/settings.js` füllen**
+
+Den Platzhalter aus Task 1 vollständig ersetzen. `available` und `settings` tragen kein `requireVaultEnabled` (Spec „REST-Endpunkte“: beide antworten auch bei ausgeschaltetem Vault).
+
+```js
+const { Router } = require("express");
+const { authenticate } = require("../../middlewares/auth");
+const { requirePermission } = require("../../middlewares/permission");
+const { Permission } = require("../../permissions/registry");
+const { validateSchema } = require("../../utils/schema");
+const { sendError } = require("../../utils/error");
+const { updateVaultSettingsValidation } = require("../../validations/vault");
+const { getVaultSettings, updateVaultSettings, getVaultAvailability } = require("../../controllers/vaultSettings");
+const logger = require("../../utils/logger");
+
+const app = Router();
+
+const trustProxyUnsafe = (req) => req.app.get("trust proxy") === true;
+
+const failed = (res, error) => {
+    logger.error("Vault settings request failed", { error: error.message });
+    sendError(res, 500, 500, "Internal server error");
+};
+
+/**
+ * GET /vault/available
+ * @summary Vault Available
+ * @description Whether the vault is on and what the account may do with it. Always answers 200, also while the vault is off; then every permission field is false or empty.
+ * @tags Vault
+ * @produces application/json
+ * @security BearerAuth
+ * @return {object} 200 - { enabled, canUse, canManageOrgs, canProvision, agentUrlSet, impersonating, trustProxyUnsafe }
+ */
+app.get("/available", authenticate, async (req, res) => {
+    try {
+        res.json(await getVaultAvailability(req.user.id, {
+            impersonating: Boolean(req.session?.impersonatorId), trustProxyUnsafe: trustProxyUnsafe(req),
+        }));
+    } catch (error) {
+        failed(res, error);
+    }
+});
+
+/**
+ * GET /vault/settings
+ * @summary Get Vault Settings
+ * @description Status of VAULT_KEY and the Outpost address agents use. Answers while the vault is off, so the page can show why.
+ * @tags Vault
+ * @produces application/json
+ * @security BearerAuth
+ * @return {object} 200 - { keyStatus, agentUrl, trustProxyUnsafe }
+ * @return {object} 403 - Permission required
+ */
+app.get("/settings", authenticate, requirePermission(Permission.SETTINGS_VAULT), async (req, res) => {
+    try {
+        res.json({ ...(await getVaultSettings()), trustProxyUnsafe: trustProxyUnsafe(req) });
+    } catch (error) {
+        failed(res, error);
+    }
+});
+
+/**
+ * PATCH /vault/settings
+ * @summary Update Vault Settings
+ * @description Sets the Outpost address agents use (http or https; empty clears it). Works while the vault is off.
+ * @tags Vault
+ * @produces application/json
+ * @security BearerAuth
+ * @param {UpdateVaultSettings} request.body.required - { agentUrl }
+ * @return {object} 200 - { keyStatus, agentUrl, trustProxyUnsafe }
+ * @return {object} 400 - Invalid address
+ * @return {object} 403 - Permission required
+ */
+app.patch("/settings", authenticate, requirePermission(Permission.SETTINGS_VAULT), async (req, res) => {
+    try {
+        const body = req.body ?? {};
+        if (validateSchema(res, updateVaultSettingsValidation, body)) return;
+        res.json({ ...(await updateVaultSettings(body)), trustProxyUnsafe: trustProxyUnsafe(req) });
+    } catch (error) {
+        failed(res, error);
+    }
+});
+
+module.exports = app;
+```
+
+- [ ] **Step 10: `server/routes/vault/items.js` füllen**
+
+Den Platzhalter aus Task 1 vollständig ersetzen. Reihenfolge der Middleware am Reveal: `authenticate` → `requireVaultEnabled` → `requireLoginSession` → Rate-Limit, damit Konto-Keys und Impersonation das Kontingent nicht verbrauchen.
+
+```js
+const { Router } = require("express");
+const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
+const { authenticate } = require("../../middlewares/auth");
+const { requireLoginSession } = require("../../middlewares/requireLoginSession");
+const { requireVaultEnabled } = require("../../lib/vault/state");
+const { validateSchema } = require("../../utils/schema");
+const { sendError } = require("../../utils/error");
+const { createVaultItemValidation } = require("../../validations/vault");
+const { listItems, createItem, updateItem, deleteItem, revealSecret } = require("../../controllers/vaultItems");
+const logger = require("../../utils/logger");
+
+const app = Router();
+
+const revealLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    keyGenerator: (req) => (req.user ? `acc:${req.user.id}` : `ip:${ipKeyGenerator(req.ip)}`),
+    message: { code: 429, message: "Too many reveals. Please try again in a minute." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const callerOf = (req) => ({
+    accountId: req.user.id,
+    impersonatorId: req.session?.impersonatorId ?? null,
+    ipAddress: req.ip,
+    userAgent: req.header("user-agent") ?? null,
+    revealAllowed: !req.apiKey && !req.session?.impersonatorId,
+});
+
+const itemIdOf = (req) => (/^\d+$/.test(req.params.id) ? Number(req.params.id) : null);
+
+const handle = (action, status = 200) => async (req, res) => {
+    try {
+        const result = await action(req, res);
+        if (res.headersSent) return;
+        if (result.code) return sendError(res, result.code, result.code, result.message);
+        res.status(status).json(result);
+    } catch (error) {
+        logger.error("Vault request failed", { error: error.message });
+        sendError(res, 500, 500, "Internal server error");
+    }
+};
+
+/**
+ * GET /vault/items
+ * @summary List Vault Entries
+ * @description Lists the vault entries the account owns (with vault.use) and those of organizations it is an active member of. Never contains secret values, only the names of the stored secret fields.
+ * @tags Vault
+ * @produces application/json
+ * @security BearerAuth
+ * @return {object} 200 - { items }
+ * @return {object} 404 - Vault is disabled
+ */
+app.get("/items", authenticate, requireVaultEnabled, handle((req) => listItems(callerOf(req))));
+
+/**
+ * POST /vault/items
+ * @summary Create Vault Entry
+ * @description Creates a personal entry (vault.use) or an organization entry (vault.manage in that organization) with its secret values and server bindings.
+ * @tags Vault
+ * @produces application/json
+ * @security BearerAuth
+ * @param {CreateVaultItem} request.body.required - The entry
+ * @return {object} 201 - { item }
+ * @return {object} 400 - Invalid input or binding
+ * @return {object} 403 - Not allowed for this owner
+ * @return {object} 409 - Name already taken for this owner
+ */
+app.post("/items", authenticate, requireVaultEnabled, handle((req, res) => {
+    const body = req.body ?? {};
+    if (validateSchema(res, createVaultItemValidation, body)) return null;
+    return createItem(callerOf(req), body);
+}, 201));
+
+/**
+ * PATCH /vault/items/{id}
+ * @summary Update Vault Entry
+ * @description Updates an entry. Changing its target (origins, hosts or host) deletes all stored secret values in the same request; only values sent along are stored again.
+ * @tags Vault
+ * @produces application/json
+ * @security BearerAuth
+ * @param {number} id.path.required - Entry id
+ * @param {object} request.body.required - name, description, fields, secrets, approvalRequired, allServers, bindings
+ * @return {object} 200 - { item, secretsCleared }
+ * @return {object} 403 - Not allowed to manage this entry
+ * @return {object} 404 - Unknown entry
+ */
+app.patch("/items/:id", authenticate, requireVaultEnabled, handle((req) => updateItem(callerOf(req), itemIdOf(req), req.body ?? {})));
+
+/**
+ * DELETE /vault/items/{id}
+ * @summary Delete Vault Entry
+ * @description Deletes an entry with its secret values and bindings.
+ * @tags Vault
+ * @produces application/json
+ * @security BearerAuth
+ * @param {number} id.path.required - Entry id
+ * @return {object} 200 - { success: true }
+ * @return {object} 403 - Not allowed to manage this entry
+ * @return {object} 404 - Unknown entry
+ */
+app.delete("/items/:id", authenticate, requireVaultEnabled, handle((req) => deleteItem(callerOf(req), itemIdOf(req))));
+
+/**
+ * GET /vault/items/{id}/secrets/{field}
+ * @summary Reveal Vault Secret
+ * @description Returns one secret value. Owner of a personal entry or vault.reveal in the organization; signed-in session only (API keys and impersonation get 403). Every reveal is audited.
+ * @tags Vault
+ * @produces application/json
+ * @security BearerAuth
+ * @param {number} id.path.required - Entry id
+ * @param {string} field.path.required - password, token, privateKey, passphrase or value
+ * @return {object} 200 - { value }
+ * @return {object} 403 - Not allowed to reveal
+ * @return {object} 404 - Unknown entry or no value stored
+ * @return {object} 422 - The value cannot be decrypted with the current vault key
+ * @return {object} 429 - Too many reveals
+ */
+app.get("/items/:id/secrets/:field", authenticate, requireVaultEnabled, requireLoginSession, revealLimiter, handle((req, res) => {
+    res.set("Cache-Control", "no-store");
+    return revealSecret(callerOf(req), itemIdOf(req), req.params.field);
+}));
+
+module.exports = app;
+```
+
+- [ ] **Step 11: Beide Testdateien grün**
+
+Run: `cd /root/outpost && node --test server/lib/vault/__tests__/validation.test.js server/lib/vault/__tests__/itemsRoute.test.js`
+Expected: PASS (5 Tests).
+
+- [ ] **Step 12: Lint der neuen Dateien**
+
+Run: `cd /root/outpost && npx eslint server/validations/vault.js server/controllers/vaultItems.js server/controllers/vaultSettings.js server/routes/vault/items.js server/routes/vault/settings.js server/lib/vault/__tests__/validation.test.js server/lib/vault/__tests__/itemsRoute.test.js`
+Expected: keine Meldungen.
+
+- [ ] **Step 13: Commit**
+
+```bash
+git add server/validations/vault.js server/controllers/vaultItems.js server/controllers/vaultSettings.js server/routes/vault/items.js server/routes/vault/settings.js server/lib/vault/__tests__/validation.test.js server/lib/vault/__tests__/itemsRoute.test.js
+git commit -m "Vault: REST für Einträge, Reveal, Einstellungen und Verfügbarkeit"
+```
+
+---
+
+### Task 6: Freigaben
+
+**Files:**
+- Create: `server/lib/vault/approvals.js`
+- Modify: `server/lib/StateBroadcaster.js` (`STATE_TYPES`/`BROADCASTABLE_TYPES` Z. 4-5, `register` Z. 15-21, neue Methode `hasConnection` danach, `getStateData` Z. 55-56, `sendStateToConnection` Z. 62-63)
+- Modify: `server/routes/state.js` (Z. 17-18: `register` mit Impersonations-Flag, gemeinsames `conn`)
+- Modify: `server/routes/vault/approvals.js` (leeren `Router()`-Platzhalter aus Task 1 vollständig ersetzen)
+- Create: `server/validations/vaultApprovals.js`
+- Test: `server/lib/vault/__tests__/approvals.test.js`
+
+**Interfaces:**
+- Consumes:
+  - Task 1: `VaultError`, `VaultErrorCode` aus `server/lib/vault/errors.js` (`new VaultError(VaultErrorCode.X)` nimmt den Text aus `VaultErrorMessage`); `AUDIT_ACTIONS.VAULT_APPROVE|VAULT_DENY|VAULT_APPROVAL_TIMEOUT`, `RESOURCE_TYPES.VAULT`; `requireVaultEnabled(req, res, next)` aus `server/lib/vault/state.js`; Spalte `sessions.impersonatorId`.
+  - Task 3: `itemRef(item) → string` aus `server/lib/vault/visibility.js` (Welle B, liegt vor Welle C bereit).
+  - Task 4: `const { requireLoginSession } = require("../../middlewares/requireLoginSession")`.
+- Produces (von Task 11 und Task 13 genutzt):
+  - `server/lib/vault/approvals.js`:
+    - `APPROVAL_TTL_MS = 120000`
+    - `requestApproval({ accountId, keyId = null, transportId, agentType = null, entryName = null, item, target, signal }) → Promise<"once"|"session">` — `item` ist der gerade gelesene Eintrag mit `id`, `organizationId`, `name`, `updatedAt` und `fields.origins`. Sofort `"session"`, wenn `hasSessionApproval(transportId, item)`; sonst Prüfreihenfolge ohne `await` dazwischen: Sperre nach `deny` (60 s je `accountId`+`keyId`+Eintrag, transportübergreifend) → `APPROVAL_DENIED`; offene Anfrage für (`transportId`, Eintrag) → `APPROVAL_PENDING`; drei offene Anfragen dieses Aufrufers (`accountId`, `keyId`) → `APPROVAL_BUSY`; kein nicht impersonierendes Fenster → `APPROVAL_UNAVAILABLE`; `signal` schon abgebrochen → `CLIENT_GONE`. Danach Karte; nach 120 s `APPROVAL_TIMEOUT`, bei `signal`-Abbruch `CLIENT_GONE`.
+    - Frühe Ablehnungen (die fünf Prüfungen oben, vor jeder Karte) wirft `approvals.js` als `new VaultError(code, undefined, { early: true })` und auditiert sie **nicht** selbst; Task 11 schreibt für jeden Fehler mit `err.details.early === true` `vault.use_denied` mit `code` und `stage: "before_approval"`, in derselben Form wie seine übrigen Ablehnungen (nur Task 11 kennt Sitzung, Ziel und Impersonation des Aufrufs). Fehler nach einer Karte tragen `details: {}` und sind schon von `approvals.js` auditiert (`vault.deny`, `vault.approval_timeout`); Task 11 schreibt dafür kein zweites Audit.
+    - `answerApproval(id, accountId, decision: "once"|"session"|"deny", meta = { ipAddress, userAgent }) → { status: 200|404|409|410 }` — `404` unbekannt oder fremdes Konto, `409` schon beantwortet, `410` abgelaufen oder zurückgezogen. Der optionale vierte Parameter trägt IP und User-Agent ins Audit.
+    - `listOpenApprovals(accountId) → [{ id, agentType, entryName, item, target, expiresAt, remainingMs }]` — `item` ist die Kennung (`itemRef`), `expiresAt` ISO-String, `remainingMs` die Restzeit in Millisekunden zum Zeitpunkt der Auslieferung (Task 13 rechnet die Frist lokal daraus, unabhängig von der Uhr des Browsers), `agentType` darf `null` sein (Konto-Key/Login-Session), älteste zuerst.
+    - `hasSessionApproval(transportId, item) → boolean` — `true` nur, wenn für diesen Transport eine `session`-Freigabe mit demselben Stempel aus `updatedAt` und sortierten `fields.origins` des Eintrags gespeichert ist; nach jeder Änderung des Eintrags gibt es wieder eine Karte. `forgetTransport(transportId) → void` (vergisst `session`-Freigaben und zieht offene Anfragen des Transports als `client_gone` zurück); `_resetForTests()`.
+    - Audit (`resource: "vault"`, `resourceId: item.id`, `details.item: itemRef(item)`, dazu `agentType`, `entryName`, `keyId`, `target`): `vault.approve` mit `decision`, `vault.deny`, `vault.approval_timeout` mit `reason: "expired"|"client_gone"`.
+  - `server/validations/vaultApprovals.js`: `answerVaultApprovalValidation` (`{ decision: "once"|"session"|"deny" }`, in der OpenAPI-Ausgabe als `AnswerVaultApproval`).
+  - `StateBroadcaster`: `STATE_TYPES.VAULT_APPROVALS = "VAULT_APPROVALS"` (auch in `BROADCASTABLE_TYPES`); `register(accountId, sessionId, ws, tabId = null, browserId = null, { impersonating = false } = {}) → conn` (gibt jetzt die Verbindung zurück); `hasConnection(accountId) → boolean` (nur offene, nicht impersonierende Fenster); Impersonations-Fenster bekommen `VAULT_APPROVALS` nie, auch nicht über `refresh` oder beim Verbinden.
+  - `POST /api/vault/approvals/:id` body `{ decision }` → `200 { success: true }` | `400` | `403` (Konto-Key, Impersonation) | `404` | `409` | `410` | `429` (60 Antworten je Minute und Konto).
+
+**Design:** kein UI-Anteil.
+
+**Tests:** 9 Tests in `approvals.test.js`, test-first (Spec „Freigabe“ und Global Constraints legen den Vertrag fest). Echte `approvals.js` und echter `StateBroadcaster` mit gefälschten Fenstern (`{ readyState: 1, send }`), damit Verteilung, `hasConnection` und das Impersonations-Flag über die Naht laufen; Fake-Uhr über `t.mock.timers` (`setTimeout`, `Date`); `createAuditLog` wird vor dem Laden ersetzt.
+1. `once` füllt genau einmal, eine weitere Anfrage zeigt wieder eine Karte; Antwort eines fremden Kontos `404`, zweite Antwort `409`; Kartenform genau `id`, `agentType`, `entryName`, `item`, `target`, `expiresAt`, `remainingMs`, ohne interne Felder (SEC-IDOR-01, SEC-TENANT-01).
+2. `session` gilt für denselben Transport ohne neue Karte (auch bei anders sortierten Ursprüngen), nicht für einen anderen; ist der Eintrag seitdem geändert (`updatedAt` oder Ursprünge), gibt es eine neue Karte; `forgetTransport` vergisst sie (SEC-SESS-02).
+3. `deny` → `approval_denied` ohne `early`; 60 s Sperre auch über einen neuen Transport, ohne Karte, als frühe Ablehnung ohne eigenes Audit; ein anderer Key desselben Kontos ist nicht gesperrt; nach 60 s wieder Karte.
+4. Ablauf nach genau 120 s → `approval_timeout`, `remainingMs` zählt mit, Audit `reason: "expired"`, Karte weg, spätere Antwort `410`.
+5. `signal` bricht ab → `client_gone`, Audit `reason: "client_gone"`, Karte weg, spätere Antwort `410`; ein schon abgebrochenes `signal` → frühe Ablehnung `client_gone` ohne Karte und ohne Audit.
+6. Kein Fenster → `approval_unavailable`; nur ein Impersonations-Fenster → ebenfalls; beides frühe Ablehnungen ohne Audit; das Impersonations-Fenster erhält keine `VAULT_APPROVALS`-Nachricht.
+7. Zweiter Aufruf für dieselbe offene Anfrage → frühe Ablehnung `approval_pending`; derselbe Eintrag über einen anderen Transport bekommt eine eigene Karte.
+8. Vierte offene Anfrage desselben Aufrufers → frühe Ablehnung `approval_busy`; ein anderer Key ist davon unberührt (SEC-RATE-01 für die Werkzeugseite).
+9. Route: Impersonation und Konto-Key `403`, ungültige Entscheidung `400`, Login-Session `200`, danach `409` (Spec-Test 11, Teil Freigabe).
+- Nicht getestet: Rate-Limit der Route (Framework-Zusage, Muster `bookmarkRateLimiter`), `routes/state.js` (eine Zeile Weiterreichung des Flags; das Verhalten des Flags deckt Test 6 ab), `validations/vaultApprovals.js` für sich (Test 9 schickt eine ungültige Entscheidung durch die Route), „Freigabe nach mehr als 90 s füllt noch aus“, `session_tainted` während der Wartezeit und das Audit `vault.use_denied` der frühen Ablehnungen (Task 11, dort mit `runAgent`).
+- SEC-Abdeckung dieses Tasks: SEC-IDOR-01, SEC-TENANT-01 (Anfragen und Antworten je Konto), SEC-RATE-01 (Antwort-Endpunkt, Obergrenze drei offene Anfragen, Sperre nach `deny`), SEC-SESS-02 (`session`-Freigabe endet mit dem Transport und gilt nur für den unveränderten Eintrag), SEC-ERR-01 (Fehler nur mit Code und festem Text), SEC-SECRET-01 (keine Werte in Karte oder Audit).
+
+**Parallel:** Task 5, Task 8, Task 15 (Welle C; keine gemeinsamen Dateien: Task 5 schreibt `validations/vault.js`, `controllers/vaultItems.js`, `controllers/vaultSettings.js`, `routes/vault/items.js`, `routes/vault/settings.js`; Task 8 `provision.js`, `controllers/agentKeys.js`, `routes/vault/agentKeys.js`, `validations/vaultAgentKeys.js`, `execCommand.js`, `server/index.js`; Task 15 nur `client/`). Setzt Task 1, Task 3 (`itemRef` aus `server/lib/vault/visibility.js`) und Task 4 voraus, alle aus Wellen A/B.
+
+- [ ] **Step 1: Test schreiben**
+
+`server/lib/vault/__tests__/approvals.test.js`:
+
+```js
+const test = require("node:test");
+const assert = require("node:assert");
+const express = require("express");
+const { Sequelize } = require("sequelize");
+
+const db = new Sequelize({ dialect: "sqlite", storage: ":memory:", logging: false });
+const fake = (path, exports) => {
+    const resolved = require.resolve(path);
+    require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports };
+};
+
+const CALLERS = {
+    "s-owner": { user: { id: 1 }, session: { id: 11, accountId: 1, impersonatorId: null } },
+    "s-imp": { user: { id: 1 }, session: { id: 12, accountId: 1, impersonatorId: 99 } },
+    "k-owner": { user: { id: 1 }, apiKey: { id: 5, kind: "account" } },
+};
+fake("../../../utils/database", db);
+fake("../../../middlewares/auth", {
+    authenticate: (req, res, next) => {
+        const caller = CALLERS[(req.header("authorization") ?? "").replace(/^Bearer /, "")];
+        if (!caller) return res.status(401).json({ message: "The provided token is not valid" });
+        Object.assign(req, caller);
+        next();
+    },
+});
+fake("../state", { requireVaultEnabled: (req, res, next) => next(), isVaultEnabled: () => true });
+
+const audits = [];
+const audit = require("../../../controllers/audit");
+audit.createAuditLog = async (entry) => { audits.push(entry); };
+
+const stateBroadcaster = require("../../StateBroadcaster");
+const approvals = require("../approvals");
+const router = require("../../../routes/vault/approvals");
+
+const ITEM = {
+    id: 7, accountId: 1, organizationId: null, name: "portal-login", type: "login", updatedAt: "2026-10-10T08:00:00.000Z",
+    fields: { username: "ma", origins: ["https://portal.example.com", "https://sso.example.com"] },
+};
+const OTHER_ITEMS = [8, 9, 10].map((id) => ({ ...ITEM, id, name: `login-${id}` }));
+const call = (overrides = {}) => ({
+    accountId: 1, keyId: 5, transportId: "t-1", agentType: "claude", entryName: "web-01",
+    item: ITEM, target: "https://portal.example.com", signal: new AbortController().signal, ...overrides,
+});
+const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+let nextWindow = 100;
+const openWindow = (t, accountId, { impersonating = false } = {}) => {
+    const messages = [];
+    const ws = { readyState: 1, send: (raw) => messages.push(JSON.parse(raw)) };
+    stateBroadcaster.register(accountId, nextWindow++, ws, null, null, { impersonating });
+    t.after(() => stateBroadcaster.unregister(accountId, ws));
+    const approvalsSeen = () => messages.filter((m) => m.type === "VAULT_APPROVALS");
+    return { approvalsSeen, cards: () => approvalsSeen().at(-1)?.data ?? [] };
+};
+
+test.beforeEach(() => {
+    approvals._resetForTests();
+    audits.length = 0;
+});
+test.after(() => approvals._resetForTests());
+
+test("Einmal gibt genau ein Ausfüllen frei; die erste Antwort gewinnt, jede weitere bekommt 409, ein fremdes Konto 404", async (t) => {
+    const window = openWindow(t, 1);
+    const first = approvals.requestApproval(call());
+    await flush();
+    const [card] = window.cards();
+    assert.deepStrictEqual(Object.keys(card).sort(), ["agentType", "entryName", "expiresAt", "id", "item", "remainingMs", "target"]);
+    assert.deepStrictEqual([card.item, card.agentType, card.entryName, card.target], ["portal-login", "claude", "web-01", "https://portal.example.com"]);
+
+    assert.deepStrictEqual(approvals.answerApproval(card.id, 2, "once"), { status: 404 });
+    assert.deepStrictEqual(approvals.answerApproval(card.id, 1, "once"), { status: 200 });
+    assert.deepStrictEqual(approvals.answerApproval(card.id, 1, "deny"), { status: 409 });
+    assert.strictEqual(await first, "once");
+    await flush();
+    assert.deepStrictEqual(window.cards(), []);
+    assert.deepStrictEqual(audits.map((a) => [a.action, a.resource, a.resourceId, a.details.decision, a.details.item]), [["vault.approve", "vault", 7, "once", "portal-login"]]);
+
+    const second = approvals.requestApproval(call());
+    await flush();
+    assert.strictEqual(window.cards().length, 1, "once is not remembered");
+    approvals.answerApproval(window.cards()[0].id, 1, "once");
+    assert.strictEqual(await second, "once");
+});
+
+test("Für diese Sitzung gilt bis zum Ende des Transports, nur für ihn und nur für den unveränderten Eintrag", async (t) => {
+    const window = openWindow(t, 1);
+    const first = approvals.requestApproval(call());
+    await flush();
+    approvals.answerApproval(window.cards()[0].id, 1, "session");
+    assert.strictEqual(await first, "session");
+
+    assert.strictEqual(await approvals.requestApproval(call()), "session");
+    const reordered = { ...ITEM, fields: { ...ITEM.fields, origins: [...ITEM.fields.origins].reverse() } };
+    assert.strictEqual(approvals.hasSessionApproval("t-1", reordered), true);
+    await flush();
+    assert.deepStrictEqual(window.cards(), []);
+
+    const moved = { ...ITEM, fields: { ...ITEM.fields, origins: ["https://portal.example.net"] } };
+    assert.strictEqual(approvals.hasSessionApproval("t-1", moved), false);
+    const edited = { ...ITEM, updatedAt: "2026-10-10T08:05:00.000Z" };
+    const afterEdit = approvals.requestApproval(call({ item: edited }));
+    await flush();
+    assert.strictEqual(window.cards().length, 1, "an edited entry needs a new card");
+    approvals.answerApproval(window.cards()[0].id, 1, "once");
+    assert.strictEqual(await afterEdit, "once");
+
+    const otherTransport = approvals.requestApproval(call({ transportId: "t-2" }));
+    await flush();
+    assert.strictEqual(window.cards().length, 1);
+    approvals.answerApproval(window.cards()[0].id, 1, "once");
+    await otherTransport;
+
+    approvals.forgetTransport("t-1");
+    assert.strictEqual(approvals.hasSessionApproval("t-1", ITEM), false);
+});
+
+test("Ablehnen sperrt denselben Aufrufer für denselben Eintrag 60 s, auch über einen neuen Transport", async (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 1_000_000 });
+    const window = openWindow(t, 1);
+    const first = approvals.requestApproval(call());
+    await flush();
+    approvals.answerApproval(window.cards()[0].id, 1, "deny");
+    await assert.rejects(first, { code: "vault.approval_denied", details: {} });
+    assert.deepStrictEqual(audits.map((a) => a.action), ["vault.deny"]);
+
+    t.mock.timers.tick(59_999);
+    await assert.rejects(approvals.requestApproval(call({ transportId: "t-2" })), { code: "vault.approval_denied", details: { early: true } });
+    await flush();
+    assert.deepStrictEqual(window.cards(), []);
+    assert.deepStrictEqual(audits.map((a) => a.action), ["vault.deny"]);
+
+    const otherCaller = approvals.requestApproval(call({ keyId: 6, transportId: "t-3" }));
+    await flush();
+    assert.strictEqual(window.cards().length, 1, "another key of the account is not locked");
+    approvals.answerApproval(window.cards()[0].id, 1, "once");
+    await otherCaller;
+
+    t.mock.timers.tick(1);
+    const afterLock = approvals.requestApproval(call({ transportId: "t-2" }));
+    await flush();
+    assert.strictEqual(window.cards().length, 1);
+    approvals.answerApproval(window.cards()[0].id, 1, "once");
+    assert.strictEqual(await afterLock, "once");
+});
+
+test("ohne Antwort läuft die Anfrage nach 120 s ab; eine spätere Antwort bekommt 410", async (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 1_000_000 });
+    const window = openWindow(t, 1);
+    const pending = approvals.requestApproval(call());
+    const outcome = assert.rejects(pending, { code: "vault.approval_timeout", details: {} });
+    await flush();
+    const [card] = window.cards();
+    assert.deepStrictEqual([card.expiresAt, card.remainingMs], [new Date(1_000_000 + approvals.APPROVAL_TTL_MS).toISOString(), approvals.APPROVAL_TTL_MS]);
+
+    t.mock.timers.tick(approvals.APPROVAL_TTL_MS - 1);
+    await flush();
+    assert.strictEqual(window.cards().length, 1);
+    assert.strictEqual(approvals.listOpenApprovals(1)[0].remainingMs, 1);
+    t.mock.timers.tick(1);
+    await outcome;
+    await flush();
+    assert.deepStrictEqual(window.cards(), []);
+    assert.deepStrictEqual(audits.map((a) => [a.action, a.details.reason]), [["vault.approval_timeout", "expired"]]);
+    assert.deepStrictEqual(approvals.answerApproval(card.id, 1, "once"), { status: 410 });
+});
+
+test("bricht der Client ab, wird die Anfrage sofort zurückgezogen und als client_gone auditiert; ein schon abgebrochener Aufruf bekommt keine Karte", async (t) => {
+    const window = openWindow(t, 1);
+    const controller = new AbortController();
+    const pending = approvals.requestApproval(call({ signal: controller.signal }));
+    await flush();
+    const [card] = window.cards();
+
+    controller.abort();
+    await assert.rejects(pending, { code: "vault.client_gone", details: {} });
+    await assert.rejects(approvals.requestApproval(call({ signal: AbortSignal.abort() })), { code: "vault.client_gone", details: { early: true } });
+    await flush();
+    assert.deepStrictEqual(window.cards(), []);
+    assert.deepStrictEqual(audits.map((a) => [a.action, a.details.reason]), [["vault.approval_timeout", "client_gone"]]);
+    assert.deepStrictEqual(approvals.answerApproval(card.id, 1, "once"), { status: 410 });
+});
+
+test("ohne verbundenes Fenster sofort approval_unavailable; ein Impersonations-Fenster zählt nicht und sieht keine Karte", async (t) => {
+    await assert.rejects(approvals.requestApproval(call()), { code: "vault.approval_unavailable", details: { early: true } });
+
+    const impersonated = openWindow(t, 1, { impersonating: true });
+    await assert.rejects(approvals.requestApproval(call()), { code: "vault.approval_unavailable", details: { early: true } });
+    assert.deepStrictEqual(audits, []);
+
+    const window = openWindow(t, 1);
+    const pending = approvals.requestApproval(call());
+    await flush();
+    assert.strictEqual(window.cards().length, 1);
+    approvals.answerApproval(window.cards()[0].id, 1, "once");
+    await pending;
+    await flush();
+    assert.deepStrictEqual(impersonated.approvalsSeen(), []);
+});
+
+test("ein zweiter Aufruf für dieselbe offene Anfrage bekommt sofort approval_pending", async (t) => {
+    const window = openWindow(t, 1);
+    const first = approvals.requestApproval(call());
+    await assert.rejects(approvals.requestApproval(call()), { code: "vault.approval_pending", details: { early: true } });
+    const otherTransport = approvals.requestApproval(call({ transportId: "t-2" }));
+    await flush();
+    assert.strictEqual(window.cards().length, 2);
+    for (const card of window.cards()) approvals.answerApproval(card.id, 1, "once");
+    assert.deepStrictEqual(await Promise.all([first, otherTransport]), ["once", "once"]);
+});
+
+test("ab der vierten offenen Anfrage desselben Aufrufers approval_busy", async (t) => {
+    const window = openWindow(t, 1);
+    const open = OTHER_ITEMS.map((item) => approvals.requestApproval(call({ item })));
+    await assert.rejects(approvals.requestApproval(call()), { code: "vault.approval_busy", details: { early: true } });
+    const otherKey = approvals.requestApproval(call({ keyId: 6, transportId: "t-9" }));
+    await flush();
+    assert.strictEqual(window.cards().length, 4);
+    for (const card of window.cards()) approvals.answerApproval(card.id, 1, "once");
+    await Promise.all([...open, otherKey]);
+});
+
+test("Freigabe-Antworten nur aus einer Login-Session: Impersonation und Konto-Key bekommen 403", async (t) => {
+    openWindow(t, 1);
+    const app = express();
+    app.use(express.json());
+    app.use("/api/vault", router);
+    const server = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)); });
+    t.after(() => server.close());
+    const pending = approvals.requestApproval(call());
+    const [{ id }] = approvals.listOpenApprovals(1);
+    const answer = (token, body = { decision: "once" }) => fetch(`http://127.0.0.1:${server.address().port}/api/vault/approvals/${id}`, {
+        method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify(body),
+    });
+
+    assert.strictEqual((await answer("s-imp")).status, 403);
+    assert.strictEqual((await answer("k-owner")).status, 403);
+    assert.strictEqual((await answer("s-owner", { decision: "always" })).status, 400);
+    assert.strictEqual((await answer("s-owner")).status, 200);
+    assert.strictEqual(await pending, "once");
+    assert.strictEqual((await answer("s-owner")).status, 409);
+});
+```
+
+- [ ] **Step 2: Test laufen lassen, Fehlschlag prüfen**
+
+Run: `cd /root/outpost && node --test server/lib/vault/__tests__/approvals.test.js`
+Expected: FAIL — `Cannot find module '../approvals'`.
+
+- [ ] **Step 3: `StateBroadcaster` um `VAULT_APPROVALS`, Impersonations-Flag und `hasConnection` erweitern**
+
+`server/lib/StateBroadcaster.js` Z. 4-5, vorher:
+
+```js
+const STATE_TYPES = { ENTRIES: "ENTRIES", IDENTITIES: "IDENTITIES", SNIPPETS: "SNIPPETS", CONNECTIONS: "CONNECTIONS", LIVE_SESSIONS: "LIVE_SESSIONS", SESSION_PRESENCE: "SESSION_PRESENCE", BROWSER_SESSIONS: "BROWSER_SESSIONS", LOGOUT: "LOGOUT" };
+const BROADCASTABLE_TYPES = [STATE_TYPES.ENTRIES, STATE_TYPES.IDENTITIES, STATE_TYPES.SNIPPETS, STATE_TYPES.CONNECTIONS, STATE_TYPES.LIVE_SESSIONS, STATE_TYPES.BROWSER_SESSIONS];
+```
+
+nachher:
+
+```js
+const STATE_TYPES = { ENTRIES: "ENTRIES", IDENTITIES: "IDENTITIES", SNIPPETS: "SNIPPETS", CONNECTIONS: "CONNECTIONS", LIVE_SESSIONS: "LIVE_SESSIONS", SESSION_PRESENCE: "SESSION_PRESENCE", BROWSER_SESSIONS: "BROWSER_SESSIONS", VAULT_APPROVALS: "VAULT_APPROVALS", LOGOUT: "LOGOUT" };
+const BROADCASTABLE_TYPES = [STATE_TYPES.ENTRIES, STATE_TYPES.IDENTITIES, STATE_TYPES.SNIPPETS, STATE_TYPES.CONNECTIONS, STATE_TYPES.LIVE_SESSIONS, STATE_TYPES.BROWSER_SESSIONS, STATE_TYPES.VAULT_APPROVALS];
+```
+
+`register` (Z. 15-21), vorher:
+
+```js
+    register(accountId, sessionId, ws, tabId = null, browserId = null) {
+        if (!this.connections.has(accountId)) this.connections.set(accountId, new Set());
+        const conn = { ws, tabId, browserId, sessionId };
+        this.connections.get(accountId).add(conn);
+        if (!this.sessionIndex.has(sessionId)) this.sessionIndex.set(sessionId, new Set());
+        this.sessionIndex.get(sessionId).add(conn);
+    }
+```
+
+nachher (gibt `conn` zurück und bekommt `hasConnection` dahinter):
+
+```js
+    register(accountId, sessionId, ws, tabId = null, browserId = null, { impersonating = false } = {}) {
+        if (!this.connections.has(accountId)) this.connections.set(accountId, new Set());
+        const conn = { ws, tabId, browserId, sessionId, impersonating };
+        this.connections.get(accountId).add(conn);
+        if (!this.sessionIndex.has(sessionId)) this.sessionIndex.set(sessionId, new Set());
+        this.sessionIndex.get(sessionId).add(conn);
+        return conn;
+    }
+
+    hasConnection(accountId) {
+        for (const conn of this.connections.get(accountId) ?? []) {
+            if (!conn.impersonating && conn.ws.readyState === 1) return true;
+        }
+        return false;
+    }
+```
+
+`getStateData`, nach dem `case STATE_TYPES.BROWSER_SESSIONS` (Z. 55-56) einfügen:
+
+```js
+            case STATE_TYPES.VAULT_APPROVALS:
+                return require("./vault/approvals").listOpenApprovals(accountId);
+```
+
+`sendStateToConnection` (Z. 62-63), vorher:
+
+```js
+    async sendStateToConnection(accountId, conn, stateType) {
+        if (conn.ws.readyState !== 1) return;
+```
+
+nachher (deckt Verbinden, `refresh` und jede Verteilung ab):
+
+```js
+    async sendStateToConnection(accountId, conn, stateType) {
+        if (conn.ws.readyState !== 1) return;
+        if (conn.impersonating && stateType === STATE_TYPES.VAULT_APPROVALS) return;
+```
+
+- [ ] **Step 4: `server/routes/state.js` übergibt die Impersonation**
+
+Z. 17-18, vorher:
+
+```js
+    const conn = { ws, tabId: tabId || null, browserId: browserId || null, sessionId: session.id };
+    stateBroadcaster.register(user.id, session.id, ws, tabId || null, browserId || null);
+```
+
+nachher (dasselbe `conn`-Objekt für Registrierung und Erstversand, sonst trüge der Erstversand das Flag nicht):
+
+```js
+    const conn = stateBroadcaster.register(user.id, session.id, ws, tabId || null, browserId || null,
+        { impersonating: Boolean(session.impersonatorId) });
+```
+
+- [ ] **Step 5: `server/lib/vault/approvals.js` anlegen**
+
+Prüfen und Eintragen einer Anfrage laufen ohne `await` dazwischen (der `Promise`-Executor läuft synchron), damit zwei gleichzeitige Aufrufe die Obergrenzen nicht gemeinsam überspringen. Erledigte Anfragen bleiben `APPROVAL_TTL_MS` lang in `closed`, damit späte Antworten `409`/`410` statt `404` bekommen. `sessionGrants` ist `Map<transportId, Map<itemId, stamp>>`; der Stempel aus `updatedAt` (als Millisekunden, weil MySQL unter `raw` ein `Date` und SQLite einen Text liefert) und den sortierten Ursprüngen wird beim Erzeugen der Anfrage genommen, sodass eine Änderung des Eintrags während der Wartezeit die neue `session`-Freigabe schon nicht mehr passen lässt. Frühe Ablehnungen tragen `details.early` und werden hier nicht auditiert (Audit schreibt Task 11).
+
+```js
+const { randomUUID } = require("node:crypto");
+const stateBroadcaster = require("../StateBroadcaster");
+const { createAuditLog, AUDIT_ACTIONS, RESOURCE_TYPES } = require("../../controllers/audit");
+const { VaultError, VaultErrorCode } = require("./errors");
+const { itemRef } = require("./visibility");
+
+const APPROVAL_TTL_MS = 120000;
+const DENY_LOCK_MS = 60000;
+const MAX_OPEN_PER_CALLER = 3;
+
+let open = new Map();
+let closed = new Map();
+let sessionGrants = new Map();
+let denials = new Map();
+
+const callerKey = (accountId, keyId) => `${accountId}:${keyId ?? "session"}`;
+const denialKey = (accountId, keyId, itemId) => `${callerKey(accountId, keyId)}:${itemId}`;
+const grantStamp = (item) => `${new Date(item.updatedAt).getTime()}|${JSON.stringify([...(item.fields?.origins ?? [])].sort())}`;
+const early = (code) => new VaultError(code, undefined, { early: true });
+
+const publish = (accountId) =>
+    stateBroadcaster.sendStateToAccount(accountId, stateBroadcaster.STATE_TYPES.VAULT_APPROVALS).catch(() => {});
+
+const audit = (request, action, details = {}, meta = {}) => createAuditLog({
+    accountId: request.accountId, organizationId: request.organizationId, action,
+    resource: RESOURCE_TYPES.VAULT, resourceId: request.itemId,
+    details: { item: request.item, agentType: request.agentType, entryName: request.entryName, keyId: request.keyId, target: request.target, ...details },
+    ipAddress: meta.ipAddress ?? null, userAgent: meta.userAgent ?? null,
+});
+
+const prune = (now) => {
+    for (const [id, entry] of closed) if (entry.until <= now) closed.delete(id);
+    for (const [key, until] of denials) if (until <= now) denials.delete(key);
+};
+
+const close = (request, status) => {
+    open.delete(request.id);
+    clearTimeout(request.timer);
+    request.signal?.removeEventListener("abort", request.onAbort);
+    closed.set(request.id, { accountId: request.accountId, status, until: Date.now() + APPROVAL_TTL_MS });
+    publish(request.accountId);
+};
+
+const expire = (request, reason) => {
+    if (!open.has(request.id)) return;
+    close(request, 410);
+    audit(request, AUDIT_ACTIONS.VAULT_APPROVAL_TIMEOUT, { reason });
+    request.reject(new VaultError(reason === "expired" ? VaultErrorCode.APPROVAL_TIMEOUT : VaultErrorCode.CLIENT_GONE));
+};
+
+const hasSessionApproval = (transportId, item) => sessionGrants.get(transportId)?.get(item.id) === grantStamp(item);
+
+const requestApproval = async ({ accountId, keyId = null, transportId, agentType = null, entryName = null, item, target, signal }) => {
+    if (hasSessionApproval(transportId, item)) return "session";
+    const now = Date.now();
+    prune(now);
+    if ((denials.get(denialKey(accountId, keyId, item.id)) ?? 0) > now) throw early(VaultErrorCode.APPROVAL_DENIED);
+    const waiting = [...open.values()];
+    if (waiting.some((request) => request.transportId === transportId && request.itemId === item.id))
+        throw early(VaultErrorCode.APPROVAL_PENDING);
+    if (waiting.filter((request) => request.caller === callerKey(accountId, keyId)).length >= MAX_OPEN_PER_CALLER)
+        throw early(VaultErrorCode.APPROVAL_BUSY);
+    if (!stateBroadcaster.hasConnection(accountId)) throw early(VaultErrorCode.APPROVAL_UNAVAILABLE);
+    if (signal?.aborted) throw early(VaultErrorCode.CLIENT_GONE);
+
+    return new Promise((resolve, reject) => {
+        const request = {
+            id: randomUUID(), accountId, keyId, caller: callerKey(accountId, keyId), transportId,
+            itemId: item.id, stamp: grantStamp(item), organizationId: item.organizationId ?? null, item: itemRef(item),
+            agentType, entryName, target, expiresAt: now + APPROVAL_TTL_MS, resolve, reject, signal,
+        };
+        request.timer = setTimeout(() => expire(request, "expired"), APPROVAL_TTL_MS);
+        request.onAbort = () => expire(request, "client_gone");
+        signal?.addEventListener("abort", request.onAbort, { once: true });
+        open.set(request.id, request);
+        publish(accountId);
+    });
+};
+
+const answerApproval = (id, accountId, decision, meta = {}) => {
+    const now = Date.now();
+    prune(now);
+    const request = open.get(id);
+    if (!request) {
+        const done = closed.get(id);
+        return { status: done && Number(done.accountId) === Number(accountId) ? done.status : 404 };
+    }
+    if (Number(request.accountId) !== Number(accountId)) return { status: 404 };
+    if (now >= request.expiresAt) {
+        expire(request, "expired");
+        return { status: 410 };
+    }
+    close(request, 409);
+    if (decision === "deny") {
+        denials.set(denialKey(request.accountId, request.keyId, request.itemId), now + DENY_LOCK_MS);
+        audit(request, AUDIT_ACTIONS.VAULT_DENY, {}, meta);
+        request.reject(new VaultError(VaultErrorCode.APPROVAL_DENIED));
+    } else {
+        if (decision === "session") {
+            if (!sessionGrants.has(request.transportId)) sessionGrants.set(request.transportId, new Map());
+            sessionGrants.get(request.transportId).set(request.itemId, request.stamp);
+        }
+        audit(request, AUDIT_ACTIONS.VAULT_APPROVE, { decision }, meta);
+        request.resolve(decision);
+    }
+    return { status: 200 };
+};
+
+const listOpenApprovals = (accountId) => {
+    const now = Date.now();
+    return [...open.values()]
+        .filter((request) => Number(request.accountId) === Number(accountId))
+        .sort((a, b) => a.expiresAt - b.expiresAt)
+        .map(({ id, agentType, entryName, item, target, expiresAt }) => ({
+            id, agentType, entryName, item, target,
+            expiresAt: new Date(expiresAt).toISOString(), remainingMs: Math.max(0, expiresAt - now),
+        }));
+};
+
+const forgetTransport = (transportId) => {
+    sessionGrants.delete(transportId);
+    for (const request of [...open.values()]) if (request.transportId === transportId) expire(request, "client_gone");
+};
+
+const _resetForTests = () => {
+    for (const request of open.values()) clearTimeout(request.timer);
+    open = new Map();
+    closed = new Map();
+    sessionGrants = new Map();
+    denials = new Map();
+};
+
+module.exports = {
+    APPROVAL_TTL_MS, requestApproval, answerApproval, listOpenApprovals, hasSessionApproval, forgetTransport, _resetForTests,
+};
+```
+
+- [ ] **Step 6: Validierung anlegen und `server/routes/vault/approvals.js` füllen**
+
+`server/validations/vaultApprovals.js` anlegen (eigene Datei, weil `server/validations/vault.js` zum parallel laufenden Task 5 gehört; `server/openapi.js` liest alle Module in `server/validations/` und führt das Schema als `AnswerVaultApproval`):
+
+```js
+const Joi = require("joi");
+
+module.exports.answerVaultApprovalValidation = Joi.object({
+    decision: Joi.string().valid("once", "session", "deny").required(),
+});
+```
+
+Den Platzhalter `server/routes/vault/approvals.js` aus Task 1 vollständig ersetzen:
+
+```js
+const { Router } = require("express");
+const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
+const { authenticate } = require("../../middlewares/auth");
+const { requireLoginSession } = require("../../middlewares/requireLoginSession");
+const { requireVaultEnabled } = require("../../lib/vault/state");
+const { answerApproval } = require("../../lib/vault/approvals");
+const { validateSchema } = require("../../utils/schema");
+const { sendError } = require("../../utils/error");
+const { answerVaultApprovalValidation } = require("../../validations/vaultApprovals");
+
+const app = Router();
+
+const answerLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    keyGenerator: (req) => (req.user ? `acc:${req.user.id}` : `ip:${ipKeyGenerator(req.ip)}`),
+    message: { code: 429, message: "Too many approval answers. Please try again in a moment." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const MESSAGES = {
+    404: "Approval request not found",
+    409: "This approval request has already been answered",
+    410: "This approval request has expired",
+};
+
+/**
+ * POST /vault/approvals/{id}
+ * @summary Answer Vault Approval
+ * @description Answers an open approval request of the authenticated account: once allows exactly one fill, session allows the entry for the rest of the agent's MCP session, deny blocks the same caller for this entry for 60 seconds. Requires a signed-in session; API keys and impersonation sessions get 403.
+ * @tags Vault
+ * @produces application/json
+ * @security BearerAuth
+ * @param {string} id.path.required - Approval request id
+ * @param {AnswerVaultApproval} request.body.required - { decision: "once" | "session" | "deny" }
+ * @return {object} 200 - { success: true }
+ * @return {object} 403 - Signed-in session required
+ * @return {object} 404 - Unknown request or not owned by the account
+ * @return {object} 409 - Already answered
+ * @return {object} 410 - Expired or withdrawn
+ */
+app.post("/approvals/:id", authenticate, requireVaultEnabled, requireLoginSession, answerLimiter, (req, res) => {
+    const body = req.body ?? {};
+    if (validateSchema(res, answerVaultApprovalValidation, body)) return;
+    const { status } = answerApproval(req.params.id, req.user.id, body.decision,
+        { ipAddress: req.ip, userAgent: req.header("user-agent") ?? null });
+    if (status !== 200) return sendError(res, status, status, MESSAGES[status]);
+    res.json({ success: true });
+});
+
+module.exports = app;
+```
+
+- [ ] **Step 7: Test grün**
+
+Run: `cd /root/outpost && node --test server/lib/vault/__tests__/approvals.test.js`
+Expected: PASS (9 Tests; die Warnung `ExperimentalWarning: The MockTimers API` ist erwartet).
+
+- [ ] **Step 8: Bestehende Tests rund um den Zustandsstrom**
+
+Run: `cd /root/outpost && node --test server/lib/__tests__/reconnectSession.test.js`
+Expected: PASS (nutzt `StateBroadcaster`; `register` liefert jetzt zusätzlich `conn`, sonst unverändert).
+
+- [ ] **Step 9: Lint**
+
+Run: `cd /root/outpost && npx eslint server/lib/vault/approvals.js server/lib/StateBroadcaster.js server/routes/state.js server/routes/vault/approvals.js server/validations/vaultApprovals.js server/lib/vault/__tests__/approvals.test.js`
+Expected: keine Meldungen.
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add server/lib/vault/approvals.js server/lib/StateBroadcaster.js server/routes/state.js server/routes/vault/approvals.js server/validations/vaultApprovals.js server/lib/vault/__tests__/approvals.test.js
+git commit -m "Vault: Freigaben mit Karte, Ablauf, Sperre und Antwort-Endpunkt"
+```
+
+---
+
+### Task 8: Agenten-Einrichtung (Server)
+
+**Files:**
+- Create: `server/lib/vault/provision.js` (einziger Ort, an dem Einrichtungs-, Probe- und Entfernbefehle entstehen; SEC-INJECT-01)
+- Create: `server/controllers/agentKeys.js`
+- Create: `server/validations/vaultAgentKeys.js` (zusätzlich: `server/validations/vault.js` gehört Task 5, der parallel läuft)
+- Modify: `server/routes/vault/agentKeys.js` (leerer `Router()`-Platzhalter aus Task 1 → ganze Datei ersetzen)
+- Modify: `server/controllers/execCommand.js` (Signatur Z. 8, Aufruf `controlPlane.execCommand` Z. 48)
+- Modify: `server/index.js` (eine Zeile direkt nach dem `try`/`catch` um `initVaultState()`, den Task 1 nach `await migrationRunner.runMigrations();` Z. 144 einfügt, plus der Import)
+- Test: `server/lib/vault/__tests__/provision.test.js`, `server/lib/vault/__tests__/agentKeysRoute.test.js`
+
+**Interfaces:**
+- Consumes:
+  - Task 1: `ApiKey`-Spalten `kind`, `pending`, `entryId`, `agentType`, `ipBinding`, `allowedCidrs`, `identityId`, `remoteUser`, `seenIp`, `seenIpAdopted` und der `afterFind`-Hook an `ApiKey` (`allowedCidrs` als Array, `pending`/`ipBinding`/`seenIpAdopted` als Boolean); `Session.impersonatorId`; `VaultSettings.getOrCreate() → { agentUrl, … }` (Instanz, `raw: false`); `initVaultState()`, `requireVaultEnabled(req, res, next)` aus `server/lib/vault/state.js`; `AUDIT_ACTIONS.VAULT_AGENT_KEY_CREATE`, `AUDIT_ACTIONS.VAULT_AGENT_KEY_REVOKE`, `RESOURCE_TYPES.VAULT`; Platzhalter `server/routes/vault/agentKeys.js`, den `server/routes/vault/index.js` schon per `app.use(require("./agentKeys"))` einhängt.
+  - Task 3: `canUseVault(accountId) → Promise<boolean>` aus `server/lib/vault/visibility.js` (`vault.use` oder aktive Organisationsmitgliedschaft).
+  - Task 4: `authenticate` (lässt `pending`-Agenten-Keys nur an `GET /api/vault/agent-keys/probe` durch, endgültige Agenten-Keys nur unter `/api/mcp` mit IP-Bindung, setzt bei Login-Sessions `req.session`); `requireLoginSession(req, res, next)` als **benannter** Export von `server/middlewares/requireLoginSession.js` (Muster `middlewares/permission.js`); `isAddressAllowed(apiKey, entry, ip) → Promise<boolean>` aus `server/lib/vault/ipBinding.js` (`true` bei `!apiKey.ipBinding`, sonst `allowedCidrs` und aufgelöste Adressen des Servers; `ip` schon normalisiert; ohne Audit); `hashToken`, `generateToken`, `TOKEN_PREFIX` aus `server/controllers/apiKey.js`.
+  - Bestand: `execCommand` (`server/controllers/execCommand.js`), `resolveIdentity(entry, null, null, accountId)` (`server/utils/identityResolver.js:7`), `validateEntryAccess`, `resolveEntryScope` (`server/controllers/entry.js`), `normalizeIp` (`server/utils/ip.js`), `sendError`, `validateSchema`, `logger`.
+  - Nicht genutzt: `getAgentUrl()` aus Task 5 (läuft parallel); die Agenten-Adresse wird direkt aus `VaultSettings.getOrCreate()` gelesen.
+- Produces:
+  - `provision.js` (alle Befehle laufen als `/bin/sh -c '<Skript>'` mit `umask 077` als erster Zeile, damit eine nicht-POSIX-Login-Shell des entfernten Benutzers sie nicht bricht):
+    - `shQuote(value: string) → string` — `'…'` mit `'\''`; wirft `TypeError` bei Nicht-String oder NUL.
+    - `findCliScript(name: "claude"|"codex") → string` — Snippet (Subshell), gibt den absoluten Pfad aus, Exit 0; sonst Exit 1 ohne Ausgabe. Sucht `command -v` in `bash -lc`, ersatzweise `sh -lc`, dann `~/.local/bin`, `~/.claude/local`, `~/.npm-global/bin`.
+    - **Ergänzung:** `findCliCommand(name) → string` — `findCliScript` als ausführbarer Befehl.
+    - `claudeSetupCommand({ cliPath, url, key }) → string` — `claude mcp get outpost`; vorhanden → `claude mcp remove --scope user outpost` (Fehler ignoriert); `claude mcp add --scope user --transport http outpost <url> --header "Authorization: Bearer <key>"`; `chmod 600 ~/.claude.json`. Gibt `OUTPOST_REPLACED=0|1` direkt nach `mcp get` aus, also vor `remove`: Scheitert danach `add`, weiß Outpost trotzdem, dass die alte Registrierung weg ist.
+    - `codexEnvCommand({ key }) → string` — schreibt die Zeile `[ -f ~/.codex/outpost.env ] && . ~/.codex/outpost.env` je einmal in `~/.bashrc`, `~/.profile` und, falls vorhanden, `~/.bash_profile`, `~/.zshrc`, und zuletzt atomar `~/.codex/outpost.env` (`export OUTPOST_MCP_TOKEN='<key>'` nach `outpost.env.new`, `chmod 600`, `mv -f`).
+    - `codexSetupCommand({ cliPath, url }) → string` — `codex mcp get/remove outpost`, dann `codex mcp add outpost --url <url> --bearer-token-env-var OUTPOST_MCP_TOKEN`; `OUTPOST_REPLACED=0|1` wie bei Claude vor `remove`.
+    - **Ergänzung:** `setupCommand({ agentType, cliPath, url, key }) → string` — Claude: `claudeSetupCommand`; Codex: `codexSetupCommand && codexEnvCommand` (Abweichung von der Spec-Reihenfolge „Datei, dann `mcp add`“: Die Key-Datei ist der letzte Schritt, scheitert die Registrierung, liest die Shell weiter den alten Key, der bis zur Bestätigung gültig bleibt). Wird auch als Kopierbefehl ausgegeben (dann `cliPath` = `"claude"`/`"codex"`).
+    - `probeCommand({ url, key }) → string` — `url` ist die volle Probe-URL; Key nur in einer `mktemp`-Datei (0600), `curl -fsS --max-time 10 -H @<datei>`, sonst `wget -qO- -T 10 -t 1 --config=<datei>`, sonst Exit 127; die Datei wird per `trap … EXIT` gelöscht.
+    - `registrationCheckCommand({ agentType, keyPrefix }) → string` — gibt genau eine Zeile `MATCH` (Registrierung trägt `keyPrefix`), `OTHER` (anderer Key) oder `ABSENT` aus, ändert nichts. Dieselbe Erkennung wie `revokeCommands` (gemeinsame `registrationStateLines`).
+    - `revokeCommands({ agentType, keyPrefix }) → string` — `keyPrefix` = `apiKey.prefix` ohne `…` (`/^[A-Za-z0-9_]{8,64}$/`, sonst `TypeError`, ebenso bei `registrationCheckCommand`); gibt genau eine Zeile `REMOVED`, `FOREIGN` oder `ABSENT` aus; entfernt nur, wenn die Registrierung mit `keyPrefix` beginnt; Exit 3 (CLI fehlt) bzw. 4 (Entfernen scheiterte) ohne Marker.
+  - `agentKeys.js` (Controller; Fehler als `{ code, message }`):
+    - `createAgentKeys({ accountId, entryId, agentTypes, ipBinding = true, allowedCidrs = [], ipAddress = null, userAgent = null }) → { results: [{ id, agentType, status: "configured"|"manual", reason: "cli_missing"|"exec_failed"|null, remoteUser, command?, probe: { seenIp, matches }|null, replacedRegistration }] }` — `ipAddress`/`userAgent` sind eine Ergänzung (nur fürs Audit); `reason` ist `null` bei `configured`, `cli_missing` wenn die CLI an keiner Stelle gefunden wurde, sonst `exec_failed` (keine Identität, Exec- oder Einrichtungsfehler); `command` (mit Key) nur bei `manual`; `replacedRegistration` auch bei `manual`, sobald die Ausgabe `OUTPOST_REPLACED=1` enthält. Die Agenten laufen parallel (`Promise.all`). Scheitert der Einrichtungs-Exec selbst (Exec-Fehler, Timeout), prüft `registrationCheckCommand` nach: `MATCH` → `configured`, sonst `manual`/`exec_failed`; ein Exit-Code ungleich 0 bleibt ohne Nachprüfung `exec_failed`. Fehler: `409` Agenten-Adresse fehlt oder für diesen Server läuft schon eine Einrichtung (`setupsInFlight`, je Server, im Speicher), `403` `canUseVault` falsch, `404` Eintrag fehlt/kein Zugriff, `400` kein SSH-Eintrag.
+    - `probe(apiKey, rawIp) → { seenIp }` — antwortet mit `normalizeIp(rawIp)` und speichert nur die erste Messung an einem `pending`-Agenten-Key (`seenIp: null` in der Where-Bedingung).
+    - `confirm(accountId, id, { addSeenIp = false } = {}, { ipAddress = null, userAgent = null } = {}, now = Date.now()) → { success: true }` — `404` fremder/unbekannter Key; `410 { message: "This setup has expired. Set up agent access again." }` für einen `pending`-Key älter als 15 min oder einen, den `sweepPending` währenddessen löscht. Mit `addSeenIp`: `409` ohne Messung, `409 { message: "The measured address is the address of your browser; Outpost sees a proxy, not the server" }` wenn `normalizeIp(ipAddress)` (Adresse des Bestätigenden) gleich `seenIp` ist, `409` nach 15 min oder bei zweiter Übernahme (Key noch da; sonst `410`); trägt `<seenIp>/32` bzw. `/128` ein. Macht `pending` endgültig und löscht danach die eigenen alten Keys für (Server, Agent, entfernter Benutzer) ohne Entfernbefehle, je gelöschtem Key ein Audit `vault.agent_key_revoke` mit `registration: "replaced"` (dasselbe beim Ersetzen in `createAgentKeys`).
+    - `revoke(accountId, id, { ipAddress, userAgent } = {}) → { success: true, registration: "removed"|"foreign"|"absent"|"unknown", commands? }` — löscht zuerst den Key; `pending` → `absent` ohne Exec; sonst Entfernbefehl mit der gespeicherten `identityId`; Identität weg oder Exec gescheitert → `unknown` plus `commands` (Kopierbefehl).
+    - `listAgentKeys(accountId, { entryId = null } = {}) → { keys, remoteUser?, otherAccountConfigured? }` — nur endgültige Keys; Key-Form `{ id, name, prefix, agentType, pending, entryId, entryName, remoteUser, ipBinding, allowedCidrs, createdAt, lastUsedAt }` (`pending` ist hier immer `false`); mit `entryId` zusätzlich `remoteUser` (Benutzer der Identität, die `resolveIdentity` wählen würde) und `otherAccountConfigured`.
+    - `sweepPending(now = Date.now()) → Promise<number>`; `startPendingSweeper() → Timeout` (60 s, `unref`); `PENDING_TTL_MS = 900000`.
+  - Routen unter `/api/vault` (alle mit `requireVaultEnabled` vor `authenticate`): `GET /agent-keys/probe` (nur `req.apiKey.kind === "agent"` und `pending`, sonst `403`; Rate-Limit 10/min je Key), `GET /agent-keys` (`?entryId=`), `POST /agent-keys` → `201`, `POST /agent-keys/:id/confirm` (reicht `req.ip` an `confirm` durch), `DELETE /agent-keys/:id` (die drei letzten mit `requireLoginSession` und Rate-Limit 30/min je Konto). Ein Error-Handler am Router-Ende (Muster `server/routes/entryBookmarks.js:93-98`) loggt und antwortet `500 { code: 500, message: "Could not complete the agent key request." }`.
+  - `execCommand(accountId, entryId, identityId, command, { engineId = null } = {})`.
+  - Audit `vault.agent_key_create`, `vault.agent_key_revoke` mit `resource: "vault"`, `resourceId: null`, `details: { keyId, agentType, entryId, entryName, remoteUser, … }` (create zusätzlich `ipBinding`, revoke zusätzlich `registration` — `removed|foreign|absent|unknown`, beim Ersetzen `replaced` — und `pending`), `organizationId` aus `resolveEntryScope` des Servers. Nie Key, Präfix-Vergleichsausgabe oder Exec-Ausgabe.
+  - Joi: `createAgentKeysValidation`, `confirmAgentKeyValidation`, `listAgentKeysValidation`, `agentKeyIdValidation` (OpenAPI-Schemas `CreateAgentKeys`, `ConfirmAgentKey`, …).
+
+**Design:** kein UI-Anteil.
+
+**Tests:** 14 Tests in zwei Dateien. Die Befehle in `provision.test.js` werden **wirklich** in `/bin/sh` ausgeführt, in einem Temp-HOME mit Stub-Binaries (Node-Skripte für `claude`, `codex`, `curl`, `wget`; ein `sh`-Stub simuliert die Login-Shell) und einem PATH, der nur Stubs und acht Coreutils enthält — keine CLI, kein `curl` und kein `bash` der Testmaschine kann hineinwirken. Test-first, weil der Vertrag feststeht.
+- `provision.test.js` (5): Spec-Test 9 für Claude (Argumente mit Sonderzeichen in URL und Key kommen unverändert an, keine Befehlsausführung aus den Werten, `~/.claude.json` danach 0600, `OUTPOST_REPLACED`); Spec-Test 9 für Codex (eingelesener Wert gleich Key, 0600, Source-Zeile genau einmal, `.zshrc` nur wenn vorhanden, auch ohne Zeilenende; scheitert `mcp add`, steht `OUTPOST_REPLACED=1` in der Ausgabe und die Key-Datei hält den alten Key); Probe (Key nie in der Argumentliste, Datei 0600 und danach gelöscht, `wget`-Ersatz, Exit 127 ohne Werkzeug); CLI-Suche (Login-Shell vor Installationsorten, sonst Exit 1); Review Focus 4 (fremde Registrierung bleibt stehen → `FOREIGN`, eigene → `REMOVED`, danach `ABSENT`, für Claude und Codex; `registrationCheckCommand` meldet dazu `OTHER`/`MATCH`/`ABSENT`; eine Projekt-Registrierung mit dem eigenen Key in `~/.claude.json` zählt nicht).
+- `agentKeysRoute.test.js` (9), über die HTTP-Naht mit echtem `authenticate` (Task 4), echtem `execCommand`, echtem `canUseVault` (Task 3) und In-Memory-SQLite; gefakt sind nur `controlPlane` (spielt den entfernten Server: die Probe ruft Outpost per `fetch` mit dem Key aus der Befehlszeile zurück, über einen Proxy, der per `X-Forwarded-For` die Server-Adresse meldet; die Test-App setzt `trust proxy` auf `loopback`), `identityResolver`, `controllers/entry`, `ConnectionService`, Audit und Rechte-Engine: Review Focus 3 (probe nur mit `pending`-Key, andere `403`; gesehene Adresse; `engineId` erreicht `controlPlane`; ohne Übernahme `403` an `/api/mcp`, nach `confirm` mit `addSeenIp` `200`, zweite Übernahme `409`); nach 15 min `addSeenIp` `409` und `confirm` eines `pending`-Keys `410`; manuelle Einrichtung (`cli_missing`, Befehl, Key bleibt `pending` bis `confirm`; Exec-Timeout mit stehender Registrierung → `configured`, mit fremder → `exec_failed`); `sweepPending`; Ersetzen eigener alter Keys ohne Entfernbefehle mit Audit `registration: "replaced"`, gleichzeitige Einrichtung `409`, `otherAccountConfigured` für das zweite Konto; Spec-Test 11 Teil 2/3 (Impersonation und Konto-Key `403`, fremde Key-ID `404`); CIDR-Prüfung; Entscheidung 9 (zweite Probe überschreibt die Messung nicht, `addSeenIp` mit der Browser-Adresse `409`, ohne Übernahme `200`); Entziehen mit gespeicherter Identität bzw. Kopierbefehl ohne Identität. Das Limit 30/min je Konto gilt über die ganze Datei; Konto A kommt auf 26 Anfragen, der Entscheidung-9-Test läuft deshalb mit Konto B.
+- Nicht getestet: `listAgentKeys` ohne `entryId` (Weiterreichung), `startPendingSweeper` (Timer), Rate-Limiter (Framework), Error-Handler (Bestandsmuster), die `410`-Zweige nach einem Wettlauf mit `sweepPending` (nur zeitabhängig erreichbar; der Ablauf-Zweig ist getestet), Joi-Standardfälle, Log-Ausgaben.
+- SEC-Abdeckung: SEC-INJECT-01 (`provision.js`, Spec-Test 9), SEC-IDOR-01 (jede Key-Abfrage mit `accountId`, fremde ID `404`), SEC-TENANT-01 (Server nur nach `validateEntryAccess`, Audit mit Organisation des Servers), SEC-RATE-01 (Limiter an Einrichtung/Bestätigung/Entziehen/Probe), SEC-INPUT-01 (Joi für `agentTypes`, CIDRs, IDs), SEC-APIKEY-01 und SEC-SESS-02 (256-Bit-Key gehasht, `pending`-Ablauf 15 min, Widerruf), SEC-SECRET-01 (Exec-Ausgaben nie geloggt, Key nur im Kopierbefehl einer `manual`-Antwort), SEC-ERR-01 (feste Meldungen ohne Exec-Details), SEC-SQLI-01 (nur Sequelize-`where`).
+
+**Parallel:** Task 5, Task 6, Task 15 (Welle C; keine gemeinsamen Dateien: Task 5 schreibt `routes/vault/items.js`, `routes/vault/settings.js`, `validations/vault.js`, `controllers/vaultItems.js`, `controllers/vaultSettings.js`; Task 6 `lib/vault/approvals.js`, `StateBroadcaster.js`, `routes/state.js`, `routes/vault/approvals.js`, `validations/vaultApprovals.js`; Task 15 nur `client/`; `server/index.js` fasst in Welle C nur Task 8 an). `visibility.js` (Task 3) und `ipBinding.js` (Task 4) liest dieser Task nur; beide stammen aus Welle B.
+
+- [ ] **Step 0: CLI-Flags gegen echte Installationen prüfen**
+
+Die Stubs in Step 1 spielen die CLIs nach; ob die echten Flags so heißen, prüft nur eine echte Installation. Auf einem Rechner mit aktueller Claude-Code- und Codex-CLI, in einem Wegwerf-HOME (`export HOME=$(mktemp -d)`), nichts im Repo:
+
+Run: `claude mcp add --help; claude mcp remove --help; codex mcp add --help; codex mcp remove --help; claude mcp get outpost; echo "claude get: $?"; codex mcp get outpost; echo "codex get: $?"`
+Expected: `claude mcp add` kennt `--scope user`, `--transport http` und `--header`, `claude mcp remove` kennt `--scope user`, `codex mcp add` kennt `--url` und `--bearer-token-env-var`; beide `get` enden ohne Registrierung mit Exit ungleich 0.
+
+Run: `claude mcp add --scope user --transport http outpost https://example.invalid/api/mcp --header "Authorization: Bearer outpost_test" && cat ~/.claude.json; env -u OUTPOST_MCP_TOKEN codex mcp add outpost --url https://example.invalid/api/mcp --bearer-token-env-var OUTPOST_MCP_TOKEN; echo "codex add: $?"`
+Expected: In `~/.claude.json` steht `"mcpServers"` mit zwei Leerzeichen Einzug auf oberster Ebene und `"outpost"` mit vier darunter (davon hängt `CLAUDE_REGISTRATION_AWK` ab); `codex add: 0` auch ohne gesetzte Variable, weil `codexSetupCommand` vor der Key-Datei läuft.
+
+Weicht etwas ab: anhalten und melden (Stubs, Befehle und Spec gemeinsam anpassen), nicht raten.
+
+- [ ] **Step 1: Failing test für die Befehle schreiben**
+
+`server/lib/vault/__tests__/provision.test.js`:
+
+```js
+const test = require("node:test");
+const assert = require("node:assert");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const crypto = require("node:crypto");
+const { execFile, execFileSync } = require("node:child_process");
+const provision = require("../provision");
+
+// The commands run for real in /bin/sh. PATH holds only the stub directory and a handful of
+// coreutils, so no CLI, curl, wget or bash of the test machine can leak in.
+const TOOLS = ["awk", "chmod", "grep", "mkdir", "mktemp", "mv", "rm", "tail"];
+const SOURCE_LINE = "[ -f ~/.codex/outpost.env ] && . ~/.codex/outpost.env";
+const ODD_URL = "https://out post.example/a'b\"c$(touch \"$HOME/pwned\")`touch \"$HOME/pwned2\"`;&|*?!#\\x/api/mcp";
+const ODD_KEY = "outpost_k'e\"y$(touch \"$HOME/pwned3\") `id` ;&|\\";
+
+const node = (body) => `#!${process.execPath}\n${body}`;
+const LOGIN_SH = `#!/bin/sh
+if [ "$1" = "-lc" ]; then PATH="$HOME/login-bin:$PATH"; export PATH; exec /bin/sh -c "$2"; fi
+exec /bin/sh "$@"
+`;
+const STUBS = {
+    claude: node(`
+const fs = require("fs");
+const file = process.env.HOME + "/.claude.json";
+fs.appendFileSync(process.env.HOME + "/claude-calls.log", JSON.stringify(process.argv.slice(2)) + "\\n");
+const config = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : { numStartups: 1 };
+const servers = config.mcpServers || {};
+const save = () => { config.mcpServers = servers; fs.writeFileSync(file, JSON.stringify(config, null, 2)); fs.chmodSync(file, 0o644); };
+const [command, sub, ...rest] = process.argv.slice(2);
+if (command !== "mcp") process.exit(2);
+if (sub === "get") process.exit(servers[rest[0]] ? 0 : 1);
+if (sub === "remove") { const name = rest[rest.length - 1]; if (!servers[name]) process.exit(1); delete servers[name]; save(); process.exit(0); }
+if (sub !== "add") process.exit(2);
+const options = {}; const positional = [];
+for (let i = 0; i < rest.length; i++) { if (rest[i].startsWith("--")) options[rest[i]] = rest[++i]; else positional.push(rest[i]); }
+const [headerName, ...headerValue] = options["--header"].split(": ");
+servers[positional[0]] = { type: options["--transport"], url: positional[1], headers: { [headerName]: headerValue.join(": ") } };
+save();
+`),
+    codex: node(`
+const fs = require("fs");
+const file = process.env.HOME + "/.codex/registrations.json";
+fs.appendFileSync(process.env.HOME + "/codex-calls.log", JSON.stringify(process.argv.slice(2)) + "\\n");
+const servers = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : {};
+const save = () => { fs.mkdirSync(process.env.HOME + "/.codex", { recursive: true }); fs.writeFileSync(file, JSON.stringify(servers)); };
+const [command, sub, name, ...rest] = process.argv.slice(2);
+if (command !== "mcp") process.exit(2);
+if (sub === "get") process.exit(servers[name] ? 0 : 1);
+if (sub === "remove") { if (!servers[name]) process.exit(1); delete servers[name]; save(); process.exit(0); }
+if (sub !== "add" || fs.existsSync(process.env.HOME + "/fail-add")) process.exit(2);
+servers[name] = rest;
+save();
+`),
+    curl: node(`
+const fs = require("fs");
+const args = process.argv.slice(2);
+const file = args[args.indexOf("-H") + 1].slice(1);
+fs.writeFileSync(process.env.HOME + "/curl-call.json", JSON.stringify({ args, file, content: fs.readFileSync(file, "utf8"), mode: fs.statSync(file).mode & 0o777 }));
+process.stdout.write('{"seenIp":"192.0.2.7"}');
+`),
+    wget: node(`
+const fs = require("fs");
+const args = process.argv.slice(2);
+const file = args.find((arg) => arg.startsWith("--config=")).slice("--config=".length);
+fs.writeFileSync(process.env.HOME + "/wget-call.json", JSON.stringify({ args, file, content: fs.readFileSync(file, "utf8"), mode: fs.statSync(file).mode & 0o777 }));
+process.stdout.write('{"seenIp":"192.0.2.7"}');
+`),
+};
+
+const makeHome = (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-provision-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const [home, bin, tools, tmp] = ["home", "bin", "tools", "tmp"].map((name) => path.join(root, name));
+    for (const dir of [home, bin, tools, tmp]) fs.mkdirSync(dir);
+    for (const tool of TOOLS)
+        fs.symlinkSync(execFileSync("/bin/sh", ["-c", `command -v ${tool}`], { encoding: "utf8" }).trim(), path.join(tools, tool));
+    fs.writeFileSync(path.join(bin, "sh"), LOGIN_SH, { mode: 0o755 });
+
+    const install = (name, dir = path.join(home, ".local/bin")) => {
+        fs.mkdirSync(dir, { recursive: true });
+        const file = path.join(dir, name);
+        fs.writeFileSync(file, STUBS[name], { mode: 0o755 });
+        return file;
+    };
+    const run = (command) => new Promise((resolve) => {
+        execFile("/bin/sh", ["-c", command], { env: { HOME: home, PATH: `${bin}:${tools}`, TMPDIR: tmp } },
+            (error, stdout) => resolve({ code: error ? error.code : 0, stdout }));
+    });
+    const read = (name) => fs.readFileSync(path.join(home, name), "utf8");
+    const calls = (name) => read(`${name}-calls.log`).trim().split("\n").map((line) => JSON.parse(line));
+    const pwned = () => fs.readdirSync(home).filter((name) => name.startsWith("pwned"));
+    return { home, bin, install, run, read, calls, pwned };
+};
+
+const newKey = () => `outpost_${crypto.randomBytes(32).toString("hex")}`;
+const prefixOf = (key) => key.slice(0, "outpost_".length + 6);
+
+test("Spec-Test 9: der Claude-Befehl reicht URL und Key mit Sonderzeichen unverändert weiter und macht ~/.claude.json privat", async (t) => {
+    const env = makeHome(t);
+    const cliPath = env.install("claude");
+    fs.writeFileSync(path.join(env.home, ".claude.json"), JSON.stringify({
+        mcpServers: { outpost: { type: "http", url: "http://old", headers: { Authorization: "Bearer outpost_old" } } },
+    }, null, 2));
+
+    const { code, stdout } = await env.run(provision.claudeSetupCommand({ cliPath, url: ODD_URL, key: ODD_KEY }));
+
+    assert.strictEqual(code, 0);
+    assert.match(stdout, /^OUTPOST_REPLACED=1$/m);
+    assert.deepStrictEqual(env.calls("claude"), [
+        ["mcp", "get", "outpost"],
+        ["mcp", "remove", "--scope", "user", "outpost"],
+        ["mcp", "add", "--scope", "user", "--transport", "http", "outpost", ODD_URL, "--header", `Authorization: Bearer ${ODD_KEY}`],
+    ]);
+    assert.strictEqual(fs.statSync(path.join(env.home, ".claude.json")).mode & 0o777, 0o600);
+    assert.deepStrictEqual(env.pwned(), []);
+});
+
+test("Spec-Test 9: Codex liest den Key aus einer privaten Datei, die jede Shell genau einmal einbindet; scheitert die Registrierung, bleibt die alte Datei", async (t) => {
+    const env = makeHome(t);
+    const cliPath = env.install("codex");
+    fs.writeFileSync(path.join(env.home, ".zshrc"), "export ZSH_SEEN=1");
+    const command = provision.setupCommand({ agentType: "codex", cliPath, url: ODD_URL, key: ODD_KEY });
+
+    assert.strictEqual((await env.run(command)).code, 0);
+    const second = await env.run(command);
+
+    assert.strictEqual(second.code, 0);
+    assert.match(second.stdout, /^OUTPOST_REPLACED=1$/m);
+    assert.strictEqual(fs.statSync(path.join(env.home, ".codex/outpost.env")).mode & 0o777, 0o600);
+    assert.strictEqual((await env.run(". \"$HOME/.codex/outpost.env\"; printf '%s' \"$OUTPOST_MCP_TOKEN\"")).stdout, ODD_KEY);
+    assert.strictEqual(env.read(".bashrc"), `${SOURCE_LINE}\n`);
+    assert.strictEqual(env.read(".profile"), `${SOURCE_LINE}\n`);
+    assert.strictEqual(env.read(".zshrc"), `export ZSH_SEEN=1\n${SOURCE_LINE}\n`);
+    assert.strictEqual(fs.existsSync(path.join(env.home, ".bash_profile")), false);
+    const add = ["mcp", "add", "outpost", "--url", ODD_URL, "--bearer-token-env-var", "OUTPOST_MCP_TOKEN"];
+    assert.deepStrictEqual(env.calls("codex"), [["mcp", "get", "outpost"], add, ["mcp", "get", "outpost"], ["mcp", "remove", "outpost"], add]);
+    assert.deepStrictEqual(env.pwned(), []);
+
+    fs.writeFileSync(path.join(env.home, "fail-add"), "");
+    const failed = await env.run(provision.setupCommand({ agentType: "codex", cliPath, url: ODD_URL, key: newKey() }));
+    assert.notStrictEqual(failed.code, 0);
+    assert.match(failed.stdout, /^OUTPOST_REPLACED=1$/m);
+    assert.strictEqual((await env.run(". \"$HOME/.codex/outpost.env\"; printf '%s' \"$OUTPOST_MCP_TOKEN\"")).stdout, ODD_KEY);
+});
+
+test("die Probe gibt den Key nur über eine 0600-Datei an curl bzw. wget und löscht die Datei danach", async (t) => {
+    const env = makeHome(t);
+    const url = "https://outpost.example/x'y$(touch \"$HOME/pwned\")/api/vault/agent-keys/probe";
+    const command = provision.probeCommand({ url, key: ODD_KEY });
+
+    env.install("curl", env.bin);
+    assert.deepStrictEqual(await env.run(command), { code: 0, stdout: "{\"seenIp\":\"192.0.2.7\"}" });
+    const curl = JSON.parse(env.read("curl-call.json"));
+    assert.deepStrictEqual([curl.content, curl.mode, curl.args.at(-1)], [`Authorization: Bearer ${ODD_KEY}\n`, 0o600, url]);
+    assert.ok(!curl.args.some((arg) => arg.includes(ODD_KEY)));
+    assert.strictEqual(fs.existsSync(curl.file), false);
+
+    fs.rmSync(path.join(env.bin, "curl"));
+    env.install("wget", env.bin);
+    assert.strictEqual((await env.run(command)).code, 0);
+    const wget = JSON.parse(env.read("wget-call.json"));
+    assert.deepStrictEqual([wget.content, wget.mode, wget.args.at(-1)], [`header = Authorization: Bearer ${ODD_KEY}\n`, 0o600, url]);
+    assert.strictEqual(fs.existsSync(wget.file), false);
+
+    fs.rmSync(path.join(env.bin, "wget"));
+    assert.strictEqual((await env.run(command)).code, 127);
+    assert.deepStrictEqual(env.pwned(), []);
+});
+
+test("die CLI-Suche nimmt den Pfad der Login-Shell, sonst die bekannten Installationsorte", async (t) => {
+    const env = makeHome(t);
+
+    assert.deepStrictEqual(await env.run(provision.findCliCommand("codex")), { code: 1, stdout: "" });
+    const fallback = env.install("codex");
+    assert.strictEqual((await env.run(provision.findCliCommand("codex"))).stdout, `${fallback}\n`);
+    const login = env.install("codex", path.join(env.home, "login-bin"));
+    assert.strictEqual((await env.run(provision.findCliCommand("codex"))).stdout, `${login}\n`);
+});
+
+test("Review Focus 4: Prüfen und Entziehen erkennen nur eine Registrierung, die noch den eigenen Key trägt", async (t) => {
+    const env = makeHome(t);
+    const [mine, theirs] = [newKey(), newKey()];
+    fs.writeFileSync(path.join(env.home, ".claude.json"), JSON.stringify({
+        projects: { "/srv": { mcpServers: { outpost: { type: "http", url: "x", headers: { Authorization: `Bearer ${mine}` } } } } },
+    }, null, 2));
+    const registered = {
+        claude: () => JSON.parse(env.read(".claude.json")).mcpServers?.outpost?.headers.Authorization ?? null,
+        codex: () => (fs.existsSync(path.join(env.home, ".codex/outpost.env")) ? env.read(".codex/outpost.env") : null),
+    };
+
+    for (const agentType of ["claude", "codex"]) {
+        const cliPath = env.install(agentType);
+        assert.strictEqual((await env.run(provision.setupCommand({ agentType, cliPath, url: "https://outpost.example/api/mcp", key: theirs }))).code, 0);
+        const revokeMine = provision.revokeCommands({ agentType, keyPrefix: prefixOf(mine) });
+        const revokeTheirs = provision.revokeCommands({ agentType, keyPrefix: prefixOf(theirs) });
+        const check = async (key) => (await env.run(provision.registrationCheckCommand({ agentType, keyPrefix: prefixOf(key) }))).stdout;
+
+        assert.deepStrictEqual([await check(mine), await check(theirs)], ["OTHER\n", "MATCH\n"], agentType);
+        assert.strictEqual((await env.run(revokeMine)).stdout, "FOREIGN\n", agentType);
+        assert.match(registered[agentType](), new RegExp(theirs), agentType);
+        assert.ok(!env.calls(agentType).some(([, sub]) => sub === "remove"), agentType);
+
+        assert.strictEqual((await env.run(revokeTheirs)).stdout, "REMOVED\n", agentType);
+        assert.strictEqual(registered[agentType](), null, agentType);
+        assert.strictEqual((await env.run(revokeMine)).stdout, "ABSENT\n", agentType);
+        assert.strictEqual(await check(theirs), "ABSENT\n", agentType);
+    }
+});
+```
+
+- [ ] **Step 2: Test laufen lassen, Fehlschlag prüfen**
+
+Run: `cd /root/outpost && node --test server/lib/vault/__tests__/provision.test.js`
+Expected: FAIL — `Cannot find module '../provision'`.
+
+- [ ] **Step 3: `server/lib/vault/provision.js` anlegen**
+
+Hinweis zum Entziehen: Das Skript entscheidet selbst (entfernt nur, wenn die gefundene Registrierung mit `keyPrefix` beginnt; Spec „Zugang entziehen“). Verglichen wird auf dem Zielserver gegen das nicht geheime Präfix; der dort gefundene Key verlässt den Server nie, und Prüfen und Entfernen geschehen in einem Exec ohne Lücke dazwischen. Outpost liest nur den Marker, die übrige Ausgabe wird verworfen. `registrationCheckCommand` nutzt dieselbe Erkennung (`registrationStateLines`), ändert aber nichts; der Controller ruft es nur, wenn der Einrichtungs-Exec selbst scheiterte und offen ist, ob die Registrierung schon steht.
+
+```js
+const CLI_NAMES = new Set(["claude", "codex"]);
+const CLI_DIRS = ["$HOME/.local/bin", "$HOME/.claude/local", "$HOME/.npm-global/bin"];
+const CODEX_ENV = "$HOME/.codex/outpost.env";
+const SOURCE_LINE = "[ -f ~/.codex/outpost.env ] && . ~/.codex/outpost.env";
+const RC_FILES = ["$HOME/.bashrc", "$HOME/.profile", "$HOME/.bash_profile", "$HOME/.zshrc"];
+const KEY_PREFIX = /^[A-Za-z0-9_]{8,64}$/;
+
+// Relies on the layout Claude Code writes (JSON.stringify with two spaces): only the user-scope
+// registration sits at this depth, project registrations are nested deeper and never match.
+const CLAUDE_REGISTRATION_AWK = [
+    "/^  \"mcpServers\": \\{/ { m = 1; next }",
+    "m && /^  \\}/ { exit }",
+    "m && /^    \"outpost\": \\{/ { o = 1; s = \"OTHER\"; next }",
+    "o && /^    \\}/ { exit }",
+    "o && index($0, p) { s = \"MATCH\"; exit }",
+    "END { print s }",
+].join("\n");
+
+const shQuote = (value) => {
+    if (typeof value !== "string" || value.includes("\0")) throw new TypeError("shQuote needs a string without NUL bytes");
+    return `'${value.replace(/'/g, "'\\''")}'`;
+};
+
+const cliName = (name) => {
+    if (!CLI_NAMES.has(name)) throw new TypeError(`Unknown agent CLI: ${name}`);
+    return name;
+};
+
+// execCommand hands the string to the login shell of the remote user, which need not be POSIX.
+const asCommand = (lines) => `/bin/sh -c ${shQuote(["umask 077", ...lines].join("\n"))}`;
+
+const findCliScript = (name) => {
+    const lookup = shQuote(`command -v ${cliName(name)}`);
+    const candidates = ["\"$p\"", ...CLI_DIRS.map((dir) => `"${dir}/${name}"`)].join(" ");
+    return [
+        "(",
+        `p=$(bash -lc ${lookup} 2>/dev/null </dev/null | tail -n 1)`,
+        `[ -n "$p" ] || p=$(sh -lc ${lookup} 2>/dev/null </dev/null | tail -n 1)`,
+        `for c in ${candidates}; do`,
+        "case \"$c\" in /*) if [ -x \"$c\" ] && [ ! -d \"$c\" ]; then printf '%s\\n' \"$c\"; exit 0; fi ;; esac",
+        "done",
+        "exit 1",
+        ")",
+    ].join("\n");
+};
+
+const findCliCommand = (name) => asCommand([findCliScript(name)]);
+
+const claudeSetupCommand = ({ cliPath, url, key }) => asCommand([
+    `cli=${shQuote(cliPath)}`,
+    "if \"$cli\" mcp get outpost >/dev/null 2>&1; then",
+    "echo OUTPOST_REPLACED=1",
+    "\"$cli\" mcp remove --scope user outpost >/dev/null 2>&1 || true",
+    "else",
+    "echo OUTPOST_REPLACED=0",
+    "fi",
+    `"$cli" mcp add --scope user --transport http outpost ${shQuote(url)} --header ${shQuote(`Authorization: Bearer ${key}`)} >/dev/null || exit 1`,
+    "if [ -f \"$HOME/.claude.json\" ]; then chmod 600 \"$HOME/.claude.json\" || exit 1; fi",
+]);
+
+// The key file comes last and is swapped in whole: until then the previous key stays readable.
+const codexEnvCommand = ({ key }) => asCommand([
+    "mkdir -p \"$HOME/.codex\" || exit 1",
+    `line=${shQuote(SOURCE_LINE)}`,
+    `for rc in ${RC_FILES.map((file) => `"${file}"`).join(" ")}; do`,
+    "case \"$rc\" in */.bash_profile|*/.zshrc) [ -f \"$rc\" ] || continue ;; esac",
+    "grep -qxF \"$line\" \"$rc\" 2>/dev/null && continue",
+    "if [ -s \"$rc\" ] && [ -n \"$(tail -c 1 \"$rc\")\" ]; then echo >> \"$rc\"; fi",
+    "printf '%s\\n' \"$line\" >> \"$rc\" || exit 1",
+    "done",
+    `f="${CODEX_ENV}"`,
+    "rm -f \"$f.new\"",
+    `printf '%s\\n' ${shQuote(`export OUTPOST_MCP_TOKEN=${shQuote(key)}`)} > "$f.new" || exit 1`,
+    "chmod 600 \"$f.new\" || exit 1",
+    "mv -f \"$f.new\" \"$f\" || exit 1",
+]);
+
+const codexSetupCommand = ({ cliPath, url }) => asCommand([
+    `cli=${shQuote(cliPath)}`,
+    "if \"$cli\" mcp get outpost >/dev/null 2>&1; then",
+    "echo OUTPOST_REPLACED=1",
+    "\"$cli\" mcp remove outpost >/dev/null 2>&1 || true",
+    "else",
+    "echo OUTPOST_REPLACED=0",
+    "fi",
+    `"$cli" mcp add outpost --url ${shQuote(url)} --bearer-token-env-var OUTPOST_MCP_TOKEN >/dev/null || exit 1`,
+]);
+
+const setupCommand = ({ agentType, cliPath, url, key }) => (cliName(agentType) === "claude"
+    ? claudeSetupCommand({ cliPath, url, key })
+    : `${codexSetupCommand({ cliPath, url })} && ${codexEnvCommand({ key })}`);
+
+const probeCommand = ({ url, key }) => asCommand([
+    "f=$(mktemp) || exit 1",
+    "trap 'rm -f \"$f\"' EXIT",
+    "if command -v curl >/dev/null 2>&1; then",
+    `printf '%s\\n' ${shQuote(`Authorization: Bearer ${key}`)} > "$f" || exit 1`,
+    `curl -fsS --max-time 10 -H @"$f" ${shQuote(url)}`,
+    "elif command -v wget >/dev/null 2>&1; then",
+    `printf '%s\\n' ${shQuote(`header = Authorization: Bearer ${key}`)} > "$f" || exit 1`,
+    `wget -qO- -T 10 -t 1 --config="$f" ${shQuote(url)}`,
+    "else",
+    "exit 127",
+    "fi",
+]);
+
+// Sets $state to MATCH (the registration carries keyPrefix) or OTHER (another key); anything else means none.
+const registrationStateLines = (agentType, keyPrefix) => {
+    if (!KEY_PREFIX.test(keyPrefix)) throw new TypeError("Invalid key prefix");
+    if (cliName(agentType) === "claude") return [
+        "f=\"$HOME/.claude.json\"",
+        `state=$([ -f "$f" ] && awk -v p=${shQuote(`Bearer ${keyPrefix}`)} ${shQuote(CLAUDE_REGISTRATION_AWK)} "$f")`,
+    ];
+    return [
+        `f="${CODEX_ENV}"`,
+        "state=ABSENT",
+        `if [ -f "$f" ]; then state=OTHER; grep -Eq ${shQuote(`^export OUTPOST_MCP_TOKEN='?${keyPrefix}`)} "$f" && state=MATCH; fi`,
+    ];
+};
+
+const registrationCheckCommand = ({ agentType, keyPrefix }) => asCommand([
+    ...registrationStateLines(agentType, keyPrefix),
+    "case \"$state\" in MATCH|OTHER) echo \"$state\" ;; *) echo ABSENT ;; esac",
+]);
+
+const revokeCommands = ({ agentType, keyPrefix }) => asCommand([
+    ...registrationStateLines(agentType, keyPrefix),
+    "case \"$state\" in",
+    "MATCH) ;;",
+    "OTHER) echo FOREIGN; exit 0 ;;",
+    "*) echo ABSENT; exit 0 ;;",
+    "esac",
+    `cli=$( ${findCliScript(agentType)} ) || exit 3`,
+    ...(agentType === "claude"
+        ? ["\"$cli\" mcp remove --scope user outpost >/dev/null 2>&1 || exit 4"]
+        : ["\"$cli\" mcp remove outpost >/dev/null 2>&1 || exit 4", "rm -f \"$f\""]),
+    "echo REMOVED",
+]);
+
+module.exports = {
+    shQuote,
+    findCliScript,
+    findCliCommand,
+    claudeSetupCommand,
+    codexEnvCommand,
+    codexSetupCommand,
+    setupCommand,
+    probeCommand,
+    registrationCheckCommand,
+    revokeCommands,
+};
+```
+
+- [ ] **Step 4: Test laufen lassen, Erfolg prüfen**
+
+Run: `cd /root/outpost && node --test server/lib/vault/__tests__/provision.test.js`
+Expected: PASS — `# pass 5`, `# fail 0`.
+
+- [ ] **Step 5: `execCommand` reicht `engineId` weiter**
+
+`server/controllers/execCommand.js` Z. 8, vorher:
+
+```js
+const execCommand = async (accountId, entryId, identityId, command) => {
+```
+
+nachher:
+
+```js
+const execCommand = async (accountId, entryId, identityId, command, { engineId = null } = {}) => {
+```
+
+Z. 48, vorher:
+
+```js
+    const execResult = await controlPlane.execCommand(host, port, params, command, jumpHosts);
+```
+
+nachher:
+
+```js
+    const execResult = await controlPlane.execCommand(host, port, params, command, jumpHosts, engineId);
+```
+
+Die bestehende Route `POST /api/connections/:entryId/exec` (`server/routes/serverSession.js:323`) bleibt unverändert und übergibt weiter keine Engine.
+
+- [ ] **Step 6: Joi-Schemas anlegen**
+
+`server/validations/vaultAgentKeys.js`:
+
+```js
+const net = require("node:net");
+const Joi = require("joi");
+
+const cidr = Joi.string().trim().max(64).custom((value, helpers) => {
+    const [address, bits, ...rest] = value.split("/");
+    const family = net.isIP(address);
+    const max = family === 6 ? 128 : 32;
+    if (!family || rest.length > 0) return helpers.error("any.invalid");
+    if (bits === undefined) return `${address}/${max}`;
+    if (!/^\d{1,3}$/.test(bits) || Number(bits) > max) return helpers.error("any.invalid");
+    return `${address}/${Number(bits)}`;
+}).messages({ "any.invalid": "{{#label}} must be an IP address or a CIDR range" });
+
+module.exports.createAgentKeysValidation = Joi.object({
+    entryId: Joi.number().integer().positive().required(),
+    agentTypes: Joi.array().items(Joi.string().valid("claude", "codex")).min(1).unique().required(),
+    ipBinding: Joi.boolean().default(true),
+    allowedCidrs: Joi.array().items(cidr).max(16).unique().default([]),
+});
+
+module.exports.confirmAgentKeyValidation = Joi.object({
+    addSeenIp: Joi.boolean().default(false),
+});
+
+module.exports.listAgentKeysValidation = Joi.object({
+    entryId: Joi.number().integer().positive(),
+});
+
+module.exports.agentKeyIdValidation = Joi.object({
+    id: Joi.number().integer().positive().required(),
+});
+```
+
+- [ ] **Step 7: Failing Routentest schreiben**
+
+`server/lib/vault/__tests__/agentKeysRoute.test.js`:
+
+```js
+process.env.VAULT_KEY = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
+
+const test = require("node:test");
+const assert = require("node:assert");
+const express = require("express");
+const { Sequelize } = require("sequelize");
+
+// Foreign keys off: the fixtures create api_keys rows without the accounts/entries graph behind them.
+const db = new Sequelize({ dialect: "sqlite", storage: ":memory:", logging: false, query: { raw: true }, foreignKeys: false });
+const fake = (path, exports) => {
+    const resolved = require.resolve(path);
+    require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports };
+};
+
+const ENTRY_ID = 5;
+const ACCOUNT_A = 1;
+const ACCOUNT_B = 2;
+const audits = [];
+const execs = [];
+const SERVER_IP = "198.51.100.7";
+const RESET = { cliFound: true, setupFails: false, registered: "ABSENT", revokeOutput: "REMOVED\n", probeFrom: SERVER_IP };
+const state = { base: null, identityOf: {}, ...RESET };
+
+fake("../../../utils/database", db);
+fake("../../../controllers/audit", {
+    createAuditLog: async (entry) => { audits.push(entry); },
+    AUDIT_ACTIONS: {
+        VAULT_AGENT_KEY_CREATE: "vault.agent_key_create",
+        VAULT_AGENT_KEY_REVOKE: "vault.agent_key_revoke",
+        VAULT_AGENT_IP_DENIED: "vault.agent_ip_denied",
+    },
+    RESOURCE_TYPES: { VAULT: "vault" },
+});
+fake("../../../permissions/engine", {
+    getSystemPermissions: async () => ({ isAdmin: false, permissions: ["vault.use"] }),
+    getOrganizationPermissions: async () => ({ isOwner: false, isAdmin: false, permissions: [] }),
+});
+fake("../../../controllers/entry", {
+    validateEntryAccess: async (accountId, entry) => ([ACCOUNT_A, ACCOUNT_B].includes(accountId)
+        ? { valid: true, entry } : { code: 403, message: "no" }),
+    resolveEntryScope: async (entry) => ({ organizationId: entry.organizationId ?? null, ownerAccountId: entry.accountId }),
+});
+fake("../../../controllers/identity", { getIdentityCredentials: async () => ({ password: "pw" }) });
+fake("../../ConnectionService", {
+    buildSSHParams: (identity) => ({ username: identity.username }),
+    resolveJumpHosts: async () => [],
+});
+fake("../../../utils/identityResolver", {
+    resolveIdentity: async (entry, identityId, direct, accountId) => {
+        const id = identityId ?? state.identityOf[accountId];
+        return (id && (await Identity.findByPk(id))) || { identity: null, requiresIdentity: true };
+    },
+});
+// Plays the remote server: the probe really calls Outpost back with the key from the command line,
+// through a proxy that reports probeFrom (null: the probe arrives from the browser's own address).
+fake("../../controlPlane/ControlPlaneServer", {
+    hasEngine: () => true,
+    execCommand: async (host, port, params, command, jumpHosts, engineId) => {
+        execs.push({ host, username: params.username, command, engineId });
+        const ok = (stdout) => ({ success: true, stdout, stderr: "", exitCode: 0 });
+        if (command.includes("/api/vault/agent-keys/probe")) {
+            const [token] = /outpost_[0-9a-f]{64}/.exec(command);
+            const res = await fetch(`${state.base}/api/vault/agent-keys/probe`, {
+                headers: { authorization: `Bearer ${token}`, ...(state.probeFrom ? { "x-forwarded-for": state.probeFrom } : {}) },
+            });
+            return { success: true, stdout: await res.text(), stderr: "", exitCode: res.ok ? 0 : 22 };
+        }
+        if (command.includes("mcp add")) {
+            if (state.setupFails) throw new Error("exec timed out");
+            return ok("OUTPOST_REPLACED=1\n");
+        }
+        if (command.includes("echo FOREIGN")) return ok(state.revokeOutput);
+        if (command.includes("MATCH|OTHER")) return ok(`${state.registered}\n`);
+        if (command.includes("command -v")) return state.cliFound ? ok("/home/deploy/.local/bin/claude\n") : { success: true, stdout: "", stderr: "", exitCode: 1 };
+        throw new Error(`unexpected command ${command}`);
+    },
+});
+
+const ApiKey = require("../../../models/ApiKey");
+const Account = require("../../../models/Account");
+const Session = require("../../../models/Session");
+const Entry = require("../../../models/Entry");
+const Identity = require("../../../models/Identity");
+const VaultSettings = require("../../../models/VaultSettings");
+const { createApiKey } = require("../../../controllers/apiKey");
+const { initVaultState } = require("../state");
+const { authenticate } = require("../../../middlewares/auth");
+const { sweepPending } = require("../../../controllers/agentKeys");
+const router = require("../../../routes/vault/agentKeys");
+
+const tokens = {};
+
+test.before(async () => {
+    await db.sync();
+    await initVaultState();
+    await (await VaultSettings.getOrCreate()).update({ agentUrl: "https://outpost.example/" });
+    for (const id of [ACCOUNT_A, ACCOUNT_B])
+        await Account.create({ id, firstName: "F", lastName: "L", username: `user${id}`, password: "x" });
+    await Entry.create({ id: ENTRY_ID, accountId: ACCOUNT_A, type: "server", name: "web01", config: { protocol: "ssh", ip: "192.0.2.10", engineId: "engine-7" } });
+    for (const [id, accountId] of [[11, ACCOUNT_A], [12, ACCOUNT_B]]) {
+        await Identity.create({ id, accountId, name: `deploy-${accountId}`, type: "password", username: "deploy" });
+        state.identityOf[accountId] = id;
+    }
+    tokens.a = (await Session.create({ accountId: ACCOUNT_A, ip: "x", userAgent: "t" })).token;
+    tokens.b = (await Session.create({ accountId: ACCOUNT_B, ip: "x", userAgent: "t" })).token;
+    tokens.impersonated = (await Session.create({ accountId: ACCOUNT_A, ip: "x", userAgent: "t", impersonatorId: ACCOUNT_B })).token;
+    tokens.accountKey = (await createApiKey(ACCOUNT_A, { name: "ci" })).token;
+});
+
+test.beforeEach(async () => {
+    execs.length = 0;
+    audits.length = 0;
+    Object.assign(state, RESET);
+    await ApiKey.destroy({ where: { kind: "agent" } });
+});
+
+const listen = async (t) => {
+    const app = express();
+    app.set("trust proxy", "loopback");
+    app.use(express.json());
+    app.use("/api/vault", router);
+    app.post("/api/mcp", authenticate, (req, res) => res.json({ keyId: req.agent?.keyId ?? null }));
+    const server = await new Promise((resolve) => { const s = app.listen(0, "127.0.0.1", () => resolve(s)); });
+    state.base = `http://127.0.0.1:${server.address().port}`;
+    t.after(() => { server.closeAllConnections(); server.close(); });
+};
+
+const call = async (method, path, token, body, headers = {}) => {
+    const res = await fetch(`${state.base}${path}`, {
+        method,
+        headers: { authorization: `Bearer ${token}`, ...(body ? { "content-type": "application/json" } : {}), ...headers },
+        body: body ? JSON.stringify(body) : undefined,
+    });
+    return { status: res.status, body: await res.json() };
+};
+
+const setUp = async (token = tokens.a, body = {}) => call("POST", "/api/vault/agent-keys", token, { entryId: ENTRY_ID, agentTypes: ["claude"], ...body });
+const keyFrom = (command) => /outpost_[0-9a-f]{64}/.exec(command)[0];
+const PROBE = "/api/vault/agent-keys/probe";
+
+test("Review Focus 3: probe misst die Adresse des pending-Keys, confirm übernimmt sie einmal, danach gilt der Key", async (t) => {
+    await listen(t);
+
+    const { status, body } = await setUp();
+
+    assert.strictEqual(status, 201);
+    const [result] = body.results;
+    assert.deepStrictEqual(
+        { agentType: result.agentType, status: result.status, reason: result.reason, remoteUser: result.remoteUser, probe: result.probe, replacedRegistration: result.replacedRegistration, command: result.command },
+        { agentType: "claude", status: "configured", reason: null, remoteUser: "deploy", probe: { seenIp: SERVER_IP, matches: false }, replacedRegistration: true, command: undefined },
+    );
+    assert.ok(execs.every((exec) => exec.engineId === "engine-7" && exec.host === "192.0.2.10" && exec.username === "deploy"));
+    const key = keyFrom(execs[0].command);
+
+    assert.strictEqual((await call("GET", PROBE, key)).status, 403);
+    assert.strictEqual((await call("GET", PROBE, tokens.a)).status, 403);
+    assert.strictEqual((await call("GET", PROBE, tokens.accountKey)).status, 403);
+
+    const fromServer = { "x-forwarded-for": SERVER_IP };
+    assert.strictEqual((await call("POST", "/api/mcp", key, undefined, fromServer)).status, 403);
+    assert.deepStrictEqual((await call("POST", `/api/vault/agent-keys/${result.id}/confirm`, tokens.a, { addSeenIp: true })).body, { success: true });
+    assert.deepStrictEqual(await call("POST", "/api/mcp", key, undefined, fromServer), { status: 200, body: { keyId: result.id } });
+    assert.strictEqual((await call("POST", `/api/vault/agent-keys/${result.id}/confirm`, tokens.a, { addSeenIp: true })).status, 409);
+    assert.deepStrictEqual((await ApiKey.findByPk(result.id)).allowedCidrs, [`${SERVER_IP}/32`]);
+});
+
+test("nach 15 Minuten lässt sich die gemessene Adresse nicht mehr übernehmen und ein pending-Key nicht mehr bestätigen", async (t) => {
+    await listen(t);
+    const [{ id }] = (await setUp()).body.results;
+    state.cliFound = false;
+    const [pending] = (await setUp()).body.results;
+    await db.query("UPDATE api_keys SET createdAt = :at WHERE id IN (:ids)",
+        { replacements: { at: new Date(Date.now() - 16 * 60 * 1000).toISOString(), ids: [id, pending.id] } });
+
+    assert.strictEqual((await call("POST", `/api/vault/agent-keys/${id}/confirm`, tokens.a, { addSeenIp: true })).status, 409);
+    assert.strictEqual((await ApiKey.findByPk(id)).allowedCidrs, null);
+    assert.strictEqual((await call("POST", `/api/vault/agent-keys/${pending.id}/confirm`, tokens.a, {})).status, 410);
+    assert.strictEqual((await ApiKey.findByPk(pending.id)).pending, true);
+});
+
+test("scheitert die Einrichtung, kommt der Befehl zum Kopieren und der Key bleibt pending bis zur Bestätigung, außer die Registrierung steht trotz Exec-Fehler", async (t) => {
+    await listen(t);
+    state.cliFound = false;
+
+    const [result] = (await setUp()).body.results;
+
+    assert.deepStrictEqual([result.status, result.reason], ["manual", "cli_missing"]);
+    const key = keyFrom(result.command);
+    assert.match(result.command, /mcp add --scope user --transport http outpost/);
+    assert.deepStrictEqual((await call("GET", `/api/vault/agent-keys?entryId=${ENTRY_ID}`, tokens.a)).body.keys, []);
+    assert.strictEqual((await call("POST", "/api/mcp", key)).status, 401);
+
+    assert.deepStrictEqual((await call("POST", `/api/vault/agent-keys/${result.id}/confirm`, tokens.a, {})).body, { success: true });
+    assert.deepStrictEqual((await call("GET", `/api/vault/agent-keys?entryId=${ENTRY_ID}`, tokens.a)).body.keys.map((k) => k.id), [result.id]);
+
+    Object.assign(state, { cliFound: true, setupFails: true, registered: "MATCH" });
+    const [recovered] = (await setUp()).body.results;
+    assert.deepStrictEqual([recovered.status, recovered.reason, recovered.command], ["configured", null, undefined]);
+    assert.match(execs.at(-1).command, /MATCH\|OTHER/);
+    state.registered = "OTHER";
+    const [failed] = (await setUp()).body.results;
+    assert.deepStrictEqual([failed.status, failed.reason, (await ApiKey.findByPk(failed.id)).pending], ["manual", "exec_failed", true]);
+});
+
+test("sweepPending löscht nur pending-Keys, die älter als 15 Minuten sind", async (t) => {
+    await listen(t);
+    const [configured] = (await setUp()).body.results;
+    state.cliFound = false;
+    const [pending] = (await setUp()).body.results;
+
+    assert.strictEqual(await sweepPending(Date.now() + 14 * 60 * 1000), 0);
+    assert.strictEqual(await sweepPending(Date.now() + 16 * 60 * 1000), 1);
+    assert.strictEqual(await ApiKey.findByPk(pending.id), null);
+    assert.ok(await ApiKey.findByPk(configured.id));
+});
+
+test("erneutes Einrichten ersetzt den eigenen alten Key ohne Entfernbefehle, eine gleichzeitige Einrichtung bekommt 409, ein anderes Konto sieht die Warnung", async (t) => {
+    await listen(t);
+    const [first] = (await setUp()).body.results;
+    const [second] = (await setUp()).body.results;
+
+    assert.strictEqual(await ApiKey.findByPk(first.id), null);
+    assert.ok(!execs.some((exec) => exec.command.includes("echo FOREIGN")));
+    const revokes = audits.filter((audit) => audit.action === "vault.agent_key_revoke");
+    assert.deepStrictEqual(revokes.map((audit) => [audit.details.keyId, audit.details.registration]), [[first.id, "replaced"]]);
+    const own = (await call("GET", `/api/vault/agent-keys?entryId=${ENTRY_ID}`, tokens.a)).body;
+    assert.deepStrictEqual([own.keys.map((k) => k.id), own.remoteUser, own.otherAccountConfigured], [[second.id], "deploy", false]);
+    const other = (await call("GET", `/api/vault/agent-keys?entryId=${ENTRY_ID}`, tokens.b)).body;
+    assert.deepStrictEqual(other, { keys: [], remoteUser: "deploy", otherAccountConfigured: true });
+
+    const parallel = await Promise.all([setUp(), setUp()]);
+    assert.deepStrictEqual(parallel.map((res) => res.status).sort(), [201, 409]);
+});
+
+test("Spec-Test 11: Einrichten, Bestätigen und Entziehen antworten in Impersonation und mit Konto-Key mit 403", async (t) => {
+    await listen(t);
+    const [{ id }] = (await setUp()).body.results;
+    execs.length = 0;
+
+    for (const token of [tokens.impersonated, tokens.accountKey]) {
+        assert.strictEqual((await setUp(token)).status, 403);
+        assert.strictEqual((await call("POST", `/api/vault/agent-keys/${id}/confirm`, token, { addSeenIp: true })).status, 403);
+        assert.strictEqual((await call("DELETE", `/api/vault/agent-keys/${id}`, token)).status, 403);
+    }
+    assert.strictEqual((await call("POST", `/api/vault/agent-keys/${id}/confirm`, tokens.b, {})).status, 404);
+    assert.strictEqual((await call("DELETE", `/api/vault/agent-keys/${id}`, tokens.b)).status, 404);
+    assert.deepStrictEqual(execs, []);
+    assert.strictEqual(await ApiKey.count({ where: { kind: "agent" } }), 1);
+});
+
+test("zusätzliche Adressbereiche werden geprüft und eine einzelne Adresse wird zu /32 bzw. /128", async (t) => {
+    await listen(t);
+
+    for (const allowedCidrs of [["10.0.0.0/33"], ["web01"], ["10.0.0.1/8/1"]])
+        assert.strictEqual((await setUp(tokens.a, { allowedCidrs })).status, 400, JSON.stringify(allowedCidrs));
+    const [{ id }] = (await setUp(tokens.a, { allowedCidrs: ["10.1.2.3", "2001:db8::/32"] })).body.results;
+
+    assert.deepStrictEqual((await ApiKey.findByPk(id)).allowedCidrs, ["10.1.2.3/32", "2001:db8::/32"]);
+});
+
+// Account B: the per-account limiter of account A (30 per minute) spans the whole file.
+test("die Probe zählt nur die erste Messung, und die Adresse des bestätigenden Browsers lässt sich nicht übernehmen", async (t) => {
+    await listen(t);
+    state.cliFound = false;
+    state.probeFrom = null;
+    const [result] = (await setUp(tokens.b)).body.results;
+    const confirmPath = `/api/vault/agent-keys/${result.id}/confirm`;
+
+    assert.deepStrictEqual(result.probe, { seenIp: "127.0.0.1", matches: false });
+    const again = await call("GET", PROBE, keyFrom(result.command), undefined, { "x-forwarded-for": "203.0.113.9" });
+    assert.deepStrictEqual(again, { status: 200, body: { seenIp: "203.0.113.9" } });
+    assert.strictEqual((await ApiKey.findByPk(result.id)).seenIp, "127.0.0.1");
+
+    assert.deepStrictEqual((await call("POST", confirmPath, tokens.b, { addSeenIp: true })).body, {
+        code: 409, message: "The measured address is the address of your browser; Outpost sees a proxy, not the server",
+    });
+    assert.deepStrictEqual((await call("POST", confirmPath, tokens.b, {})).body, { success: true });
+    assert.deepStrictEqual((await ApiKey.findByPk(result.id)).allowedCidrs, null);
+});
+
+test("Entziehen läuft mit der gespeicherten Identität; ist sie gelöscht, kommt der Entfernbefehl zum Kopieren", async (t) => {
+    await listen(t);
+    const [first] = (await setUp()).body.results;
+    state.revokeOutput = "FOREIGN\n";
+    execs.length = 0;
+
+    assert.deepStrictEqual((await call("DELETE", `/api/vault/agent-keys/${first.id}`, tokens.a)).body, { success: true, registration: "foreign" });
+    assert.deepStrictEqual(execs.map((exec) => [exec.username, exec.engineId]), [["deploy", "engine-7"]]);
+    assert.strictEqual(await ApiKey.findByPk(first.id), null);
+    assert.deepStrictEqual([audits.at(-1).action, audits.at(-1).resourceId, audits.at(-1).details.keyId], ["vault.agent_key_revoke", null, first.id]);
+
+    const [second] = (await setUp()).body.results;
+    t.after(() => Identity.create({ id: 11, accountId: ACCOUNT_A, name: "deploy-1", type: "password", username: "deploy" }));
+    await Identity.destroy({ where: { id: 11 } });
+    execs.length = 0;
+    const revoked = (await call("DELETE", `/api/vault/agent-keys/${second.id}`, tokens.a)).body;
+
+    assert.deepStrictEqual([revoked.registration, execs.length], ["unknown", 0]);
+    assert.match(revoked.commands, /mcp remove --scope user outpost/);
+    assert.strictEqual(await ApiKey.findByPk(second.id), null);
+});
+```
+
+- [ ] **Step 8: Test laufen lassen, Fehlschlag prüfen**
+
+Run: `cd /root/outpost && node --test server/lib/vault/__tests__/agentKeysRoute.test.js`
+Expected: FAIL — `Cannot find module '../../../controllers/agentKeys'`.
+
+- [ ] **Step 9: Controller `server/controllers/agentKeys.js` anlegen**
+
+`ApiKey`-Abfragen laufen mit dem globalen `raw: true`; der `afterFind`-Hook aus Task 1 liefert `allowedCidrs` als Array und die Flags als Boolean. `cidrsOf` fängt nur `null` und einen Text ab, der kein JSON war. `setupsInFlight` liegt wie die offenen Freigaben aus Task 6 nur im Speicher des Prozesses.
+
+```js
+const net = require("node:net");
+const { Op } = require("sequelize");
+const ApiKey = require("../models/ApiKey");
+const Entry = require("../models/Entry");
+const Identity = require("../models/Identity");
+const VaultSettings = require("../models/VaultSettings");
+const { generateToken, hashToken, TOKEN_PREFIX } = require("./apiKey");
+const { execCommand } = require("./execCommand");
+const { validateEntryAccess, resolveEntryScope } = require("./entry");
+const { createAuditLog, AUDIT_ACTIONS, RESOURCE_TYPES } = require("./audit");
+const { resolveIdentity } = require("../utils/identityResolver");
+const { normalizeIp } = require("../utils/ip");
+const { canUseVault } = require("../lib/vault/visibility");
+const { isAddressAllowed } = require("../lib/vault/ipBinding");
+const provision = require("../lib/vault/provision");
+const logger = require("../utils/logger");
+
+const PENDING_TTL_MS = 15 * 60 * 1000;
+const SWEEP_INTERVAL_MS = 60 * 1000;
+const REGISTRATION_MARKERS = new Set(["REMOVED", "FOREIGN", "ABSENT"]);
+const GONE = { code: 410, message: "This setup has expired. Set up agent access again." };
+const setupsInFlight = new Set();
+
+const identityOf = (result) => (result?.identity === undefined ? result : result.identity);
+const keyPrefixOf = (key) => key.prefix.replace(/…$/, "");
+const hostCidr = (ip) => `${ip}/${net.isIP(ip) === 6 ? 128 : 32}`;
+const endpoint = (agentUrl, path) => `${agentUrl.replace(/\/+$/, "")}${path}`;
+const outputLines = (stdout) => String(stdout ?? "").split(/\r?\n/).map((line) => line.trim());
+const cidrsOf = (value) => (Array.isArray(value) ? value : []);
+const expired = (key, now) => now - new Date(key.createdAt).getTime() > PENDING_TTL_MS;
+
+const serialize = (key, entryNames) => ({
+    id: key.id,
+    name: key.name,
+    prefix: key.prefix,
+    agentType: key.agentType,
+    pending: key.pending,
+    entryId: key.entryId,
+    entryName: entryNames.get(key.entryId) ?? null,
+    remoteUser: key.remoteUser,
+    ipBinding: key.ipBinding,
+    allowedCidrs: cidrsOf(key.allowedCidrs),
+    createdAt: key.createdAt,
+    lastUsedAt: key.lastUsedAt,
+});
+
+const findEntry = async (accountId, entryId) => {
+    const entry = await Entry.findByPk(entryId);
+    if (!entry || !(await validateEntryAccess(accountId, entry)).valid) return null;
+    return entry;
+};
+
+const remoteIdentity = async (entry, accountId) => identityOf(await resolveIdentity(entry, null, null, accountId)) || null;
+
+// Never log stdout or stderr: the setup commands echo the key back on some CLIs.
+const runRemote = async (accountId, entry, identityId, command) => {
+    try {
+        const result = await execCommand(accountId, entry.id, identityId, command, { engineId: entry.config?.engineId ?? null });
+        if (result?.code || !result.success) return { ran: false, exitCode: null, stdout: "" };
+        return { ran: true, exitCode: result.exitCode, stdout: result.stdout };
+    } catch (err) {
+        logger.warn("Agent key command could not run", { entryId: entry.id, error: err.message });
+        return { ran: false, exitCode: null, stdout: "" };
+    }
+};
+
+const probeResult = async (keyId, entry) => {
+    const key = await ApiKey.findByPk(keyId);
+    if (!key?.seenIp) return null;
+    return { seenIp: key.seenIp, matches: await isAddressAllowed(key, entry, key.seenIp) };
+};
+
+const auditRevoke = async (key, entry, registration, { ipAddress = null, userAgent = null } = {}) => createAuditLog({
+    accountId: key.accountId, organizationId: entry ? (await resolveEntryScope(entry)).organizationId ?? null : null,
+    action: AUDIT_ACTIONS.VAULT_AGENT_KEY_REVOKE, resource: RESOURCE_TYPES.VAULT, resourceId: null,
+    details: {
+        keyId: key.id, agentType: key.agentType, entryId: key.entryId, entryName: entry?.name ?? null,
+        remoteUser: key.remoteUser, registration, pending: key.pending,
+    },
+    ipAddress, userAgent,
+});
+
+const finalize = async (key, entry, context) => {
+    const [updated] = await ApiKey.update({ pending: false }, { where: { id: key.id, pending: true } });
+    if (!updated) return false;
+    const replaced = await ApiKey.findAll({
+        where: {
+            accountId: key.accountId, kind: "agent", pending: false, entryId: key.entryId,
+            agentType: key.agentType, remoteUser: key.remoteUser, id: { [Op.ne]: key.id },
+        },
+    });
+    if (replaced.length > 0) {
+        await ApiKey.destroy({ where: { id: replaced.map((old) => old.id) } });
+        await Promise.all(replaced.map((old) => auditRevoke(old, entry, "replaced", context)));
+    }
+    return true;
+};
+
+const setupAgent = async ({ accountId, entry, identity, agentUrl, key, token }) => {
+    const url = endpoint(agentUrl, "/api/mcp");
+    const manual = (reason, probe = null, replacedRegistration = false) => ({
+        status: "manual", reason, probe, replacedRegistration,
+        command: provision.setupCommand({ agentType: key.agentType, cliPath: key.agentType, url, key: token }),
+    });
+    if (!identity) return manual("exec_failed");
+
+    const run = (command) => runRemote(accountId, entry, identity.id, command);
+    await run(provision.probeCommand({ url: endpoint(agentUrl, "/api/vault/agent-keys/probe"), key: token }));
+    const probe = await probeResult(key.id, entry);
+
+    const found = await run(provision.findCliCommand(key.agentType));
+    if (!found.ran) return manual("exec_failed", probe);
+    const cliPath = found.exitCode === 0 ? outputLines(found.stdout).filter((line) => line.startsWith("/")).pop() : null;
+    if (!cliPath) return manual("cli_missing", probe);
+
+    const setup = await run(provision.setupCommand({ agentType: key.agentType, cliPath, url, key: token }));
+    const replacedRegistration = outputLines(setup.stdout).includes("OUTPOST_REPLACED=1");
+    const configured = { status: "configured", reason: null, probe, replacedRegistration };
+    if (setup.ran && setup.exitCode === 0) return configured;
+    if (!setup.ran) {
+        // An exec error or timeout says nothing about the remote side: the setup may have gone through.
+        const check = await run(provision.registrationCheckCommand({ agentType: key.agentType, keyPrefix: keyPrefixOf(key) }));
+        if (check.ran && outputLines(check.stdout).includes("MATCH")) return configured;
+    }
+    return manual("exec_failed", probe, replacedRegistration);
+};
+
+const setupOne = async ({ accountId, entry, identity, organizationId, agentUrl, agentType, ipBinding, allowedCidrs, context }) => {
+    const token = generateToken();
+    const remoteUser = identity?.username || null;
+    const key = await ApiKey.create({
+        accountId, name: `${agentType}@${entry.name}`, tokenHash: hashToken(token),
+        prefix: `${token.slice(0, TOKEN_PREFIX.length + 6)}…`, kind: "agent", pending: true,
+        entryId: entry.id, agentType, ipBinding, allowedCidrs: allowedCidrs.length > 0 ? allowedCidrs : null,
+        identityId: identity?.id ?? null, remoteUser,
+    });
+    await createAuditLog({
+        accountId, organizationId, action: AUDIT_ACTIONS.VAULT_AGENT_KEY_CREATE,
+        resource: RESOURCE_TYPES.VAULT, resourceId: null,
+        details: { keyId: key.id, agentType, entryId: entry.id, entryName: entry.name, remoteUser, ipBinding },
+        ...context,
+    });
+
+    const outcome = await setupAgent({ accountId, entry, identity, agentUrl, key, token });
+    if (outcome.status === "configured") await finalize(key, entry, context);
+    return { id: key.id, agentType, remoteUser, ...outcome };
+};
+
+const createAgentKeys = async ({ accountId, entryId, agentTypes, ipBinding = true, allowedCidrs = [], ipAddress = null, userAgent = null }) => {
+    const { agentUrl } = await VaultSettings.getOrCreate();
+    if (!agentUrl) return { code: 409, message: "Set the Outpost address for agents in Settings › Vault first" };
+    if (!(await canUseVault(accountId))) return { code: 403, message: "You are not allowed to set up agent access" };
+
+    const entry = await findEntry(accountId, entryId);
+    if (!entry) return { code: 404, message: "Entry not found" };
+    if (entry.config?.protocol !== "ssh") return { code: 400, message: "Agent access needs an SSH server" };
+    if (setupsInFlight.has(entry.id)) return { code: 409, message: "Agent access for this server is already being set up" };
+
+    setupsInFlight.add(entry.id);
+    try {
+        const identity = await remoteIdentity(entry, accountId);
+        const organizationId = (await resolveEntryScope(entry)).organizationId ?? null;
+        const shared = { accountId, entry, identity, organizationId, agentUrl, ipBinding, allowedCidrs, context: { ipAddress, userAgent } };
+        return { results: await Promise.all(agentTypes.map((agentType) => setupOne({ ...shared, agentType }))) };
+    } finally {
+        setupsInFlight.delete(entry.id);
+    }
+};
+
+const probe = async (apiKey, rawIp) => {
+    const seenIp = normalizeIp(rawIp);
+    await ApiKey.update({ seenIp }, { where: { id: apiKey.id, kind: "agent", pending: true, seenIp: null } });
+    return { seenIp };
+};
+
+const confirm = async (accountId, id, { addSeenIp = false } = {}, { ipAddress = null, userAgent = null } = {}, now = Date.now()) => {
+    const key = await ApiKey.findOne({ where: { id, accountId, kind: "agent" } });
+    if (!key) return { code: 404, message: "Agent key not found" };
+    if (key.pending && expired(key, now)) return GONE;
+
+    if (addSeenIp) {
+        if (!key.seenIp) return { code: 409, message: "No measured address to adopt" };
+        if (normalizeIp(ipAddress) === key.seenIp)
+            return { code: 409, message: "The measured address is the address of your browser; Outpost sees a proxy, not the server" };
+        if (expired(key, now)) return { code: 409, message: "The measured address can only be adopted within 15 minutes of the setup" };
+        const allowedCidrs = [...new Set([...cidrsOf(key.allowedCidrs), hostCidr(key.seenIp)])];
+        const [updated] = await ApiKey.update({ allowedCidrs, seenIpAdopted: true }, { where: { id: key.id, seenIpAdopted: false } });
+        if (!updated) return (await ApiKey.count({ where: { id: key.id } })) > 0
+            ? { code: 409, message: "The measured address was already adopted" } : GONE;
+    }
+
+    if (key.pending && !(await finalize(key, await Entry.findByPk(key.entryId), { ipAddress, userAgent })))
+        return (await ApiKey.count({ where: { id: key.id, pending: false } })) > 0 ? { success: true } : GONE;
+    return { success: true };
+};
+
+const parseRegistration = (stdout) => {
+    const marker = outputLines(stdout).filter((line) => REGISTRATION_MARKERS.has(line)).pop();
+    return marker ? marker.toLowerCase() : "unknown";
+};
+
+const revoke = async (accountId, id, { ipAddress = null, userAgent = null } = {}) => {
+    const key = await ApiKey.findOne({ where: { id, accountId, kind: "agent" } });
+    if (!key) return { code: 404, message: "Agent key not found" };
+    await ApiKey.destroy({ where: { id: key.id } });
+
+    const entry = await Entry.findByPk(key.entryId);
+    let registration = "absent";
+    let commands = null;
+    if (!key.pending) {
+        const command = provision.revokeCommands({ agentType: key.agentType, keyPrefix: keyPrefixOf(key) });
+        const identity = key.identityId ? await Identity.findByPk(key.identityId) : null;
+        const result = entry && identity ? await runRemote(accountId, entry, identity.id, command) : { ran: false, stdout: "" };
+        registration = result.ran ? parseRegistration(result.stdout) : "unknown";
+        if (registration === "unknown") commands = command;
+    }
+
+    await auditRevoke(key, entry, registration, { ipAddress, userAgent });
+    return commands ? { success: true, registration, commands } : { success: true, registration };
+};
+
+const listAgentKeys = async (accountId, { entryId = null } = {}) => {
+    const entry = entryId ? await findEntry(accountId, entryId) : null;
+    if (entryId && !entry) return { code: 404, message: "Entry not found" };
+
+    const keys = await ApiKey.findAll({
+        where: { accountId, kind: "agent", pending: false, ...(entry ? { entryId: entry.id } : {}) },
+        order: [["createdAt", "DESC"]],
+    });
+    const entryIds = [...new Set(keys.map((key) => key.entryId))];
+    const entries = entryIds.length > 0 ? await Entry.findAll({ where: { id: entryIds }, attributes: ["id", "name"] }) : [];
+    const names = new Map(entries.map((row) => [row.id, row.name]));
+    const result = { keys: keys.map((key) => serialize(key, names)) };
+    if (!entry) return result;
+
+    const remoteUser = (await remoteIdentity(entry, accountId))?.username || null;
+    const otherAccountConfigured = !!remoteUser && (await ApiKey.count({
+        where: { kind: "agent", pending: false, entryId: entry.id, remoteUser, accountId: { [Op.ne]: accountId } },
+    })) > 0;
+    return { ...result, remoteUser, otherAccountConfigured };
+};
+
+const sweepPending = async (now = Date.now()) => ApiKey.destroy({
+    where: { kind: "agent", pending: true, createdAt: { [Op.lt]: new Date(now - PENDING_TTL_MS) } },
+});
+
+const startPendingSweeper = () => {
+    const timer = setInterval(() => {
+        sweepPending().catch((err) => logger.warn("Pending agent key sweep failed", { error: err.message }));
+    }, SWEEP_INTERVAL_MS);
+    timer.unref?.();
+    return timer;
+};
+
+module.exports = { createAgentKeys, probe, confirm, revoke, listAgentKeys, sweepPending, startPendingSweeper, PENDING_TTL_MS };
+```
+
+- [ ] **Step 10: Router `server/routes/vault/agentKeys.js` füllen**
+
+Ganze Datei ersetzen (der Platzhalter aus Task 1 enthält nur einen leeren `Router()`):
+
+```js
+const { Router } = require("express");
+const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
+const { authenticate } = require("../../middlewares/auth");
+const { requireLoginSession } = require("../../middlewares/requireLoginSession");
+const { requireVaultEnabled } = require("../../lib/vault/state");
+const { validateSchema } = require("../../utils/schema");
+const { sendError } = require("../../utils/error");
+const logger = require("../../utils/logger");
+const {
+    createAgentKeysValidation, confirmAgentKeyValidation, listAgentKeysValidation, agentKeyIdValidation,
+} = require("../../validations/vaultAgentKeys");
+const { createAgentKeys, probe, confirm, revoke, listAgentKeys } = require("../../controllers/agentKeys");
+
+const app = Router();
+
+// Every setup runs several remote commands through the engine; the account bucket bounds that.
+const agentKeyLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    keyGenerator: (req) => (req.user ? `acc:${req.user.id}` : `ip:${ipKeyGenerator(req.ip)}`),
+    message: { code: 429, message: "Too many agent key changes. Please try again in a moment." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const probeLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    keyGenerator: (req) => (req.apiKey ? `key:${req.apiKey.id}` : `ip:${ipKeyGenerator(req.ip)}`),
+    message: { code: 429, message: "Too many probes. Please try again in a moment." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const reply = (res, result, status = 200) => {
+    if (result?.code) return sendError(res, result.code, result.code, result.message);
+    res.status(status).json(result);
+};
+
+const requestContext = (req) => ({ ipAddress: req.ip, userAgent: req.headers["user-agent"] ?? null });
+
+/**
+ * GET /vault/agent-keys/probe
+ * @summary Probe Agent Key Address
+ * @description Called by the setup itself, with the pending agent key, from the server being set up. Answers with the address Outpost sees; only the first measurement is stored at the key. Any other caller gets 403.
+ * @tags Vault
+ * @produces application/json
+ * @security BearerAuth
+ * @return {object} 200 - The seen address
+ */
+app.get("/agent-keys/probe", requireVaultEnabled, authenticate, probeLimiter, async (req, res) => {
+    if (req.apiKey?.kind !== "agent" || !req.apiKey.pending)
+        return sendError(res, 403, 403, "Only a pending agent key can probe");
+    res.json(await probe(req.apiKey, req.ip));
+});
+
+/**
+ * GET /vault/agent-keys
+ * @summary List Agent Keys
+ * @description Lists the confirmed agent keys of the account. With entryId only those of one server, plus the remote user and whether another account already set up a key for it.
+ * @tags Vault
+ * @produces application/json
+ * @security BearerAuth
+ * @param {number} entryId.query - Server entry ID
+ * @return {object} 200 - Agent keys
+ */
+app.get("/agent-keys", requireVaultEnabled, authenticate, async (req, res) => {
+    const query = { ...req.query };
+    if (validateSchema(res, listAgentKeysValidation, query)) return;
+    reply(res, await listAgentKeys(req.user.id, { entryId: query.entryId ?? null }));
+});
+
+/**
+ * POST /vault/agent-keys
+ * @summary Set Up Agent Access
+ * @description Creates one pending agent key per agent and sets it up on the server. The key is returned only inside a manual command, only in this response.
+ * @tags Vault
+ * @produces application/json
+ * @security BearerAuth
+ * @param {CreateAgentKeys} request.body.required - Server, agents and IP binding
+ * @return {object} 201 - Result per agent
+ */
+app.post("/agent-keys", requireVaultEnabled, authenticate, requireLoginSession, agentKeyLimiter, async (req, res) => {
+    if (validateSchema(res, createAgentKeysValidation, req.body)) return;
+    reply(res, await createAgentKeys({ accountId: req.user.id, ...req.body, ...requestContext(req) }), 201);
+});
+
+/**
+ * POST /vault/agent-keys/{id}/confirm
+ * @summary Confirm Agent Key
+ * @description Makes a pending agent key final. With addSeenIp the address measured by the probe is added to the allowed ranges, once, only within 15 minutes of the setup and never when it is the address of the confirming browser. A pending key older than 15 minutes answers 410.
+ * @tags Vault
+ * @produces application/json
+ * @security BearerAuth
+ * @param {number} id.path.required - Agent key ID
+ * @param {ConfirmAgentKey} request.body - Options
+ * @return {object} 200 - Confirmation
+ */
+app.post("/agent-keys/:id/confirm", requireVaultEnabled, authenticate, requireLoginSession, agentKeyLimiter, async (req, res) => {
+    const params = { ...req.params };
+    if (validateSchema(res, agentKeyIdValidation, params)) return;
+    const body = { ...(req.body ?? {}) };
+    if (validateSchema(res, confirmAgentKeyValidation, body)) return;
+    reply(res, await confirm(req.user.id, params.id, body, requestContext(req)));
+});
+
+/**
+ * DELETE /vault/agent-keys/{id}
+ * @summary Revoke Agent Key
+ * @description Deletes the agent key, then removes the registration on the server if it still carries this key.
+ * @tags Vault
+ * @produces application/json
+ * @security BearerAuth
+ * @param {number} id.path.required - Agent key ID
+ * @return {object} 200 - Revocation result
+ */
+app.delete("/agent-keys/:id", requireVaultEnabled, authenticate, requireLoginSession, agentKeyLimiter, async (req, res) => {
+    const params = { ...req.params };
+    if (validateSchema(res, agentKeyIdValidation, params)) return;
+    reply(res, await revoke(req.user.id, params.id, requestContext(req)));
+});
+
+// Express 5 hands a rejected async handler to the error middleware, and server/index.js installs
+// none - the built-in fallback answers with err.stack whenever NODE_ENV is not "production".
+app.use((error, req, res, _next) => {
+    logger.error("Agent key route failed", { path: req.originalUrl, error: error.message });
+    sendError(res, 500, 500, "Could not complete the agent key request.");
+});
+
+module.exports = app;
+```
+
+- [ ] **Step 11: Test laufen lassen, Erfolg prüfen**
+
+Run: `cd /root/outpost && node --test server/lib/vault/__tests__/agentKeysRoute.test.js server/lib/vault/__tests__/provision.test.js`
+Expected: PASS — `# pass 14`, `# fail 0`.
+
+- [ ] **Step 12: Sweeper beim Start einhängen**
+
+In `server/index.js` neben dem Import, den Task 1 für `initVaultState` anlegt:
+
+```js
+const { startPendingSweeper } = require("./controllers/agentKeys");
+```
+
+und direkt nach dem `try`/`catch` um `await initVaultState();` (Task 1, nach `await migrationRunner.runMigrations();`), nicht in den `try`-Block: Ein Fehler beim Schlüsselstatus soll den Sweeper nicht verhindern. Nachher:
+
+```js
+        try {
+            await initVaultState();
+        } catch (err) {
+            logger.error("Could not determine the vault key status; the vault stays off", { error: err.message });
+        }
+        startPendingSweeper();
+
+        await ensureInternalProvider();
+```
+
+Der Sweeper läuft auch bei ausgeschaltetem Vault: `pending`-Keys aus der Zeit davor sollen trotzdem verschwinden.
+
+- [ ] **Step 13: Lint und betroffene Tests**
+
+Run: `cd /root/outpost && npx eslint server/lib/vault/provision.js server/lib/vault/__tests__/provision.test.js server/lib/vault/__tests__/agentKeysRoute.test.js server/controllers/agentKeys.js server/controllers/execCommand.js server/routes/vault/agentKeys.js server/validations/vaultAgentKeys.js server/index.js && node --test server/lib/vault/__tests__/provision.test.js server/lib/vault/__tests__/agentKeysRoute.test.js server/lib/vault/__tests__/agentAuth.test.js`
+Expected: keine Lint-Meldung; alle Tests PASS (`agentAuth.test.js` aus Task 4 bleibt grün, weil `authenticate` nicht angefasst wurde).
+
+- [ ] **Step 14: Commit**
+
+```bash
+git add server/lib/vault/provision.js server/lib/vault/__tests__/provision.test.js server/lib/vault/__tests__/agentKeysRoute.test.js server/controllers/agentKeys.js server/controllers/execCommand.js server/routes/vault/agentKeys.js server/validations/vaultAgentKeys.js server/index.js
+git commit -m "Vault: Agenten-Einrichtung per Exec mit Probe, Bestätigung und Entziehen"
+```
+
+---
+
 ### Task 15: Client: Einstellungen Vault und Agenten-Schlüssel
 
 **Files:**
@@ -11253,10 +10941,10 @@ git commit -m "Vault: Agenten-Zugang-Dialog und Menüpunkt im Server-Kontextmen�
 
 **Interfaces:**
 - Consumes (Task 5, REST): `GET /api/vault/settings` → `{ keyStatus: "active"|"missing"|"mismatch", agentUrl: string|null, trustProxyUnsafe: boolean }`; `PATCH /api/vault/settings` body `{ agentUrl: string|null }` → dieselbe Form (`null` leert die Adresse; gemeldet, falls Task 5 nur Text annimmt). Beide antworten auch bei ausgeschaltetem Vault.
-- Consumes (Task 8, REST): `GET /api/vault/agent-keys` → `{ keys: AgentKey[] }` mit `AgentKey = { id, entryId, agentType: "claude"|"codex", pending, ipBinding, allowedCidrs: string[]|null, createdAt, lastUsedAt }` (Form wie in Task 14, gemeldet); `DELETE /api/vault/agent-keys/:id` → `{ success, … }`.
+- Consumes (Task 8, REST): `GET /api/vault/agent-keys` → `{ keys: AgentKey[] }` mit `AgentKey = { id, entryId, agentType: "claude"|"codex", pending, ipBinding, allowedCidrs: string[], createdAt, lastUsedAt }` (Form wie in Task 14; ohne Bereiche `[]`, nie `null`); `DELETE /api/vault/agent-keys/:id` → `{ success, registration: "removed"|"foreign"|"absent"|"unknown", commands? }` (`commands` als Text nur bei `unknown`), `404`, wenn der Key schon entzogen ist.
 - Consumes (Task 4): `GET /api/accounts/api-keys` liefert nur noch `kind = "account"` — der Client filtert nichts selbst, die Bestandsliste bleibt unverändert.
-- Consumes (Task 10): Registrierung der Seite `vault` in `getSettingsAdminPages` mit `permission: Permission.SETTINGS_VAULT` und `index.js` (`export { Vault as default } from "./Vault.jsx";`) — dieser Task füllt nur `Vault.jsx`/`styles.sass`; `useVaultAvailable()` als **benannter** Export aus `@/common/hooks/useVaultAvailable.js` (genutzt: `enabled`, `impersonating`, `refresh()`); i18n-Schlüssel `settings.vault.*`, `settings.account.agentKeys.*`, `vault.agents.*` (Liste am Ende).
-- Consumes (Task 14): `AgentAccessDialog` (Default-Export aus `@/pages/Servers/components/AgentAccessDialog`) mit `{ open, entryId, onClose }`. Läuft Task 15 vor Task 14 fertig, schlägt nur der Build/Lint fehl, nicht der Test dieses Tasks (er rendert die Kontoseite nicht).
+- Consumes (Task 10): Registrierung der Seite `vault` in `getSettingsAdminPages` mit `permission: Permission.SETTINGS_VAULT` und `index.js` (`export { Vault as default } from "./Vault.jsx";`) — dieser Task füllt nur `Vault.jsx`/`styles.sass`; `useVaultAvailable()` als **benannter** Export aus `@/common/hooks/useVaultAvailable.js` (genutzt: `enabled`, `impersonating`, `refresh()`); i18n-Schlüssel `settings.vault.*`, `settings.account.agentKeys.*`, `vault.agents.*`, `servers.agentAccess.result.copy` (Liste am Ende).
+- Consumes (Task 14): `AgentAccessDialog` (Default-Export aus `@/pages/Servers/components/AgentAccessDialog`) mit `{ open, entryId, onClose }`; die Auswertung des Entziehen-Ergebnisses (`foreign`/`unknown`, `revoking`-Ref, `404` → Neuladen) folgt `AgentAccessDialog.jsx#revoke`. Dieser Task startet erst nach dem Merge von Task 14.
 - Produces: `export const Vault` (Seite), `export const isValidAgentUrl(value) → boolean`; `export const AgentKeysSection` (Default über `index.js`).
 
 **Design:**
@@ -11270,15 +10958,16 @@ git commit -m "Vault: Agenten-Zugang-Dialog und Menüpunkt im Server-Kontextmen�
 | UI-VAULT-SETTINGS-PROXY | Hinweis Reverse-Proxy | Warnt, wenn Outpost jedem X-Forwarded-For glaubt (TRUST_PROXY=true) — dann ist die IP-Bindung von Agenten-Keys wirkungslos. Sonst nicht sichtbar. Nicht: vault_key_status, agent_base_url. | default, error | default „nicht sichtbar“ · error „TRUST_PROXY=true — Outpost glaubt jedem X-Forwarded-For, die IP-Bindung von Agenten-Keys ist wirkungslos. Hop-Zahl oder Adressliste setzen.“ |
 | UI-VAULT-SETTINGS-SAVE | Einstellungen speichern | Speichert die Outpost-Adresse für Agenten, wie der Speichern-Knopf der Browser-Einstellungen. | default, disabled | – |
 | UI-API-KEYS-LIST | API-Schlüssel | Die API-Keys des Kontos mit voller Kontoberechtigung — Name, Präfix, zuletzt genutzt, Ablauf; Anlegen und Löschen wie bisher. Nicht: agent_key. | default, empty | empty „Noch keine API-Schlüssel“ |
-| UI-API-KEYS-AGENTS | Agenten-Schlüssel | Die Agenten-Keys des Kontos, gruppiert nach Server — Agent, zuletzt genutzt, IP-Bindung; je Server Bearbeiten (öffnet Agenten-Zugang) und je Key Entziehen. Agenten-Keys erreichen nur den MCP-Endpunkt. Nicht: api_key, vault_item. | default, empty | empty „Noch kein Agenten-Zugang. Einrichten über das Kontextmenü eines Servers.“ |
+| UI-API-KEYS-AGENTS | Agenten-Schlüssel | Die Agenten-Keys des Kontos, gruppiert nach Server — Agent, zuletzt genutzt, IP-Bindung; je Server Bearbeiten (öffnet Agenten-Zugang) und je Key Entziehen. Agenten-Keys erreichen nur den MCP-Endpunkt. Nicht: api_key, vault_item. | default, empty, partial, disabled | empty „Noch kein Agenten-Zugang. Einrichten über das Kontextmenü eines Servers.“ · partial „Zugang entzogen. Die Registrierung auf web01 trägt den Key eines anderen Kontos und bleibt stehen.“ · disabled „Zugang entzogen. Die Registrierung konnte nicht entfernt werden — Befehl kopieren und auf dem Server ausführen.“ |
 
+- Stand: `docs/design/manifest.yaml` Revision 14. AGENTS `partial` nach dem Entziehen bei `registration === "foreign"`, AGENTS `disabled` nach dem Entziehen bei `registration === "unknown"` (darunter `commands` in `<pre>` mit „Kopieren“); beide stehen über der Gruppenliste bis zum nächsten Entziehen.
 - Locator: jedes Element trägt `data-ui-id="<ID>"`; zusätzlich `data-ui-id="UI-VAULT-SETTINGS"` am äußersten Wrapper der Seite. KEY und URL am Wrapper der Zeile, PROXY am Banner (nur gerendert bei `trustProxyUnsafe`), SAVE am `Button` (`dataUiId`), LIST am bestehenden `account-section`-Container, AGENTS am Wurzelknoten von `AgentKeysSection`.
-- Tokens: `--success`/`--success-opacity` (Aktiv), `--warning`/`--warning-opacity` (Fehlt, Proxy-Hinweis, „von überall“), `--error`/`--error-opacity` (Passt nicht, ungültige Adresse, Entziehen), `--subtext`, `--dark-gray` (Gruppenrahmen), `--space-1/2/3/4/8`, `--radius-sm/md`, `--type-heading/caption`. Im Code über `@/common/styles/colors` und `@/common/styles/tokens`. Seitenbreite höchstens 44 rem.
+- Tokens: `--success`/`--success-opacity` (Aktiv), `--warning`/`--warning-opacity` (Fehlt, Proxy-Hinweis, „von überall“, Entziehen-Ergebnis), `--error`/`--error-opacity` (Passt nicht, ungültige Adresse, Entziehen), `--subtext`, `--dark-gray` (Gruppenrahmen), `--space-1/2/3/4/8`, `--radius-sm/md`, `--type-heading/caption`. Im Code über `@/common/styles/colors` und `@/common/styles/tokens`. Seitenbreite höchstens 44 rem.
 - Der Ordner heißt laut Vertrag `components/AgentKeysSection/`; die Anleitung `ui-api-keys.md` nennt `components/AgentKeys/` (gemeldet, Vertrag gilt).
 
-**Tests:** 3 Tests (davon einer als `test.each` mit zwei Fällen) in `VaultSettings.test.jsx`, test-first (Zustände und Gültigkeitsregel stehen im Manifest und in Task 5): (1) `keyStatus` `missing` bzw. `mismatch` zeigt Pill und Satz aus dem Manifest; (2) der Proxy-Hinweis erscheint nur bei `trustProxyUnsafe: true`; (3) eine Adresse ohne `http://`/`https://` zeigt den Fehler und sperrt Speichern, eine gültige wird per `PATCH vault/settings` gespeichert und `useVaultAvailable().refresh()` wird aufgerufen (damit der Agenten-Zugang-Dialog `agentUrlSet` sofort sieht). Echte Seams: `ToastProvider`, `en.json`. Gemockt: `RequestUtil` (requestDouble), `useVaultAvailable`. Nicht getestet: `AgentKeysSection` (Gruppierung und Entziehen sind Weiterreichung an `GET`/`DELETE` mit Neuladen; der Bestätigungsdialog ist Bestand), der `data-ui-id`-Zusatz an der Bestandsliste, die Rechtefilterung der Seite (Task 10, Bestand des `SettingsDialog`), Darstellung (prüft `/design-verify`). SEC: SEC-INPUT-01 (`agentUrl` nur http/https im Client, maßgeblich die Validierung aus Task 5), SEC-RBAC-01 (Seite nur mit `settings.vault`, Registrierung in Task 10; `PATCH` prüft der Server), SEC-SECRET-01 (die Seite zeigt nur den Status, nie `VAULT_KEY`; die Agenten-Liste zeigt kein Key-Präfix), SEC-XSS-01 (nur React-Text).
+**Tests:** 2 Tests (davon einer als `test.each` mit zwei Fällen) in `VaultSettings.test.jsx`, test-first (Zustände und Gültigkeitsregel stehen im Manifest und in Task 5): (1) `keyStatus` `missing` bzw. `mismatch` zeigt Pill und Satz aus dem Manifest; (2) eine Adresse ohne `http://`/`https://` zeigt den Fehler und sperrt Speichern, eine gültige wird per `PATCH vault/settings` gespeichert und `useVaultAvailable().refresh()` wird aufgerufen (damit der Agenten-Zugang-Dialog `agentUrlSet` sofort sieht). Echte Seams: `ToastProvider`, `en.json`. Gemockt: `RequestUtil` (requestDouble), `useVaultAvailable`. Nicht getestet: der Proxy-Hinweis (eine Bedingung auf `trustProxyUnsafe`), `AgentKeysSection` (Gruppierung ist Darstellung; das Entziehen-Ergebnis `partial`/`disabled` folgt derselben Auswertung, die Task 14 in Test 4 prüft; der Bestätigungsdialog ist Bestand), der `data-ui-id`-Zusatz an der Bestandsliste, die Rechtefilterung der Seite (Task 10, Bestand des `SettingsDialog`), Darstellung (prüft `/design-verify`). SEC: SEC-INPUT-01 (`agentUrl` nur http/https im Client, maßgeblich die Validierung aus Task 5), SEC-RBAC-01 (Seite nur mit `settings.vault`, Registrierung in Task 10; `PATCH` prüft der Server), SEC-SECRET-01 (die Seite zeigt nur den Status, nie `VAULT_KEY`; die Agenten-Liste zeigt kein Key-Präfix; nur der Entfernbefehl nach gescheitertem Entziehen trägt das Präfix des schon widerrufenen Keys, nie den Key), SEC-XSS-01 (nur React-Text; Entfernbefehl in `<pre>` als Text).
 
-**Parallel:** Task 9, Task 11, Task 12, Task 13, Task 14 (keine gemeinsamen Dateien; `AgentKeysSection` importiert nur den Dialog aus Task 14, der Test dieses Tasks braucht ihn nicht).
+**Parallel:** Task 5, Task 6, Task 8 (Welle C; keine gemeinsamen Dateien). Nicht neben Task 14: `AgentKeysSection` importiert `AgentAccessDialog` und übernimmt dessen Entziehen-Auswertung, deshalb startet dieser Task erst nach dem Merge von Task 14 (Welle B). Setzt Task 10 (Welle A) voraus; die REST-Form aus Task 5 und Task 8 steht im Vertrag oben fest, die Tests laufen gegen `requestDouble`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -11311,8 +11000,6 @@ beforeEach(() => {
     vaultAvailable.refresh.mockReset();
 });
 
-// --- Einstellungen › Vault ---
-
 test.each([
     ["missing", "settings.vault.key.missing", "settings.vault.key.missingText"],
     ["mismatch", "settings.vault.key.mismatch", "settings.vault.key.mismatchText"],
@@ -11322,18 +11009,6 @@ test.each([
 
     expect(await screen.findByText(t(textKey))).toBeInTheDocument();
     expect(screen.getByText(t(pillKey))).toBeInTheDocument();
-});
-
-test("the reverse-proxy warning appears only while TRUST_PROXY is true", async () => {
-    requestDouble.stub("getRequest", "vault/settings", settings({ trustProxyUnsafe: true }));
-    const { unmount } = mount();
-    expect(await screen.findByText(t("settings.vault.proxy.warning"))).toBeInTheDocument();
-    unmount();
-
-    requestDouble.stub("getRequest", "vault/settings", settings());
-    mount();
-    await screen.findByText(t("settings.vault.key.active"));
-    expect(screen.queryByText(t("settings.vault.proxy.warning"))).not.toBeInTheDocument();
 });
 
 test("an address without http or https blocks saving; a valid one is saved and refreshes availability", async () => {
@@ -11554,7 +11229,7 @@ export const Vault = () => {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `yarn --cwd client vitest run src/pages/Settings/pages/Vault/__tests__/VaultSettings.test.jsx`
-Expected: PASS (4 Tests: 2 aus `test.each` + 2). Ein `i18n: missing key "settings.vault.…"` heißt: Schlüssel in Task 10 nachtragen.
+Expected: PASS (3 Tests: 2 aus `test.each` + 1). Ein `i18n: missing key "settings.vault.…"` heißt: der Schlüssel fehlt aus Task 10 — nicht nachtragen und nicht umbenennen, sondern anhalten und den fehlenden Schlüssel melden.
 
 - [ ] **Step 5: Abschnitt Agenten-Schlüssel**
 
@@ -11568,9 +11243,9 @@ export { AgentKeysSection as default } from "./AgentKeysSection.jsx";
 
 ```jsx
 import "./styles.sass";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { KeyRound as IconKeyRound, Pencil as IconPencil } from "lucide-react";
+import { Copy as IconCopy, KeyRound as IconKeyRound, Pencil as IconPencil } from "lucide-react";
 import Button from "@/common/components/Button";
 import Icon from "@/common/components/Icon";
 import ActionConfirmDialog from "@/common/components/ActionConfirmDialog";
@@ -11579,6 +11254,7 @@ import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useVaultAvailable } from "@/common/hooks/useVaultAvailable.js";
 import { deleteRequest, getRequest } from "@/common/utils/RequestUtil.js";
+import { copyToClipboard } from "@/common/utils/clipboard.js";
 import { formatTimeAgo } from "@/common/utils/timeAgo.js";
 
 const raw = { interpolation: { escapeValue: false } };
@@ -11592,6 +11268,8 @@ export const AgentKeysSection = () => {
     const [revokeOpen, setRevokeOpen] = useState(false);
     const [revokeTarget, setRevokeTarget] = useState(null);
     const [editEntryId, setEditEntryId] = useState(null);
+    const [revokeOutcome, setRevokeOutcome] = useState(null);
+    const revoking = useRef(false);
 
     const load = useCallback(async () => {
         try {
@@ -11617,14 +11295,28 @@ export const AgentKeysSection = () => {
     };
 
     const revoke = async () => {
-        if (!revokeTarget) return;
+        if (!revokeTarget || revoking.current) return;
+        revoking.current = true;
+        setRevokeOutcome(null);
         try {
-            await deleteRequest(`vault/agent-keys/${revokeTarget.id}`);
+            const data = await deleteRequest(`vault/agent-keys/${revokeTarget.id}`);
+            if (data.registration === "foreign" || data.registration === "unknown") {
+                setRevokeOutcome({ registration: data.registration, server: serverName(revokeTarget.entryId), commands: data.commands ?? null });
+            }
             load();
         } catch (err) {
-            sendToast(t("common.error"), err?.message || t("common.error"));
+            if (err?.code === 404) load();
+            else sendToast(t("common.error"), err?.message || t("common.error"));
+        } finally {
+            revoking.current = false;
+            setRevokeTarget(null);
         }
-        setRevokeTarget(null);
+    };
+
+    const copyCommands = async () => {
+        if (!(await copyToClipboard(revokeOutcome.commands))) {
+            sendToast(t("common.error"), t("settings.account.apiKeys.copyError"));
+        }
     };
 
     const binding = (key) => {
@@ -11636,7 +11328,7 @@ export const AgentKeysSection = () => {
                 </>
             );
         }
-        const address = [getServerById(key.entryId)?.ip, ...(key.allowedCidrs || [])].filter(Boolean).join(", ");
+        const address = [getServerById(key.entryId)?.ip, ...key.allowedCidrs].filter(Boolean).join(", ");
         return <span className="agent-key-address">{t("settings.account.agentKeys.boundTo", { address, ...raw })}</span>;
     };
 
@@ -11660,6 +11352,22 @@ export const AgentKeysSection = () => {
                     <p>{t("settings.account.agentKeys.sectionDescription")}</p>
                 </div>
             </div>
+            {revokeOutcome && (
+                <div className="agent-keys-revoked" role="status">
+                    <p>
+                        {revokeOutcome.registration === "foreign"
+                            ? t("settings.account.agentKeys.revokedForeign", { server: revokeOutcome.server, ...raw })
+                            : t("settings.account.agentKeys.revokedUnknown")}
+                    </p>
+                    {revokeOutcome.commands && (
+                        <div className="agent-keys-command">
+                            <pre>{revokeOutcome.commands}</pre>
+                            <Button type="secondary" icon={IconCopy} text={t("servers.agentAccess.result.copy")}
+                                    onClick={copyCommands} />
+                        </div>
+                    )}
+                </div>
+            )}
             {groups.length === 0 ? (
                 <div className="settings-list">
                     <div className="list-empty"><p>{t("settings.account.agentKeys.empty")}</p></div>
@@ -11719,6 +11427,34 @@ export const AgentKeysSection = () => {
 .agent-keys-section
   .agent-keys-title-icon
     margin-right: tokens.$space-2
+
+  .agent-keys-revoked
+    display: flex
+    flex-direction: column
+    gap: tokens.$space-2
+    margin-bottom: tokens.$space-3
+    padding: tokens.$space-3
+    border-left: 3px solid colors.$warning
+    border-radius: tokens.$radius-md
+    background: colors.$warning-opacity
+
+    p
+      margin: 0
+
+  .agent-keys-command
+    display: flex
+    align-items: flex-start
+    gap: tokens.$space-2
+
+    pre
+      flex: 1
+      margin: 0
+      padding: tokens.$space-2
+      font-family: tokens.$font-mono
+      white-space: pre-wrap
+      overflow-wrap: anywhere
+      background: colors.$dark-gray
+      border-radius: tokens.$radius-sm
 
   .agent-key-groups
     display: flex
@@ -11805,7 +11541,7 @@ Liste, `loadApiKeys`, `deleteApiKey` und `AddApiKeyDialog` bleiben unverändert;
 - [ ] **Step 7: Lint und betroffene Tests**
 
 Run: `yarn --cwd client lint && yarn --cwd client vitest run src/pages/Settings`
-Expected: keine neuen Lint-Fehler; alle Tests unter `src/pages/Settings` grün. (Ist Task 14 noch nicht gemergt, meldet Lint/Build den fehlenden Import `@/pages/Servers/components/AgentAccessDialog` — dann nach Task 14 wiederholen.)
+Expected: keine neuen Lint-Fehler; alle Tests unter `src/pages/Settings` grün (Task 14 ist gemergt, der Import `@/pages/Servers/components/AgentAccessDialog` löst auf).
 
 - [ ] **Step 8: Commit**
 
@@ -11845,36 +11581,1204 @@ git commit -m "Vault: Einstellungsseite Vault und Agenten-Schlüssel in der Kont
 | `settings.account.agentKeys.boundTo` | nur {{address}} |
 | `settings.account.agentKeys.lastUsed` | zuletzt {{time}} |
 | `settings.account.agentKeys.empty` | Noch kein Agenten-Zugang. Einrichten über das Kontextmenü eines Servers. |
+| `settings.account.agentKeys.revokedForeign` | Zugang entzogen. Die Registrierung auf {{server}} trägt den Key eines anderen Kontos und bleibt stehen. |
+| `settings.account.agentKeys.revokedUnknown` | Zugang entzogen. Die Registrierung konnte nicht entfernt werden — Befehl kopieren und auf dem Server ausführen. |
+| `servers.agentAccess.result.copy` | Kopieren (auch von Task 14 genutzt) |
 | `vault.agents.claude` | Claude Code |
 | `vault.agents.codex` | Codex |
-| `settings.account.apiKeys.neverUsed`, `common.error`, `common.success`, `servers.time.*` | (Bestand) |
+| `settings.account.apiKeys.neverUsed`, `settings.account.apiKeys.copyError`, `common.error`, `common.success`, `servers.time.*` | (Bestand) |
 
 ---
 
-### Task 16: CSP Report-Only und Doku
+### Task 11: Vault-MCP-Anbieter (`vault_list`, `browser_fill_credential`)
 
 **Files:**
-- Modify: `server/lib/staticSite.js` (`mountStaticSite` Z. 13-19 bekommt als erste Middleware `setContentSecurityPolicy`; neu darüber `HOST_PATTERN`, `buildContentSecurityPolicy`, `setContentSecurityPolicy`). Das ist die einzige Stelle, die das Client-`index.html` und die Assets ausliefert: `server/index.js:121-122` ruft `mountStaticSite(app, path.join(__dirname, "../dist"))` nur bei `NODE_ENV === "production"`, nach allen `/api`-Mounts; `express.static` liefert `/` und `/assets/*`, der Fallback `app.get("*name")` liefert `index.html` für jede Client-Route.
+- Create: `server/lib/vault/fill.js` (Prüfungen 3a/3b, 4, 5, Fokusprüfung, Ausfüllen per CDP)
+- Create: `server/lib/vault/mcpProvider.js` (`createVaultProvider`, Werkzeugdefinitionen, Ablauf mit Freigabe, Audit)
+- Create: `server/lib/vault/__tests__/helpers/vaultBed.js` (Test-Helfer: ersetzt Sichtbarkeit, Werte, Rechte und Modelle über `require.cache`; von beiden Testdateien dieses Tasks genutzt, kein `*.test.js`, läuft also nicht selbst)
+- Test: `server/lib/vault/__tests__/mcpProvider.test.js`
+- Modify: `server/routes/mcp.js` (Stand nach Task 2: Kopf mit `browserTools`/`browserProvider`/`createMcpServer`)
+- Modify: `server/lib/mcp/__tests__/mcpRoute.test.js` (aus Task 2: Fake für `vault/mcpProvider` vor `require("../../../routes/mcp")`)
+- Modify: `server/lib/browser/__tests__/chromium.e2e.test.js` (Stand nach Task 9, der nur einen Test am Dateiende anhängt: neue `require`-Zeilen nach Z. 8, Testseiten und Helfer nach Z. 22, zwei neue Tests am Dateiende; die vorhandenen Tests bleiben unverändert)
+
+**Interfaces:**
+- Consumes:
+  - Task 1: `VaultError(code, message = VaultErrorMessage[code], details = {})` (ohne Meldung gilt der Standardtext), `VaultErrorCode.{ITEM_UNKNOWN, WRONG_TYPE, ITEM_UNREADABLE, SESSION_TAINTED, VIA_NOT_ALLOWED, PERSISTENT_NOT_ALLOWED, ORIGIN_MISMATCH, NOT_PASSWORD_FIELD, BAD_USERNAME_FIELD, FOCUS_LOST, APPROVAL_TIMEOUT, APPROVAL_UNAVAILABLE, APPROVAL_PENDING, APPROVAL_BUSY, APPROVAL_DENIED, CLIENT_GONE, RATE_LIMITED, NO_SECRET}` (`server/lib/vault/errors.js`); `readSecret(itemId, field) → Promise<string|null>` (`secrets.js`); `isVaultEnabled() → boolean` (`state.js`); `Permission.VAULT_USE`; Audit-Aktionen `vault.use`, `vault.use_denied`, `vault.item_unreadable`, `vault.persistent_not_allowed`, Audit-Konvention `resource: "vault"`, `resourceId: item.id` (falls ein Eintrag feststeht), `details.item: itemRef(item)`; Modell `VaultItem` (`lastUsedAt`; der `afterFind`-Hook liefert `fields` als Objekt und `approvalRequired` als Boolean); Modell `ApiKey` (`pending`); `process.env.VAULT_KEY` (64 Hex) für `vaultGuard.markFilled`.
+  - Task 2: `createMcpServer({ providers, now })` aus `server/lib/mcp/server.js`; `Provider = { name, available(ctx) → Promise<boolean>, list(ctx) → Tool[], has(name, ctx) → boolean, call(name, args, ctx) → Promise<ToolResult>, forgetTransport(transportId) → void }`; `ctx = { accountId, agent, keyId, impersonatorId, transportId, ipAddress, userAgent, signal }` (`impersonatorId` = `req.session?.impersonatorId ?? null`); `handle({ body, transportId, accountId, keyId = null, agent = null, impersonatorId = null, ipAddress, userAgent, signal })`. Der Rahmen ruft je Anfrage `await provider.available(ctx)` vor `list(ctx)`/`has(name, ctx)` mit demselben `ctx`-Objekt (Task 2, `availableProviders`); der Vault-Anbieter merkt sich darin `connect.browser` je `ctx` in einer `WeakMap`. Modulweite Konstante `browserTools` in `server/routes/mcp.js`; Testdatei `server/lib/mcp/__tests__/mcpRoute.test.js`.
+  - Task 3: `itemRef(item) → string`, `visibleItems({ accountId, agent }) → Promise<VaultItem[]>`, `findVisibleItem({ accountId, agent }, ref) → Promise<VaultItem>` (wirft `VaultError(ITEM_UNKNOWN)`), `canUseVault(accountId) → Promise<boolean>` (`vault.use` oder aktives Mitglied einer Organisation).
+  - Task 4: `server/utils/auditContext.js` und `createAuditLog` ergänzen `details.impersonatorId` in jedem Audit einer Impersonations-Session; dieser Task trägt die Kennung nicht selbst ein, `ctx.impersonatorId` steuert hier nur die Freigabepflicht.
+  - Task 6: `requestApproval({ accountId, keyId, transportId, agentType, entryName, item, target, signal }) → Promise<"once"|"session">` — antwortet sofort `"session"`, wenn `hasSessionApproval(transportId, item)` gilt (Stempel aus `item.updatedAt` und den sortierten `item.fields.origins`); dieser Task übergibt deshalb den ganzen Eintrag, wie `findVisibleItem` ihn liefert. Frühe Ablehnungen (Sperre nach `deny` → `APPROVAL_DENIED`, `APPROVAL_PENDING`, `APPROVAL_BUSY`, `APPROVAL_UNAVAILABLE`, vorab abgebrochenes `CLIENT_GONE`) wirft `approvals.js` als `new VaultError(code, undefined, { early: true })` und auditiert sie nicht; Ablehnung per Antwort, Timeout und `client_gone` nach gezeigter Karte auditiert `approvals.js` selbst (`vault.deny`/`vault.approval_timeout`, Fehler mit `details: {}`). Dieser Task schreibt deshalb für einen Fehler aus `requestApproval` nur dann `vault.use_denied`, wenn `!APPROVAL_CODES.has(err.code) || err.details?.early`; jeder Fehler, den dieser Task selbst wirft (auch sein `CLIENT_GONE` nach der Freigabe), wird hier auditiert. `forgetTransport(transportId)`.
+  - Task 7: `createBrowserTools(…).resolveSession(ctx, sessionId) → BrowserSession` (Agenten-Regeln eingeschlossen; wirft `BrowserError` `UNKNOWN_SESSION` / `SESSION_CLOSED` / `NO_SESSION` / `AMBIGUOUS_SESSION`), Aufruf `getBrowserTools().resolveSession(ctx, args.sessionId ?? null)`; `session.keyId`, `session.contextKey`; `pool.open({ accountId, url, origin, keyId })`, `pool.getOwned(accountId, sessionId, { keyId } = {})`, `pool.listForCaller({ accountId, keyId })`; Popups übernehmen `contextKey` vom Öffner. Der `via`-Verstoß beim Öffnen ist dort ein Browser-Fehler; Prüfung 3b dieses Tasks (Sitzung läuft bereits über `via` bzw. `persistent`) wirft `VaultError(VIA_NOT_ALLOWED|PERSISTENT_NOT_ALLOWED)`.
+  - Task 9: `vaultGuard.isTainted(contextKey) → boolean`; `vaultGuard.markFilled(contextKey, { backendNodeIds, secret }) → void` (synchron; prüft im selben Schritt den Taint und wirft `VaultError(SESSION_TAINTED)`, ohne etwas zu merken — dieser Task ruft es unmittelbar vor dem ersten `Input.insertText` und behandelt den Wurf wie Prüfung 3a); `vaultGuard.isFilled(contextKey) → boolean`; `vaultGuard.redactText(contextKey, text) → string` (filtert hier die Fehlertexte von `browser_fill_credential`); `BrowserSession.evaluate()` ruft `assertEvaluateAllowed(session)` (markiert Taint); `vaultGuard.assertInputAllowed(session, tool, args)` in `act` (Mittelklick immer, im befüllten Kontext `browser_key` mit Strg/Meta/Umschalt außer `Shift+Tab` und `clickCount > 1` → `vault.input_locked`); Schwärzung in `buildSnapshot` und den Textfiltern von `tools.js`; Screenshot-Sperre. Die Audits `vault.evaluate_locked`/`vault.screenshot_locked`/`vault.input_locked` schreibt `tools.js`, nicht dieser Task.
+- Produces:
+  - `createVaultProvider({ getBrowserTools, approvals = require("./approvals"), audit = defaultAudit }) → Provider` mit `name: "vault"`; `available(ctx)` = `isVaultEnabled()` und `canUseVault(ctx.accountId)`; `list(ctx)` → `[vault_list]` bzw. `[vault_list, browser_fill_credential]` mit `connect.browser`; `has(name, ctx)` entsprechend; `forgetTransport(id)` → `approvals.forgetTransport(id)`.
+  - `vault_list` → `{ content: [{ type: "text", text: JSON }] }`, JSON-Liste von `{ item, owner: "personal"|<Organisationsname>, type, description, username?, host?, origins?, hosts?, approvalRequired, usableBy: string[] }`; nie Werte.
+  - `browser_fill_credential({ item, passwordRef, usernameRef?, sessionId? })` → Text exakt `Benutzername und Passwort von <item> eingetragen.` bzw. ohne `usernameRef` `Passwort von <item> eingetragen.`; Fehler als `{ isError: true }` mit `<Meldung> (<vault-Code>)`, die Meldung durch `vaultGuard.redactText` der Sitzung gefiltert. Freigabe, wenn `item.approvalRequired` oder `ctx.impersonatorId` gesetzt ist. Nach der Freigabe: `ctx.signal` abgebrochen → `CLIENT_GONE`; Key (`ctx.keyId`) nicht mehr vorhanden oder `pending` → `ITEM_UNKNOWN`; `findVisibleItem` neu (nicht mehr sichtbar → `ITEM_UNKNOWN`), Typ und Benutzername erneut, Ursprünge anders als bei der Anfrage → `ORIGIN_MISMATCH`; danach Prüfungen 3 bis 5 mit dem neuen Stand. `lastUsedAt` wird nach dem Audit `vault.use` mit `silent: true` gesetzt (`updatedAt` bleibt, sonst passte der Stempel einer „Für diese Sitzung“-Freigabe aus Task 6 nach jedem Ausfüllen nicht mehr); ein Fehler dabei wird nur geloggt.
+  - `fill.js`: `checkFillTarget(session, { passwordRef, usernameRef }, origins) → Promise<{ passwordNodeId, usernameNodeId|null }>`; `fillCredential(session, { passwordNodeId, usernameNodeId, username, password }) → Promise<void>` (je Feld `DOM.focus`, Leeren über `DOM.resolveNode` + `Runtime.callFunctionOn("function () { this.value = ''; }")` statt Alles-Markieren, Fokusprüfung über `backendNodeId` durch Shadow-Roots und Frames, dann `vaultGuard.markFilled` unmittelbar vor dem ersten `Input.insertText`, nur mit dem Passwortfeld; ist die Sitzung inzwischen geschlossen, `BrowserError(SESSION_CLOSED)` ohne Eingabe); **zusätzlich** `assertFillableSession(session) → void` (Prüfungen 3a, 3b) und `normalizeOrigin(value) → string|null` (`new URL(value).origin`, also dieselbe Form, in der Task 5 `origins` speichert — auf gespeicherte Ursprünge angewandt ändert sie nichts; `null` bei opaken/ungültigen Ursprüngen). Verglichen wird `normalizeOrigin` des Frames und jedes Vorfahren-Frames gegen die Menge `origins.map(normalizeOrigin)`.
+  - Fehler `VaultError(RATE_LIMITED)` bei mehr als 20 Ausfüllversuchen je Aufrufer (`accountId`, `keyId`) und Minute (SEC-RATE-01) und `VaultError(NO_SECRET)` für einen Login-Eintrag ohne gespeichertes Passwort; beide mit dem Standardtext aus `VaultErrorMessage`. `NO_SECRET` geht als `vault.use_denied` mit `code: "vault.no_secret"` ins Audit, nicht als `vault.item_unreadable` (das bleibt dem Entschlüsselungsfehler aus `readSecret`).
+  - Audit: `vault.use` nach erfolgreichem Ausfüllen; jede Ablehnung als `vault.use_denied` (bzw. `vault.item_unreadable`/`vault.persistent_not_allowed`) mit `code`, `stage` (`before_approval`/`after_approval`) und `target`, auch frühe Ablehnungen der Freigabe (`details.early`); nicht noch einmal die Ablehnungen, die `approvals.js` selbst auditiert (Code aus `APPROVAL_CODES` ohne `details.early`).
+  - Test-Helfer `vaultBed.js`: `state`, `reset({ items, secrets, permissions, memberships, orgs, entries, apiKeys })`.
+
+**Design:** kein UI-Anteil.
+
+**Tests:** 8 Tests: 6 in `mcpProvider.test.js`, test-first (der Vertrag steht in der Spec), und 2 in der Chromium-Reihe. (1)–(5) über die Naht echte `BrowserSession` auf `createFakeCdp` + echte `createBrowserTools` + Fake-Pool + Fake-Freigaben mit steuerbarer Antwort, (6) mit echtem `BrowserPool` auf `createFakeCdp`: (1) Spec-Test 5: serialisierte `vault_list`-Antwort enthält keinen gespeicherten Wert, `readSecret` wird nie aufgerufen, Organisationseintrag als `org:3/shop-api` mit Organisationsname; (2) Freigabe nach 100 s (Fake-Uhr) füllt noch, die Sitzung ist während der Wartezeit frei, ein zweiter Aufruf bekommt `vault.approval_pending` statt `BUSY` und landet als `vault.use_denied` im Audit, Audit `vault.use` ohne Wert, `lastUsedAt` mit `silent: true` gesetzt; ein Aufruf mit `impersonatorId` wartet auch bei einem Eintrag ohne Freigabepflicht auf die Freigabe; (3) Review Focus 2 und Prüfungen nach der Freigabe, je ein Fall: `browser_evaluate` während der Wartezeit → `vault.session_tainted`, Mitgliedschaft endet (Eintrag nicht mehr sichtbar) → `vault.item_unknown`, Ursprung hinzugefügt → `vault.origin_mismatch`, Key entzogen → `vault.item_unknown`; jedes Mal nichts getippt, Audit `vault.use_denied` mit Code, `after_approval`, Ziel; (4) über `createMcpServer`: ohne `connect.browser` nur `vault_list`, `browser_fill_credential` ist `-32602`; (5) Fokusverlust → `vault.focus_lost` ohne `Input.insertText`; (6) Spec-Test 10, Teil `browser_fill_credential`: ein Agenten-Key mit der `sessionId` einer Nutzersitzung (`keyId` null) oder einer Sitzung von Key 8 bekommt denselben Text wie für eine unbekannte (`UNKNOWN_SESSION`), ohne `sessionId` `NO_SESSION` ohne fremde Sitzung zu nennen; kein `DOM.focus`, kein `Input.insertText`, kein `readSecret`; Audit `vault.use_denied` mit dem Code. Chromium-Reihe (per `OUTPOST_BROWSER_E2E_LAUNCHER` zugeschaltet): (7) Spec-Test 7 inkl. Erfolg im eigenen iframe (Fokusprüfung durch Frames); (8) Spec-Test 8 + Review Focus 1 + Spec-Test 12, dazu Auswahl und Zwischenablage: nach dem Ausfüllen `browser_key` `Control+a` und `browser_click` mit `clickCount: 3` → `vault.input_locked`, ein zweites Ausfüllen leert die Felder statt sie zu markieren (Werte nicht doppelt), ein Mittelklick in einem neuen Kontext ist als Werkzeug gesperrt und fügt auch am Wächter vorbei kein Passwort ein; Positivkontrolle: ein per Dreifachklick markiertes `primary-probe` aus einem dritten Kontext kommt per Mittelklick an, sonst meldet der Test per `t.diagnostic`, dass die Negativprüfung in diesem Chromium nichts zeigt (dann manuell abnehmen), und schließt die Probe-Sitzung. Nicht getestet: Werkzeug-Schemas und Beschreibungen (Konstanten), Registrierung in `mcp.js` (Weiterreichung), Weiterreichung der übrigen Freigabe-Fehler (Task 6 testet sie; (2) zeigt das Audit an `approval_pending`), das Auslassen der von `approvals.js` selbst auditierten Ablehnungen (eine Bedingung; Task 6 testet deren Audit), Nachschlagen des Servernamens für die Karte, die Drossel von 20 Ausfüllungen je Minute (eine Zeile Zählung, Konfig-nah), `vault.no_secret` (eine Verzweigung mit Standardtext), `CLIENT_GONE` nach abgebrochenem `signal` und `SESSION_CLOSED` in `markOnce` (je eine Zeile ohne weitere Wirkung), der nur geloggte Fehler beim Setzen von `lastUsedAt` (Log-Ausgabe), die Impersonations-Kennung im Audit (kommt aus `createAuditLog`, Task 4 testet sie). SEC: SEC-INPUT-01 (Argumentprüfung), SEC-ERR-01 (unerwartete Fehler nur generisch, Fehlertexte durch `redactText`), SEC-SECRET-01 (Tests 1, 2, 8), SEC-IDOR-01/SEC-TENANT-01 (`findVisibleItem` vor und nach der Freigabe, `resolveSession`; Tests 3, 6), SEC-RBAC-01 (Freigabe bei Impersonation; Test 2), SEC-RATE-01 (Drossel), SEC-SESS-02 (`forgetTransport` an Freigaben, Key nach der Freigabe geprüft; Test 3), SEC-PII-01 (Audit ohne Benutzernamen und Werte).
+
+**Parallel:** none — Welle D enthält nur diesen Task: Er setzt `approvals.js` (Task 6, Welle C), `resolveSession` (Task 7) und `vaultGuard` samt `assertInputAllowed` (Task 9) voraus und ändert `chromium.e2e.test.js` nach Task 9; Task 16 (Welle E) beschreibt sein Verhalten.
+
+- [ ] **Step 1: Test-Helfer anlegen**
+
+`server/lib/vault/__tests__/helpers/vaultBed.js`:
+
+```js
+const { Sequelize } = require("sequelize");
+const { VaultError, VaultErrorCode } = require("../../errors");
+const { Permission } = require("../../../../permissions/registry");
+
+const fake = (path, exports) => {
+    const resolved = require.resolve(path);
+    require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports };
+};
+
+const state = {
+    enabled: true, items: [], secrets: new Map(), permissions: new Set(), memberships: 0,
+    orgs: [], entries: new Map(), apiKeys: new Set(), updates: [], secretReads: 0,
+};
+
+const itemRef = (item) => (item.organizationId ? `org:${item.organizationId}/${item.name}` : item.name);
+
+// Installed on require, before the provider is loaded: it destructures these modules.
+fake("../../../../utils/database", new Sequelize({ dialect: "sqlite", storage: ":memory:", logging: false }));
+fake("../../state", { isVaultEnabled: () => state.enabled });
+fake("../../visibility", {
+    itemRef,
+    visibleItems: async () => state.items.map((item) => ({ ...item })),
+    findVisibleItem: async (caller, ref) => {
+        const item = state.items.find((candidate) => itemRef(candidate) === ref);
+        if (!item) throw new VaultError(VaultErrorCode.ITEM_UNKNOWN, `No vault entry ${ref} is available to this connection.`);
+        return { ...item };
+    },
+    canUseVault: async () => state.permissions.has(Permission.VAULT_USE) || state.memberships > 0,
+});
+fake("../../secrets", {
+    readSecret: async (itemId, field) => {
+        state.secretReads += 1;
+        return state.secrets.get(`${itemId}:${field}`) ?? null;
+    },
+});
+fake("../../../../utils/permission", { hasAccountPermission: async (accountId, permission) => state.permissions.has(permission) });
+fake("../../../../models/VaultItem", {
+    update: async (values, options) => {
+        state.updates.push({ values, where: options.where, silent: options.silent });
+        return [1];
+    },
+});
+fake("../../../../models/ApiKey", { count: async ({ where }) => (where.pending === false && state.apiKeys.has(where.id) ? 1 : 0) });
+fake("../../../../models/Organization", { findAll: async () => state.orgs });
+fake("../../../../models/Entry", { findByPk: async (id) => state.entries.get(id) ?? null });
+
+const reset = ({ items = [], secrets = {}, permissions = [], memberships = 0, orgs = [], entries = [], apiKeys = [] } = {}) => {
+    Object.assign(state, {
+        enabled: true, items, secrets: new Map(Object.entries(secrets)), permissions: new Set(permissions), memberships,
+        orgs, entries: new Map(entries.map((entry) => [entry.id, entry])), apiKeys: new Set(apiKeys), updates: [], secretReads: 0,
+    });
+};
+
+module.exports = { state, reset };
+```
+
+- [ ] **Step 2: Write the failing test**
+
+`server/lib/vault/__tests__/mcpProvider.test.js`:
+
+```js
+process.env.VAULT_KEY = "ab".repeat(32);
+const test = require("node:test");
+const assert = require("node:assert");
+const bed = require("./helpers/vaultBed");
+const { BrowserSession } = require("../../browser/BrowserSession");
+const { BrowserPool } = require("../../browser/BrowserPool");
+const { createFakeCdp, flush } = require("../../browser/__tests__/helpers/fakeCdp");
+const { createBrowserTools } = require("../../browser/tools");
+const vaultGuard = require("../../browser/vaultGuard");
+const { createMcpServer } = require("../../mcp/server");
+const { Permission } = require("../../../permissions/registry");
+const { VaultError, VaultErrorCode } = require("../errors");
+const { createVaultProvider } = require("../mcpProvider");
+
+const FILL = "browser_fill_credential";
+const SECRET = "hunter2-vault";
+const LOGIN = {
+    id: 41, accountId: 1, organizationId: null, name: "github", type: "login", description: null,
+    fields: { username: "ada", origins: ["https://login.test"] }, approvalRequired: false, allServers: true,
+};
+const ORG_API = {
+    id: 42, accountId: null, organizationId: 3, name: "shop-api", type: "api_key", description: "Shop API",
+    fields: { hosts: ["api.shop.test"], headerName: "Authorization", headerTemplate: "Bearer {{secret}}" }, approvalRequired: true, allServers: true,
+};
+
+const fakePage = () => {
+    const page = {
+        nodes: new Map([
+            [11, { origin: "https://login.test", ancestors: [], input: true, type: "password", connected: true }],
+            [12, { origin: "https://login.test", ancestors: [], input: true, type: "text", connected: true }],
+        ]),
+        focused: null,
+        holdFocus: false,
+    };
+    const nodeId = (objectId) => Number(objectId.slice("node-".length));
+    const cdp = createFakeCdp({
+        "DOM.resolveNode": ({ backendNodeId }) => ({ object: { objectId: `node-${backendNodeId}` } }),
+        "Runtime.evaluate": ({ expression }) => (expression === "document" ? { result: { objectId: "document" } } : { result: { value: 1 } }),
+        "Runtime.callFunctionOn": ({ objectId }) => {
+            if (objectId !== "document") return { result: { value: page.nodes.get(nodeId(objectId)) } };
+            return { result: page.focused === null ? { type: "object", subtype: "null", value: null } : { objectId: `node-${page.focused}` } };
+        },
+        "DOM.describeNode": ({ objectId }) => ({ node: { backendNodeId: nodeId(objectId), nodeName: "INPUT" } }),
+        "DOM.focus": ({ backendNodeId }) => {
+            if (!page.holdFocus) page.focused = backendNodeId;
+            return {};
+        },
+    });
+    return { page, cdp };
+};
+
+let opened = 0;
+const openSession = (cdp) => {
+    opened += 1;
+    const session = new BrowserSession({
+        id: `browser-${opened}`, accountId: 1, profile: "ephemeral", origin: "agent", cdp, targetId: `T${opened}`, cdpSessionId: `S${opened}`,
+    });
+    session.keyId = null;
+    session.contextKey = `ctx-${opened}`;
+    session.state.url = "https://login.test/signin";
+    session.refs.assign(11, 'textbox "Password"');
+    session.refs.assign(12, 'textbox "User"');
+    return session;
+};
+
+const fakePool = (sessions) => {
+    const mine = (accountId, keyId) => sessions.filter((s) => s.accountId === accountId && (keyId === null || s.keyId === keyId));
+    return {
+        getOwned: (accountId, id, { keyId = null } = {}) => mine(accountId, keyId).find((s) => s.id === id) ?? null,
+        listForCaller: ({ accountId, keyId = null }) => mine(accountId, keyId).map((s) => s.summary()),
+        listForAccount: (accountId) => mine(accountId, null).map((s) => s.summary()),
+    };
+};
+
+const fakeApprovals = () => {
+    const open = [];
+    return {
+        open,
+        requestApproval: (request) => {
+            if (open.some((o) => o.request.transportId === request.transportId && o.request.item.id === request.item.id))
+                return Promise.reject(new VaultError(VaultErrorCode.APPROVAL_PENDING, undefined, { early: true }));
+            return new Promise((resolve) => {
+                const pending = {
+                    request,
+                    answer: (decision) => {
+                        open.splice(open.indexOf(pending), 1);
+                        resolve(decision);
+                    },
+                };
+                open.push(pending);
+            });
+        },
+        forgetTransport: () => {},
+    };
+};
+
+const setup = ({ items = [LOGIN], permissions = [Permission.VAULT_USE, Permission.CONNECT_BROWSER] } = {}) => {
+    bed.reset({ items, secrets: { "41:password": SECRET, "42:token": "tok-123-secret" }, permissions, orgs: [{ id: 3, name: "Shop GmbH" }], apiKeys: [99] });
+    const { page, cdp } = fakePage();
+    const session = openSession(cdp);
+    const pool = fakePool([session]);
+    const audit = [];
+    const record = async (entry) => { audit.push(entry); };
+    const browserTools = createBrowserTools({ getPool: () => pool, audit: record });
+    const approvals = fakeApprovals();
+    const provider = createVaultProvider({ getBrowserTools: () => browserTools, approvals, audit: record });
+    const ctx = (transportId = "A") => ({
+        accountId: 1, keyId: null, agent: null, impersonatorId: null, transportId, ipAddress: "10.0.0.1", userAgent: "claude-code", signal: new AbortController().signal,
+    });
+    const text = (result) => result.content.map((c) => c.text).join("");
+    const typed = () => cdp.callsOf("Input.insertText").map((call) => call.params.text);
+    const vaultAudit = () => audit.filter((entry) => entry.action.startsWith("vault."));
+    return { page, cdp, session, pool, audit, vaultAudit, browserTools, approvals, provider, ctx, text, typed };
+};
+
+const until = async (condition) => {
+    for (let i = 0; i < 200 && !condition(); i++) await flush();
+    assert.ok(condition(), "condition not reached");
+};
+
+const rpc = (id, method, params = {}) => ({ jsonrpc: "2.0", id, method, params });
+
+test("vault_list names every visible entry without a stored value; organization entries as org:<id>/<name>", async () => {
+    const { provider, ctx, text } = setup({ items: [LOGIN, ORG_API] });
+    const result = await provider.call("vault_list", {}, ctx());
+
+    const serialized = JSON.stringify(result);
+    for (const value of [SECRET, "tok-123-secret"]) assert.ok(!serialized.includes(value), `vault_list leaks ${value}`);
+    assert.strictEqual(bed.state.secretReads, 0, "vault_list never decrypts");
+    assert.deepStrictEqual(JSON.parse(text(result)), [
+        {
+            item: "github", owner: "personal", type: "login", description: null, username: "ada",
+            origins: ["https://login.test"], approvalRequired: false, usableBy: ["browser_fill_credential"],
+        },
+        {
+            item: "org:3/shop-api", owner: "Shop GmbH", type: "api_key", description: "Shop API",
+            hosts: ["api.shop.test"], approvalRequired: true, usableBy: [],
+        },
+    ]);
+});
+
+test("an approval answered after more than 90 s still fills: the wait runs outside runAgent and leaves the session free; an impersonated call always asks", async (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+    const env = setup({ items: [{ ...LOGIN, approvalRequired: true }] });
+    const pending = env.provider.call(FILL, { item: "github", passwordRef: "e1", usernameRef: "e2" }, env.ctx("A"));
+    await until(() => env.approvals.open.length === 1);
+    assert.strictEqual(env.session.agentTool, null, "nobody holds the session while the user decides");
+    assert.strictEqual(env.approvals.open[0].request.target, "https://login.test");
+
+    const second = await env.provider.call(FILL, { item: "github", passwordRef: "e1" }, env.ctx("A"));
+    assert.match(env.text(second), /\(vault\.approval_pending\)$/, "a second call meets the open approval, not a busy session");
+
+    t.mock.timers.tick(100_000);
+    env.approvals.open[0].answer("once");
+    const result = await pending;
+
+    assert.strictEqual(env.text(result), "Benutzername und Passwort von github eingetragen.");
+    assert.deepStrictEqual(env.typed(), ["ada", SECRET]);
+    assert.ok(vaultGuard.isFilled(env.session.contextKey));
+    assert.deepStrictEqual(env.vaultAudit().map((entry) => [entry.action, entry.details.code]),
+        [["vault.use_denied", "vault.approval_pending"], ["vault.use", undefined]]);
+    const use = env.vaultAudit().find((entry) => entry.action === "vault.use");
+    assert.deepStrictEqual([use.resource, use.resourceId, use.details.item, use.details.target, use.details.approval],
+        ["vault", 41, "github", "https://login.test", "once"]);
+    assert.ok(!JSON.stringify(env.audit).includes(SECRET));
+    assert.deepStrictEqual(bed.state.updates.map(({ where, silent }) => ({ where, silent })), [{ where: { id: 41 }, silent: true }], "updatedAt stays, a session approval keeps matching");
+
+    bed.state.items[0].approvalRequired = false;
+    const impersonated = env.provider.call(FILL, { item: "github", passwordRef: "e1" }, { ...env.ctx("B"), impersonatorId: 7 });
+    await until(() => env.approvals.open.length === 1);
+    env.approvals.open[0].answer("once");
+    assert.strictEqual(env.text(await impersonated), "Passwort von github eingetragen.", "an impersonated call waits for the user even where the entry needs no approval");
+});
+
+test("after the approval every check runs again with the entry as it is now; a failure types nothing and is audited after_approval", async () => {
+    const cases = [
+        ["browser_evaluate in the session", "vault.session_tainted", async (env) => {
+            const evaluated = await env.browserTools.call("browser_evaluate", { expression: "1", sessionId: env.session.id }, env.ctx("A"));
+            assert.ok(!evaluated.isError, "the session is free for other tools while the user decides");
+        }],
+        ["the membership that made the entry visible ends", "vault.item_unknown", () => {
+            bed.state.items = [];
+        }],
+        ["an origin is added to the entry", "vault.origin_mismatch", () => {
+            bed.state.items[0].fields = { ...LOGIN.fields, origins: [...LOGIN.fields.origins, "https://other.test"] };
+        }],
+        ["the key of the connection is revoked", "vault.item_unknown", () => {
+            bed.state.apiKeys.clear();
+        }],
+    ];
+    for (const [change, code, during] of cases) {
+        const env = setup({ items: [{ ...LOGIN, approvalRequired: true }] });
+        const pending = env.provider.call(FILL, { item: "github", passwordRef: "e1", usernameRef: "e2" }, { ...env.ctx("A"), keyId: 99 });
+        await until(() => env.approvals.open.length === 1);
+        await during(env);
+        env.approvals.open[0].answer("once");
+        const result = await pending;
+
+        assert.strictEqual(result.isError, true, change);
+        assert.ok(env.text(result).endsWith(`(${code})`), `${change}: ${env.text(result)}`);
+        assert.deepStrictEqual(env.typed(), [], change);
+        const denied = env.vaultAudit().find((entry) => entry.action === "vault.use_denied");
+        assert.deepStrictEqual([denied.details.code, denied.details.stage, denied.details.target, denied.details.item],
+            [code, "after_approval", "https://login.test", "github"], change);
+    }
+});
+
+test("without connect.browser the MCP endpoint lists only vault_list and answers browser_fill_credential as an unknown tool", async () => {
+    const env = setup({ permissions: [Permission.VAULT_USE] });
+    const mcp = createMcpServer({ providers: [env.provider] });
+    const init = await mcp.handle({
+        body: rpc(1, "initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "claude-code", version: "1" } }), accountId: 1,
+    });
+    const transportId = init.headers["Mcp-Session-Id"];
+    const names = async () => (await mcp.handle({ body: rpc(2, "tools/list"), transportId, accountId: 1 })).body.result.tools.map((tool) => tool.name);
+
+    assert.deepStrictEqual(await names(), ["vault_list"]);
+    const called = await mcp.handle({ body: rpc(3, "tools/call", { name: FILL, arguments: { item: "github", passwordRef: "e1" } }), transportId, accountId: 1 });
+    assert.strictEqual(called.body.error.code, -32602);
+    assert.deepStrictEqual(env.typed(), []);
+
+    bed.state.permissions.add(Permission.CONNECT_BROWSER);
+    assert.deepStrictEqual(await names(), ["vault_list", FILL]);
+});
+
+test("when the page keeps the focus on another element the fill stops with vault.focus_lost before Input.insertText", async () => {
+    const env = setup();
+    env.page.focused = 99;
+    env.page.holdFocus = true;
+    const result = await env.provider.call(FILL, { item: "github", passwordRef: "e1" }, env.ctx("A"));
+
+    assert.match(env.text(result), /\(vault\.focus_lost\)$/);
+    assert.strictEqual(env.cdp.callsOf("Input.insertText").length, 0);
+    assert.strictEqual(env.vaultAudit().find((entry) => entry.action === "vault.use_denied").details.code, "vault.focus_lost");
+});
+
+test("an agent key fills only in its own sessions: a foreign sessionId answers like an unknown one, none falls back to another's session", async () => {
+    bed.reset({ items: [LOGIN], secrets: { "41:password": SECRET }, permissions: [Permission.VAULT_USE, Permission.CONNECT_BROWSER] });
+    let targets = 0;
+    let contexts = 0;
+    const instances = [];
+    const launcher = {
+        started: [],
+        async start({ key }) {
+            launcher.started.push(key);
+            return { key, port: 9222 + launcher.started.length };
+        },
+        async stop() {},
+        async endpoint(port) { return `ws://10.0.0.7:${port}/devtools/browser/x`; },
+    };
+    const connectCdp = async () => {
+        const cdp = createFakeCdp({
+            "Target.createBrowserContext": () => ({ browserContextId: `ctx-${++contexts}` }),
+            "Target.createTarget": () => ({ targetId: `T${++targets}` }),
+            "Target.attachToTarget": ({ targetId }) => ({ sessionId: `S-${targetId}` }),
+        });
+        instances.push(cdp);
+        return cdp;
+    };
+    const pool = new BrowserPool({
+        getSettings: async () => ({ enabled: true, maxSessions: 4, idleMinutes: 30, callbackHost: "outpost" }), launcher, connectCdp,
+        createVia: async () => { throw new Error("no via in this test"); },
+    });
+    const audit = [];
+    const record = async (entry) => { audit.push(entry); };
+    const browserTools = createBrowserTools({ getPool: () => pool, audit: record });
+    const provider = createVaultProvider({ getBrowserTools: () => browserTools, approvals: fakeApprovals(), audit: record });
+    const { session: users } = await pool.open({ accountId: 1, origin: "user" });
+    const { session: theirs } = await pool.open({ accountId: 1, keyId: 8 });
+    const agent = {
+        accountId: 1, keyId: 41, agent: { keyId: 41, entryId: 7, agentType: "claude" }, impersonatorId: null,
+        transportId: "T41", ipAddress: "10.0.0.5", userAgent: "claude-code", signal: new AbortController().signal,
+    };
+    const fillIn = async (sessionId) => {
+        const result = await provider.call(FILL, { item: "github", passwordRef: "e1", ...(sessionId && { sessionId }) }, agent);
+        assert.strictEqual(result.isError, true);
+        return result.content.map((c) => c.text).join("");
+    };
+
+    const unknown = await fillIn("browser-unknown");
+    for (const foreign of [users.id, theirs.id])
+        assert.strictEqual((await fillIn(foreign)).replace(foreign, "X"), unknown.replace("browser-unknown", "X"), "a foreign session answers like an unknown one");
+    const none = await fillIn(null);
+    assert.match(none, /No browser session is open/);
+    assert.ok(![users.id, theirs.id].some((id) => none.includes(id)), "neither the user's nor the other key's session is taken or named");
+
+    for (const method of ["DOM.focus", "Input.insertText"])
+        assert.deepStrictEqual(instances.flatMap((cdp) => cdp.callsOf(method)), [], method);
+    assert.strictEqual(bed.state.secretReads, 0);
+    assert.deepStrictEqual(audit.filter((entry) => entry.action === "vault.use_denied").map((entry) => entry.details.code),
+        ["UNKNOWN_SESSION", "UNKNOWN_SESSION", "UNKNOWN_SESSION", "NO_SESSION"]);
+});
+```
+
+- [ ] **Step 3: Run test to verify it fails**
+
+Run: `node --test server/lib/vault/__tests__/mcpProvider.test.js`
+Expected: FAIL, alle Tests brechen beim Laden ab mit `Error: Cannot find module '../mcpProvider'`.
+
+- [ ] **Step 4: Implement `server/lib/vault/fill.js`**
+
+```js
+const vaultGuard = require("../browser/vaultGuard");
+const { BrowserError, BrowserErrorCode } = require("../browser/errors");
+const { VaultError, VaultErrorCode } = require("./errors");
+
+const OBJECT_GROUP = "vault-fill";
+const USERNAME_TYPES = new Set(["text", "email", "tel"]);
+const FRAME_OWNERS = new Set(["IFRAME", "FRAME"]);
+const MAX_FRAME_DEPTH = 16;
+// Clearing instead of select-all: a selection would land in the primary selection, which every
+// context of the browser instance shares and a middle click pastes elsewhere.
+const CLEAR = "function () { this.value = ''; }";
+const GONE = /No node (found|with given id)|detached from document|Could not find node/i;
+
+// Runs in the realm of the element's own frame and reads only the global location, which is
+// unforgeable there. Getters such as ownerDocument can be replaced by page script to fake an origin.
+const INSPECT = `function () {
+    const ancestors = [];
+    for (let i = 0; i < location.ancestorOrigins.length; i++) ancestors.push(location.ancestorOrigins[i]);
+    const input = this instanceof HTMLInputElement;
+    return { origin: location.origin, ancestors, input, type: input ? this.type : null, connected: this.isConnected };
+}`;
+const DEEPEST_ACTIVE = `function () {
+    let el = this.activeElement;
+    while (el && el.shadowRoot && el.shadowRoot.activeElement) el = el.shadowRoot.activeElement;
+    return el;
+}`;
+
+const normalizeOrigin = (value) => {
+    try {
+        const { origin } = new URL(String(value));
+        return origin === "null" ? null : origin;
+    } catch {
+        return null;
+    }
+};
+
+const staleRef = () => new BrowserError(BrowserErrorCode.STALE_REF, "The element no longer exists; take a new snapshot");
+const unlessGone = (err) => {
+    if (err instanceof BrowserError || err instanceof VaultError) throw err;
+    if (GONE.test(err?.message ?? "")) throw staleRef();
+    throw err;
+};
+
+const assertFillableSession = (session) => {
+    if (vaultGuard.isTainted(session.contextKey)) throw new VaultError(VaultErrorCode.SESSION_TAINTED);
+    if (session.via)
+        throw new VaultError(VaultErrorCode.VIA_NOT_ALLOWED,
+            `Session ${session.id} runs via ${session.via}; a password is never typed into a tunneled page. Open the login page with browser_open without via.`);
+    if (session.profile === "persistent")
+        throw new VaultError(VaultErrorCode.PERSISTENT_NOT_ALLOWED,
+            `Session ${session.id} uses the persistent profile, where prepared pages survive on disk. Open a new session with browser_open without profile=persistent and fill there.`);
+};
+
+const inspect = async (session, ref) => {
+    const { backendNodeId } = session.refs.resolve(ref);
+    const info = await (async () => {
+        const { object } = await session.agentSend("DOM.resolveNode", { backendNodeId, objectGroup: OBJECT_GROUP });
+        const { result, exceptionDetails } = await session.agentSend("Runtime.callFunctionOn", {
+            objectId: object.objectId, functionDeclaration: INSPECT, returnByValue: true, objectGroup: OBJECT_GROUP,
+        });
+        return exceptionDetails ? null : result?.value;
+    })().catch(unlessGone);
+    if (!info?.connected) throw staleRef();
+    return { ref, backendNodeId, ...info };
+};
+
+const assertOrigins = (field, allowed) => {
+    if ([field.origin, ...field.ancestors].every((origin) => allowed.has(normalizeOrigin(origin)))) return;
+    const where = field.ancestors.length > 0 ? `${field.origin}, embedded in ${field.ancestors.join(" < ")}` : field.origin;
+    throw new VaultError(VaultErrorCode.ORIGIN_MISMATCH,
+        `${field.ref} is in a frame of ${where}, but this entry only fills on ${[...allowed].join(", ")}. Open the entry's login page directly; an embedding origin has to be added to the entry by the user.`);
+};
+
+const checkFillTarget = async (session, { passwordRef, usernameRef = null }, origins) => {
+    const allowed = new Set(origins.map(normalizeOrigin).filter(Boolean));
+    try {
+        const password = await inspect(session, passwordRef);
+        const username = usernameRef ? await inspect(session, usernameRef) : null;
+        assertOrigins(password, allowed);
+        if (username) assertOrigins(username, allowed);
+        if (!password.input || password.type !== "password")
+            throw new VaultError(VaultErrorCode.NOT_PASSWORD_FIELD,
+                `${passwordRef} is not an <input type="password">; pass the ref of the password field from the latest snapshot.`);
+        if (username && (!username.input || !USERNAME_TYPES.has(username.type) || username.origin !== password.origin))
+            throw new VaultError(VaultErrorCode.BAD_USERNAME_FIELD,
+                `${usernameRef} is not a text, email or tel input in the frame of the password field; pass another usernameRef or leave it out.`);
+        return { passwordNodeId: password.backendNodeId, usernameNodeId: username?.backendNodeId ?? null };
+    } finally {
+        session.send("Runtime.releaseObjectGroup", { objectGroup: OBJECT_GROUP }).catch(() => {});
+    }
+};
+
+const focusedNodeId = async (session) => {
+    const top = await session.agentSend("Runtime.evaluate", { expression: "document", objectGroup: OBJECT_GROUP });
+    let objectId = top.result?.objectId;
+    for (let depth = 0; objectId && depth < MAX_FRAME_DEPTH; depth++) {
+        const { result: active } = await session.agentSend("Runtime.callFunctionOn", { objectId, functionDeclaration: DEEPEST_ACTIVE, objectGroup: OBJECT_GROUP });
+        if (!active?.objectId) return null;
+        const { node } = await session.agentSend("DOM.describeNode", { objectId: active.objectId, depth: 1, pierce: true });
+        if (!FRAME_OWNERS.has(node.nodeName)) return node.backendNodeId;
+        if (!node.contentDocument) return null;
+        ({ object: { objectId } } = await session.agentSend("DOM.resolveNode", { backendNodeId: node.contentDocument.backendNodeId, objectGroup: OBJECT_GROUP }));
+    }
+    return null;
+};
+
+const typeInto = async (session, backendNodeId, text, beforeInsert) => {
+    await session.agentSend("DOM.focus", { backendNodeId }).catch((err) => {
+        if (GONE.test(err?.message ?? "")) throw staleRef();
+        throw new VaultError(VaultErrorCode.FOCUS_LOST, "The field cannot take the focus (hidden or disabled); nothing was typed into it. Take a new snapshot and pass the visible field.");
+    });
+    await (async () => {
+        const { object } = await session.agentSend("DOM.resolveNode", { backendNodeId, objectGroup: OBJECT_GROUP });
+        await session.agentSend("Runtime.callFunctionOn", { objectId: object.objectId, functionDeclaration: CLEAR, objectGroup: OBJECT_GROUP });
+    })().catch(unlessGone);
+    if ((await focusedNodeId(session)) !== backendNodeId)
+        throw new VaultError(VaultErrorCode.FOCUS_LOST,
+            "The page moved the focus away from the field before typing; nothing was typed into it. Take a new snapshot and call browser_fill_credential again.");
+    beforeInsert();
+    await session.agentSend("Input.insertText", { text });
+};
+
+const fillCredential = async (session, { passwordNodeId, usernameNodeId = null, username = null, password }) => {
+    let marked = false;
+    // markFilled checks the taint in the same synchronous step, so no browser_evaluate in a popup of
+    // this context can slip in between the check and the first keystroke. Only the password field is
+    // marked: a filled field that is no longer type=password locks screenshots.
+    const markOnce = () => {
+        if (marked) return;
+        if (session.closed)
+            throw new BrowserError(BrowserErrorCode.SESSION_CLOSED, `Session ${session.id} has ended; nothing was typed. Open a new session with browser_open and fill there.`);
+        vaultGuard.markFilled(session.contextKey, { backendNodeIds: [passwordNodeId], secret: password });
+        marked = true;
+    };
+    try {
+        if (usernameNodeId !== null) await typeInto(session, usernameNodeId, username, markOnce);
+        await typeInto(session, passwordNodeId, password, markOnce);
+    } finally {
+        session.send("Runtime.releaseObjectGroup", { objectGroup: OBJECT_GROUP }).catch(() => {});
+    }
+};
+
+module.exports = { checkFillTarget, fillCredential, assertFillableSession, normalizeOrigin };
+```
+
+- [ ] **Step 5: Implement `server/lib/vault/mcpProvider.js`**
+
+```js
+const { VaultError, VaultErrorCode } = require("./errors");
+const { isVaultEnabled } = require("./state");
+const { itemRef, visibleItems, findVisibleItem, canUseVault } = require("./visibility");
+const { readSecret } = require("./secrets");
+const { checkFillTarget, fillCredential, assertFillableSession, normalizeOrigin } = require("./fill");
+const { defaultAudit } = require("../browser/tools");
+const vaultGuard = require("../browser/vaultGuard");
+const { BrowserError, BrowserErrorCode } = require("../browser/errors");
+const permission = require("../../utils/permission");
+const { Permission } = require("../../permissions/registry");
+const VaultItem = require("../../models/VaultItem");
+const ApiKey = require("../../models/ApiKey");
+const Organization = require("../../models/Organization");
+const Entry = require("../../models/Entry");
+const logger = require("../../utils/logger");
+
+const LIST = "vault_list";
+const FILL = "browser_fill_credential";
+const FILL_WINDOW_MS = 60 * 1000;
+const FILL_LIMIT = 20;
+const REF_PATTERN = /^e\d{1,9}$/;
+const APPROVAL_CODES = new Set([
+    VaultErrorCode.APPROVAL_TIMEOUT, VaultErrorCode.APPROVAL_UNAVAILABLE, VaultErrorCode.APPROVAL_PENDING,
+    VaultErrorCode.APPROVAL_BUSY, VaultErrorCode.APPROVAL_DENIED, VaultErrorCode.CLIENT_GONE,
+]);
+const DENIAL_ACTIONS = {
+    [VaultErrorCode.ITEM_UNREADABLE]: "vault.item_unreadable",
+    [VaultErrorCode.PERSISTENT_NOT_ALLOWED]: "vault.persistent_not_allowed",
+};
+
+const TOOL_DEFS = [
+    {
+        name: LIST,
+        description: "List the vault entries this connection may use. Never returns a secret value: per entry its id for browser_fill_credential (item), owner, type, username or host, origins or hosts, whether the user approves each use, and the tools that can use it (usableBy).",
+        inputSchema: { type: "object", properties: {} },
+    },
+    {
+        name: FILL,
+        description: "Type a login entry from the vault into the password field, and optionally the username field, of a browser session. You never see the password: snapshots show it as ••••, and browser_evaluate stays locked in this browser context afterwards. The field's frame and all frames around it must be one of the entry's origins. If the entry needs approval, this call waits up to 2 minutes for the user.",
+        inputSchema: {
+            type: "object",
+            properties: {
+                item: { type: "string", description: "Entry id as vault_list shows it, e.g. github or org:3/shop" },
+                passwordRef: { type: "string", description: "ref of the <input type=password> from the latest snapshot" },
+                usernameRef: { type: "string", description: "ref of the username field (text, email or tel input); optional" },
+                sessionId: { type: "string", description: "Browser session id. Defaults to the session this connection opened last; may be left out while only one session is open." },
+            },
+            required: ["item", "passwordRef"],
+        },
+    },
+];
+
+const textResult = (text) => ({ content: [{ type: "text", text }] });
+const errorResult = (err) => ({
+    isError: true,
+    content: [{ type: "text", text: err instanceof VaultError ? `${err.message} (${err.code})` : err.message }],
+});
+const fieldsOf = (item) => item.fields ?? {};
+const originsKey = (fields) => JSON.stringify((fields.origins ?? []).map(normalizeOrigin).sort());
+
+const describeItem = (item, orgNames, canFill) => {
+    const fields = fieldsOf(item);
+    return {
+        item: itemRef(item),
+        owner: item.organizationId ? orgNames.get(item.organizationId) ?? `organization ${item.organizationId}` : "personal",
+        type: item.type,
+        description: item.description ?? null,
+        ...(typeof fields.username === "string" && { username: fields.username }),
+        ...(typeof fields.host === "string" && { host: fields.host }),
+        ...(Array.isArray(fields.origins) && { origins: fields.origins.map(String) }),
+        ...(Array.isArray(fields.hosts) && { hosts: fields.hosts.map(String) }),
+        approvalRequired: !!item.approvalRequired,
+        usableBy: item.type === "login" && canFill ? [FILL] : [],
+    };
+};
+
+const assertFillArgs = ({ item, passwordRef, usernameRef, sessionId }) => {
+    const invalid = (message) => new BrowserError(BrowserErrorCode.INVALID_ARGUMENT, message);
+    if (typeof item !== "string" || item.length === 0 || item.length > 200)
+        throw invalid("item needs an entry id as vault_list shows it, e.g. github or org:3/shop");
+    if (typeof passwordRef !== "string" || !REF_PATTERN.test(passwordRef))
+        throw invalid("passwordRef needs the [ref=eN] of the password field from the latest snapshot");
+    if (usernameRef != null && (typeof usernameRef !== "string" || !REF_PATTERN.test(usernameRef)))
+        throw invalid("usernameRef, if given, needs the [ref=eN] of the username field from the latest snapshot");
+    if (sessionId != null && typeof sessionId !== "string") throw invalid("sessionId needs a session id as browser_list shows it");
+};
+
+const createVaultProvider = ({ getBrowserTools, approvals = require("./approvals"), audit = defaultAudit }) => {
+    const browserAllowed = new WeakMap();
+    const recentFills = new Map();
+
+    const canUseBrowser = (accountId) => permission.hasAccountPermission(accountId, Permission.CONNECT_BROWSER);
+
+    const assertFillRate = ({ accountId, keyId = null }) => {
+        const key = `${accountId}:${keyId}`;
+        const now = Date.now();
+        const recent = (recentFills.get(key) ?? []).filter((at) => now - at < FILL_WINDOW_MS);
+        if (recent.length >= FILL_LIMIT)
+            throw new VaultError(VaultErrorCode.RATE_LIMITED);
+        recent.push(now);
+        recentFills.set(key, recent);
+    };
+
+    const entryNameOf = async (agent) => {
+        if (!agent?.entryId) return null;
+        return (await Entry.findByPk(agent.entryId, { attributes: ["name"] }))?.name ?? null;
+    };
+
+    const keyStillValid = async (ctx) => ctx.keyId == null
+        || (await ApiKey.count({ where: { id: ctx.keyId, accountId: ctx.accountId, pending: false } })) > 0;
+
+    const record = (ctx, item, action, details) => audit({
+        accountId: ctx.accountId,
+        organizationId: item?.organizationId ?? null,
+        action,
+        resource: "vault",
+        resourceId: item?.id ?? null,
+        details,
+        ipAddress: ctx.ipAddress ?? null,
+        userAgent: ctx.userAgent ?? null,
+    });
+
+    const describeCall = (note, ctx) => ({
+        item: note.item, sessionId: note.sessionId, target: note.target,
+        agentType: ctx.agent?.agentType ?? null, keyId: ctx.keyId ?? null, entryId: ctx.agent?.entryId ?? null,
+    });
+
+    const listItems = async (args, ctx) => {
+        const items = await visibleItems({ accountId: ctx.accountId, agent: ctx.agent ?? null });
+        const orgIds = [...new Set(items.map((item) => item.organizationId).filter(Boolean))];
+        const orgs = orgIds.length > 0 ? await Organization.findAll({ where: { id: orgIds }, attributes: ["id", "name"] }) : [];
+        const orgNames = new Map(orgs.map((org) => [org.id, org.name]));
+        const canFill = await canUseBrowser(ctx.accountId);
+        return textResult(items.length > 0
+            ? JSON.stringify(items.map((item) => describeItem(item, orgNames, canFill)), null, 2)
+            : "No vault entries are available to this connection.");
+    };
+
+    const fill = async (args, ctx) => {
+        assertFillArgs(args);
+        assertFillRate(ctx);
+        const note = { item: args.item, sessionId: null, target: null, stage: "before_approval" };
+        const caller = { accountId: ctx.accountId, agent: ctx.agent ?? null };
+        const usernameRef = args.usernameRef ?? null;
+        const refs = { passwordRef: args.passwordRef, usernameRef };
+        let item = null;
+        let fields = {};
+        let session = null;
+        let approval = null;
+        let auditedByApprovals = false;
+        const loadItem = async () => {
+            item = await findVisibleItem(caller, args.item);
+            fields = fieldsOf(item);
+            note.item = itemRef(item);
+            if (item.type !== "login")
+                throw new VaultError(VaultErrorCode.WRONG_TYPE, `${note.item} is a ${item.type} entry; browser_fill_credential fills login entries only.`);
+            if (usernameRef && !fields.username)
+                throw new VaultError(VaultErrorCode.BAD_USERNAME_FIELD, `${note.item} stores no username; call again without usernameRef.`);
+        };
+        const locate = (sessionId) => getBrowserTools().resolveSession(ctx, sessionId);
+        const verify = (current) => {
+            assertFillableSession(current);
+            return checkFillTarget(current, refs, fields.origins ?? []);
+        };
+        try {
+            await loadItem();
+            session = locate(args.sessionId ?? null);
+            Object.assign(note, { sessionId: session.id, target: normalizeOrigin(session.state.url) });
+            if (item.approvalRequired || ctx.impersonatorId != null) {
+                await session.runAgent(FILL, () => verify(session));
+                // Waited for outside runAgent: its 90 s limit is shorter than the 2 minutes of an approval,
+                // so every check runs again afterwards, with the entry and the key as they are now.
+                approval = await approvals.requestApproval({
+                    accountId: ctx.accountId, keyId: ctx.keyId ?? null, transportId: ctx.transportId,
+                    agentType: ctx.agent?.agentType ?? null, entryName: await entryNameOf(ctx.agent),
+                    item, target: note.target, signal: ctx.signal,
+                }).catch((err) => {
+                    // approvals.js audits answers, timeouts and withdrawn cards itself; only early refusals come back unaudited.
+                    auditedByApprovals = APPROVAL_CODES.has(err?.code) && !err.details?.early;
+                    throw err;
+                });
+                note.stage = "after_approval";
+                if (ctx.signal?.aborted) throw new VaultError(VaultErrorCode.CLIENT_GONE);
+                if (!(await keyStillValid(ctx)))
+                    throw new VaultError(VaultErrorCode.ITEM_UNKNOWN, "The key of this connection was revoked while the approval was open; nothing was filled.");
+                const approvedOrigins = originsKey(fields);
+                await loadItem();
+                if (originsKey(fields) !== approvedOrigins)
+                    throw new VaultError(VaultErrorCode.ORIGIN_MISMATCH,
+                        `The origins of ${note.item} changed while the approval was open; nothing was filled. Call browser_fill_credential again so the user approves the entry as it is now.`);
+                session = locate(session.id);
+            }
+            await session.runAgent(FILL, async () => {
+                const nodes = await verify(session);
+                const password = await readSecret(item.id, "password");
+                if (password === null)
+                    throw new VaultError(VaultErrorCode.NO_SECRET);
+                await fillCredential(session, { ...nodes, username: usernameRef ? fields.username : null, password });
+            });
+        } catch (err) {
+            if (session && typeof err?.message === "string") err.message = vaultGuard.redactText(session.contextKey, err.message);
+            if (!auditedByApprovals) {
+                if (err?.code === VaultErrorCode.ITEM_UNREADABLE) logger.warn("Vault entry unreadable", { itemId: item?.id ?? null });
+                await record(ctx, item, DENIAL_ACTIONS[err?.code] ?? "vault.use_denied", {
+                    ...describeCall(note, ctx), stage: note.stage, code: typeof err?.code === "string" ? err.code : "INTERNAL",
+                });
+            }
+            throw err;
+        }
+        await record(ctx, item, "vault.use", { ...describeCall(note, ctx), approval });
+        // silent: updatedAt is part of the stamp of a session approval (Task 6); touching it would end that approval after every fill.
+        await VaultItem.update({ lastUsedAt: new Date() }, { where: { id: item.id }, silent: true })
+            .catch((err) => logger.warn("Could not record the last use of a vault entry", { itemId: item.id, error: err.message }));
+        return textResult(usernameRef ? `Benutzername und Passwort von ${note.item} eingetragen.` : `Passwort von ${note.item} eingetragen.`);
+    };
+
+    const handlers = { [LIST]: listItems, [FILL]: fill };
+
+    return {
+        name: "vault",
+        available: async (ctx) => {
+            if (!isVaultEnabled()) return false;
+            const [canUse, browser] = await Promise.all([canUseVault(ctx.accountId), canUseBrowser(ctx.accountId)]);
+            browserAllowed.set(ctx, browser);
+            return canUse;
+        },
+        list: (ctx) => (browserAllowed.get(ctx) === true ? TOOL_DEFS : TOOL_DEFS.filter((tool) => tool.name !== FILL)),
+        has: (name, ctx) => name === LIST || (name === FILL && browserAllowed.get(ctx) === true),
+        call: async (name, args, ctx) => {
+            try {
+                if (!Object.hasOwn(handlers, name) || (name === FILL && !(await canUseBrowser(ctx.accountId))))
+                    throw new BrowserError(BrowserErrorCode.INVALID_ARGUMENT, `Unknown tool: ${name}`);
+                return await handlers[name](args ?? {}, ctx);
+            } catch (err) {
+                if (err instanceof VaultError || err instanceof BrowserError) return errorResult(err);
+                logger.warn("Vault tool failed", { tool: name, error: err.message });
+                return errorResult(new BrowserError(BrowserErrorCode.INTERNAL, `${name} failed unexpectedly; try again.`));
+            }
+        },
+        forgetTransport: (transportId) => approvals.forgetTransport(transportId),
+    };
+};
+
+module.exports = { createVaultProvider };
+```
+
+- [ ] **Step 6: Run test to verify it passes**
+
+Run: `node --test server/lib/vault/__tests__/mcpProvider.test.js`
+Expected: PASS, `# tests 6`, `# pass 6`, `# fail 0`.
+
+- [ ] **Step 7: Vault-Anbieter in `server/routes/mcp.js` registrieren**
+
+Vorher (Stand nach Task 2, Kopf der Datei):
+
+```js
+const { createMcpServer } = require("../lib/mcp/server");
+const { createBrowserTools } = require("../lib/browser/tools");
+const { getBrowserPool } = require("../lib/browser");
+const logger = require("../utils/logger");
+
+const browserTools = createBrowserTools({ getPool: getBrowserPool });
+const browserProvider = {
+    ...browserTools,
+    name: "browser",
+    available: (ctx) => hasAccountPermission(ctx.accountId, Permission.CONNECT_BROWSER),
+};
+
+const mcp = createMcpServer({ providers: [browserProvider] });
+```
+
+Nachher:
+
+```js
+const { createMcpServer } = require("../lib/mcp/server");
+const { createBrowserTools } = require("../lib/browser/tools");
+const { getBrowserPool } = require("../lib/browser");
+const { createVaultProvider } = require("../lib/vault/mcpProvider");
+const logger = require("../utils/logger");
+
+const browserTools = createBrowserTools({ getPool: getBrowserPool });
+const browserProvider = {
+    ...browserTools,
+    name: "browser",
+    available: (ctx) => hasAccountPermission(ctx.accountId, Permission.CONNECT_BROWSER),
+};
+const vaultProvider = createVaultProvider({ getBrowserTools: () => browserTools });
+
+const mcp = createMcpServer({ providers: [browserProvider, vaultProvider] });
+```
+
+`approvals.forgetTransport` läuft über `vaultProvider.forgetTransport`, das der Rahmen beim Ende, beim Verdrängen und beim Aufräumen eines Transports für jeden Anbieter ruft.
+
+`server/lib/mcp/__tests__/mcpRoute.test.js` (aus Task 2) lädt die Route jetzt mit dem Vault-Anbieter; ohne Fake zöge `mcpProvider` Modelle und Datenbank nach. Die Route lädt nur `mcpProvider`, deshalb genügt dieser eine Fake. Direkt nach der Zeile `fake("../../browser/tools", { … });` und vor `const router = require("../../../routes/mcp");` einfügen:
+
+```js
+fake("../../vault/mcpProvider", {
+    createVaultProvider: () => ({
+        name: "vault", available: async () => false, list: () => [], has: () => false,
+        call: async () => ({ content: [] }), forgetTransport: () => {},
+    }),
+});
+```
+
+Run: `node --test server/lib/mcp/__tests__/server.test.js server/lib/mcp/__tests__/mcpRoute.test.js server/lib/vault/__tests__/mcpProvider.test.js`
+Expected: PASS, `# fail 0`.
+
+Run: `node -e "require('./server/routes/mcp')"` (aus `/root/outpost`)
+Expected: kein Fehler (die Route lädt mit beiden Anbietern).
+
+- [ ] **Step 8: Chromium-Reihe — `require`-Zeilen, Testseiten und Helfer**
+
+In `server/lib/browser/__tests__/chromium.e2e.test.js` direkt nach Z. 8 (`const { createFakeViewer, flush } = require("./helpers/fakeCdp");`) einfügen; `vaultBed` muss vor `mcpProvider` geladen werden:
+
+```js
+const vaultBed = require("../../vault/__tests__/helpers/vaultBed");
+const { createVaultProvider } = require("../../vault/mcpProvider");
+const { createBrowserTools } = require("../tools");
+const { click: rawClick } = require("../actions");
+const { Permission } = require("../../../permissions/registry");
+```
+
+Nach Z. 22 (`const sleep = …`) einfügen:
+
+```js
+const SECRET = "pa ss&wörd+1";
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const LOGIN_PAGE = `<!doctype html><title>Vault login</title>
+<h1>Sign in</h1>
+<form method="get" action="/done">
+<input name="user" aria-label="User">
+<input name="pass" id="pass" type="password" aria-label="Password">
+<button type="button" onclick="const f = document.getElementById('pass'); f.type = f.type === 'password' ? 'text' : 'password'">Show password</button>
+<button type="submit">Sign in</button>
+</form>
+<button type="button" onclick="window.open('/popup', 'vault-popup', 'width=400,height=300')">Open popup</button>`;
+const POPUP_PAGE = "<!doctype html><title>Vault popup</title><h1>Popup</h1>";
+const FRAME_FIELD = `<!doctype html><title>Frame field</title>
+<input name="pass" type="password" aria-label="Frame password">`;
+const framePage = (src) => `<!doctype html><title>Frame host</title>
+<h1>Frame host</h1>
+<iframe src="${src}" width="600" height="320"></iframe>`;
+const donePage = (url) => `<!doctype html><title>Signed in ${escapeHtml(new URL(url, "http://page.invalid").searchParams.get("pass") ?? "")}</title>
+<h1>Signed in</h1>
+<a href="/login">Back</a>`;
+
+const startVaultPages = async (t) => {
+    const bases = {};
+    const serve = (other) => http.createServer((req, res) => {
+        const pages = {
+            "/login": () => LOGIN_PAGE,
+            "/popup": () => POPUP_PAGE,
+            "/frame": () => FRAME_FIELD,
+            "/done": () => donePage(req.url),
+            "/framed-self": () => framePage("/login"),
+            "/frame-other": () => framePage(`${bases[other]}/frame`),
+            "/embed-other": () => framePage(`${bases[other]}/login`),
+        };
+        const page = pages[req.url.split("?")[0]];
+        res.setHeader("content-type", "text/html; charset=utf-8");
+        res.end(page ? page() : "<!doctype html><title>Not found</title>");
+    });
+    for (const [name, server] of [["a", serve("b")], ["b", serve("a")]]) {
+        await new Promise((resolve) => server.listen(0, "0.0.0.0", resolve));
+        t.after(() => server.close());
+        bases[name] = `http://${PAGE_HOST}:${server.address().port}`;
+    }
+    return bases;
+};
+
+const startVaultBed = async (t) => {
+    process.env.VAULT_KEY ??= "5a".repeat(32);
+    const bases = await startVaultPages(t);
+    const pool = new BrowserPool({
+        getSettings: async () => ({ enabled: true, maxSessions: 8, idleMinutes: 30, callbackHost: PAGE_HOST }),
+        launcher: createLauncherClient(async () => LAUNCHER),
+        // A via instance without a tunnel: enough for the refusal, which never reaches the network.
+        createVia: async () => ({ label: "nas", organizationId: null, resolverRule: null, close() {} }),
+    });
+    t.after(() => {
+        for (const instance of pool.live.values()) instance.cdp.close();
+    });
+    const audit = [];
+    const record = async (entry) => { audit.push(entry); };
+    const browserTools = createBrowserTools({ getPool: () => pool, audit: record });
+    const vault = createVaultProvider({
+        getBrowserTools: () => browserTools, audit: record,
+        approvals: { requestApproval: async () => "once", forgetTransport() {} },
+    });
+    vaultBed.reset({
+        items: [{
+            id: 41, accountId: 1, organizationId: null, name: "e2e-login", type: "login", description: null,
+            fields: { username: "ada", origins: [bases.a] }, approvalRequired: false, allServers: true,
+        }],
+        secrets: { "41:password": SECRET },
+        permissions: [Permission.VAULT_USE, Permission.CONNECT_BROWSER],
+    });
+    const ctx = { accountId: 1, keyId: null, agent: null, impersonatorId: null, transportId: "e2e", ipAddress: "127.0.0.1", userAgent: "e2e", signal: new AbortController().signal };
+    const call = (provider, name, args) => provider.call(name, args, ctx);
+    const open = async (url, options = {}) => {
+        const { session } = await pool.open({ accountId: 1, url, ...options });
+        await session.settle();
+        return session;
+    };
+    return {
+        bases, pool, audit, browserTools, call, open,
+        text: (result) => result.content.map((c) => c.text ?? "").join(""),
+        snapshotOf: (session) => session.runAgent("browser_snapshot", () => session.snapshot()),
+        fill: (session, args) => call(vault, "browser_fill_credential", { item: "e2e-login", sessionId: session.id, ...args }),
+    };
+};
+
+// Raw CDP: reads the page past the evaluate lock, which only guards the agent's tools.
+const valueIn = async (session, expression) => (await session.send("Runtime.evaluate", { expression, returnByValue: true })).result.value;
+
+const until = async (probe, ms = 5000) => {
+    for (const end = Date.now() + ms; Date.now() < end; await sleep(50)) {
+        const value = await probe();
+        if (value) return value;
+    }
+    throw new Error("timed out");
+};
+
+const attributeOf = (node, name) => {
+    const list = node.attributes ?? [];
+    for (let i = 0; i < list.length; i += 2) if (list[i] === name) return list[i + 1];
+    return null;
+};
+
+// The snapshot covers the main frame only; a ref into a frame is taken from the DOM, as a page could
+// hand one out once frames are part of the snapshot.
+const refInDocument = async (session, documentUrl, name) => {
+    const { root } = await session.send("DOM.getDocument", { depth: -1, pierce: true });
+    const stack = [[root, root.documentURL]];
+    while (stack.length > 0) {
+        const [node, url] = stack.pop();
+        const here = node.nodeName === "#document" ? node.documentURL : url;
+        if (node.nodeName === "INPUT" && here === documentUrl && attributeOf(node, "name") === name)
+            return session.refs.assign(node.backendNodeId, `textbox "${name}"`);
+        for (const child of [...(node.children ?? []), ...(node.shadowRoots ?? []), ...(node.contentDocument ? [node.contentDocument] : [])])
+            stack.push([child, here]);
+    }
+    throw new Error(`no input ${name} in ${documentUrl}; the frame may run out of process`);
+};
+
+const openPopup = async ({ pool, browserTools, call }, opener, buttonRef) => {
+    const before = new Set(pool.listForAccount(1).map((s) => s.id));
+    await call(browserTools, "browser_click", { sessionId: opener.id, ref: buttonRef });
+    return until(() => pool.listForAccount(1).map((s) => s.id).find((id) => !before.has(id)));
+};
+
+const refused = (text, result, code) => {
+    assert.strictEqual(result.isError, true, `expected ${code}, got: ${text(result)}`);
+    assert.ok(text(result).includes(code), text(result));
+};
+```
+
+- [ ] **Step 9: Chromium-Reihe — Spec-Test 7 am Dateiende**
+
+```js
+test("against a real Chromium: browser_fill_credential fills a matching origin and refuses foreign origins and frames, via, persistent and tainted contexts",
+    { skip: !LAUNCHER && "set OUTPOST_BROWSER_E2E_LAUNCHER and OUTPOST_BROWSER_E2E_PAGE_HOST" }, async (t) => {
+        const bed = await startVaultBed(t);
+        const { bases, pool, browserTools, call, open, text, snapshotOf, fill } = bed;
+        const PASS = "document.getElementById('pass').value";
+
+        const own = await open(`${bases.a}/login`);
+        let snapshot = await snapshotOf(own);
+        const filled = await fill(own, { usernameRef: refOf(snapshot, 'textbox "User"'), passwordRef: refOf(snapshot, 'textbox "Password"') });
+        assert.strictEqual(text(filled), "Benutzername und Passwort von e2e-login eingetragen.");
+        assert.deepStrictEqual([await valueIn(own, "document.querySelector('[name=user]').value"), await valueIn(own, PASS)], ["ada", SECRET]);
+        await pool.close(own.id, "test");
+
+        const framed = await open(`${bases.a}/framed-self`);
+        const inFrame = await fill(framed, { passwordRef: await refInDocument(framed, `${bases.a}/login`, "pass") });
+        assert.strictEqual(text(inFrame), "Passwort von e2e-login eingetragen.", "the focus check follows the focus into a frame of the same origin");
+        assert.strictEqual(await valueIn(framed, "document.querySelector('iframe').contentDocument.getElementById('pass').value"), SECRET);
+        await pool.close(framed.id, "test");
+
+        const foreign = await open(`${bases.b}/login`);
+        snapshot = await snapshotOf(foreign);
+        refused(text, await fill(foreign, { passwordRef: refOf(snapshot, 'textbox "Password"') }), "vault.origin_mismatch");
+        assert.strictEqual(await valueIn(foreign, PASS), "");
+        await pool.close(foreign.id, "test");
+
+        const foreignFrame = await open(`${bases.a}/frame-other`);
+        refused(text, await fill(foreignFrame, { passwordRef: await refInDocument(foreignFrame, `${bases.b}/frame`, "pass") }), "vault.origin_mismatch");
+        await pool.close(foreignFrame.id, "test");
+
+        const embedded = await open(`${bases.b}/embed-other`);
+        refused(text, await fill(embedded, { passwordRef: await refInDocument(embedded, `${bases.a}/login`, "pass") }), "vault.origin_mismatch");
+        assert.strictEqual(await valueIn(embedded, "document.querySelector('iframe') !== null"), true);
+        await pool.close(embedded.id, "test");
+
+        const wrongField = await open(`${bases.a}/login`);
+        snapshot = await snapshotOf(wrongField);
+        refused(text, await fill(wrongField, { passwordRef: refOf(snapshot, 'textbox "User"') }), "vault.not_password_field");
+        assert.strictEqual(await valueIn(wrongField, "document.querySelector('[name=user]').value"), "");
+        await pool.close(wrongField.id, "test");
+
+        for (const [options, code] of [[{ via: "nas" }, "vault.via_not_allowed"], [{ profile: "persistent" }, "vault.persistent_not_allowed"]]) {
+            const session = await open(`${bases.a}/login`, options);
+            snapshot = await snapshotOf(session);
+            refused(text, await fill(session, { passwordRef: refOf(snapshot, 'textbox "Password"') }), code);
+            assert.strictEqual(await valueIn(session, PASS), "");
+            await pool.close(session.id, "test");
+        }
+
+        const opener = await open(`${bases.a}/login`);
+        snapshot = await snapshotOf(opener);
+        const popupId = await openPopup(bed, opener, refOf(snapshot, 'button "Open popup"'));
+        assert.ok(!(await call(browserTools, "browser_evaluate", { sessionId: popupId, expression: "document.title" })).isError);
+        await call(browserTools, "browser_close", { sessionId: popupId });
+        refused(text, await fill(opener, { passwordRef: refOf(snapshot, 'textbox "Password"') }), "vault.session_tainted");
+        assert.strictEqual(await valueIn(opener, PASS), "");
+        await pool.close(opener.id, "test");
+    });
+```
+
+- [ ] **Step 10: Chromium-Reihe — Spec-Test 8, Review Focus 1 und Spec-Test 12 am Dateiende**
+
+```js
+test("against a real Chromium: after a fill the password stays out of evaluate, snapshots, screenshots, URL, Title, browser_list, audit and the selection",
+    { skip: !LAUNCHER && "set OUTPOST_BROWSER_E2E_LAUNCHER and OUTPOST_BROWSER_E2E_PAGE_HOST" }, async (t) => {
+        const bed = await startVaultBed(t);
+        const { bases, pool, audit, browserTools, call, open, text, snapshotOf, fill } = bed;
+        const session = await open(`${bases.a}/login`);
+        const snapshot = await snapshotOf(session);
+        const ref = (label) => refOf(snapshot, label);
+        const tool = (name, args = {}) => call(browserTools, name, { sessionId: session.id, ...args });
+
+        const filled = await fill(session, { usernameRef: ref('textbox "User"'), passwordRef: ref('textbox "Password"') });
+        assert.ok(!filled.isError, text(filled));
+
+        refused(text, await tool("browser_key", { key: "Control+a" }), "vault.input_locked");
+        refused(text, await tool("browser_click", { ref: ref('textbox "Password"'), clickCount: 3 }), "vault.input_locked");
+        const again = await fill(session, { usernameRef: ref('textbox "User"'), passwordRef: ref('textbox "Password"') });
+        assert.ok(!again.isError, text(again));
+        assert.deepStrictEqual([await valueIn(session, "document.querySelector('[name=user]').value"), await valueIn(session, "document.getElementById('pass').value")],
+            ["ada", SECRET], "a second fill clears the fields instead of selecting their content");
+        const elsewhere = await open(`${bases.b}/login`);
+        const otherUser = refOf(await snapshotOf(elsewhere), 'textbox "User"');
+        refused(text, await call(browserTools, "browser_click", { sessionId: elsewhere.id, ref: otherUser, button: "middle" }), "vault.input_locked");
+        // Past the guard, as the user's own middle click would: the shared primary selection must not hold the password.
+        await rawClick(elsewhere.send, elsewhere.refs.resolve(otherUser).backendNodeId, { button: "middle" });
+        assert.ok(!(await valueIn(elsewhere, "document.querySelector('[name=user]').value")).includes(SECRET), "a middle click in another context pastes no password");
+        const probe = await open(`${bases.b}/login`);
+        const probeUser = refOf(await snapshotOf(probe), 'textbox "User"');
+        await valueIn(probe, "document.querySelector('[name=user]').value = 'primary-probe'");
+        await rawClick(probe.send, probe.refs.resolve(probeUser).backendNodeId, { clickCount: 3 });
+        await rawClick(elsewhere.send, elsewhere.refs.resolve(otherUser).backendNodeId, { button: "middle" });
+        if (!(await valueIn(elsewhere, "document.querySelector('[name=user]').value")).includes("primary-probe"))
+            t.diagnostic("middle-click paste of a selection from another context did not work in this Chromium, so the check above shows nothing; repeat it in the manual acceptance");
+        await pool.close(probe.id, "test");
+        await pool.close(elsewhere.id, "test");
+
+        assert.ok(!(await tool("browser_screenshot")).isError, "a screenshot is allowed while the filled field still hides its value");
+        assert.strictEqual((await tool("browser_evaluate", { expression: "document.title = 'evaluated'" })).isError, true);
+        const popupId = await openPopup(bed, session, ref('button "Open popup"'));
+        const fromPopup = await call(browserTools, "browser_evaluate", { sessionId: popupId, expression: "window.opener.document.title = 'evaluated'" });
+        assert.strictEqual(fromPopup.isError, true, "the popup shares the filled context");
+        assert.strictEqual(await valueIn(session, "document.title"), "Vault login");
+        await call(browserTools, "browser_close", { sessionId: popupId });
+
+        const shown = await tool("browser_click", { ref: ref('button "Show password"') });
+        assert.strictEqual(await valueIn(session, "document.getElementById('pass').type"), "text");
+        assert.match(text(shown), /- textbox "Password" \[ref=e\d+\] value="••••"/);
+        assert.ok(!text(shown).includes(SECRET));
+        assert.strictEqual((await tool("browser_screenshot")).isError, true, "the shown password must not reach a screenshot");
+
+        // What a PATCH with a changed origin does: the entry's stored values are gone.
+        vaultBed.state.secrets.clear();
+        await tool("browser_click", { ref: ref('button "Sign in"') });
+        const after = await tool("browser_snapshot");
+        assert.match(text(after), /URL: \S*pass=••••/);
+        assert.match(text(after), /Title: Signed in ••••/);
+        const listed = await call(browserTools, "browser_list", {});
+        await tool("browser_click", { ref: refOf(text(after), 'link "Back"') });
+
+        const leaks = [SECRET, encodeURIComponent(SECRET), new URLSearchParams({ pass: SECRET }).toString().slice("pass=".length)];
+        for (const [where, output] of [["snapshot", text(after)], ["browser_list", text(listed)], ["audit", JSON.stringify(audit)]])
+            for (const leak of leaks) assert.ok(!output.includes(leak), `${where} contains the password as ${leak}`);
+        await pool.close(session.id, "test");
+    });
+```
+
+- [ ] **Step 11: Chromium-Reihe ausführen**
+
+Run (ohne Umgebung): `node --test server/lib/browser/__tests__/chromium.e2e.test.js`
+Expected: `# fail 0`, `# tests 4`, `# skipped 4` (der Bestandstest, der aus Task 9 und die zwei dieses Tasks), die Datei lädt mit den neuen Modulen.
+
+Run (mit laufendem `outpost-browser`-Container): `OUTPOST_BROWSER_E2E_LAUNCHER=<Launcher-Adresse wie unter Einstellungen › Browser> OUTPOST_BROWSER_E2E_PAGE_HOST=<vom Container aus erreichbare Adresse dieses Rechners> node --test server/lib/browser/__tests__/chromium.e2e.test.js`
+Expected: `# pass 4`, `# fail 0`. Schlägt `refInDocument` mit „the frame may run out of process“ fehl, läuft das iframe in einem eigenen Prozess; dann erreicht auch ein Agent dessen Felder nicht. Der Test braucht dann für `a` und `b` denselben Host mit verschiedenen Ports (eine Site) und keinen zweiten Hostnamen.
+
+- [ ] **Step 12: Betroffene Tests gemeinsam ausführen**
+
+Run: `node --test server/lib/vault/__tests__/mcpProvider.test.js server/lib/mcp/__tests__/server.test.js server/lib/mcp/__tests__/mcpRoute.test.js server/lib/browser/__tests__/tools.test.js server/lib/browser/__tests__/vaultGuard.test.js server/lib/browser/__tests__/agentScope.test.js server/lib/browser/__tests__/chromium.e2e.test.js`
+Expected: `# fail 0`.
+
+Run: `yarn lint`
+Expected: keine Fehler in `server/lib/vault/fill.js`, `server/lib/vault/mcpProvider.js`, `server/routes/mcp.js` und den Testdateien.
+
+- [ ] **Step 13: Commit**
+
+```bash
+git add server/lib/vault/fill.js server/lib/vault/mcpProvider.js server/lib/vault/__tests__/helpers/vaultBed.js server/lib/vault/__tests__/mcpProvider.test.js server/routes/mcp.js server/lib/mcp/__tests__/mcpRoute.test.js server/lib/browser/__tests__/chromium.e2e.test.js
+git commit -m "Vault: MCP-Werkzeuge vault_list und browser_fill_credential"
+```
+
+---
+
+### Task 16: CSP Report-Only, Einbettungsschutz und Doku
+
+**Files:**
+- Modify: `server/lib/staticSite.js` (`mountStaticSite` Z. 13-19 bekommt als erste Middleware `setContentSecurityPolicy`; neu darüber `HOST_PATTERN`, `FRAME_ANCESTORS`, `buildContentSecurityPolicy`, `setContentSecurityPolicy`). Das ist die einzige Stelle, die das Client-`index.html` und die Assets ausliefert: `server/index.js` ruft `mountStaticSite(app, path.join(__dirname, "../dist"))` nur bei `NODE_ENV === "production"`, nach allen `/api`-Mounts (heute Z. 121-122; Tasks 1 und 8 verschieben die Nummern, maßgeblich ist der Code-Anker `mountStaticSite(app,`); `express.static` liefert `/` und `/assets/*`, der Fallback `app.get("*name")` liefert `index.html` für jede Client-Route.
 - Create: `server/routes/cspReport.js` (Router mit Rate-Limit, `express.json` für beide Report-Typen, Zusammenfassung, Fehler-Handler ohne Body)
-- Modify: `server/index.js` (eine Zeile nach Z. 71: `app.use("/api/csp-report", require("./routes/cspReport"));`)
+- Modify: `server/index.js` (eine Zeile direkt nach dem Code-Anker `app.use("/api/auth", require("./routes/authProviders"));`, heute Z. 71, nach Tasks 1 und 8 verschoben: `app.use("/api/csp-report", require("./routes/cspReport"));`)
 - Create: `server/lib/__tests__/cspHeader.test.js`
+- Modify: `server/lib/fileContent/download.js` (`contentHeaders` Z. 21-31: Vorschau-Antworten außer PDF bekommen `Content-Security-Policy: sandbox allow-scripts allow-forms allow-popups`)
+- Modify: `server/lib/fileContent/__tests__/download.test.js` (ein Test nach dem Test „a download is an attachment, a preview is inline…“ Z. 32-41)
 - Create: `docs/vault.md`
 - Modify: `docs/.vitepress/config.mjs` (Sidebar, nach Z. 88 `{ text: "Browser Tabs & Claude", link: "/browser-tabs" }`)
 
 **Interfaces:**
-- Consumes (nur für die Doku, kein Code): Fehlercodes `VaultErrorCode` aus `server/lib/vault/errors.js` (Task 1); Rechte `vault.use`, `vault.manage`, `vault.reveal`, `settings.vault` (Task 1); Sichtbarkeitsregeln und Kennung `org:<organizationId>/<name>` (Task 3); IP-Bindung, `probe`, `pending`, 15-min-Fenster (Tasks 4, 8); `APPROVAL_TTL_MS = 120000`, Sperre 60 s, höchstens 3 offene Anfragen (Task 6); Einrichtungs- und Entfernbefehle aus `server/lib/vault/provision.js` (Task 8); Schwärzung/Sperren (Task 9); Felder von `vault_list` und Prüfreihenfolge von `browser_fill_credential` (Task 11); englische Oberflächentexte aus `client/public/assets/locales/en.json` (Task 10).
+- Consumes (nur für die Doku, kein Code): Fehlercodes `VaultErrorCode` aus `server/lib/vault/errors.js` inkl. `INPUT_LOCKED = "vault.input_locked"` und Audit-Aktion `vault.input_locked` (Task 1); Rechte `vault.use`, `vault.manage`, `vault.reveal`, `settings.vault` (Task 1); Sichtbarkeitsregeln und Kennung `org:<organizationId>/<name>` (Task 3); IP-Bindung, `probe`, `pending`, 15-min-Fenster, Abweisung von Agenten-Keys bei ausgeschaltetem Vault (`401`) und ohne Serverzugriff (`403`) in `rejectAgentKey`, `impersonatorId` in jedem Audit aus HTTP-Anfragen über `auditContext`, WebSocket-Audits (Terminal, SFTP, AI) noch ohne, und `POST /api/accounts/api-keys` hinter `requireLoginSession` (Task 4); `403 "Turning off approvals requires a signed-in session"` beim Abschalten von „Freigabe erforderlich“ (Task 5); `APPROVAL_TTL_MS = 120000`, Sperre 60 s, höchstens 3 offene Anfragen, Sitzungsfreigabe an den Eintragsstempel `updatedAt|origins` gebunden (Task 6); `browser_open` mit `profile: "persistent"` für Agenten-Keys → `INVALID_PROFILE`, `via` auf einen fremden Server → Browser-Fehler `VIA_NOT_ALLOWED` (Task 7); Einrichtungs- und Entfernbefehle aus `server/lib/vault/provision.js`, Probe nur bei erster Messung, `confirm` mit `addSeenIp` → `409`, wenn die Adresse des Bestätigenden gleich `seenIp` ist, Entziehen-Ergebnis `registration` `removed`/`foreign`/`unknown` mit `commands` (Task 8); Schwärzung/Sperren inkl. `vaultGuard.assertInputAllowed` (Task 9); Felder von `vault_list`, Prüfreihenfolge von `browser_fill_credential` inkl. `vault.via_not_allowed` für jede Sitzung mit `via` (`assertFillableSession`) und Nachprüfung nach der Freigabe (Task 11); englische Oberflächentexte aus `client/public/assets/locales/en.json` (Task 10).
 - Produces:
-  - `mountStaticSite(app, distDir)` — Signatur unverändert; setzt auf jeder Antwort der statischen Seite `Content-Security-Policy-Report-Only` (mit `process.env.CSP_ENFORCE === "true"` stattdessen `Content-Security-Policy`, je Anfrage gelesen) und bei `req.secure` zusätzlich `Reporting-Endpoints: csp="/api/csp-report"`.
+  - `mountStaticSite(app, distDir)` — Signatur unverändert; setzt auf jeder Antwort der statischen Seite `X-Frame-Options: SAMEORIGIN` und die Policy: im Normalfall `Content-Security-Policy-Report-Only` mit allen Direktiven außer `frame-ancestors` plus ein erzwungenes `Content-Security-Policy: frame-ancestors 'self'`; mit `process.env.CSP_ENFORCE === "true"` (je Anfrage gelesen) stattdessen nur `Content-Security-Policy` mit allen Direktiven einschließlich `frame-ancestors 'self'`. Bei `req.secure` zusätzlich `Reporting-Endpoints: csp="/api/csp-report"`.
   - `POST /api/csp-report` ohne Authentifizierung, Rate-Limit 30/min je IP (`ipKeyGenerator`), nimmt `application/csp-report` und `application/reports+json` (Limit 64 kB) → `204`; ungültiges JSON → `400`, zu groß → `413`, beide ohne Body; über dem Limit `429 { code: 429, message: "Too many CSP reports" }`.
-  - `require("./routes/cspReport")` ist der Router; zusätzlich `summarizeReports(body) → Array<{ document: string|null, blocked: string|null, directive: string|null, source: string|null, line: number|null, disposition: string|null }>` (höchstens 10 je Anfrage; URLs auf `origin + pathname` gekürzt, andere Schemata nur `data:`/`blob:` …, Felder ≤ 200 Zeichen; `script-sample`/`sample`, `original-policy`, `referrer` fallen weg).
+  - `require("./routes/cspReport")` ist der Router; zusätzlich `summarizeReports(body) → Array<{ document: string|null, blocked: string|null, directive: string|null, source: string|null, line: number|null, disposition: string|null }>` (höchstens 10 je Anfrage; URLs auf `origin + pathname` gekürzt, andere Schemata nur `data:`/`blob:` …, Felder ≤ 200 Zeichen; `directive` nur ein Name aus der festen Liste `DIRECTIVES`, sonst `"[other]"`; `disposition` nur `"enforce"` oder `"report"`, sonst `null`; `script-sample`/`sample`, `original-policy`, `referrer` fallen weg).
   - Umgebungsvariable `CSP_ENFORCE` (`"true"` = scharf).
+  - `contentHeaders({ fileName, size, ext, preview })` (`server/lib/fileContent/download.js`) — Signatur unverändert; bei `preview && ext !== "pdf"` zusätzlich `"Content-Security-Policy": "sandbox allow-scripts allow-forms allow-popups"`. Wirkt für alle drei Aufrufer: die Vorschau-Route `GET /api/entries/sftp/preview/<token>/<pfad>` (`server/routes/sftp.js` Z. 125, `preview: true`) und den Download mit `preview=true` von SFTP und OneDrive (`server/routes/sftp.js`, `server/routes/oneDriveContent.js`).
   - `docs/vault.md`, Sidebar-Eintrag `{ text: "Vault", link: "/vault" }`.
 
 **Design:** kein UI-Anteil.
 
-**Tests:** 5 Tests in `server/lib/__tests__/cspHeader.test.js`, test-first (fester Vertrag: Header und Endpunkt), über die echte Naht `express()` + `express.json()` global + Mount `/api/csp-report` + `mountStaticSite` wie in `server/index.js`: (1) `index.html` unter `/` und einer Client-Route trägt `Content-Security-Policy-Report-Only` mit `report-uri /api/csp-report` und `wss://<host>`, kein scharfer Header (SEC-CSP-01); (2) `CSP_ENFORCE=true` schickt `Content-Security-Policy` und keinen Report-Only-Header; (3) ein gefälschter `Host` mit `;` hängt keine Direktive an; (4) der Meldeendpunkt nimmt beide Content-Types ohne Auth mit `204` an; (5) `summarizeReports` entfernt Query-Strings, Fragmente und Samples, damit `?sessionToken=` aus `/api/ws/state` nie ins Log gelangt (SEC-TOKEN-01). Der bestehende `staticSite.test.js` läuft mit und bleibt grün. **Nicht** getestet: das Rate-Limit (Zusage von express-rate-limit), die Log-Ausgabe selbst, jede einzelne Direktive (Konfigurationskonstante), die Doku (dafür Schritt mit `vitepress build` und Abgleich der Oberflächentexte). Abgedeckt: SEC-CSP-01, SEC-TOKEN-01 (Meldungen), SEC-RATE-01 (neuer offener Endpunkt), SEC-INPUT-01 (Typ- und Größenlimit), SEC-ERR-01 (Fehlerantworten ohne Body), SEC-SECRET-01 (Doku zu `VAULT_KEY`).
+**Tests:** 5 Tests in `server/lib/__tests__/cspHeader.test.js`, test-first (fester Vertrag: Header und Endpunkt), über die echte Naht `express()` + `express.json()` global + Mount `/api/csp-report` + `mountStaticSite` wie in `server/index.js`: (1) `index.html` unter `/` und einer Client-Route trägt `Content-Security-Policy-Report-Only` mit `report-uri /api/csp-report` und `wss://<host>` (ohne `frame-ancestors`), dazu erzwungen genau `Content-Security-Policy: frame-ancestors 'self'` und `X-Frame-Options: SAMEORIGIN` (SEC-CSP-01, Einbettungsschutz ab dem ersten Tag); (2) `CSP_ENFORCE=true` schickt die ganze Policy samt `frame-ancestors 'self'` als `Content-Security-Policy` und keinen Report-Only-Header; (3) ein gefälschter `Host` mit `;` hängt keine Direktive an; (4) der Meldeendpunkt nimmt beide Content-Types ohne Auth mit `204` an; (5) `summarizeReports` entfernt Query-Strings, Fragmente und Samples und lässt für `directive`/`disposition` nur Schlüsselwörter der festen Liste durch, damit `?sessionToken=` aus `/api/ws/state` und frei gewählte Feldinhalte nie ins Log gelangen (SEC-TOKEN-01). Dazu 1 Test in `server/lib/fileContent/__tests__/download.test.js`, test-first über `contentHeaders` (die Funktion ist die Naht, alle Vorschau-Routen übernehmen ihre Header unverändert): eine HTML-, SVG- und Bild-Vorschau trägt genau `Content-Security-Policy: sandbox allow-scripts allow-forms allow-popups`, eine PDF-Vorschau und ein Download tragen keinen `Content-Security-Policy`-Header (SEC-CSP-01, Vorschau in neuem Tab). Der bestehende `staticSite.test.js` und die übrigen Tests in `download.test.js` laufen mit und bleiben grün. **Nicht** getestet: das Rate-Limit (Zusage von express-rate-limit), die Log-Ausgabe selbst, jede einzelne Direktive (Konfigurationskonstante), die Doku (dafür Schritt mit `vitepress build` und Abgleich der Oberflächentexte). Abgedeckt: SEC-CSP-01, SEC-TOKEN-01 (Meldungen), SEC-RATE-01 (neuer offener Endpunkt), SEC-INPUT-01 (Typ- und Größenlimit), SEC-ERR-01 (Fehlerantworten ohne Body), SEC-SECRET-01 (Doku zu `VAULT_KEY`).
 
-**Parallel:** none — Phase F; die Doku beschreibt das Verhalten aus Tasks 1–15 und braucht deren Stand, und `server/index.js` teilen sich Task 1 und Task 8. Task 17 wartet auf diesen Task.
+**Parallel:** none — einziger Task der Welle E. Die Doku beschreibt das gebaute Verhalten der Tasks 1–15 (Fehlercodes, Sperren, Freigabe- und Entziehen-Regeln) und Schritt 11 gleicht sie gegen das fertige `en.json` aus Task 10 ab; das geht erst, wenn Welle D (Task 11) gemergt ist. `server/index.js` haben Task 1 und Task 8 in früheren Wellen schon geändert, daher hier nur über Code-Anker. Task 17 (Welle F) wartet auf diesen Task.
 
 **Begründung der Policy** (aus dem echten Bedarf, geprüft an `client/index.html`, `client/vite.config.js`, einem Probe-Build und den Abhängigkeiten in `client/package.json`):
 
@@ -11882,7 +12786,7 @@ git commit -m "Vault: Einstellungsseite Vault und Agenten-Schlüssel in der Kont
 |---|---|---|
 | `default-src` | `'self'` | Alles nicht eigens Genannte, auch die PDF-/HTML-Vorschau-iframes (`FilePreviewWindow.jsx:134,152`, gleiche Herkunft `/api/entries/…`) und Audio/Video, lädt nur von Outpost selbst. |
 | `script-src` | `'self' 'wasm-unsafe-eval'` | Der Build hat kein Inline-Skript (nur `<script type="module" src="/assets/…">`), Monaco ist gebündelt (`loader.config({ monaco })`, kein CDN), und `asciinema-player` instanziiert sein base64-eingebettetes WebAssembly (`WebAssembly.instantiate` in `asciinema-player/dist/opts-*.js`) im Hauptthread. |
-| `style-src` | `'self' 'unsafe-inline'` | React setzt `style`-Attribute (96 Stellen in `client/src`), Monaco und xterm legen zur Laufzeit `<style>`-Elemente an, und Styles führen keinen Code aus. |
+| `style-src` | `'self' 'unsafe-inline'` | React setzt `style`-Attribute (94 Stellen in `client/src`), Monaco und xterm legen zur Laufzeit `<style>`-Elemente an, und Styles führen keinen Code aus. |
 | `img-src` | `'self' data: blob:` | Avatare (`LetterAvatar`) und Vorschaubilder kommen aus der eigenen API, Vite inlined kleine Bilder als `data:` (im Build `url(data:image/svg+xml…)`, `data:image/png`), und der Avatar-Zuschnitt lädt die gewählte Datei über `URL.createObjectURL` (`imageUtils.js:5`). |
 | `font-src` | `'self' data:` | Schriften sind selbst gehostet (`@fontsource/plus-jakarta-sans` gebündelt, `client/public/assets/fonts/*/index.css` mit relativen `url(./…woff2)`, kein Google Fonts), und Vite inlined kleine WOFF-Dateien als `data:font/woff`. |
 | `connect-src` | `'self' ws://<host> wss://<host>` | REST, `i18next-http-backend` und alle WebSockets (`getWebSocketUrl` baut `ws(s)://${window.location.host}/api/ws/…`) gehen an denselben Host; `<host>` steht ausdrücklich da, weil Browser nach CSP Level 2 `'self'` nicht auf `ws:`/`wss:` anwenden. |
@@ -11890,10 +12794,10 @@ git commit -m "Vault: Einstellungsseite Vault und Agenten-Schlüssel in der Kont
 | `object-src` | `'none'` | Outpost nutzt keine Plugins. |
 | `base-uri` | `'self'` | Ein eingeschleustes `<base>` kann die relativen Bundle-Adressen nicht umbiegen. |
 | `form-action` | `'self'` | Kein Formular postet an eine fremde Seite (im Client gibt es kein `<form action=…>`). |
-| `frame-ancestors` | `'self'` | Keine fremde Seite bettet Outpost ein und lässt den Nutzer etwa auf „Einmal“ der Freigabe-Karte klicken (Clickjacking). |
+| `frame-ancestors` | `'self'` | Keine fremde Seite bettet Outpost ein und lässt den Nutzer etwa auf „Einmal“ der Freigabe-Karte klicken (Clickjacking); weil eine Report-Only-Policy nie blockiert und ein Einbettungsangriff nicht auf die Auswertung warten soll, geht die Direktive schon im Report-Only-Modus als eigenes erzwungenes `Content-Security-Policy` hinaus (und fehlt in der Report-Only-Policy, damit nichts doppelt gemeldet wird), dazu `X-Frame-Options: SAMEORIGIN` für Browser ohne CSP Level 2. |
 | `report-uri` / `report-to` | `/api/csp-report` / `csp` | `report-uri` für Firefox und Klartext-HTTP im LAN; `report-to` nur bei `req.secure`, weil die Reporting API nur an sichere Endpunkte liefert und Chrome bei vorhandenem `report-to` das `report-uri` ignoriert. |
 
-Nicht betroffen: die Desktop-App (`connector/src-tauri/tauri.conf.json:28` hat eine eigene CSP und lädt `client/dist` lokal), der Vite-Dev-Server, und Antworten der API (z. B. die HTML-Vorschau-Route, die bewusst fremde Skripte im Sandbox-iframe ausführt) — die Policy hängt nur an der statischen Seite. Der `Host`-Header wird nur übernommen, wenn er `HOST_PATTERN` erfüllt; sonst bleibt `connect-src 'self'` (kein Einschleusen weiterer Direktiven).
+Nicht betroffen: die Desktop-App (`connector/src-tauri/tauri.conf.json:28` hat eine eigene CSP und lädt `client/dist` lokal), der Vite-Dev-Server, und Antworten der API — die Policy hängt nur an der statischen Seite. Die Vorschau-Antworten der API (außer PDF) tragen stattdessen eine eigene `Content-Security-Policy: sandbox allow-scripts allow-forms allow-popups` aus `contentHeaders`: Das `sandbox`-Attribut des iframes (`FilePreviewWindow.jsx:152`) wirkt nur im Fenster; öffnet jemand die Vorschau-Adresse direkt in einem neuen Tab (kopierte Adresse, „Frame in neuem Tab öffnen“, ein Link von außerhalb des iframes), liefe eine fremde HTML- oder SVG-Datei sonst mit der Herkunft von Outpost und könnte mit dessen Speicher Vault-Werte abrufen. Mit dem Header läuft sie auch dort in einer undurchsichtigen Herkunft, mit denselben Rechten wie im iframe. PDF bleibt ausgenommen, weil Chromium den PDF-Viewer in einem sandboxed Dokument nicht startet; ein PDF führt im Viewer kein Skript mit der Herkunft von Outpost aus. Der `Host`-Header wird nur übernommen, wenn er `HOST_PATTERN` erfüllt; sonst bleibt `connect-src 'self'` (kein Einschleusen weiterer Direktiven).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -11953,28 +12857,33 @@ const getWithHost = (pathname, host) => new Promise((resolve, reject) => {
     req.end();
 });
 
-test("the client shell carries a report-only policy that reports to /api/csp-report (SEC-CSP-01)", async () => {
+test("the client shell reports its policy but already refuses foreign framing (SEC-CSP-01)", async () => {
     for (const pathname of ["/", "/servers/42"]) {
         const res = await fetch(`${baseUrl}${pathname}`);
         const policy = res.headers.get(REPORT_ONLY);
 
         assert.strictEqual(res.status, 200);
-        assert.strictEqual(res.headers.get(ENFORCED), null, `${pathname} must not enforce yet`);
+        assert.strictEqual(res.headers.get(ENFORCED), "frame-ancestors 'self'", `${pathname} enforces nothing but frame-ancestors yet`);
+        assert.strictEqual(res.headers.get("x-frame-options"), "SAMEORIGIN");
         assert.match(policy, /default-src 'self'/);
         assert.match(policy, /object-src 'none'/);
         assert.match(policy, /report-uri \/api\/csp-report/);
+        assert.ok(!policy.includes("frame-ancestors"), "framing is enforced on its own header, not reported twice");
         assert.ok(policy.includes(`wss://${new URL(baseUrl).host}`), "the state stream socket to the same host is allowed");
     }
 });
 
-test("CSP_ENFORCE=true sends the same policy as an enforcing header", async (t) => {
+test("CSP_ENFORCE=true sends the whole policy as an enforcing header", async (t) => {
     process.env.CSP_ENFORCE = "true";
     t.after(() => { delete process.env.CSP_ENFORCE; });
 
     const res = await fetch(`${baseUrl}/servers/42`);
+    const policy = res.headers.get(ENFORCED);
 
-    assert.match(res.headers.get(ENFORCED), /default-src 'self'/);
+    assert.match(policy, /default-src 'self'/);
+    assert.match(policy, /frame-ancestors 'self'/);
     assert.strictEqual(res.headers.get(REPORT_ONLY), null);
+    assert.strictEqual(res.headers.get("x-frame-options"), "SAMEORIGIN");
 });
 
 test("a forged Host header cannot append directives to the policy", async () => {
@@ -12001,7 +12910,7 @@ test("the report endpoint accepts both report formats without authentication", a
     assert.strictEqual(reporting.status, 204);
 });
 
-test("report summaries drop query strings, so tokens in blocked socket URLs never reach the log (SEC-TOKEN-01)", () => {
+test("report summaries keep only origin, path and known keywords, so tokens never reach the log (SEC-TOKEN-01)", () => {
     const summaries = [
         ...cspReport.summarizeReports({ "csp-report": {
             "document-uri": "https://outpost.example/servers?token=doc-secret",
@@ -12009,19 +12918,44 @@ test("report summaries drop query strings, so tokens in blocked socket URLs neve
             "violated-directive": "connect-src",
             "script-sample": "sample-secret",
         } }),
-        ...cspReport.summarizeReports([{ type: "csp-violation", body: {
-            documentURL: "https://outpost.example/vault#frag-secret",
-            blockedURL: "https://cdn.example/x.js?key=url-secret",
-            sourceFile: "https://outpost.example/assets/index.js?v=src-secret",
-            effectiveDirective: "script-src-elem",
-            sample: "sample-secret",
-        } }]),
+        ...cspReport.summarizeReports([
+            { type: "csp-violation", body: {
+                documentURL: "https://outpost.example/vault#frag-secret",
+                blockedURL: "https://cdn.example/x.js?key=url-secret",
+                sourceFile: "https://outpost.example/assets/index.js?v=src-secret",
+                effectiveDirective: "script-src-elem",
+                disposition: "report",
+                sample: "sample-secret",
+            } },
+            { type: "csp-violation", body: { effectiveDirective: "token=directive-secret", disposition: "disposition-secret" } },
+        ]),
     ];
     const logged = JSON.stringify(summaries);
 
     assert.ok(!/secret/.test(logged), logged);
     assert.strictEqual(summaries[0].blocked, "wss://outpost.example/api/ws/state");
+    assert.strictEqual(summaries[0].directive, "connect-src");
     assert.strictEqual(summaries[1].blocked, "https://cdn.example/x.js");
+    assert.strictEqual(summaries[1].disposition, "report");
+    assert.strictEqual(summaries[2].directive, "[other]");
+    assert.strictEqual(summaries[2].disposition, null);
+});
+```
+
+`server/lib/fileContent/__tests__/download.test.js` — direkt nach dem Test „a download is an attachment, a preview is inline, and both carry the encoded name“ (Z. 32-41) einfügen:
+
+```js
+// The iframe's sandbox attribute is gone once the preview URL is opened in a tab of its own; the
+// header keeps a foreign page out of Outpost's origin there too.
+test("a preview except a PDF is sandboxed even outside the iframe", () => {
+    const SANDBOX = "sandbox allow-scripts allow-forms allow-popups";
+    for (const ext of ["html", "svg", "png"]) {
+        const headers = contentHeaders({ fileName: `x.${ext}`, size: 1, ext, preview: true });
+        assert.strictEqual(headers["Content-Security-Policy"], SANDBOX, ext);
+    }
+    assert.strictEqual("Content-Security-Policy" in contentHeaders({ fileName: "x.pdf", size: 1, ext: "pdf", preview: true }), false,
+        "Chromium does not start its PDF viewer in a sandboxed document");
+    assert.strictEqual("Content-Security-Policy" in contentHeaders({ fileName: "x.html", size: 1, ext: "html", preview: false }), false);
 });
 ```
 
@@ -12030,19 +12964,21 @@ test("report summaries drop query strings, so tokens in blocked socket URLs neve
 Run: `cd /root/outpost && node --test server/lib/__tests__/cspHeader.test.js`
 Expected: FAIL beim Laden mit `Error: Cannot find module '../../routes/cspReport'` (der Router existiert noch nicht; `staticSite.js` setzt noch keinen Header).
 
-- [ ] **Step 3: Implement — `server/lib/staticSite.js`**
+Run: `cd /root/outpost && node --test server/lib/fileContent/__tests__/download.test.js`
+Expected: FAIL — genau der neue Test „a preview except a PDF is sandboxed even outside the iframe“ mit `AssertionError` (`undefined` statt der Sandbox-Policy); die übrigen 10 bestehen.
 
-Vorher (Z. 1-21): `require`s, JSDoc, `mountStaticSite` mit `express.static`, `/assets/*name` → 404, `*name` → `index.html`, Export `{ mountStaticSite }`. Nachher die vollständige Datei (JSDoc und Fallback unverändert, neu sind `HOST_PATTERN`, `buildContentSecurityPolicy`, `setContentSecurityPolicy` und die erste Zeile in `mountStaticSite`):
+- [ ] **Step 3: Implement — `server/lib/staticSite.js` und `contentHeaders`**
+
+Vorher (Z. 1-21): `require`s, JSDoc, `mountStaticSite` mit `express.static`, `/assets/*name` → 404, `*name` → `index.html`, Export `{ mountStaticSite }`. Nachher die vollständige Datei (JSDoc und Fallback unverändert, neu sind `HOST_PATTERN`, `FRAME_ANCESTORS`, `buildContentSecurityPolicy`, `setContentSecurityPolicy` und die erste Zeile in `mountStaticSite`). Die Datei hat außer dem JSDoc keine Kommentare und bekommt keine; das Warum steht in der Begründungstabelle oben: `HOST_PATTERN` lässt nur `host[:port]` in die Policy, `frame-ancestors` geht im Report-Only-Modus als eigener erzwungener Header hinaus, `report-to` nur bei `req.secure`.
 
 ```js
 const express = require("express");
 const path = require("node:path");
 
-// The Host header ends up inside the policy; anything but a plain host[:port] is dropped so a
-// forged header cannot append its own directives.
 const HOST_PATTERN = /^(?:[a-z0-9.-]+|\[[0-9a-f:.]+\])(?::\d{1,5})?$/i;
+const FRAME_ANCESTORS = "frame-ancestors 'self'";
 
-const buildContentSecurityPolicy = ({ host, secure }) => {
+const buildContentSecurityPolicy = ({ host, secure, enforce }) => {
     const sockets = HOST_PATTERN.test(host || "") ? ` ws://${host} wss://${host}` : "";
     return [
         "default-src 'self'",
@@ -12055,16 +12991,22 @@ const buildContentSecurityPolicy = ({ host, secure }) => {
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
-        "frame-ancestors 'self'",
+        ...(enforce ? [FRAME_ANCESTORS] : []),
         "report-uri /api/csp-report",
         ...(secure ? ["report-to csp"] : []),
     ].join("; ");
 };
 
 const setContentSecurityPolicy = (req, res, next) => {
-    const header = process.env.CSP_ENFORCE === "true" ? "Content-Security-Policy" : "Content-Security-Policy-Report-Only";
-    res.setHeader(header, buildContentSecurityPolicy({ host: req.get("host"), secure: req.secure }));
-    // The Reporting API only delivers to secure endpoints; over plain http report-uri is the channel.
+    const enforce = process.env.CSP_ENFORCE === "true";
+    const policy = buildContentSecurityPolicy({ host: req.get("host"), secure: req.secure, enforce });
+    if (enforce) {
+        res.setHeader("Content-Security-Policy", policy);
+    } else {
+        res.setHeader("Content-Security-Policy", FRAME_ANCESTORS);
+        res.setHeader("Content-Security-Policy-Report-Only", policy);
+    }
+    res.setHeader("X-Frame-Options", "SAMEORIGIN");
     if (req.secure) res.setHeader("Reporting-Endpoints", "csp=\"/api/csp-report\"");
     next();
 };
@@ -12091,21 +13033,50 @@ const mountStaticSite = (app, distDir) => {
 module.exports = { mountStaticSite };
 ```
 
+`server/lib/fileContent/download.js` — `contentHeaders` Z. 29-30 vorher:
+
+```js
+    if (MIME_TYPES[ext]) headers["Content-Type"] = MIME_TYPES[ext];
+    return headers;
+```
+
+nachher (Konstante `PREVIEW_SANDBOX` direkt über `contentHeaders`, nach `clampThumbSize` Z. 19):
+
+```js
+const PREVIEW_SANDBOX = "sandbox allow-scripts allow-forms allow-popups";
+```
+
+```js
+    if (MIME_TYPES[ext]) headers["Content-Type"] = MIME_TYPES[ext];
+    // Opened in a tab of its own, a preview loses the iframe's sandbox attribute. PDF is left out:
+    // Chromium does not start its PDF viewer in a sandboxed document.
+    if (preview && ext !== "pdf") headers["Content-Security-Policy"] = PREVIEW_SANDBOX;
+    return headers;
+```
+
+`X-Content-Type-Options: nosniff` und `Cache-Control` der Vorschau-Route (`server/routes/sftp.js`) bleiben unverändert; die Route übernimmt die Header aus `contentHeaders` per Schleife und braucht keine Änderung.
+
 - [ ] **Step 4: Implement — `server/routes/cspReport.js`**
 
-Der Router trägt Rate-Limit und Parser selbst, damit `server/index.js` nur eine Zeile bekommt. Das globale `express.json()` (`server/index.js:63`) parst nur `application/json` und lässt beide Report-Typen durch. Reihenfolge: erst das Limit, dann das Parsen. Muster des Limiters: `server/lib/bookmarkRateLimiter.js` (`ipKeyGenerator` ist Pflicht, sonst `ERR_ERL_KEY_GEN_IPV6`).
+Der Router trägt Rate-Limit und Parser selbst, damit `server/index.js` nur eine Zeile bekommt. Das globale `express.json()` in `server/index.js` (heute Z. 63, nach Tasks 1 und 8 verschoben; Code-Anker `app.use(express.json(`) parst nur `application/json` und lässt beide Report-Typen durch. Reihenfolge: erst das Limit, dann das Parsen. Muster des Limiters: `server/lib/bookmarkRateLimiter.js` (`ipKeyGenerator` ist Pflicht, sonst `ERR_ERL_KEY_GEN_IPV6`).
 
 ```js
 const express = require("express");
 const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
 const logger = require("../utils/logger");
 
-const router = express.Router();
+const app = express.Router();
 
 const MAX_REPORTS = 10;
 const MAX_FIELD = 200;
 const KEYWORD = /^[a-z-]{1,32}$/i;
 const NETWORK_SCHEMES = new Set(["http:", "https:", "ws:", "wss:"]);
+const DIRECTIVES = new Set([
+    "default-src", "script-src", "script-src-elem", "script-src-attr", "style-src", "style-src-elem", "style-src-attr",
+    "img-src", "font-src", "connect-src", "media-src", "object-src", "frame-src", "child-src", "worker-src",
+    "manifest-src", "base-uri", "form-action", "frame-ancestors", "require-trusted-types-for", "trusted-types",
+]);
+const DISPOSITIONS = new Set(["enforce", "report"]);
 
 const cspReportLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -12117,6 +13088,12 @@ const cspReportLimiter = rateLimit({
 });
 
 const clip = (value) => (typeof value === "string" ? value.slice(0, MAX_FIELD) : null);
+
+const directiveOf = (value) => {
+    if (typeof value !== "string" || value.trim() === "") return null;
+    const name = value.trim().split(/\s+/)[0].toLowerCase();
+    return DIRECTIVES.has(name) ? name : "[other]";
+};
 
 // Query strings carry tokens (?sessionToken= on every WebSocket, ?token= on downloads); a report
 // about a blocked socket would otherwise write a live session token into the log.
@@ -12136,10 +13113,10 @@ const pick = (raw) => {
     return {
         document: stripUrl(report.documentURL ?? report["document-uri"]),
         blocked: stripUrl(report.blockedURL ?? report["blocked-uri"]),
-        directive: clip(report.effectiveDirective ?? report["effective-directive"] ?? report["violated-directive"]),
+        directive: directiveOf(report.effectiveDirective ?? report["effective-directive"] ?? report["violated-directive"]),
         source: stripUrl(report.sourceFile ?? report["source-file"]),
         line: Number.isInteger(line) ? line : null,
-        disposition: clip(report.disposition),
+        disposition: DISPOSITIONS.has(report.disposition) ? report.disposition : null,
     };
 };
 
@@ -12156,28 +13133,29 @@ const summarizeReports = (body) => {
  * @summary Receive Content Security Policy violation reports
  * @description Browsers post here when the page violates the Content-Security-Policy(-Report-Only) header. No authentication; rate limited per address. Accepts application/csp-report and application/reports+json.
  * @tags Security
- * @return 204 - Report accepted
- * @return 429 - Too many reports
+ * @produces application/json
+ * @return {object} 204 - Report accepted, empty body
+ * @return {object} 429 - Too many reports
  */
-router.post("/", cspReportLimiter, express.json({ type: ["application/csp-report", "application/reports+json"], limit: "64kb" }), (req, res) => {
+app.post("/", cspReportLimiter, express.json({ type: ["application/csp-report", "application/reports+json"], limit: "64kb" }), (req, res) => {
     for (const report of summarizeReports(req.body)) logger.warn("CSP violation", report);
     res.status(204).end();
 });
 
-router.use((err, req, res, _next) => res.status(err.status === 413 ? 413 : 400).end());
+app.use((err, req, res, _next) => res.status(err.status === 413 ? 413 : 400).end());
 
-module.exports = router;
+module.exports = app;
 module.exports.summarizeReports = summarizeReports;
 ```
 
 - [ ] **Step 5: Run test to verify it passes**
 
-Run: `cd /root/outpost && node --test server/lib/__tests__/cspHeader.test.js server/lib/__tests__/staticSite.test.js`
-Expected: `# tests 8`, `# pass 8`, `# fail 0` (5 neue, 3 bestehende).
+Run: `cd /root/outpost && node --test server/lib/__tests__/cspHeader.test.js server/lib/__tests__/staticSite.test.js server/lib/fileContent/__tests__/download.test.js`
+Expected: `# tests 19`, `# pass 19`, `# fail 0` (6 neue, 13 bestehende).
 
 - [ ] **Step 6: Mount in `server/index.js`**
 
-Vorher (Z. 70-71):
+Vorher (Code-Anker; heute Z. 70-71, durch Tasks 1 und 8 verschoben — die Nummern nicht suchen, sondern die beiden Zeilen):
 
 ```js
 app.use("/api/auth", require("./routes/auth"));
@@ -12192,7 +13170,7 @@ app.use("/api/auth", require("./routes/authProviders"));
 app.use("/api/csp-report", require("./routes/cspReport"));
 ```
 
-Ohne `authenticate`: Browser schicken Meldungen ohne `Authorization`-Header. Der Mount steht vor `mountStaticSite` (Z. 121-122), damit der SPA-Fallback die Route nicht verdeckt.
+Ohne `authenticate`: Browser schicken Meldungen ohne `Authorization`-Header. Der Mount steht vor `mountStaticSite(app, …)` (heute Z. 121-122, ebenfalls verschoben), damit der SPA-Fallback die Route nicht verdeckt.
 
 - [ ] **Step 7: Lint und Gegenprobe der Fehlerpfade**
 
@@ -12222,8 +13200,8 @@ Expected: `400 413`, danach `429`. Die Ausgabe enthält keinen Stacktrace (SEC-E
 - [ ] **Step 8: Commit**
 
 ```bash
-git add server/lib/staticSite.js server/routes/cspReport.js server/index.js server/lib/__tests__/cspHeader.test.js
-git commit -m "Vault: Content-Security-Policy als Report-Only mit Meldeendpunkt"
+git add server/lib/staticSite.js server/routes/cspReport.js server/index.js server/lib/__tests__/cspHeader.test.js server/lib/fileContent/download.js server/lib/fileContent/__tests__/download.test.js
+git commit -m "Vault: Content-Security-Policy als Report-Only mit Meldeendpunkt, Einbetten erzwungen gesperrt, Dateivorschau auch im eigenen Tab sandboxed"
 ```
 
 - [ ] **Step 9: Doku `docs/vault.md` schreiben**
@@ -12276,8 +13254,8 @@ Restart Outpost. **Settings → Vault** shows the state of the key:
 | State | Meaning |
 | - | - |
 | Active | The vault is on. |
-| Missing | No key, or not 64 hex characters. The vault is off: no navigation entry, no agent tools, and the vault API answers `404`. |
-| Mismatch | The key cannot decrypt the check value Outpost stored when it first started with a key. The vault stays off until the original key is back. |
+| Missing | No key, or not 64 hex characters. The vault is off: no navigation entry, no agent tools, agent keys are rejected with `401`, and the vault API answers `404`. |
+| Mismatch | The key cannot decrypt what Outpost already stored with the previous key. The vault stays off, exactly as with a missing key, until the original key is back. |
 
 Without a key, Outpost starts and behaves exactly as before.
 
@@ -12316,9 +13294,9 @@ Once the vault is on, **Vault** appears in the main navigation for accounts with
 - tags (personal entries only, because tags belong to your account),
 - **All servers** (for an organization entry: all servers of that organization).
 
-The default is none: a new entry is invisible to every agent until you choose. Organization entries can only apply to servers and folders of the same organization. The agent's account must also still be allowed to open the server; once that access goes away, the server's agent keys see nothing. A request without a server (an account API key or a signed-in session) sees only personal entries that apply to **All servers**.
+The default is none: a new entry is invisible to every agent until you choose. Organization entries can only apply to servers and folders of the same organization. The agent's account must also still be allowed to open the server; once that access goes away, Outpost rejects the server's agent keys with `403`. A request without a server (an account API key or a signed-in session) sees only personal entries that apply to **All servers**.
 
-**Approval required.** On by default. Every use by an agent then needs a click in an Outpost window, see [Approvals](#_5-approvals).
+**Approval required.** On by default. Every use by an agent then needs a click in an Outpost window, see [Approvals](#_5-approvals). Only a signed-in session can switch it off: saving an entry with approvals off through an account API key or during an impersonation session answers `403` ("Turning off approvals requires a signed-in session"). A fill requested during an impersonation session always asks for approval, even for entries with approvals off.
 
 **Changing a target clears the values.** When you change the origins of a login, the hosts of an API key or the host of a database entry, Outpost deletes all stored values of that entry in the same step, and the dialog asks for them again. Otherwise someone who may edit an organization entry, but not see its values, could point it at a site of their own and let an agent fill the password there.
 
@@ -12330,7 +13308,7 @@ The default is none: a new entry is invisible to every agent until you choose. O
 
 ## 4. Agent access
 
-Agents sign in with an **agent key**. It belongs to one server, works only at the MCP endpoint `/api/mcp`, and by default only from that server's IP address. Every other Outpost API answers it with `403`. Agent keys are listed apart from your account API keys under **Settings → Account**.
+Agents sign in with an **agent key**. It belongs to one server, works only at the MCP endpoint `/api/mcp`, and by default only from that server's IP address. Every other Outpost API answers it with `403`. Outpost also rejects it with `401` while the vault is off, and with `403` once its account may no longer open the server. Agent keys do not expire; to rotate one, set up the access again, which replaces the old key. Agent keys are listed apart from your account API keys under **Settings → Account**.
 
 ### Before you start
 
@@ -12360,9 +13338,9 @@ Setting up the same server, agent and remote user again replaces your previous k
 
 ### Address check
 
-While the new key is not yet in use, Outpost lets the server call `GET <Outpost address for agents>/api/vault/agent-keys/probe` with it, using `curl` or else `wget`. The key goes to the tool from a temporary file with mode `600` that the command deletes afterwards. Outpost stores the address the request arrived from.
+While the new key is not yet in use, Outpost lets the server call `GET <Outpost address for agents>/api/vault/agent-keys/probe` with it, using `curl` or else `wget`. The key goes to the tool from a temporary file with mode `600` that the command deletes afterwards. Outpost stores the address the first request arrived from; later probe calls with the same key change nothing.
 
-If that address differs from what the server's host name resolves to, the dialog says so and offers to add it, for example "Seen 172.17.0.1 instead of 192.168.2.40 — adopt as address range? Without adopting it, Outpost refuses the key." Typical causes are NAT, IPv6, and an agent on a Docker host whose requests reach an Outpost container through the Docker gateway. Accepting adds exactly the measured address as `/32` (IPv4) or `/128` (IPv6). This works once and only within 15 minutes of creating the key. Without it, the IP binding rejects the agent with `403`, and the audit log records `vault.agent_ip_denied`.
+If that address differs from what the server's host name resolves to, the dialog says so and offers to add it, for example "Seen 172.17.0.1 instead of 192.168.2.40 — adopt as address range? Without adopting it, Outpost refuses the key." Typical causes are NAT, IPv6, and an agent on a Docker host whose requests reach an Outpost container through the Docker gateway. Accepting adds exactly the measured address as `/32` (IPv4) or `/128` (IPv6). This works once and only within 15 minutes of creating the key. If the measured address is the address your own browser reaches Outpost from, Outpost refuses to adopt it ("The measured address is the address of your browser; Outpost sees a proxy, not the server"): both requests then arrive through the same proxy, and the range would let in everyone behind it. Fix `TRUST_PROXY` (see [section 6](#_6-reverse-proxy-and-trust-proxy)) or use Outpost's LAN address as **Outpost address for agents**. Without it, the IP binding rejects the agent with `403`, and the audit log records `vault.agent_ip_denied`.
 
 If the check fails (neither `curl` nor `wget`, or Outpost unreachable from the server), the result says so and the setup continues with the resolved addresses.
 
@@ -12384,9 +13362,9 @@ A server user has one `outpost` registration per agent. If another Outpost accou
 
 ### Revoke
 
-Revoke a key under **Settings → Account** in the agent keys section (**Edit** per server opens the setup dialog) or in the setup dialog itself. Revoking deletes the key at once; the agent loses access immediately. Outpost then removes the registration from the server, but only if it still carries this key. It compares the key prefix inside Outpost; nothing read from the server is passed on. If another account's key is registered by now, the registration stays and the result says so.
+Revoke a key under **Settings → Account** in the agent keys section (**Edit** per server opens the setup dialog) or in the setup dialog itself. Revoking deletes the key at once; the agent loses access immediately. Outpost then removes the registration from the server, but only if it still carries this key. It compares the key prefix inside Outpost; nothing read from the server is passed on. If another account's key is registered by now, the registration stays, and the result says that the access is revoked while the registration on the server carries another account's key and stays in place.
 
-If the identity used for the setup has been deleted in the meantime, Outpost only deletes the key and shows the removal commands to copy. If removing the registration fails, the key is revoked anyway. Deleting the server entry deletes its agent keys.
+If the identity used for the setup has been deleted in the meantime, or removing the registration fails or cannot be confirmed, the key is revoked anyway and the result shows the removal command with a copy button. Run it on the server in your own terminal. Deleting the server entry deletes its agent keys.
 
 ## 5. Approvals
 
@@ -12405,13 +13383,13 @@ When an agent wants to use an entry with **Approval required**, a card appears b
 
 ### "For this session" and `/clear`
 
-The session is the agent's MCP connection to Outpost, not the chat. `/clear` in Claude Code starts a new conversation over the same connection, so an approval "for this session" keeps applying to it. It ends when the agent process exits or reconnects, when Outpost restarts, or after 12 hours without activity. To withdraw it earlier, quit the agent or revoke its key.
+The session is the agent's MCP connection to Outpost, not the chat. `/clear` in Claude Code starts a new conversation over the same connection, so an approval "for this session" keeps applying to it. It ends when the agent process exits or reconnects, when Outpost restarts, or after 12 hours without activity. It also ends as soon as the entry changes: after any save of the entry, for example new origins, the next use asks again. To withdraw it earlier, quit the agent or revoke its key.
 
 ### Time limits
 
 The agent's request stays open while the card waits, up to 2 minutes. Everything between the agent and Outpost has to allow that:
 
-- **Reverse proxy:** `proxy_read_timeout` of at least 150 seconds in nginx (the example in [Reverse Proxy](/reverse-proxy) uses 86400), `ProxyTimeout` likewise in Apache.
+- **Reverse proxy:** `proxy_read_timeout` of at least 150 seconds in nginx (the example in [Reverse Proxy](/reverse-proxy) uses 86400), `ProxyTimeout` likewise in Apache. This applies to `/api/mcp` and to `/api/vault/agent-keys`, whose setup request waits for the SSH commands on the server.
 - **Cloudflare:** proxied requests end after 100 seconds. Use Outpost's LAN address as **Outpost address for agents**.
 - **Codex:** waits 60 seconds per tool call by default. Raise it in `~/.codex/config.toml`, in the section the setup created:
 
@@ -12446,18 +13424,20 @@ The simplest setup: point **Outpost address for agents** at Outpost's direct LAN
 - **Local users of the server.** The IP binding cannot tell users of the same server apart. Anyone with an account there can read the key from `~/.claude.json` or `~/.codex/outpost.env` if file permissions allow (root always can), and during the setup from the process list, because the key briefly appears on a command line. They can then use it from that server. Set up agent access only on servers whose local users you trust with your vault entries.
 - **The live picture is not protected by `vault.reveal`.** If you watch an agent fill a login in your own browser tab, the page's "show password" button reveals the value, even without `vault.reveal`. For the agent, Outpost blanks the field in every snapshot (`value="••••"`) and refuses screenshots while a filled field is unmasked.
 - **A browser context that received a password stays locked.** After a fill, `browser_evaluate` is refused in that browser context, including popups, and every text sent to the agent or written to the audit log (snapshots, `URL:`, titles, session lists, error messages) is scrubbed of the filled password, also in URL-encoded and form-encoded form. Outpost fills only in fresh sessions: not over `via`, not in the persistent profile, and not in a browser context in which `browser_evaluate` has ever run.
+- **Selection and paste are locked.** A selected password ends up in the system's selection buffer, from where a middle click pastes it anywhere. Outpost therefore refuses the agent's middle click (`browser_click` with `button: "middle"`) in every session; your own clicks in the tab are not affected. To open a link in a new tab, the agent calls `browser_open` with the link's address instead. In a browser context that received a password, Outpost also refuses `browser_key` with a Control, Meta or Shift combination (Shift+Tab excepted) and `browser_click` with `clickCount` above 1. The agent gets `vault.input_locked`, and the audit log records `vault.input_locked`. Before typing, Outpost empties a field directly instead of selecting its content.
 - **The page must match.** The password field and every frame above it must be on one of the entry's origins exactly (scheme, host, port). A foreign page that embeds the login is refused; if you want to allow an embedding, add the embedding origin.
 - **"For this session" outlives `/clear`.** See [Approvals](#for-this-session-and-clear).
-- **Impersonation.** Admins who sign in as another user see that user's entries but cannot show values, answer approvals, or set up or revoke agent access. An API key the admin creates during impersonation does not get around this. Every audit entry from such a session names the admin as `impersonatorId`.
-- **Leaving an organization** hides its entries at once, also for MCP sessions that are already running.
-- **Audit log.** Category Vault: `vault.item_create`, `vault.item_update`, `vault.item_delete`, `vault.reveal`, `vault.use`, `vault.use_denied`, `vault.approve`, `vault.deny`, `vault.approval_timeout`, `vault.agent_key_create`, `vault.agent_key_revoke`, `vault.agent_ip_denied`, `vault.item_unreadable`, `vault.evaluate_locked`, `vault.screenshot_locked`, `vault.persistent_not_allowed`. Entries name the vault entry, agent, server and target, never a value.
+- **Impersonation.** Admins who sign in as another user see that user's entries but cannot show values, answer approvals, switch off **Approval required**, or set up or revoke agent access. Fills requested during impersonation always ask for approval. The admin cannot create API keys for that user during impersonation either (`403` "This action requires a signed-in session"), so no key outlives the impersonation. Every audit entry from an HTTP request of such a session, of any action, names the admin as `impersonatorId`; entries from WebSocket connections (terminal, SFTP, AI chat) do not carry it yet.
+- **Leaving an organization** hides its entries at once, also for MCP sessions that are already running and for a request whose approval card is still waiting.
+- **Agent keys open only ephemeral browser sessions.** `browser_open` with `profile: "persistent"` answers `INVALID_PROFILE` for an agent key before a browser starts, so an agent never sees the cookies and logins of your persistent profile.
+- **Audit log.** Category Vault: `vault.item_create`, `vault.item_update`, `vault.item_delete`, `vault.reveal`, `vault.use`, `vault.use_denied`, `vault.approve`, `vault.deny`, `vault.approval_timeout`, `vault.agent_key_create`, `vault.agent_key_revoke`, `vault.agent_ip_denied`, `vault.item_unreadable`, `vault.evaluate_locked`, `vault.screenshot_locked`, `vault.input_locked`, `vault.persistent_not_allowed`. Entries name the vault entry, agent, server and target, never a value.
 - **No master password.** Whoever controls the Outpost host or container, and with it `VAULT_KEY`, can decrypt the vault.
 
 ## 8. Content Security Policy
 
 Outpost sends a Content Security Policy with the web client. It limits where the page may load scripts, styles, fonts and images from and where it may connect to. That matters for the vault: a foreign script running inside Outpost could fetch every value you are allowed to show.
 
-The policy starts in **report-only** mode. The browser blocks nothing; it reports what it would have blocked to `POST /api/csp-report`, and Outpost writes each report to its log as `CSP violation`, with page and blocked address shortened to origin and path (query strings removed), directive, source file and line. The endpoint needs no sign-in and takes 30 reports per minute per address. Over HTTPS, browsers report through the Reporting API (`report-to`), over plain HTTP through `report-uri`.
+The policy starts in **report-only** mode, with one exception: framing. Outpost sends `frame-ancestors 'self'` as an enforced `Content-Security-Policy` from the start, together with `X-Frame-Options: SAMEORIGIN`, because a report-only policy would never stop another site from embedding Outpost. Apart from that the browser blocks nothing; it reports what it would have blocked to `POST /api/csp-report`, and Outpost writes each report to its log as `CSP violation`, with page and blocked address shortened to origin and path (query strings removed), directive name, disposition, source file and line. Anything else in a report is dropped. The endpoint needs no sign-in and takes 30 reports per minute per address. Over HTTPS, browsers report through the Reporting API (`report-to`), over plain HTTP through `report-uri`.
 
 Use Outpost normally for a while — terminals, remote desktop, the file editor, recordings, browser tabs and the vault. If the log shows no `CSP violation`, switch the policy on and restart Outpost:
 
@@ -12468,7 +13448,7 @@ services:
       CSP_ENFORCE: "true"
 ```
 
-Outpost then sends `Content-Security-Policy` instead of `Content-Security-Policy-Report-Only`. If something stops working, remove the variable again and report the logged violation.
+Outpost then sends the whole policy as `Content-Security-Policy` instead of `Content-Security-Policy-Report-Only`. If something stops working, remove the variable again and report the logged violation. Enforcing will become the default in a later release.
 
 | Directive | Value | Why |
 | - | - | - |
@@ -12482,7 +13462,9 @@ Outpost then sends `Content-Security-Policy` instead of `Content-Security-Policy
 | `object-src` | `'none'` | Outpost uses no plugins. |
 | `base-uri` | `'self'` | An injected `<base>` element cannot redirect the bundle's relative addresses. |
 | `form-action` | `'self'` | No form posts to another site. |
-| `frame-ancestors` | `'self'` | No other site can embed Outpost and trick you into clicking, for example, an approval. If you embed Outpost in a dashboard, this blocks it once enforced. |
+| `frame-ancestors` | `'self'` | No other site can embed Outpost and trick you into clicking, for example, an approval. Enforced in both modes, together with `X-Frame-Options: SAMEORIGIN`: Outpost cannot be embedded in a page of another origin, for example a dashboard. |
+
+File previews other than PDF carry a policy of their own, `Content-Security-Policy: sandbox allow-scripts allow-forms allow-popups`. An HTML or SVG file from a server therefore runs isolated from Outpost even when its preview address is opened in a tab of its own, not only inside the preview window. PDF previews are left out because browsers do not start their PDF viewer in a sandboxed document.
 
 The desktop app ships its own policy; this one applies to Outpost in the browser. The development server (`yarn dev`) sends none.
 
@@ -12495,9 +13477,9 @@ The vault adds two MCP tools. They appear next to the [browser tools](/browser-t
 | `vault_list` | Lists the entries the caller may use, each with `item` (the identifier for `browser_fill_credential`), `owner` (`personal` or the organization's name), `type`, `description`, `username` or `host`, `origins` or `hosts`, `approvalRequired` and `usableBy` (the tools that can use this type today). Never a value. |
 | `browser_fill_credential` | `{ item, passwordRef, usernameRef?, sessionId? }`. Fills username and password of a login entry into the fields `passwordRef` and `usernameRef` from `browser_snapshot`. Answers only that both were filled. |
 
-`browser_fill_credential` checks, in this order: the entry is visible and a login; the browser session belongs to the caller and is not paused; no `browser_evaluate` has run in its browser context; the session does not use `via` or the persistent profile; the frame of the password field and all frames above it match an allowed origin; `passwordRef` is a password field and `usernameRef` a text, email or phone field; the approval, if required. After the approval the session checks run once more, right before typing, because the session was free for other tools while the card waited.
+`browser_fill_credential` checks, in this order: the entry is visible and a login; the browser session belongs to the caller and is not paused; no `browser_evaluate` has run in its browser context; the session does not use `via` or the persistent profile; the frame of the password field and all frames above it match an allowed origin; `passwordRef` is a password field and `usernameRef` a text, email or phone field; the approval, if required. After the approval Outpost checks once more, right before typing, because the session was free for other tools while the card waited: the agent key is still valid, the entry is still visible to it with the same type and origins, and the session checks pass again. If the entry disappeared in the meantime, for example because you left its organization, the agent gets `vault.item_unknown`; if its origins changed, `vault.origin_mismatch`. Nothing is typed in either case.
 
-With an agent key, the browser tools see only the sessions this key opened and their popups. `browser_list` hides your own tabs and those of other agents, a foreign `sessionId` answers like an unknown one, and `via` is limited to the key's own server.
+With an agent key, the browser tools see only the sessions this key opened and their popups. `browser_list` hides your own tabs and those of other agents, a foreign `sessionId` answers like an unknown one, also for `browser_fill_credential`, `via` is limited to the key's own server (`browser_open` with another server answers `VIA_NOT_ALLOWED`), and `browser_open` opens only ephemeral sessions (`INVALID_PROFILE` for `profile: "persistent"`).
 
 | Error | Meaning and next step |
 | - | - |
@@ -12506,14 +13488,15 @@ With an agent key, the browser tools see only the sessions this key opened and t
 | `vault.item_unreadable` | The stored value cannot be decrypted. Ask the user to check the entry. |
 | `vault.no_secret` | The login entry has no stored password. Ask the user to enter it in Outpost. |
 | `vault.session_tainted` | `browser_evaluate` ran in this browser context. Open a new session with `browser_open` without `profile: "persistent"` and fill there. |
-| `vault.via_not_allowed` | The session runs over `via`, or `via` points at a server other than the key's own. Open a session without `via`. |
-| `vault.persistent_not_allowed` | The session uses the persistent profile. Open an ephemeral session. |
+| `vault.via_not_allowed` | The session runs over `via`. Outpost never types a password into a tunneled page, not even through the key's own server. Open a session without `via`. |
+| `vault.persistent_not_allowed` | The session uses the persistent profile. Only an account API key can reach this; agent keys cannot open such a session. Open an ephemeral session. |
 | `vault.origin_mismatch` | The page or a frame above the field is not on an allowed origin. Navigate to the entry's login page. |
 | `vault.not_password_field` | `passwordRef` is not an `<input type="password">`. Take a new snapshot and pick the password field. |
 | `vault.bad_username_field` | `usernameRef` is not a text field on the same origin. |
 | `vault.focus_lost` | The focus left the target field before typing; nothing was typed. Try again. |
 | `vault.evaluate_locked` | Credentials were filled in this browser context, so `browser_evaluate` is refused. Use `browser_snapshot` and `browser_click`. |
 | `vault.screenshot_locked` | A filled field is currently unmasked. Use `browser_snapshot`. |
+| `vault.input_locked` | Credentials were filled in this browser context, so key combinations that select or copy text and multi-clicks are refused; a middle click is refused in every session. Use `browser_click` and `browser_type` on single fields; to open a link in a new tab, call `browser_open` with its address. |
 | `vault.approval_unavailable` | No Outpost window is open to answer. Ask the user to open Outpost. |
 | `vault.approval_pending` | A request for this entry is already waiting. Wait for it. |
 | `vault.approval_busy` | Three requests of this agent are already waiting. |
@@ -12525,7 +13508,7 @@ With an agent key, the browser tools see only the sessions this key opened and t
 Errors of the session checks that the browser tools also use, such as an unknown or paused session, keep their browser error codes.
 ````
 
-Inhaltliche Quellen je Abschnitt, damit Abweichungen im Review auffallen: 1 = Spec „Betrieb“ und `server/utils/secrets.js` (Umgebung gewinnt, Dateiname groß geschrieben); 2 = Spec „Berechtigungen“; 3 = Spec „Datenmodell“, „Sichtbarkeit“, Spec `vault_secrets` (Zieländerung), UI-VAULT-DETAIL-SECRET (30 s); 4 = Spec „Einrichtung per Klick“ Schritte 1–8 und „Zugang entziehen“; 5 = Spec „Freigabe“, `TRANSPORT_IDLE_MS` (12 h) aus `server/lib/mcp/server.js` (Task 2); 6 = Spec „Authentifizierung“ (`TRUST_PROXY`), `parseTrustProxy` in `server/index.js:43-55`; 7 = Spec „Grenze des Modells“, „Folgen für die Browser-Sitzung“, „Impersonation“, „Audit“; 8 = dieser Task; 9 = Spec „`vault_list`“, „`browser_fill_credential`“, `server/lib/vault/errors.js` (Task 1). Weicht ein Wert im gebauten Code ab (z. B. Limit, Zeitspanne, Fehlercode), gilt die Spec; den Befund melden statt die Doku anzupassen.
+Inhaltliche Quellen je Abschnitt, damit Abweichungen im Review auffallen: 1 = Spec „Betrieb“ und `server/utils/secrets.js` (Umgebung gewinnt, Dateiname groß geschrieben); 2 = Spec „Berechtigungen“; 3 = Spec „Datenmodell“, „Sichtbarkeit“, Spec `vault_secrets` (Zieländerung), UI-VAULT-DETAIL-SECRET (30 s), `403` beim Abschalten der Freigabe (Task 5), Abweisung ohne Serverzugriff (Task 4 `rejectAgentKey`); 4 = Spec „Einrichtung per Klick“ Schritte 1–8 und „Zugang entziehen“, Abweisung bei ausgeschaltetem Vault (Task 4), Probe nur erste Messung und `409` bei Proxy-Adresse (Task 8), Entziehen-Ergebnis `foreign`/`unknown` (Manifest rev 14 `UI-AGENT-ACCESS-KEYS`, `UI-API-KEYS-AGENTS`; Wortlaut der Oberfläche aus `en.json`, die Doku umschreibt ihn nur); 5 = Spec „Freigabe“, `TRANSPORT_IDLE_MS` (12 h) aus `server/lib/mcp/server.js` (Task 2), Eintragsstempel der Sitzungsfreigabe (Task 6), `proxy_read_timeout` auch für `/api/vault/agent-keys` (Task 8, Einrichtung über SSH); 6 = Spec „Authentifizierung“ (`TRUST_PROXY`), `parseTrustProxy` in `server/index.js` (heute Z. 43-55, durch Tasks 1 und 8 verschoben; maßgeblich die Funktion); 7 = Spec „Grenze des Modells“, „Folgen für die Browser-Sitzung“, „Impersonation“, „Audit“, `vaultGuard.assertInputAllowed` (Task 9), `impersonatorId` über `server/utils/auditContext.js` nur in HTTP-Audits und `POST /api/accounts/api-keys` mit `requireLoginSession` (Task 4), `INVALID_PROFILE` für Agenten-Keys (Task 7); 8 = dieser Task; 9 = Spec „`vault_list`“, „`browser_fill_credential`“, Nachprüfung nach der Freigabe (Task 11), `vault.via_not_allowed` für jede Sitzung mit `via` (`assertFillableSession`, Task 11) gegenüber dem Browser-Fehler `VIA_NOT_ALLOWED` und `INVALID_PROFILE` von `browser_open` (Task 7), `server/lib/vault/errors.js` inkl. `vault.input_locked` (Task 1). Weicht ein Wert im gebauten Code ab (z. B. Limit, Zeitspanne, Fehlercode), gilt die Spec; den Befund melden statt die Doku anzupassen.
 
 - [ ] **Step 10: Sidebar-Eintrag in `docs/.vitepress/config.mjs`**
 
@@ -12578,17 +13561,19 @@ git commit -m "Vault: Doku zu Schlüssel, Agenten-Zugang, Freigaben und Sicherhe
 
 ### Task 17: Volle Prüfung, Sicherheitsabgleich, manuelle Tests mit Claude Code und Codex
 
-**Files:** keine Code-Dateien. Befunde werden in der Datei behoben, die laut `plan-contracts.md` dem jeweiligen Task gehört, mit den betroffenen Tests geprüft und einzeln committet (`Vault: …`).
+**Files:**
+- Modify: `docs/vault.md` (Abschnitt 8: der Satz „Enforcing will become the default in a later release.“ bekommt den Link auf das Issue aus Schritt 8 Punkt 15)
+- Sonst keine eigenen Dateien. Befunde werden in der Datei behoben, die in der **Files:**-Zeile des jeweiligen Tasks steht (bei mehreren Kandidaten der Task der Spalte „Task(s)“ in SEC-COVERAGE), mit den betroffenen Tests geprüft und einzeln committet (`Vault: …`).
 
 **Interfaces:**
-- Consumes: alles aus Tasks 1–16.
-- Produces: nichts.
+- Consumes: alles aus Tasks 1–16; `docs/vault.md` Abschnitt 8 aus Task 16.
+- Produces: GitHub-Issue „CSP standardmäßig scharf“ in `CallMeTechie/outpost` mit Zieldatum 2026-12-31, verlinkt aus `docs/vault.md`.
 
-**Design:** kein UI-Anteil. (Der Abgleich der gebauten Oberfläche mit dem Manifest läuft als `/mockingbird:design-verify` in Schritt 7.)
+**Design:** kein UI-Anteil. (Der Abgleich der gebauten Oberfläche mit dem Manifest, Revision 14, läuft als `/mockingbird:design-verify` in Schritt 7.)
 
-**Tests:** volle Suite (`yarn test`: Server-, Skript- und Client-Tests), die Chromium-Reihe mit gesetzten Umgebungsvariablen (sonst übersprungen: Spec-Tests 7, 8, 12, Review Focus 1), Lint beider Teile, Client-Build, Doku-Build, Sicherheitsabgleich über die Tabelle SEC-COVERAGE, manuelle Checkliste auf einem LAN-Server mit Claude Code und Codex. Keine neuen Tests. Deckt alle SEC-IDs ab (Nachweis je ID in der Tabelle unten).
+**Tests:** volle Suite (`yarn test`: Server-, Skript- und Client-Tests), die Chromium-Reihe mit gesetzten Umgebungsvariablen (sonst übersprungen: Spec-Tests 7, 8, 12, Review Focus 1, `vault.input_locked`), Lint beider Teile, Client-Build, Doku-Build, Sicherheitsabgleich über die Tabelle SEC-COVERAGE, manuelle Checkliste auf einem LAN-Server mit Claude Code und Codex, Migration 0047 einmal gegen MySQL (Schritt 9; die Suite läuft nur auf SQLite). Keine neuen Tests. Deckt alle SEC-IDs ab (Nachweis je ID in der Tabelle unten).
 
-**Parallel:** none — prüft den gemergten Gesamtstand aller Tasks.
+**Parallel:** none — einziger Task der Welle F; prüft den gemergten Gesamtstand aller Tasks einschließlich der Doku aus Task 16 (Welle E).
 
 - [ ] **Step 1: Volle Suite**
 
@@ -12601,14 +13586,14 @@ Der Launcher läuft vorübergehend auf dem NAS (Docker vorhanden), mit veröffen
 
 ```bash
 ssh -i ~/.ssh/synology-manager-plus_ed25519 ma.backes@192.168.2.151 \
-  'sudo docker run -d --rm --name outpost-browser-e2e -p 9300:9300 -p 9222:9222 -p 9230-9269:9230-9269 ghcr.io/callmetechie/outpost-browser:latest'
+  'sudo /usr/local/bin/docker run -d --rm --name outpost-browser-e2e -p 9300:9300 -p 9222:9222 -p 9230-9269:9230-9269 ghcr.io/callmetechie/outpost-browser:latest'
 cd /root/outpost && OUTPOST_BROWSER_E2E_LAUNCHER=http://192.168.2.151:9300 \
   OUTPOST_BROWSER_E2E_PAGE_HOST=$(hostname -I | awk '{print $1}') \
   node --test server/lib/browser/__tests__/chromium.e2e.test.js
-ssh -i ~/.ssh/synology-manager-plus_ed25519 ma.backes@192.168.2.151 'sudo docker stop outpost-browser-e2e'
+ssh -i ~/.ssh/synology-manager-plus_ed25519 ma.backes@192.168.2.151 'sudo /usr/local/bin/docker stop outpost-browser-e2e'
 ```
 
-Expected: alle Tests grün, keiner übersprungen (Spec-Tests 7, 8, 12 und Review Focus 1 aus Task 11). Der Container wird danach gestoppt; ohne `ALLOWED_CLIENTS` darf er nicht stehen bleiben.
+Expected: alle Tests grün, keiner übersprungen (der Chromium-Test aus Task 9, Spec-Tests 7, 8, 12, Review Focus 1 und `vault.input_locked` aus Task 11). Der Container wird danach gestoppt; ohne `ALLOWED_CLIENTS` darf er nicht stehen bleiben.
 
 - [ ] **Step 3: Lint**
 
@@ -12638,7 +13623,7 @@ grep -rn "sequelize\.query\|literal(" server/lib/vault server/routes/vault \
   server/controllers/vaultItems.js server/controllers/vaultSettings.js server/controllers/agentKeys.js
 grep -n "afterFind" server/models/VaultSecret.js
 grep -rn "rateLimit(\|Limiter" server/routes/vault server/routes/cspReport.js
-grep -rn "requireLoginSession" server/routes/vault
+grep -rn "requireLoginSession" server/routes/vault server/routes/apiKey.js
 grep -rn "logger\.\(info\|warn\|error\|debug\|system\|verbose\)" server/lib/vault server/lib/browser/vaultGuard.js \
   server/controllers/vaultItems.js server/controllers/vaultSettings.js server/controllers/agentKeys.js server/routes/vault
 grep -n "execCommand(" server/controllers/agentKeys.js
@@ -12651,7 +13636,7 @@ Expected, Zeile für Zeile:
 4. keine Treffer (SEC-SQLI-01; Abfragen nur über Sequelize-`where`/`Op`);
 5. keine Treffer (kein Klartext über Finder, Spec „`vault_secrets`“);
 6. Limiter an Reveal (`items.js`), Freigabe-Antwort (`approvals.js`), Agenten-Einrichtung (`agentKeys.js`) und `cspReport.js` (SEC-RATE-01);
-7. `requireLoginSession` an Reveal, `POST /approvals/:id`, `POST /agent-keys`, `POST /agent-keys/:id/confirm`, `DELETE /agent-keys/:id` (Impersonation und Konto-Keys → `403`);
+7. `requireLoginSession` an Reveal, `POST /approvals/:id`, `POST /agent-keys`, `POST /agent-keys/:id/confirm`, `DELETE /agent-keys/:id` und `POST /` in `server/routes/apiKey.js` (Konto-Key anlegen) (Impersonation und Konto-Keys → `403`);
 8. jede Log-Zeile nennt nur IDs, Codes, Feldnamen, Ursprünge oder Adressen — keine Variable mit Wert, Key, Token oder fertigem Befehl (SEC-SECRET-01). Jede Zeile einzeln lesen;
 9. jede Fundstelle übergibt einen Befehl, den eine Funktion aus `server/lib/vault/provision.js` gebaut hat — kein Template-String und keine Verkettung im Controller (SEC-INJECT-01). Danach `server/lib/vault/provision.js` lesen: jede Interpolation von URL, Key, CLI-Pfad und Key-Präfix steht in `shQuote(…)`.
 
@@ -12659,7 +13644,7 @@ Danach die Tabelle SEC-COVERAGE unten Zeile für Zeile abhaken: Testdatei öffne
 
 - [ ] **Step 7: Design-Abgleich**
 
-`/mockingbird:design-verify` für die Screens `UI-VAULT`, `UI-VAULT-DIALOG`, `UI-AGENT-ACCESS`, `UI-VAULT-SETTINGS`, `UI-API-KEYS`, `UI-VAULT-APPROVAL` und die ergänzten Bestandselemente `UI-SHELL-NAV`, `UI-SHELL-MOBILE-NAV`, `UI-SERVERS-LIST-MENU` (Manifest `docs/design/manifest.yaml`, Revision 13). Befunde in den Dateien der Tasks 10, 12–15 beheben, betroffene vitest-Dateien laufen lassen (`yarn --cwd client vitest run <pfad>`), committen. Die übrigen Review-Ketten (footgun, code-review) laufen wie gewohnt einmal an diesem Phasenende, nicht je Task.
+`/mockingbird:design-verify` für die Screens `UI-VAULT`, `UI-VAULT-DIALOG`, `UI-AGENT-ACCESS`, `UI-VAULT-SETTINGS`, `UI-API-KEYS`, `UI-VAULT-APPROVAL` und die ergänzten Bestandselemente `UI-SHELL-NAV`, `UI-SHELL-MOBILE-NAV`, `UI-SERVERS-LIST-MENU` (Manifest `docs/design/manifest.yaml`, Revision 14, inkl. der Entziehen-Zustände `partial`/`disabled` in `UI-AGENT-ACCESS-KEYS` und `UI-API-KEYS-AGENTS`). Befunde in den Dateien der Tasks 10, 12–15 beheben, betroffene vitest-Dateien laufen lassen (`yarn --cwd client vitest run <pfad>`), committen. Die übrigen Review-Ketten (footgun, code-review) laufen wie gewohnt einmal an diesem Phasenende, nicht je Task.
 
 - [ ] **Step 8: Manuelle Prüfung auf einem LAN-Server mit Claude Code und Codex**
 
@@ -12682,12 +13667,12 @@ cd ~/vault-login && python3 -m http.server 8080
 Login-Eintrag `portal` (persönlich, Benutzer `ada`, Passwort `S3cr3t&p=1 x`, Ursprung `http://web01:8080`, Gilt für: `web01`, Freigabe an) und `other` (gebunden an einen anderen Server).
 
 1. **Schlüsselzustand.** Ohne `VAULT_KEY`: kein Bereich „Vault“ in der Navigation, `GET /api/vault/items` → `404`, Einstellungen › Vault zeigt „Fehlt“. Mit Schlüssel: „Aktiv“. Danach mit einem anderen Schlüssel neu starten: „Passt nicht“, Vault aus; mit dem richtigen Schlüssel wieder „Aktiv“, Einträge lesbar.
-2. **Einrichten.** Kontextmenü `web01` › „Agenten-Zugang…“ › Claude Code und Codex › Einrichten. Ergebnis „Eingerichtet für <benutzer>“ je Agent; Messung ohne Abweichung. Auf `web01`: `stat -c %a ~/.claude.json ~/.codex/outpost.env` → `600 600`; die `.bashrc` enthält die Zeile genau einmal (Einrichten ein zweites Mal ausführen, dann erneut prüfen). Einstellungen › Konto zeigt beide Keys unter Agenten-Schlüssel bei `web01`, nicht in der Liste der API-Schlüssel.
-3. **`/mcp`.** Claude Code neu starten, `/mcp` → `outpost` verbunden. Codex in einer **neuen** Shell starten, `/mcp` → `outpost` gelistet; in einer vor der Einrichtung geöffneten tmux-Sitzung fehlt der Key (`echo ${OUTPOST_MCP_TOKEN:+gesetzt}` gibt nichts aus).
-4. **`vault_list`.** Claude ruft `vault_list`: `portal` erscheint mit `usableBy: ["browser_fill_credential"]`, `other` fehlt. Das Transcript (`~/.claude/projects/…/*.jsonl` auf `web01`) enthält weder `S3cr3t` noch Teile davon. Mit einem Agenten-Key `GET /api/vault/items` per `curl` → `403` „Agent keys can only access the MCP endpoint“.
-5. **Ausfüllen mit Freigabe.** Claude öffnet `http://web01:8080/`, macht einen Snapshot und ruft `browser_fill_credential` für `portal`. Die Freigabe-Karte erscheint in jedem Outpost-Fenster und im Popout; „Einmal“ → Antwort „eingetragen“, die Felder sind gefüllt. Snapshot zeigt `value="••••"`. „Show password“ klicken → Snapshot weiter `••••`, `browser_screenshot` → `vault.screenshot_locked`, `browser_evaluate` → `vault.evaluate_locked`. „Sign in“ klicken → `URL:` in der Antwort, `browser_list` und das Audit-Detail `url` zeigen `pw=••••` statt des Werts (auch kodiert). Audit-Log: `vault.approve`, `vault.use` mit Eintrag, Agent, Server, Ziel, ohne Wert. (Review Focus 1)
+2. **Einrichten.** Kontextmenü `web01` › „Agenten-Zugang…“ › Claude Code und Codex › Einrichten. Ergebnis „Eingerichtet für <benutzer>“ je Agent; Messung ohne Abweichung. Auf `web01`: `stat -c %a ~/.claude.json ~/.codex/outpost.env` → `600 600`; die `.bashrc` enthält die Zeile genau einmal (Einrichten ein zweites Mal ausführen, dann erneut prüfen). Einstellungen › Konto zeigt beide Keys unter Agenten-Schlüssel bei `web01`, nicht in der Liste der API-Schlüssel. Doppelklick auf „Einrichten“ → genau ein Einrichtungslauf: je Agent ein Key und ein Audit `vault.agent_key_create`; ein zweiter `POST /api/vault/agent-keys` für `web01` aus einem anderen Fenster, solange der erste läuft → `409`.
+3. **`/mcp`.** Claude Code neu starten, `/mcp` → `outpost` verbunden. Codex in einer **neuen** Shell starten, `/mcp` → `outpost` gelistet; in einer vor der Einrichtung geöffneten tmux-Sitzung fehlt der Key (`echo ${OUTPOST_MCP_TOKEN:+gesetzt}` gibt nichts aus). Testinstanz kurz ohne `VAULT_KEY` neu starten → `/mcp` in Claude meldet den Fehler, `curl` mit dem Agenten-Key an `/api/mcp` → `401`; mit Schlüssel neu starten → wieder verbunden.
+4. **`vault_list`.** Claude ruft `vault_list`: `portal` erscheint mit `usableBy: ["browser_fill_credential"]`, `other` fehlt. Das Transcript (`~/.claude/projects/…/*.jsonl` auf `web01`) enthält weder `S3cr3t` noch Teile davon. Mit einem Agenten-Key `GET /api/vault/items` per `curl` → `403` „Agent keys can only access the MCP endpoint“. Claude ruft `browser_open` mit `profile: "persistent"` → `INVALID_PROFILE` „Agent keys can only open ephemeral sessions; …“.
+5. **Ausfüllen mit Freigabe.** Claude öffnet `http://web01:8080/`, macht einen Snapshot und ruft `browser_fill_credential` für `portal`. Die Freigabe-Karte erscheint in jedem Outpost-Fenster und im Popout; „Einmal“ → Antwort „eingetragen“, die Felder sind gefüllt. Snapshot zeigt `value="••••"`. „Show password“ klicken → Snapshot weiter `••••`, `browser_screenshot` → `vault.screenshot_locked`, `browser_evaluate` → `vault.evaluate_locked`. „Sign in“ klicken → `URL:` in der Antwort, `browser_list` und das Audit-Detail `url` zeigen `pw=••••` statt des Werts (auch kodiert). Audit-Log: `vault.approve`, `vault.use` mit Eintrag, Agent, Server, Ziel, ohne Wert. Danach in derselben Sitzung `browser_key` mit `Control+a` und `browser_click` mit `clickCount: 3` auf die Überschrift → beide `vault.input_locked`, Audit `vault.input_locked`; `browser_click` mit `button: "middle"` in einer neuen Sitzung ohne Ausfüllen → ebenfalls `vault.input_locked`. `Tab` und `Shift+Tab` gehen weiter. (Review Focus 1)
 6. **Freigabe-Zeiten.** Neuer Aufruf, erst nach ca. 100 s „Einmal“ → Claude füllt noch aus. Während einer offenen Karte ruft Claude in derselben Sitzung `browser_evaluate` mit `1`; danach „Einmal“ → `vault.session_tainted`, nichts getippt (Review Focus 2). Codex mit Standard-`tool_timeout_sec`: nach 60 s verschwindet die Karte, Audit `vault.approval_timeout` mit `reason: "client_gone"`; mit `tool_timeout_sec = 180` in `~/.codex/config.toml` gelingt eine Freigabe nach 90 s.
-7. **Antwortarten.** „Für diese Sitzung“ → zweites Ausfüllen ohne Karte; nach `/clear` in Claude weiterhin ohne Karte; nach Neustart von Claude Code wieder mit Karte. „Ablehnen“ → `vault.approval_denied`, ein Folgeaufruf innerhalb von 60 s ebenso, ohne neue Karte. Alle Outpost-Fenster schließen → `vault.approval_unavailable`.
+7. **Antwortarten.** „Für diese Sitzung“ → zweites Ausfüllen ohne Karte; nach `/clear` in Claude weiterhin ohne Karte; Beschreibung von `portal` ändern und speichern → nächstes Ausfüllen wieder mit Karte (Freigabe an den Eintragsstand gebunden); erneut „Für diese Sitzung“, nach Neustart von Claude Code wieder mit Karte. „Ablehnen“ → `vault.approval_denied`, ein Folgeaufruf innerhalb von 60 s ebenso, ohne neue Karte. Alle Outpost-Fenster schließen → `vault.approval_unavailable`.
 8. **Entziehen.** Einstellungen › Konto › Agenten-Schlüssel › Entziehen (Bestätigungsdialog) für Claude Code → `/mcp` meldet den Fehler; `claude mcp get outpost` auf `web01` findet nichts; die Antwort von `DELETE /api/vault/agent-keys/:id` (Netzwerk-Tab) trägt `registration: "removed"`. Für Codex: `~/.codex/outpost.env` ist weg, `codex mcp list` ohne `outpost`.
 9. **Zwei Konten, ein Unix-Benutzer.** Konto A richtet Claude Code auf `web01` ein, danach Konto B für denselben Server und Benutzer: der Dialog warnt vor dem Einrichten. Konto A entzieht seinen Zugang → Antwort mit `registration: "foreign"` und entsprechendem Hinweis im Dialog, `claude mcp get outpost` zeigt weiter die Registrierung von B, B funktioniert. (Review Focus 4)
 10. **NAS mit Docker-Gateway.** SSH-Eintrag für das NAS selbst (`192.168.2.151`), Outpost-Testinstanz läuft dort im Docker. Agenten-Zugang einrichten: CLI fehlt → Ergebnis zeigt den Befehl; Messung meldet „Gesehen wurde 172.x.0.1 statt 192.168.2.151“. **Ohne** Übernahme Befehl kopieren, dann auf dem NAS mit dem Key aus dem Befehl:
@@ -12700,15 +13685,63 @@ Login-Eintrag `portal` (persönlich, Benutzer `ada`, Passwort `S3cr3t&p=1 x`, Ur
     ```
 
     → `403`, Audit `vault.agent_ip_denied` genau einmal, auch nach drei Wiederholungen. Zugang entziehen, neu einrichten, diesmal die gemessene Adresse übernehmen → derselbe `curl` → `200`. Eine Übernahme mehr als 15 Minuten nach dem Anlegen wird abgelehnt, und `allowedCidrs` bleibt unverändert. (Review Focus 3)
-11. **Impersonation.** Admin › Benutzer › als Konto A anmelden: Vault-Seite zeigt Einträge ohne „Anzeigen“/„Kopieren“, das Kontextmenü zeigt kein Einrichten, Freigabe-Karten erscheinen in diesem Fenster nicht. Ist nur das Impersonations-Fenster offen, bekommt Claude `vault.approval_unavailable`. `curl` mit dem Impersonations-Token (`localStorage.overrideToken`) auf `GET /api/vault/items/<id>/secrets/password` und `POST /api/vault/approvals/<id>` → `403`. Audit-Einträge aus dieser Sitzung nennen `impersonatorId`.
-12. **Organisation verlassen.** Organisationseintrag `org:<id>/shared` mit Geltung für den Ordner von `web01`; Claude sieht ihn in `vault_list`. Konto A verlässt die Organisation (oder wird entfernt) → derselbe laufende Claude-Prozess sieht ihn beim nächsten `vault_list` nicht mehr, `browser_fill_credential` → `vault.item_unknown`.
+11. **Impersonation.** Admin › Benutzer › als Konto A anmelden: Vault-Seite zeigt Einträge ohne „Anzeigen“/„Kopieren“, das Kontextmenü zeigt kein Einrichten, Freigabe-Karten erscheinen in diesem Fenster nicht. Ist nur das Impersonations-Fenster offen, bekommt Claude `vault.approval_unavailable`. `curl` mit dem Impersonations-Token (`localStorage.overrideToken`) auf `GET /api/vault/items/<id>/secrets/password` und `POST /api/vault/approvals/<id>` → `403`. „Freigabe erforderlich“ an `portal` ausschalten und speichern → `403` „Turning off approvals requires a signed-in session“; derselbe `PATCH` mit einem Konto-API-Key von A → ebenfalls `403`. Einstellungen › Konto › API-Schlüssel anlegen in der Impersonation scheitert, ebenso `curl -X POST http://<Testinstanz>/api/accounts/api-keys -H "Authorization: Bearer <Impersonations-Token>" -H 'Content-Type: application/json' -d '{"name":"x"}'` → `403` „This action requires a signed-in session“; die Liste der API-Schlüssel von A bleibt unverändert. In der Impersonations-Sitzung mehrere Aktionen über HTTP auslösen, die im Audit-Log landen — Vault-Eintrag anlegen, ändern, löschen, eine Identität anlegen (`identity.create`, außerhalb der Kategorie Vault) — und im Audit-Log prüfen: **jeder** Eintrag aus diesen HTTP-Anfragen trägt `details.impersonatorId` mit der ID des Admins. Gegenprobe zur dokumentierten Grenze: eine SSH-Verbindung zu `web01` aus der Impersonation (WebSocket) erzeugt `entry.ssh_connect` **ohne** `impersonatorId`; ein anderes Ergebnis → Befund für Task 4 und `docs/vault.md` Abschnitt 7.
+12. **Organisation verlassen.** Server `web01-org` (SSH-Eintrag auf denselben Host, in einem Ordner der Organisation) mit Agenten-Zugang für Claude Code; Organisationseintrag `org:<id>/shared` (Login, Ursprung `http://web01:8080`, Freigabe an) mit Geltung für diesen Ordner; Claude sieht ihn in `vault_list`. (a) Claude ruft `browser_fill_credential` für `org:<id>/shared`; während die Karte wartet, wird A aus der Organisation entfernt; danach „Einmal“ → `vault.item_unknown`, nichts getippt (Nachprüfung nach der Freigabe). (b) Ab jetzt weist Outpost den Agenten-Key von `web01-org` ab: der nächste Werkzeugaufruf desselben laufenden Claude-Prozesses scheitert mit `403` an `/api/mcp`. A wird wieder aufgenommen → derselbe Key funktioniert wieder (Zugriffsprüfung je Anfrage, kein Widerruf).
 13. **Zieländerung.** Ursprung von `portal` ändern → Dialog verlangt das Passwort neu (Zustand leer), Audit `vault.item_update` mit `secretsCleared: true`; Ausfüllen auf der alten Seite → `vault.origin_mismatch`.
 14. **`TRUST_PROXY=true`.** Testinstanz damit starten → Warnung in Einstellungen › Vault und im Agenten-Zugang-Dialog; danach wieder entfernen.
-15. **CSP.** In den Entwicklerwerkzeugen des Browsers (Konsole) und im Server-Log auf `CSP violation` bzw. `[Report Only]` achten bei: SSH-Terminal, RDP oder VNC, Datei-Editor mit einer `.json`- und einer `.ts`-Datei (Monaco-Worker), Aufzeichnung im Audit abspielen (WebAssembly), Browser-Tab, Vault-Seite, Popout, Datei-Vorschau (Bild, PDF, HTML). Erwartet: keine Meldung. Danach `CSP_ENFORCE=true` setzen, neu starten, dieselben Stationen kurz wiederholen: alles funktioniert, Antwort-Header `Content-Security-Policy`. Jede Meldung → Befund für `server/lib/staticSite.js` (Task 16), Policy und Begründungstabelle in Task 16 und `docs/vault.md` gemeinsam anpassen.
+15. **CSP.** In den Entwicklerwerkzeugen des Browsers (Konsole) und im Server-Log auf `CSP violation` bzw. `[Report Only]` achten bei: SSH-Terminal, RDP oder VNC, Datei-Editor mit einer `.json`- und einer `.ts`-Datei (Monaco-Worker), Aufzeichnung im Audit abspielen (WebAssembly), Browser-Tab, Vault-Seite, Popout, Datei-Vorschau (Bild, PDF, HTML). Erwartet: keine Meldung. Vorschau im eigenen Tab: auf `web01` `~/preview.html` mit `<script>document.title = window.origin + ":" + (() => { try { return localStorage.length; } catch { return "blocked"; } })();</script>` anlegen, in der Datei-Vorschau öffnen, die `src` des Vorschau-iframes aus den Entwicklerwerkzeugen kopieren und direkt in einen neuen Tab einfügen (nicht per Klick aus dem iframe: ein daraus geöffneter Tab erbt die Sandbox des iframes und zeigt den Header nicht) → Tab-Titel `null:blocked` (undurchsichtige Herkunft, kein Zugriff auf den Speicher von Outpost); Antwort-Header dort `Content-Security-Policy: sandbox allow-scripts allow-forms allow-popups`. Die PDF-Vorschau trägt diesen Header nicht und zeigt das PDF an. Ein anderer Titel → Befund für `contentHeaders` in `server/lib/fileContent/download.js` (Task 16). Schon im Report-Only-Modus trägt die Antwort auf `/` zusätzlich `Content-Security-Policy: frame-ancestors 'self'` und `X-Frame-Options: SAMEORIGIN`; eine Testseite auf `web01` mit `<iframe src="http://<Testinstanz>/">` zeigt Outpost nicht (Konsole: Verstoß gegen `frame-ancestors`). Danach `CSP_ENFORCE=true` setzen, neu starten, dieselben Stationen kurz wiederholen: alles funktioniert, Antwort-Header `Content-Security-Policy` mit allen Direktiven, kein Report-Only-Header. Jede Meldung → Befund für `server/lib/staticSite.js` (Task 16), Policy und Begründungstabelle in Task 16 und `docs/vault.md` gemeinsam anpassen.
+
+    Zum Schluss das Issue für den Wechsel anlegen und in der Doku verlinken:
+
+    ```bash
+    cd /root/outpost && gh issue create --repo CallMeTechie/outpost --title "CSP standardmäßig scharf" \
+      --body "Zieldatum: 2026-12-31. CSP_ENFORCE=true wird Standard (Report-Only nur noch per CSP_ENFORCE=false), sobald die Report-Only-Phase ohne CSP violation im Log abgeschlossen ist. Stationen und Begründung: docs/vault.md Abschnitt 8; Policy: server/lib/staticSite.js."
+    ```
+
+    In `docs/vault.md` Abschnitt 8 den Satz „Enforcing will become the default in a later release.“ ersetzen durch „Enforcing will become the default in a later release, planned by 2026-12-31 ([issue #<n>](https://github.com/CallMeTechie/outpost/issues/<n>)).“ (`<n>` aus der Ausgabe von `gh`), `yarn docs:build` ohne `dead link`, dann `git add docs/vault.md && git commit -m "Vault: Doku verlinkt das Issue zur scharfen CSP"`.
 
 Befund → Fix in der betroffenen Datei, betroffene Tests laufen lassen, Commit `Vault: …`.
 
-- [ ] **Step 9: Branch abschließen**
+- [ ] **Step 9: Migration 0047 gegen MySQL (manuell)**
+
+Die Suite prüft 0047 nur auf SQLite (`state.test.js`). MySQL legt Fremdschlüssel beim `addColumn` und Indizes anders an und verweigert das Löschen eines Index, den ein Fremdschlüssel braucht; deshalb einmal gegen einen echten MySQL-Server, vorübergehend auf dem NAS. Geprüft wird: frischer Lauf 0001–0047, zweiter Lauf von 0047 auf vollständigem Stand, Lauf auf einem Halbstand (ein Unique-Index und eine Spalte fehlen), danach die Fremdschlüssel.
+
+```bash
+ssh -i ~/.ssh/synology-manager-plus_ed25519 ma.backes@192.168.2.151 \
+  'sudo /usr/local/bin/docker run -d --rm --name outpost-mysql-e2e -p 33306:3306 -e MYSQL_ROOT_PASSWORD=outpost-e2e -e MYSQL_DATABASE=outpost mysql:8.4'
+sleep 30
+cd /root/outpost && DB_TYPE=mysql DB_HOST=192.168.2.151 DB_PORT=33306 DB_NAME=outpost DB_USER=root DB_PASS=outpost-e2e node - <<'JS'
+const db = require("./server/utils/database");
+const MigrationRunner = require("./server/utils/migrationRunner");
+const run = () => new MigrationRunner().runMigrations();
+const forget0047 = () => db.query("DELETE FROM SequelizeMeta WHERE name = '0047-add-vault.js'");
+(async () => {
+    await run();
+    await forget0047();
+    await run();
+    await db.query("ALTER TABLE vault_items ADD INDEX e2e_org (organizationId), DROP INDEX vault_items_organization_name_unique");
+    await db.query("ALTER TABLE api_keys DROP COLUMN seenIpAdopted");
+    await forget0047();
+    await run();
+    const [indexes] = await db.query("SHOW INDEX FROM vault_items WHERE Key_name = 'vault_items_organization_name_unique'", { raw: true });
+    const [columns] = await db.query("SHOW COLUMNS FROM api_keys LIKE 'seenIpAdopted'", { raw: true });
+    const [fks] = await db.query(`SELECT k.TABLE_NAME, k.COLUMN_NAME, k.REFERENCED_TABLE_NAME, r.DELETE_RULE
+        FROM information_schema.KEY_COLUMN_USAGE k JOIN information_schema.REFERENTIAL_CONSTRAINTS r
+          ON r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA AND r.CONSTRAINT_NAME = k.CONSTRAINT_NAME
+        WHERE k.CONSTRAINT_SCHEMA = 'outpost'
+          AND (k.TABLE_NAME LIKE 'vault%' OR (k.TABLE_NAME = 'api_keys' AND k.COLUMN_NAME IN ('entryId', 'identityId')))
+        ORDER BY k.TABLE_NAME, k.COLUMN_NAME`, { raw: true });
+    console.log("unique index back:", indexes.length > 0, "| column back:", columns.length === 1);
+    console.table(fks);
+    await db.close();
+})().catch((error) => { console.error(error.message); process.exit(1); });
+JS
+ssh -i ~/.ssh/synology-manager-plus_ed25519 ma.backes@192.168.2.151 'sudo /usr/local/bin/docker stop outpost-mysql-e2e'
+```
+
+Expected: kein `Migration failed`, alle drei Läufe ohne Fehler; `unique index back: true | column back: true`; die Tabelle nennt genau sieben Fremdschlüssel: `api_keys.entryId → entries CASCADE`, `api_keys.identityId → identities SET NULL`, `vault_bindings.itemId → vault_items CASCADE`, `vault_items.accountId → accounts CASCADE`, `vault_items.createdBy → accounts SET NULL`, `vault_items.organizationId → organizations CASCADE`, `vault_secrets.itemId → vault_items CASCADE`. Fehlt ein Fremdschlüssel aus `addColumn` oder bricht ein Lauf ab → Befund für `server/migrations/0047-add-vault.js` (Task 1), mit `state.test.js` prüfen, committen. Der Container wird danach gestoppt (`--rm` löscht ihn samt Daten); ohne Passwortschutz nach außen darf er nicht stehen bleiben.
+
+- [ ] **Step 10: Branch abschließen**
 
 REQUIRED SUB-SKILL: superpowers:finishing-a-development-branch.
 
@@ -12718,40 +13751,40 @@ Jede SEC-ID aus dem preflight-Block der Spec (`docs/superpowers/specs/2026-10-09
 
 | ID | Status | Umsetzung | Task(s) | Testnachweis |
 |---|---|---|---|---|
-| SEC-INPUT-01 | required | Joi-Whitelist für `fields` je Typ, Namensmuster `^[a-z0-9][a-z0-9._-]{0,63}$`, Ursprünge `scheme://host[:port]`, `agentUrl` nur http/https (`server/validations/vault.js`); CIDRs und `agentTypes` beim Einrichten; Argumente von `vault_list`/`browser_fill_credential`; `/api/csp-report` nur zwei Content-Types, 64 kB | 5, 8, 11, 16 | `server/lib/vault/__tests__/validation.test.js`; CIDR-Prüfung in Task 8 (Nachweis fehlt im Vertrag, siehe Hinweis); `mcpProvider.test.js`; `cspHeader.test.js` (Typen) + Schritt 7 in Task 16 (`413`) |
+| SEC-INPUT-01 | required | Joi-Whitelist für `fields` je Typ, Namensmuster `^[a-z0-9][a-z0-9._-]{0,63}$`, Ursprünge `scheme://host[:port]`, `agentUrl` nur http/https (`server/validations/vault.js`); CIDRs und `agentTypes` beim Einrichten; Argumente von `vault_list`/`browser_fill_credential`; `/api/csp-report` nur zwei Content-Types, 64 kB, `directive`/`disposition` nur als Schlüsselwort der festen Liste | 5, 8, 11, 16 | `server/lib/vault/__tests__/validation.test.js`; `agentKeysRoute.test.js` (Teilfall CIDR-Prüfung); Argumente der Vault-Werkzeuge per Code-Lesung: `assertFillArgs` in `server/lib/vault/mcpProvider.js` (Task 11; `item` String mit 1–200 Zeichen, `passwordRef`/`usernameRef` nach `REF_PATTERN`, `sessionId` String, sonst `INVALID_ARGUMENT`; kein eigener Test in `mcpProvider.test.js`); `cspHeader.test.js` (Test 4 Typen, Test 5 Schlüsselwörter) + Schritt 7 in Task 16 (`413`) |
 | SEC-ERR-01 | required | `VaultError` mit festen englischen Texten (`server/lib/vault/errors.js`); Werkzeugfehler als `isError` mit Code, nie Stack; REST `{ code, message }`; „nicht lesbar“ ohne Details; Report-Endpunkt antwortet ohne Body | 1, 5, 11, 16 | `mcpProvider.test.js` (Fehlerantworten tragen Code und festen Text); `itemsRoute.test.js`; Task 16 Schritt 7 |
-| SEC-SECRET-01 | required | `VAULT_KEY` per Umgebung oder `/run/secrets/vault_key`, AES-256-GCM mit AAD; Listen ohne Werte; Schwärzung in Snapshots, URLs, Listen, Audit; Key nur im Einrichtungsdialog, `command` nur bei `manual` | 1, 5, 8, 9, 11, 16 (Doku) | `crypto.test.js` (falsche AAD/Schlüssel wirft), `state.test.js`; `itemsRoute.test.js` (Liste ohne Wert); `vaultGuard.test.js`; `mcpProvider.test.js` (Spec-Test 5); `chromium.e2e.test.js` (Spec-Test 8); Schritt 6 Zeile 8 |
+| SEC-SECRET-01 | required | `VAULT_KEY` per Umgebung oder `/run/secrets/vault_key`, AES-256-GCM mit AAD; Listen ohne Werte; Schwärzung in Snapshots, URLs, Listen, Audit; Auswahl und Zwischenablage im befüllten Kontext gesperrt (`vaultGuard.assertInputAllowed` → `vault.input_locked`, Mittelklick immer), Feld vor dem Tippen per `Runtime.callFunctionOn` geleert statt markiert; Key nur im Einrichtungsdialog, `command` nur bei `manual` | 1, 5, 8, 9, 11, 16 (Doku) | `crypto.test.js` (falsche AAD/Schlüssel wirft), `state.test.js`; `itemsRoute.test.js` (Liste ohne Wert); `vaultGuard.test.js`; `mcpProvider.test.js` (Spec-Test 5); `chromium.e2e.test.js` (Task 9: `browser_type` + „Show password“; Task 11: Spec-Test 8 und `Control+a`/`clickCount: 3` nach dem Ausfüllen → `vault.input_locked`, Mittelklick in neuem Kontext fügt nichts ein); Schritt 6 Zeile 8; Schritt 8 Punkt 5 |
 | SEC-DEP-01 | required | keine neuen Abhängigkeiten; Lockfiles unverändert | alle | Schritt 6 Zeilen 1–2 |
 | SEC-INJECT-01 | required | Einrichtungs-, Mess- und Entfernbefehle nur über `shQuote` in `server/lib/vault/provision.js`; `umask 077` | 8 | `provision.test.js` (Spec-Test 9: URL und Key mit Sonderzeichen; Entfernen nur bei passendem Präfix); Schritt 6 Zeile 9 |
 | SEC-RATE-01 | required | Limiter an Reveal (30/min je Konto), Freigabe-Antwort, Agenten-Einrichtung/-Bestätigung/-Entzug, `/api/csp-report` (30/min je IP); Vault-Werkzeuge über die Freigabe-Grenzen (3 offene je Aufrufer, eine je Transport und Eintrag, 60 s nach `deny`) | 5, 6, 8, 11, 16 | `approvals.test.js` (`approval_busy`, `approval_pending`, Sperre nach `deny` auch über neuen Transport); Schritt 6 Zeile 6; Task 16 Schritt 7 (`429`) |
 | SEC-RATE-02 | not-applicable | Login unverändert; Agenten-Keys mit 256 Bit Entropie | – | – |
 | SEC-SQLI-01 | required | Sichtbarkeit, Bindungen, Agenten-Keys nur über Sequelize-Finder mit `where`/`Op` | 3, 4, 8 | `visibility.test.js`, `bindings.test.js` (In-Memory-SQLite); Schritt 6 Zeile 4 |
 | SEC-XSS-01 | required | Vault-Seite, Freigabe-Karte und angezeigte Werte rendern als React-Kinder, kein `dangerouslySetInnerHTML`; CSP als zweite Linie | 12, 13, 16 | `VaultDetail.test.jsx`, `VaultApprovalStack.test.jsx`; Schritt 6 Zeile 3 |
-| SEC-CSP-01 | required | `Content-Security-Policy-Report-Only` auf der statischen Seite, Meldeendpunkt, scharf mit `CSP_ENFORCE=true` nach Auswertung | 16 | `cspHeader.test.js` (Report-Only, scharf, Host-Header, beide Report-Typen); Schritt 8 Punkt 15 |
+| SEC-CSP-01 | required | `Content-Security-Policy-Report-Only` auf der statischen Seite, Meldeendpunkt, scharf mit `CSP_ENFORCE=true` nach Auswertung; `frame-ancestors 'self'` als erzwungenes `Content-Security-Policy` und `X-Frame-Options: SAMEORIGIN` schon im Report-Only-Modus; Vorschau-Antworten außer PDF mit `Content-Security-Policy: sandbox allow-scripts allow-forms allow-popups` (`contentHeaders`), auch im eigenen Tab; Issue „CSP standardmäßig scharf“ mit Zieldatum 2026-12-31, verlinkt in `docs/vault.md` | 16, 17 | `cspHeader.test.js` (Test 1: Report-Only plus erzwungenes `frame-ancestors` und `X-Frame-Options`; Test 2 scharf; Test 3 Host-Header; Test 4 beide Report-Typen); `server/lib/fileContent/__tests__/download.test.js` (Vorschau außer PDF sandboxed, Download und PDF ohne); Schritt 8 Punkt 15 (Einbetten scheitert, Vorschau im neuen Tab `null:blocked`, Issue angelegt) |
 | SEC-UPLOAD-01 | not-applicable | Vault nimmt keine Dateien an | – | – |
-| SEC-IDOR-01 | required | Einträge und Werte nur nach `canManageItem`/`canRevealItem`/Sichtbarkeit; Freigaben nur für das besitzende Konto (`404` sonst); Agenten-Keys je Konto; fremder MCP-Transport `404`; fremde Browser-Sitzung wie unbekannt | 2, 5, 6, 7, 8, 11 | `server/lib/mcp/__tests__/server.test.js` (fremder Aufrufer `404`); `itemsRoute.test.js` (Spec-Test 3); `approvals.test.js` (Antwort eines fremden Kontos → `404`, siehe Hinweis); `agentKeysRoute.test.js`; `agentScope.test.js` (Spec-Test 10) |
-| SEC-TENANT-01 | required | Sichtbarkeit nur mit aktiver Mitgliedschaft; Organisationseinträge binden nur an Server/Ordner derselben Organisation; `allServers` = Server der Organisation laut `resolveEntryScope`; Reveal nach Organisationsrecht; Freigaben je Konto | 3, 5, 6 | `visibility.test.js` (Spec-Test 4 inkl. „Organisation verlassen“); `validateBindings` (Organisationsregel; Nachweis fehlt im Vertrag, siehe Hinweis); `itemsRoute.test.js`; Schritt 8 Punkt 12 |
-| SEC-RBAC-01 | required | `vault.use`, `vault.manage`, `vault.reveal`, `settings.vault` in `server/permissions/registry.js`, Client-Spiegel; Anbieter-`available` | 1, 5, 10, 11 | `itemsRoute.test.js` (Mitglied ohne `vault.reveal` → `403`); `mcpProvider.test.js` (ohne `connect.browser` antwortet `browser_fill_credential` wie unbekannt, siehe Hinweis) |
+| SEC-IDOR-01 | required | Einträge und Werte nur nach `canManageItem`/`canRevealItem`/Sichtbarkeit; Freigaben nur für das besitzende Konto (`404` sonst); Agenten-Keys je Konto; fremder MCP-Transport `404`; fremde Browser-Sitzung wie unbekannt, auch beim Ausfüllen; Agenten-Keys öffnen nur ephemere Sitzungen (`INVALID_PROFILE` für `persistent`) | 2, 5, 6, 7, 8, 11 | `server/lib/mcp/__tests__/server.test.js` (fremder Aufrufer `404`); `itemsRoute.test.js` (Spec-Test 3); `approvals.test.js` (Test 1: Antwort eines fremden Kontos → `404`); `agentKeysRoute.test.js` (fremde Key-ID `404`); `agentScope.test.js` (Spec-Test 10; `browser_open` mit `profile: "persistent"` → `INVALID_PROFILE`); `mcpProvider.test.js` (Spec-Test 10 Teil fill: fremde `sessionId` → `UNKNOWN_SESSION` wie unbekannt, ohne `sessionId` → `NO_SESSION`, nichts getippt) |
+| SEC-TENANT-01 | required | Sichtbarkeit nur mit aktiver Mitgliedschaft; Organisationseinträge binden nur an Server/Ordner derselben Organisation; `allServers` = Server der Organisation laut `resolveEntryScope`; Reveal nach Organisationsrecht; Freigaben je Konto; nach der Freigabe Key, Sichtbarkeit (`findVisibleItem`), Typ und Ursprünge erneut geprüft | 3, 5, 6, 11 | `visibility.test.js` (Spec-Test 4 inkl. „Organisation verlassen“); `bindings.test.js` (Test 6: `validateBindings` mit Organisationsregel); `itemsRoute.test.js`; `mcpProvider.test.js` (Test 3: Mitgliedschaft während der Wartezeit entfernt → `vault.item_unknown`, Ursprung während der Wartezeit geändert → `vault.origin_mismatch`, jeweils nichts getippt); Schritt 8 Punkt 12 |
+| SEC-RBAC-01 | required | `vault.use`, `vault.manage`, `vault.reveal`, `settings.vault` in `server/permissions/registry.js`, Client-Spiegel; Anbieter-`available`; `approvalRequired: false` nur mit Login-Session ohne Impersonation (sonst `403` „Turning off approvals requires a signed-in session“), Freigabe immer bei `ctx.impersonatorId`; kein Konto-Key-Anlegen aus Impersonation (`POST /api/accounts/api-keys` hinter `requireLoginSession`); `impersonatorId` in jedem Audit aus HTTP-Anfragen über `server/utils/auditContext.js` (WebSocket-Audits noch ohne, dokumentiert) | 1, 4, 5, 10, 11 | `itemsRoute.test.js` (Test 1: Mitglied ohne `vault.reveal` → `403`; Test 2: Impersonation und Konto-Key setzen `approvalRequired: false` → `403`); `agentAuth.test.js` (Test 5: `requireLoginSession`, `POST /api/accounts/api-keys` aus Impersonation → `403`, Audit aus einer Impersonations-Sitzung trägt `impersonatorId`); `mcpProvider.test.js` (Test 4: ohne `connect.browser` antwortet `browser_fill_credential` wie unbekannt); Schritt 8 Punkt 11 |
 | SEC-APIKEY-01 | required | Agenten-Keys über `generateToken` (`outpost_` + 64 Hex), gespeichert als SHA-256 (`hashToken`), widerrufbar, `pending` nur an `probe`; Abgleich über den Hash als DB-Schlüssel (Bestand `validateApiKey`, kein `timingSafeEqual` — der Zeitunterschied verrät nur Präfixe des Hashes, nicht des Keys; im Review bestätigen) | 4, 8 | `agentAuth.test.js` (Spec-Test 1: nur `/api/mcp`, `pending` nur `probe`); `agentKeysRoute.test.js` (`pending`-Löschung, Entziehen) |
-| SEC-SESS-02 | required | `pending` nach 15 min gelöscht; Entziehen sofort wirksam; Ersetzen alter Keys; Sitzungsfreigaben enden mit `forgetTransport`; Transporte verfallen nach 12 h | 2, 4, 6, 8 | `agentKeysRoute.test.js` (`sweepPending`, Ersetzen); `approvals.test.js` (Sitzungsfreigabe; `forgetTransport` vergisst sie); Schritt 8 Punkte 7–8 |
-| SEC-TOKEN-01 | required | Bearer-Pfad in `authenticate` für Agenten-Keys mit IP-Bindung (`dns.lookup` all, Cache 60 s, Audit gedrosselt); `?sessionToken=` des Zustandsstroms nicht im Log (Prüfergebnis aus Task 4); CSP-Meldungen ohne Query-Strings | 4, 16 | `agentAuth.test.js`, `ipBinding.test.js` (Spec-Test 2); `cspHeader.test.js` (Test 5); Schritt 8 Punkt 10 |
-| SEC-PII-01 | required | Benutzernamen nur in `fields`, nie in Logs; Audit der Nutzung ohne Werte; Löschen eines Eintrags entfernt Werte und Bindungen (CASCADE), Konto-/Organisationslöschung ebenso | 1, 3, 5, 11 | `itemsRoute.test.js` (Löschen); `bindings.test.js` (Review Focus 5); `mcpProvider.test.js` (Audit `vault.use` ohne Wert) |
+| SEC-SESS-02 | required | endgültige Agenten-Keys ohne Ablauf; Rotation durch Neu-Einrichten (ersetzt eigene alte Keys), Widerruf sofort; abgewiesen bei Zugriffsverlust auf den Server (`403`) und ausgeschaltetem Vault (`401`), `lastUsedAt` erst nach diesen Prüfungen; `pending` nach 15 min gelöscht; Sitzungsfreigaben an den Eintragsstempel (`updatedAt` und Ursprünge) gebunden und mit `forgetTransport` beendet; Transporte verfallen nach 12 h | 2, 4, 6, 8, 11 | `agentAuth.test.js` (Test 1: Agenten-Key ohne Serverzugriff → `403`); `agentKeysRoute.test.js` (`sweepPending`, Ersetzen, Entziehen); `approvals.test.js` (Test 2: Sitzungsfreigabe gilt nur für denselben Transport und denselben Eintragsstempel, nach geändertem Eintrag wieder Karte; `forgetTransport` vergisst sie); Schritt 8 Punkte 3 (Vault aus → `401`), 7, 8, 12 |
+| SEC-TOKEN-01 | required | Bearer-Pfad in `authenticate` für Agenten-Keys mit IP-Bindung (`dns.lookup` all, Cache 60 s, Audit gedrosselt); `?sessionToken=` des Zustandsstroms nicht im Log (Prüfergebnis aus Task 4); CSP-Meldungen ohne Query-Strings | 4, 16 | `agentAuth.test.js` (Tests 3 und 4, Spec-Test 2); `cspHeader.test.js` (Test 5); Schritt 8 Punkt 10 |
+| SEC-PII-01 | required | Benutzernamen nur in `fields`, nie in Logs; Audit der Nutzung ohne Werte; Löschen eines Eintrags entfernt Werte und Bindungen (CASCADE), Konto-/Organisationslöschung ebenso | 1, 3, 5, 11 | `bindings.test.js` (Test 4, Review Focus 5: Löschen von Ordnern samt Unterordnern und Servern entfernt deren Bindungen); `mcpProvider.test.js` (Test 2: Audit `vault.use` ohne Wert); Löschen eines Eintrags per Code-Lesung: `removeItem` in `server/controllers/vaultItems.js` (Task 5; `clearSecrets`, `setBindings(id, [])`, dann `VaultItem.destroy`; `DELETE` ist in `itemsRoute.test.js` bewusst ungetestet); Konto-/Organisationslöschung über die `CASCADE`-Fremdschlüssel aus Schritt 9 |
 
-Hinweis: Diese Nachweise nennt `plan-contracts.md` nicht ausdrücklich im Testbudget der Tasks; Schritt 6 prüft sie, und fehlt einer, gehört der Test in den Task in Klammern: CIDR-Validierung beim Einrichten (Task 8, `agentKeysRoute.test.js`), Organisationsregel von `validateBindings` (Task 3, `bindings.test.js`), Antwort eines fremden Kontos auf eine Freigabe (Task 6, `approvals.test.js`), `browser_fill_credential` ohne `connect.browser` (Task 11, `mcpProvider.test.js`), `forgetTransport` vergisst eine Sitzungsfreigabe (Task 6, `approvals.test.js`). Die Limiter selbst bleiben ungetestet (Zusage von express-rate-limit); Schritt 6 Zeile 6 prüft nur, dass sie hängen.
+Hinweis: Mehrere Nachweise sind Teilfälle eines größeren Tests, nicht eigene Testfälle — CIDR-Prüfung (Task 8, `agentKeysRoute.test.js`), Organisationsregel von `validateBindings` (Task 3, `bindings.test.js` Test 6), Antwort eines fremden Kontos (Task 6, `approvals.test.js` Test 1), `forgetTransport` und Eintragsstempel (Task 6, `approvals.test.js` Test 2), `approvalRequired` (Task 5, `itemsRoute.test.js` Test 2), Nachprüfung nach der Freigabe (Task 11, `mcpProvider.test.js` Test 3), `impersonatorId` und `POST /api/accounts/api-keys` aus Impersonation (Task 4, `agentAuth.test.js` Test 5), Agenten-Key ohne Serverzugriff (Task 4, `agentAuth.test.js` Test 1), `INVALID_PROFILE` (Task 7, `agentScope.test.js`), `vault.input_locked` (Task 11, Chromium-Reihe). Schritt 6 prüft, dass jeder davon wirklich im genannten Test steht; fehlt einer, gehört er in den Task der Spalte „Task(s)“ und in dessen **Tests:**-Budget. Die Limiter selbst bleiben ungetestet (Zusage von express-rate-limit); Schritt 6 Zeile 6 prüft nur, dass sie hängen.
 
 #### Spec-Tests und Review Focus → Nachweis
 
 | Spec-Test / Review Focus | Task | Testdatei |
 |---|---|---|
 | 1 Agenten-Key nur `/api/mcp`, `pending` dort abgewiesen, fremde `Mcp-Session-Id` `404` | 4, 2 | `agentAuth.test.js`, `server/lib/mcp/__tests__/server.test.js` |
-| 2 IP-Bindung | 4 | `agentAuth.test.js`, `ipBinding.test.js` |
+| 2 IP-Bindung | 4 | `agentAuth.test.js` (Tests 3, 4) |
 | 3 Reveal | 5 | `itemsRoute.test.js` |
 | 4 Sichtbarkeit (Tabelle) | 3 | `visibility.test.js` |
 | 5 `vault_list` ohne Wert | 11 | `mcpProvider.test.js` |
-| 6 Freigabe | 6, 11 | `approvals.test.js`, `mcpProvider.test.js` |
-| 7, 8, 12 Chromium-Reihe | 11 | `chromium.e2e.test.js` (Schritt 2) |
+| 6 Freigabe | 6, 11 | `approvals.test.js` (inkl. Eintragsstempel der Sitzungsfreigabe), `mcpProvider.test.js` (inkl. Nachprüfung nach der Freigabe) |
+| 7, 8, 12 Chromium-Reihe | 9, 11 | `chromium.e2e.test.js` (Schritt 2; Spec-Test 8 im Kleinen auch aus Task 9) |
 | 9 Quoting | 8 | `provision.test.js` |
-| 10 Agenten-Key im Browser-Anbieter | 7, 11 | `agentScope.test.js`, `mcpProvider.test.js` |
+| 10 Agenten-Key im Browser-Anbieter | 7, 11 | `agentScope.test.js` (Liste, fremde Sitzung, `via`, kein `persistent`); `mcpProvider.test.js` (Teil fill, Task 11: fremde `sessionId` → `UNKNOWN_SESSION` wie unbekannt, ohne `sessionId` → `NO_SESSION`, Audit `vault.use_denied`) |
 | 11 `PATCH` löscht Werte, Impersonation `403`, `probe` | 5, 6, 8 | `itemsRoute.test.js`, `approvals.test.js`, `agentKeysRoute.test.js` |
 | Review Focus 1 | 9, 11 | `vaultGuard.test.js`, `chromium.e2e.test.js`; Schritt 8 Punkt 5 |
 | Review Focus 2 | 11 | `mcpProvider.test.js`; Schritt 8 Punkt 6 |

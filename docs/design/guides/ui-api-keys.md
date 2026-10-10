@@ -1,6 +1,6 @@
 # Einstellungen › Konto › API-Schlüssel — Umsetzungsanleitung (UI-API-KEYS)
 
-Artboard: docs/design/mockups/ui-api-keys.html · Manifest-Revision: 11
+Artboard: docs/design/mockups/ui-api-keys.html · Manifest-Revision: 14
 
 Der Abschnitt „API-Schlüssel“ der Kontoseite existiert. Neu: die Liste zeigt nur noch `kind = account`, und darunter kommt ein zweiter Abschnitt mit den Agenten-Schlüsseln nach Server. Anlegen und Löschen eigener Schlüssel bleiben unverändert; `AddApiKeyDialog` wird nicht angefasst.
 
@@ -30,6 +30,8 @@ Der Abschnitt „API-Schlüssel“ der Kontoseite existiert. Neu: die Liste zeig
 - Datenquelle: `GET /api/vault/agent-keys` ohne Parameter (liefert alle Agenten-Schlüssel des Kontos), im Client nach Server gruppiert. **Nicht** `accounts/api-keys`, **nicht** Vault-Einträge.
 - `default`: je Server eine Gruppe mit Servername und „Bearbeiten“ (öffnet `UI-AGENT-ACCESS` für diesen Server); je Schlüssel Agent, zuletzt genutzt, IP-Bindung (Adresse bzw. „Bindung gelöst“ mit Hinweis „von überall“) und „Entziehen“. Entziehen fragt per Bestätigungsdialog nach (wie `deleteApiKeyOpen`); erst nach Bestätigung `DELETE /api/vault/agent-keys/:id`, danach Liste neu laden.
 - `empty`: „Noch kein Agenten-Zugang. Einrichten über das Kontextmenü eines Servers.“
+- `partial` Entziehen ließ eine fremde Registrierung stehen: Hinweis in `--warning` unter der Liste: „Zugang entzogen. Die Registrierung auf web01 trägt den Key eines anderen Kontos und bleibt stehen.“ Datenquelle: Antwort von `DELETE /api/vault/agent-keys/:id` mit `registration === "foreign"`.
+- `disabled` Registrierung nicht entfernbar: Hinweis in `--warning`: „Zugang entzogen. Die Registrierung konnte nicht entfernt werden — Befehl kopieren und auf dem Server ausführen.“, darunter der Entfernbefehl in `--type-mono` in einem Block mit Kopier-Knopf (z. B. `claude mcp remove --scope user outpost`). Datenquelle: Antwort von `DELETE /api/vault/agent-keys/:id` mit `registration === "unknown"` und `commands`.
 - Beschreibung im Kopf: Agenten-Schlüssel erreichen nur den MCP-Endpunkt.
 - Tokens: Gruppenrahmen `--dark-gray`, Entziehen `--error`, Hinweis „von überall“ `--warning` / `--warning-opacity`, IP in `--font-mono`.
 

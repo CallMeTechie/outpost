@@ -44,6 +44,9 @@
 	.ak-pill { display: inline-block; font: var(--type-caption); padding: 0 var(--space-2); border-radius: var(--radius-xl); background: var(--warning-opacity); color: var(--warning); }
 	.ak-ip { font-family: var(--font-mono); color: var(--white); }
 	.ak-agents { display: grid; gap: var(--space-3); }
+	.ak-notice { font: var(--type-caption); color: var(--warning); }
+	.ak-cmd { display: flex; align-items: flex-start; gap: var(--space-2); }
+	.ak-cmd pre { flex: 1; margin: 0; padding: var(--space-2) var(--space-3); background: var(--terminal); border: 1px solid var(--gray); border-radius: var(--radius-sm); font: var(--type-mono); color: var(--text); white-space: pre-wrap; word-break: break-all; }
 </style>
 </head>
 <body>
@@ -176,6 +179,20 @@
 	<section class="ak-state" data-ui-state="empty">
 		<span class="ak-state-label">Zustand: empty</span>
 		<div class="ak-empty"><p>Noch kein Agenten-Zugang. Einrichten über das Kontextmenü eines Servers.</p></div>
+	</section>
+
+	<section class="ak-state" data-ui-state="partial">
+		<span class="ak-state-label">Zustand: partial</span>
+		<span class="ak-notice" role="status">Zugang entzogen. Die Registrierung auf web01 trägt den Key eines anderen Kontos und bleibt stehen.</span>
+	</section>
+
+	<section class="ak-state" data-ui-state="disabled">
+		<span class="ak-state-label">Zustand: disabled</span>
+		<span class="ak-notice" role="status">Zugang entzogen. Die Registrierung konnte nicht entfernt werden — Befehl kopieren und auf dem Server ausführen.</span>
+		<div class="ak-cmd">
+			<pre>claude mcp remove --scope user outpost</pre>
+			<span class="ak-btn">Kopieren</span>
+		</div>
 	</section>
 </div>
 

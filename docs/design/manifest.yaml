@@ -1,6 +1,6 @@
 schema: mockingbird/1
 project: outpost
-revision: 13
+revision: 14
 updated: 2026-10-09
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
@@ -53,6 +53,10 @@ changelog:
     date: 2026-10-10
     summary: Nachzug aus dem Umsetzungsplan — Hinweise im Agenten-Zugang für ersetzte Registrierung, gescheiterte Messung und Abweisung ohne Übernahme
     touched: [UI-AGENT-ACCESS-RESULT, UI-AGENT-ACCESS-IPBIND]
+  - rev: 14
+    date: 2026-10-10
+    summary: Nachzug aus dem Plan-Review — Ergebnis des Entziehens, wenn die Registrierung einem anderen Konto gehört oder nicht entfernt werden konnte
+    touched: [UI-AGENT-ACCESS-KEYS, UI-API-KEYS-AGENTS]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -1286,6 +1290,8 @@ screens:
           - { id: loading }
           - { id: selected, copy: "Zugang von Claude Code auf web01 entziehen? Der Agent verliert sofort den Zugriff." }
           - { id: error, copy: "Entziehen fehlgeschlagen." }
+          - { id: partial, copy: "Zugang entzogen. Die Registrierung auf web01 trägt den Key eines anderen Kontos und bleibt stehen." }
+          - { id: disabled, copy: "Zugang entzogen. Die Registrierung konnte nicht entfernt werden — Befehl kopieren und auf dem Server ausführen." }
         locators:
           web: "[data-ui-id='UI-AGENT-ACCESS-KEYS']"
 
@@ -1467,6 +1473,8 @@ screens:
         states:
           - { id: default }
           - { id: empty, copy: "Noch kein Agenten-Zugang. Einrichten über das Kontextmenü eines Servers." }
+          - { id: partial, copy: "Zugang entzogen. Die Registrierung auf web01 trägt den Key eines anderen Kontos und bleibt stehen." }
+          - { id: disabled, copy: "Zugang entzogen. Die Registrierung konnte nicht entfernt werden — Befehl kopieren und auf dem Server ausführen." }
         locators:
           web: "[data-ui-id='UI-API-KEYS-AGENTS']"
 

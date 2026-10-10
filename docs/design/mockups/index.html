@@ -2,7 +2,7 @@
 <html lang="de" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<title>outpost — Mockups (Revision 13)</title>
+<title>outpost — Mockups (Revision 14)</title>
 <link rel="stylesheet" href="./tokens.css">
 <style>
 .mb-page { font: var(--type-body, 500 0.875rem/1.45 system-ui, sans-serif); color: var(--text, #eee); background: var(--background, #111); margin: 0; padding: var(--space-8, 2rem); }
@@ -926,7 +926,7 @@
 </head>
 <body class="mb-page">
 <h1>outpost — Mockups</h1>
-<p class="sub">Manifest-Revision 13 · 2026-10-09 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
+<p class="sub">Manifest-Revision 14 · 2026-10-09 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
 <ul class="mb-toc">
 <li><a href="#UI-SHELL">Rahmen — Navigation</a> <code>UI-SHELL</code></li>
 <li><a href="#UI-SERVERS">Servers — Arbeitsfläche</a> <code>UI-SERVERS</code></li>
@@ -3502,7 +3502,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <div class="ctx"><b>Art:</b> Dialog (modal, mit Backdrop)<br><b>Erscheint über:</b> UI-SERVERS<br><b>Öffnen durch:</b> Kontextmenü Server › Agenten-Zugang… (nur SSH); Bearbeiten in UI-API-KEYS-AGENTS<br><b>Größe:</b> mittig<br><b>Schließen:</b> Esc<br><b>Tastatur:</b> Ctrl+Enter Einrichten" </div>
 <p class="meta">Artboard: <a href="./ui-agent-access.html">ui-agent-access.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-agent-access.md</code></p>
 <table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
-<tr><td><code>UI-AGENT-ACCESS-KEYS</code></td><td>Agenten auf diesem Server</td><td>Die Agenten-Keys dieses Servers — Agent, angelegt, zuletzt genutzt, IP-Bindung — je mit Entziehen. Entziehen widerruft den Key und entfernt die Registrierung auf dem Server. <b>Nicht:</b> api_key, vault_item, identity.</td><td><code>default · empty · loading · selected · error</code></td></tr>
+<tr><td><code>UI-AGENT-ACCESS-KEYS</code></td><td>Agenten auf diesem Server</td><td>Die Agenten-Keys dieses Servers — Agent, angelegt, zuletzt genutzt, IP-Bindung — je mit Entziehen. Entziehen widerruft den Key und entfernt die Registrierung auf dem Server. <b>Nicht:</b> api_key, vault_item, identity.</td><td><code>default · empty · loading · selected · error · partial · disabled</code></td></tr>
 <tr><td><code>UI-AGENT-ACCESS-SETUP</code></td><td>Einrichten</td><td>Welche Agenten eingerichtet werden (Claude Code, Codex) und welche zusätzlichen Adressbereiche (CIDR) ihr Key neben der IP dieses Servers akzeptiert. <b>Nicht:</b> api_key, vault_binding.</td><td><code>default · loading · error · disabled · partial</code></td></tr>
 <tr><td><code>UI-AGENT-ACCESS-IPBIND</code></td><td>Nur von der IP dieses Servers</td><td>Ob der Key nur Anfragen von der Adresse dieses Servers (plus den eingetragenen Adressbereichen) akzeptiert. Standard an; aus heißt von überall. <b>Nicht:</b> vault_binding, allowed_origin.</td><td><code>default · selected · partial · disabled · error</code></td></tr>
 <tr><td><code>UI-AGENT-ACCESS-RESULT</code></td><td>Ergebnis</td><td>Je Agent das Ergebnis der Einrichtung — eingerichtet, oder der fertige Befehl zum Kopieren, wenn die automatische Einrichtung scheiterte (CLI fehlt, Exec-Fehler). Der Key ist nur hier und nur jetzt sichtbar; ein Key, der weder automatisch eingerichtet noch kopiert wurde, wird beim Schließen gelöscht. <b>Nicht:</b> agent_key, toast.</td><td><code>default · empty · success · partial · error</code></td></tr>
@@ -3874,7 +3874,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 <p class="meta">Artboard: <a href="./ui-api-keys.html">ui-api-keys.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-api-keys.md</code></p>
 <table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
 <tr><td><code>UI-API-KEYS-LIST</code></td><td>API-Schlüssel</td><td>Die API-Keys des Kontos mit voller Kontoberechtigung — Name, Präfix, zuletzt genutzt, Ablauf; Anlegen und Löschen wie bisher. <b>Nicht:</b> agent_key.</td><td><code>default · empty</code></td></tr>
-<tr><td><code>UI-API-KEYS-AGENTS</code></td><td>Agenten-Schlüssel</td><td>Die Agenten-Keys des Kontos, gruppiert nach Server — Agent, zuletzt genutzt, IP-Bindung; je Server Bearbeiten (öffnet Agenten-Zugang) und je Key Entziehen. Agenten-Keys erreichen nur den MCP-Endpunkt. <b>Nicht:</b> api_key, vault_item.</td><td><code>default · empty</code></td></tr>
+<tr><td><code>UI-API-KEYS-AGENTS</code></td><td>Agenten-Schlüssel</td><td>Die Agenten-Keys des Kontos, gruppiert nach Server — Agent, zuletzt genutzt, IP-Bindung; je Server Bearbeiten (öffnet Agenten-Zugang) und je Key Entziehen. Agenten-Keys erreichen nur den MCP-Endpunkt. <b>Nicht:</b> api_key, vault_item.</td><td><code>default · empty · partial · disabled</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-api-keys.html — alle Zustände, wie im Artboard</div><div id="ab-ui-api-keys">
 

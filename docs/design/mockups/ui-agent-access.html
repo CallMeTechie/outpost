@@ -142,6 +142,18 @@
 						</div>
 						<span class="help error" role="alert">Entziehen fehlgeschlagen.</span>
 					</section>
+
+						<section class="state" data-ui-state="partial">
+							<span class="notice" role="status">Zugang entzogen. Die Registrierung auf web01 trägt den Key eines anderen Kontos und bleibt stehen.</span>
+						</section>
+
+						<section class="state" data-ui-state="disabled">
+							<span class="notice" role="status">Zugang entzogen. Die Registrierung konnte nicht entfernt werden — Befehl kopieren und auf dem Server ausführen.</span>
+							<div class="cmd">
+								<pre>claude mcp remove --scope user outpost</pre>
+								<button class="btn ghost small" type="button">Kopieren</button>
+							</div>
+						</section>
 				</div>
 
 				<div class="element" data-ui-id="UI-AGENT-ACCESS-SETUP">
