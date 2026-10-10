@@ -10,6 +10,7 @@ const execAsync = promisify(exec);
 const sidebar = useSidebar({ spec, linkPrefix: "/operations/" });
 
 export default defineConfig({
+    srcExclude: ["superpowers/**", "design/**"],
     title: "Outpost",
     description: "The open source server management software for SSH, VNC & RDP",
     lastUpdated: true,
@@ -86,6 +87,7 @@ export default defineConfig({
                         ],
                     },
                     { text: "Browser Tabs & Claude", link: "/browser-tabs" },
+                    { text: "Vault", link: "/vault" },
                     { text: "CLI", link: "/cli" },
                     { text: "Server CLI", link: "/server-cli" },
                     { text: "Contributing", link: "/contributing" },

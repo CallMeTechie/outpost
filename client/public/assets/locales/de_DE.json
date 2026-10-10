@@ -146,6 +146,7 @@
       "servers": "Server",
       "monitoring": "Monitoring",
       "snippets": "Snippets",
+      "vault": "Vault",
       "browser": "Browser",
       "audit": "Audit",
       "account": "Konto",
@@ -445,6 +446,127 @@
       "selectIdentity": "Identität wählen"
     }
   },
+  "vault": {
+    "page": {
+      "title": "Vault",
+      "subtitle": "Zugangsdaten für Agenten",
+      "addItem": "Neuer Eintrag"
+    },
+    "scope": {
+      "personal": "Persönlich"
+    },
+    "search": {
+      "placeholder": "Suchen",
+      "empty": "Kein Eintrag passt zur Suche."
+    },
+    "types": {
+      "all": "Alle",
+      "login": "Login",
+      "apiKey": "API-Key",
+      "ssh": "SSH",
+      "database": "Datenbank",
+      "other": "Sonstiges"
+    },
+    "list": {
+      "title": "Einträge",
+      "empty": "Noch keine Einträge. Zugangsdaten im Vault nutzen Agenten, ohne den Wert zu sehen.",
+      "error": "Vault nicht erreichbar. Seite neu laden."
+    },
+    "detail": {
+      "empty": "Eintrag links wählen.",
+      "error": "Eintrag nicht lesbar — der Vault-Schlüssel passt nicht zu diesem Eintrag.",
+      "fields": "Angaben",
+      "secrets": "Geheimer Wert",
+      "scope": "Gilt für",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "deleteConfirm": "{{name}} löschen? Agenten verlieren den Zugriff sofort.",
+      "deleteFailed": "Löschen fehlgeschlagen."
+    },
+    "fields": {
+      "name": "Name",
+      "description": "Beschreibung",
+      "username": "Benutzer",
+      "origin": "Ursprung",
+      "origins": "Ursprünge",
+      "hosts": "Hosts",
+      "header": "Header",
+      "headerName": "Header-Name",
+      "headerTemplate": "Header-Vorlage",
+      "engine": "Engine",
+      "host": "Host",
+      "port": "Port",
+      "database": "Datenbank"
+    },
+    "secretFields": {
+      "password": "Passwort",
+      "token": "Token",
+      "privateKey": "Privater Schlüssel",
+      "passphrase": "Passphrase",
+      "value": "Wert"
+    },
+    "secret": {
+      "show": "Anzeigen",
+      "hide": "Verbergen",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "copyFailed": "Kopieren fehlgeschlagen.",
+      "revealed": "angezeigt, verbirgt sich in 30 s",
+      "agentOnly": "nur für Agenten nutzbar"
+    },
+    "bindings": {
+      "entry": "Server",
+      "folder": "Ordner",
+      "tag": "Tag",
+      "allServers": "Alle Server",
+      "empty": "Für keinen Server freigegeben — kein Agent sieht diesen Eintrag.",
+      "emptyDialog": "Für keinen Server freigegeben.",
+      "addServer": "+ Server",
+      "addFolder": "+ Ordner",
+      "addTag": "+ Tag"
+    },
+    "policy": {
+      "required": "Freigabe erforderlich",
+      "notRequired": "Ohne Freigabe nutzbar",
+      "lastUsed": "zuletzt genutzt {{time}}"
+    },
+    "dialog": {
+      "title": {
+        "create": "Eintrag anlegen",
+        "edit": "Eintrag bearbeiten"
+      },
+      "type": "Typ",
+      "owner": "Besitzer",
+      "ownerPersonal": "Persönlich ({{username}})",
+      "fixed": "nach dem Anlegen fest",
+      "enterSecret": "{{field}} eingeben",
+      "secretStored": "gespeichert — leer lassen, um beizubehalten",
+      "secretCleared": "Ziel geändert — gespeicherte Werte werden verworfen. Neu eingeben.",
+      "secretMissing": "Wert fehlt.",
+      "nameTaken": "Name schon vergeben.",
+      "create": "Erstellen",
+      "save": "Speichern",
+      "saving": "Speichere …",
+      "saveFailed": "Speichern fehlgeschlagen."
+    },
+    "agents": {
+      "claude": "Claude Code",
+      "codex": "Codex"
+    },
+    "approval": {
+      "title": "Freigabe angefordert",
+      "who": "{{agent}} auf {{server}}",
+      "pending": "{{count}} Anfragen offen",
+      "sending": "Antwort wird gesendet …",
+      "expired": "Anfrage ist abgelaufen.",
+      "impersonated": "Angefragt aus einer Impersonations-Sitzung",
+      "actions": {
+        "once": "Einmal",
+        "session": "Für diese Sitzung",
+        "deny": "Ablehnen"
+      }
+    }
+  },
   "monitoring": {
     "page": {
       "title": "Server Monitoring",
@@ -607,7 +729,8 @@
       "backup": "Speicher",
       "engines": "Motoren",
       "permissions": "Benutzergruppen und Berechtigungen",
-      "browser": "Browser"
+      "browser": "Browser",
+      "vault": "Vault"
     },
     "account": {
       "title": "Account",
@@ -746,6 +869,22 @@
         "neverUsed": "Noch nie benutzt",
         "expires": "Läuft ab {{date}}",
         "delete": "Löschen"
+      },
+      "agentKeys": {
+        "loadFailed": "Agenten-Schlüssel konnten nicht geladen werden",
+        "retry": "Erneut versuchen",
+        "sectionTitle": "Agenten-Schlüssel",
+        "sectionDescription": "Agenten-Schlüssel erreichen nur den MCP-Endpunkt.",
+        "edit": "Bearbeiten",
+        "revoke": "Entziehen",
+        "revokeConfirm": "Zugang von {{agent}} auf {{server}} entziehen? Der Agent verliert sofort den Zugriff.",
+        "revokedForeign": "Zugang entzogen. Die Registrierung auf {{server}} trägt den Key eines anderen Kontos und bleibt stehen.",
+        "revokedUnknown": "Zugang entzogen. Die Registrierung konnte nicht entfernt werden — Befehl kopieren und auf dem Server ausführen.",
+        "lastUsed": "zuletzt {{time}}",
+        "boundTo": "nur {{address}}",
+        "unbound": "Bindung gelöst",
+        "anywhere": "von überall",
+        "empty": "Noch kein Agenten-Zugang. Einrichten über das Kontextmenü eines Servers."
       },
       "microsoft": {
         "sectionTitle": "Verbundene Konten",
@@ -1595,6 +1734,34 @@
         "loadSettings": "Browser-Einstellungen konnten nicht geladen werden",
         "saveSettings": "Browser-Einstellungen konnten nicht gespeichert werden"
       }
+    },
+    "vault": {
+      "loading": "Vault-Einstellungen werden geladen...",
+      "title": "Vault",
+      "description": "Systemeinstellungen des Vaults.",
+      "key": {
+        "title": "Vault-Schlüssel",
+        "active": "Aktiv",
+        "missing": "Fehlt",
+        "missingText": "VAULT_KEY fehlt — der Vault ist aus. Schlüssel als Umgebungsvariable oder Docker-Secret vault_key setzen.",
+        "mismatch": "Passt nicht",
+        "mismatchText": "VAULT_KEY passt nicht zu den gespeicherten Einträgen — der Vault ist aus."
+      },
+      "agentUrl": {
+        "title": "Outpost-Adresse für Agenten",
+        "description": "Unter dieser Adresse erreichen deine Server Outpost; daraus entsteht die MCP-URL für Agenten.",
+        "invalid": "Keine gültige http- oder https-Adresse."
+      },
+      "proxy": {
+        "warning": "TRUST_PROXY=true — Outpost glaubt jedem X-Forwarded-For, die IP-Bindung von Agenten-Keys ist wirkungslos. Hop-Zahl oder Adressliste setzen."
+      },
+      "saveSettings": "Einstellungen speichern",
+      "saveSuccess": "Vault-Einstellungen gespeichert",
+      "errors": {
+        "loadSettings": "Vault-Einstellungen konnten nicht geladen werden",
+        "retry": "Erneut versuchen",
+        "saveSettings": "Vault-Einstellungen konnten nicht gespeichert werden"
+      }
     }
   },
   "tunnel": {
@@ -1689,6 +1856,7 @@
       "editServer": "Server bearbeiten",
       "editIntegration": "Integration bearbeiten",
       "duplicateServer": "Server duplizieren",
+      "agentAccess": "Agenten-Zugang…",
       "pasteIdentityPassword": "Passwort einfügen",
       "deleteServer": "Server löschen",
       "deleteConfirm": "Bist du sicher, dass du „{{name}}“ löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.",
@@ -1701,6 +1869,52 @@
       "start": "Start",
       "joinSession": "An der Sitzung teilnehmen",
       "joinSessionOf": "An der Sitzung von {{user}}"
+    },
+    "agentAccess": {
+      "title": "Agenten-Zugang — {{name}}",
+      "keys": {
+        "title": "Agenten auf diesem Server",
+        "empty": "Noch kein Agent auf diesem Server eingerichtet.",
+        "created": "angelegt {{date}}",
+        "lastUsed": "zuletzt {{time}}",
+        "boundTo": "nur {{address}}",
+        "anywhere": "von überall",
+        "revoke": "Entziehen",
+        "revokeConfirm": "Zugang von {{agent}} auf {{server}} entziehen? Der Agent verliert sofort den Zugriff.",
+        "revokeError": "Entziehen fehlgeschlagen.",
+        "revokedForeign": "Zugang entzogen. Die Registrierung auf {{server}} trägt den Key eines anderen Kontos und bleibt stehen.",
+        "revokedUnknown": "Zugang entzogen. Die Registrierung konnte nicht entfernt werden — Befehl kopieren und auf dem Server ausführen."
+      },
+      "setup": {
+        "cidrLabel": "Zusätzliche Adressbereiche",
+        "cidrInvalid": "Ungültiger Adressbereich.",
+        "submit": "Einrichten",
+        "loading": "Richte ein …",
+        "urlMissing": "Outpost-Adresse für Agenten fehlt — in Einstellungen › Vault setzen.",
+        "foreignAccount": "Für {{user}} auf {{server}} hat bereits ein anderes Konto Agenten-Zugang eingerichtet — die Registrierung wird ersetzt."
+      },
+      "ipBind": {
+        "label": "Nur von der IP dieses Servers",
+        "on": "an",
+        "off": "aus — von überall",
+        "seenOther": "Gesehen wurde {{seen}} statt {{expected}} — als Adressbereich übernehmen? Ohne Übernahme weist Outpost den Key ab.",
+        "probeFailed": "Adresse konnte nicht gemessen werden — der Key gilt für die aufgelöste Adresse des Servers.",
+        "adopt": "Übernehmen",
+        "decline": "Nein",
+        "trustProxy": "TRUST_PROXY=true — die IP-Bindung ist wirkungslos."
+      },
+      "result": {
+        "empty": "erscheint erst nach dem Einrichten",
+        "configured": "eingerichtet",
+        "failed": "gescheitert",
+        "success": "Eingerichtet für {{user}}. Claude Code neu starten, dann /mcp.",
+        "successCodex": "Eingerichtet für {{user}}. Codex in einer neuen Shell starten; laufende Codex-Prozesse und tmux-Sitzungen kennen den Key nicht.",
+        "error": "{{cli}} nicht gefunden. Befehl kopieren und auf dem Server ausführen.",
+        "manual": "Befehl kopieren und auf dem Server ausführen.",
+        "copy": "Kopieren",
+        "keyNotice": "Der Key ist nur jetzt sichtbar. Schließen ohne Übernahme löscht ihn.",
+        "replaced": "Bestehende Registrierung ersetzt — der alte Konto-Key bleibt gültig, bis du ihn unter API-Schlüssel löschst."
+      }
     },
     "passwordHint": {
       "paste": "Passwort einfügen",

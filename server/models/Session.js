@@ -39,4 +39,8 @@ module.exports = db.define("sessions", {
         type: Sequelize.STRING,
         allowNull: true,
     },
+    impersonatorId: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+    },
 }, { freezeTableName: true, createdAt: false, updatedAt: false });

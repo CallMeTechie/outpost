@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI-VAULT — Vault — Arbeitsfläche</title>
+<link rel="stylesheet" href="./tokens.css">
+<style>
+	.mb-artboard { box-sizing: border-box; padding: var(--space-6); background: var(--background); color: var(--text); font: var(--type-body); font-size: calc(16px * var(--ui-scale)); }
+	.mb-artboard *, .mb-artboard *::before, .mb-artboard *::after { box-sizing: border-box; }
+	.mb-context { font: var(--type-caption); color: var(--subtext); background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-4); line-height: 1.6; }
+	.mb-context b { color: var(--text); }
+	.mb-context strong { color: var(--text); font: var(--type-heading); }
+	.v-head { display: flex; align-items: baseline; gap: var(--space-3); margin: 0 0 var(--space-4); }
+	.v-head h1 { font: var(--type-title); margin: 0; }
+	.v-head code, .v-mono { font: var(--type-mono); }
+	.v-head code { color: var(--subtext); }
+	.v-block { margin: 0 0 var(--space-8); }
+	.v-block > h2 { font: var(--type-heading); color: var(--subtext); margin: 0 0 var(--space-2); }
+	.v-block > h2 code { font: var(--type-caption); font-family: var(--font-mono); margin-left: var(--space-2); }
+	.v-frame { width: 82rem; max-width: 100%; border: 1px solid var(--gray); border-radius: var(--radius-md); overflow: hidden; background: var(--background); }
+	.v-ico { width: 1rem; height: 1rem; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+	.v-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+	.v-state { position: relative; }
+	.v-state::before {
+		content: attr(data-ui-state);
+		position: absolute; top: 2px; right: 2px; z-index: 5;
+		font: var(--type-caption); font-family: var(--font-mono);
+		color: var(--subtext); background: var(--background);
+		border: 1px dashed var(--gray-strong); border-radius: var(--radius-sm);
+		padding: 0 var(--space-1); line-height: 1.2; pointer-events: none;
+	}
+	.v-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr)); gap: var(--space-4); }
+	.v-gallery .wide { grid-column: 1 / -1; }
+	.v-cell { border: 1px solid var(--gray); border-radius: var(--radius-md); background: var(--lighter-background); overflow: hidden; }
+	.v-cell > .v-state { min-height: 3.5rem; padding: var(--space-3); }
+	.v-cell.flush > .v-state { padding: 0; }
+	.v-cap { font: var(--type-caption); color: var(--subtext); padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--gray); background: var(--background); }
+	.v-cap code { font-family: var(--font-mono); color: var(--text); }
+
+	/* Seite */
+	.v-page { display: grid; grid-template-columns: 5rem 1fr; height: 40rem; }
+	.v-nav { background: var(--darker-gray); border-right: 1px solid var(--gray); display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-3) 0; font: var(--type-caption); color: var(--subtext); }
+	.v-nav span { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; padding: var(--space-2) 0; }
+	.v-nav .active { color: var(--primary); background: var(--primary-opacity); }
+	.v-nav .ico { width: 1.25rem; height: 1.25rem; border: 1px solid currentColor; border-radius: var(--radius-sm); }
+	.v-split { display: grid; grid-template-columns: 22rem 1fr; min-width: 0; min-height: 0; }
+	.v-left { background: var(--lighter-background); border-right: 1px solid var(--gray); display: flex; flex-direction: column; min-height: 0; min-width: 20rem; max-width: 26rem; }
+	.v-right { background: var(--background); min-width: 0; overflow: hidden; }
+
+	.v-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2); border-bottom: 1px solid var(--gray); }
+	.v-top h3 { font: var(--type-heading); margin: 0; }
+	.v-btn { display: inline-flex; align-items: center; gap: var(--space-2); height: 2rem; padding: 0 var(--space-3); border: 1px solid var(--gray); border-radius: var(--radius-sm); background: var(--dark-gray); color: var(--text); font: var(--type-body); }
+	.v-btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-accent); }
+	.v-btn.danger { color: var(--error); }
+	.v-btn.disabled { opacity: 0.45; }
+	.v-iconbtn { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border: 1px solid var(--gray); border-radius: var(--radius-sm); background: var(--dark-gray); color: var(--text); }
+	.v-iconbtn.done { color: var(--success); border-color: var(--success); background: var(--success-opacity); }
+
+	.v-scope { display: flex; gap: var(--space-1); padding: 0 var(--space-2); border-bottom: 1px solid var(--gray); }
+	.v-scope span { padding: var(--space-2) var(--space-2); color: var(--subtext); border-bottom: 2px solid transparent; }
+	.v-scope .sel { color: var(--primary); border-bottom-color: var(--primary); background: var(--primary-opacity); }
+	.v-search { padding: var(--space-2); }
+	.v-input { display: flex; align-items: center; gap: var(--space-2); height: 2rem; padding: 0 var(--space-2); background: var(--dark-gray); border: 1px solid var(--gray); border-radius: var(--radius-sm); color: var(--subtext); }
+	.v-hint { margin: var(--space-2) 0 0; font: var(--type-caption); color: var(--subtext); }
+	.v-types { display: flex; flex-wrap: wrap; gap: var(--space-1); padding: 0 var(--space-2) var(--space-2); border-bottom: 1px solid var(--gray); }
+	.v-types span { padding: 0 var(--space-2); height: 1.5rem; display: inline-flex; align-items: center; border: 1px solid var(--gray); border-radius: var(--radius-md); color: var(--subtext); font: var(--type-caption); }
+	.v-types .sel { background: var(--primary-opacity); color: var(--primary); border-color: var(--primary); }
+
+	.v-rows { list-style: none; margin: 0; padding: var(--space-1) 0; flex: 1; overflow: hidden; }
+	.v-row { display: flex; align-items: center; gap: var(--space-2); min-height: 2.5rem; padding: var(--space-1) var(--space-2); color: var(--subtext); }
+	.v-row .t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+	.v-row .n { font: var(--type-body); color: var(--text); }
+	.v-row .s { font: var(--type-mono); color: var(--subtext); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.v-row.sel { background: var(--primary-opacity); }
+	.v-row .shield { color: var(--subtext); }
+	.v-skel { height: 2.5rem; margin: var(--space-1) var(--space-2); display: flex; align-items: center; gap: var(--space-2); }
+	.v-skel i { display: block; background: var(--gray); border-radius: var(--radius-sm); }
+	.v-skel .a { width: 1rem; height: 1rem; }
+	.v-skel .b { width: 9rem; height: 0.75rem; }
+	.v-note { padding: var(--space-4); color: var(--subtext); display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+	.v-note.err { color: var(--error); }
+
+	.v-confirm { max-width: 24rem; background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+	.v-confirm h5 { font: var(--type-heading); margin: 0; }
+	.v-confirm p { margin: 0; color: var(--subtext); }
+	.v-confirm .v-actions { justify-content: flex-end; }
+	.v-btn.danger-solid { background: var(--error); border-color: var(--error); color: var(--on-accent); }
+	.v-backdrop { background: var(--dialog-background); padding: var(--space-4); display: flex; justify-content: center; }
+
+	/* Details */
+	.v-dhead { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); padding: var(--space-4); border-bottom: 1px solid var(--gray); }
+	.v-dhead h3 { font: var(--type-title); margin: 0 0 var(--space-1); font-family: var(--font-mono); }
+	.v-meta { display: flex; align-items: center; gap: var(--space-2); color: var(--subtext); font: var(--type-caption); }
+	.v-actions { display: flex; gap: var(--space-2); }
+	.v-sec { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--gray); }
+	.v-sec h4 { font: var(--type-caption); color: var(--subtext); margin: 0 0 var(--space-2); font-weight: 400; }
+	.v-kv { display: grid; grid-template-columns: 9rem 1fr; gap: var(--space-1) var(--space-3); margin: 0; }
+	.v-kv dt { color: var(--subtext); }
+	.v-kv dd { margin: 0; font: var(--type-mono); }
+	.v-secret { display: flex; align-items: center; gap: var(--space-2); }
+	.v-secret .lbl { width: 9rem; color: var(--subtext); }
+	.v-secret .val { font: var(--type-mono); flex: 1; }
+	.v-secret .hint { color: var(--subtext); font: var(--type-caption); }
+	.v-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+	.v-chip { display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-2); border: 1px solid var(--gray); border-radius: var(--radius-md); background: var(--lighter-background); }
+	.v-policy { display: flex; align-items: center; gap: var(--space-2); }
+	.v-policy.off { color: var(--subtext); }
+
+	/* schmal */
+	.v-phones { display: flex; gap: var(--space-6); flex-wrap: wrap; align-items: flex-start; }
+	.v-phone { width: 24rem; max-width: 100%; border: 1px solid var(--gray); border-radius: var(--radius-lg); overflow: hidden; background: var(--background); display: flex; flex-direction: column; height: 40rem; }
+	.v-phone .v-left { min-width: 0; max-width: none; border-right: 0; flex: 1; }
+	.v-phone .v-body { flex: 1; overflow: hidden; }
+	.v-phone .v-kv { grid-template-columns: 6rem 1fr; }
+	.v-phone .v-secret .lbl { width: 6rem; }
+	.v-phone .v-dhead { flex-direction: column; padding: var(--space-3); }
+	.v-phone .v-sec { padding: var(--space-3); }
+	.v-mnav { flex: none; height: 3.5rem; display: flex; align-items: center; justify-content: space-around; background: var(--darker-gray); border-top: 1px solid var(--gray); color: var(--subtext); font: var(--type-caption); }
+	.v-mnav .active { color: var(--primary); }
+	.v-back { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--gray); background: var(--lighter-background); }
+	.v-back .v-iconbtn { width: 2.75rem; height: 2.75rem; }
+</style>
+</head>
+<body>
+
+<header class="mb-context">
+	<strong>Darstellungskontext</strong><br>
+	<b>Art:</b> Seite (page) · Route <code class="v-mono">/vault</code> · Navigation links, Freigabe-Karte schwebt unten rechts über der Seite<br>
+	<b>Größe:</b> zweispaltig — Liste 20–26 rem, Details füllen den Rest · unter 768px eine Spalte: erst Liste, Tipp öffnet Details mit Zurück-Pfeil<br>
+	Tastatur: N Neuer Eintrag · ↑/↓ wählt in der Liste · E Bearbeiten · unter 768px Zurück-Pfeil im Kopf der Details<br>
+	Tab-Reihenfolge Neuer Eintrag → Besitzer-Reiter → Suchen → Typ-Filter → Liste (↑/↓, Enter öffnet) → Details (Anzeigen, Kopieren, Bearbeiten, Löschen); Esc im Detail geht auf schmal zurück zur Liste
+</header>
+
+<main class="mb-artboard">
+
+<svg class="v-sprite" aria-hidden="true" focusable="false">
+	<symbol id="i-login" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/></symbol>
+	<symbol id="i-key" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
+	<symbol id="i-ssh" viewBox="0 0 24 24"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2"/></symbol>
+	<symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></symbol>
+	<symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+	<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></symbol>
+	<symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></symbol>
+	<symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+	<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+	<symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+	<symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol>
+	<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+	<symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></symbol>
+	<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+	<symbol id="i-back" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol>
+</svg>
+
+<div class="v-head">
+	<h1>UI-VAULT</h1>
+	<span>Vault — Zugangsdaten für Agenten</span>
+	<code>/vault</code>
+</div>
+
+<!-- ============ Gesamtseite ============ -->
+<div class="v-block">
+	<h2>Seite — Liste links, Eintrag rechts <code>UI-VAULT</code></h2>
+	<div class="v-frame" data-ui-id="UI-VAULT">
+	<div class="v-page">
+		<nav class="v-nav" aria-label="Navigation (Shell, angedeutet)">
+			<span><i class="ico"></i>Server</span>
+			<span><i class="ico"></i>Dateien</span>
+			<span class="active"><i class="ico"></i>Vault</span>
+		</nav>
+		<div class="v-split">
+			<div class="v-left">
+				<div class="v-top"><h3>Vault</h3>
+					<span class="v-btn primary"><svg class="v-ico"><use href="#i-plus"/></svg>Neuer Eintrag</span>
+				</div>
+				<div class="v-scope"><span class="sel">Persönlich</span><span>Homelab</span><span>Kunde Meier</span></div>
+				<div class="v-search"><div class="v-input"><svg class="v-ico"><use href="#i-search"/></svg>Suchen</div></div>
+				<div class="v-types"><span class="sel">Alle</span><span>Login</span><span>API-Key</span><span>SSH</span><span>Datenbank</span><span>Sonstiges</span></div>
+				<ul class="v-rows">
+					<li class="v-row sel"><svg class="v-ico"><use href="#i-login"/></svg><span class="t"><span class="n">portal-login</span><span class="s">ma.backes@portal.example.com</span></span><svg class="v-ico shield"><use href="#i-shield"/></svg></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-key"/></svg><span class="t"><span class="n">github-token</span><span class="s">api.github.com</span></span></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-db"/></svg><span class="t"><span class="n">db-prod</span><span class="s">postgres@10.0.0.12</span></span><svg class="v-ico shield"><use href="#i-shield"/></svg></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-ssh"/></svg><span class="t"><span class="n">deploy-key</span><span class="s">deploy</span></span></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-lock"/></svg><span class="t"><span class="n">smtp-relay</span></span></li>
+				</ul>
+			</div>
+			<div class="v-right">
+				<div class="v-dhead">
+					<div><h3>portal-login</h3><div class="v-meta"><svg class="v-ico"><use href="#i-login"/></svg>Login · Persönlich</div></div>
+					<div class="v-actions"><span class="v-btn"><svg class="v-ico"><use href="#i-pencil"/></svg>Bearbeiten</span><span class="v-btn danger"><svg class="v-ico"><use href="#i-trash"/></svg>Löschen</span></div>
+				</div>
+				<div class="v-sec"><h4>Angaben</h4><dl class="v-kv"><dt>Benutzer</dt><dd>ma.backes</dd><dt>Ursprünge</dt><dd>https://portal.example.com</dd></dl></div>
+				<div class="v-sec"><h4>Geheimer Wert</h4><div class="v-secret"><span class="lbl">Passwort</span><span class="val">••••••••••••</span><span class="v-iconbtn"><svg class="v-ico"><use href="#i-eye"/></svg></span><span class="v-iconbtn"><svg class="v-ico"><use href="#i-copy"/></svg></span></div></div>
+				<div class="v-sec"><h4>Gilt für</h4><div class="v-chips"><span class="v-chip">Server web01</span><span class="v-chip">Ordner Produktion</span><span class="v-chip">Tag db</span></div></div>
+				<div class="v-sec"><div class="v-policy"><svg class="v-ico"><use href="#i-shield"/></svg>Freigabe erforderlich · zuletzt genutzt vor 2 Stunden</div></div>
+			</div>
+		</div>
+	</div>
+	</div>
+</div>
+
+<!-- ============ Zustände ============ -->
+<div class="v-block">
+	<h2>Zustände je Element</h2>
+	<div class="v-gallery">
+
+		<div class="v-cell" data-ui-id="UI-VAULT-NEW">
+			<div class="v-cap"><code>UI-VAULT-NEW</code> · Neuer Eintrag</div>
+			<section class="v-state" data-ui-state="default"><span class="v-btn primary"><svg class="v-ico"><use href="#i-plus"/></svg>Neuer Eintrag</span></section>
+			<section class="v-state" data-ui-state="disabled"><span class="v-btn primary disabled"><svg class="v-ico"><use href="#i-plus"/></svg>Neuer Eintrag</span></section>
+		</div>
+
+		<div class="v-cell" data-ui-id="UI-VAULT-SCOPE">
+			<div class="v-cap"><code>UI-VAULT-SCOPE</code> · Persönlich · Organisationen</div>
+			<section class="v-state" data-ui-state="default"><div class="v-scope" style="padding:0;border:0"><span>Persönlich</span><span>Homelab</span><span>Kunde Meier</span></div></section>
+			<section class="v-state" data-ui-state="selected"><div class="v-scope" style="padding:0;border:0"><span>Persönlich</span><span class="sel">Homelab</span><span>Kunde Meier</span></div></section>
+		</div>
+
+		<div class="v-cell" data-ui-id="UI-VAULT-SEARCH">
+			<div class="v-cap"><code>UI-VAULT-SEARCH</code> · Suchen</div>
+			<section class="v-state" data-ui-state="default"><div class="v-input"><svg class="v-ico"><use href="#i-search"/></svg>Suchen</div></section>
+			<section class="v-state" data-ui-state="empty"><div class="v-input"><svg class="v-ico"><use href="#i-search"/></svg><span style="color:var(--text)">smtp-xyz</span></div><p class="v-hint">Kein Eintrag passt zur Suche.</p></section>
+		</div>
+
+		<div class="v-cell" data-ui-id="UI-VAULT-TYPES">
+			<div class="v-cap"><code>UI-VAULT-TYPES</code> · Alle · Login · API-Key · SSH · Datenbank · Sonstiges</div>
+			<section class="v-state" data-ui-state="default"><div class="v-types" style="padding:0;border:0"><span>Alle</span><span>Login</span><span>API-Key</span><span>SSH</span><span>Datenbank</span><span>Sonstiges</span></div></section>
+			<section class="v-state" data-ui-state="selected"><div class="v-types" style="padding:0;border:0"><span>Alle</span><span class="sel">Login</span><span>API-Key</span><span>SSH</span><span>Datenbank</span><span>Sonstiges</span></div></section>
+		</div>
+
+		<div class="v-cell flush wide" data-ui-id="UI-VAULT-LIST">
+			<div class="v-cap"><code>UI-VAULT-LIST</code> · Einträge</div>
+			<div class="v-gallery" style="padding:var(--space-3)">
+				<section class="v-state v-cell" data-ui-state="default"><ul class="v-rows">
+					<li class="v-row"><svg class="v-ico"><use href="#i-login"/></svg><span class="t"><span class="n">portal-login</span><span class="s">ma.backes@portal.example.com</span></span><svg class="v-ico shield"><use href="#i-shield"/></svg></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-key"/></svg><span class="t"><span class="n">github-token</span><span class="s">api.github.com</span></span></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-db"/></svg><span class="t"><span class="n">db-prod</span><span class="s">postgres@10.0.0.12</span></span><svg class="v-ico shield"><use href="#i-shield"/></svg></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-ssh"/></svg><span class="t"><span class="n">deploy-key</span><span class="s">deploy</span></span></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-lock"/></svg><span class="t"><span class="n">smtp-relay</span></span></li>
+				</ul></section>
+				<section class="v-state v-cell" data-ui-state="selected"><ul class="v-rows">
+					<li class="v-row"><svg class="v-ico"><use href="#i-login"/></svg><span class="t"><span class="n">portal-login</span><span class="s">ma.backes@portal.example.com</span></span><svg class="v-ico shield"><use href="#i-shield"/></svg></li>
+					<li class="v-row sel"><svg class="v-ico"><use href="#i-key"/></svg><span class="t"><span class="n">github-token</span><span class="s">api.github.com</span></span></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-db"/></svg><span class="t"><span class="n">db-prod</span><span class="s">postgres@10.0.0.12</span></span><svg class="v-ico shield"><use href="#i-shield"/></svg></li>
+				</ul></section>
+				<section class="v-state v-cell" data-ui-state="loading">
+					<div class="v-skel"><i class="a"></i><i class="b"></i></div><div class="v-skel"><i class="a"></i><i class="b"></i></div><div class="v-skel"><i class="a"></i><i class="b"></i></div>
+				</section>
+				<section class="v-state v-cell" data-ui-state="empty"><div class="v-note">Noch keine Einträge. Zugangsdaten im Vault nutzen Agenten, ohne den Wert zu sehen.<span class="v-btn primary"><svg class="v-ico"><use href="#i-plus"/></svg>Neuer Eintrag</span></div></section>
+				<section class="v-state v-cell" data-ui-state="error"><div class="v-note err">Vault nicht erreichbar. Seite neu laden.</div></section>
+			</div>
+		</div>
+
+		<div class="v-cell flush wide" data-ui-id="UI-VAULT-DETAIL">
+			<div class="v-cap"><code>UI-VAULT-DETAIL</code> · Eintrag</div>
+			<section class="v-state" data-ui-state="default"><div class="v-dhead" style="border:0">
+				<div><h3>portal-login</h3><div class="v-meta"><svg class="v-ico"><use href="#i-login"/></svg>Login · Persönlich</div></div>
+				<div class="v-actions"><span class="v-btn"><svg class="v-ico"><use href="#i-pencil"/></svg>Bearbeiten</span><span class="v-btn danger"><svg class="v-ico"><use href="#i-trash"/></svg>Löschen</span></div>
+			</div></section>
+			<section class="v-state" data-ui-state="empty"><div class="v-note">Eintrag links wählen.</div></section>
+			<section class="v-state" data-ui-state="error"><div class="v-note err">Eintrag nicht lesbar — der Vault-Schlüssel passt nicht zu diesem Eintrag.</div></section>
+		</div>
+
+		<div class="v-cell" data-ui-id="UI-VAULT-DETAIL-ACTIONS">
+			<div class="v-cap"><code>UI-VAULT-DETAIL-ACTIONS</code> · Bearbeiten · Löschen</div>
+			<section class="v-state" data-ui-state="default"><div class="v-actions"><span class="v-btn"><svg class="v-ico"><use href="#i-pencil"/></svg>Bearbeiten</span><span class="v-btn danger"><svg class="v-ico"><use href="#i-trash"/></svg>Löschen</span></div></section>
+			<section class="v-state" data-ui-state="disabled"><div class="v-actions"></div><p class="v-hint">ohne Verwaltungsrecht nicht sichtbar</p></section>
+			<section class="v-state" data-ui-state="selected"><div class="v-backdrop"><div class="v-confirm" role="alertdialog" aria-label="Eintrag löschen">
+				<h5>portal-login löschen?</h5>
+				<p>Agenten verlieren den Zugriff sofort.</p>
+				<div class="v-actions"><span class="v-btn">Abbrechen</span><span class="v-btn danger-solid"><svg class="v-ico"><use href="#i-trash"/></svg>Löschen</span></div>
+			</div></div></section>
+		</div>
+
+		<div class="v-cell" data-ui-id="UI-VAULT-DETAIL-FIELDS">
+			<div class="v-cap"><code>UI-VAULT-DETAIL-FIELDS</code> · Angaben</div>
+			<section class="v-state" data-ui-state="default"><dl class="v-kv"><dt>Benutzer</dt><dd>ma.backes</dd><dt>Ursprünge</dt><dd>https://portal.example.com</dd></dl></section>
+		</div>
+
+		<div class="v-cell" data-ui-id="UI-VAULT-DETAIL-SECRET">
+			<div class="v-cap"><code>UI-VAULT-DETAIL-SECRET</code> · Geheimer Wert</div>
+			<section class="v-state" data-ui-state="default"><div class="v-secret"><span class="lbl">Passwort</span><span class="val">••••••••••••</span><span class="v-iconbtn"><svg class="v-ico"><use href="#i-eye"/></svg></span><span class="v-iconbtn"><svg class="v-ico"><use href="#i-copy"/></svg></span></div></section>
+			<section class="v-state" data-ui-state="selected"><div class="v-secret"><span class="lbl">Passwort</span><span class="val">Wn4-eTq8-Rz2x</span><span class="v-iconbtn"><svg class="v-ico"><use href="#i-eyeoff"/></svg></span><span class="v-iconbtn"><svg class="v-ico"><use href="#i-copy"/></svg></span></div><p class="v-hint">angezeigt, verbirgt sich in 30 s</p></section>
+			<section class="v-state" data-ui-state="disabled"><div class="v-secret"><span class="lbl">Passwort</span><span class="val">••••••••••••</span><span class="hint">nur für Agenten nutzbar</span></div></section>
+			<section class="v-state" data-ui-state="success"><div class="v-secret"><span class="lbl">Passwort</span><span class="val">••••••••••••</span><span class="v-iconbtn"><svg class="v-ico"><use href="#i-eye"/></svg></span><span class="v-iconbtn done"><svg class="v-ico"><use href="#i-check"/></svg></span><span class="hint" style="color:var(--success)">Kopiert</span></div></section>
+		</div>
+
+		<div class="v-cell" data-ui-id="UI-VAULT-DETAIL-SCOPE">
+			<div class="v-cap"><code>UI-VAULT-DETAIL-SCOPE</code> · Gilt für</div>
+			<section class="v-state" data-ui-state="default"><div class="v-chips"><span class="v-chip">Server web01</span><span class="v-chip">Ordner Produktion</span><span class="v-chip">Tag db</span></div></section>
+			<section class="v-state" data-ui-state="empty"><div style="color:var(--subtext)">Für keinen Server freigegeben — kein Agent sieht diesen Eintrag.</div></section>
+		</div>
+
+		<div class="v-cell" data-ui-id="UI-VAULT-DETAIL-POLICY">
+			<div class="v-cap"><code>UI-VAULT-DETAIL-POLICY</code> · Freigabe erforderlich</div>
+			<section class="v-state" data-ui-state="default"><div class="v-policy"><svg class="v-ico"><use href="#i-shield"/></svg>Freigabe erforderlich · zuletzt genutzt vor 2 Stunden</div></section>
+			<section class="v-state" data-ui-state="disabled"><div class="v-policy off">Ohne Freigabe nutzbar</div></section>
+		</div>
+
+	</div>
+</div>
+
+<!-- ============ Schmal ============ -->
+<div class="v-block">
+	<h2>Schmal (&lt;768px) — erst Liste, Tipp öffnet Details <code>UI-VAULT</code></h2>
+	<div class="v-phones">
+		<section class="v-state v-phone" data-variant="narrow-list">
+			<div class="v-left">
+				<div class="v-top"><h3>Vault</h3><span class="v-btn primary"><svg class="v-ico"><use href="#i-plus"/></svg>Neuer Eintrag</span></div>
+				<div class="v-scope"><span class="sel">Persönlich</span><span>Homelab</span><span>Kunde Meier</span></div>
+				<div class="v-search"><div class="v-input"><svg class="v-ico"><use href="#i-search"/></svg>Suchen</div></div>
+				<div class="v-types"><span class="sel">Alle</span><span>Login</span><span>API-Key</span><span>SSH</span><span>Datenbank</span><span>Sonstiges</span></div>
+				<ul class="v-rows">
+					<li class="v-row"><svg class="v-ico"><use href="#i-login"/></svg><span class="t"><span class="n">portal-login</span><span class="s">ma.backes@portal.example.com</span></span><svg class="v-ico shield"><use href="#i-shield"/></svg></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-key"/></svg><span class="t"><span class="n">github-token</span><span class="s">api.github.com</span></span></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-db"/></svg><span class="t"><span class="n">db-prod</span><span class="s">postgres@10.0.0.12</span></span><svg class="v-ico shield"><use href="#i-shield"/></svg></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-ssh"/></svg><span class="t"><span class="n">deploy-key</span><span class="s">deploy</span></span></li>
+					<li class="v-row"><svg class="v-ico"><use href="#i-lock"/></svg><span class="t"><span class="n">smtp-relay</span></span></li>
+				</ul>
+			</div>
+			<nav class="v-mnav"><span>Server</span><span>Dateien</span><span class="active">Vault</span></nav>
+		</section>
+		<section class="v-state v-phone" data-variant="narrow-detail">
+			<div class="v-back"><span class="v-iconbtn"><svg class="v-ico"><use href="#i-back"/></svg></span><span>Vault</span></div>
+			<div class="v-body">
+				<div class="v-dhead">
+					<div><h3>portal-login</h3><div class="v-meta"><svg class="v-ico"><use href="#i-login"/></svg>Login · Persönlich</div></div>
+					<div class="v-actions"><span class="v-btn"><svg class="v-ico"><use href="#i-pencil"/></svg>Bearbeiten</span><span class="v-btn danger"><svg class="v-ico"><use href="#i-trash"/></svg>Löschen</span></div>
+				</div>
+				<div class="v-sec"><h4>Angaben</h4><dl class="v-kv"><dt>Benutzer</dt><dd>ma.backes</dd><dt>Ursprünge</dt><dd>https://portal.example.com</dd></dl></div>
+				<div class="v-sec"><h4>Geheimer Wert</h4><div class="v-secret"><span class="lbl">Passwort</span><span class="val">••••••••••••</span><span class="v-iconbtn"><svg class="v-ico"><use href="#i-eye"/></svg></span><span class="v-iconbtn"><svg class="v-ico"><use href="#i-copy"/></svg></span></div></div>
+				<div class="v-sec"><h4>Gilt für</h4><div class="v-chips"><span class="v-chip">Server web01</span><span class="v-chip">Ordner Produktion</span><span class="v-chip">Tag db</span></div></div>
+				<div class="v-sec"><div class="v-policy"><svg class="v-ico"><use href="#i-shield"/></svg>Freigabe erforderlich · zuletzt genutzt vor 2 Stunden</div></div>
+			</div>
+			<nav class="v-mnav"><span>Server</span><span>Dateien</span><span class="active">Vault</span></nav>
+		</section>
+	</div>
+</div>
+
+</main>
+</body>
+</html>

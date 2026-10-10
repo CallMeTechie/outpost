@@ -14,6 +14,7 @@ export const Permission = Object.freeze({
     SETTINGS_AI: "settings.ai",
     SETTINGS_MICROSOFT: "settings.microsoft",
     SETTINGS_BROWSER: "settings.browser",
+    SETTINGS_VAULT: "settings.vault",
 
     RESOURCES_MANAGE: "resources.manage",
     IDENTITIES_MANAGE: "identities.manage",
@@ -30,6 +31,9 @@ export const Permission = Object.freeze({
     FILES_DOWNLOAD: "files.download",
     FILES_MODIFY: "files.modify",
     SCRIPTS_EXECUTE: "scripts.execute",
+    VAULT_USE: "vault.use",
+    VAULT_MANAGE: "vault.manage",
+    VAULT_REVEAL: "vault.reveal",
 
     ORG_MANAGE: "org.manage",
     ORG_DELETE: "org.delete",

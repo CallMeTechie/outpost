@@ -21,6 +21,7 @@ import UpdateDialog from "@/common/components/UpdateDialog";
 
 const Servers = lazy(() => import("@/pages/Servers"));
 const Snippets = lazy(() => import("@/pages/Snippets"));
+const Vault = lazy(() => import("@/pages/Vault"));
 const Monitoring = lazy(() => import("@/pages/Monitoring"));
 const Audit = lazy(() => import("@/pages/Audit"));
 const Popout = lazy(() => import("@/pages/Popout"));
@@ -75,7 +76,8 @@ const App = () => {
                 { path: "/monitoring/:serverId", element: <Monitoring /> },
                 { path: "/monitoring/:serverId/:tab", element: <Monitoring /> },
                 { path: "/audit", element: <Audit /> },
-                { path: "/snippets", element: <Snippets /> }
+                { path: "/snippets", element: <Snippets /> },
+                { path: "/vault", element: <Vault /> }
             ],
         },
         {

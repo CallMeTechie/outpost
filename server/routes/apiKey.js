@@ -1,14 +1,10 @@
 const { Router } = require("express");
 const { authenticate } = require("../middlewares/auth");
-const { sendError } = require("../utils/error");
+const { requireLoginSession } = require("../middlewares/requireLoginSession");
+const { blockApiKeyAuth } = require("../middlewares/blockApiKeyAuth");
 const { createApiKey, listApiKeys, deleteApiKey } = require("../controllers/apiKey");
 
 const app = Router();
-
-const blockApiKeyAuth = (req, res, next) => {
-    if (req.apiKey) return sendError(res, 403, 403, "API keys cannot manage API keys");
-    next();
-};
 
 /**
  * GET /accounts/api-keys
@@ -33,7 +29,7 @@ app.get("/", authenticate, blockApiKeyAuth, async (req, res) => {
  * @param {object} request.body.required - API key configuration (name, optional expiresAt)
  * @return {object} 200 - The created API key including the one-time token
  */
-app.post("/", authenticate, blockApiKeyAuth, async (req, res) => {
+app.post("/", authenticate, blockApiKeyAuth, requireLoginSession, async (req, res) => {
     const result = await createApiKey(req.user.id, {
         name: req.body?.name,
         expiresAt: req.body?.expiresAt || null,

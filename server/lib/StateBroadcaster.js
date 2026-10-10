@@ -1,8 +1,8 @@
 const OrganizationMember = require("../models/OrganizationMember");
 const logger = require("../utils/logger");
 
-const STATE_TYPES = { ENTRIES: "ENTRIES", IDENTITIES: "IDENTITIES", SNIPPETS: "SNIPPETS", CONNECTIONS: "CONNECTIONS", LIVE_SESSIONS: "LIVE_SESSIONS", SESSION_PRESENCE: "SESSION_PRESENCE", BROWSER_SESSIONS: "BROWSER_SESSIONS", LOGOUT: "LOGOUT" };
-const BROADCASTABLE_TYPES = [STATE_TYPES.ENTRIES, STATE_TYPES.IDENTITIES, STATE_TYPES.SNIPPETS, STATE_TYPES.CONNECTIONS, STATE_TYPES.LIVE_SESSIONS, STATE_TYPES.BROWSER_SESSIONS];
+const STATE_TYPES = { ENTRIES: "ENTRIES", IDENTITIES: "IDENTITIES", SNIPPETS: "SNIPPETS", CONNECTIONS: "CONNECTIONS", LIVE_SESSIONS: "LIVE_SESSIONS", SESSION_PRESENCE: "SESSION_PRESENCE", BROWSER_SESSIONS: "BROWSER_SESSIONS", VAULT_APPROVALS: "VAULT_APPROVALS", LOGOUT: "LOGOUT" };
+const BROADCASTABLE_TYPES = [STATE_TYPES.ENTRIES, STATE_TYPES.IDENTITIES, STATE_TYPES.SNIPPETS, STATE_TYPES.CONNECTIONS, STATE_TYPES.LIVE_SESSIONS, STATE_TYPES.BROWSER_SESSIONS, STATE_TYPES.VAULT_APPROVALS];
 
 class StateBroadcaster {
     constructor() {
@@ -12,12 +12,20 @@ class StateBroadcaster {
         this.debounceDelay = 100;
     }
 
-    register(accountId, sessionId, ws, tabId = null, browserId = null) {
+    register(accountId, sessionId, ws, tabId = null, browserId = null, { impersonating = false } = {}) {
         if (!this.connections.has(accountId)) this.connections.set(accountId, new Set());
-        const conn = { ws, tabId, browserId, sessionId };
+        const conn = { ws, tabId, browserId, sessionId, impersonating };
         this.connections.get(accountId).add(conn);
         if (!this.sessionIndex.has(sessionId)) this.sessionIndex.set(sessionId, new Set());
         this.sessionIndex.get(sessionId).add(conn);
+        return conn;
+    }
+
+    hasConnection(accountId) {
+        for (const conn of this.connections.get(accountId) ?? []) {
+            if (!conn.impersonating && conn.ws.readyState === 1) return true;
+        }
+        return false;
     }
 
     unregister(accountId, ws) {
@@ -54,6 +62,8 @@ class StateBroadcaster {
                 return require("../controllers/liveSession").listLiveSessions(accountId);
             case STATE_TYPES.BROWSER_SESSIONS:
                 return require("./browser").getBrowserPool().listForAccount(accountId);
+            case STATE_TYPES.VAULT_APPROVALS:
+                return require("./vault/approvals").listOpenApprovals(accountId);
             default:
                 return null;
         }
@@ -61,6 +71,7 @@ class StateBroadcaster {
 
     async sendStateToConnection(accountId, conn, stateType) {
         if (conn.ws.readyState !== 1) return;
+        if (conn.impersonating && stateType === STATE_TYPES.VAULT_APPROVALS) return;
         try {
             const data = await this.getStateData(stateType, accountId, conn.tabId, conn.browserId);
             conn.ws.send(JSON.stringify({ type: stateType, data }));

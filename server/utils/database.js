@@ -23,6 +23,9 @@ const getCallerFromStack = () => {
     return 'sequelize';
 };
 
+const redactSql = (sql) => sql.replace(/(`token`\s*=\s*)'(?:[^'\\]|\\.|'')*'/g, "$1'[redacted]'");
+const logSql = (msg) => logger.baseLogger.debug(redactSql(msg), { caller: getCallerFromStack() });
+
 if (process.env.DB_TYPE === "mysql") {
     if (!process.env.DB_NAME || !process.env.DB_PASS || !process.env.DB_USER)
         throw new Error("Missing database environment variables");
@@ -31,14 +34,14 @@ if (process.env.DB_TYPE === "mysql") {
         host: process.env.DB_HOST || "localhost",
         port: process.env.DB_PORT || 3306,
         dialect: 'mysql',
-        logging: (msg) => logger.baseLogger.debug(msg, { caller: getCallerFromStack() }),
+        logging: logSql,
         query: {raw: true}
     });
 } else if (!process.env.DB_TYPE || process.env.DB_TYPE === "sqlite") {
     module.exports = new Sequelize({
         dialect: 'sqlite',
         storage: STORAGE_PATH,
-        logging: (msg) => logger.baseLogger.debug(msg, { caller: getCallerFromStack() }),
+        logging: logSql,
         query: {raw: true}
     });
 } else {

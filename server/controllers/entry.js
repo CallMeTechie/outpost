@@ -16,6 +16,7 @@ const logger = require("../utils/logger");
 const { sendWakeOnLan } = require("../utils/wol");
 const stateBroadcaster = require("../lib/StateBroadcaster");
 const SessionManager = require("../lib/SessionManager");
+const { removeBindings } = require("../lib/vault/bindings");
 
 const PROTOCOL_RENDERERS = {
     ssh: "terminal",
@@ -193,6 +194,7 @@ module.exports.deleteEntry = async (accountId, entryId) => {
 
     if (!accessCheck.valid) return accessCheck;
 
+    await removeBindings("entry", [entry.id]);
     await Entry.destroy({ where: { id: entryId } });
 
     await createAuditLog({

@@ -146,6 +146,7 @@
       "servers": "Servers",
       "monitoring": "Monitoring",
       "snippets": "Snippets",
+      "vault": "Vault",
       "browser": "Browser",
       "audit": "Audit",
       "account": "Account",
@@ -445,6 +446,127 @@
       "selectIdentity": "Select Identity"
     }
   },
+  "vault": {
+    "page": {
+      "title": "Vault",
+      "subtitle": "Credentials for agents",
+      "addItem": "New entry"
+    },
+    "scope": {
+      "personal": "Personal"
+    },
+    "search": {
+      "placeholder": "Search",
+      "empty": "No entry matches the search."
+    },
+    "types": {
+      "all": "All",
+      "login": "Login",
+      "apiKey": "API key",
+      "ssh": "SSH",
+      "database": "Database",
+      "other": "Other"
+    },
+    "list": {
+      "title": "Entries",
+      "empty": "No entries yet. Agents use credentials from the vault without seeing the value.",
+      "error": "Vault unreachable. Reload the page."
+    },
+    "detail": {
+      "empty": "Select an entry on the left.",
+      "error": "Entry unreadable — the vault key does not match this entry.",
+      "fields": "Details",
+      "secrets": "Secret value",
+      "scope": "Applies to",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteConfirm": "Delete {{name}}? Agents lose access immediately.",
+      "deleteFailed": "Deleting failed."
+    },
+    "fields": {
+      "name": "Name",
+      "description": "Description",
+      "username": "User",
+      "origin": "Origin",
+      "origins": "Origins",
+      "hosts": "Hosts",
+      "header": "Header",
+      "headerName": "Header name",
+      "headerTemplate": "Header template",
+      "engine": "Engine",
+      "host": "Host",
+      "port": "Port",
+      "database": "Database"
+    },
+    "secretFields": {
+      "password": "Password",
+      "token": "Token",
+      "privateKey": "Private key",
+      "passphrase": "Passphrase",
+      "value": "Value"
+    },
+    "secret": {
+      "show": "Show",
+      "hide": "Hide",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyFailed": "Copying failed.",
+      "revealed": "shown, hides in 30 s",
+      "agentOnly": "usable by agents only"
+    },
+    "bindings": {
+      "entry": "Server",
+      "folder": "Folder",
+      "tag": "Tag",
+      "allServers": "All servers",
+      "empty": "Not enabled for any server — no agent sees this entry.",
+      "emptyDialog": "Not enabled for any server.",
+      "addServer": "+ Server",
+      "addFolder": "+ Folder",
+      "addTag": "+ Tag"
+    },
+    "policy": {
+      "required": "Approval required",
+      "notRequired": "Usable without approval",
+      "lastUsed": "last used {{time}}"
+    },
+    "dialog": {
+      "title": {
+        "create": "Create entry",
+        "edit": "Edit entry"
+      },
+      "type": "Type",
+      "owner": "Owner",
+      "ownerPersonal": "Personal ({{username}})",
+      "fixed": "fixed after creation",
+      "enterSecret": "Enter {{field}}",
+      "secretStored": "stored — leave empty to keep",
+      "secretCleared": "Target changed — stored values will be discarded. Enter them again.",
+      "secretMissing": "Value missing.",
+      "nameTaken": "Name already taken.",
+      "create": "Create",
+      "save": "Save",
+      "saving": "Saving …",
+      "saveFailed": "Saving failed."
+    },
+    "agents": {
+      "claude": "Claude Code",
+      "codex": "Codex"
+    },
+    "approval": {
+      "title": "Approval requested",
+      "who": "{{agent}} on {{server}}",
+      "pending": "{{count}} requests open",
+      "sending": "Sending answer …",
+      "expired": "Request has expired.",
+      "impersonated": "Requested from an impersonation session",
+      "actions": {
+        "once": "Once",
+        "session": "For this session",
+        "deny": "Deny"
+      }
+    }
+  },
   "monitoring": {
     "page": {
       "title": "Server Monitoring",
@@ -607,7 +729,8 @@
       "backup": "Storage",
       "engines": "Engines",
       "permissions": "Roles & Permissions",
-      "browser": "Browser"
+      "browser": "Browser",
+      "vault": "Vault"
     },
     "account": {
       "title": "Account",
@@ -746,6 +869,22 @@
         "neverUsed": "Never used",
         "expires": "Expires {{date}}",
         "delete": "Delete"
+      },
+      "agentKeys": {
+        "loadFailed": "Could not load the agent keys",
+        "retry": "Retry",
+        "sectionTitle": "Agent keys",
+        "sectionDescription": "Agent keys only reach the MCP endpoint.",
+        "edit": "Edit",
+        "revoke": "Revoke",
+        "revokeConfirm": "Revoke access of {{agent}} on {{server}}? The agent loses access immediately.",
+        "revokedForeign": "Access revoked. The registration on {{server}} carries another account's key and stays in place.",
+        "revokedUnknown": "Access revoked. The registration could not be removed — copy the command and run it on the server.",
+        "lastUsed": "last used {{time}}",
+        "boundTo": "only {{address}}",
+        "unbound": "Binding removed",
+        "anywhere": "from anywhere",
+        "empty": "No agent access yet. Set it up from a server's context menu."
       },
       "microsoft": {
         "sectionTitle": "Connected accounts",
@@ -1595,6 +1734,34 @@
         "loadSettings": "Could not load the browser settings",
         "saveSettings": "Could not save the browser settings"
       }
+    },
+    "vault": {
+      "loading": "Loading vault settings...",
+      "title": "Vault",
+      "description": "System settings of the vault.",
+      "key": {
+        "title": "Vault key",
+        "active": "Active",
+        "missing": "Missing",
+        "missingText": "VAULT_KEY is missing — the vault is off. Set the key as an environment variable or as the Docker secret vault_key.",
+        "mismatch": "Mismatch",
+        "mismatchText": "VAULT_KEY does not match the stored entries — the vault is off."
+      },
+      "agentUrl": {
+        "title": "Outpost address for agents",
+        "description": "Your servers reach Outpost at this address; the MCP URL for agents is built from it.",
+        "invalid": "Not a valid http or https address."
+      },
+      "proxy": {
+        "warning": "TRUST_PROXY=true — Outpost trusts every X-Forwarded-For, so IP binding of agent keys has no effect. Set a hop count or an address list."
+      },
+      "saveSettings": "Save settings",
+      "saveSuccess": "Vault settings saved",
+      "errors": {
+        "loadSettings": "Could not load the vault settings",
+        "retry": "Retry",
+        "saveSettings": "Could not save the vault settings"
+      }
     }
   },
   "tunnel": {
@@ -1691,6 +1858,7 @@
       "editServer": "Edit Server",
       "editIntegration": "Edit Integration",
       "duplicateServer": "Duplicate Server",
+      "agentAccess": "Agent access…",
       "pasteIdentityPassword": "Paste Password",
       "deleteServer": "Delete Server",
       "deleteConfirm": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
@@ -1703,6 +1871,52 @@
       "start": "Start",
       "joinSession": "Join Session",
       "joinSessionOf": "Join session of {{user}}"
+    },
+    "agentAccess": {
+      "title": "Agent access — {{name}}",
+      "keys": {
+        "title": "Agents on this server",
+        "empty": "No agent set up on this server yet.",
+        "created": "created {{date}}",
+        "lastUsed": "last used {{time}}",
+        "boundTo": "only {{address}}",
+        "anywhere": "from anywhere",
+        "revoke": "Revoke",
+        "revokeConfirm": "Revoke access of {{agent}} on {{server}}? The agent loses access immediately.",
+        "revokeError": "Revoking failed.",
+        "revokedForeign": "Access revoked. The registration on {{server}} carries another account's key and stays in place.",
+        "revokedUnknown": "Access revoked. The registration could not be removed — copy the command and run it on the server."
+      },
+      "setup": {
+        "cidrLabel": "Additional address ranges",
+        "cidrInvalid": "Invalid address range.",
+        "submit": "Set up",
+        "loading": "Setting up …",
+        "urlMissing": "Outpost address for agents is missing — set it in Settings › Vault.",
+        "foreignAccount": "Another account has already set up agent access for {{user}} on {{server}} — the registration will be replaced."
+      },
+      "ipBind": {
+        "label": "Only from this server's IP",
+        "on": "on",
+        "off": "off — from anywhere",
+        "seenOther": "Seen {{seen}} instead of {{expected}} — adopt as address range? Without adopting it, Outpost refuses the key.",
+        "probeFailed": "The address could not be measured — the key applies to the server's resolved address.",
+        "adopt": "Adopt",
+        "decline": "No",
+        "trustProxy": "TRUST_PROXY=true — IP binding has no effect."
+      },
+      "result": {
+        "empty": "appears after setup",
+        "configured": "set up",
+        "failed": "failed",
+        "success": "Set up for {{user}}. Restart Claude Code, then /mcp.",
+        "successCodex": "Set up for {{user}}. Start Codex in a new shell; running Codex processes and tmux sessions do not know the key.",
+        "error": "{{cli}} not found. Copy the command and run it on the server.",
+        "manual": "Copy the command and run it on the server.",
+        "copy": "Copy",
+        "keyNotice": "The key is visible only now. Closing without adopting it deletes it.",
+        "replaced": "Existing registration replaced — the old account key stays valid until you delete it under API Keys."
+      }
     },
     "passwordHint": {
       "paste": "paste password",

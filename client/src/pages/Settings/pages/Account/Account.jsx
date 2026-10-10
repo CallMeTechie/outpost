@@ -14,6 +14,7 @@ import PasswordChange from "@/pages/Settings/pages/Account/dialogs/PasswordChang
 import AddPasskeyDialog from "@/pages/Settings/pages/Account/dialogs/AddPasskeyDialog";
 import AddApiKeyDialog from "@/pages/Settings/pages/Account/dialogs/AddApiKeyDialog";
 import MicrosoftConnections from "@/pages/Settings/pages/Account/components/MicrosoftConnections";
+import AgentKeysSection from "@/pages/Settings/pages/Account/components/AgentKeysSection";
 import ActionConfirmDialog from "@/common/components/ActionConfirmDialog";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { startRegistration } from "@simplewebauthn/browser";
@@ -428,7 +429,7 @@ export const Account = () => {
                 </div>
             </div>
 
-            <div className="account-section">
+            <div className="account-section" data-ui-id="UI-API-KEYS-LIST">
                 <div className="section-header">
                     <div className="header-content">
                         <h2><Icon icon={IconPlug} size={0.8} style={{marginRight: '8px'}} />{t("settings.account.apiKeys.sectionTitle")}</h2>
@@ -471,6 +472,8 @@ export const Account = () => {
                     )}
                 </div>
             </div>
+
+            <AgentKeysSection />
 
             <MicrosoftConnections />
 

@@ -1,5 +1,8 @@
 const { createHash } = require("node:crypto");
 const { BrowserError, BrowserErrorCode } = require("./errors");
+const { VaultError, VaultErrorCode } = require("../vault/errors");
+const vaultGuard = require("./vaultGuard");
+const logger = require("../../utils/logger");
 
 const EXPRESSION_LOG_LIMIT = 500;
 const WAIT_POLL_MS = 250;
@@ -59,25 +62,56 @@ const auditUrl = (raw) => {
         return String(raw);
     }
 };
-const formatSessions = (sessions) => sessions.map((s) => `- ${s.id}  ${s.title || "(untitled)"}  ${s.url}`).join("\n");
-const errorResult = (err) => {
-    const list = err.details?.sessions?.length ? `\nOpen sessions:\n${formatSessions(err.details.sessions)}` : "";
-    return { isError: true, content: [{ type: "text", text: `${err.message}${list}` }] };
+// Each line is checked against its own session's context, whichever caller asks for the list.
+const formatSessions = (sessions, pool) => {
+    const redactors = new Map();
+    const redactorOf = (contextKey) => {
+        if (!redactors.has(contextKey)) redactors.set(contextKey, vaultGuard.redactorFor(contextKey ?? []));
+        return redactors.get(contextKey);
+    };
+    return sessions
+        .map((s) => redactorOf(pool.get(s.id)?.contextKey)(`- ${s.id}  ${s.title || "(untitled)"}  ${s.url}`))
+        .join("\n");
+};
+const errorResult = (err, pool) => {
+    const list = err.details?.sessions?.length ? `\nOpen sessions:\n${formatSessions(err.details.sessions, pool)}` : "";
+    const code = err instanceof VaultError ? ` (${err.code})` : "";
+    return { isError: true, content: [{ type: "text", text: `${err.message}${code}${list}` }] };
 };
 const pageResult = (session, snapshot, note = "") =>
-    textResult(`Session: ${session.id}\nURL: ${session.state.url}\nTitle: ${session.state.title}${note}\n\n${snapshot}`);
+    textResult(vaultGuard.redactText(session.contextKey, `Session: ${session.id}\nURL: ${session.state.url}\nTitle: ${session.state.title}${note}\n\n${snapshot}`));
+const redactError = (session, err) => {
+    if (typeof err?.message === "string") err.message = vaultGuard.redactText(session.contextKey, err.message);
+    return err;
+};
+const LOCK_AUDIT = Object.freeze({
+    [VaultErrorCode.EVALUATE_LOCKED]: "vault.evaluate_locked",
+    [VaultErrorCode.SCREENSHOT_LOCKED]: "vault.screenshot_locked",
+    [VaultErrorCode.INPUT_LOCKED]: "vault.input_locked",
+});
 
 const defaultAudit = (entry) => require("../../controllers/audit").createAuditLog(entry);
 
-const recordBrowserAudit = (audit, ctx, session, action, details) => audit({
-    accountId: ctx.accountId,
-    organizationId: session.organizationId ?? null,
-    action,
-    resource: "browser",
-    details: { url: auditUrl(session.state.url), sessionId: session.id, ...details },
-    ipAddress: ctx.ipAddress ?? null,
-    userAgent: ctx.userAgent ?? null,
-});
+const recordBrowserAudit = (audit, ctx, session, action, details) => {
+    const redact = vaultGuard.redactorFor(session.contextKey);
+    return audit({
+        accountId: ctx.accountId,
+        organizationId: session.organizationId ?? null,
+        action,
+        resource: "browser",
+        details: Object.fromEntries(Object.entries({ url: auditUrl(session.state.url), sessionId: session.id, ...details })
+            .map(([key, value]) => [key, redact(value)])),
+        ipAddress: ctx.ipAddress ?? null,
+        userAgent: ctx.userAgent ?? null,
+    });
+};
+
+const callerOf = (ctx) => {
+    if (!ctx.agent) return { accountId: ctx.accountId, keyId: null };
+    if (!Number.isInteger(ctx.agent.keyId) || !Number.isInteger(ctx.agent.entryId))
+        throw new TypeError("An agent caller needs a numeric keyId and entryId");
+    return { accountId: ctx.accountId, keyId: ctx.agent.keyId };
+};
 
 const createBrowserTools = ({
     getPool,
@@ -86,30 +120,32 @@ const createBrowserTools = ({
 }) => {
     const defaults = new Map();
 
-    const resolveSession = ({ accountId, transportId }, sessionId) => {
+    const resolveSession = (ctx, sessionId) => {
         const pool = getPool();
+        const caller = callerOf(ctx);
+        const owned = (id) => pool.getOwned(caller.accountId, id, { keyId: caller.keyId });
         if (sessionId) {
-            const session = pool.getOwned(accountId, sessionId);
+            const session = owned(sessionId);
             if (!session)
-                throw new BrowserError(BrowserErrorCode.UNKNOWN_SESSION, `No open browser session ${sessionId} for this account.`, { sessions: pool.listForAccount(accountId) });
+                throw new BrowserError(BrowserErrorCode.UNKNOWN_SESSION, `No open browser session ${sessionId} for this account.`, { sessions: pool.listForCaller(caller) });
             return session;
         }
-        const remembered = defaults.get(transportId);
+        const remembered = defaults.get(ctx.transportId);
         if (remembered) {
-            const session = pool.getOwned(accountId, remembered);
+            const session = owned(remembered);
             if (session) return session;
             // Falling back to "the only open session" here would hand this connection another
             // process's session exactly when its own is gone.
             throw new BrowserError(BrowserErrorCode.SESSION_CLOSED,
                 `Your browser session ${remembered} has ended. Open a new one with browser_open or pass a sessionId.`,
-                { sessions: pool.listForAccount(accountId) });
+                { sessions: pool.listForCaller(caller) });
         }
         // A session another connection opened stays its own: otherwise a connection whose own session
         // is gone (server restart, transport sweep) would act on someone else's (A11).
         const claimed = new Set(defaults.values());
-        const all = pool.listForAccount(accountId);
+        const all = pool.listForCaller(caller);
         const open = all.filter((session) => !claimed.has(session.id));
-        if (open.length === 1) return pool.getOwned(accountId, open[0].id);
+        if (open.length === 1) return owned(open[0].id);
         if (open.length === 0) {
             throw new BrowserError(BrowserErrorCode.NO_SESSION, all.length === 0
                 ? "No browser session is open. Call browser_open first."
@@ -129,7 +165,19 @@ const createBrowserTools = ({
 
     const act = (name, fn) => async (args, ctx) => {
         const session = resolveSession(ctx, args.sessionId);
-        return session.runAgent(name, () => fn(session, args, ctx));
+        try {
+            vaultGuard.assertInputAllowed(session, name, args);
+            return await session.runAgent(name, () => fn(session, args, ctx));
+        } catch (err) {
+            if (Object.hasOwn(LOCK_AUDIT, err?.code)) {
+                try {
+                    await record(ctx, session, LOCK_AUDIT[err.code], { tool: name });
+                } catch (auditErr) {
+                    logger.warn("Vault lock audit failed", { session: session.id, error: auditErr.message });
+                }
+            }
+            throw redactError(session, err);
+        }
     };
 
     const waitFor = async (session, { condition, value, timeoutMs }) => {
@@ -138,8 +186,8 @@ const createBrowserTools = ({
             return snapshotAfter(session);
         }
         const checks = {
-            load: async () => !session.state.loading && (await session.evaluate("document.readyState")) === "complete",
-            text: async () => (await session.evaluate(`(document.body?.innerText ?? '').includes(${JSON.stringify(String(value))})`)) === true,
+            load: async () => !session.state.loading && (await session.readyState()) === "complete",
+            text: () => session.containsText(value),
             ref: () => session.refVisible(value).then(() => true, (err) => {
                 if (err.code === BrowserErrorCode.NOT_VISIBLE) return false;
                 throw err;
@@ -162,8 +210,11 @@ const createBrowserTools = ({
         browser_open: async (args, ctx) => {
             if (args.url == null)
                 throw new BrowserError(BrowserErrorCode.INVALID_URL, "browser_open needs a url. Include the scheme, e.g. https://example.com");
+            if (ctx.agent && args.profile === "persistent")
+                throw new BrowserError(BrowserErrorCode.INVALID_PROFILE, "Agent keys can only open ephemeral sessions; call browser_open without profile=persistent.");
             const { session, navigationError } = await getPool().open({
                 accountId: ctx.accountId, url: args.url, via: args.via ?? null, profile: args.profile ?? "ephemeral", origin: "agent",
+                keyId: ctx.keyId ?? null, allowVia: ctx.agent ? (entryId) => entryId === ctx.agent.entryId : null,
             });
             defaults.set(ctx.transportId, session.id);
             await record(ctx, session, "browser.open", { url: auditUrl(args.url), tool: "browser_open", via: session.via ?? null });
@@ -172,7 +223,7 @@ const createBrowserTools = ({
             } catch (err) {
                 // The session exists even when its first snapshot fails (a dialog on load); say so, or the agent opens another.
                 if (err instanceof BrowserError) err.message = `Session ${session.id} is open. ${err.message}`;
-                throw err;
+                throw redactError(session, err);
             }
         },
         browser_navigate: act("browser_navigate", async (session, { url }, ctx) => {
@@ -227,8 +278,8 @@ const createBrowserTools = ({
             return textResult(`Closed ${session.id}.`);
         }),
         browser_list: async (args, ctx) => {
-            const open = getPool().listForAccount(ctx.accountId);
-            return textResult(open.length > 0 ? formatSessions(open) : "No browser sessions are open.");
+            const open = getPool().listForCaller(callerOf(ctx));
+            return textResult(open.length > 0 ? formatSessions(open, getPool()) : "No browser sessions are open.");
         },
     };
 
@@ -239,10 +290,12 @@ const createBrowserTools = ({
             try {
                 return await handlers[name](args ?? {}, ctx);
             } catch (err) {
-                return errorResult(err instanceof BrowserError ? err : new BrowserError(BrowserErrorCode.INTERNAL, err.message));
+                const known = err instanceof BrowserError || err instanceof VaultError;
+                return errorResult(known ? err : new BrowserError(BrowserErrorCode.INTERNAL, err.message), getPool());
             }
         },
         forgetTransport: (transportId) => defaults.delete(transportId),
+        resolveSession,
     };
 };
 

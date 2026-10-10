@@ -1,0 +1,111 @@
+@use "@/common/styles/colors"
+@use "@/common/styles/tokens"
+@use "@/common/styles/breakpoints"
+
+.vault-item-dialog
+  width: min(90vw, 40rem)
+  max-height: 85vh
+  display: flex
+  flex-direction: column
+  gap: tokens.$space-4
+  overflow: hidden
+
+  .vault-item-dialog-title
+    display: flex
+    align-items: center
+    gap: tokens.$space-2
+    margin: 0
+    padding-bottom: tokens.$space-3
+    border-bottom: 1px solid colors.$gray
+    font: tokens.$type-title
+
+    svg
+      width: 1.25rem
+      height: 1.25rem
+      color: colors.$primary
+
+  form
+    display: flex
+    flex-direction: column
+    min-height: 0
+    gap: tokens.$space-4
+
+  .vault-item-dialog-body
+    display: flex
+    flex-direction: column
+    gap: tokens.$space-4
+    overflow-y: auto
+    min-height: 0
+
+  .vault-item-dialog-grid
+    display: grid
+    grid-template-columns: 1fr 1fr
+    gap: tokens.$space-3
+
+    @media (max-width: breakpoints.$mobile)
+      grid-template-columns: 1fr
+
+  .vault-item-dialog-wide
+    grid-column: 1 / -1
+
+  .form-group
+    display: flex
+    flex-direction: column
+    gap: tokens.$space-2
+
+    label
+      color: colors.$subtext
+      font: tokens.$type-caption
+
+  .vault-mono
+    font: tokens.$type-mono
+
+  .vault-textarea
+    width: 100%
+    box-sizing: border-box
+    padding: tokens.$space-3
+    border: 1px solid colors.$gray
+    border-radius: tokens.$radius-lg
+    background: colors.$lighter-background
+    color: colors.$white
+    resize: vertical
+    outline: none
+
+    &:focus
+      border-color: colors.$primary
+
+  .vault-item-dialog-secrets
+    display: flex
+    flex-direction: column
+    gap: tokens.$space-3
+
+  .vault-item-dialog-bindings
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr))
+    gap: tokens.$space-2
+
+    &--all
+      opacity: 0.45
+
+  .vault-item-dialog-switch
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: tokens.$space-3
+
+  .vault-help
+    color: colors.$subtext
+    font: tokens.$type-caption
+
+    &--warning
+      color: colors.$warning
+
+    &--error
+      color: colors.$error
+
+  .vault-item-dialog-actions
+    display: flex
+    align-items: center
+    justify-content: flex-end
+    gap: tokens.$space-3
+    flex-shrink: 0

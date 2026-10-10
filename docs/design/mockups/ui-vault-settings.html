@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI-VAULT-SETTINGS — Einstellungen › Vault</title>
+<link rel="stylesheet" href="./tokens.css">
+<style>
+	.mb-artboard { box-sizing: border-box; background: var(--background); color: var(--text); font: var(--type-body); padding: var(--space-4); }
+	.mb-artboard *, .mb-artboard *::before, .mb-artboard *::after { box-sizing: border-box; }
+	.mb-context { font: var(--type-caption); color: var(--subtext); background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-4); line-height: 1.6; }
+	.mb-context strong { color: var(--text); font: var(--type-heading); }
+	.mb-context b { color: var(--text); }
+	.vs-page { max-width: 44rem; display: flex; flex-direction: column; gap: var(--space-8); margin-top: var(--space-4); }
+	.vs-section { display: flex; flex-direction: column; gap: var(--space-4); }
+	.vs-title { margin: 0; font: var(--type-title); }
+	.vs-intro { margin: 0; font: var(--type-body); color: var(--subtext); }
+	.vs-item { display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-4); border-top: 1px solid var(--gray); }
+	.vs-label h4 { margin: 0; font: var(--type-heading); display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); }
+	.vs-label code { font: var(--type-mono); font-size: 0.6875rem; color: var(--subtext); }
+	.vs-state { position: relative; padding: var(--space-3); border: 1px dashed var(--gray); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: var(--space-2); }
+	.vs-tag { position: absolute; top: calc(-1 * var(--space-2)); right: var(--space-2); padding: 0 var(--space-2); background: var(--background); border: 1px solid var(--gray); border-radius: var(--radius-sm); font: var(--type-mono); font-size: 0.6875rem; color: var(--subtext); }
+	.vs-status { display: flex; align-items: flex-start; gap: var(--space-3); }
+	.vs-pill { flex: none; display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-3); border-radius: var(--radius-xl); font: var(--type-caption); }
+	.vs-pill svg { width: 0.875rem; height: 0.875rem; flex: none; }
+	.vs-pill.ok { background: var(--success-opacity); color: var(--success); }
+	.vs-pill.warn { background: var(--warning-opacity); color: var(--warning); }
+	.vs-pill.err { background: var(--error-opacity); color: var(--error); }
+	.vs-status-text { margin: 0; font: var(--type-body); color: var(--text); }
+	.vs-input { display: flex; align-items: center; gap: var(--space-2); min-height: 2.25rem; padding: 0 var(--space-3); background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-sm); }
+	.vs-input svg { width: 1rem; height: 1rem; flex: none; color: var(--subtext); }
+	.vs-input span { font: var(--type-mono); color: var(--text); }
+	.vs-input.invalid { border-color: var(--error); }
+	.vs-help { margin: 0; font: var(--type-caption); color: var(--subtext); }
+	.vs-error { margin: 0; font: var(--type-caption); color: var(--error); }
+	.vs-banner { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--warning-opacity); border: 1px solid var(--warning); border-radius: var(--radius-md); color: var(--warning); }
+	.vs-banner svg { width: 1.25rem; height: 1.25rem; flex: none; }
+	.vs-banner p { margin: 0; font: var(--type-body); color: var(--text); }
+	.vs-none { margin: 0; font: var(--type-caption); color: var(--subtext); }
+	.vs-actions { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-4); }
+	.vs-actions .vs-state { align-items: flex-end; min-width: 14rem; }
+	.vs-btn { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 2.25rem; padding: 0 var(--space-4); border: 0; border-radius: var(--radius-sm); background: var(--primary); color: var(--on-accent); font: var(--type-body); }
+	.vs-btn svg { width: 1rem; height: 1rem; flex: none; }
+	.vs-btn[disabled] { opacity: 0.5; }
+</style>
+</head>
+<body>
+<header class="mb-context">
+	<strong>Darstellungskontext</strong><br>
+	<b>Art:</b> Panel · Seite „Vault“ innerhalb der Einstellungen<br>
+	<b>Erscheint über:</b> UI-SHELL<br>
+	<b>Auslöser:</b> Konto › Einstellungen › Vault (Recht settings.vault)<br>
+	<b>Größe und Position:</b> Einstellungsfläche<br>
+	<b>Schließen:</b> Einstellungen schließen<br>
+	<b>Tastatur:</b> Tab wechselt zwischen den Feldern; Esc schließt die Einstellungen
+</header>
+<main class="mb-artboard" data-ui-id="UI-VAULT-SETTINGS">
+	<div class="vs-page">
+		<div class="vs-section">
+			<h2 class="vs-title">Vault</h2>
+			<p class="vs-intro">Systemeinstellungen des Vaults.</p>
+
+			<div class="vs-item" data-ui-id="UI-VAULT-SETTINGS-KEY">
+				<div class="vs-label"><h4>Vault-Schlüssel <code>UI-VAULT-SETTINGS-KEY</code></h4></div>
+
+				<div class="vs-state" data-ui-state="default">
+					<span class="vs-tag">default</span>
+					<div class="vs-status">
+						<span class="vs-pill ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Aktiv</span>
+					</div>
+				</div>
+
+				<div class="vs-state" data-ui-state="disabled">
+					<span class="vs-tag">disabled</span>
+					<div class="vs-status">
+						<span class="vs-pill warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Fehlt</span>
+						<p class="vs-status-text">VAULT_KEY fehlt — der Vault ist aus. Schlüssel als Umgebungsvariable oder Docker-Secret vault_key setzen.</p>
+					</div>
+				</div>
+
+				<div class="vs-state" data-ui-state="error">
+					<span class="vs-tag">error</span>
+					<div class="vs-status">
+						<span class="vs-pill err"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>Passt nicht</span>
+						<p class="vs-status-text">VAULT_KEY passt nicht zu den gespeicherten Einträgen — der Vault ist aus.</p>
+					</div>
+				</div>
+			</div>
+
+			<div class="vs-item" data-ui-id="UI-VAULT-SETTINGS-URL">
+				<div class="vs-label"><h4>Outpost-Adresse für Agenten <code>UI-VAULT-SETTINGS-URL</code></h4></div>
+
+				<div class="vs-state" data-ui-state="default">
+					<span class="vs-tag">default</span>
+					<div class="vs-input">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+						<span>http://192.168.2.10:6989</span>
+					</div>
+					<p class="vs-help">Unter dieser Adresse erreichen deine Server Outpost; daraus entsteht die MCP-URL für Agenten.</p>
+				</div>
+
+				<div class="vs-state" data-ui-state="error">
+					<span class="vs-tag">error</span>
+					<div class="vs-input invalid">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+						<span>192.168.2.10:6989</span>
+					</div>
+					<p class="vs-error">Keine gültige http- oder https-Adresse.</p>
+					<p class="vs-help">Unter dieser Adresse erreichen deine Server Outpost; daraus entsteht die MCP-URL für Agenten.</p>
+				</div>
+			</div>
+
+			<div class="vs-item" data-ui-id="UI-VAULT-SETTINGS-PROXY">
+				<div class="vs-label"><h4>Hinweis Reverse-Proxy <code>UI-VAULT-SETTINGS-PROXY</code></h4></div>
+
+				<div class="vs-state" data-ui-state="default">
+					<span class="vs-tag">default</span>
+					<p class="vs-none">nicht sichtbar</p>
+				</div>
+
+				<div class="vs-state" data-ui-state="error">
+					<span class="vs-tag">error</span>
+					<div class="vs-banner" role="alert">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+						<p>TRUST_PROXY=true — Outpost glaubt jedem X-Forwarded-For, die IP-Bindung von Agenten-Keys ist wirkungslos. Hop-Zahl oder Adressliste setzen.</p>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="vs-actions" data-ui-id="UI-VAULT-SETTINGS-SAVE">
+			<div class="vs-state" data-ui-state="default">
+				<span class="vs-tag">default</span>
+				<button type="button" class="vs-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>Einstellungen speichern</button>
+			</div>
+			<div class="vs-state" data-ui-state="disabled">
+				<span class="vs-tag">disabled</span>
+				<button type="button" class="vs-btn" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>Einstellungen speichern</button>
+			</div>
+		</div>
+	</div>
+</main>
+</body>
+</html>

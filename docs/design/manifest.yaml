@@ -1,6 +1,6 @@
 schema: mockingbird/1
 project: outpost
-revision: 10
+revision: 14
 updated: 2026-10-09
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
@@ -41,6 +41,22 @@ changelog:
     date: 2026-10-08
     summary: Browser-Tab — Session ohne Server, eigene Arbeitsfläche mit Adressleiste, Agenten-Anzeiger und Pause
     touched: [UI-SERVERS-TABS, UI-SERVERS-TAB-LABEL, UI-SERVERS-VIEW]
+  - rev: 11
+    date: 2026-10-09
+    summary: Runde 11 — Vault; eigene Seite mit Liste und Details, Eintrag-Dialog, Agenten-Zugang je Server, Freigabe-Karte über jeder Seite, Einstellungen und Agenten-Keys; Navigation und Server-Kontextmenü ergänzt
+    touched: [UI-VAULT, UI-VAULT-DIALOG, UI-AGENT-ACCESS, UI-VAULT-SETTINGS, UI-API-KEYS, UI-VAULT-APPROVAL, UI-SHELL-NAV, UI-SHELL-MOBILE-NAV, UI-SERVERS-LIST-MENU]
+  - rev: 12
+    date: 2026-10-09
+    summary: Nachzug aus preflight — Proxy-Warnung, gemessene Adresse, Warnung bei fremdem Konto, entfernter Benutzer im Ergebnis, verworfene Werte nach Zieländerung
+    touched: [UI-VAULT-SETTINGS-PROXY, UI-AGENT-ACCESS-IPBIND, UI-AGENT-ACCESS-SETUP, UI-AGENT-ACCESS-RESULT, UI-VAULT-DIALOG-SECRET, UI-VAULT-DETAIL-SECRET]
+  - rev: 13
+    date: 2026-10-10
+    summary: Nachzug aus dem Umsetzungsplan — Hinweise im Agenten-Zugang für ersetzte Registrierung, gescheiterte Messung und Abweisung ohne Übernahme
+    touched: [UI-AGENT-ACCESS-RESULT, UI-AGENT-ACCESS-IPBIND]
+  - rev: 14
+    date: 2026-10-10
+    summary: Nachzug aus dem Plan-Review — Ergebnis des Entziehens, wenn die Registrierung einem anderen Konto gehört oder nicht entfernt werden konnte
+    touched: [UI-AGENT-ACCESS-KEYS, UI-API-KEYS-AGENTS]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -77,12 +93,12 @@ screens:
         verify: required
         data_source: "useSidebarNavigation(): getSidebarNavigation(t), gefiltert nach den Rechten des Kontos und, für Browser, nach GET /api/browser/available"
         semantic_anchor:
-          means: Die Bereiche der Anwendung — Server, Monitoring, Snippets, Audit — und dazwischen die Aktion Browser. Ein Eintrag je Bereich, der aktive hervorgehoben; Browser ist kein Bereich, sondern öffnet unter Server einen neuen Browser-Tab und wird deshalb nie hervorgehoben. Browser nur, wenn Browser-Tabs aktiviert sind und das Konto das Recht dazu hat; Audit nur mit dem Recht dafür.
+          means: Die Bereiche der Anwendung — Server, Monitoring, Snippets, Vault, Audit — und dazwischen die Aktion Browser. Ein Eintrag je Bereich, der aktive hervorgehoben; Browser ist kein Bereich, sondern öffnet unter Server einen neuen Browser-Tab und wird deshalb nie hervorgehoben. Browser nur, wenn Browser-Tabs aktiviert sind und das Konto das Recht dazu hat; Vault nur, wenn der Vault eingeschaltet ist und das Konto vault.use hat oder Mitglied einer Organisation ist; Audit nur mit dem Recht dafür.
           concept: app_section
           aliases: [area, page, route]
           not: [server_entry, session]
           cardinality: many
-          example: "Server · Monitoring · Snippets · Browser · Audit"
+          example: "Server · Monitoring · Snippets · Vault · Browser · Audit"
         states:
           - { id: default }
           - { id: selected }
@@ -194,7 +210,7 @@ screens:
         verify: recommended
         data_source: static
         semantic_anchor:
-          means: Zweitweg für Aktionen auf einem Eintrag — Verbinden, SFTP öffnen, Notizen, Bearbeiten, Duplizieren, Session beitreten, Löschen. Port weiterleiten erscheint nur in der Desktop-App (Tauri), im Web-Build nie.
+          means: Zweitweg für Aktionen auf einem Eintrag — Verbinden, SFTP öffnen, Notizen, Bearbeiten, Duplizieren, Session beitreten, Agenten-Zugang… (nur SSH, nur bei eingeschaltetem Vault), Löschen. Port weiterleiten erscheint nur in der Desktop-App (Tauri), im Web-Build nie.
           not: [primary_navigation]
         states:
           - { id: default }
@@ -901,3 +917,600 @@ screens:
           - { id: loading, copy: "Verbinde …" }
         locators:
           web: "[data-ui-id='UI-DIRECT-CONNECT-GO']"
+
+  - id: UI-VAULT
+    kind: page
+    title: Vault
+    artboard: docs/design/mockups/ui-vault.html
+    guide: docs/design/guides/ui-vault.md
+    route_hint: /vault
+    presentation: { keyboard: "N Neuer Eintrag; ↑/↓ wählt in der Liste; E Bearbeiten; unter 768px Zurück-Pfeil im Kopf der Details" }
+    uses: [UI-SHELL-NAV, UI-SHELL-MOBILE-NAV, UI-SHELL-ACCOUNT, UI-VAULT-APPROVAL-CARD]
+    description: Zugangsdaten für Agenten, zweispaltig — links die Einträge, rechts der gewählte Eintrag. Unter 768px erst die Liste, dann die Details.
+    elements:
+      - id: UI-VAULT-NEW
+        type: action
+        label: Neuer Eintrag
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: Öffnet den Eintrag-Dialog zum Anlegen. Nur sichtbar mit Recht vault.use oder vault.manage in mindestens einer Organisation.
+        states:
+          - { id: default }
+          - { id: disabled }
+        locators:
+          web: "[data-ui-id='UI-VAULT-NEW']"
+
+      - id: UI-VAULT-SCOPE
+        type: nav
+        label: Persönlich · Organisationen
+        status: required
+        verify: required
+        data_source: "persönlicher Vault (mit vault.use) und die Organisationen, in denen das Konto Mitglied ist"
+        semantic_anchor:
+          means: Wechselt, wessen Einträge die Liste zeigt — die eigenen oder die einer Organisation. Ein Reiter je Besitzer.
+          concept: vault_owner
+          aliases: [owner, organization]
+          not: [server_folder, tag, item_type]
+          cardinality: many
+          example: "Persönlich · Homelab · Kunde Meier"
+        states:
+          - { id: default }
+          - { id: selected }
+        locators:
+          web: "[data-ui-id='UI-VAULT-SCOPE']"
+
+      - id: UI-VAULT-SEARCH
+        type: field
+        label: Suchen
+        status: required
+        verify: recommended
+        data_source: static
+        semantic_anchor:
+          means: Filtert die Liste nach Name, Benutzer, Host, Ursprung und Beschreibung. Durchsucht nie geheime Werte.
+        states:
+          - { id: default }
+          - { id: empty, copy: "Kein Eintrag passt zur Suche." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-SEARCH']"
+
+      - id: UI-VAULT-TYPES
+        type: nav
+        label: Alle · Login · API-Key · SSH · Datenbank · Sonstiges
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: Filtert die Liste nach der Art der Zugangsdaten.
+          concept: item_type
+          aliases: [type, kind]
+          not: [vault_owner, tag]
+          example: "Login"
+        states:
+          - { id: default }
+          - { id: selected }
+        locators:
+          web: "[data-ui-id='UI-VAULT-TYPES']"
+
+      - id: UI-VAULT-LIST
+        type: list
+        label: Einträge
+        status: required
+        verify: required
+        data_source: "GET /api/vault/items, gefiltert nach Besitzer, Typ und Suche"
+        semantic_anchor:
+          means: Die Vault-Einträge des gewählten Besitzers — je Zeile Typ-Icon, Name, darunter Benutzer oder Host; ein Schild-Kennzeichen, wenn eine Freigabe nötig ist. Nie ein geheimer Wert.
+          concept: vault_item
+          aliases: [credential, secret_entry]
+          not: [identity, api_key, server_entry, snippet]
+          cardinality: many
+          example: "portal-login · ma.backes@portal.example.com"
+          empty_means: Für diesen Besitzer gibt es noch keinen Eintrag — Neuer Eintrag anbieten und in einem Satz sagen, wofür der Vault da ist.
+        columns:
+          - { key: type, label: Typ, anchor: "Art der Zugangsdaten als Icon" }
+          - { key: name, label: Name, anchor: "Kennung, mit der Agenten den Eintrag ansprechen" }
+          - { key: subject, label: "Benutzer / Host", anchor: "Benutzername oder Host, nie ein Wert" }
+          - { key: approval, label: Freigabe, anchor: "Kennzeichen, wenn jede Nutzung bestätigt werden muss" }
+        states:
+          - { id: default }
+          - { id: selected }
+          - { id: loading, copy: "Skeleton-Zeilen, keine Spinner." }
+          - { id: empty, copy: "Noch keine Einträge. Zugangsdaten im Vault nutzen Agenten, ohne den Wert zu sehen. Neuer Eintrag" }
+          - { id: error, copy: "Vault nicht erreichbar. Seite neu laden." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-LIST']"
+
+      - id: UI-VAULT-DETAIL
+        type: card
+        label: Eintrag
+        status: required
+        verify: required
+        data_source: "gewählter Eintrag aus GET /api/vault/items"
+        semantic_anchor:
+          means: Kopf des gewählten Eintrags — Name, Typ, Besitzer, Beschreibung — mit Bearbeiten und Löschen (nur mit Verwaltungsrecht).
+          concept: vault_item
+          not: [identity, server_entry]
+          cardinality: one
+          example: "portal-login · Login · Persönlich"
+          empty_means: Kein Eintrag gewählt — rechts steht nur der Hinweis, links einen zu wählen.
+        states:
+          - { id: default }
+          - { id: empty, copy: "Eintrag links wählen." }
+          - { id: error, copy: "Eintrag nicht lesbar — der Vault-Schlüssel passt nicht zu diesem Eintrag." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DETAIL']"
+
+      - id: UI-VAULT-DETAIL-ACTIONS
+        type: action
+        label: Bearbeiten · Löschen
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: Bearbeiten öffnet den Eintrag-Dialog; Löschen fragt im Bestätigungsdialog nach und entfernt den Eintrag samt Werten und Bindungen. Nur mit Verwaltungsrecht (Besitzer persönlicher Einträge, vault.manage bei Organisationen); ohne das Recht nicht sichtbar.
+          not: [vault_secret]
+        states:
+          - { id: default }
+          - { id: disabled, copy: "ohne Verwaltungsrecht nicht sichtbar" }
+          - { id: selected, copy: "portal-login löschen? Agenten verlieren den Zugriff sofort." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DETAIL-ACTIONS']"
+
+      - id: UI-VAULT-DETAIL-FIELDS
+        type: region
+        label: Angaben
+        status: required
+        verify: required
+        data_source: "fields des Eintrags je Typ"
+        semantic_anchor:
+          means: Die nicht geheimen Angaben des Eintrags je Typ — Login Benutzer und erlaubte Ursprünge, API-Key Hosts und Header, SSH Benutzer, Datenbank Engine, Host, Port, Datenbank, Benutzer.
+          concept: vault_item_fields
+          not: [vault_secret]
+          example: "Benutzer ma.backes · Ursprünge https://portal.example.com"
+        states:
+          - { id: default }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DETAIL-FIELDS']"
+
+      - id: UI-VAULT-DETAIL-SECRET
+        type: field
+        label: Geheimer Wert
+        status: required
+        verify: required
+        data_source: "GET /api/vault/items/:id/secrets/:field, erst beim Klick auf Anzeigen oder Kopieren"
+        semantic_anchor:
+          means: >
+            Je geheimem Feld eine Zeile mit genau zwölf Punkten, unabhängig von der Länge des
+            Werts. Anzeigen und Kopieren nur für den Besitzer persönlicher Einträge oder mit
+            vault.reveal, nie in einer Impersonations-Sitzung; sonst der Hinweis, dass der Wert
+            nur für Agenten nutzbar ist. Ein angezeigter Wert verbirgt sich nach 30 Sekunden.
+          concept: vault_secret
+          aliases: [password, token, private_key]
+          not: [vault_item_fields, identity]
+          example: "Passwort ••••••••••••"
+        states:
+          - { id: default }
+          - { id: selected, copy: "angezeigt, verbirgt sich in 30 s" }
+          - { id: disabled, copy: "nur für Agenten nutzbar" }
+          - { id: success, copy: "Kopiert" }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DETAIL-SECRET']"
+
+      - id: UI-VAULT-DETAIL-SCOPE
+        type: list
+        label: Gilt für
+        status: required
+        verify: required
+        data_source: "vault_bindings des Eintrags und allServers"
+        semantic_anchor:
+          means: Für welche Server Agenten diesen Eintrag sehen — einzelne Server, Ordner mit Unterordnern, Tags oder alle Server.
+          concept: vault_binding
+          aliases: [binding, scope]
+          not: [vault_owner, permission]
+          cardinality: many
+          example: "Server web01 · Ordner Produktion · Tag db"
+          empty_means: Kein Agent sieht den Eintrag — Hinweis, dass er erst nach einer Freigabe für Server nutzbar ist.
+        states:
+          - { id: default }
+          - { id: empty, copy: "Für keinen Server freigegeben — kein Agent sieht diesen Eintrag." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DETAIL-SCOPE']"
+
+      - id: UI-VAULT-DETAIL-POLICY
+        type: status
+        label: Freigabe erforderlich
+        status: required
+        verify: required
+        data_source: "approvalRequired und lastUsedAt des Eintrags"
+        semantic_anchor:
+          means: Ob jede Nutzung durch einen Agenten bestätigt werden muss, und wann der Eintrag zuletzt genutzt wurde.
+          concept: approval_policy
+          not: [permission, vault_binding]
+          example: "Freigabe erforderlich · zuletzt genutzt vor 2 Stunden"
+        states:
+          - { id: default }
+          - { id: disabled, copy: "Ohne Freigabe nutzbar" }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DETAIL-POLICY']"
+
+  - id: UI-VAULT-DIALOG
+    kind: dialog
+    title: Eintrag anlegen / bearbeiten
+    artboard: docs/design/mockups/ui-vault-dialog.html
+    guide: docs/design/guides/ui-vault-dialog.md
+    presentation: { over: UI-VAULT, trigger: "Neuer Eintrag, Bearbeiten im Detail-Kopf, Taste N", size: "mittig, 40rem, max 85vh", dismiss: "Esc, Backdrop, Abbrechen; nach Speichern automatisch", keyboard: "Ctrl+Enter Speichern" }
+    description: Ein Formular, dessen Felder sich nach dem Typ richten; Geltung und Freigabe kompakt darunter.
+    elements:
+      - id: UI-VAULT-DIALOG-TYPE
+        type: field
+        label: Typ
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: Art der Zugangsdaten — Login, API-Key, SSH, Datenbank, Sonstiges. Nur beim Anlegen wählbar, danach fest.
+          concept: item_type
+          not: [vault_owner]
+          example: "Login"
+        states:
+          - { id: default }
+          - { id: disabled, copy: "nach dem Anlegen fest" }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DIALOG-TYPE']"
+
+      - id: UI-VAULT-DIALOG-OWNER
+        type: field
+        label: Besitzer
+        status: required
+        verify: required
+        data_source: "Persönlich (mit vault.use) und Organisationen mit vault.manage"
+        semantic_anchor:
+          means: Wem der Eintrag gehört — dem eigenen Konto oder einer Organisation. Nur beim Anlegen wählbar.
+          concept: vault_owner
+          not: [vault_binding, server_folder]
+          example: "Homelab"
+        states:
+          - { id: default }
+          - { id: disabled, copy: "nach dem Anlegen fest" }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DIALOG-OWNER']"
+
+      - id: UI-VAULT-DIALOG-FIELDS
+        type: form
+        label: Angaben
+        status: required
+        verify: required
+        data_source: "fields je Typ"
+        semantic_anchor:
+          means: Name, Beschreibung und die nicht geheimen Angaben des gewählten Typs. Der Name ist die Kennung für Agenten, Kleinbuchstaben, Ziffern, Punkt, Bindestrich und Unterstrich.
+          concept: vault_item_fields
+          not: [vault_secret]
+          example: "portal-login · Benutzer ma.backes · Ursprung https://portal.example.com"
+        states:
+          - { id: default }
+          - { id: error, copy: "Name schon vergeben." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DIALOG-FIELDS']"
+
+      - id: UI-VAULT-DIALOG-SECRET
+        type: field
+        label: Geheimer Wert
+        status: required
+        verify: required
+        data_source: "nur Eingabe; gespeicherte Werte gehen nie an den Client"
+        semantic_anchor:
+          means: Eingabe der geheimen Felder des Typs. Beim Bearbeiten leer mit dem Hinweis, dass ein Wert gespeichert ist und leer lassen ihn behält.
+          concept: vault_secret
+          not: [vault_item_fields]
+          example: "Passwort (gespeichert — leer lassen, um beizubehalten)"
+        states:
+          - { id: default }
+          - { id: partial, copy: "gespeichert — leer lassen, um beizubehalten" }
+          - { id: error, copy: "Wert fehlt." }
+          - { id: empty, copy: "Ziel geändert — gespeicherte Werte werden verworfen. Neu eingeben." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DIALOG-SECRET']"
+
+      - id: UI-VAULT-DIALOG-SCOPE
+        type: field
+        label: Gilt für
+        status: required
+        verify: required
+        data_source: "Server und Ordner des Besitzers, Tags des Kontos (nur persönlich)"
+        semantic_anchor:
+          means: Auswahl, auf welchen Servern Agenten den Eintrag sehen — Server, Ordner (mit Unterordnern), Tags nur bei persönlichen Einträgen, oder Alle Server. Standard keine Auswahl.
+          concept: vault_binding
+          not: [vault_owner, permission]
+          cardinality: many
+          example: "Ordner Produktion · Server nas"
+        states:
+          - { id: default }
+          - { id: empty, copy: "Für keinen Server freigegeben." }
+          - { id: selected, copy: "Alle Server" }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DIALOG-SCOPE']"
+
+      - id: UI-VAULT-DIALOG-APPROVAL
+        type: toggle
+        label: Freigabe erforderlich
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: Jede Nutzung durch einen Agenten muss im Outpost-Fenster bestätigt werden. Standard an.
+          concept: approval_policy
+        states:
+          - { id: default }
+          - { id: selected }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DIALOG-APPROVAL']"
+
+      - id: UI-VAULT-DIALOG-SAVE
+        type: action
+        label: Speichern
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: Legt den Eintrag an bzw. speichert Änderungen und schließt den Dialog; Beschriftung Erstellen beim Anlegen.
+        states:
+          - { id: default }
+          - { id: disabled }
+          - { id: loading, copy: "Speichere …" }
+          - { id: error, copy: "Speichern fehlgeschlagen." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DIALOG-SAVE']"
+
+  - id: UI-AGENT-ACCESS
+    kind: dialog
+    title: Agenten-Zugang
+    artboard: docs/design/mockups/ui-agent-access.html
+    guide: docs/design/guides/ui-agent-access.md
+    presentation: { over: UI-SERVERS, trigger: "Kontextmenü Server › Agenten-Zugang… (nur SSH); Bearbeiten in UI-API-KEYS-AGENTS", size: "mittig, 40rem, max 85vh", dismiss: "Esc, Backdrop, Schließen — nicht während der Einrichtung läuft", keyboard: "Ctrl+Enter Einrichten" }
+    description: Richtet Claude Code und Codex auf diesem Server für den Outpost-MCP ein und zeigt, welche Agenten schon Zugang haben.
+    elements:
+      - id: UI-AGENT-ACCESS-KEYS
+        type: list
+        label: Agenten auf diesem Server
+        status: required
+        verify: required
+        data_source: "GET /api/vault/agent-keys?entryId="
+        semantic_anchor:
+          means: Die Agenten-Keys dieses Servers — Agent, angelegt, zuletzt genutzt, IP-Bindung — je mit Entziehen. Entziehen widerruft den Key und entfernt die Registrierung auf dem Server.
+          concept: agent_key
+          aliases: [agent_token, mcp_key]
+          not: [api_key, vault_item, identity]
+          cardinality: many
+          example: "Claude Code · angelegt 09.10. · zuletzt vor 5 Min. · nur 192.168.2.40"
+          empty_means: Kein Agent hat auf diesem Server Zugang.
+        states:
+          - { id: default }
+          - { id: empty, copy: "Noch kein Agent auf diesem Server eingerichtet." }
+          - { id: loading }
+          - { id: selected, copy: "Zugang von Claude Code auf web01 entziehen? Der Agent verliert sofort den Zugriff." }
+          - { id: error, copy: "Entziehen fehlgeschlagen." }
+          - { id: partial, copy: "Zugang entzogen. Die Registrierung auf web01 trägt den Key eines anderen Kontos und bleibt stehen." }
+          - { id: disabled, copy: "Zugang entzogen. Die Registrierung konnte nicht entfernt werden — Befehl kopieren und auf dem Server ausführen." }
+        locators:
+          web: "[data-ui-id='UI-AGENT-ACCESS-KEYS']"
+
+      - id: UI-AGENT-ACCESS-SETUP
+        type: form
+        label: Einrichten
+        status: required
+        verify: required
+        data_source: "Auswahl Claude Code / Codex, IP-Bindung, zusätzliche Adressbereiche"
+        semantic_anchor:
+          means: Welche Agenten eingerichtet werden (Claude Code, Codex) und welche zusätzlichen Adressbereiche (CIDR) ihr Key neben der IP dieses Servers akzeptiert.
+          concept: agent_key
+          not: [api_key, vault_binding]
+          example: "Claude Code ✓ · Codex ✓ · 10.0.0.0/24"
+        states:
+          - { id: default }
+          - { id: loading, copy: "Richte ein …" }
+          - { id: error, copy: "Ungültiger Adressbereich." }
+          - { id: disabled, copy: "Outpost-Adresse für Agenten fehlt — in Einstellungen › Vault setzen." }
+          - { id: partial, copy: "Für root auf web01 hat bereits ein anderes Konto Agenten-Zugang eingerichtet — die Registrierung wird ersetzt." }
+        locators:
+          web: "[data-ui-id='UI-AGENT-ACCESS-SETUP']"
+
+      - id: UI-AGENT-ACCESS-IPBIND
+        type: toggle
+        label: Nur von der IP dieses Servers
+        status: required
+        verify: required
+        data_source: "aufgelöste Adresse des Server-Eintrags"
+        semantic_anchor:
+          means: Ob der Key nur Anfragen von der Adresse dieses Servers (plus den eingetragenen Adressbereichen) akzeptiert. Standard an; aus heißt von überall.
+          concept: ip_binding
+          not: [vault_binding, allowed_origin]
+          example: "an · 192.168.2.40"
+        states:
+          - { id: default }
+          - { id: selected, copy: "aus — von überall" }
+          - { id: partial, copy: "Gesehen wurde 172.17.0.1 statt 192.168.2.40 — als Adressbereich übernehmen? Ohne Übernahme weist Outpost den Key ab." }
+          - { id: disabled, copy: "Adresse konnte nicht gemessen werden — der Key gilt für die aufgelöste Adresse des Servers." }
+          - { id: error, copy: "TRUST_PROXY=true — die IP-Bindung ist wirkungslos." }
+        locators:
+          web: "[data-ui-id='UI-AGENT-ACCESS-IPBIND']"
+
+      - id: UI-AGENT-ACCESS-RESULT
+        type: feedback
+        label: Ergebnis
+        status: required
+        verify: required
+        data_source: "Antwort von POST /api/vault/agent-keys"
+        semantic_anchor:
+          means: >
+            Je Agent das Ergebnis der Einrichtung — eingerichtet, oder der fertige Befehl zum
+            Kopieren, wenn die automatische Einrichtung scheiterte (CLI fehlt, Exec-Fehler).
+            Der Key ist nur hier und nur jetzt sichtbar; ein Key, der weder automatisch eingerichtet noch kopiert wurde, wird beim Schließen gelöscht.
+          concept: agent_setup_result
+          not: [agent_key, toast]
+          example: "Claude Code eingerichtet · Codex: codex nicht gefunden — Befehl kopieren"
+        states:
+          - { id: default }
+          - { id: empty, copy: "erscheint erst nach dem Einrichten" }
+          - { id: success, copy: "Eingerichtet für root. Claude Code neu starten, dann /mcp." }
+          - { id: partial, copy: "Bestehende Registrierung ersetzt — der alte Konto-Key bleibt gültig, bis du ihn unter API-Schlüssel löschst." }
+          - { id: error, copy: "codex nicht gefunden. Befehl kopieren und auf dem Server ausführen." }
+        locators:
+          web: "[data-ui-id='UI-AGENT-ACCESS-RESULT']"
+
+  - id: UI-VAULT-SETTINGS
+    kind: panel
+    title: Einstellungen › Vault
+    artboard: docs/design/mockups/ui-vault-settings.html
+    guide: docs/design/guides/ui-vault-settings.md
+    presentation: { over: UI-SHELL, trigger: "Konto › Einstellungen › Vault (Recht settings.vault)", size: "Einstellungsfläche", dismiss: "Einstellungen schließen" }
+    description: Systemeinstellungen des Vaults.
+    elements:
+      - id: UI-VAULT-SETTINGS-KEY
+        type: status
+        label: Vault-Schlüssel
+        status: required
+        verify: required
+        data_source: "Prüfung von VAULT_KEY beim Start"
+        semantic_anchor:
+          means: Ob der Vault läuft — Schlüssel aktiv, fehlt (Vault aus) oder passt nicht zu den gespeicherten Daten (Vault aus). Bei fehlendem Schlüssel ein Satz, wie man VAULT_KEY setzt.
+          concept: vault_key_status
+          not: [encryption_key, api_key]
+          example: "Aktiv"
+        states:
+          - { id: default, copy: "Aktiv" }
+          - { id: disabled, copy: "Fehlt — VAULT_KEY fehlt — der Vault ist aus. Schlüssel als Umgebungsvariable oder Docker-Secret vault_key setzen." }
+          - { id: error, copy: "Passt nicht — VAULT_KEY passt nicht zu den gespeicherten Einträgen — der Vault ist aus." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-SETTINGS-KEY']"
+
+      - id: UI-VAULT-SETTINGS-URL
+        type: field
+        label: Outpost-Adresse für Agenten
+        status: required
+        verify: required
+        data_source: "Einstellung vault.agentUrl"
+        semantic_anchor:
+          means: Die Adresse, unter der Server Outpost erreichen; daraus entsteht die MCP-URL, die beim Einrichten eines Agenten eingetragen wird.
+          concept: agent_base_url
+          not: [browser_launcher_url]
+          example: "http://192.168.2.10:6989"
+        states:
+          - { id: default }
+          - { id: error, copy: "Keine gültige http- oder https-Adresse." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-SETTINGS-URL']"
+
+      - id: UI-VAULT-SETTINGS-PROXY
+        type: feedback
+        label: Hinweis Reverse-Proxy
+        status: required
+        verify: required
+        data_source: "Einstellung TRUST_PROXY des Servers"
+        semantic_anchor:
+          means: Warnt, wenn Outpost jedem X-Forwarded-For glaubt (TRUST_PROXY=true) — dann ist die IP-Bindung von Agenten-Keys wirkungslos. Sonst nicht sichtbar.
+          concept: proxy_trust_warning
+          not: [vault_key_status, agent_base_url]
+        states:
+          - { id: default, copy: "nicht sichtbar" }
+          - { id: error, copy: "TRUST_PROXY=true — Outpost glaubt jedem X-Forwarded-For, die IP-Bindung von Agenten-Keys ist wirkungslos. Hop-Zahl oder Adressliste setzen." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-SETTINGS-PROXY']"
+
+      - id: UI-VAULT-SETTINGS-SAVE
+        type: action
+        label: Einstellungen speichern
+        status: required
+        verify: recommended
+        data_source: static
+        semantic_anchor:
+          means: Speichert die Outpost-Adresse für Agenten, wie der Speichern-Knopf der Browser-Einstellungen.
+        states:
+          - { id: default }
+          - { id: disabled }
+        locators:
+          web: "[data-ui-id='UI-VAULT-SETTINGS-SAVE']"
+
+  - id: UI-API-KEYS
+    kind: panel
+    title: Einstellungen › Konto › API-Schlüssel
+    artboard: docs/design/mockups/ui-api-keys.html
+    guide: docs/design/guides/ui-api-keys.md
+    presentation: { over: UI-SHELL, trigger: "Konto › Einstellungen › Konto", size: "Abschnitt der Kontoseite", dismiss: "Einstellungen schließen" }
+    description: Die Schlüssel des Kontos — eigene API-Keys und, getrennt davon, die Agenten-Keys nach Server.
+    elements:
+      - id: UI-API-KEYS-LIST
+        type: list
+        label: API-Schlüssel
+        status: required
+        verify: recommended
+        data_source: "GET /api/account/api-keys, kind = account"
+        semantic_anchor:
+          means: Die API-Keys des Kontos mit voller Kontoberechtigung — Name, Präfix, zuletzt genutzt, Ablauf; Anlegen und Löschen wie bisher.
+          concept: api_key
+          not: [agent_key]
+          cardinality: many
+          example: "claude-laptop · outpost_3f9a1c… · zuletzt heute"
+        states:
+          - { id: default }
+          - { id: empty, copy: "Noch keine API-Schlüssel" }
+        locators:
+          web: "[data-ui-id='UI-API-KEYS-LIST']"
+
+      - id: UI-API-KEYS-AGENTS
+        type: list
+        label: Agenten-Schlüssel
+        status: required
+        verify: required
+        data_source: "GET /api/vault/agent-keys, gruppiert nach Server"
+        semantic_anchor:
+          means: Die Agenten-Keys des Kontos, gruppiert nach Server — Agent, zuletzt genutzt, IP-Bindung; je Server Bearbeiten (öffnet Agenten-Zugang) und je Key Entziehen. Agenten-Keys erreichen nur den MCP-Endpunkt.
+          concept: agent_key
+          not: [api_key, vault_item]
+          cardinality: many
+          example: "web01 — Claude Code · Codex"
+          empty_means: Kein Server hat Agenten-Zugang — Hinweis auf Kontextmenü Server › Agenten-Zugang.
+        states:
+          - { id: default }
+          - { id: empty, copy: "Noch kein Agenten-Zugang. Einrichten über das Kontextmenü eines Servers." }
+          - { id: partial, copy: "Zugang entzogen. Die Registrierung auf web01 trägt den Key eines anderen Kontos und bleibt stehen." }
+          - { id: disabled, copy: "Zugang entzogen. Die Registrierung konnte nicht entfernt werden — Befehl kopieren und auf dem Server ausführen." }
+        locators:
+          web: "[data-ui-id='UI-API-KEYS-AGENTS']"
+
+  - id: UI-VAULT-APPROVAL
+    kind: shared
+    title: Freigabe-Karte
+    artboard: docs/design/mockups/ui-vault-approval.html
+    guide: docs/design/guides/ui-vault-approval.md
+    presentation: { over: "UI-SHELL, auch im Popout", trigger: "ein Agent fordert die Nutzung eines Vault-Eintrags an", size: "unten rechts, 24rem; unter 768px volle Breite über der unteren Navigation", dismiss: "nur durch Antwort oder Ablauf", keyboard: "Tab erreicht die Karte; Enter Einmal, Esc Ablehnen, solange die Karte den Fokus hat" }
+    description: Schwebt über jeder Seite, ohne modal zu sein, solange eine Freigabe-Anfrage offen ist.
+    elements:
+      - id: UI-VAULT-APPROVAL-CARD
+        type: overlay
+        label: Freigabe angefordert
+        status: required
+        verify: required
+        data_source: "offene Freigabe-Anfragen des Kontos, verteilt über den StateBroadcaster"
+        semantic_anchor:
+          means: >
+            Eine Karte unten rechts über jeder Seite, nicht modal: ein Agent will einen
+            Vault-Eintrag nutzen. Zeigt Agent und Server, Eintrag und Ziel (Ursprung oder
+            Host) und die verbleibende Zeit; Antworten Einmal, Für diese Sitzung, Ablehnen.
+            Mehrere Anfragen stapeln sich, die älteste unten. Der Stapel liegt über Dialogen und
+            Toasts. Eine abgelaufene Karte zeigt fünf Sekunden den Fehlerzustand und verschwindet;
+            scheitert das Senden einer Antwort, bleibt die Karte stehen und ein Toast nennt den Grund.
+          concept: approval_request
+          aliases: [approval, consent]
+          not: [notification, toast, error]
+          cardinality: many
+          example: "Claude Code auf web01 · portal-login → https://portal.example.com · 1:42"
+          empty_means: Keine Anfrage offen — die Karte ist nicht da.
+        states:
+          - { id: default }
+          - { id: empty }
+          - { id: partial, copy: "3 Anfragen offen" }
+          - { id: loading, copy: "Antwort wird gesendet …" }
+          - { id: error, copy: "Anfrage ist abgelaufen." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-APPROVAL-CARD']"

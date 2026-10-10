@@ -1,6 +1,7 @@
 const { BrowserPool } = require("./BrowserPool");
 const { createLauncherClient } = require("./launcher");
 const { createEngineVia } = require("./proxy");
+const vaultGuard = require("./vaultGuard");
 
 let pool = null;
 
@@ -14,6 +15,7 @@ const getBrowserPool = () => {
         const stateBroadcaster = require("../StateBroadcaster");
         stateBroadcaster.broadcast(stateBroadcaster.STATE_TYPES.BROWSER_SESSIONS, { accountId });
     });
+    pool.onContextEnded(vaultGuard.forgetContext);
     pool.reconcile();
     pool.startSweeper();
     return pool;

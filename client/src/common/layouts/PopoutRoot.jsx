@@ -19,6 +19,7 @@ import { UserContext } from "@/common/contexts/UserContext.jsx";
 import Loading from "@/common/components/Loading";
 import { ErrorBoundary } from "@/common/components/ErrorBoundary";
 import ThemeLoader from "@/common/components/ThemeLoader";
+import VaultApprovalStack from "@/common/components/VaultApprovalCard";
 
 const PreferencesWrapper = ({ children }) => {
     const { user, login } = useContext(UserContext);
@@ -50,6 +51,7 @@ const PopoutRoot = () => {
                                                                 <Suspense fallback={<Loading />}>
                                                                     <Outlet />
                                                                 </Suspense>
+                                                                <VaultApprovalStack />
                                                             </SessionProvider>
                                                         </TagProvider>
                                                     </ScriptProvider>

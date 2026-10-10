@@ -4,6 +4,7 @@ const { encodeFrame, nextSeq } = require("./frameProtocol");
 const { toCdpCalls, viewportCalls, clampViewport, assertNavigableUrl, withoutCredentials, SCREENCAST } = require("./input");
 const { RefTable, buildSnapshot } = require("./snapshot");
 const actions = require("./actions");
+const vaultGuard = require("./vaultGuard");
 const { BrowserError, BrowserErrorCode } = require("./errors");
 const logger = require("../../utils/logger");
 
@@ -42,10 +43,10 @@ const originOf = (url) => {
 };
 
 class BrowserSession extends EventEmitter {
-    constructor({ id, accountId, profile, via = null, origin, organizationId = null, cdp, targetId, cdpSessionId,
+    constructor({ id, accountId, keyId = null, contextKey = null, profile, via = null, origin, organizationId = null, cdp, targetId, cdpSessionId,
                   bufferLimit = VIEWER_BUFFER_LIMIT, stallMs = STALL_MS }) {
         super();
-        Object.assign(this, { id, accountId, profile, via, origin, organizationId, cdp, targetId, cdpSessionId, bufferLimit, stallMs });
+        Object.assign(this, { id, accountId, keyId, contextKey, profile, via, origin, organizationId, cdp, targetId, cdpSessionId, bufferLimit, stallMs });
         this.viewers = [];
         this.viewport = { ...DEFAULT_VIEWPORT };
         this.refs = new RefTable();
@@ -220,8 +221,13 @@ class BrowserSession extends EventEmitter {
     }
 
     async snapshot() {
-        const { nodes } = await this.agentSend("Accessibility.getFullAXTree");
-        return buildSnapshot(nodes ?? [], this.refs);
+        // The accessibility tree does not know the input type; the DOM does.
+        const [{ nodes }, passwordFieldIds] = await Promise.all([
+            this.agentSend("Accessibility.getFullAXTree"),
+            vaultGuard.findPasswordFieldIds(this),
+        ]);
+        const redactBackendIds = new Set([...passwordFieldIds, ...vaultGuard.filledNodeIds(this.contextKey, this.targetId)]);
+        return buildSnapshot(nodes ?? [], this.refs, { redactBackendIds, redact: vaultGuard.redactorFor(this.contextKey) });
     }
 
     labelOf(ref) {
@@ -237,7 +243,7 @@ class BrowserSession extends EventEmitter {
     async type(ref, text, options = {}) {
         const { backendNodeId, label, options: choices } = this.refs.resolve(ref);
         if (choices) await actions.selectOption(this.agentSend, backendNodeId, choices, text);
-        else await actions.typeText(this.agentSend, backendNodeId, text, options);
+        else await actions.typeText(this.agentSend, backendNodeId, text, { ...options, clearWithoutSelection: vaultGuard.isFilled(this.contextKey) });
         return label;
     }
 
@@ -263,11 +269,27 @@ class BrowserSession extends EventEmitter {
             const scale = Math.min(1, Math.sqrt(SCREENSHOT_MAX_PIXELS / (width * height)));
             Object.assign(params, { captureBeyondViewport: true, clip: { x: 0, y: 0, width, height, scale } });
         }
+        await vaultGuard.assertScreenshotAllowed(this);
         return (await this.agentSend("Page.captureScreenshot", params)).data;
     }
 
     async evaluate(expression) {
-        const { result, exceptionDetails } = await this.agentSend("Runtime.evaluate", { expression: String(expression), returnByValue: true, awaitPromise: true });
+        vaultGuard.assertEvaluateAllowed(this);
+        return this.#evaluate(String(expression));
+    }
+
+    async readyState() {
+        return this.#evaluate("document.readyState");
+    }
+
+    async containsText(text) {
+        // Searching the redacted text: otherwise waiting for parts of the filled value would read it back guess by guess.
+        const visible = vaultGuard.redactText(this.contextKey, await this.#evaluate("document.body?.innerText ?? ''"));
+        return typeof visible === "string" && visible.includes(String(text));
+    }
+
+    async #evaluate(expression) {
+        const { result, exceptionDetails } = await this.agentSend("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true });
         if (exceptionDetails)
             throw new BrowserError(BrowserErrorCode.EVALUATION_FAILED, exceptionDetails.exception?.description ?? exceptionDetails.text);
         return result?.value;
@@ -301,6 +323,7 @@ class BrowserSession extends EventEmitter {
         if (this.closed) return;
         this.closed = true;
         this.closeReason = reason;
+        vaultGuard.forgetTarget(this.contextKey, this.targetId);
         logger.info("Browser session ended", { session: this.id, accountId: this.accountId, reason });
         this.cdp.off("event", this.onCdpEvent);
         for (const { ws } of this.viewers) {
@@ -324,6 +347,7 @@ class BrowserSession extends EventEmitter {
             case "Page.frameNavigated":
                 if (params.frame?.parentId) return;
                 this.refs.reset();
+                vaultGuard.noteNavigation(this.contextKey, this.targetId);
                 await this.#resumeScreencast();
                 return this.#refreshState();
             case "Page.navigatedWithinDocument":

@@ -1,14 +1,23 @@
 const { Router } = require("express");
 const { hasAccountPermission } = require("../utils/permission");
 const { Permission } = require("../permissions/registry");
-const { createMcpServer } = require("../lib/browser/mcpServer");
+const { createMcpServer } = require("../lib/mcp/server");
 const { createBrowserTools } = require("../lib/browser/tools");
 const { getBrowserPool } = require("../lib/browser");
+const { createVaultProvider } = require("../lib/vault/mcpProvider");
+const logger = require("../utils/logger");
 
-const mcp = createMcpServer({
-    tools: createBrowserTools({ getPool: getBrowserPool }),
-    canUseBrowser: (accountId) => hasAccountPermission(accountId, Permission.CONNECT_BROWSER),
-});
+const browserTools = createBrowserTools({ getPool: getBrowserPool });
+const browserProvider = {
+    ...browserTools,
+    name: "browser",
+    available: (ctx) => hasAccountPermission(ctx.accountId, Permission.CONNECT_BROWSER),
+};
+const vaultProvider = createVaultProvider({ getBrowserTools: () => browserTools });
+
+const mcp = createMcpServer({ providers: [browserProvider, vaultProvider] });
+
+const callerOf = (req) => ({ accountId: req.user.id, keyId: req.apiKey?.id ?? null });
 
 const app = Router();
 
@@ -31,16 +40,24 @@ const reply = (res, { status, headers = {}, body }) => {
  * @return {object} 404 - Unknown MCP session
  */
 app.post("/", async (req, res) => {
+    const controller = new AbortController();
+    res.on("close", () => {
+        if (!res.writableEnded) controller.abort();
+    });
     try {
         reply(res, await mcp.handle({
             body: req.body,
             transportId: req.header("mcp-session-id"),
-            accountId: req.user.id,
+            ...callerOf(req),
+            agent: req.agent ?? null,
+            impersonatorId: req.session?.impersonatorId ?? null,
             ipAddress: req.ip,
             userAgent: req.header("user-agent") ?? null,
+            signal: controller.signal,
         }));
     } catch (err) {
-        res.status(500).json({ jsonrpc: "2.0", id: req.body?.id ?? null, error: { code: -32603, message: err.message } });
+        logger.error("MCP request failed", { error: err.message, method: req.body?.method });
+        res.status(500).json({ jsonrpc: "2.0", id: req.body?.id ?? null, error: { code: -32603, message: "Internal error" } });
     }
 });
 
@@ -53,7 +70,7 @@ app.post("/", async (req, res) => {
  * @return {object} 200 - Session ended
  * @return {object} 404 - Unknown MCP session
  */
-app.delete("/", (req, res) => reply(res, mcp.end({ transportId: req.header("mcp-session-id"), accountId: req.user.id })));
+app.delete("/", (req, res) => reply(res, mcp.end({ transportId: req.header("mcp-session-id"), ...callerOf(req) })));
 
 /**
  * GET /mcp

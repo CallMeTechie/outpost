@@ -6,18 +6,21 @@ const Entry = require("../models/Entry");
 const Identity = require("../models/Identity");
 const Folder = require("../models/Folder");
 const Script = require("../models/Script");
+const VaultItem = require("../models/VaultItem");
 const { hasOrganizationPermission } = require("../utils/permission");
 const { Permission } = require("../permissions/registry");
 const { Op } = require("sequelize");
 const logger = require("../utils/logger");
 const { getRecordingInfo } = require("../utils/recordingService");
 const { normalizeIp } = require("../utils/ip");
+const auditContext = require("../utils/auditContext");
 
 const RESOURCE_CONFIG = {
     entry: { model: Entry, detailsKey: "name" },
     identity: { model: Identity, detailsKey: "identityName" },
     folder: { model: Folder, detailsKey: "folderName" },
     script: { model: Script, detailsKey: "name" },
+    vault: { model: VaultItem, detailsKey: "item" },
 };
 
 const AUDIT_ACTIONS = {
@@ -71,6 +74,24 @@ const AUDIT_ACTIONS = {
     BROWSER_KEY: "browser.key",
     BROWSER_EVALUATE: "browser.evaluate",
     BROWSER_CLOSE: "browser.close",
+
+    VAULT_ITEM_CREATE: "vault.item_create",
+    VAULT_ITEM_UPDATE: "vault.item_update",
+    VAULT_ITEM_DELETE: "vault.item_delete",
+    VAULT_REVEAL: "vault.reveal",
+    VAULT_USE: "vault.use",
+    VAULT_APPROVE: "vault.approve",
+    VAULT_DENY: "vault.deny",
+    VAULT_AGENT_KEY_CREATE: "vault.agent_key_create",
+    VAULT_AGENT_KEY_REVOKE: "vault.agent_key_revoke",
+    VAULT_AGENT_IP_DENIED: "vault.agent_ip_denied",
+    VAULT_USE_DENIED: "vault.use_denied",
+    VAULT_APPROVAL_TIMEOUT: "vault.approval_timeout",
+    VAULT_ITEM_UNREADABLE: "vault.item_unreadable",
+    VAULT_EVALUATE_LOCKED: "vault.evaluate_locked",
+    VAULT_SCREENSHOT_LOCKED: "vault.screenshot_locked",
+    VAULT_INPUT_LOCKED: "vault.input_locked",
+    VAULT_PERSISTENT_NOT_ALLOWED: "vault.persistent_not_allowed",
 };
 
 const RESOURCE_TYPES = {
@@ -80,6 +101,7 @@ const RESOURCE_TYPES = {
     FILE: "file",
     SCRIPT: "script",
     BROWSER: "browser",
+    VAULT: "vault",
 };
 
 const ACTION_LABELS = {
@@ -133,6 +155,24 @@ const ACTION_LABELS = {
     "browser.key": "Browser key pressed",
     "browser.evaluate": "Browser script evaluated",
     "browser.close": "Browser session closed",
+
+    "vault.item_create": "Vault item created",
+    "vault.item_update": "Vault item updated",
+    "vault.item_delete": "Vault item deleted",
+    "vault.reveal": "Vault value revealed",
+    "vault.use": "Vault item used by an agent",
+    "vault.approve": "Vault use approved",
+    "vault.deny": "Vault use denied",
+    "vault.agent_key_create": "Agent key created",
+    "vault.agent_key_revoke": "Agent key revoked",
+    "vault.agent_ip_denied": "Agent key refused from a foreign address",
+    "vault.use_denied": "Vault use refused",
+    "vault.approval_timeout": "Vault approval expired",
+    "vault.item_unreadable": "Vault item could not be decrypted",
+    "vault.evaluate_locked": "Script blocked after a credential fill",
+    "vault.screenshot_locked": "Screenshot blocked while a password is shown",
+    "vault.input_locked": "Text selection or paste blocked after a credential fill",
+    "vault.persistent_not_allowed": "Credential fill refused in the persistent profile",
 };
 
 const ACTION_CATEGORIES = [
@@ -144,6 +184,7 @@ const ACTION_CATEGORIES = [
     { key: "script", label: "Scripts", description: "Script execution" },
     { key: "ai", label: "AI Assistant", description: "Actions performed by the AI assistant on a server" },
     { key: "browser", label: "Browser", description: "Pages opened and operated in browser tabs, by the agent and through MCP" },
+    { key: "vault", label: "Vault", description: "Vault items, revealed values, agent use and approvals, agent keys" },
 ];
 
 const RESOURCE_LABELS = {
@@ -153,6 +194,7 @@ const RESOURCE_LABELS = {
     file: "File",
     script: "Script",
     browser: "Browser session",
+    vault: "Vault item",
 };
 
 const getOrgAuditSettings = async (organizationId) => {
@@ -212,6 +254,9 @@ const createAuditLog = async ({
             const settings = await getOrgAuditSettings(organizationId);
             if (!shouldAudit(action, settings)) return;
         }
+
+        const impersonatorId = auditContext.getStore()?.impersonatorId;
+        if (impersonatorId && details?.impersonatorId == null) details = { ...details, impersonatorId };
 
         const auditLog = await AuditLog.create({
             accountId, organizationId, action, resource, resourceId, details,

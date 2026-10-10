@@ -201,6 +201,7 @@ const createEngineVia = async ({ accountId, via, url, settings, launcher }) => {
     const port = await proxy.listen();
     return {
         label: entry.name,
+        entryId: entry.id,
         organizationId,
         resolverRule: hostResolverRule(target, settings.callbackHost, port),
         close: () => proxy.close(),

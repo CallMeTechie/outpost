@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI-VAULT-APPROVAL — Freigabe-Karte</title>
+<link rel="stylesheet" href="./tokens.css">
+<style>
+	* { box-sizing: border-box; }
+	.mb-artboard * { box-sizing: border-box; }
+	.mb-artboard { padding: var(--space-6); background: var(--background); color: var(--text); font: var(--type-body); }
+	.mb-artboard section[data-ui-state] { position: relative; }
+	.mb-artboard section[data-ui-state]::before { content: attr(data-ui-state); position: absolute; top: 2px; right: 2px; z-index: 5; font: var(--type-caption); color: var(--subtext); background: var(--background); border: 1px dashed var(--gray-strong); border-radius: var(--radius-sm); padding: 0 var(--space-1); line-height: 1.2; pointer-events: none; }
+	.mb-artboard .art-head { display: flex; align-items: baseline; gap: var(--space-3); margin: 0 0 var(--space-4); }
+	.mb-artboard .art-head h1 { font: var(--type-title); margin: 0; }
+	.mb-artboard .art-head code { font: var(--type-mono); color: var(--subtext); }
+	.mb-artboard .block > h2 { font: var(--type-heading); margin: 0 0 var(--space-1); }
+	.mb-artboard .block > h2 code { font: var(--type-mono); font-size: 0.75rem; color: var(--subtext); margin-left: var(--space-2); }
+	.mb-artboard .anchor { margin: 0 0 var(--space-1); max-width: 48rem; }
+	.mb-artboard .anchor-example { font: var(--type-caption); color: var(--subtext); margin: 0 0 var(--space-3); }
+	.mb-artboard .demo-row { display: flex; gap: var(--space-4); flex-wrap: wrap; align-items: flex-start; }
+	.mb-artboard .demo-card { border: 1px solid var(--gray); border-radius: var(--radius-md); overflow: hidden; background: var(--background); }
+	.mb-artboard .demo-card > .cap { font: var(--type-caption); color: var(--subtext); padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--gray); background: var(--lighter-background); }
+	.mb-artboard .demo-card .body { padding: var(--space-4); display: flex; }
+	.mb-artboard .demo-card section[data-ui-state]::before { content: none; }
+	.mb-artboard .mobile-frame { width: 380px; max-width: 100%; }
+	.mb-artboard .mobile-screen { height: 11rem; position: relative; background: var(--background); }
+	.mb-artboard .mobile-nav { position: absolute; left: 0; right: 0; bottom: 0; height: 3.5rem; background: var(--lighter-background); border-top: 1px solid var(--gray); display: flex; align-items: stretch; }
+	.mb-artboard .mobile-nav .m-item { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--white); font: var(--type-caption); }
+	.mb-artboard .mobile-nav .m-item.active { color: var(--primary); }
+
+	/* ---------- Freigabe-Karte ---------- */
+	.approval-card { position: relative; width: 24rem; max-width: 100%; background: var(--lighter-background); border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); border-left: 3px solid var(--warning); padding: var(--space-4) var(--space-4) var(--space-6); overflow: hidden; display: flex; flex-direction: column; gap: var(--space-2); }
+	.approval-card h3 { font: var(--type-heading); color: var(--text); margin: 0; }
+	.approval-card .who { color: var(--text); }
+	.approval-card .target { font: var(--type-mono); color: var(--text); overflow-wrap: anywhere; }
+	.approval-card .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+	.approval-card .btn { display: inline-flex; align-items: center; height: 2rem; padding: 0 var(--space-3); border-radius: var(--radius-sm); border: 1px solid var(--gray); background: var(--dark-gray); color: var(--text); font: var(--type-body); white-space: nowrap; }
+	.approval-card .btn.primary { background: var(--accent-color); border-color: var(--accent-color); color: var(--on-accent); }
+	.approval-card .btn.off { opacity: 0.45; }
+	.approval-card .timer { display: flex; align-items: center; justify-content: flex-end; font: var(--type-caption); color: var(--subtext); }
+	.approval-card .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--gray); }
+	.approval-card .bar i { display: block; height: 100%; background: var(--subtext); }
+	.approval-card .status { font: var(--type-body); color: var(--text); }
+	.approval-stack { display: flex; flex-direction: column; gap: var(--space-2); }
+	.approval-stack .count { font: var(--type-caption); color: var(--subtext); text-align: right; }
+	.approval-empty { width: 24rem; max-width: 100%; border: 1px dashed var(--gray-strong); border-radius: var(--radius-lg); padding: var(--space-4); font: var(--type-caption); color: var(--subtext); }
+	.mobile-screen.tall { height: 17rem; }
+	.mobile-screen .approval-card { position: absolute; left: 0; right: 0; bottom: 3.5rem; width: auto; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+</style>
+</head>
+<body>
+<header class="mb-context" style="font:var(--type-caption);color:var(--subtext);background:var(--lighter-background);border:1px solid var(--gray);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin:0 0 var(--space-4);line-height:1.6">
+	<strong style="color:var(--text);font:var(--type-heading)">Darstellungskontext</strong><br>
+	<b style="color:var(--text)">Art:</b> Schwebende Karte (shared), nicht modal<br>
+	<b style="color:var(--text)">Erscheint über:</b> UI-SHELL, jeder Seite der Anwendung<br>
+	<b style="color:var(--text)">Auslöser:</b> ein Agent fordert die Nutzung eines Vault-Eintrags an<br>
+	<b style="color:var(--text)">Größe:</b> unten rechts, 24rem; unter 768px volle Breite über der unteren Navigation<br>
+	<b style="color:var(--text)">Schließen:</b> nur durch Antwort oder Ablauf<br>
+	Tastatur: Tab erreicht die Karte; Enter Einmal, Esc Ablehnen, solange die Karte den Fokus hat
+</header>
+<main class="mb-artboard">
+<header class="art-head">
+	<h1>UI-VAULT-APPROVAL</h1>
+	<span>Freigabe-Karte</span>
+	<code>shared</code>
+	<a href="./index.html">← Kontaktbogen</a>
+</header>
+
+<!-- ===================================================================
+     UI-VAULT-APPROVAL-CARD — Freigabe angefordert
+     =================================================================== -->
+<div class="block">
+	<h2>Freigabe angefordert <code>UI-VAULT-APPROVAL-CARD</code></h2>
+	<p class="anchor">Eine Karte unten rechts über jeder Seite, nicht modal: ein Agent will einen Vault-Eintrag nutzen. Mehrere Anfragen stapeln sich, die älteste unten.</p>
+	<p class="anchor-example">Beispiel: Claude Code auf web01 · portal-login → https://portal.example.com · 1:42</p>
+
+	<div class="demo-row">
+		<div class="demo-card">
+			<div class="cap">default</div>
+			<div class="body" style="justify-content:flex-end">
+				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
+					<section data-ui-state="default">
+					<div class="approval-card">
+						<h3>Freigabe angefordert</h3>
+						<div class="who">Claude Code auf web01</div>
+						<div class="target">portal-login</div>
+						<div class="target">https://portal.example.com</div>
+						<div class="actions">
+							<span class="btn primary">Einmal</span>
+							<span class="btn">Für diese Sitzung</span>
+							<span class="btn">Ablehnen</span>
+						</div>
+						<div class="timer">1:42</div>
+						<div class="bar"><i style="width:70%"></i></div>
+					</div>
+					</section>
+				</div>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">empty — keine Anfrage offen, die Karte ist nicht da</div>
+			<div class="body" style="justify-content:flex-end">
+				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
+					<section data-ui-state="empty">
+					<div class="approval-empty">Keine Anfrage offen — die Karte ist nicht da.</div>
+					</section>
+				</div>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">partial — 3 Anfragen offen, älteste unten</div>
+			<div class="body" style="justify-content:flex-end">
+				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
+					<section data-ui-state="partial">
+					<div class="approval-stack">
+						<div class="count">3 Anfragen offen</div>
+						<div class="approval-card">
+							<h3>Freigabe angefordert</h3>
+							<div class="who">Claude Code auf web01</div>
+							<div class="target">portal-login</div>
+							<div class="target">https://portal.example.com</div>
+							<div class="actions">
+								<span class="btn primary">Einmal</span>
+								<span class="btn">Für diese Sitzung</span>
+								<span class="btn">Ablehnen</span>
+							</div>
+							<div class="timer">0:58</div>
+							<div class="bar"><i style="width:40%"></i></div>
+						</div>
+						<div class="approval-card">
+							<h3>Freigabe angefordert</h3>
+							<div class="who">Claude Code auf web01</div>
+							<div class="target">portal-login</div>
+							<div class="target">https://portal.example.com</div>
+							<div class="actions">
+								<span class="btn primary">Einmal</span>
+								<span class="btn">Für diese Sitzung</span>
+								<span class="btn">Ablehnen</span>
+							</div>
+							<div class="timer">1:12</div>
+							<div class="bar"><i style="width:50%"></i></div>
+						</div>
+						<div class="approval-card">
+							<h3>Freigabe angefordert</h3>
+							<div class="who">Claude Code auf web01</div>
+							<div class="target">portal-login</div>
+							<div class="target">https://portal.example.com</div>
+							<div class="actions">
+								<span class="btn primary">Einmal</span>
+								<span class="btn">Für diese Sitzung</span>
+								<span class="btn">Ablehnen</span>
+							</div>
+							<div class="timer">1:42</div>
+							<div class="bar"><i style="width:70%"></i></div>
+						</div>
+					</div>
+					</section>
+				</div>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">loading</div>
+			<div class="body" style="justify-content:flex-end">
+				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
+					<section data-ui-state="loading">
+					<div class="approval-card">
+						<h3>Freigabe angefordert</h3>
+						<div class="who">Claude Code auf web01</div>
+						<div class="target">portal-login</div>
+						<div class="target">https://portal.example.com</div>
+						<div class="status">Antwort wird gesendet …</div>
+						<div class="actions">
+							<span class="btn primary off">Einmal</span>
+							<span class="btn off">Für diese Sitzung</span>
+							<span class="btn off">Ablehnen</span>
+						</div>
+						<div class="timer">1:42</div>
+						<div class="bar"><i style="width:70%"></i></div>
+					</div>
+					</section>
+				</div>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">error</div>
+			<div class="body" style="justify-content:flex-end">
+				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
+					<section data-ui-state="error">
+					<div class="approval-card">
+						<h3>Freigabe angefordert</h3>
+						<div class="who">Claude Code auf web01</div>
+						<div class="target">portal-login</div>
+						<div class="target">https://portal.example.com</div>
+						<div class="status">Anfrage ist abgelaufen.</div>
+						<div class="actions">
+							<span class="btn primary off">Einmal</span>
+							<span class="btn off">Für diese Sitzung</span>
+							<span class="btn off">Ablehnen</span>
+						</div>
+						<div class="timer">0:00</div>
+						<div class="bar"><i style="width:0%"></i></div>
+					</div>
+					</section>
+				</div>
+			</div>
+		</div>
+
+		<div class="demo-card mobile-frame">
+			<div class="cap">default — unter 768px, volle Breite über der unteren Navigation</div>
+			<div class="mobile-screen tall">
+				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
+					<section data-variant="narrow">
+					<div class="approval-card">
+						<h3>Freigabe angefordert</h3>
+						<div class="who">Claude Code auf web01</div>
+						<div class="target">portal-login</div>
+						<div class="target">https://portal.example.com</div>
+						<div class="actions">
+							<span class="btn primary">Einmal</span>
+							<span class="btn">Für diese Sitzung</span>
+							<span class="btn">Ablehnen</span>
+						</div>
+						<div class="timer">1:42</div>
+						<div class="bar"><i style="width:70%"></i></div>
+					</div>
+					</section>
+				</div>
+				<div class="mobile-nav" aria-hidden="true">
+					<div class="m-item active"><span>Server</span></div><div class="m-item"><span>Monitoring</span></div><div class="m-item"><span>Snippets</span></div><div class="m-item"><span>Vault</span></div><div class="m-item"><span>Browser</span></div><div class="m-item"><span>Audit</span></div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+</main>
+</body>
+</html>

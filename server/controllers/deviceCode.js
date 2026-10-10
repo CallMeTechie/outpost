@@ -28,7 +28,7 @@ module.exports.createCode = async ({ clientType, ipAddress, userAgent }) => {
     };
 };
 
-module.exports.authorizeCode = async ({ code, accountId }) => {
+module.exports.authorizeCode = async ({ code, accountId, impersonatorId = null }) => {
     await cleanupExpiredCodes();
 
     const deviceCode = await DeviceCode.findOne({
@@ -45,6 +45,7 @@ module.exports.authorizeCode = async ({ code, accountId }) => {
         accountId,
         ip: deviceCode.ipAddress,
         userAgent: deviceCode.userAgent,
+        impersonatorId,
     });
 
     await DeviceCode.update({ sessionId: session.id }, { where: { id: deviceCode.id } });

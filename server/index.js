@@ -27,6 +27,8 @@ const engineEvents = require("./lib/engineEvents");
 const { ensureLocalEngine } = require("./controllers/engine");
 const { ensureCPCerts } = require("./utils/controlPlaneCerts");
 const { mountStaticSite } = require("./lib/staticSite");
+const { initVaultState } = require("./lib/vault/state");
+const { startPendingSweeper } = require("./controllers/agentKeys");
 require("./utils/folder");
 
 process.on("uncaughtException", (err) => require("./utils/errorHandling")(err));
@@ -69,6 +71,7 @@ app.use("/api/accounts/api-keys", require("./routes/apiKey"));
 app.use("/api/microsoft", require("./routes/microsoft"));
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/auth", require("./routes/authProviders"));
+app.use("/api/csp-report", require("./routes/cspReport"));
 
 app.ws("/api/ws/term", require("./routes/term"));
 app.ws("/api/ws/guac", require("./routes/guac"));
@@ -88,6 +91,9 @@ app.use("/api/sources", authenticate, requirePermission(Permission.SETTINGS_SOUR
 app.use("/api/ai", authenticate, require("./routes/ai"));
 app.use("/api/browser", authenticate, require("./routes/browser"));
 app.use("/api/mcp", authenticate, require("./routes/mcp"));
+// Without `authenticate` here: GET /api/vault/agent-keys/probe must let a pending agent key through,
+// which authenticate turns away everywhere else. Every vault route carries authenticate itself.
+app.use("/api/vault", require("./routes/vault"));
 app.use("/api/sessions", authenticate, require("./routes/session"));
 app.use("/api/connections", authenticate, require("./routes/serverSession"));
 app.use("/api/folders", authenticate, require("./routes/folder"));
@@ -142,6 +148,13 @@ db.authenticate()
 
         const migrationRunner = new MigrationRunner();
         await migrationRunner.runMigrations();
+
+        try {
+            await initVaultState();
+        } catch (err) {
+            logger.error("Could not determine the vault key status; the vault stays off", { error: err.message });
+        }
+        startPendingSweeper();
 
         await ensureInternalProvider();
 
