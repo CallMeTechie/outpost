@@ -7,9 +7,11 @@ const INTERACTIVE_ROLES = new Set([
 const VALUE_ROLES = new Set(["textbox", "searchbox", "combobox", "spinbutton", "slider"]);
 const OPTION_ROLES = new Set(["option", "MenuListOption"]);
 const MAX_TEXT = 100;
+const REDACTED = "••••";
 
-const clip = (value) => {
-    const text = String(value ?? "").replace(/\s+/g, " ").trim();
+const clip = (value, redact = (text) => text) => {
+    // Collapse whitespace first: the redaction has to see the text as the page shows it.
+    const text = redact(String(value ?? "").replace(/\s+/g, " ").trim());
     return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT - 1)}…` : text;
 };
 
@@ -65,9 +67,9 @@ const optionsOf = (node, byId) => {
     return options;
 };
 
-const describe = (node, refs, options = []) => {
+const describe = (node, refs, options, redactBackendIds, redact) => {
     const role = node.role?.value;
-    const name = clip(node.name?.value);
+    const name = clip(node.name?.value, redact);
     if (role === "heading") {
         if (!name) return null;
         const level = propertyOf(node, "level");
@@ -78,7 +80,8 @@ const describe = (node, refs, options = []) => {
     const label = name ? `${role} ${JSON.stringify(name)}` : role;
     let line = `- ${label} [ref=${refs.assign(node.backendDOMNodeId, label, options.length > 0 ? { options } : {})}]`;
     const value = node.value?.value;
-    if (VALUE_ROLES.has(role) && value !== undefined && value !== "") line += ` value=${JSON.stringify(clip(value))}`;
+    if (VALUE_ROLES.has(role) && value !== undefined && value !== "")
+        line += ` value=${JSON.stringify(redactBackendIds.has(node.backendDOMNodeId) ? REDACTED : clip(value, redact))}`;
     const checked = propertyOf(node, "checked");
     if (checked === "mixed") line += " checked=mixed";
     else if (checked === "true" || checked === true) line += " checked";
@@ -86,7 +89,7 @@ const describe = (node, refs, options = []) => {
     return line;
 };
 
-const buildSnapshot = (nodes, refs) => {
+const buildSnapshot = (nodes, refs, { redactBackendIds = new Set(), redact = (text) => text } = {}) => {
     const byId = new Map(nodes.map((n) => [n.nodeId, n]));
     const root = nodes.find((n) => !n.parentId) ?? nodes[0];
     const lines = [];
@@ -96,12 +99,12 @@ const buildSnapshot = (nodes, refs) => {
         const current = stack.pop();
         if (!current.ignored) {
             const options = current.role?.value === "combobox" ? optionsOf(current, byId) : [];
-            const line = describe(current, refs, options);
+            const line = describe(current, refs, options, redactBackendIds, redact);
             if (line) lines.push(line);
             if (options.length > 0) {
                 // A native select's options are chosen through its own ref (A23), so they get none.
                 for (const option of options)
-                    lines.push(`  - option ${JSON.stringify(clip(option.name))}${option.selected ? " selected" : ""}${option.disabled ? " disabled" : ""}`);
+                    lines.push(`  - option ${JSON.stringify(clip(option.name, redact))}${option.selected ? " selected" : ""}${option.disabled ? " disabled" : ""}`);
                 continue;
             }
         }
@@ -111,4 +114,4 @@ const buildSnapshot = (nodes, refs) => {
     return lines.join("\n");
 };
 
-module.exports = { RefTable, buildSnapshot };
+module.exports = { RefTable, buildSnapshot, REDACTED };
