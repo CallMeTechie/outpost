@@ -286,6 +286,9 @@ test("against a real Chromium: a filled field stays masked after Show password, 
 
 test("against a real Chromium: browser_fill_credential fills a matching origin and refuses foreign origins and frames, via, persistent and tainted contexts",
     { skip: !LAUNCHER && "set OUTPOST_BROWSER_E2E_LAUNCHER and OUTPOST_BROWSER_E2E_PAGE_HOST" }, async (t) => {
+        // The persistent instance of account 1 outlives the earlier tests and keeps their taint, which
+        // would answer the persistent case below with vault.session_tainted (check 3a precedes 3b).
+        require("../vaultGuard")._resetForTests();
         const bed = await startVaultBed(t);
         const { bases, pool, browserTools, call, open, text, snapshotOf, fill } = bed;
         const PASS = "document.getElementById('pass').value";
