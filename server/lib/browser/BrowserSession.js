@@ -227,7 +227,7 @@ class BrowserSession extends EventEmitter {
             vaultGuard.findPasswordFieldIds(this),
         ]);
         const redactBackendIds = new Set([...passwordFieldIds, ...vaultGuard.filledNodeIds(this.contextKey, this.targetId)]);
-        return buildSnapshot(nodes ?? [], this.refs, { redactBackendIds, redact: (text) => vaultGuard.redactText(this.contextKey, text) });
+        return buildSnapshot(nodes ?? [], this.refs, { redactBackendIds, redact: vaultGuard.redactorFor(this.contextKey) });
     }
 
     labelOf(ref) {

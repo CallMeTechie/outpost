@@ -1,3 +1,4 @@
+const crypto = require("node:crypto");
 const { encryptValue, decryptValue } = require("../vault/crypto");
 const { VaultError, VaultErrorCode } = require("../vault/errors");
 const { REDACTED } = require("./snapshot");
@@ -5,11 +6,12 @@ const { parseKey, MODIFIERS } = require("./actions");
 
 const GONE = /No node (found|with given id)|detached from document/i;
 const contexts = new Map();
+const DIGEST_KEY = crypto.randomBytes(32);
 
 const aadOf = (contextKey) => `vault:ctx:${contextKey}`;
 
 const stateOf = (contextKey) => {
-    if (!contexts.has(contextKey)) contexts.set(contextKey, { tainted: false, filled: false, nodeIds: new Map(), copies: [] });
+    if (!contexts.has(contextKey)) contexts.set(contextKey, { tainted: false, filled: false, nodeIds: new Map(), copies: [], digests: new Set() });
     return contexts.get(contextKey);
 };
 
@@ -30,10 +32,13 @@ const markFilled = (contextKey, { backendNodeIds, secret, targetId }) => {
     // Checked in the same synchronous step as the marking, like assertEvaluateAllowed: no evaluate can slip in between.
     if (isTainted(contextKey))
         throw new VaultError(VaultErrorCode.SESSION_TAINTED);
-    const copy = encryptValue(String(secret), aadOf(contextKey));
     const state = stateOf(contextKey);
     state.filled = true;
-    state.copies.push(copy);
+    const digest = crypto.createHmac("sha256", DIGEST_KEY).update(String(secret)).digest("hex");
+    if (!state.digests.has(digest)) {
+        state.copies.push(encryptValue(String(secret), aadOf(contextKey)));
+        state.digests.add(digest);
+    }
     if (!state.nodeIds.has(targetId)) state.nodeIds.set(targetId, { ids: new Set(), navigated: false });
     const filled = state.nodeIds.get(targetId);
     filled.navigated = false;
@@ -53,8 +58,9 @@ const variantsOf = (secret) => {
     return [secret, percent, lowerHex(percent), form, lowerHex(form), secret.replace(/\s+/g, " ").trim()];
 };
 
-const redactText = (contextKeys, text) => {
-    if (typeof text !== "string") return text;
+const unchanged = (text) => text;
+
+const redactorFor = (contextKeys) => {
     const variants = new Set();
     for (const contextKey of [contextKeys].flat()) {
         for (const copy of contexts.get(contextKey)?.copies ?? []) {
@@ -63,16 +69,23 @@ const redactText = (contextKeys, text) => {
                 secret = decryptValue(copy, aadOf(contextKey));
             } catch {
                 // Without the key the text cannot be checked, so none of it may leave.
-                return REDACTED;
+                return (text) => (typeof text === "string" ? REDACTED : text);
             }
             for (const variant of variantsOf(secret)) if (variant) variants.add(variant);
         }
     }
+    if (!variants.size) return unchanged;
     // Longest first across all copies, or a shorter secret that is a prefix of a longer one leaves the tail behind.
-    let result = text;
-    for (const variant of [...variants].sort((x, y) => y.length - x.length)) result = result.split(variant).join(REDACTED);
-    return result;
+    const sorted = [...variants].sort((x, y) => y.length - x.length);
+    return (text) => {
+        if (typeof text !== "string") return text;
+        let result = text;
+        for (const variant of sorted) result = result.split(variant).join(REDACTED);
+        return result;
+    };
 };
+
+const redactText = (contextKeys, text) => redactorFor(contextKeys)(text);
 
 // The ids stay: a page restored from the back/forward cache brings its filled nodes back with the same ids.
 const noteNavigation = (contextKey, targetId) => {
@@ -140,6 +153,6 @@ const findPasswordFieldIds = async (session) => {
 const _resetForTests = () => contexts.clear();
 
 module.exports = {
-    markTainted, isTainted, markFilled, isFilled, filledNodeIds, redactText, forgetContext, forgetTarget, noteNavigation,
+    markTainted, isTainted, markFilled, isFilled, filledNodeIds, redactorFor, redactText, forgetContext, forgetTarget, noteNavigation,
     assertEvaluateAllowed, assertScreenshotAllowed, assertInputAllowed, findPasswordFieldIds, _resetForTests,
 };
