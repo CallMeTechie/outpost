@@ -2,6 +2,7 @@ const { createHash } = require("node:crypto");
 const { BrowserError, BrowserErrorCode } = require("./errors");
 const { VaultError, VaultErrorCode } = require("../vault/errors");
 const vaultGuard = require("./vaultGuard");
+const logger = require("../../utils/logger");
 
 const EXPRESSION_LOG_LIMIT = 500;
 const WAIT_POLL_MS = 250;
@@ -153,7 +154,13 @@ const createBrowserTools = ({
             vaultGuard.assertInputAllowed(session, name, args);
             return await session.runAgent(name, () => fn(session, args, ctx));
         } catch (err) {
-            if (Object.hasOwn(LOCK_AUDIT, err?.code)) await record(ctx, session, LOCK_AUDIT[err.code], { tool: name });
+            if (Object.hasOwn(LOCK_AUDIT, err?.code)) {
+                try {
+                    await record(ctx, session, LOCK_AUDIT[err.code], { tool: name });
+                } catch (auditErr) {
+                    logger.warn("Vault lock audit failed", { session: session.id, error: auditErr.message });
+                }
+            }
             throw redactError(session, err);
         }
     };

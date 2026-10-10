@@ -239,10 +239,51 @@ test("selecting text is locked once the context is filled and middle-click paste
     const typing = await callsDuring(() => tools.call("browser_type", { ref, text: "carol" }, agent("T")));
     assert.ok(!selectsAll(typing), "in a filled context browser_type clears without selecting");
     assert.deepStrictEqual(typing.filter((c) => c.method === "Runtime.callFunctionOn").map((c) => [c.params.objectId, c.params.functionDeclaration]),
-        [["obj-31", "function () { this.value = ''; }"]]);
+        [["obj-31", "function () { if (this.isContentEditable && !('value' in this)) this.textContent = ''; else this.value = ''; this.dispatchEvent(new Event('input', { bubbles: true })); }"]]);
     assert.deepStrictEqual(typing.filter((c) => c.method === "Input.insertText").map((c) => c.params.text), ["carol"]);
     assert.ok(!(await tools.call("browser_key", { key: "Shift+Tab" }, agent("T"))).isError);
     assert.ok(!(await tools.call("browser_click", { ref }, agent("T"))).isError);
     assert.deepStrictEqual(audit.filter((e) => e.action === "vault.input_locked").map((e) => e.details.tool),
         ["browser_click", "browser_key", "browser_key", "browser_click", "browser_click"]);
+});
+
+test("secrets with quotes, backslashes, a clip boundary or a shorter sibling are redacted in snapshot, label and audit", async () => {
+    const { tools, page, audit, agent, text, openSession } = setup();
+    const session = await openSession(agent("T"));
+    const quoted = 'Tr0ub"le\\x9';
+    const long = `${"x".repeat(97)}${quoted}tail`;
+    vaultGuard.markFilled(session.contextKey, { backendNodeIds: [33], secret: "abc" });
+    vaultGuard.markFilled(session.contextKey, { backendNodeIds: [33], secret: "abcdef" });
+    vaultGuard.markFilled(session.contextKey, { backendNodeIds: [33], secret: quoted });
+    vaultGuard.markFilled(session.contextKey, { backendNodeIds: [33], secret: long });
+    page.ax = [
+        { nodeId: "1", role: { value: "RootWebArea" }, name: { value: "Login" }, childIds: ["2", "5"] },
+        { nodeId: "2", role: { value: "heading" }, name: { value: `Hi ${quoted} abcdef` }, childIds: [], parentId: "1" },
+        { ...textbox("5", `${"y".repeat(96)}${quoted}`, 34, "v"), parentId: "1" },
+    ];
+    page.dom = [input(34, "text")];
+
+    const snapshot = text(await tools.call("browser_snapshot", {}, agent("T")));
+    const ref = /\[ref=(e\d+)\]/.exec(snapshot)[1];
+    const clicked = text(await tools.call("browser_click", { ref }, agent("T")));
+    assert.match(snapshot, /- heading "Hi •••• ••••"/);
+    for (const leaked of ["Tr0ub", "le\\\\x9", "x9", "def", "xxxxxxx", "yyyyyy".repeat(2) + "Tr"]) {
+        assert.ok(!snapshot.includes(leaked) && !clicked.includes(leaked), `${leaked} reached the agent`);
+        assert.ok(!JSON.stringify(audit).includes(leaked), `${leaked} reached the audit log`);
+    }
+});
+
+test("a filled node that vanished (Show password swaps the input) keeps screenshots locked until the main frame navigates", async () => {
+    const { tools, page, instances, agent, text, openSession } = setup();
+    const session = await openSession(agent("T"));
+    vaultGuard.markFilled(session.contextKey, { backendNodeIds: [33], secret: SECRET });
+    page.dom = [input(31, "text"), input(32, "password"), input(34, "text")];
+
+    const refused = await tools.call("browser_screenshot", {}, agent("T"));
+    assert.strictEqual(refused.isError, true);
+    assert.match(text(refused), /browser_screenshot is locked/);
+
+    instances[0].emitEvent("Page.frameNavigated", { frame: { id: session.targetId, url: "https://login.test/next" } }, session.cdpSessionId);
+    await flush();
+    assert.strictEqual((await tools.call("browser_screenshot", {}, agent("T"))).isError, undefined);
 });

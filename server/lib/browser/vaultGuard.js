@@ -41,16 +41,16 @@ const isFilled = (contextKey) => contexts.get(contextKey)?.filled === true;
 const filledNodeIds = (contextKey) => [...(contexts.get(contextKey)?.nodeIds ?? [])];
 
 // document.title and innerText collapse runs of whitespace, so the value can show up in that form too.
-const variantsOf = (secret) => [...new Set([
-    secret,
-    encodeURIComponent(secret),
-    new URLSearchParams([["", secret]]).toString().slice(1),
-    secret.replace(/\s+/g, " ").trim(),
-])].filter(Boolean).sort((a, b) => b.length - a.length);
+const lowerHex = (encoded) => encoded.replace(/%[0-9A-F]{2}/g, (m) => m.toLowerCase());
+const variantsOf = (secret) => {
+    const percent = encodeURIComponent(secret);
+    const form = new URLSearchParams([["", secret]]).toString().slice(1);
+    return [secret, percent, lowerHex(percent), form, lowerHex(form), secret.replace(/\s+/g, " ").trim()];
+};
 
 const redactText = (contextKeys, text) => {
     if (typeof text !== "string") return text;
-    let result = text;
+    const variants = new Set();
     for (const contextKey of [contextKeys].flat()) {
         for (const copy of contexts.get(contextKey)?.copies ?? []) {
             let secret;
@@ -60,11 +60,17 @@ const redactText = (contextKeys, text) => {
                 // Without the key the text cannot be checked, so none of it may leave.
                 return REDACTED;
             }
-            if (!secret) continue;
-            for (const variant of variantsOf(secret)) result = result.split(variant).join(REDACTED);
+            for (const variant of variantsOf(secret)) if (variant) variants.add(variant);
         }
     }
+    // Longest first across all copies, or a shorter secret that is a prefix of a longer one leaves the tail behind.
+    let result = text;
+    for (const variant of [...variants].sort((x, y) => y.length - x.length)) result = result.split(variant).join(REDACTED);
     return result;
+};
+
+const noteNavigation = (contextKey) => {
+    contexts.get(contextKey)?.nodeIds.clear();
 };
 
 const forgetContext = (contextKey) => {
@@ -83,7 +89,8 @@ const assertScreenshotAllowed = async (session) => {
         try {
             ({ node } = await session.agentSend("DOM.describeNode", { backendNodeId }));
         } catch (err) {
-            if (GONE.test(err?.message ?? "")) continue;
+            // A "show password" can swap in a new input; the old node being gone proves nothing until the page navigates.
+            if (GONE.test(err?.message ?? "")) throw new VaultError(VaultErrorCode.SCREENSHOT_LOCKED);
             throw err;
         }
         if (attributeOf(node ?? {}, "type")?.toLowerCase() !== "password")
@@ -117,6 +124,6 @@ const findPasswordFieldIds = async (session) => {
 const _resetForTests = () => contexts.clear();
 
 module.exports = {
-    markTainted, isTainted, markFilled, isFilled, filledNodeIds, redactText, forgetContext,
+    markTainted, isTainted, markFilled, isFilled, filledNodeIds, redactText, forgetContext, noteNavigation,
     assertEvaluateAllowed, assertScreenshotAllowed, assertInputAllowed, findPasswordFieldIds, _resetForTests,
 };

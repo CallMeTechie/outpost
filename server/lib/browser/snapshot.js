@@ -66,9 +66,9 @@ const optionsOf = (node, byId) => {
     return options;
 };
 
-const describe = (node, refs, options, redactBackendIds) => {
+const describe = (node, refs, options, redactBackendIds, redact) => {
     const role = node.role?.value;
-    const name = clip(node.name?.value);
+    const name = clip(redact(String(node.name?.value ?? "")));
     if (role === "heading") {
         if (!name) return null;
         const level = propertyOf(node, "level");
@@ -80,7 +80,7 @@ const describe = (node, refs, options, redactBackendIds) => {
     let line = `- ${label} [ref=${refs.assign(node.backendDOMNodeId, label, options.length > 0 ? { options } : {})}]`;
     const value = node.value?.value;
     if (VALUE_ROLES.has(role) && value !== undefined && value !== "")
-        line += ` value=${JSON.stringify(redactBackendIds.has(node.backendDOMNodeId) ? REDACTED : clip(value))}`;
+        line += ` value=${JSON.stringify(redactBackendIds.has(node.backendDOMNodeId) ? REDACTED : clip(redact(String(value))))}`;
     const checked = propertyOf(node, "checked");
     if (checked === "mixed") line += " checked=mixed";
     else if (checked === "true" || checked === true) line += " checked";
@@ -88,7 +88,7 @@ const describe = (node, refs, options, redactBackendIds) => {
     return line;
 };
 
-const buildSnapshot = (nodes, refs, { redactBackendIds = new Set() } = {}) => {
+const buildSnapshot = (nodes, refs, { redactBackendIds = new Set(), redact = (text) => text } = {}) => {
     const byId = new Map(nodes.map((n) => [n.nodeId, n]));
     const root = nodes.find((n) => !n.parentId) ?? nodes[0];
     const lines = [];
@@ -98,12 +98,12 @@ const buildSnapshot = (nodes, refs, { redactBackendIds = new Set() } = {}) => {
         const current = stack.pop();
         if (!current.ignored) {
             const options = current.role?.value === "combobox" ? optionsOf(current, byId) : [];
-            const line = describe(current, refs, options, redactBackendIds);
+            const line = describe(current, refs, options, redactBackendIds, redact);
             if (line) lines.push(line);
             if (options.length > 0) {
                 // A native select's options are chosen through its own ref (A23), so they get none.
                 for (const option of options)
-                    lines.push(`  - option ${JSON.stringify(clip(option.name))}${option.selected ? " selected" : ""}${option.disabled ? " disabled" : ""}`);
+                    lines.push(`  - option ${JSON.stringify(clip(redact(option.name)))}${option.selected ? " selected" : ""}${option.disabled ? " disabled" : ""}`);
                 continue;
             }
         }

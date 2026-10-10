@@ -227,7 +227,7 @@ class BrowserSession extends EventEmitter {
             vaultGuard.findPasswordFieldIds(this),
         ]);
         const redactBackendIds = new Set([...passwordFieldIds, ...vaultGuard.filledNodeIds(this.contextKey)]);
-        return buildSnapshot(nodes ?? [], this.refs, { redactBackendIds });
+        return buildSnapshot(nodes ?? [], this.refs, { redactBackendIds, redact: (text) => vaultGuard.redactText(this.contextKey, text) });
     }
 
     labelOf(ref) {
@@ -346,6 +346,7 @@ class BrowserSession extends EventEmitter {
             case "Page.frameNavigated":
                 if (params.frame?.parentId) return;
                 this.refs.reset();
+                vaultGuard.noteNavigation(this.contextKey);
                 await this.#resumeScreencast();
                 return this.#refreshState();
             case "Page.navigatedWithinDocument":

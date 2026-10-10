@@ -96,7 +96,7 @@ const typeText = async (send, backendNodeId, text, { submit = false, clearWithou
     if (clearWithoutSelection) {
         // A selection of a filled field lands in the primary selection, which other contexts can paste.
         const { object } = await send("DOM.resolveNode", { backendNodeId });
-        await send("Runtime.callFunctionOn", { objectId: object.objectId, functionDeclaration: "function () { this.value = ''; }" });
+        await send("Runtime.callFunctionOn", { objectId: object.objectId, functionDeclaration: "function () { if (this.isContentEditable && !('value' in this)) this.textContent = ''; else this.value = ''; this.dispatchEvent(new Event('input', { bubbles: true })); }" });
     } else {
         // "commands" makes select-all work regardless of the platform's shortcut mapping.
         const selectAll = { key: "a", code: "KeyA", windowsVirtualKeyCode: 65, modifiers: MODIFIERS.Control };
