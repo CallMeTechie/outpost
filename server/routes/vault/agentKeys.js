@@ -82,7 +82,7 @@ app.get("/agent-keys", requireVaultEnabled, authenticate, async (req, res) => {
  */
 app.post("/agent-keys", requireVaultEnabled, authenticate, requireLoginSession, agentKeyLimiter, async (req, res) => {
     if (validateSchema(res, createAgentKeysValidation, req.body)) return;
-    reply(res, await createAgentKeys({ accountId: req.user.id, ...req.body, ...requestContext(req) }), 201);
+    reply(res, await createAgentKeys({ ...req.body, accountId: req.user.id, ...requestContext(req) }), 201);
 });
 
 /**

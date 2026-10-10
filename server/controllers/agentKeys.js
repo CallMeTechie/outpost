@@ -98,6 +98,7 @@ const finalize = async (key, entry, context) => {
 
 const setupAgent = async ({ accountId, entry, identity, agentUrl, key, token }) => {
     const url = endpoint(agentUrl, "/api/mcp");
+    const keyPrefix = keyPrefixOf(key);
     const manual = (reason, probe = null, replacedRegistration = false) => ({
         status: "manual", reason, probe, replacedRegistration,
         command: provision.setupCommand({ agentType: key.agentType, cliPath: key.agentType, url, key: token }),
@@ -105,24 +106,40 @@ const setupAgent = async ({ accountId, entry, identity, agentUrl, key, token }) 
     if (!identity) return manual("exec_failed");
 
     const run = (command) => runRemote(accountId, entry, identity.id, command);
-    await run(provision.probeCommand({ url: endpoint(agentUrl, "/api/vault/agent-keys/probe"), key: token }));
-    const probe = await probeResult(key.id, entry);
+    const cleanup = () => run(provision.keyCleanupCommand({ keyPrefix }));
 
-    const found = await run(provision.findCliCommand(key.agentType));
-    if (!found.ran) return manual("exec_failed", probe);
-    const cliPath = found.exitCode === 0 ? outputLines(found.stdout).filter((line) => line.startsWith("/")).pop() : null;
-    if (!cliPath) return manual("cli_missing", probe);
-
-    const setup = await run(provision.setupCommand({ agentType: key.agentType, cliPath, url, key: token }));
-    const replacedRegistration = outputLines(setup.stdout).includes("OUTPOST_REPLACED=1");
-    const configured = { status: "configured", reason: null, probe, replacedRegistration };
-    if (setup.ran && setup.exitCode === 0) return configured;
-    if (!setup.ran) {
-        // An exec error or timeout says nothing about the remote side: the setup may have gone through.
-        const check = await run(provision.registrationCheckCommand({ agentType: key.agentType, keyPrefix: keyPrefixOf(key) }));
-        if (check.ran && outputLines(check.stdout).includes("MATCH")) return configured;
+    const drop = await run(provision.keyDropCommand({ keyPrefix, key: token }));
+    if (!drop.ran || drop.exitCode !== 0) {
+        await cleanup();
+        return manual("exec_failed");
     }
-    return manual("exec_failed", probe, replacedRegistration);
+
+    let finished = false;
+    try {
+        await run(provision.probeCommand({ url: endpoint(agentUrl, "/api/vault/agent-keys/probe"), keyPrefix }));
+        const probe = await probeResult(key.id, entry);
+
+        const found = await run(provision.findCliCommand(key.agentType));
+        if (!found.ran) return manual("exec_failed", probe);
+        const cliPath = found.exitCode === 0 ? outputLines(found.stdout).filter((line) => line.startsWith("/")).pop() : null;
+        if (!cliPath) return manual("cli_missing", probe);
+
+        const setup = await run(provision.setupCommand({ agentType: key.agentType, cliPath, url, keyPrefix }));
+        const replacedRegistration = outputLines(setup.stdout).includes("OUTPOST_REPLACED=1");
+        const configured = { status: "configured", reason: null, probe, replacedRegistration };
+        if (setup.ran && setup.exitCode === 0) {
+            finished = true;
+            return configured;
+        }
+        if (!setup.ran) {
+            // An exec error or timeout says nothing about the remote side: the setup may have gone through.
+            const check = await run(provision.registrationCheckCommand({ agentType: key.agentType, keyPrefix }));
+            if (check.ran && outputLines(check.stdout).includes("MATCH")) return configured;
+        }
+        return manual("exec_failed", probe, replacedRegistration);
+    } finally {
+        if (!finished) await cleanup();
+    }
 };
 
 const setupOne = async ({ accountId, entry, identity, organizationId, agentUrl, agentType, ipBinding, allowedCidrs, context }) => {

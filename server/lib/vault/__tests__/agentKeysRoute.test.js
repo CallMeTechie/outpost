@@ -19,6 +19,7 @@ const audits = [];
 const execs = [];
 const SERVER_IP = "198.51.100.7";
 const RESET = { cliFound: true, setupFails: false, registered: "ABSENT", revokeOutput: "REMOVED\n", probeFrom: SERVER_IP };
+const dropped = {};
 const state = { base: null, identityOf: {}, ...RESET };
 
 fake("../../../utils/database", db);
@@ -58,8 +59,14 @@ fake("../../controlPlane/ControlPlaneServer", {
     execCommand: async (host, port, params, command, jumpHosts, engineId) => {
         execs.push({ host, username: params.username, command, engineId });
         const ok = (stdout) => ({ success: true, stdout, stderr: "", exitCode: 0 });
-        if (command.includes("/api/vault/agent-keys/probe")) {
+        if (command.includes("chmod 700")) {
             const [token] = /outpost_[0-9a-f]{64}/.exec(command);
+            dropped[token.slice(0, 14)] = token;
+            return ok("");
+        }
+        if (command.includes('rm -f "$HOME/.config/outpost/key-')) return ok("");
+        if (command.includes("/api/vault/agent-keys/probe")) {
+            const token = dropped[/key-(outpost_[0-9a-f]{6})/.exec(command)[1]];
             const res = await fetch(`${state.base}/api/vault/agent-keys/probe`, {
                 headers: { authorization: `Bearer ${token}`, ...(state.probeFrom ? { "x-forwarded-for": state.probeFrom } : {}) },
             });
@@ -151,6 +158,7 @@ test("Review Focus 3: probe misst die Adresse des pending-Keys, confirm übernim
     );
     assert.ok(execs.every((exec) => exec.engineId === "engine-7" && exec.host === "192.0.2.10" && exec.username === "deploy"));
     const key = keyFrom(execs[0].command);
+    assert.deepStrictEqual(execs.filter((exec) => exec.command.includes(key)).length, 1);
 
     assert.strictEqual((await call("GET", PROBE, key)).status, 403);
     assert.strictEqual((await call("GET", PROBE, tokens.a)).status, 403);
@@ -196,7 +204,7 @@ test("scheitert die Einrichtung, kommt der Befehl zum Kopieren und der Key bleib
     Object.assign(state, { cliFound: true, setupFails: true, registered: "MATCH" });
     const [recovered] = (await setUp()).body.results;
     assert.deepStrictEqual([recovered.status, recovered.reason, recovered.command], ["configured", null, undefined]);
-    assert.match(execs.at(-1).command, /MATCH\|OTHER/);
+    assert.ok(execs.some((exec) => /MATCH\|OTHER/.test(exec.command)));
     state.registered = "OTHER";
     const [failed] = (await setUp()).body.results;
     assert.deepStrictEqual([failed.status, failed.reason, (await ApiKey.findByPk(failed.id)).pending], ["manual", "exec_failed", true]);

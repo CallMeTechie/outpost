@@ -4,6 +4,8 @@ const CODEX_ENV = "$HOME/.codex/outpost.env";
 const SOURCE_LINE = "[ -f ~/.codex/outpost.env ] && . ~/.codex/outpost.env";
 const RC_FILES = ["$HOME/.bashrc", "$HOME/.profile", "$HOME/.bash_profile", "$HOME/.zshrc"];
 const KEY_PREFIX = /^[A-Za-z0-9_]{8,64}$/;
+const KEY_TOKEN = /^[A-Za-z0-9_]{16,128}$/;
+const KEY_DIR = "$HOME/.config/outpost";
 
 // Relies on the layout Claude Code writes (JSON.stringify with two spaces): only the user-scope
 // registration sits at this depth, project registrations are nested deeper and never match.
@@ -46,20 +48,53 @@ const findCliScript = (name) => {
 
 const findCliCommand = (name) => asCommand([findCliScript(name)]);
 
-const claudeSetupCommand = ({ cliPath, url, key }) => asCommand([
+const keyFile = (keyPrefix) => {
+    if (!KEY_PREFIX.test(keyPrefix)) throw new TypeError("Invalid key prefix");
+    return `${KEY_DIR}/key-${keyPrefix}`;
+};
+
+// The key travels in argv only inside keyDropCommand. Everything else reads it from the drop file via
+// a builtin printf/redirect; a literal key is for the copy command shown to the user.
+const keyWord = ({ keyPrefix, key }, before = "", after = "") => (keyPrefix !== undefined
+    ? { setup: [`k="${keyFile(keyPrefix)}"`], word: `"${before}$(cat "$k")${after}"`, cleanup: ["rm -f \"$k\""] }
+    : { setup: [], word: shQuote(`${before}${key}${after}`), cleanup: [] });
+
+const withCliPath = ["case \"$cli\" in /*) PATH=\"${cli%/*}:$PATH\"; export PATH ;; esac"];
+
+const keyDropCommand = ({ keyPrefix, key }) => {
+    if (typeof key !== "string" || !KEY_TOKEN.test(key)) throw new TypeError("Invalid key");
+    return asCommand([
+        `mkdir -p "${KEY_DIR}" || exit 1`,
+        `chmod 700 "${KEY_DIR}" || exit 1`,
+        `printf '%s' ${shQuote(key)} > "${keyFile(keyPrefix)}" || exit 1`,
+    ]);
+};
+
+const keyCleanupCommand = ({ keyPrefix }) => asCommand([`rm -f "${keyFile(keyPrefix)}"`]);
+
+const claudeSetupCommand = ({ cliPath, url, key, keyPrefix }) => {
+    const header = keyWord({ keyPrefix, key }, "Authorization: Bearer ");
+    return asCommand([
     `cli=${shQuote(cliPath)}`,
+    ...withCliPath,
+    ...header.setup,
     "if \"$cli\" mcp get outpost >/dev/null 2>&1; then",
     "echo OUTPOST_REPLACED=1",
     "\"$cli\" mcp remove --scope user outpost >/dev/null 2>&1 || true",
     "else",
     "echo OUTPOST_REPLACED=0",
     "fi",
-    `"$cli" mcp add --scope user --transport http outpost ${shQuote(url)} --header ${shQuote(`Authorization: Bearer ${key}`)} >/dev/null || exit 1`,
+    `"$cli" mcp add --scope user --transport http outpost ${shQuote(url)} --header ${header.word} >/dev/null || exit 1`,
     "if [ -f \"$HOME/.claude.json\" ]; then chmod 600 \"$HOME/.claude.json\" || exit 1; fi",
-]);
+    ...header.cleanup,
+    ]);
+};
 
 // The key file comes last and is swapped in whole: until then the previous key stays readable.
-const codexEnvCommand = ({ key }) => asCommand([
+const codexEnvCommand = ({ key, keyPrefix }) => {
+    const line = keyWord({ keyPrefix, key }, "export OUTPOST_MCP_TOKEN='", "'");
+    return asCommand([
+    ...line.setup,
     "mkdir -p \"$HOME/.codex\" || exit 1",
     `line=${shQuote(SOURCE_LINE)}`,
     `for rc in ${RC_FILES.map((file) => `"${file}"`).join(" ")}; do`,
@@ -70,13 +105,16 @@ const codexEnvCommand = ({ key }) => asCommand([
     "done",
     `f="${CODEX_ENV}"`,
     "rm -f \"$f.new\"",
-    `printf '%s\\n' ${shQuote(`export OUTPOST_MCP_TOKEN=${shQuote(key)}`)} > "$f.new" || exit 1`,
+    `printf '%s\\n' ${line.word} > "$f.new" || exit 1`,
     "chmod 600 \"$f.new\" || exit 1",
     "mv -f \"$f.new\" \"$f\" || exit 1",
-]);
+    ...line.cleanup,
+    ]);
+};
 
 const codexSetupCommand = ({ cliPath, url }) => asCommand([
     `cli=${shQuote(cliPath)}`,
+    ...withCliPath,
     "if \"$cli\" mcp get outpost >/dev/null 2>&1; then",
     "echo OUTPOST_REPLACED=1",
     "\"$cli\" mcp remove outpost >/dev/null 2>&1 || true",
@@ -86,23 +124,28 @@ const codexSetupCommand = ({ cliPath, url }) => asCommand([
     `"$cli" mcp add outpost --url ${shQuote(url)} --bearer-token-env-var OUTPOST_MCP_TOKEN >/dev/null || exit 1`,
 ]);
 
-const setupCommand = ({ agentType, cliPath, url, key }) => (cliName(agentType) === "claude"
-    ? claudeSetupCommand({ cliPath, url, key })
-    : `${codexSetupCommand({ cliPath, url })} && ${codexEnvCommand({ key })}`);
+const setupCommand = ({ agentType, cliPath, url, key, keyPrefix }) => (cliName(agentType) === "claude"
+    ? claudeSetupCommand({ cliPath, url, key, keyPrefix })
+    : `${codexSetupCommand({ cliPath, url })} && ${codexEnvCommand({ key, keyPrefix })}`);
 
-const probeCommand = ({ url, key }) => asCommand([
+const probeCommand = ({ url, keyPrefix }) => {
+    const bearer = keyWord({ keyPrefix }, "Authorization: Bearer ");
+    const wgetHeader = keyWord({ keyPrefix }, "header = Authorization: Bearer ");
+    return asCommand([
+    ...bearer.setup,
     "f=$(mktemp) || exit 1",
     "trap 'rm -f \"$f\"' EXIT",
     "if command -v curl >/dev/null 2>&1; then",
-    `printf '%s\\n' ${shQuote(`Authorization: Bearer ${key}`)} > "$f" || exit 1`,
+    `printf '%s\\n' ${bearer.word} > "$f" || exit 1`,
     `curl -fsS --max-time 10 -H @"$f" ${shQuote(url)}`,
     "elif command -v wget >/dev/null 2>&1; then",
-    `printf '%s\\n' ${shQuote(`header = Authorization: Bearer ${key}`)} > "$f" || exit 1`,
+    `printf '%s\\n' ${wgetHeader.word} > "$f" || exit 1`,
     `wget -qO- -T 10 -t 1 --config="$f" ${shQuote(url)}`,
     "else",
     "exit 127",
     "fi",
-]);
+    ]);
+};
 
 // Sets $state to MATCH (the registration carries keyPrefix) or OTHER (another key); anything else means none.
 const registrationStateLines = (agentType, keyPrefix) => {
@@ -131,6 +174,7 @@ const revokeCommands = ({ agentType, keyPrefix }) => asCommand([
     "*) echo ABSENT; exit 0 ;;",
     "esac",
     `cli=$( ${findCliScript(agentType)} ) || exit 3`,
+    ...withCliPath,
     ...(agentType === "claude"
         ? ["\"$cli\" mcp remove --scope user outpost >/dev/null 2>&1 || exit 4"]
         : ["\"$cli\" mcp remove outpost >/dev/null 2>&1 || exit 4", "rm -f \"$f\""]),
@@ -139,6 +183,8 @@ const revokeCommands = ({ agentType, keyPrefix }) => asCommand([
 
 module.exports = {
     shQuote,
+    keyDropCommand,
+    keyCleanupCommand,
     findCliScript,
     findCliCommand,
     claudeSetupCommand,
