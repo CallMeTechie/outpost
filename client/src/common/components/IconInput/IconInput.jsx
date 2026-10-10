@@ -2,7 +2,7 @@ import "./styles.sass";
 import Icon from "@/common/components/Icon";
 
 export const IconInput = ({ type, id, name, required, icon, placeholder, customClass,
-                              autoComplete, value, setValue, onChange, onBlur, onKeyDown, autoFocus, disabled }) => {
+                              autoComplete, value, setValue, onChange, onBlur, onKeyDown, autoFocus, disabled, dataUiId }) => {
     const handleChange = (event) => {
         if (setValue) {
             setValue(event.target.value);
@@ -13,7 +13,7 @@ export const IconInput = ({ type, id, name, required, icon, placeholder, customC
     };
 
     return (
-        <div className="input-container">
+        <div className="input-container" data-ui-id={dataUiId}>
             <Icon icon={icon} className="input-icon" />
             <input 
                 type={type} 

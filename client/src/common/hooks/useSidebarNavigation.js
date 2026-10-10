@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { getSidebarNavigation } from "@/common/utils/navigationConfig.jsx";
 import { getRequest } from "@/common/utils/RequestUtil.js";
+import { useVaultAvailable } from "@/common/hooks/useVaultAvailable.js";
 
 // Sidebar, mobile bar and quick action all mount this hook; they share one request per account.
 let availability = { accountId: undefined, request: null };
@@ -23,6 +24,7 @@ export const useSidebarNavigation = () => {
     const { t } = useTranslation();
     const { user, hasPermission } = useContext(UserContext);
     const [browserAvailable, setBrowserAvailable] = useState(false);
+    const { canUse: vaultCanUse } = useVaultAvailable();
 
     useEffect(() => {
         if (!user?.id) return;
@@ -33,5 +35,6 @@ export const useSidebarNavigation = () => {
 
     // QuickAction memoizes on this list; a new array every render would reset its selection.
     return useMemo(() => getSidebarNavigation(t).filter(item => (!item.permission || hasPermission(item.permission))
-        && (item.key !== "browser" || browserAvailable)), [t, hasPermission, browserAvailable]);
+        && (item.key !== "browser" || browserAvailable)
+        && (item.key !== "vault" || vaultCanUse)), [t, hasPermission, browserAvailable, vaultCanUse]);
 };
