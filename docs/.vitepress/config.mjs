@@ -86,6 +86,7 @@ export default defineConfig({
                         ],
                     },
                     { text: "Browser Tabs & Claude", link: "/browser-tabs" },
+                    { text: "Vault", link: "/vault" },
                     { text: "CLI", link: "/cli" },
                     { text: "Server CLI", link: "/server-cli" },
                     { text: "Contributing", link: "/contributing" },
