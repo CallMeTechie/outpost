@@ -1,6 +1,6 @@
 # Vault — Umsetzungsanleitung (UI-VAULT)
 
-Artboard: docs/design/mockups/ui-vault.html · Manifest-Revision: 12
+Artboard: docs/design/mockups/ui-vault.html · Manifest-Revision: 16
 
 Die Seite gibt es noch nicht; sie ist komplett **neu**. Bestand sind nur Rahmen und Bausteine (Shell, Navigation, `PageHeader`, `TabSwitcher`, `Button`, `ActionConfirmDialog`, Clipboard-Helfer). Der Eintrag-Dialog (`UI-VAULT-DIALOG`) und die Freigabe-Karte (`UI-VAULT-APPROVAL-CARD`) haben eigene Anleitungen; hier werden sie nur geöffnet bzw. eingebunden.
 
@@ -69,6 +69,13 @@ Die Seite gibt es noch nicht; sie ist komplett **neu**. Bestand sind nur Rahmen 
 
 ### UI-VAULT-DETAIL-POLICY — Freigabe erforderlich (neu)
 - `data-ui-id` am Statusknoten. Aus `approvalRequired` und `lastUsedAt` (relative Zeit). `disabled`: „Ohne Freigabe nutzbar“.
+
+### UI-VAULT-DETAIL-USAGE — Nutzung durch Agenten (neu in Rev. 16)
+- `data-ui-id` am Wrapper-Knoten der Region, genau einmal, in `VaultDetail.jsx` direkt **nach** `UI-VAULT-DETAIL-POLICY`. Region mit kleiner Überschrift „Nutzung durch Agenten“ und einer Zeile je eingeschalteter Option.
+- Nur sichtbar bei Typ `api_key` und `generic`; bei anderen Typen nicht rendern.
+- Datenquelle: `fields.readOnly`, `fields.allowHttp`, `fields.git`, `fields.gitUsername`, `fields.fillOrigins` des Eintrags aus `GET /api/vault/items` (nicht geheim, kommt mit der Liste). Zeilen nur für **eingeschaltete** Optionen; Ausgeschaltetes fehlt als Zeile: „Nur lesen“; „Auch über http“; „Git (<gitUsername>)“ mit Benutzername in `--type-mono`; „Eintragen auf <Origins>“ mit den Origins in `--type-mono`, kommagetrennt. Beispiel: „Nur lesen · Git (x-access-token) · Eintragen auf https://coolify.example.net“.
+- Zustände: `default` die Zeilen; `empty` keine Option an: „vault_http über https“ (in `--subtext`, `vault_http` in `--type-mono`) — wörtlich, ohne Zusatz.
+- Nicht: keine Bindung (`vault_binding`, das ist `UI-VAULT-DETAIL-SCOPE`), keine Freigabe-Einstellung (`approval_policy`, das ist `UI-VAULT-DETAIL-POLICY`), kein Recht; kein geheimer Wert, auch nicht in Teilen.
 
 ## Ausdrücklich nicht
 - Nie ein Teil eines Werts anzeigen (keine letzten vier Zeichen), nie eine Länge andeuten; kein Wert in Liste, Suche, Toast, Log oder URL.

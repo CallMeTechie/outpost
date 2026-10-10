@@ -1,6 +1,6 @@
 # Agenten-Zugang — Umsetzungsanleitung (UI-AGENT-ACCESS)
 
-Artboard: docs/design/mockups/ui-agent-access.html · Manifest-Revision: 14
+Artboard: docs/design/mockups/ui-agent-access.html · Manifest-Revision: 16
 
 Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dialog, ein Menüpunkt im Bestandsmenü `UI-SERVERS-LIST-MENU`. Nicht neu gebaut werden: Dialog-Rahmen, Kontextmenü, Clipboard-Helfer, Toggle.
 
@@ -26,6 +26,7 @@ Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dial
 - `data-ui-id` am Listen-Container.
 - Datenquelle: `GET /api/vault/agent-keys?entryId=<id>`. Liefert Agenten-Keys, **nicht** API-Keys, Vault-Einträge oder Identitäten.
 - Zeile: Icon `KeyRound`, Agent als Klartext („Claude Code“, „Codex“, kein eigenes Icon), Meta in `--type-mono` `--subtext`: „angelegt 09.10. · zuletzt vor 5 Min. · nur 192.168.2.40“; rechts Ghost-Button „Entziehen“ → `ActionConfirmDialog`, dann `DELETE /api/vault/agent-keys/:id`.
+- Rev. 16: Auch Git ist ein Agent. Zeile mit `agentType === "git"` trägt die Beschriftung „Git“ (i18n `vault.agents.git`), Meta wie bei den übrigen, z. B. „Git · angelegt 10.10. · zuletzt vor 5 Min. · nur 192.168.2.40“. Die Agent-Beschriftung kommt aus einer Abbildung `agentType` → i18n-Schlüssel (`claude` „Claude Code“, `codex` „Codex“, `git` „Git“), nicht aus dem Rohwert.
 - Nur bestätigte Keys listen; `pending` (noch nicht übernommen) erscheinen nicht.
 - Zustände: `default` Zeilen; `empty` „Noch kein Agent auf diesem Server eingerichtet.“; `loading` Skeleton-Zeile mit `aria-busy`; `selected` Bestätigung im `ActionConfirmDialog`-Muster (Warnrand links): „Zugang von Claude Code auf web01 entziehen? Der Agent verliert sofort den Zugriff.“ mit „Abbrechen“ / „Entziehen“; `error` Zeile bleibt, darunter „Entziehen fehlgeschlagen.“ (`--error`, `role="alert"`).
 - `partial` Entziehen ließ eine fremde Registrierung stehen: unter der Liste Hinweis in `--warning`: „Zugang entzogen. Die Registrierung auf web01 trägt den Key eines anderen Kontos und bleibt stehen.“ Datenquelle: Antwort von `DELETE /api/vault/agent-keys/:id` mit `registration === "foreign"`. Servername im Text = Server des Eintrags.
@@ -33,8 +34,9 @@ Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dial
 
 ### UI-AGENT-ACCESS-SETUP — Einrichten (neu)
 - `data-ui-id` am Formular.
-- Inhalt: zwei `Checkbox`en Claude Code und Codex (beide vorbelegt); Feld „Zusätzliche Adressbereiche“ (CIDR); primärer Button „Einrichten“ mit Hinweis `Ctrl+Enter`. Die IP-Bindung gehört nicht mehr zu SETUP, sondern ist `UI-AGENT-ACCESS-IPBIND`.
-- Datenquelle: lokaler Formularzustand; Absenden `POST /api/vault/agent-keys` mit `entryId`, Agentenauswahl, `agentUrl` (aus URL), Bindung (aus IPBIND), Bereichen.
+- Inhalt: drei `Checkbox`en Claude Code, Codex und Git (Rev. 16; Claude Code und Codex vorbelegt, Git nicht); darunter bei gesetztem Git der Hinweis `UI-AGENT-ACCESS-GIT-NOTE`; Feld „Zusätzliche Adressbereiche“ (CIDR); primärer Button „Einrichten“ mit Hinweis `Ctrl+Enter`. Die IP-Bindung gehört nicht mehr zu SETUP, sondern ist `UI-AGENT-ACCESS-IPBIND`.
+- Datenquelle: lokaler Formularzustand; Absenden `POST /api/vault/agent-keys` mit `entryId`, Agentenauswahl (`agentTypes` darf `"git"` enthalten, neben `"claude"` und `"codex"`), `agentUrl` (aus URL), Bindung (aus IPBIND), Bereichen.
+- Rev. 16: Git richtet in der globalen gitconfig des entfernten Benutzers den Git-Proxy von Outpost ein.
 - Zustände: `loading` alle Felder `disabled`, Button „Richte ein …“; `error` Feld in `--error`, darunter „Ungültiger Adressbereich.“ (`role="alert"`, `aria-invalid`); `disabled` Felder und Button `disabled`, nur der Button `disabled`, Hinweis „Outpost-Adresse für Agenten fehlt — hier eintragen oder in Einstellungen › Vault einen Standard setzen.“ — gilt, solange das Adressfeld (UI-AGENT-ACCESS-URL) leer oder ungültig ist; `Ctrl+Enter` tut dann nichts; `partial` Warnhinweis (`--warning`, Warnrand links) **vor** den Feldern und dem Einrichten-Knopf: „Für root auf web01 hat bereits ein anderes Konto Agenten-Zugang eingerichtet — die Registrierung wird ersetzt.“ Einrichten bleibt bedienbar. Datenquelle: Spec Schritt 7 (anderes Konto hat für denselben Server und entfernten Benutzer schon einen Agenten-Key); Benutzer ist der über `resolveIdentity(entry, null, null, accountId)` bestimmte entfernte Benutzer (Schritt 2). Name im Text = `remoteUser` und Servername.
 
 ### UI-AGENT-ACCESS-URL — Outpost-Adresse für diesen Server (neu in Rev. 15)
@@ -55,10 +57,18 @@ Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dial
 - `data-ui-id` am Ergebnis-Container; je Agent eine Zeile mit linkem 3-px-Rand (`--success` / `--error`).
 - Datenquelle: Antwort von `POST /api/vault/agent-keys`, je Agent eingerichtet oder Fehlergrund plus fertiger Befehl.
 - Zustände: `empty` „erscheint erst nach dem Einrichten“; `success` „Eingerichtet für root. Claude Code neu starten, dann /mcp.“ (`root` = `remoteUser` aus der Antwort von `POST /api/vault/agent-keys`, Spec Schritt 2); `error` z. B. „codex nicht gefunden. Befehl kopieren und auf dem Server ausführen.“ mit Befehl in `<pre>` und Button „Kopieren“ (`copyToClipboard`; Rückgabe `false` → Toast, kein Erfolg anzeigen — der Helfer deckt http ohne sicheren Kontext ab).
+- Rev. 16: Ergebniszeile für Git bei `success`: „Git eingerichtet für root: https://github.com läuft über Outpost.“ (`root` = `remoteUser`; die Adresse in `--type-mono`, Datenquelle: Antwort von `POST /api/vault/agent-keys` für den Agenten `git`). Bei Fehler gilt das `error`-Muster oben: Grund plus fertiger Befehl in `<pre>` mit „Kopieren“; ein Git-Key wird wie die anderen `pending` angelegt und durch Gelingen oder Kopieren bestätigt.
 - `partial` Registrierung ersetzt: unter dem Ergebnis von Claude Code Hinweis in `--warning`: „Bestehende Registrierung ersetzt — der alte Konto-Key bleibt gültig, bis du ihn unter API-Schlüssel löschst.“ Datenquelle: `replacedRegistration === true` in der Antwort von `POST /api/vault/agent-keys` für diesen Agenten.
 - Der Key steht nur hier, nur jetzt; Hinweis „Der Key ist nur jetzt sichtbar. Schließen ohne Übernahme löscht ihn.“ Der Key wird nie in KEYS, Toasts oder Logs gezeigt und nicht im State über das Schließen hinaus gehalten.
 - Pending/Confirm: `POST /api/vault/agent-keys` legt Keys als `pending` an. Sie werden endgültig, sobald die automatische Einrichtung gelingt (der Server bestätigt dann selbst) oder der Nutzer „Kopieren“ klickt (`copyToClipboard` liefert `true` → `POST /api/vault/agent-keys/:id/confirm`). Schließen des Dialogs ohne eines von beiden → `DELETE /api/vault/agent-keys/:id` für jeden noch offenen Key. Was `pending` bleibt (Absturz, Tab zu), löscht der Server nach 15 Minuten; ein `pending`-Key ist nirgends nutzbar.
 - Tokens: `--success` eingerichtet, `--error` fehlgeschlagen, sonst `--subtext`.
+
+### UI-AGENT-ACCESS-GIT-NOTE — Hinweis Git über SSH (neu in Rev. 16)
+- `data-ui-id` am Hinweis-Knoten im SETUP-Formular, direkt unter der Checkbox „Git“. Genau einmal; als `div`/`p` mit Info-Icon in `--subtext` (Muster der Hinweise unter den Feldern), kein `role="alert"`.
+- Sichtbar **nur, solange Git angehakt ist**; sonst nicht gerendert (kein Platzhalter, keine Lücke). Der Zustand hängt am Checkbox-Zustand von SETUP, nicht an einer Antwort.
+- Datenquelle: statisch (`static`), i18n `servers.agentAccess.gitNote`.
+- Zustände: `default` „Remotes per SSH (git@github.com:) gehen nicht über den Vault — auf HTTPS umstellen.“ (`git@github.com:` in `--type-mono`); `empty` nicht sichtbar, solange Git nicht ausgewählt ist.
+- Nicht: kein Fehler (`not: error`) und kein Einrichtungsergebnis (`not: agent_setup_result`); sperrt „Einrichten“ nicht.
 
 ## Datenquellen (Spec, Abschnitt REST-Endpunkte)
 - Beim Öffnen: `GET /api/vault/agent-keys?entryId=` → `keys`, `remoteUser`, `otherAccountConfigured` (Warnung `partial` von SETUP vor dem Einrichten).
@@ -75,8 +85,8 @@ Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dial
 ## i18n
 Schema des Bestands (`servers.contextMenu.*`, `servers.dialog.*`); zuerst `client/public/assets/locales/de_DE.json`, dann die übrigen Sprachdateien:
 - `servers.contextMenu.agentAccess` („Agenten-Zugang…“)
-- `servers.agentAccess.title`, `.keys.empty`, `.keys.revoke`, `.keys.revokeConfirm`, `.keys.revokeError`, `.setup.submit`, `.setup.loading`, `.setup.cidrLabel`, `.setup.cidrInvalid`, `.setup.urlLabel`, `.setup.urlInvalid`, `.setup.urlMissing`, `.ipBind.label`, `.ipBind.on`, `.ipBind.off`, `.result.empty`, `.result.success`, `.result.copy`, `.result.keyNotice`, `.setup.foreignAccount`, `.ipBind.seenOther`, `.ipBind.adopt`, `.ipBind.decline`, `.ipBind.trustProxy`
+- `servers.agentAccess.title`, `.keys.empty`, `.keys.revoke`, `.keys.revokeConfirm`, `.keys.revokeError`, `.setup.submit`, `.setup.loading`, `.setup.cidrLabel`, `.setup.cidrInvalid`, `.setup.urlLabel`, `.setup.urlInvalid`, `.setup.urlMissing`, `.ipBind.label`, `.ipBind.on`, `.ipBind.off`, `.result.empty`, `.result.success`, `.result.copy`, `.result.keyNotice`, `.setup.foreignAccount`, `.ipBind.seenOther`, `.ipBind.adopt`, `.ipBind.decline`, `.ipBind.trustProxy`, `.setup.git`, `.gitNote`, `.result.git`; außerdem `vault.agents.git` („Git“) im Bereich der Agentennamen
 - Copy-Strings aus dem Manifest wörtlich; Allgemeines (`common.close`, `common.error`) wiederverwenden.
 
 ## Fertig, wenn
-- Sechs Marker (`UI-AGENT-ACCESS`, `-KEYS`, `-SETUP`, `-URL`, `-IPBIND`, `-RESULT`) plus `UI-SERVERS-LIST-MENU` am Menüpunkt-Verhalten (nur SSH, nur Vault an); `/design-verify --screen UI-AGENT-ACCESS` MATCH.
+- Sieben Marker (`UI-AGENT-ACCESS`, `-KEYS`, `-SETUP`, `-URL`, `-IPBIND`, `-RESULT`, `-GIT-NOTE`) plus `UI-SERVERS-LIST-MENU` am Menüpunkt-Verhalten (nur SSH, nur Vault an); `/design-verify --screen UI-AGENT-ACCESS` MATCH.

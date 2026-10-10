@@ -1,6 +1,6 @@
 # Einstellungen › Konto › API-Schlüssel — Umsetzungsanleitung (UI-API-KEYS)
 
-Artboard: docs/design/mockups/ui-api-keys.html · Manifest-Revision: 14
+Artboard: docs/design/mockups/ui-api-keys.html · Manifest-Revision: 16
 
 Der Abschnitt „API-Schlüssel“ der Kontoseite existiert. Neu: die Liste zeigt nur noch `kind = account`, und darunter kommt ein zweiter Abschnitt mit den Agenten-Schlüsseln nach Server. Anlegen und Löschen eigener Schlüssel bleiben unverändert; `AddApiKeyDialog` wird nicht angefasst.
 
@@ -32,7 +32,8 @@ Der Abschnitt „API-Schlüssel“ der Kontoseite existiert. Neu: die Liste zeig
 - `empty`: „Noch kein Agenten-Zugang. Einrichten über das Kontextmenü eines Servers.“
 - `partial` Entziehen ließ eine fremde Registrierung stehen: Hinweis in `--warning` unter der Liste: „Zugang entzogen. Die Registrierung auf web01 trägt den Key eines anderen Kontos und bleibt stehen.“ Datenquelle: Antwort von `DELETE /api/vault/agent-keys/:id` mit `registration === "foreign"`.
 - `disabled` Registrierung nicht entfernbar: Hinweis in `--warning`: „Zugang entzogen. Die Registrierung konnte nicht entfernt werden — Befehl kopieren und auf dem Server ausführen.“, darunter der Entfernbefehl in `--type-mono` in einem Block mit Kopier-Knopf (z. B. `claude mcp remove --scope user outpost`). Datenquelle: Antwort von `DELETE /api/vault/agent-keys/:id` mit `registration === "unknown"` und `commands`.
-- Beschreibung im Kopf: Agenten-Schlüssel erreichen nur den MCP-Endpunkt.
+- Beschreibung im Kopf: Agenten-Schlüssel erreichen nur den MCP-Endpunkt. Rev. 16: Git-Schlüssel erreichen nur den Git-Proxy. Der Satz nennt beides, z. B. „Agenten-Schlüssel erreichen nur den MCP-Endpunkt, Git-Schlüssel nur den Git-Proxy.“ (`sectionDescription`).
+- Rev. 16 — Git-Zeilen: Ein Server kann neben Claude Code und Codex eine dritte Zeile mit Agent „Git“ haben (`agentType === "git"`, Beschriftung `vault.agents.git`); Beispiel der Gruppe: „web01 — Claude Code · Codex · Git“. Zuletzt genutzt, IP-Bindung und „Entziehen“ gelten unverändert; „Bearbeiten“ der Gruppe öffnet weiterhin denselben `UI-AGENT-ACCESS`.
 - Tokens: Gruppenrahmen `--dark-gray`, Entziehen `--error`, Hinweis „von überall“ `--warning` / `--warning-opacity`, IP in `--font-mono`.
 
 ## Ausdrücklich nicht

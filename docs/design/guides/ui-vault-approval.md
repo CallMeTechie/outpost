@@ -1,6 +1,6 @@
 # Freigabe-Karte — Umsetzungsanleitung (UI-VAULT-APPROVAL)
 
-Artboard: docs/design/mockups/ui-vault-approval.html · Manifest-Revision: 11
+Artboard: docs/design/mockups/ui-vault-approval.html · Manifest-Revision: 16
 
 Den Screen gibt es nicht. Neu: eine seitenübergreifende Karte, die offene Freigabe-Anfragen aus dem
 Zustandsstrom rendert und per `POST /api/vault/approvals/:id` beantwortet. Kein Toast, kein Dialog:
@@ -33,7 +33,7 @@ Zustandsstrom rendert und per `POST /api/vault/approvals/:id` beantwortet. Kein 
 ## Elemente — eins nach dem anderen
 ### UI-VAULT-APPROVAL-CARD — Freigabe angefordert (neu)
 - `data-ui-id="UI-VAULT-APPROVAL-CARD"` am äußeren Wrapper der Karte bzw. des Stapels — genau einmal im DOM, auch bei mehreren Anfragen (`cardinality: many` meint die Anfragen, nicht den Marker). Der Wrapper ist ein Portal nach `document.body`, damit `overflow` im `app-wrapper` ihn nicht beschneidet.
-- Datenquelle: offene Freigabe-Anfragen des Kontos über `registerHandler(STATE_TYPES.VAULT_APPROVALS, …)` (`StateStreamContext`), Form laut Spec `{ id, agentType, entryName, item, target, expiresAt }`. Die Restzeit kommt aus `expiresAt`, nicht aus einem eigenen 2-Minuten-Zähler. **Nicht** Toasts, Audit-Einträge oder Benachrichtigungen.
+- Datenquelle: offene Freigabe-Anfragen des Kontos über `registerHandler(STATE_TYPES.VAULT_APPROVALS, …)` (`StateStreamContext`), Form laut Spec `{ id, agentType, entryName, item, tool, target, access, expiresAt }`. Die Restzeit kommt aus `expiresAt`, nicht aus einem eigenen 2-Minuten-Zähler. **Nicht** Toasts, Audit-Einträge oder Benachrichtigungen.
 - Zustände:
   - `default` — eine offene Anfrage.
   - `empty` — Liste leer: Komponente rendert `null`, keine Karte, kein Platzhalter. Der Artboard-Rahmen dazu ist nur Darstellung.
@@ -41,6 +41,16 @@ Zustandsstrom rendert und per `POST /api/vault/approvals/:id` beantwortet. Kein 
   - `loading` — nach Klick, bis `POST` antwortet: „Antwort wird gesendet …“ (`vault.approval.sending`); alle drei Knöpfe `disabled`, gedimmt.
   - `error` — Anfrage abgelaufen: „Anfrage ist abgelaufen.“ (`vault.approval.expired`), Knöpfe `disabled`, Zeit „0:00“; nach fünf Sekunden verschwindet die Karte.
 - Tokens: Fläche `--lighter-background`, Primärknopf `--accent-color` / `--on-accent`, Balkengrund `--gray`.
+- Rev. 16 — Werkzeug und Ziel: Unter dem Eintrag steht eine Zeile in `--type-mono` mit Werkzeug und Ziel. Datenquelle sind die neuen Felder der Anfrage `tool`, `target` und `access`; die Form ist jetzt `{ id, agentType, entryName, item, tool, target, access, expiresAt }`. Beispiele: `vault_http` · `POST api.github.com/repos/o/r/issues`; `git` · `push github.com/o/r`; `browser_fill_secret` · `https://coolify.example.net`. `target` ist je Werkzeug anders aufgebaut (Methode mit Host und Pfad bei vault_http, Host und Repo bei Git, Ursprung beim Eintragen) und kommt fertig vom Server; der Client setzt es nicht zusammen. Beispielzeile der Karte: „Claude Code auf web01 · github-pat · POST api.github.com/repos/o/r/issues · 1:42“.
+- „Für diese Sitzung“ gilt getrennt für lesende und schreibende Zugriffe (`access`); eine Sitzungsfreigabe für Lesen gibt Schreiben nicht frei. Der Knopf bleibt unverändert beschriftet.
+
+### UI-VAULT-APPROVAL-WRITE — schreibt (neu in Rev. 16)
+- `data-ui-id="UI-VAULT-APPROVAL-WRITE"` am Abzeichen-Element (`span`) in der Kopfzeile der Karte, rechts neben „Freigabe angefordert“, **je Karte**, nicht am Stapel. Bei mehreren schreibenden Anfragen steht der Marker mehrfach im DOM, einmal pro Karte; er gehört in `VaultApprovalCard.jsx`.
+- Datenquelle: `access` der Anfrage; das Abzeichen wird nur gerendert, wenn `access === "write"` (POST, PUT, PATCH, DELETE, `git push`, Eintragen im Browser). Bei `read` nicht rendern, kein Platzhalter.
+- Aussehen: Icon `PenLine` (Lucide, `import { PenLine as IconPenLine } from "lucide-react"`, über `Icon`) und Text „schreibt“ (`vault.approval.write`); Schrift `--type-caption`, Farbe `--warning` auf Hintergrund `--warning-opacity`, Ecken `--radius-sm`, Innenabstand aus `--space-*`.
+- Zustände: `default` „schreibt“; `empty` nicht sichtbar bei lesendem Zugriff.
+- Nicht: kein `--error` und kein Toast-Stil (`not: error, warning_toast`); kein zusätzlicher Knopf und keine andere Beschriftung der Antworten. Das Abzeichen ist Information, keine Warnmeldung.
+
 
 ## Ausdrücklich nicht
 - Die Karte ist kein Toast und kein Dialog: keine Auto-Ausblendung der offenen Anfrage (nur der abgelaufenen Karte), kein Backdrop, kein Modal (`semantic_anchor.not`: notification, toast, error). `--warning` ist Randfarbe, die Karte ist keine Fehlermeldung.
@@ -51,7 +61,7 @@ Zustandsstrom rendert und per `POST /api/vault/approvals/:id` beantwortet. Kein 
 - Kein Zählen der 2 Minuten im Client als Wahrheit; der Server entscheidet (`vault.approval_timeout`).
 
 ## i18n
-Neuer Bereich `vault.approval.*` (Namensschema des Bestands: camelCase unter Bereichsschlüssel): `title`, `actions.once`, `actions.session`, `actions.deny`, `pending`, `sending`, `expired`. Zuerst `client/public/assets/locales/en.json` (Fallback), dann `de_DE.json`; die übrigen Sprachdateien folgen dem Bestandsverfahren.
+Neuer Bereich `vault.approval.*` (Namensschema des Bestands: camelCase unter Bereichsschlüssel): `title`, `actions.once`, `actions.session`, `actions.deny`, `pending`, `sending`, `expired`, `write`. Zuerst `client/public/assets/locales/en.json` (Fallback), dann `de_DE.json`; die übrigen Sprachdateien folgen dem Bestandsverfahren.
 
 ## Fertig, wenn
 - Marker auf Tier A; `/design-verify --screen UI-VAULT-APPROVAL` MATCH.

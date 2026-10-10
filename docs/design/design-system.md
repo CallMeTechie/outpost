@@ -176,7 +176,8 @@ Die neuen Schalter im Eintrag-Dialog sind ToggleSwitches in der Reihe „Nutzung
 durch Agenten“ unter den Angaben, je mit einer Zeile Beschriftung und einer Zeile
 `--subtext`; „Git-Benutzername“ erscheint als IconInput erst, wenn „Für Git nutzen“
 an ist. Die Origin-Liste „Darf im Browser eingetragen werden auf“ ist dieselbe
-Chip-Eingabe wie die Origins eines Logins. In der Detailansicht steht dieselbe
+Listen-Eingabe wie die Origins eines Logins (IconInput, Einträge durch Komma oder
+Leerzeichen getrennt); das Artboard zeigt die Einträge nur zur Lesbarkeit als Chips. In der Detailansicht steht dieselbe
 Gruppe als Region „Nutzung durch Agenten“ mit `--type-body`-Zeilen; aus = die
 Zeile fehlt, nicht „aus“.
 
