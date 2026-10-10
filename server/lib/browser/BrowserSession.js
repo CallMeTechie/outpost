@@ -226,7 +226,7 @@ class BrowserSession extends EventEmitter {
             this.agentSend("Accessibility.getFullAXTree"),
             vaultGuard.findPasswordFieldIds(this),
         ]);
-        const redactBackendIds = new Set([...passwordFieldIds, ...vaultGuard.filledNodeIds(this.contextKey)]);
+        const redactBackendIds = new Set([...passwordFieldIds, ...vaultGuard.filledNodeIds(this.contextKey, this.targetId)]);
         return buildSnapshot(nodes ?? [], this.refs, { redactBackendIds, redact: (text) => vaultGuard.redactText(this.contextKey, text) });
     }
 
@@ -346,7 +346,7 @@ class BrowserSession extends EventEmitter {
             case "Page.frameNavigated":
                 if (params.frame?.parentId) return;
                 this.refs.reset();
-                vaultGuard.noteNavigation(this.contextKey);
+                vaultGuard.noteNavigation(this.contextKey, this.targetId);
                 await this.#resumeScreencast();
                 return this.#refreshState();
             case "Page.navigatedWithinDocument":

@@ -9,7 +9,7 @@ const contexts = new Map();
 const aadOf = (contextKey) => `vault:ctx:${contextKey}`;
 
 const stateOf = (contextKey) => {
-    if (!contexts.has(contextKey)) contexts.set(contextKey, { tainted: false, filled: false, nodeIds: new Set(), copies: [] });
+    if (!contexts.has(contextKey)) contexts.set(contextKey, { tainted: false, filled: false, nodeIds: new Map(), copies: [] });
     return contexts.get(contextKey);
 };
 
@@ -25,7 +25,7 @@ const markTainted = (contextKey) => {
 
 const isTainted = (contextKey) => contexts.get(contextKey)?.tainted === true;
 
-const markFilled = (contextKey, { backendNodeIds, secret }) => {
+const markFilled = (contextKey, { backendNodeIds, secret, targetId = null }) => {
     // Checked in the same synchronous step as the marking, like assertEvaluateAllowed: no evaluate can slip in between.
     if (isTainted(contextKey))
         throw new VaultError(VaultErrorCode.SESSION_TAINTED);
@@ -33,12 +33,15 @@ const markFilled = (contextKey, { backendNodeIds, secret }) => {
     const state = stateOf(contextKey);
     state.filled = true;
     state.copies.push(copy);
-    for (const id of backendNodeIds) state.nodeIds.add(id);
+    if (!state.nodeIds.has(targetId)) state.nodeIds.set(targetId, new Set());
+    for (const id of backendNodeIds) state.nodeIds.get(targetId).add(id);
 };
 
 const isFilled = (contextKey) => contexts.get(contextKey)?.filled === true;
 
-const filledNodeIds = (contextKey) => [...(contexts.get(contextKey)?.nodeIds ?? [])];
+// backendNodeIds only mean something in the target they were filled in; entries without a target apply to every session.
+const filledNodeIds = (contextKey, targetId = null) =>
+    [...(contexts.get(contextKey)?.nodeIds.get(targetId) ?? []), ...(targetId === null ? [] : contexts.get(contextKey)?.nodeIds.get(null) ?? [])];
 
 // document.title and innerText collapse runs of whitespace, so the value can show up in that form too.
 const lowerHex = (encoded) => encoded.replace(/%[0-9A-F]{2}/g, (m) => m.toLowerCase());
@@ -69,8 +72,9 @@ const redactText = (contextKeys, text) => {
     return result;
 };
 
-const noteNavigation = (contextKey) => {
-    contexts.get(contextKey)?.nodeIds.clear();
+const noteNavigation = (contextKey, targetId) => {
+    contexts.get(contextKey)?.nodeIds.delete(targetId);
+    contexts.get(contextKey)?.nodeIds.delete(null);
 };
 
 const forgetContext = (contextKey) => {
@@ -84,7 +88,10 @@ const assertEvaluateAllowed = (session) => {
 };
 
 const assertScreenshotAllowed = async (session) => {
-    for (const backendNodeId of filledNodeIds(session.contextKey)) {
+    // Nodes filled in another session cannot be inspected from here, so they keep this one locked.
+    for (const [targetId, ids] of contexts.get(session.contextKey)?.nodeIds ?? [])
+        if (targetId !== null && targetId !== session.targetId && ids.size > 0) throw new VaultError(VaultErrorCode.SCREENSHOT_LOCKED);
+    for (const backendNodeId of filledNodeIds(session.contextKey, session.targetId)) {
         let node;
         try {
             ({ node } = await session.agentSend("DOM.describeNode", { backendNodeId }));

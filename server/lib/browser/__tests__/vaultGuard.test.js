@@ -274,14 +274,19 @@ test("secrets with quotes, backslashes, a clip boundary or a shorter sibling are
 });
 
 test("a filled node that vanished (Show password swaps the input) keeps screenshots locked until the main frame navigates", async () => {
-    const { tools, page, instances, agent, text, openSession } = setup();
+    const { tools, page, instances, agent, text, openSession, openPopup } = setup();
     const session = await openSession(agent("T"));
-    vaultGuard.markFilled(session.contextKey, { backendNodeIds: [33], secret: SECRET });
+    const popup = await openPopup(session, "POP");
+    vaultGuard.markFilled(session.contextKey, { backendNodeIds: [33], secret: SECRET, targetId: session.targetId });
     page.dom = [input(31, "text"), input(32, "password"), input(34, "text")];
 
     const refused = await tools.call("browser_screenshot", {}, agent("T"));
     assert.strictEqual(refused.isError, true);
     assert.match(text(refused), /browser_screenshot is locked/);
+
+    instances[0].emitEvent("Page.frameNavigated", { frame: { id: popup.targetId, url: "https://login.test/popup" } }, popup.cdpSessionId);
+    await flush();
+    assert.strictEqual((await tools.call("browser_screenshot", {}, agent("T"))).isError, true, "another session navigating unlocks nothing");
 
     instances[0].emitEvent("Page.frameNavigated", { frame: { id: session.targetId, url: "https://login.test/next" } }, session.cdpSessionId);
     await flush();
