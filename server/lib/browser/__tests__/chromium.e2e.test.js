@@ -296,13 +296,13 @@ test("against a real Chromium: browser_fill_credential fills a matching origin a
         const own = await open(`${bases.a}/login`);
         let snapshot = await snapshotOf(own);
         const filled = await fill(own, { usernameRef: refOf(snapshot, 'textbox "User"'), passwordRef: refOf(snapshot, 'textbox "Password"') });
-        assert.strictEqual(text(filled), "Benutzername und Passwort von e2e-login eingetragen.");
+        assert.strictEqual(text(filled), "Filled username and password of e2e-login.");
         assert.deepStrictEqual([await valueIn(own, "document.querySelector('[name=user]').value"), await valueIn(own, PASS)], ["ada", SECRET]);
         await pool.close(own.id, "test");
 
         const framed = await open(`${bases.a}/framed-self`);
         const inFrame = await fill(framed, { passwordRef: await refInDocument(framed, `${bases.a}/login`, "pass") });
-        assert.strictEqual(text(inFrame), "Passwort von e2e-login eingetragen.", "the focus check follows the focus into a frame of the same origin");
+        assert.strictEqual(text(inFrame), "Filled password of e2e-login.", "the focus check follows the focus into a frame of the same origin");
         assert.strictEqual(await valueIn(framed, "document.querySelector('iframe').contentDocument.getElementById('pass').value"), SECRET);
         await pool.close(framed.id, "test");
 

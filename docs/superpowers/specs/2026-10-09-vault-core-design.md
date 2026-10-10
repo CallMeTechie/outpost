@@ -266,7 +266,7 @@ Prüfungen in dieser Reihenfolge, jede bricht mit eigenem Fehler ab:
 
 Ausfüllen: `readSecret(item, "password")`, Fokus über die Referenz. Unmittelbar vor `Input.insertText` wird geprüft, ob das fokussierte Element (durch Shadow-Roots hindurch) das Ziel ist (`backendNodeId`); sonst `vault.focus_lost` ohne Eingabe. Dann `Input.insertText` wie
 `browser_type`; beim Benutzernamen vorher Feld leeren. Antwort an den Agenten nur
-„Benutzername und Passwort von `<item>` eingetragen.“ Klartext erscheint nie in Antwort,
+„Filled username and password of `<item>`." Klartext erscheint nie in Antwort,
 Log oder Audit.
 
 ### Folgen für die Browser-Sitzung

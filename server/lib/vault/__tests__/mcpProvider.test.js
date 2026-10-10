@@ -154,7 +154,7 @@ test("an approval answered after more than 90 s still fills: the wait runs outsi
     env.approvals.open[0].answer("once");
     const result = await pending;
 
-    assert.strictEqual(env.text(result), "Benutzername und Passwort von github eingetragen.");
+    assert.strictEqual(env.text(result), "Filled username and password of github.");
     assert.deepStrictEqual(env.typed(), ["ada", SECRET]);
     assert.ok(vaultGuard.isFilled(env.session.contextKey));
     assert.deepStrictEqual(env.vaultAudit().map((entry) => [entry.action, entry.details.code]),
@@ -169,7 +169,7 @@ test("an approval answered after more than 90 s still fills: the wait runs outsi
     const impersonated = env.provider.call(FILL, { item: "github", passwordRef: "e1" }, { ...env.ctx("B"), impersonatorId: 7 });
     await until(() => env.approvals.open.length === 1);
     env.approvals.open[0].answer("once");
-    assert.strictEqual(env.text(await impersonated), "Passwort von github eingetragen.", "an impersonated call waits for the user even where the entry needs no approval");
+    assert.strictEqual(env.text(await impersonated), "Filled password of github.", "an impersonated call waits for the user even where the entry needs no approval");
 });
 
 test("after the approval every check runs again with the entry as it is now; a failure types nothing and is audited after_approval", async () => {

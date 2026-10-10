@@ -14,6 +14,7 @@ const { validateBindings, setBindings } = require("../lib/vault/bindings");
 const { readSecret, writeSecret, clearSecrets, isUnreadable } = require("../lib/vault/secrets");
 const { VaultError, VaultErrorCode } = require("../lib/vault/errors");
 const { SECRET_FIELDS, updateVaultItemSchema } = require("../validations/vault");
+const db = require("../utils/database");
 const logger = require("../utils/logger");
 
 const NOT_FOUND = { code: 404, message: "Vault entry not found" };
@@ -119,19 +120,16 @@ module.exports.createItem = async (caller, body) => {
 
     let item;
     try {
-        item = await VaultItem.create({
-            ...owner, name, type, description: description || null, fields, approvalRequired, allServers, createdBy: caller.accountId,
+        item = await db.transaction(async (transaction) => {
+            const created = await VaultItem.create({
+                ...owner, name, type, description: description || null, fields, approvalRequired, allServers, createdBy: caller.accountId,
+            }, { transaction });
+            for (const [field, value] of Object.entries(secrets)) await writeSecret(created.id, field, value, { transaction });
+            await setBindings(created.id, bindings, { transaction });
+            return created;
         });
     } catch (error) {
         if (error.name === "SequelizeUniqueConstraintError") return NAME_TAKEN;
-        throw error;
-    }
-    try {
-        for (const [field, value] of Object.entries(secrets)) await writeSecret(item.id, field, value);
-        await setBindings(item.id, bindings);
-    } catch (error) {
-        await removeItem(item.id).catch((cleanupError) =>
-            logger.error("Could not remove a half-created vault entry", { itemId: item.id, error: cleanupError.message }));
         throw error;
     }
     await audit(caller, item, AUDIT_ACTIONS.VAULT_ITEM_CREATE, { name, secretFields: Object.keys(secrets) });
@@ -154,23 +152,23 @@ module.exports.updateItem = async (caller, id, body) => {
     // A new target with the old value would let vault.manage without vault.reveal send an
     // organization's password to a page of their choosing.
     const secretsCleared = value.fields !== undefined && targetOf(item.type, value.fields) !== targetOf(item.type, item.fields);
-    if (secretsCleared) await clearSecrets(item.id);
     const changes = Object.fromEntries(ITEM_COLUMNS.filter((column) => value[column] !== undefined).map((column) => [column, value[column]]));
     if (changes.description === "") changes.description = null;
-    if (Object.keys(changes).length) {
-        try {
-            await VaultItem.update(changes, { where: { id: item.id } });
-        } catch (error) {
-            if (error.name === "SequelizeUniqueConstraintError") return NAME_TAKEN;
-            throw error;
-        }
+    try {
+        await db.transaction(async (transaction) => {
+            if (Object.keys(changes).length) await VaultItem.update(changes, { where: { id: item.id }, transaction });
+            if (secretsCleared) await clearSecrets(item.id, { transaction });
+            for (const [field, secret] of Object.entries(value.secrets ?? {})) await writeSecret(item.id, field, secret, { transaction });
+            // "For this session" grants are stamped with updatedAt (approvals.js), so a new value has to move it.
+            // Model.update skips a change that touches only updatedAt.
+            if (Object.keys(value.secrets ?? {}).length)
+                await VaultItem.sequelize.getQueryInterface().bulkUpdate(VaultItem.getTableName(), { updatedAt: new Date() }, { id: item.id }, { transaction }, VaultItem.getAttributes());
+            if (value.bindings) await setBindings(item.id, value.bindings, { transaction });
+        });
+    } catch (error) {
+        if (error.name === "SequelizeUniqueConstraintError") return NAME_TAKEN;
+        throw error;
     }
-    for (const [field, secret] of Object.entries(value.secrets ?? {})) await writeSecret(item.id, field, secret);
-    // "For this session" grants are stamped with updatedAt (approvals.js), so a new value has to move it.
-    // Model.update skips a change that touches only updatedAt.
-    if (Object.keys(value.secrets ?? {}).length)
-        await VaultItem.sequelize.getQueryInterface().bulkUpdate(VaultItem.getTableName(), { updatedAt: new Date() }, { id: item.id }, {}, VaultItem.getAttributes());
-    if (value.bindings) await setBindings(item.id, value.bindings);
 
     await audit(caller, item, AUDIT_ACTIONS.VAULT_ITEM_UPDATE, {
         name: value.name ?? item.name,

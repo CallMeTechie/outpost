@@ -29,6 +29,8 @@ const endpoint = (agentUrl, path) => `${agentUrl.replace(/\/+$/, "")}${path}`;
 const outputLines = (stdout) => String(stdout ?? "").split(/\r?\n/).map((line) => line.trim());
 const cidrsOf = (value) => (Array.isArray(value) ? value : []);
 const expired = (key, now) => now - new Date(key.createdAt).getTime() > PENDING_TTL_MS;
+const manualCommand = (agentType, agentUrl, token) =>
+    ` ${provision.setupCommand({ agentType, cliPath: agentType, url: endpoint(agentUrl, "/api/mcp"), key: token })}`;
 
 const serialize = (key, entryNames) => ({
     id: key.id,
@@ -102,8 +104,7 @@ const setupAgent = async ({ accountId, entry, identity, agentUrl, key, token }) 
     const keyPrefix = keyPrefixOf(key);
     const keyFile = `key-${key.id}-${crypto.randomBytes(8).toString("hex")}`;
     const manual = (reason, probe = null, replacedRegistration = false) => ({
-        status: "manual", reason, probe, replacedRegistration,
-        command: ` ${provision.setupCommand({ agentType: key.agentType, cliPath: key.agentType, url, key: token })}`,
+        status: "manual", reason, probe, replacedRegistration, command: manualCommand(key.agentType, agentUrl, token),
     });
     if (!identity) return manual("exec_failed");
 
@@ -144,8 +145,8 @@ const setupAgent = async ({ accountId, entry, identity, agentUrl, key, token }) 
     }
 };
 
-const setupOne = async ({ accountId, entry, identity, organizationId, agentUrl, agentType, ipBinding, allowedCidrs, context }) => {
-    const token = generateToken();
+const setupOne = async ({ accountId, entry, identity, organizationId, agentUrl, attempt, ipBinding, allowedCidrs, context }) => {
+    const { agentType, token } = attempt;
     const remoteUser = identity?.username || null;
     const key = await ApiKey.create({
         accountId, name: `${agentType}@${entry.name}`, tokenHash: hashToken(token),
@@ -153,12 +154,18 @@ const setupOne = async ({ accountId, entry, identity, organizationId, agentUrl, 
         entryId: entry.id, agentType, ipBinding, allowedCidrs: allowedCidrs.length > 0 ? allowedCidrs : null,
         identityId: identity?.id ?? null, remoteUser,
     });
-    await createAuditLog({
-        accountId, organizationId, action: AUDIT_ACTIONS.VAULT_AGENT_KEY_CREATE,
-        resource: RESOURCE_TYPES.VAULT, resourceId: null,
-        details: { keyId: key.id, agentType, entryId: entry.id, entryName: entry.name, remoteUser, ipBinding },
-        ...context,
-    });
+    try {
+        await createAuditLog({
+            accountId, organizationId, action: AUDIT_ACTIONS.VAULT_AGENT_KEY_CREATE,
+            resource: RESOURCE_TYPES.VAULT, resourceId: null,
+            details: { keyId: key.id, agentType, entryId: entry.id, entryName: entry.name, remoteUser, ipBinding },
+            ...context,
+        });
+    } catch (err) {
+        await ApiKey.destroy({ where: { id: key.id } });
+        throw err;
+    }
+    attempt.key = key;
 
     const outcome = await setupAgent({ accountId, entry, identity, agentUrl, key, token });
     if (outcome.status === "configured") await finalize(key, entry, context);
@@ -180,7 +187,18 @@ const createAgentKeys = async ({ accountId, entryId, agentTypes, ipBinding = tru
         const identity = await remoteIdentity(entry, accountId);
         const organizationId = (await resolveEntryScope(entry)).organizationId ?? null;
         const shared = { accountId, entry, identity, organizationId, agentUrl, ipBinding, allowedCidrs, context: { ipAddress, userAgent } };
-        return { results: await Promise.all(agentTypes.map((agentType) => setupOne({ ...shared, agentType }))) };
+        const attempts = agentTypes.map((agentType) => ({ agentType, token: generateToken(), key: null }));
+        const settled = await Promise.allSettled(attempts.map((attempt) => setupOne({ ...shared, attempt })));
+        return { results: settled.map(({ status, value, reason }, i) => {
+            if (status === "fulfilled") return value;
+            const { agentType, token, key } = attempts[i];
+            logger.warn("Agent setup failed", { entryId: entry.id, agentType, error: reason?.name });
+            return {
+                id: key?.id ?? null, agentType, remoteUser: identity?.username || null,
+                status: "manual", reason: "exec_failed", probe: null, replacedRegistration: false,
+                ...(key ? { command: manualCommand(agentType, agentUrl, token) } : {}),
+            };
+        }) };
     } finally {
         setupsInFlight.delete(entry.id);
     }

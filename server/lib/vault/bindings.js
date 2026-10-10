@@ -5,10 +5,10 @@ const Entry = require("../../models/Entry");
 const Tag = require("../../models/Tag");
 const { validateFolderAccess } = require("../../utils/permission");
 
-const removeBindings = async (kind, ids) => {
+const removeBindings = async (kind, ids, { transaction } = {}) => {
     const targetIds = (ids ?? []).filter((id) => id !== null && id !== undefined);
     if (!targetIds.length) return 0;
-    return VaultBinding.destroy({ where: { kind, targetId: { [Op.in]: targetIds } } });
+    return VaultBinding.destroy({ where: { kind, targetId: { [Op.in]: targetIds } }, transaction });
 };
 
 const bindingProblem = async ({ accountId, organizationId }, { kind, targetId }) => {
@@ -46,14 +46,15 @@ const validateBindings = async ({ accountId, organizationId = null }, bindings =
     return { valid: true };
 };
 
-const setBindings = async (itemId, bindings = []) => {
+const setBindings = async (itemId, bindings = [], { transaction: outer } = {}) => {
     const rows = new Map();
     for (const { kind, targetId } of bindings) rows.set(`${kind}:${Number(targetId)}`, { itemId, kind, targetId: Number(targetId) });
 
-    await db.transaction(async (transaction) => {
+    const replace = async (transaction) => {
         await VaultBinding.destroy({ where: { itemId }, transaction });
         if (rows.size) await VaultBinding.bulkCreate([...rows.values()], { transaction });
-    });
+    };
+    await (outer ? replace(outer) : db.transaction(replace));
 };
 
 module.exports = { removeBindings, validateBindings, setBindings };

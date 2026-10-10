@@ -63,9 +63,16 @@ const auditUrl = (raw) => {
     }
 };
 // Each line is checked against its own session's context, whichever caller asks for the list.
-const formatSessions = (sessions, pool) => sessions
-    .map((s) => vaultGuard.redactText(pool.get(s.id)?.contextKey ?? [], `- ${s.id}  ${s.title || "(untitled)"}  ${s.url}`))
-    .join("\n");
+const formatSessions = (sessions, pool) => {
+    const redactors = new Map();
+    const redactorOf = (contextKey) => {
+        if (!redactors.has(contextKey)) redactors.set(contextKey, vaultGuard.redactorFor(contextKey ?? []));
+        return redactors.get(contextKey);
+    };
+    return sessions
+        .map((s) => redactorOf(pool.get(s.id)?.contextKey)(`- ${s.id}  ${s.title || "(untitled)"}  ${s.url}`))
+        .join("\n");
+};
 const errorResult = (err, pool) => {
     const list = err.details?.sessions?.length ? `\nOpen sessions:\n${formatSessions(err.details.sessions, pool)}` : "";
     const code = err instanceof VaultError ? ` (${err.code})` : "";
@@ -85,16 +92,19 @@ const LOCK_AUDIT = Object.freeze({
 
 const defaultAudit = (entry) => require("../../controllers/audit").createAuditLog(entry);
 
-const recordBrowserAudit = (audit, ctx, session, action, details) => audit({
-    accountId: ctx.accountId,
-    organizationId: session.organizationId ?? null,
-    action,
-    resource: "browser",
-    details: Object.fromEntries(Object.entries({ url: auditUrl(session.state.url), sessionId: session.id, ...details })
-        .map(([key, value]) => [key, vaultGuard.redactText(session.contextKey, value)])),
-    ipAddress: ctx.ipAddress ?? null,
-    userAgent: ctx.userAgent ?? null,
-});
+const recordBrowserAudit = (audit, ctx, session, action, details) => {
+    const redact = vaultGuard.redactorFor(session.contextKey);
+    return audit({
+        accountId: ctx.accountId,
+        organizationId: session.organizationId ?? null,
+        action,
+        resource: "browser",
+        details: Object.fromEntries(Object.entries({ url: auditUrl(session.state.url), sessionId: session.id, ...details })
+            .map(([key, value]) => [key, redact(value)])),
+        ipAddress: ctx.ipAddress ?? null,
+        userAgent: ctx.userAgent ?? null,
+    });
+};
 
 const callerOf = (ctx) => {
     if (!ctx.agent) return { accountId: ctx.accountId, keyId: null };
