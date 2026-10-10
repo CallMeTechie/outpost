@@ -6,6 +6,7 @@ const Entry = require("../models/Entry");
 const { hasOrganizationAccess, hasOrganizationPermission, hasAccountPermission, validateFolderAccess } = require("../utils/permission");
 const { Permission } = require("../permissions/registry");
 const { getProvider, entryKey } = require("../lib/hypervisors");
+const { removeBindings } = require("../lib/vault/bindings");
 
 const validateIntegrationAccess = async (accountId, integration, requiredPermission = null) => {
     if (!integration) return { valid: false, error: { code: 401, message: "Integration does not exist" } };
@@ -165,11 +166,13 @@ const reconcileIntegration = async (integration, ownerAccountId = null) => {
         (entry) => !seenEntryIds.has(entry.id) && !unreachableFolderIds.has(entry.folderId),
     );
     if (staleEntries.length > 0) {
+        await removeBindings("entry", staleEntries.map((entry) => entry.id));
         await Entry.destroy({ where: { id: staleEntries.map((entry) => entry.id) } });
     }
 
     const staleFolders = nodeFolders.filter((folder) => !seenFolderIds.has(folder.id));
     if (staleFolders.length > 0) {
+        await removeBindings("folder", staleFolders.map((folder) => folder.id));
         await Folder.destroy({ where: { id: staleFolders.map((folder) => folder.id) } });
     }
 
@@ -267,6 +270,11 @@ module.exports.deleteIntegration = async (accountId, integrationId) => {
     const accessCheck = await validateIntegrationAccess(accountId, integration, Permission.RESOURCES_MANAGE);
 
     if (!accessCheck.valid) return accessCheck.error;
+
+    const entryIds = (await Entry.findAll({ where: { integrationId }, attributes: ["id"] })).map((entry) => entry.id);
+    const folderIds = (await Folder.findAll({ where: { integrationId }, attributes: ["id"] })).map((folder) => folder.id);
+    await removeBindings("entry", entryIds);
+    await removeBindings("folder", folderIds);
 
     await Entry.destroy({ where: { integrationId } });
     await Folder.destroy({ where: { integrationId } });

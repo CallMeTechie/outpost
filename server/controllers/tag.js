@@ -5,6 +5,7 @@ const { validateEntryAccess } = require("./entry");
 const { hasAccountPermission } = require("../utils/permission");
 const { Permission } = require("../permissions/registry");
 const { Op } = require("sequelize");
+const { removeBindings } = require("../lib/vault/bindings");
 
 const canManageTags = (accountId) => hasAccountPermission(accountId, Permission.RESOURCES_MANAGE);
 
@@ -54,6 +55,7 @@ module.exports.deleteTag = async (accountId, tagId) => {
 
     await EntryTag.destroy({ where: { tagId } });
 
+    await removeBindings("tag", [tag.id]);
     await Tag.destroy({ where: { id: tagId } });
 
     return { success: true };
