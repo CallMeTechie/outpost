@@ -37,6 +37,9 @@
 	.v-cell > .v-state { min-height: 3.5rem; padding: var(--space-3); }
 	.v-cell.flush > .v-state { padding: 0; }
 	.v-cap { font: var(--type-caption); color: var(--subtext); padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--gray); background: var(--background); }
+	.v-usage { display: flex; flex-direction: column; gap: var(--space-1); font: var(--type-body); }
+	.v-usage .v-mono { font: var(--type-mono); }
+	.v-usage .sub { color: var(--subtext); }
 	.v-cap code { font-family: var(--font-mono); color: var(--text); }
 
 	/* Seite */
@@ -296,6 +299,12 @@
 			<div class="v-cap"><code>UI-VAULT-DETAIL-POLICY</code> · Freigabe erforderlich</div>
 			<section class="v-state" data-ui-state="default"><div class="v-policy"><svg class="v-ico"><use href="#i-shield"/></svg>Freigabe erforderlich · zuletzt genutzt vor 2 Stunden</div></section>
 			<section class="v-state" data-ui-state="disabled"><div class="v-policy off">Ohne Freigabe nutzbar</div></section>
+		</div>
+
+		<div class="v-cell" data-ui-id="UI-VAULT-DETAIL-USAGE">
+			<div class="v-cap"><code>UI-VAULT-DETAIL-USAGE</code> · region · Nutzung durch Agenten · nur bei API-Key und Sonstiges sichtbar</div>
+			<section class="v-state" data-ui-state="default"><div class="v-usage"><div>Nur lesen</div><div>Git · Benutzername x-access-token</div><div>Eintragen auf <span class="v-mono">https://coolify.example.net</span></div></div></section>
+			<section class="v-state" data-ui-state="empty"><div class="v-usage"><div class="sub">vault_http über https</div></div></section>
 		</div>
 
 	</div>

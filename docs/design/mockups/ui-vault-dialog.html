@@ -154,6 +154,9 @@
 	.sketch { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-4); }
 	.sketch .fieldset { align-content: start; }
 	.loading { opacity: .8; }
+	.stack-sm { display: grid; gap: 2px; }
+	.usage-group { display: grid; gap: var(--space-3); }
+	.usage-title { font: var(--type-heading); color: var(--text); padding-top: var(--space-2); border-top: 1px solid var(--gray); }
 	.stack { display: grid; gap: var(--space-3); }
 </style>
 </head>
@@ -223,6 +226,40 @@
 				<header><code>UI-VAULT-DIALOG-APPROVAL</code><span class="type">toggle</span><span>Freigabe erforderlich — Standard an</span></header>
 				<section data-ui-state="default"><div class="row"><span>Freigabe erforderlich</span><span class="toggle" role="switch" aria-checked="false" aria-label="Freigabe erforderlich"></span></div></section>
 				<section data-ui-state="selected"><div class="row"><span>Freigabe erforderlich</span><span class="toggle on" role="switch" aria-checked="true" aria-label="Freigabe erforderlich"></span></div></section>
+			</div>
+
+			<div class="usage-group" role="group" aria-label="Nutzung durch Agenten">
+			<div class="usage-title">Nutzung durch Agenten</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-READONLY">
+				<header><code>UI-VAULT-DIALOG-READONLY</code><span class="type">toggle</span><span>Nur lesen</span></header>
+				<span class="help">Erscheint nur bei Typ API-Key.</span>
+				<section data-ui-state="default"><div class="row"><span class="stack-sm"><span>Nur lesen</span><span class="help">aus</span></span><span class="toggle" role="switch" aria-checked="false" aria-label="Nur lesen"></span></div></section>
+				<section data-ui-state="selected"><div class="row"><span class="stack-sm"><span>Nur lesen</span><span class="help">an — nur lesen</span></span><span class="toggle on" role="switch" aria-checked="true" aria-label="Nur lesen"></span></div></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-HTTP">
+				<header><code>UI-VAULT-DIALOG-HTTP</code><span class="type">toggle</span><span>Unverschlüsseltes HTTP erlauben</span></header>
+				<span class="help">Erscheint nur bei Typ API-Key.</span>
+				<section data-ui-state="default"><div class="row"><span class="stack-sm"><span>Unverschlüsseltes HTTP erlauben</span><span class="help">aus — nur https</span></span><span class="toggle" role="switch" aria-checked="false" aria-label="Unverschlüsseltes HTTP erlauben"></span></div></section>
+				<section data-ui-state="selected"><div class="row"><span class="stack-sm"><span>Unverschlüsseltes HTTP erlauben</span><span class="help warn">an — der Token geht unverschlüsselt über das Netz</span></span><span class="toggle on" role="switch" aria-checked="true" aria-label="Unverschlüsseltes HTTP erlauben"></span></div></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-GIT">
+				<header><code>UI-VAULT-DIALOG-GIT</code><span class="type">toggle</span><span>Für Git nutzen</span></header>
+				<span class="help">Erscheint nur bei Typ API-Key. „Git-Benutzername“ erscheint erst, wenn der Schalter an ist.</span>
+				<section data-ui-state="default"><div class="row"><span class="stack-sm"><span>Für Git nutzen</span><span class="help">aus</span></span><span class="toggle" role="switch" aria-checked="false" aria-label="Für Git nutzen"></span></div></section>
+				<section data-ui-state="selected"><div class="row"><span class="stack-sm"><span>Für Git nutzen</span><span class="help">an · Git-Benutzername x-access-token</span></span><span class="toggle on" role="switch" aria-checked="true" aria-label="Für Git nutzen"></span></div><div class="field"><label for="g-user">Git-Benutzername</label><input class="input mono" id="g-user" value="x-access-token"></div></section>
+				<section data-ui-state="error"><div class="row"><span class="stack-sm"><span>Für Git nutzen</span><span class="help">an</span></span><span class="toggle on" role="switch" aria-checked="true" aria-label="Für Git nutzen"></span></div><div class="field"><label for="g-user-e">Git-Benutzername</label><input class="input mono is-error" id="g-user-e" value="" aria-invalid="true"><span class="help error" role="alert">Git-Benutzername fehlt.</span></div></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-FILL">
+				<header><code>UI-VAULT-DIALOG-FILL</code><span class="type">field</span><span>Darf im Browser eingetragen werden auf</span></header>
+				<span class="help">Erscheint bei Typ API-Key und Sonstiges.</span>
+				<section data-ui-state="default"><div class="field"><span class="label">Darf im Browser eingetragen werden auf</span><div class="chips"><span class="chip sel">https://coolify.example.net</span><span class="chip add">+ Origin</span></div></div></section>
+				<section data-ui-state="empty"><div class="field"><span class="label">Darf im Browser eingetragen werden auf</span><div class="chips"><span class="chip add">+ Origin</span></div><span class="help">Nirgends — nur für vault_http und Git</span></div></section>
+				<section data-ui-state="error"><div class="field"><span class="label">Darf im Browser eingetragen werden auf</span><div class="chips"><span class="chip sel" style="box-shadow: inset 0 0 0 1px var(--error); background: var(--error-opacity)">coolify</span><span class="chip add">+ Origin</span></div><span class="help error" role="alert">Keine gültige Origin (scheme://host[:port]).</span></div></section>
+			</div>
 			</div>
 
 </div>

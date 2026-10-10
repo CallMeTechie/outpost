@@ -1,6 +1,6 @@
 schema: mockingbird/1
 project: outpost
-revision: 15
+revision: 16
 updated: 2026-10-10
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
@@ -61,6 +61,10 @@ changelog:
     date: 2026-10-10
     summary: Agenten-Adresse je Server im Agenten-Zugang, Standard der IP-Bindung in den Einstellungen, leere Agenten-Adresse mit der Browser-Adresse vorbelegt
     touched: [UI-AGENT-ACCESS-URL, UI-AGENT-ACCESS-SETUP, UI-AGENT-ACCESS-IPBIND, UI-VAULT-SETTINGS-URL, UI-VAULT-SETTINGS-IPBIND]
+  - rev: 16
+    date: 2026-10-10
+    summary: Vault Teilprojekt 2a (Tokens) — Nutzung durch Agenten im Eintrag (nur lesen, HTTP, Git, Eintragen im Browser), Werkzeug und Abzeichen „schreibt“ auf der Freigabe-Karte, Eintragen auf jeder Seite in den Einstellungen, Git als dritter Agent
+    touched: [UI-VAULT-DIALOG-READONLY, UI-VAULT-DIALOG-HTTP, UI-VAULT-DIALOG-GIT, UI-VAULT-DIALOG-FILL, UI-VAULT-DETAIL-USAGE, UI-VAULT-APPROVAL-CARD, UI-VAULT-APPROVAL-WRITE, UI-VAULT-SETTINGS-FILLANY, UI-AGENT-ACCESS-SETUP, UI-AGENT-ACCESS-RESULT, UI-AGENT-ACCESS-KEYS, UI-AGENT-ACCESS-GIT-NOTE, UI-API-KEYS-AGENTS]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -1138,6 +1142,27 @@ screens:
         locators:
           web: "[data-ui-id='UI-VAULT-DETAIL-POLICY']"
 
+      - id: UI-VAULT-DETAIL-USAGE
+        type: region
+        label: Nutzung durch Agenten
+        status: required
+        verify: required
+        data_source: "fields.readOnly, allowHttp, git, gitUsername, fillOrigins des Eintrags"
+        semantic_anchor:
+          means: >
+            Was Agenten mit diesem Wert tun dürfen: nur lesen, auch über http, für Git (mit Benutzername),
+            Eintragen im Browser auf den genannten Origins. Ausgeschaltetes fehlt als Zeile. Nur bei API-Key
+            und Sonstiges sichtbar.
+          concept: agent_use_policy
+          not: [vault_binding, approval_policy, permission]
+          example: "Nur lesen · Git (x-access-token) · Eintragen auf https://coolify.example.net"
+          empty_means: Nur vault_http über https, lesend und schreibend.
+        states:
+          - { id: default }
+          - { id: empty, copy: "vault_http über https" }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DETAIL-USAGE']"
+
   - id: UI-VAULT-DIALOG
     kind: dialog
     title: Eintrag anlegen / bearbeiten
@@ -1250,6 +1275,85 @@ screens:
         locators:
           web: "[data-ui-id='UI-VAULT-DIALOG-APPROVAL']"
 
+      - id: UI-VAULT-DIALOG-READONLY
+        type: toggle
+        label: Nur lesen
+        status: required
+        verify: required
+        data_source: "fields.readOnly eines API-Key-Eintrags"
+        semantic_anchor:
+          means: Agenten dürfen mit diesem Token nur lesen — vault_http nur GET und HEAD, Git nur clone, fetch und pull; schreibende Aufrufe und git push werden abgelehnt. Nur bei API-Key. Standard aus.
+          concept: read_only_policy
+          not: [approval_policy, permission]
+          example: "an — nur GET/HEAD und git fetch"
+        states:
+          - { id: default, copy: "aus" }
+          - { id: selected, copy: "an — nur lesen" }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DIALOG-READONLY']"
+
+      - id: UI-VAULT-DIALOG-HTTP
+        type: toggle
+        label: Unverschlüsseltes HTTP erlauben
+        status: required
+        verify: required
+        data_source: "fields.allowHttp eines API-Key-Eintrags"
+        semantic_anchor:
+          means: Ob vault_http den Token auch über http:// statt nur https:// schicken darf, etwa an Dienste im LAN. Nur bei API-Key. Standard aus.
+          concept: plaintext_http_policy
+          not: [allowed_origin, approval_policy]
+          example: "an — http://coolify.lan:8000 erlaubt"
+        states:
+          - { id: default, copy: "aus — nur https" }
+          - { id: selected, copy: "an — der Token geht unverschlüsselt über das Netz" }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DIALOG-HTTP']"
+
+      - id: UI-VAULT-DIALOG-GIT
+        type: toggle
+        label: Für Git nutzen
+        status: required
+        verify: required
+        data_source: "fields.git und fields.gitUsername eines API-Key-Eintrags"
+        semantic_anchor:
+          means: >
+            Ob der Git-Proxy von Outpost diesen Token gegenüber den Hosts des Eintrags einsetzen darf
+            (clone, fetch, push über https). Ist er an, erscheint das Feld „Git-Benutzername“ (Standard
+            x-access-token für GitHub, oauth2 für GitLab). Nur bei API-Key. Standard aus.
+          concept: git_token_use
+          not: [ssh_key, identity]
+          example: "an · Git-Benutzername x-access-token"
+        states:
+          - { id: default, copy: "aus" }
+          - { id: selected, copy: "an · Git-Benutzername x-access-token" }
+          - { id: error, copy: "Git-Benutzername fehlt." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DIALOG-GIT']"
+
+      - id: UI-VAULT-DIALOG-FILL
+        type: field
+        label: Darf im Browser eingetragen werden auf
+        status: required
+        verify: required
+        data_source: "fields.fillOrigins eines API-Key- oder Sonstiges-Eintrags"
+        semantic_anchor:
+          means: >
+            Die Origins (scheme://host[:port]), auf denen browser_fill_secret den Wert in ein Formularfeld
+            eintragen darf. Leer heißt: kein Eintragen im Browser — außer „Token auf jeder Seite
+            eintragen erlauben“ ist in den Einstellungen an. Für API-Key und Sonstiges.
+          concept: fill_origin
+          aliases: [allowed_origin]
+          not: [api_host, vault_binding]
+          cardinality: many
+          example: "https://coolify.example.net"
+          empty_means: Der Wert wird im Browser nirgends eingetragen.
+        states:
+          - { id: default }
+          - { id: empty, copy: "Nirgends — nur für vault_http und Git" }
+          - { id: error, copy: "Keine gültige Origin (scheme://host[:port])." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DIALOG-FILL']"
+
       - id: UI-VAULT-DIALOG-SAVE
         type: action
         label: Speichern
@@ -1286,7 +1390,7 @@ screens:
           aliases: [agent_token, mcp_key]
           not: [api_key, vault_item, identity]
           cardinality: many
-          example: "Claude Code · angelegt 09.10. · zuletzt vor 5 Min. · nur 192.168.2.40"
+          example: "Git · angelegt 10.10. · zuletzt vor 5 Min. · nur 192.168.2.40"
           empty_means: Kein Agent hat auf diesem Server Zugang.
         states:
           - { id: default }
@@ -1306,10 +1410,10 @@ screens:
         verify: required
         data_source: "Auswahl Claude Code / Codex, IP-Bindung, zusätzliche Adressbereiche"
         semantic_anchor:
-          means: Welche Agenten eingerichtet werden (Claude Code, Codex) und welche zusätzlichen Adressbereiche (CIDR) ihr Key neben der IP dieses Servers akzeptiert.
+          means: Welche Agenten eingerichtet werden (Claude Code, Codex, Git) und welche zusätzlichen Adressbereiche (CIDR) ihr Key neben der IP dieses Servers akzeptiert. Git richtet in der globalen gitconfig des entfernten Benutzers den Git-Proxy von Outpost ein.
           concept: agent_key
           not: [api_key, vault_binding]
-          example: "Claude Code ✓ · Codex ✓ · 10.0.0.0/24"
+          example: "Claude Code ✓ · Codex ✓ · Git ✓ · 10.0.0.0/24"
         states:
           - { id: default }
           - { id: loading, copy: "Richte ein …" }
@@ -1378,11 +1482,28 @@ screens:
         states:
           - { id: default }
           - { id: empty, copy: "erscheint erst nach dem Einrichten" }
-          - { id: success, copy: "Eingerichtet für root. Claude Code neu starten, dann /mcp." }
+          - { id: success, copy: "Eingerichtet für root. Claude Code neu starten, dann /mcp. · Git eingerichtet für root: https://github.com läuft über Outpost." }
           - { id: partial, copy: "Bestehende Registrierung ersetzt — der alte Konto-Key bleibt gültig, bis du ihn unter API-Schlüssel löschst." }
           - { id: error, copy: "codex nicht gefunden. Befehl kopieren und auf dem Server ausführen." }
         locators:
           web: "[data-ui-id='UI-AGENT-ACCESS-RESULT']"
+
+      - id: UI-AGENT-ACCESS-GIT-NOTE
+        type: feedback
+        label: Hinweis Git über SSH
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: Steht im Agenten-Zugang, sobald Git ausgewählt ist — Remotes über SSH (git@github.com:…) laufen nicht über den Vault und müssen auf https umgestellt werden.
+          concept: git_ssh_remote_hint
+          not: [error, agent_setup_result]
+          example: "Remotes per SSH (git@github.com:) gehen nicht über den Vault — auf HTTPS umstellen."
+        states:
+          - { id: default, copy: "Remotes per SSH (git@github.com:) gehen nicht über den Vault — auf HTTPS umstellen." }
+          - { id: empty, copy: "nicht sichtbar, solange Git nicht ausgewählt ist" }
+        locators:
+          web: "[data-ui-id='UI-AGENT-ACCESS-GIT-NOTE']"
 
   - id: UI-VAULT-SETTINGS
     kind: panel
@@ -1448,6 +1569,26 @@ screens:
         locators:
           web: "[data-ui-id='UI-VAULT-SETTINGS-IPBIND']"
 
+      - id: UI-VAULT-SETTINGS-FILLANY
+        type: toggle
+        label: Token auf jeder Seite eintragen erlauben
+        status: required
+        verify: required
+        data_source: "Einstellung vault.fillAnywhere"
+        semantic_anchor:
+          means: >
+            Ob browser_fill_secret einen Wert ohne eigene Origin-Liste auf jeder Seite eintragen darf — dann
+            immer mit Freigabe, und eine Sitzungsfreigabe gilt nur für die eine Origin, die auf der Karte
+            stand. Standard aus.
+          concept: fill_anywhere_policy
+          not: [fill_origin, approval_policy]
+          example: "aus"
+        states:
+          - { id: default, copy: "aus" }
+          - { id: selected, copy: "an — Werte ohne eigene Liste lassen sich auf jeder Seite eintragen, jedes Mal mit Freigabe." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-SETTINGS-FILLANY']"
+
       - id: UI-VAULT-SETTINGS-PROXY
         type: feedback
         label: Hinweis Reverse-Proxy
@@ -1511,11 +1652,11 @@ screens:
         verify: required
         data_source: "GET /api/vault/agent-keys, gruppiert nach Server"
         semantic_anchor:
-          means: Die Agenten-Keys des Kontos, gruppiert nach Server — Agent, zuletzt genutzt, IP-Bindung; je Server Bearbeiten (öffnet Agenten-Zugang) und je Key Entziehen. Agenten-Keys erreichen nur den MCP-Endpunkt.
+          means: Die Agenten-Keys des Kontos, gruppiert nach Server — Agent, zuletzt genutzt, IP-Bindung; je Server Bearbeiten (öffnet Agenten-Zugang) und je Key Entziehen. Agenten-Keys erreichen nur den MCP-Endpunkt, Git-Keys nur den Git-Proxy.
           concept: agent_key
           not: [api_key, vault_item]
           cardinality: many
-          example: "web01 — Claude Code · Codex"
+          example: "web01 — Claude Code · Codex · Git"
           empty_means: Kein Server hat Agenten-Zugang — Hinweis auf Kontextmenü Server › Agenten-Zugang.
         states:
           - { id: default }
@@ -1542,8 +1683,10 @@ screens:
         semantic_anchor:
           means: >
             Eine Karte unten rechts über jeder Seite, nicht modal: ein Agent will einen
-            Vault-Eintrag nutzen. Zeigt Agent und Server, Eintrag und Ziel (Ursprung oder
-            Host) und die verbleibende Zeit; Antworten Einmal, Für diese Sitzung, Ablehnen.
+            Vault-Eintrag nutzen. Zeigt Agent und Server, Eintrag, Werkzeug und Ziel
+            (Ursprung beim Eintragen, Methode mit Host und Pfad bei vault_http, Git mit Host
+            und Repo) und die verbleibende Zeit; Antworten Einmal, Für diese Sitzung, Ablehnen.
+            „Für diese Sitzung“ gilt getrennt für lesende und schreibende Zugriffe.
             Mehrere Anfragen stapeln sich, die älteste unten. Der Stapel liegt über Dialogen und
             Toasts. Eine abgelaufene Karte zeigt fünf Sekunden den Fehlerzustand und verschwindet;
             scheitert das Senden einer Antwort, bleibt die Karte stehen und ein Toast nennt den Grund.
@@ -1551,7 +1694,7 @@ screens:
           aliases: [approval, consent]
           not: [notification, toast, error]
           cardinality: many
-          example: "Claude Code auf web01 · portal-login → https://portal.example.com · 1:42"
+          example: "Claude Code auf web01 · github-pat · POST api.github.com/repos/o/r/issues · 1:42"
           empty_means: Keine Anfrage offen — die Karte ist nicht da.
         states:
           - { id: default }
@@ -1561,3 +1704,21 @@ screens:
           - { id: error, copy: "Anfrage ist abgelaufen." }
         locators:
           web: "[data-ui-id='UI-VAULT-APPROVAL-CARD']"
+
+      - id: UI-VAULT-APPROVAL-WRITE
+        type: badge
+        label: schreibt
+        status: required
+        verify: required
+        data_source: "Art des Zugriffs der Anfrage (write: POST/PUT/PATCH/DELETE, git push, Eintragen im Browser)"
+        semantic_anchor:
+          means: Abzeichen in der Kopfzeile der Freigabe-Karte, wenn der Zugriff etwas verändert; bei lesenden Zugriffen fehlt es. Eine Sitzungsfreigabe für Lesen gibt Schreiben nicht frei.
+          concept: write_access
+          not: [error, warning_toast]
+          example: "schreibt"
+        states:
+          - { id: default, copy: "schreibt" }
+          - { id: empty, copy: "nicht sichtbar bei lesendem Zugriff" }
+        locators:
+          web: "[data-ui-id='UI-VAULT-APPROVAL-WRITE']"
+

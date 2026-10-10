@@ -111,6 +111,14 @@
 							</div>
 							<button class="btn ghost small" type="button">Entziehen</button>
 						</div>
+						<div class="agent-row">
+							<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+							<div class="main">
+								<span>Git</span>
+								<span class="meta">angelegt 10.10. · zuletzt vor 5 Min. · nur 192.168.2.40</span>
+							</div>
+							<button class="btn ghost small" type="button">Entziehen</button>
+						</div>
 					</section>
 
 					<section class="state" data-ui-state="empty">
@@ -163,6 +171,7 @@
 						<div class="checks">
 							<label class="check"><input type="checkbox" checked> Claude Code</label>
 							<label class="check"><input type="checkbox" checked> Codex</label>
+							<label class="check"><input type="checkbox" checked> Git</label>
 						</div>
 						<div class="field">
 							<label class="label" for="s-cidr">Zusätzliche Adressbereiche</label>
@@ -179,6 +188,7 @@
 						<div class="checks">
 							<label class="check"><input type="checkbox" checked disabled> Claude Code</label>
 							<label class="check"><input type="checkbox" checked disabled> Codex</label>
+							<label class="check"><input type="checkbox" checked disabled> Git</label>
 						</div>
 						<div class="field">
 							<label class="label" for="l-cidr">Zusätzliche Adressbereiche</label>
@@ -195,6 +205,7 @@
 						<div class="checks">
 							<label class="check"><input type="checkbox" checked> Claude Code</label>
 							<label class="check"><input type="checkbox" checked> Codex</label>
+							<label class="check"><input type="checkbox" checked> Git</label>
 						</div>
 						<div class="field">
 							<label class="label" for="e-cidr">Zusätzliche Adressbereiche</label>
@@ -212,6 +223,7 @@
 						<div class="checks">
 							<label class="check"><input type="checkbox" checked disabled> Claude Code</label>
 							<label class="check"><input type="checkbox" checked disabled> Codex</label>
+							<label class="check"><input type="checkbox" checked disabled> Git</label>
 						</div>
 						<div class="field">
 							<label class="label" for="d-cidr">Zusätzliche Adressbereiche</label>
@@ -230,6 +242,7 @@
 						<div class="checks">
 							<label class="check"><input type="checkbox" checked> Claude Code</label>
 							<label class="check"><input type="checkbox" checked> Codex</label>
+							<label class="check"><input type="checkbox" checked> Git</label>
 						</div>
 						<div class="field">
 							<label class="label" for="p-cidr">Zusätzliche Adressbereiche</label>
@@ -358,6 +371,10 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 							<div class="result-head"><span>Claude Code</span><span class="status">eingerichtet</span></div>
 							<span class="help">Eingerichtet für root. Claude Code neu starten, dann /mcp.</span>
 						</div>
+						<div class="result-row ok">
+							<div class="result-head"><span>Git</span><span class="status">eingerichtet</span></div>
+							<span class="help">Git eingerichtet für root: <span class="mono">https://github.com</span> läuft über Outpost.</span>
+						</div>
 					</section>
 
 					<section class="state" data-ui-state="partial">
@@ -380,6 +397,18 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 							<span class="notice">Der Key ist nur jetzt sichtbar. Schließen ohne Übernahme löscht ihn.</span>
 						</div>
 					</section>
+
+				<div class="element" data-ui-id="UI-AGENT-ACCESS-GIT-NOTE">
+					<header><code>UI-AGENT-ACCESS-GIT-NOTE</code><span class="type">feedback</span><span class="name">Hinweis Git über SSH</span></header>
+
+					<section class="state" data-ui-state="default">
+						<div class="warn" role="status"><p>Remotes per SSH (<span class="mono">git@github.com:</span>) gehen nicht über den Vault — auf HTTPS umstellen.</p></div>
+					</section>
+
+					<section class="state" data-ui-state="empty">
+						<div class="empty-box">nicht sichtbar, solange Git nicht ausgewählt ist</div>
+					</section>
+				</div>
 				</div>
 
 		</div>

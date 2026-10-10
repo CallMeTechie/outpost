@@ -42,6 +42,9 @@
 	.approval-card .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--gray); }
 	.approval-card .bar i { display: block; height: 100%; background: var(--subtext); }
 	.approval-card .status { font: var(--type-body); color: var(--text); }
+	.approval-card .head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+	.approval-card .tool { font: var(--type-mono); color: var(--text); overflow-wrap: anywhere; }
+	.write-badge { display: inline-flex; align-items: center; gap: var(--space-1); font: var(--type-caption); border-radius: var(--radius-sm); padding: var(--space-1) var(--space-2); color: var(--warning); background: var(--warning-opacity); white-space: nowrap; }
 	.approval-stack { display: flex; flex-direction: column; gap: var(--space-2); }
 	.approval-stack .count { font: var(--type-caption); color: var(--subtext); text-align: right; }
 	.approval-empty { width: 24rem; max-width: 100%; border: 1px dashed var(--gray-strong); border-radius: var(--radius-lg); padding: var(--space-4); font: var(--type-caption); color: var(--subtext); }
@@ -53,7 +56,7 @@
 <header class="mb-context" style="font:var(--type-caption);color:var(--subtext);background:var(--lighter-background);border:1px solid var(--gray);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin:0 0 var(--space-4);line-height:1.6">
 	<strong style="color:var(--text);font:var(--type-heading)">Darstellungskontext</strong><br>
 	<b style="color:var(--text)">Art:</b> Schwebende Karte (shared), nicht modal<br>
-	<b style="color:var(--text)">Erscheint über:</b> UI-SHELL, jeder Seite der Anwendung<br>
+	<b style="color:var(--text)">Erscheint über:</b> UI-SHELL, jeder Seite der Anwendung, auch im Popout<br>
 	<b style="color:var(--text)">Auslöser:</b> ein Agent fordert die Nutzung eines Vault-Eintrags an<br>
 	<b style="color:var(--text)">Größe:</b> unten rechts, 24rem; unter 768px volle Breite über der unteren Navigation<br>
 	<b style="color:var(--text)">Schließen:</b> nur durch Antwort oder Ablauf<br>
@@ -73,7 +76,7 @@
 <div class="block">
 	<h2>Freigabe angefordert <code>UI-VAULT-APPROVAL-CARD</code></h2>
 	<p class="anchor">Eine Karte unten rechts über jeder Seite, nicht modal: ein Agent will einen Vault-Eintrag nutzen. Mehrere Anfragen stapeln sich, die älteste unten.</p>
-	<p class="anchor-example">Beispiel: Claude Code auf web01 · portal-login → https://portal.example.com · 1:42</p>
+	<p class="anchor-example">Beispiel: Claude Code auf web01 · github-pat · POST api.github.com/repos/o/r/issues · 1:42</p>
 
 	<div class="demo-row">
 		<div class="demo-card">
@@ -82,10 +85,7 @@
 				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
 					<section data-ui-state="default">
 					<div class="approval-card">
-						<h3>Freigabe angefordert</h3>
-						<div class="who">Claude Code auf web01</div>
-						<div class="target">portal-login</div>
-						<div class="target">https://portal.example.com</div>
+						<div class="head"><h3>Freigabe angefordert</h3><span class="write-badge" data-ui-id="UI-VAULT-APPROVAL-WRITE"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/></svg>schreibt</span></div>						<div class="who">Claude Code auf web01</div>						<div class="target">github-pat</div>						<div class="tool">POST api.github.com/repos/o/r/issues</div>
 						<div class="actions">
 							<span class="btn primary">Einmal</span>
 							<span class="btn">Für diese Sitzung</span>
@@ -116,10 +116,7 @@
 					<div class="approval-stack">
 						<div class="count">3 Anfragen offen</div>
 						<div class="approval-card">
-							<h3>Freigabe angefordert</h3>
-							<div class="who">Claude Code auf web01</div>
-							<div class="target">portal-login</div>
-							<div class="target">https://portal.example.com</div>
+							<div class="head"><h3>Freigabe angefordert</h3></div>							<div class="who">Claude Code auf web01</div>							<div class="target">github-pat</div>							<div class="tool">Git · github.com/o/r</div>
 							<div class="actions">
 								<span class="btn primary">Einmal</span>
 								<span class="btn">Für diese Sitzung</span>
@@ -129,10 +126,7 @@
 							<div class="bar"><i style="width:40%"></i></div>
 						</div>
 						<div class="approval-card">
-							<h3>Freigabe angefordert</h3>
-							<div class="who">Claude Code auf web01</div>
-							<div class="target">portal-login</div>
-							<div class="target">https://portal.example.com</div>
+							<div class="head"><h3>Freigabe angefordert</h3><span class="write-badge" data-ui-id="UI-VAULT-APPROVAL-WRITE"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/></svg>schreibt</span></div>							<div class="who">Claude Code auf web01</div>							<div class="target">github-pat</div>							<div class="tool">POST api.github.com/repos/o/r/issues</div>
 							<div class="actions">
 								<span class="btn primary">Einmal</span>
 								<span class="btn">Für diese Sitzung</span>
@@ -142,10 +136,7 @@
 							<div class="bar"><i style="width:50%"></i></div>
 						</div>
 						<div class="approval-card">
-							<h3>Freigabe angefordert</h3>
-							<div class="who">Claude Code auf web01</div>
-							<div class="target">portal-login</div>
-							<div class="target">https://portal.example.com</div>
+							<div class="head"><h3>Freigabe angefordert</h3><span class="write-badge" data-ui-id="UI-VAULT-APPROVAL-WRITE"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/></svg>schreibt</span></div>							<div class="who">Claude Code auf web01</div>							<div class="target">coolify-login</div>							<div class="tool">Eintragen auf https://coolify.example.net</div>
 							<div class="actions">
 								<span class="btn primary">Einmal</span>
 								<span class="btn">Für diese Sitzung</span>
@@ -165,10 +156,7 @@
 				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
 					<section data-ui-state="loading">
 					<div class="approval-card">
-						<h3>Freigabe angefordert</h3>
-						<div class="who">Claude Code auf web01</div>
-						<div class="target">portal-login</div>
-						<div class="target">https://portal.example.com</div>
+						<div class="head"><h3>Freigabe angefordert</h3><span class="write-badge" data-ui-id="UI-VAULT-APPROVAL-WRITE"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/></svg>schreibt</span></div>						<div class="who">Claude Code auf web01</div>						<div class="target">coolify-login</div>						<div class="tool">Eintragen auf https://coolify.example.net</div>
 						<div class="status">Antwort wird gesendet …</div>
 						<div class="actions">
 							<span class="btn primary off">Einmal</span>
@@ -188,10 +176,7 @@
 				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
 					<section data-ui-state="error">
 					<div class="approval-card">
-						<h3>Freigabe angefordert</h3>
-						<div class="who">Claude Code auf web01</div>
-						<div class="target">portal-login</div>
-						<div class="target">https://portal.example.com</div>
+						<div class="head"><h3>Freigabe angefordert</h3></div>						<div class="who">Claude Code auf web01</div>						<div class="target">github-pat</div>						<div class="tool">Git · github.com/o/r</div>
 						<div class="status">Anfrage ist abgelaufen.</div>
 						<div class="actions">
 							<span class="btn primary off">Einmal</span>
@@ -212,10 +197,7 @@
 				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
 					<section data-variant="narrow">
 					<div class="approval-card">
-						<h3>Freigabe angefordert</h3>
-						<div class="who">Claude Code auf web01</div>
-						<div class="target">portal-login</div>
-						<div class="target">https://portal.example.com</div>
+						<div class="head"><h3>Freigabe angefordert</h3><span class="write-badge" data-ui-id="UI-VAULT-APPROVAL-WRITE"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/></svg>schreibt</span></div>						<div class="who">Claude Code auf web01</div>						<div class="target">github-pat</div>						<div class="tool">POST api.github.com/repos/o/r/issues</div>
 						<div class="actions">
 							<span class="btn primary">Einmal</span>
 							<span class="btn">Für diese Sitzung</span>
@@ -228,6 +210,60 @@
 				</div>
 				<div class="mobile-nav" aria-hidden="true">
 					<div class="m-item active"><span>Server</span></div><div class="m-item"><span>Monitoring</span></div><div class="m-item"><span>Snippets</span></div><div class="m-item"><span>Vault</span></div><div class="m-item"><span>Browser</span></div><div class="m-item"><span>Audit</span></div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- ===================================================================
+     UI-VAULT-APPROVAL-WRITE — Abzeichen „schreibt“
+     =================================================================== -->
+<div class="block" style="margin-top:var(--space-6)">
+	<h2>schreibt <code>UI-VAULT-APPROVAL-WRITE</code></h2>
+	<p class="anchor">Abzeichen in der Kopfzeile der Freigabe-Karte, wenn der Zugriff etwas verändert; bei lesenden Zugriffen fehlt es. Eine Sitzungsfreigabe für Lesen gibt Schreiben nicht frei.</p>
+	<p class="anchor-example">Beispiel: schreibt</p>
+
+	<div class="demo-row">
+		<div class="demo-card">
+			<div class="cap">default — schreibender Zugriff</div>
+			<div class="body" style="justify-content:flex-end">
+				<section data-ui-state="default">
+				<div class="approval-card">
+					<div class="head"><h3>Freigabe angefordert</h3><span class="write-badge" data-ui-id="UI-VAULT-APPROVAL-WRITE"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/></svg>schreibt</span></div>
+					<div class="who">Claude Code auf web01</div>
+					<div class="target">github-pat</div>
+					<div class="tool">POST api.github.com/repos/o/r/issues</div>
+					<div class="actions">
+						<span class="btn primary">Einmal</span>
+						<span class="btn">Für diese Sitzung</span>
+						<span class="btn">Ablehnen</span>
+					</div>
+					<div class="timer">1:42</div>
+					<div class="bar"><i style="width:70%"></i></div>
+				</div>
+				</section>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">empty — nicht sichtbar bei lesendem Zugriff</div>
+			<div class="body" style="justify-content:flex-end">
+				<div data-ui-id="UI-VAULT-APPROVAL-WRITE">
+				<section data-ui-state="empty">
+				<div class="approval-card">
+					<div class="head"><h3>Freigabe angefordert</h3></div>
+					<div class="who">Claude Code auf web01</div>
+					<div class="target">github-pat</div>
+					<div class="tool">GET api.github.com/repos/o/r/issues</div>
+					<div class="actions">
+						<span class="btn primary">Einmal</span>
+						<span class="btn">Für diese Sitzung</span>
+						<span class="btn">Ablehnen</span>
+					</div>
+					<div class="timer">1:42</div>
+					<div class="bar"><i style="width:70%"></i></div>
+				</div>
+				</section>
 				</div>
 			</div>
 		</div>

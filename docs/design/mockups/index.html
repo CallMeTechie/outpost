@@ -2,7 +2,7 @@
 <html lang="de" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<title>outpost — Mockups (Revision 15)</title>
+<title>outpost — Mockups (Revision 16)</title>
 <link rel="stylesheet" href="./tokens.css">
 <style>
 .mb-page { font: var(--type-body, 500 0.875rem/1.45 system-ui, sans-serif); color: var(--text, #eee); background: var(--background, #111); margin: 0; padding: var(--space-8, 2rem); }
@@ -684,6 +684,9 @@
 #ab-ui-vault-approval .approval-card .bar{ position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--gray); }
 #ab-ui-vault-approval .approval-card .bar i{ display: block; height: 100%; background: var(--subtext); }
 #ab-ui-vault-approval .approval-card .status{ font: var(--type-body); color: var(--text); }
+#ab-ui-vault-approval .approval-card .head{ display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+#ab-ui-vault-approval .approval-card .tool{ font: var(--type-mono); color: var(--text); overflow-wrap: anywhere; }
+#ab-ui-vault-approval .write-badge{ display: inline-flex; align-items: center; gap: var(--space-1); font: var(--type-caption); border-radius: var(--radius-sm); padding: var(--space-1) var(--space-2); color: var(--warning); background: var(--warning-opacity); white-space: nowrap; }
 #ab-ui-vault-approval .approval-stack{ display: flex; flex-direction: column; gap: var(--space-2); }
 #ab-ui-vault-approval .approval-stack .count{ font: var(--type-caption); color: var(--subtext); text-align: right; }
 #ab-ui-vault-approval .approval-empty{ width: 24rem; max-width: 100%; border: 1px dashed var(--gray-strong); border-radius: var(--radius-lg); padding: var(--space-4); font: var(--type-caption); color: var(--subtext); }
@@ -782,6 +785,9 @@
 #ab-ui-vault-dialog .sketch{ display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-4); }
 #ab-ui-vault-dialog .sketch .fieldset{ align-content: start; }
 #ab-ui-vault-dialog .loading{ opacity: .8; }
+#ab-ui-vault-dialog .stack-sm{ display: grid; gap: 2px; }
+#ab-ui-vault-dialog .usage-group{ display: grid; gap: var(--space-3); }
+#ab-ui-vault-dialog .usage-title{ font: var(--type-heading); color: var(--text); padding-top: var(--space-2); border-top: 1px solid var(--gray); }
 #ab-ui-vault-dialog .stack{ display: grid; gap: var(--space-3); }
 
 </style>
@@ -810,6 +816,9 @@
 #ab-ui-vault .v-cell > .v-state{ min-height: 3.5rem; padding: var(--space-3); }
 #ab-ui-vault .v-cell.flush > .v-state{ padding: 0; }
 #ab-ui-vault .v-cap{ font: var(--type-caption); color: var(--subtext); padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--gray); background: var(--background); }
+#ab-ui-vault .v-usage{ display: flex; flex-direction: column; gap: var(--space-1); font: var(--type-body); }
+#ab-ui-vault .v-usage .v-mono{ font: var(--type-mono); }
+#ab-ui-vault .v-usage .sub{ color: var(--subtext); }
 #ab-ui-vault .v-cap code{ font-family: var(--font-mono); color: var(--text); }
 #ab-ui-vault .v-page{ display: grid; grid-template-columns: 5rem 1fr; height: 40rem; }
 #ab-ui-vault .v-nav{ background: var(--darker-gray); border-right: 1px solid var(--gray); display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-3) 0; font: var(--type-caption); color: var(--subtext); }
@@ -934,7 +943,7 @@
 </head>
 <body class="mb-page">
 <h1>outpost — Mockups</h1>
-<p class="sub">Manifest-Revision 15 · 2026-10-10 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
+<p class="sub">Manifest-Revision 16 · 2026-10-10 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
 <ul class="mb-toc">
 <li><a href="#UI-SHELL">Rahmen — Navigation</a> <code>UI-SHELL</code></li>
 <li><a href="#UI-SERVERS">Servers — Arbeitsfläche</a> <code>UI-SERVERS</code></li>
@@ -3150,6 +3159,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <tr><td><code>UI-VAULT-DETAIL-SECRET</code></td><td>Geheimer Wert</td><td>Je geheimem Feld eine Zeile mit genau zwölf Punkten, unabhängig von der Länge des Werts. Anzeigen und Kopieren nur für den Besitzer persönlicher Einträge oder mit vault.reveal, nie in einer Impersonations-Sitzung; sonst der Hinweis, dass der Wert nur für Agenten nutzbar ist. Ein angezeigter Wert verbirgt sich nach 30 Sekunden. <b>Nicht:</b> vault_item_fields, identity.</td><td><code>default · selected · disabled · success</code></td></tr>
 <tr><td><code>UI-VAULT-DETAIL-SCOPE</code></td><td>Gilt für</td><td>Für welche Server Agenten diesen Eintrag sehen — einzelne Server, Ordner mit Unterordnern, Tags oder alle Server. <b>Nicht:</b> vault_owner, permission.</td><td><code>default · empty</code></td></tr>
 <tr><td><code>UI-VAULT-DETAIL-POLICY</code></td><td>Freigabe erforderlich</td><td>Ob jede Nutzung durch einen Agenten bestätigt werden muss, und wann der Eintrag zuletzt genutzt wurde. <b>Nicht:</b> permission, vault_binding.</td><td><code>default · disabled</code></td></tr>
+<tr><td><code>UI-VAULT-DETAIL-USAGE</code></td><td>Nutzung durch Agenten</td><td>Was Agenten mit diesem Wert tun dürfen: nur lesen, auch über http, für Git (mit Benutzername), Eintragen im Browser auf den genannten Origins. Ausgeschaltetes fehlt als Zeile. Nur bei API-Key und Sonstiges sichtbar. <b>Nicht:</b> vault_binding, approval_policy, permission.</td><td><code>default · empty</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-vault.html — alle Zustände, wie im Artboard</div><div id="ab-ui-vault">
 
@@ -3327,6 +3337,12 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 			<section class="v-state" data-ui-state="disabled"><div class="v-policy off">Ohne Freigabe nutzbar</div></section>
 		</div>
 
+		<div class="v-cell" data-ui-id="UI-VAULT-DETAIL-USAGE">
+			<div class="v-cap"><code>UI-VAULT-DETAIL-USAGE</code> · region · Nutzung durch Agenten · nur bei API-Key und Sonstiges sichtbar</div>
+			<section class="v-state" data-ui-state="default"><div class="v-usage"><div>Nur lesen</div><div>Git · Benutzername x-access-token</div><div>Eintragen auf <span class="v-mono">https://coolify.example.net</span></div></div></section>
+			<section class="v-state" data-ui-state="empty"><div class="v-usage"><div class="sub">vault_http über https</div></div></section>
+		</div>
+
 	</div>
 </div>
 
@@ -3381,6 +3397,10 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <tr><td><code>UI-VAULT-DIALOG-SECRET</code></td><td>Geheimer Wert</td><td>Eingabe der geheimen Felder des Typs. Beim Bearbeiten leer mit dem Hinweis, dass ein Wert gespeichert ist und leer lassen ihn behält. <b>Nicht:</b> vault_item_fields.</td><td><code>default · partial · error · empty</code></td></tr>
 <tr><td><code>UI-VAULT-DIALOG-SCOPE</code></td><td>Gilt für</td><td>Auswahl, auf welchen Servern Agenten den Eintrag sehen — Server, Ordner (mit Unterordnern), Tags nur bei persönlichen Einträgen, oder Alle Server. Standard keine Auswahl. <b>Nicht:</b> vault_owner, permission.</td><td><code>default · empty · selected</code></td></tr>
 <tr><td><code>UI-VAULT-DIALOG-APPROVAL</code></td><td>Freigabe erforderlich</td><td>Jede Nutzung durch einen Agenten muss im Outpost-Fenster bestätigt werden. Standard an.</td><td><code>default · selected</code></td></tr>
+<tr><td><code>UI-VAULT-DIALOG-READONLY</code></td><td>Nur lesen</td><td>Agenten dürfen mit diesem Token nur lesen — vault_http nur GET und HEAD, Git nur clone, fetch und pull; schreibende Aufrufe und git push werden abgelehnt. Nur bei API-Key. Standard aus. <b>Nicht:</b> approval_policy, permission.</td><td><code>default · selected</code></td></tr>
+<tr><td><code>UI-VAULT-DIALOG-HTTP</code></td><td>Unverschlüsseltes HTTP erlauben</td><td>Ob vault_http den Token auch über http:// statt nur https:// schicken darf, etwa an Dienste im LAN. Nur bei API-Key. Standard aus. <b>Nicht:</b> allowed_origin, approval_policy.</td><td><code>default · selected</code></td></tr>
+<tr><td><code>UI-VAULT-DIALOG-GIT</code></td><td>Für Git nutzen</td><td>Ob der Git-Proxy von Outpost diesen Token gegenüber den Hosts des Eintrags einsetzen darf (clone, fetch, push über https). Ist er an, erscheint das Feld „Git-Benutzername“ (Standard x-access-token für GitHub, oauth2 für GitLab). Nur bei API-Key. Standard aus. <b>Nicht:</b> ssh_key, identity.</td><td><code>default · selected · error</code></td></tr>
+<tr><td><code>UI-VAULT-DIALOG-FILL</code></td><td>Darf im Browser eingetragen werden auf</td><td>Die Origins (scheme://host[:port]), auf denen browser_fill_secret den Wert in ein Formularfeld eintragen darf. Leer heißt: kein Eintragen im Browser — außer „Token auf jeder Seite eintragen erlauben“ ist in den Einstellungen an. Für API-Key und Sonstiges. <b>Nicht:</b> api_host, vault_binding.</td><td><code>default · empty · error</code></td></tr>
 <tr><td><code>UI-VAULT-DIALOG-SAVE</code></td><td>Speichern</td><td>Legt den Eintrag an bzw. speichert Änderungen und schließt den Dialog; Beschriftung Erstellen beim Anlegen.</td><td><code>default · disabled · loading · error</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-vault-dialog.html — alle Zustände, wie im Artboard</div><div id="ab-ui-vault-dialog">
@@ -3452,6 +3472,40 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 				<section data-ui-state="selected"><div class="row"><span>Freigabe erforderlich</span><span class="toggle on" role="switch" aria-checked="true" aria-label="Freigabe erforderlich"></span></div></section>
 			</div>
 
+			<div class="usage-group" role="group" aria-label="Nutzung durch Agenten">
+			<div class="usage-title">Nutzung durch Agenten</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-READONLY">
+				<header><code>UI-VAULT-DIALOG-READONLY</code><span class="type">toggle</span><span>Nur lesen</span></header>
+				<span class="help">Erscheint nur bei Typ API-Key.</span>
+				<section data-ui-state="default"><div class="row"><span class="stack-sm"><span>Nur lesen</span><span class="help">aus</span></span><span class="toggle" role="switch" aria-checked="false" aria-label="Nur lesen"></span></div></section>
+				<section data-ui-state="selected"><div class="row"><span class="stack-sm"><span>Nur lesen</span><span class="help">an — nur lesen</span></span><span class="toggle on" role="switch" aria-checked="true" aria-label="Nur lesen"></span></div></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-HTTP">
+				<header><code>UI-VAULT-DIALOG-HTTP</code><span class="type">toggle</span><span>Unverschlüsseltes HTTP erlauben</span></header>
+				<span class="help">Erscheint nur bei Typ API-Key.</span>
+				<section data-ui-state="default"><div class="row"><span class="stack-sm"><span>Unverschlüsseltes HTTP erlauben</span><span class="help">aus — nur https</span></span><span class="toggle" role="switch" aria-checked="false" aria-label="Unverschlüsseltes HTTP erlauben"></span></div></section>
+				<section data-ui-state="selected"><div class="row"><span class="stack-sm"><span>Unverschlüsseltes HTTP erlauben</span><span class="help warn">an — der Token geht unverschlüsselt über das Netz</span></span><span class="toggle on" role="switch" aria-checked="true" aria-label="Unverschlüsseltes HTTP erlauben"></span></div></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-GIT">
+				<header><code>UI-VAULT-DIALOG-GIT</code><span class="type">toggle</span><span>Für Git nutzen</span></header>
+				<span class="help">Erscheint nur bei Typ API-Key. „Git-Benutzername“ erscheint erst, wenn der Schalter an ist.</span>
+				<section data-ui-state="default"><div class="row"><span class="stack-sm"><span>Für Git nutzen</span><span class="help">aus</span></span><span class="toggle" role="switch" aria-checked="false" aria-label="Für Git nutzen"></span></div></section>
+				<section data-ui-state="selected"><div class="row"><span class="stack-sm"><span>Für Git nutzen</span><span class="help">an · Git-Benutzername x-access-token</span></span><span class="toggle on" role="switch" aria-checked="true" aria-label="Für Git nutzen"></span></div><div class="field"><label for="g-user">Git-Benutzername</label><input class="input mono" id="g-user" value="x-access-token"></div></section>
+				<section data-ui-state="error"><div class="row"><span class="stack-sm"><span>Für Git nutzen</span><span class="help">an</span></span><span class="toggle on" role="switch" aria-checked="true" aria-label="Für Git nutzen"></span></div><div class="field"><label for="g-user-e">Git-Benutzername</label><input class="input mono is-error" id="g-user-e" value="" aria-invalid="true"><span class="help error" role="alert">Git-Benutzername fehlt.</span></div></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-FILL">
+				<header><code>UI-VAULT-DIALOG-FILL</code><span class="type">field</span><span>Darf im Browser eingetragen werden auf</span></header>
+				<span class="help">Erscheint bei Typ API-Key und Sonstiges.</span>
+				<section data-ui-state="default"><div class="field"><span class="label">Darf im Browser eingetragen werden auf</span><div class="chips"><span class="chip sel">https://coolify.example.net</span><span class="chip add">+ Origin</span></div></div></section>
+				<section data-ui-state="empty"><div class="field"><span class="label">Darf im Browser eingetragen werden auf</span><div class="chips"><span class="chip add">+ Origin</span></div><span class="help">Nirgends — nur für vault_http und Git</span></div></section>
+				<section data-ui-state="error"><div class="field"><span class="label">Darf im Browser eingetragen werden auf</span><div class="chips"><span class="chip sel" style="box-shadow: inset 0 0 0 1px var(--error); background: var(--error-opacity)">coolify</span><span class="chip add">+ Origin</span></div><span class="help error" role="alert">Keine gültige Origin (scheme://host[:port]).</span></div></section>
+			</div>
+			</div>
+
 </div>
 
 <div class="dialog-foot">
@@ -3511,10 +3565,11 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <p class="meta">Artboard: <a href="./ui-agent-access.html">ui-agent-access.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-agent-access.md</code></p>
 <table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
 <tr><td><code>UI-AGENT-ACCESS-KEYS</code></td><td>Agenten auf diesem Server</td><td>Die Agenten-Keys dieses Servers — Agent, angelegt, zuletzt genutzt, IP-Bindung — je mit Entziehen. Entziehen widerruft den Key und entfernt die Registrierung auf dem Server. <b>Nicht:</b> api_key, vault_item, identity.</td><td><code>default · empty · loading · selected · error · partial · disabled</code></td></tr>
-<tr><td><code>UI-AGENT-ACCESS-SETUP</code></td><td>Einrichten</td><td>Welche Agenten eingerichtet werden (Claude Code, Codex) und welche zusätzlichen Adressbereiche (CIDR) ihr Key neben der IP dieses Servers akzeptiert. <b>Nicht:</b> api_key, vault_binding.</td><td><code>default · loading · error · disabled · partial</code></td></tr>
+<tr><td><code>UI-AGENT-ACCESS-SETUP</code></td><td>Einrichten</td><td>Welche Agenten eingerichtet werden (Claude Code, Codex, Git) und welche zusätzlichen Adressbereiche (CIDR) ihr Key neben der IP dieses Servers akzeptiert. Git richtet in der globalen gitconfig des entfernten Benutzers den Git-Proxy von Outpost ein. <b>Nicht:</b> api_key, vault_binding.</td><td><code>default · loading · error · disabled · partial</code></td></tr>
 <tr><td><code>UI-AGENT-ACCESS-URL</code></td><td>Outpost-Adresse für diesen Server</td><td>Die Adresse, unter der dieser Server Outpost erreicht; daraus entstehen MCP-URL und Adressprüfung dieses Keys. Vorbelegt mit der Adresse der letzten Einrichtung auf diesem Server, sonst mit der Standardadresse aus den Einstellungen. Für Server außerhalb des LANs zum Beispiel die Domain über einen Reverse-Proxy. <b>Nicht:</b> browser_launcher_url, vault_binding.</td><td><code>default · error · empty</code></td></tr>
 <tr><td><code>UI-AGENT-ACCESS-IPBIND</code></td><td>Nur von der IP dieses Servers</td><td>Ob der Key nur Anfragen von der Adresse dieses Servers (plus den eingetragenen Adressbereichen) akzeptiert. Vorbelegt mit dem Standard aus Einstellungen › Vault; aus heißt von überall. <b>Nicht:</b> vault_binding, allowed_origin.</td><td><code>default · selected · partial · disabled · error</code></td></tr>
 <tr><td><code>UI-AGENT-ACCESS-RESULT</code></td><td>Ergebnis</td><td>Je Agent das Ergebnis der Einrichtung — eingerichtet, oder der fertige Befehl zum Kopieren, wenn die automatische Einrichtung scheiterte (CLI fehlt, Exec-Fehler). Der Key ist nur hier und nur jetzt sichtbar; ein Key, der weder automatisch eingerichtet noch kopiert wurde, wird beim Schließen gelöscht. <b>Nicht:</b> agent_key, toast.</td><td><code>default · empty · success · partial · error</code></td></tr>
+<tr><td><code>UI-AGENT-ACCESS-GIT-NOTE</code></td><td>Hinweis Git über SSH</td><td>Steht im Agenten-Zugang, sobald Git ausgewählt ist — Remotes über SSH (git@github.com:…) laufen nicht über den Vault und müssen auf https umgestellt werden. <b>Nicht:</b> error, agent_setup_result.</td><td><code>default · empty</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-agent-access.html — alle Zustände, wie im Artboard</div><div id="ab-ui-agent-access">
 
@@ -3547,6 +3602,14 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 							<div class="main">
 								<span>Claude Code</span>
 								<span class="meta">angelegt 09.10. · zuletzt vor 5 Min. · nur 192.168.2.40</span>
+							</div>
+							<button class="btn ghost small" type="button">Entziehen</button>
+						</div>
+						<div class="agent-row">
+							<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+							<div class="main">
+								<span>Git</span>
+								<span class="meta">angelegt 10.10. · zuletzt vor 5 Min. · nur 192.168.2.40</span>
 							</div>
 							<button class="btn ghost small" type="button">Entziehen</button>
 						</div>
@@ -3602,6 +3665,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 						<div class="checks">
 							<label class="check"><input type="checkbox" checked> Claude Code</label>
 							<label class="check"><input type="checkbox" checked> Codex</label>
+							<label class="check"><input type="checkbox" checked> Git</label>
 						</div>
 						<div class="field">
 							<label class="label" for="s-cidr">Zusätzliche Adressbereiche</label>
@@ -3618,6 +3682,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 						<div class="checks">
 							<label class="check"><input type="checkbox" checked disabled> Claude Code</label>
 							<label class="check"><input type="checkbox" checked disabled> Codex</label>
+							<label class="check"><input type="checkbox" checked disabled> Git</label>
 						</div>
 						<div class="field">
 							<label class="label" for="l-cidr">Zusätzliche Adressbereiche</label>
@@ -3634,6 +3699,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 						<div class="checks">
 							<label class="check"><input type="checkbox" checked> Claude Code</label>
 							<label class="check"><input type="checkbox" checked> Codex</label>
+							<label class="check"><input type="checkbox" checked> Git</label>
 						</div>
 						<div class="field">
 							<label class="label" for="e-cidr">Zusätzliche Adressbereiche</label>
@@ -3651,6 +3717,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 						<div class="checks">
 							<label class="check"><input type="checkbox" checked disabled> Claude Code</label>
 							<label class="check"><input type="checkbox" checked disabled> Codex</label>
+							<label class="check"><input type="checkbox" checked disabled> Git</label>
 						</div>
 						<div class="field">
 							<label class="label" for="d-cidr">Zusätzliche Adressbereiche</label>
@@ -3669,6 +3736,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 						<div class="checks">
 							<label class="check"><input type="checkbox" checked> Claude Code</label>
 							<label class="check"><input type="checkbox" checked> Codex</label>
+							<label class="check"><input type="checkbox" checked> Git</label>
 						</div>
 						<div class="field">
 							<label class="label" for="p-cidr">Zusätzliche Adressbereiche</label>
@@ -3797,6 +3865,10 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 							<div class="result-head"><span>Claude Code</span><span class="status">eingerichtet</span></div>
 							<span class="help">Eingerichtet für root. Claude Code neu starten, dann /mcp.</span>
 						</div>
+						<div class="result-row ok">
+							<div class="result-head"><span>Git</span><span class="status">eingerichtet</span></div>
+							<span class="help">Git eingerichtet für root: <span class="mono">https://github.com</span> läuft über Outpost.</span>
+						</div>
 					</section>
 
 					<section class="state" data-ui-state="partial">
@@ -3819,6 +3891,18 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 							<span class="notice">Der Key ist nur jetzt sichtbar. Schließen ohne Übernahme löscht ihn.</span>
 						</div>
 					</section>
+
+				<div class="element" data-ui-id="UI-AGENT-ACCESS-GIT-NOTE">
+					<header><code>UI-AGENT-ACCESS-GIT-NOTE</code><span class="type">feedback</span><span class="name">Hinweis Git über SSH</span></header>
+
+					<section class="state" data-ui-state="default">
+						<div class="warn" role="status"><p>Remotes per SSH (<span class="mono">git@github.com:</span>) gehen nicht über den Vault — auf HTTPS umstellen.</p></div>
+					</section>
+
+					<section class="state" data-ui-state="empty">
+						<div class="empty-box">nicht sichtbar, solange Git nicht ausgewählt ist</div>
+					</section>
+				</div>
 				</div>
 
 		</div>
@@ -3836,8 +3920,9 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 <tr><td><code>UI-VAULT-SETTINGS-KEY</code></td><td>Vault-Schlüssel</td><td>Ob der Vault läuft — Schlüssel aktiv, fehlt (Vault aus) oder passt nicht zu den gespeicherten Daten (Vault aus). Bei fehlendem Schlüssel ein Satz, wie man VAULT_KEY setzt. <b>Nicht:</b> encryption_key, api_key.</td><td><code>default · disabled · error</code></td></tr>
 <tr><td><code>UI-VAULT-SETTINGS-URL</code></td><td>Outpost-Adresse für Agenten</td><td>Die Adresse, unter der Server Outpost erreichen; daraus entsteht die MCP-URL, die beim Einrichten eines Agenten eingetragen wird. <b>Nicht:</b> browser_launcher_url.</td><td><code>default · partial · error</code></td></tr>
 <tr><td><code>UI-VAULT-SETTINGS-IPBIND</code></td><td>IP-Bindung als Standard</td><td>Ob neue Agenten-Keys standardmäßig nur von der IP ihres Servers gelten. Belegt den Schalter „Nur von der IP dieses Servers“ im Agenten-Zugang vor; dort lässt er sich je Server ändern. Aus für Umgebungen, in denen Outpost die Absenderadressen nicht sieht. <b>Nicht:</b> vault_binding, allowed_origin, proxy_trust_warning.</td><td><code>default · selected</code></td></tr>
+<tr><td><code>UI-VAULT-SETTINGS-FILLANY</code></td><td>Token auf jeder Seite eintragen erlauben</td><td>Ob browser_fill_secret einen Wert ohne eigene Origin-Liste auf jeder Seite eintragen darf — dann immer mit Freigabe, und eine Sitzungsfreigabe gilt nur für die eine Origin, die auf der Karte stand. Standard aus. <b>Nicht:</b> fill_origin, approval_policy.</td><td><code>default · selected</code></td></tr>
 <tr><td><code>UI-VAULT-SETTINGS-PROXY</code></td><td>Hinweis Reverse-Proxy</td><td>Warnt, wenn Outpost jedem X-Forwarded-For glaubt (TRUST_PROXY=true) — dann ist die IP-Bindung von Agenten-Keys wirkungslos. Sonst nicht sichtbar. <b>Nicht:</b> vault_key_status, agent_base_url.</td><td><code>default · error</code></td></tr>
-<tr><td><code>UI-VAULT-SETTINGS-SAVE</code></td><td>Einstellungen speichern</td><td>Speichert die Outpost-Adresse für Agenten, wie der Speichern-Knopf der Browser-Einstellungen.</td><td><code>default · disabled</code></td></tr>
+<tr><td><code>UI-VAULT-SETTINGS-SAVE</code></td><td>Einstellungen speichern</td><td>Speichert die Outpost-Adresse für Agenten und den Standard der IP-Bindung, wie der Speichern-Knopf der Browser-Einstellungen.</td><td><code>default · disabled</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-vault-settings.html — alle Zustände, wie im Artboard</div><div id="ab-ui-vault-settings">
 
@@ -3936,6 +4021,27 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 				</div>
 			</div>
 
+			<div class="vs-item" data-ui-id="UI-VAULT-SETTINGS-FILLANY">
+				<div class="vs-label"><h4>Token auf jeder Seite eintragen erlauben <code>UI-VAULT-SETTINGS-FILLANY</code></h4></div>
+				<p class="vs-help">Werte ohne eigene Origin-Liste lassen sich dann auf jeder Seite eintragen — jedes Mal mit Freigabe, eine Sitzungsfreigabe gilt nur für die eine Seite.</p>
+
+				<div class="vs-state" data-ui-state="default">
+					<span class="vs-tag">default</span>
+					<div class="vs-toggle-row">
+						<span class="toggle" role="switch" aria-checked="false" aria-label="Token auf jeder Seite eintragen erlauben"></span>
+						<span class="vs-status-text">aus</span>
+					</div>
+				</div>
+
+				<div class="vs-state" data-ui-state="selected">
+					<span class="vs-tag">selected</span>
+					<div class="vs-toggle-row">
+						<span class="toggle on" role="switch" aria-checked="true" aria-label="Token auf jeder Seite eintragen erlauben"></span>
+						<span class="vs-status-text">an — Werte ohne eigene Liste lassen sich auf jeder Seite eintragen, jedes Mal mit Freigabe.</span>
+					</div>
+				</div>
+			</div>
+
 			<div class="vs-item" data-ui-id="UI-VAULT-SETTINGS-PROXY">
 				<div class="vs-label"><h4>Hinweis Reverse-Proxy <code>UI-VAULT-SETTINGS-PROXY</code></h4></div>
 
@@ -3973,7 +4079,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 <p class="meta">Artboard: <a href="./ui-api-keys.html">ui-api-keys.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-api-keys.md</code></p>
 <table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
 <tr><td><code>UI-API-KEYS-LIST</code></td><td>API-Schlüssel</td><td>Die API-Keys des Kontos mit voller Kontoberechtigung — Name, Präfix, zuletzt genutzt, Ablauf; Anlegen und Löschen wie bisher. <b>Nicht:</b> agent_key.</td><td><code>default · empty</code></td></tr>
-<tr><td><code>UI-API-KEYS-AGENTS</code></td><td>Agenten-Schlüssel</td><td>Die Agenten-Keys des Kontos, gruppiert nach Server — Agent, zuletzt genutzt, IP-Bindung; je Server Bearbeiten (öffnet Agenten-Zugang) und je Key Entziehen. Agenten-Keys erreichen nur den MCP-Endpunkt. <b>Nicht:</b> api_key, vault_item.</td><td><code>default · empty · partial · disabled</code></td></tr>
+<tr><td><code>UI-API-KEYS-AGENTS</code></td><td>Agenten-Schlüssel</td><td>Die Agenten-Keys des Kontos, gruppiert nach Server — Agent, zuletzt genutzt, IP-Bindung; je Server Bearbeiten (öffnet Agenten-Zugang) und je Key Entziehen. Agenten-Keys erreichen nur den MCP-Endpunkt, Git-Keys nur den Git-Proxy. <b>Nicht:</b> api_key, vault_item.</td><td><code>default · empty · partial · disabled</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-api-keys.html — alle Zustände, wie im Artboard</div><div id="ab-ui-api-keys">
 
@@ -4051,7 +4157,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 			<svg class="ak-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
 			Agenten-Schlüssel
 		</h2>
-		<p class="ak-section-desc">Agenten-Schlüssel erreichen nur den MCP-Endpunkt.</p>
+		<p class="ak-section-desc">Agenten-Schlüssel erreichen nur den MCP-Endpunkt, Git-Keys nur den Git-Proxy.</p>
 	</div>
 
 	<section class="ak-state" data-ui-state="default">
@@ -4078,6 +4184,14 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 						<div>
 							<h3 class="ak-name">Codex</h3>
 							<p class="ak-meta"><span>zuletzt gestern</span><span>nur <span class="ak-ip">192.168.2.40</span></span></p>
+						</div>
+					</div>
+					<span class="ak-btn ak-btn-danger">Entziehen</span>
+				</div>
+				<div class="ak-key">
+					<div class="ak-item-info">
+						<div>
+							<h3 class="ak-name">Git</h3>
 						</div>
 					</div>
 					<span class="ak-btn ak-btn-danger">Entziehen</span>
@@ -4131,14 +4245,15 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 <div class="ctx"><b>Art:</b> Shell (auf jedem Screen)<br><b>Erscheint über:</b> UI-SHELL<br><b>Öffnen durch:</b> ein Agent fordert die Nutzung eines Vault-Eintrags an<br><b>Größe:</b> unten rechts<br><b>Schließen:</b> nur durch Antwort oder Ablauf<br><b>Tastatur:</b> Tab erreicht die Karte; Enter Einmal</div>
 <p class="meta">Artboard: <a href="./ui-vault-approval.html">ui-vault-approval.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-vault-approval.md</code></p>
 <table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
-<tr><td><code>UI-VAULT-APPROVAL-CARD</code></td><td>Freigabe angefordert</td><td>Eine Karte unten rechts über jeder Seite, nicht modal: ein Agent will einen Vault-Eintrag nutzen. Zeigt Agent und Server, Eintrag und Ziel (Ursprung oder Host) und die verbleibende Zeit; Antworten Einmal, Für diese Sitzung, Ablehnen. Mehrere Anfragen stapeln sich, die älteste unten. Der Stapel liegt über Dialogen und Toasts. Eine abgelaufene Karte zeigt fünf Sekunden den Fehlerzustand und verschwindet; scheitert das Senden einer Antwort, bleibt die Karte stehen und ein Toast nennt den Grund. <b>Nicht:</b> notification, toast, error.</td><td><code>default · empty · partial · loading · error</code></td></tr>
+<tr><td><code>UI-VAULT-APPROVAL-CARD</code></td><td>Freigabe angefordert</td><td>Eine Karte unten rechts über jeder Seite, nicht modal: ein Agent will einen Vault-Eintrag nutzen. Zeigt Agent und Server, Eintrag, Werkzeug und Ziel (Ursprung beim Eintragen, Methode mit Host und Pfad bei vault_http, Git mit Host und Repo) und die verbleibende Zeit; Antworten Einmal, Für diese Sitzung, Ablehnen. „Für diese Sitzung“ gilt getrennt für lesende und schreibende Zugriffe. Mehrere Anfragen stapeln sich, die älteste unten. Der Stapel liegt über Dialogen und Toasts. Eine abgelaufene Karte zeigt fünf Sekunden den Fehlerzustand und verschwindet; scheitert das Senden einer Antwort, bleibt die Karte stehen und ein Toast nennt den Grund. <b>Nicht:</b> notification, toast, error.</td><td><code>default · empty · partial · loading · error</code></td></tr>
+<tr><td><code>UI-VAULT-APPROVAL-WRITE</code></td><td>schreibt</td><td>Abzeichen in der Kopfzeile der Freigabe-Karte, wenn der Zugriff etwas verändert; bei lesenden Zugriffen fehlt es. Eine Sitzungsfreigabe für Lesen gibt Schreiben nicht frei. <b>Nicht:</b> error, warning_toast.</td><td><code>default · empty</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-vault-approval.html — alle Zustände, wie im Artboard</div><div id="ab-ui-vault-approval">
 
 <header class="mb-context" style="font:var(--type-caption);color:var(--subtext);background:var(--lighter-background);border:1px solid var(--gray);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin:0 0 var(--space-4);line-height:1.6">
 	<strong style="color:var(--text);font:var(--type-heading)">Darstellungskontext</strong><br>
 	<b style="color:var(--text)">Art:</b> Schwebende Karte (shared), nicht modal<br>
-	<b style="color:var(--text)">Erscheint über:</b> UI-SHELL, jeder Seite der Anwendung<br>
+	<b style="color:var(--text)">Erscheint über:</b> UI-SHELL, jeder Seite der Anwendung, auch im Popout<br>
 	<b style="color:var(--text)">Auslöser:</b> ein Agent fordert die Nutzung eines Vault-Eintrags an<br>
 	<b style="color:var(--text)">Größe:</b> unten rechts, 24rem; unter 768px volle Breite über der unteren Navigation<br>
 	<b style="color:var(--text)">Schließen:</b> nur durch Antwort oder Ablauf<br>
@@ -4158,7 +4273,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 <div class="block">
 	<h2>Freigabe angefordert <code>UI-VAULT-APPROVAL-CARD</code></h2>
 	<p class="anchor">Eine Karte unten rechts über jeder Seite, nicht modal: ein Agent will einen Vault-Eintrag nutzen. Mehrere Anfragen stapeln sich, die älteste unten.</p>
-	<p class="anchor-example">Beispiel: Claude Code auf web01 · portal-login → https://portal.example.com · 1:42</p>
+	<p class="anchor-example">Beispiel: Claude Code auf web01 · github-pat · POST api.github.com/repos/o/r/issues · 1:42</p>
 
 	<div class="demo-row">
 		<div class="demo-card">
@@ -4167,10 +4282,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
 					<section data-ui-state="default">
 					<div class="approval-card">
-						<h3>Freigabe angefordert</h3>
-						<div class="who">Claude Code auf web01</div>
-						<div class="target">portal-login</div>
-						<div class="target">https://portal.example.com</div>
+						<div class="head"><h3>Freigabe angefordert</h3><span class="write-badge" data-ui-id="UI-VAULT-APPROVAL-WRITE"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/></svg>schreibt</span></div>						<div class="who">Claude Code auf web01</div>						<div class="target">github-pat</div>						<div class="tool">POST api.github.com/repos/o/r/issues</div>
 						<div class="actions">
 							<span class="btn primary">Einmal</span>
 							<span class="btn">Für diese Sitzung</span>
@@ -4201,10 +4313,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 					<div class="approval-stack">
 						<div class="count">3 Anfragen offen</div>
 						<div class="approval-card">
-							<h3>Freigabe angefordert</h3>
-							<div class="who">Claude Code auf web01</div>
-							<div class="target">portal-login</div>
-							<div class="target">https://portal.example.com</div>
+							<div class="head"><h3>Freigabe angefordert</h3></div>							<div class="who">Claude Code auf web01</div>							<div class="target">github-pat</div>							<div class="tool">Git · github.com/o/r</div>
 							<div class="actions">
 								<span class="btn primary">Einmal</span>
 								<span class="btn">Für diese Sitzung</span>
@@ -4214,10 +4323,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 							<div class="bar"><i style="width:40%"></i></div>
 						</div>
 						<div class="approval-card">
-							<h3>Freigabe angefordert</h3>
-							<div class="who">Claude Code auf web01</div>
-							<div class="target">portal-login</div>
-							<div class="target">https://portal.example.com</div>
+							<div class="head"><h3>Freigabe angefordert</h3><span class="write-badge" data-ui-id="UI-VAULT-APPROVAL-WRITE"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/></svg>schreibt</span></div>							<div class="who">Claude Code auf web01</div>							<div class="target">github-pat</div>							<div class="tool">POST api.github.com/repos/o/r/issues</div>
 							<div class="actions">
 								<span class="btn primary">Einmal</span>
 								<span class="btn">Für diese Sitzung</span>
@@ -4227,10 +4333,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 							<div class="bar"><i style="width:50%"></i></div>
 						</div>
 						<div class="approval-card">
-							<h3>Freigabe angefordert</h3>
-							<div class="who">Claude Code auf web01</div>
-							<div class="target">portal-login</div>
-							<div class="target">https://portal.example.com</div>
+							<div class="head"><h3>Freigabe angefordert</h3><span class="write-badge" data-ui-id="UI-VAULT-APPROVAL-WRITE"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/></svg>schreibt</span></div>							<div class="who">Claude Code auf web01</div>							<div class="target">coolify-login</div>							<div class="tool">Eintragen auf https://coolify.example.net</div>
 							<div class="actions">
 								<span class="btn primary">Einmal</span>
 								<span class="btn">Für diese Sitzung</span>
@@ -4250,10 +4353,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
 					<section data-ui-state="loading">
 					<div class="approval-card">
-						<h3>Freigabe angefordert</h3>
-						<div class="who">Claude Code auf web01</div>
-						<div class="target">portal-login</div>
-						<div class="target">https://portal.example.com</div>
+						<div class="head"><h3>Freigabe angefordert</h3><span class="write-badge" data-ui-id="UI-VAULT-APPROVAL-WRITE"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/></svg>schreibt</span></div>						<div class="who">Claude Code auf web01</div>						<div class="target">coolify-login</div>						<div class="tool">Eintragen auf https://coolify.example.net</div>
 						<div class="status">Antwort wird gesendet …</div>
 						<div class="actions">
 							<span class="btn primary off">Einmal</span>
@@ -4273,10 +4373,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
 					<section data-ui-state="error">
 					<div class="approval-card">
-						<h3>Freigabe angefordert</h3>
-						<div class="who">Claude Code auf web01</div>
-						<div class="target">portal-login</div>
-						<div class="target">https://portal.example.com</div>
+						<div class="head"><h3>Freigabe angefordert</h3></div>						<div class="who">Claude Code auf web01</div>						<div class="target">github-pat</div>						<div class="tool">Git · github.com/o/r</div>
 						<div class="status">Anfrage ist abgelaufen.</div>
 						<div class="actions">
 							<span class="btn primary off">Einmal</span>
@@ -4297,10 +4394,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
 					<section data-variant="narrow">
 					<div class="approval-card">
-						<h3>Freigabe angefordert</h3>
-						<div class="who">Claude Code auf web01</div>
-						<div class="target">portal-login</div>
-						<div class="target">https://portal.example.com</div>
+						<div class="head"><h3>Freigabe angefordert</h3><span class="write-badge" data-ui-id="UI-VAULT-APPROVAL-WRITE"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/></svg>schreibt</span></div>						<div class="who">Claude Code auf web01</div>						<div class="target">github-pat</div>						<div class="tool">POST api.github.com/repos/o/r/issues</div>
 						<div class="actions">
 							<span class="btn primary">Einmal</span>
 							<span class="btn">Für diese Sitzung</span>
@@ -4313,6 +4407,60 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 				</div>
 				<div class="mobile-nav" aria-hidden="true">
 					<div class="m-item active"><span>Server</span></div><div class="m-item"><span>Monitoring</span></div><div class="m-item"><span>Snippets</span></div><div class="m-item"><span>Vault</span></div><div class="m-item"><span>Browser</span></div><div class="m-item"><span>Audit</span></div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- ===================================================================
+     UI-VAULT-APPROVAL-WRITE — Abzeichen „schreibt“
+     =================================================================== -->
+<div class="block" style="margin-top:var(--space-6)">
+	<h2>schreibt <code>UI-VAULT-APPROVAL-WRITE</code></h2>
+	<p class="anchor">Abzeichen in der Kopfzeile der Freigabe-Karte, wenn der Zugriff etwas verändert; bei lesenden Zugriffen fehlt es. Eine Sitzungsfreigabe für Lesen gibt Schreiben nicht frei.</p>
+	<p class="anchor-example">Beispiel: schreibt</p>
+
+	<div class="demo-row">
+		<div class="demo-card">
+			<div class="cap">default — schreibender Zugriff</div>
+			<div class="body" style="justify-content:flex-end">
+				<section data-ui-state="default">
+				<div class="approval-card">
+					<div class="head"><h3>Freigabe angefordert</h3><span class="write-badge" data-ui-id="UI-VAULT-APPROVAL-WRITE"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/></svg>schreibt</span></div>
+					<div class="who">Claude Code auf web01</div>
+					<div class="target">github-pat</div>
+					<div class="tool">POST api.github.com/repos/o/r/issues</div>
+					<div class="actions">
+						<span class="btn primary">Einmal</span>
+						<span class="btn">Für diese Sitzung</span>
+						<span class="btn">Ablehnen</span>
+					</div>
+					<div class="timer">1:42</div>
+					<div class="bar"><i style="width:70%"></i></div>
+				</div>
+				</section>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">empty — nicht sichtbar bei lesendem Zugriff</div>
+			<div class="body" style="justify-content:flex-end">
+				<div data-ui-id="UI-VAULT-APPROVAL-WRITE">
+				<section data-ui-state="empty">
+				<div class="approval-card">
+					<div class="head"><h3>Freigabe angefordert</h3></div>
+					<div class="who">Claude Code auf web01</div>
+					<div class="target">github-pat</div>
+					<div class="tool">GET api.github.com/repos/o/r/issues</div>
+					<div class="actions">
+						<span class="btn primary">Einmal</span>
+						<span class="btn">Für diese Sitzung</span>
+						<span class="btn">Ablehnen</span>
+					</div>
+					<div class="timer">1:42</div>
+					<div class="bar"><i style="width:70%"></i></div>
+				</div>
+				</section>
 				</div>
 			</div>
 		</div>
