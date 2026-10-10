@@ -25,14 +25,17 @@ export const AgentKeysSection = () => {
     const [revokeTarget, setRevokeTarget] = useState(null);
     const [editEntryId, setEditEntryId] = useState(null);
     const [revokeOutcome, setRevokeOutcome] = useState(null);
+    const [loadFailed, setLoadFailed] = useState(false);
     const revoking = useRef(false);
 
     const load = useCallback(async () => {
         try {
             const data = await getRequest("vault/agent-keys");
             setKeys((data.keys || []).filter((key) => !key.pending));
+            setLoadFailed(false);
         } catch (err) {
             console.error("Failed to load agent keys:", err);
+            setLoadFailed(true);
         }
     }, []);
 
@@ -124,7 +127,14 @@ export const AgentKeysSection = () => {
                     )}
                 </div>
             )}
-            {groups.length === 0 ? (
+            {loadFailed ? (
+                <div className="settings-list">
+                    <div className="list-empty" role="alert">
+                        <p>{t("settings.account.agentKeys.loadFailed")}</p>
+                        <Button type="secondary" text={t("settings.account.agentKeys.retry")} onClick={load} />
+                    </div>
+                </div>
+            ) : groups.length === 0 ? (
                 <div className="settings-list">
                     <div className="list-empty"><p>{t("settings.account.agentKeys.empty")}</p></div>
                 </div>

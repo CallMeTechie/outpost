@@ -1,5 +1,5 @@
 import "./styles.sass";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
     Check as IconCheck, CircleAlert as IconCircleAlert, Link as IconLink, Save as IconSave,
@@ -18,7 +18,15 @@ const KEY_STATUS = {
     mismatch: { icon: IconCircleAlert, text: "key.mismatchText" },
 };
 
-export const isValidAgentUrl = (value) => value === "" || /^https?:\/\/\S+$/i.test(value);
+export const isValidAgentUrl = (value) => {
+    if (value === "") return true;
+    try {
+        const url = new URL(value);
+        return (url.protocol === "http:" || url.protocol === "https:") && url.hostname !== "";
+    } catch {
+        return false;
+    }
+};
 
 const SettingItem = ({ title, description, dataUiId, children }) => (
     <div className="setting-item" data-ui-id={dataUiId}>
@@ -37,17 +45,26 @@ export const Vault = () => {
     const [settings, setSettings] = useState(null);
     const [agentUrl, setAgentUrl] = useState("");
     const [saving, setSaving] = useState(false);
+    const [loadFailed, setLoadFailed] = useState(false);
 
     const s = (key) => t(`settings.vault.${key}`);
 
-    useEffect(() => {
+    const load = useCallback(() => {
+        setLoadFailed(false);
         getRequest("vault/settings")
             .then((data) => {
                 setSettings(data);
                 setAgentUrl(data.agentUrl ?? "");
             })
-            .catch(() => sendToast(t("common.error"), t("settings.vault.errors.loadSettings")));
+            .catch(() => {
+                setLoadFailed(true);
+                sendToast(t("common.error"), t("settings.vault.errors.loadSettings"));
+            });
     }, [sendToast, t]);
+
+    useEffect(() => {
+        load();
+    }, [load]);
 
     const trimmed = agentUrl.trim();
     const urlInvalid = !isValidAgentUrl(trimmed);
@@ -67,6 +84,14 @@ export const Vault = () => {
         }
     };
 
+    if (!settings && loadFailed) {
+        return (
+            <div className="vault-settings-loading" role="alert">
+                <p>{s("errors.loadSettings")}</p>
+                <Button type="secondary" text={s("errors.retry")} onClick={load} />
+            </div>
+        );
+    }
     if (!settings) return <div className="vault-settings-loading">{s("loading")}</div>;
 
     const statusKey = KEY_STATUS[settings.keyStatus] ? settings.keyStatus : "missing";

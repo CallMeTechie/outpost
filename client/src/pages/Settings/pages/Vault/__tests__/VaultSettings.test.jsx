@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import testI18n from "@/test/i18n.js";
 import { renderWithProviders } from "@/test/renderWithProviders.jsx";
 import { ToastProvider } from "@/common/contexts/ToastContext.jsx";
+import { ServerContext } from "@/common/contexts/ServerContext.jsx";
+import AgentKeysSection from "@/pages/Settings/pages/Account/components/AgentKeysSection";
 import { Vault } from "../Vault.jsx";
 
 const requestDouble = await vi.hoisted(async () => {
@@ -17,6 +19,8 @@ vi.mock("@/common/hooks/useVaultAvailable.js", () => ({ useVaultAvailable: () =>
 
 const t = (key, options) => testI18n.t(key, options);
 const settings = (overrides = {}) => ({ keyStatus: "active", agentUrl: null, trustProxyUnsafe: false, ...overrides });
+const servers = { getServerById: () => null };
+const Servers = ({ children }) => <ServerContext.Provider value={servers}>{children}</ServerContext.Provider>;
 const mount = () => renderWithProviders(<Vault />, { providers: [ToastProvider] });
 
 beforeEach(() => {
@@ -55,4 +59,30 @@ test("an address without http or https blocks saving; a valid one is saved and r
         { method: "patchRequest", path: "vault/settings", body: { agentUrl: "http://192.168.2.10:6989" } },
     ));
     expect(vaultAvailable.refresh).toHaveBeenCalled();
+});
+
+test("failed loads show an error with retry instead of loading text or the empty state", async () => {
+    const user = userEvent.setup();
+    requestDouble.stub("getRequest", "vault/settings", new Error("down"));
+    requestDouble.stub("getRequest", "vault/agent-keys", new Error("down"));
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    renderWithProviders(<><Vault /><AgentKeysSection /></>, { providers: [ToastProvider, Servers] });
+
+    const alerts = await screen.findAllByRole("alert");
+    expect(alerts.map((alert) => alert.textContent)).toEqual(expect.arrayContaining([
+        expect.stringContaining(t("settings.vault.errors.loadSettings")),
+        expect.stringContaining(t("settings.account.agentKeys.loadFailed")),
+    ]));
+    expect(screen.queryByText(t("settings.vault.loading"))).not.toBeInTheDocument();
+    expect(screen.queryByText(t("settings.account.agentKeys.empty"))).not.toBeInTheDocument();
+
+    requestDouble.stub("getRequest", "vault/settings", settings());
+    requestDouble.stub("getRequest", "vault/agent-keys", { keys: [] });
+    const [vaultRetry, keysRetry] = screen.getAllByRole("button", { name: t("settings.vault.errors.retry") });
+    await user.click(vaultRetry);
+    await user.click(keysRetry);
+
+    expect(await screen.findByText(t("settings.account.agentKeys.empty"))).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: t("settings.vault.saveSettings") })).toBeInTheDocument();
+    errors.mockRestore();
 });
