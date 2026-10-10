@@ -223,7 +223,8 @@ test("without connect.browser the MCP endpoint lists only vault_list and answers
     assert.deepStrictEqual(await names(), ["vault_list", FILL]);
 });
 
-test("when the page keeps the focus on another element the fill stops with vault.focus_lost before Input.insertText", async () => {
+test("when the page keeps the focus on another element the fill stops with vault.focus_lost before Input.insertText", async (t) => {
+    t.mock.timers.enable({ apis: ["Date"] });
     const env = setup();
     env.page.focused = 99;
     env.page.holdFocus = true;
@@ -232,6 +233,13 @@ test("when the page keeps the focus on another element the fill stops with vault
     assert.match(env.text(result), /\(vault\.focus_lost\)$/);
     assert.strictEqual(env.cdp.callsOf("Input.insertText").length, 0);
     assert.strictEqual(env.vaultAudit().find((entry) => entry.action === "vault.use_denied").details.code, "vault.focus_lost");
+
+    for (let i = 1; i < 20; i++) await env.provider.call(FILL, { item: "github", passwordRef: "e1" }, env.ctx("A"));
+    const limited = await env.provider.call(FILL, { item: "github", passwordRef: "e1" }, env.ctx("A"));
+    const again = await env.provider.call(FILL, { item: "github", passwordRef: "e1" }, env.ctx("A"));
+    assert.match(env.text(limited), /\(vault\.rate_limited\)$/);
+    assert.match(env.text(again), /\(vault\.rate_limited\)$/);
+    assert.deepStrictEqual(env.vaultAudit().filter((entry) => entry.details.code === "vault.rate_limited").length, 1, "one audit row per caller and minute");
 });
 
 test("an agent key fills only in its own sessions: a foreign sessionId answers like an unknown one, none falls back to another's session", async () => {

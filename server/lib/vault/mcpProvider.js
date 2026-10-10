@@ -88,17 +88,35 @@ const assertFillArgs = ({ item, passwordRef, usernameRef, sessionId }) => {
 const createVaultProvider = ({ getBrowserTools, approvals = require("./approvals"), audit = defaultAudit }) => {
     const browserAllowed = new WeakMap();
     const recentFills = new Map();
+    const rateAudited = new Map();
 
     const canUseBrowser = (accountId) => permission.hasAccountPermission(accountId, Permission.CONNECT_BROWSER);
+
+    const sweep = (map, now) => {
+        for (const [key, stamps] of map) {
+            const live = [stamps].flat().filter((at) => now - at < FILL_WINDOW_MS);
+            if (live.length === 0) map.delete(key);
+        }
+    };
 
     const assertFillRate = ({ accountId, keyId = null }) => {
         const key = `${accountId}:${keyId}`;
         const now = Date.now();
+        sweep(recentFills, now);
         const recent = (recentFills.get(key) ?? []).filter((at) => now - at < FILL_WINDOW_MS);
         if (recent.length >= FILL_LIMIT)
             throw new VaultError(VaultErrorCode.RATE_LIMITED);
         recent.push(now);
         recentFills.set(key, recent);
+    };
+
+    const firstRefusalInWindow = ({ accountId, keyId = null }) => {
+        const key = `${accountId}:${keyId}`;
+        const now = Date.now();
+        sweep(rateAudited, now);
+        if (rateAudited.has(key)) return false;
+        rateAudited.set(key, now);
+        return true;
     };
 
     const entryNameOf = async (agent) => {
@@ -137,8 +155,6 @@ const createVaultProvider = ({ getBrowserTools, approvals = require("./approvals
     };
 
     const fill = async (args, ctx) => {
-        assertFillArgs(args);
-        assertFillRate(ctx);
         const note = { item: args.item, sessionId: null, target: null, stage: "before_approval" };
         const caller = { accountId: ctx.accountId, agent: ctx.agent ?? null };
         const usernameRef = args.usernameRef ?? null;
@@ -163,6 +179,8 @@ const createVaultProvider = ({ getBrowserTools, approvals = require("./approvals
             return checkFillTarget(current, refs, fields.origins ?? []);
         };
         try {
+            assertFillArgs(args);
+            assertFillRate(ctx);
             await loadItem();
             session = locate(args.sessionId ?? null);
             Object.assign(note, { sessionId: session.id, target: normalizeOrigin(session.state.url) });
@@ -189,6 +207,7 @@ const createVaultProvider = ({ getBrowserTools, approvals = require("./approvals
                     throw new VaultError(VaultErrorCode.ORIGIN_MISMATCH,
                         `The origins of ${note.item} changed while the approval was open; nothing was filled. Call browser_fill_credential again so the user approves the entry as it is now.`);
                 session = locate(session.id);
+                note.target = normalizeOrigin(session.state.url);
             }
             await session.runAgent(FILL, async () => {
                 const nodes = await verify(session);
@@ -199,7 +218,7 @@ const createVaultProvider = ({ getBrowserTools, approvals = require("./approvals
             });
         } catch (err) {
             if (session && typeof err?.message === "string") err.message = vaultGuard.redactText(session.contextKey, err.message);
-            if (!auditedByApprovals) {
+            if (!auditedByApprovals && (err?.code !== VaultErrorCode.RATE_LIMITED || firstRefusalInWindow(ctx))) {
                 if (err?.code === VaultErrorCode.ITEM_UNREADABLE) logger.warn("Vault entry unreadable", { itemId: item?.id ?? null });
                 await record(ctx, item, DENIAL_ACTIONS[err?.code] ?? "vault.use_denied", {
                     ...describeCall(note, ctx), stage: note.stage, code: typeof err?.code === "string" ? err.code : "INTERNAL",
