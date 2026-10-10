@@ -393,6 +393,21 @@ test("against a real Chromium: after a fill the password stays out of evaluate, 
         assert.ok(!text(shown).includes(SECRET));
         assert.strictEqual((await tool("browser_screenshot")).isError, true, "the shown password must not reach a screenshot");
 
+        const cached = await open(`${bases.a}/login`);
+        const cachedSnapshot = await snapshotOf(cached);
+        assert.ok(!(await fill(cached, { passwordRef: refOf(cachedSnapshot, 'textbox "Password"') })).isError);
+        await call(browserTools, "browser_click", { sessionId: cached.id, ref: refOf(cachedSnapshot, 'button "Show password"') });
+        await valueIn(cached, "window.bfcacheMarker = true");
+        await call(browserTools, "browser_navigate", { sessionId: cached.id, url: `${bases.a}/popup` });
+        await valueIn(cached, "history.back()");
+        await until(() => valueIn(cached, "location.pathname === '/login' && document.readyState === 'complete'").catch(() => false));
+        await cached.settle();
+        if (await valueIn(cached, "window.bfcacheMarker === true"))
+            refused(text, await call(browserTools, "browser_screenshot", { sessionId: cached.id }), "vault.screenshot_locked");
+        else
+            t.diagnostic("the login page did not come back from the back/forward cache in this Chromium, so the screenshot lock after history.back() was not checked; repeat it in the manual acceptance");
+        await pool.close(cached.id, "test");
+
         // What a PATCH with a changed origin does: the entry's stored values are gone.
         vaultBed.state.secrets.clear();
         await tool("browser_click", { ref: ref('button "Sign in"') });

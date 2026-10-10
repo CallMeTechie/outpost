@@ -274,7 +274,7 @@ test("secrets with quotes, backslashes, a clip boundary or a shorter sibling are
     }
 });
 
-test("a filled node that vanished (Show password swaps the input) keeps screenshots locked until the main frame navigates", async () => {
+test("a filled node that vanished (Show password swaps the input) keeps screenshots locked until the main frame navigates; the filled node coming back shown locks again", async () => {
     const { tools, page, instances, agent, text, openSession, openPopup } = setup();
     const session = await openSession(agent("T"));
     const popup = await openPopup(session, "POP");
@@ -293,4 +293,9 @@ test("a filled node that vanished (Show password swaps the input) keeps screensh
     instances[0].emitEvent("Page.frameNavigated", { frame: { id: session.targetId, url: "https://login.test/next" } }, session.cdpSessionId);
     await flush();
     assert.strictEqual((await tools.call("browser_screenshot", {}, agent("T"))).isError, undefined);
+
+    page.dom = [input(31, "text"), input(33, "text")];
+    instances[0].emitEvent("Page.frameNavigated", { frame: { id: session.targetId, url: "https://login.test/" } }, session.cdpSessionId);
+    await flush();
+    assert.strictEqual((await tools.call("browser_screenshot", {}, agent("T"))).isError, true, "back from the bfcache the shown field is still the filled node");
 });

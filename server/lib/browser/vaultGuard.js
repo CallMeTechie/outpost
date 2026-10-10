@@ -34,14 +34,16 @@ const markFilled = (contextKey, { backendNodeIds, secret, targetId }) => {
     const state = stateOf(contextKey);
     state.filled = true;
     state.copies.push(copy);
-    if (!state.nodeIds.has(targetId)) state.nodeIds.set(targetId, new Set());
-    for (const id of backendNodeIds) state.nodeIds.get(targetId).add(id);
+    if (!state.nodeIds.has(targetId)) state.nodeIds.set(targetId, { ids: new Set(), navigated: false });
+    const filled = state.nodeIds.get(targetId);
+    filled.navigated = false;
+    for (const id of backendNodeIds) filled.ids.add(id);
 };
 
 const isFilled = (contextKey) => contexts.get(contextKey)?.filled === true;
 
 // backendNodeIds only mean something in the target they were filled in.
-const filledNodeIds = (contextKey, targetId) => [...(contexts.get(contextKey)?.nodeIds.get(targetId) ?? [])];
+const filledNodeIds = (contextKey, targetId) => [...(contexts.get(contextKey)?.nodeIds.get(targetId)?.ids ?? [])];
 
 // document.title and innerText collapse runs of whitespace, so the value can show up in that form too.
 const lowerHex = (encoded) => encoded.replace(/%[0-9A-F]{2}/g, (m) => m.toLowerCase());
@@ -72,6 +74,12 @@ const redactText = (contextKeys, text) => {
     return result;
 };
 
+// The ids stay: a page restored from the back/forward cache brings its filled nodes back with the same ids.
+const noteNavigation = (contextKey, targetId) => {
+    const filled = contexts.get(contextKey)?.nodeIds.get(targetId);
+    if (filled) filled.navigated = true;
+};
+
 const forgetTarget = (contextKey, targetId) => {
     contexts.get(contextKey)?.nodeIds.delete(targetId);
 };
@@ -88,16 +96,18 @@ const assertEvaluateAllowed = (session) => {
 
 const assertScreenshotAllowed = async (session) => {
     // Nodes filled in another session cannot be inspected from here, so they keep this one locked.
-    for (const [targetId, ids] of contexts.get(session.contextKey)?.nodeIds ?? [])
-        if (targetId !== session.targetId && ids.size > 0) throw new VaultError(VaultErrorCode.SCREENSHOT_LOCKED);
-    for (const backendNodeId of filledNodeIds(session.contextKey, session.targetId)) {
+    for (const [targetId, { ids, navigated }] of contexts.get(session.contextKey)?.nodeIds ?? [])
+        if (targetId !== session.targetId && ids.size > 0 && !navigated) throw new VaultError(VaultErrorCode.SCREENSHOT_LOCKED);
+    const own = contexts.get(session.contextKey)?.nodeIds.get(session.targetId);
+    for (const backendNodeId of own?.ids ?? []) {
         let node;
         try {
             ({ node } = await session.agentSend("DOM.describeNode", { backendNodeId }));
         } catch (err) {
             // A "show password" can swap in a new input; the old node being gone proves nothing until the page navigates.
-            if (GONE.test(err?.message ?? "")) throw new VaultError(VaultErrorCode.SCREENSHOT_LOCKED);
-            throw err;
+            if (!GONE.test(err?.message ?? "")) throw err;
+            if (!own.navigated) throw new VaultError(VaultErrorCode.SCREENSHOT_LOCKED);
+            continue;
         }
         if (attributeOf(node ?? {}, "type")?.toLowerCase() !== "password")
             throw new VaultError(VaultErrorCode.SCREENSHOT_LOCKED);
@@ -130,6 +140,6 @@ const findPasswordFieldIds = async (session) => {
 const _resetForTests = () => contexts.clear();
 
 module.exports = {
-    markTainted, isTainted, markFilled, isFilled, filledNodeIds, redactText, forgetContext, forgetTarget,
+    markTainted, isTainted, markFilled, isFilled, filledNodeIds, redactText, forgetContext, forgetTarget, noteNavigation,
     assertEvaluateAllowed, assertScreenshotAllowed, assertInputAllowed, findPasswordFieldIds, _resetForTests,
 };
