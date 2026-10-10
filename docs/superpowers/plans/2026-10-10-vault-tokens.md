@@ -57,6 +57,7 @@ Beim Lesen des Codes gefunden; im Plan so umgesetzt, beim Review bitte bestätig
 6. **Design-Quellen angeglichen (Revision 17):** die Gruppe „Nutzung durch Agenten“ steht im Eintrag-Dialog nach „Freigabe erforderlich“, die Git-Zeile der Detailansicht lautet „Git · Benutzername x-access-token“; Guide, Design-System und Manifest-Beispiel sind nachgezogen.
 7. **Texte:** die endgültige Liste der 33 neuen Schlüssel steht in Task 9; sie ersetzt die Aufzählung unter „Schnittstellen“ Task 9. `successGit` und `gitNote` enthalten `<mono>`-Tags und werden mit `Trans` gerendert.
 
+10. **Weiterleitungen bei `vault_http` wie `fetch`:** 303 sowie 301/302 auf POST werden zu GET ohne Body; 307/308 behalten Methode und Body. Sonst schickte Outpost einen POST-Body ein zweites Mal an einen Pfad, der nicht auf der Karte stand.
 8. **Bestandstests mit geänderter Schnittstelle:** `approvals.test.js` (Aufrufe mit Umfang, Kartenschlüssel um `tool`/`access`/`target`) und der Test „without connect.browser …“ in `mcpProvider.test.js` (Werkzeugliste um `vault_http`, `browser_fill_secret`, in Task 3) ändern sich; das Verhalten von `browser_fill_credential` bleibt bis auf werkzeugneutrale Standardmeldungen und das Audit von Drossel-Ablehnungen einmal je Werkzeug und Minute.
 9. **Entscheidungen aus dem Plan-Review (vom Nutzer):** Sitzungsfreigaben für Schreiben gelten je Werkzeugart (`write` für API/Git, `fill` fürs Eintragen); „Sonstiges“ ohne Origins zeigt in der Detailansicht „Nur von Hand nutzbar — kein Eintragen im Browser“ (Rev. 17); Git-Lesevorgänge haben keine Obergrenze. Der Plan ergänzt außerdem: `Content-Length` wird an den Git-Host weitergereicht, ein zweiter gleichzeitiger `receive-pack`-POST wird abgelehnt, die Upload-Frist endet erst mit vollständigem Body. Die Spec ist entsprechend nachgezogen.
 
@@ -105,7 +106,7 @@ Welle C teilt keine Dateien: Task 3 legt beide Werkzeug-Module als Platzhalter a
 
 **Task 3 → 4, 5, 7**
 - `server/lib/vault/redact.js`: `variantsOf(secret)` (bisher in `vaultGuard`), `secretVariants({ token, headerValue = null, gitUsername = null })` → `string[]` (Token, `variantsOf(token)`, Header-Wert, `gitUsername:token` und dessen base64, `token` base64; leer und < 4 Zeichen entfernt; längste zuerst), `redactSecretText(text, variants)` → `string`, `truncateAndRedact(text, limitBytes, variants)` → `{ text, truncated }` (kürzt auf `limitBytes` UTF-8, entfernt am Ende jeden Rest, der Anfang einer Variante ist, schwärzt, hängt bei Kürzung `[truncated after <limit> bytes]` an).
-- `server/lib/vault/broker.js`: `use({ ctx, itemRef, tool, access, target, scope = access, field, check, act, approved = null, audit = {} })` → `Promise<{ result, approval, item }>`; `check(item, { phase: "before" | "after" })` wirft `VaultError`; `act(secret, item)` ist das Einzige, das den Wert bekommt; `approved = { itemId, stamp }` überspringt die Freigabe (Git-Vorgang), prüft aber Key, Stempel und `check`; Audit `vault.use`/`vault.use_denied` mit `details: { tool, access, ...audit }`. `ctx` = MCP-Kontext (`accountId`, `keyId`, `agent`, `transportId`, `impersonatorId`, `signal`, `ipAddress`, `userAgent`) bzw. für Git `transportId = gitSessionId(keyId)`.
+- `server/lib/vault/broker.js`: `use({ ctx, itemRef, tool, access, target, scope = access, field, check, act, approved = null, precheck = null, stale, deferUse = false, auditExtra = {} })` → `Promise<{ result, approval, item }>` (mit `deferUse: true` zusätzlich `recordUse`); `check(item, { phase: "before" | "after", approving })` wirft `VaultError`; `act(secret, item)` ist das Einzige, das den Wert bekommt; `approved = { itemId, stamp }` überspringt die Freigabe (Git-Vorgang), prüft aber Key, Stempel und `check`; Audit `vault.use`/`vault.use_denied` mit `details: { tool, access, target, ...auditExtra }`. `ctx` = MCP-Kontext (`accountId`, `keyId`, `agent`, `transportId`, `impersonatorId`, `signal`, `ipAddress`, `userAgent`) bzw. für Git `transportId = gitSessionId(keyId)`.
 - `broker.use` nimmt zusätzlich `precheck`, `stale = (item) => new VaultError(APPROVAL_STALE)` und `deferUse = false` (dann kein `vault.use`, stattdessen `recordUse(extraDetails)` im Ergebnis; Git schreibt so ein `vault.use` je Vorgang); `check(item, { phase, approving })`. `broker.js` exportiert `use` (gemeinsame Instanz), `createBroker({ approvals, audit })`, `createRateLimit({ windowMs, limit })`. Werkzeug-Module exportieren `{ def, handler, needsBrowser }`; die `TOOLS`-Zeile lautet `[HTTP]: require("./tools/http"),` bzw. `[FILL_SECRET]: require("./tools/fillSecret"),`. Einzelheiten: Abweichungsnotiz am Anfang von Task 3.
 - `broker.use` (Ergänzung für Task 5): `target`, `scope` und `field` dürfen auch Funktionen `(item) => string` sein, aufgelöst nach `check(item, { phase: "before" })`; ein `scope` mit `|` (`fill|<origin>`) verlangt immer eine Freigabe, auch bei `approvalRequired: false`; `check` darf ein Promise liefern; das `audit`-Objekt wird erst beim Schreiben des Audits gelesen, `check` darf es ergänzen.
 - `mcpProvider.js`: `TOOLS` (Name → `{ def, handler(args, ctx, deps), needsBrowser }`); `deps = { broker, getBrowserTools, approvals, fillRate, httpLimits }`; `fillRate(ctx)` ist die gemeinsame Grenze von 20 Fills pro Minute (Passwort und Secret, aufgerufen im `precheck`; der Broker auditiert die Ablehnung einmal je Werkzeug, Aufrufer und Minute); `httpLimits = createHttpLimits()` aus `tools/http.js` hält Zähler je Anbieter-Instanz; die Broker-Option für zusätzliche Audit-Details heißt `auditExtra`; `vault_list` `usableBy` nach Spec „vault_list“.
@@ -1006,7 +1007,6 @@ git commit -m "Vault: Freigaben je Umfang mit Werkzeug, Ziel und Git-Sitzung"
 - Create: `server/lib/vault/tools/http.js`, `server/lib/vault/tools/fillSecret.js` (Platzhalter, die Task 4 und Task 5 vollständig ersetzen)
 - Modify: `server/lib/vault/__tests__/helpers/vaultBed.js` (Ersatz für `controllers/vaultSettings`)
 - Test: `server/lib/vault/__tests__/redact.test.js` (neu), `server/lib/vault/__tests__/broker.test.js` (neu), bestehende `mcpProvider.test.js`, `server/lib/browser/__tests__/vaultGuard.test.js`
-- Modify: `server/lib/vault/__tests__/helpers/vaultBed.js` (Ersatz für `controllers/vaultSettings`)
 
 **Interfaces:**
 - Consumes: Task 1 (`VaultErrorCode.APPROVAL_STALE`, neue `fields`), Task 2 (`requestApproval` mit `tool`/`access`/`scope`, `grantStamp`).
@@ -1619,7 +1619,7 @@ const fillLogin = async (args, ctx, { broker, getBrowserTools, fillRate }) => {
     };
     try {
         const { item } = await broker.use({
-            ctx, itemRef: args.item, tool: FILL, access: "write", field: "password", target: () => origin, auditExtra: seen,
+            ctx, itemRef: args.item, tool: FILL, access: "write", scope: "fill", field: "password", target: () => origin, auditExtra: seen,
             precheck: () => {
                 fillRate(ctx);
                 assertFillArgs(args);
@@ -1778,7 +1778,7 @@ git commit -m "Vault: Vermittlungskern, Schwärzung und Werkzeug-Tabelle, browse
 - Modify: `server/lib/vault/tools/http.js` (Platzhalter aus Task 3 vollständig ersetzen)
 - Modify: `server/index.js` (globaler `express.json()` überspringt `/api/mcp`; `/api/mcp` liest Bodies bis 2 MB erst nach `authenticate`)
 - Test: `server/lib/vault/__tests__/vaultHttp.test.js` (neu)
-- Modify: `server/lib/vault/__tests__/mcpProvider.test.js` (Werkzeuglisten um `vault_http`)
+- Unverändert in Task 4: `server/lib/vault/mcpProvider.js` und `server/lib/vault/__tests__/mcpProvider.test.js` (Task 3 hat `[HTTP]` in `TOOLS` und die Werkzeuglisten schon eingetragen; Welle C teilt keine Datei).
 
 **Interfaces:**
 - Consumes: Task 3 (`broker.use`, `secretVariants`, `truncateAndRedact`, `TOOLS`), Task 1 (Felder, Codes).
@@ -2090,8 +2090,8 @@ const send = async ({ url, method, headers, body, signal }) => {
         const next = REDIRECTS.has(response.status) ? sameOrigin(response.headers.get("location"), current) : null;
         if (!next) break;
         await response.body?.cancel();
-        if (response.status === 303) {
-            currentMethod = "GET";
+        if (response.status === 303 || ((response.status === 301 || response.status === 302) && currentMethod === "POST")) {
+            currentMethod = currentMethod === "HEAD" ? "HEAD" : "GET";
             currentBody = undefined;
         }
         current = next;
@@ -2161,6 +2161,7 @@ const handler = async (args, ctx, { broker, httpLimits }) => {
                 // The 30 s start after the approval: the wait for the user is not part of the call.
                 const signal = AbortSignal.any([AbortSignal.timeout(TIMEOUT_MS), ...(ctx.signal ? [ctx.signal] : [])]);
                 try {
+                    details.sent = true;
                     const response = await send({
                         url, method, body: args.body ?? undefined, signal,
                         headers: { ...(args.headers ?? {}), [fields.headerName ?? "Authorization"]: headerValue },
@@ -2184,6 +2185,8 @@ const handler = async (args, ctx, { broker, httpLimits }) => {
 
 module.exports = { def, handler, needsBrowser: false, createHttpLimits };
 ```
+
+Ein `vault.use_denied` mit `vault.http_failed` und `sent: true` heißt: die Anfrage ging mit dem Token hinaus, die Antwort kam nicht an.
 
 Ohne `content-length` und mit einem Body über 256 KB steht im Audit `bytes: null`, und eine binäre Antwort meldet `more than 262144 bytes`.
 
@@ -2663,7 +2666,7 @@ git commit -m "Vault: browser_fill_secret trägt Token und Werte in ein Formular
 
 **Design:** kein UI-Anteil.
 
-**Tests:** 2 Tests — (1) Auth: Git-Key an `/api/mcp` → 403, Claude-Key an `/api/vault/git/github.com/o/r.git/info/refs` → 403, Git-Key dort → durchgelassen (mit Stub-Route); (2) `requestDeadline` (Frist 200 ms): tröpfelnder POST an beliebiger Route → 408, derselbe POST unter `/api/vault/git/` ohne `clearRequestDeadline` → 408, mit `clearRequestDeadline` → läuft durch; vollständiger Body mit langer Antwortzeit → kein 408; Route antwortet 401, ohne den Body zu lesen, der Client tröpfelt weiter → Verbindung binnen ~3× Frist geschlossen.
+**Tests:** 2 Tests — (1) Auth: Git-Key an `/api/mcp` → 403, Claude-Key an `/api/vault/git/github.com/o/r.git/info/refs` → 403, Git-Key dort → durchgelassen (mit Stub-Route); (2) `requestDeadline` (Frist 200 ms): tröpfelnder POST an beliebiger Route → 408, derselbe POST unter `/api/vault/git/` ohne `clearRequestDeadline` → 408, mit `clearRequestDeadline` → läuft durch; vollständiger Body mit langer Antwortzeit → kein 408; Route antwortet 401, ohne den Body zu lesen, der Client tröpfelt weiter → Verbindung binnen ~3× Frist geschlossen; tröpfelnder POST an eine Route, die es nicht gibt → 408, der Prozess läuft weiter (die 408 geht direkt auf den Socket).
 
 **Parallel:** Task 1, Task 2, Task 8, Task 9 (Welle A).
 
@@ -2803,6 +2806,9 @@ test("a body that has not arrived after the deadline ends with 408, also under /
     const refused = await uploadUntilClosed("/api/vault/git/refused", { giveUpMs: DEADLINE_MS * 10 });
     assert.strictEqual(refused.status, 401);
     assert.ok(refused.closedAfterMs < DEADLINE_MS * 3, `an answer without reading the body still ends the upload at the deadline (${refused.closedAfterMs} ms)`);
+    const unrouted = await uploadUntilClosed("/api/nowhere", { giveUpMs: DEADLINE_MS * 10 });
+    assert.deepStrictEqual([unrouted.status, unrouted.closedAfterMs < DEADLINE_MS * 3], [408, true],
+        "finalhandler waits for the body of an unknown route; the deadline ends it without ERR_HTTP_HEADERS_SENT ending the process");
 });
 ```
 
@@ -2844,17 +2850,21 @@ Bindung an den Server, IP-Bindung, `touchApiKey` und `req.agent` (jetzt mit `age
 
 ```js
 const DEFAULT_MS = 300 * 1000;
+const TIMED_OUT = "HTTP/1.1 408 Request Timeout\r\nConnection: close\r\nContent-Length: 0\r\n\r\n";
 
 // Stands in for server.requestTimeout, which index.js sets to 0: Node cannot lift that limit for a
 // single request, and a git push may upload for longer. Only a route that knows who is sending lifts this one.
 // An answer alone does not end the deadline: after a 401 or 404 Node keeps reading an unread body on a
 // keep-alive connection, without requestTimeout for as long as the client sends.
+// The 408 goes to the socket, not through res: finalhandler and routes that wait for this body answer
+// afterwards, and with res.headersSent set that answer throws ERR_HTTP_HEADERS_SENT outside any try.
 const requestDeadline = ({ ms = DEFAULT_MS } = {}) => (req, res, next) => {
     let timer = setTimeout(() => {
         timer = null;
-        if (req.complete) return;
-        if (res.headersSent) return req.socket?.destroy();
-        res.status(408).set("Connection", "close").json({ message: "The request body did not arrive in time" });
+        const socket = req.socket;
+        if (req.complete || !socket || socket.destroyed) return;
+        if (res.headersSent) return socket.destroy();
+        socket.end(TIMED_OUT, () => socket.destroy());
     }, ms);
     const clear = () => {
         clearTimeout(timer);
@@ -3407,7 +3417,7 @@ const parseGitRequest = (method, path, query) => {
 
 const failureKind = (err) => {
     if (err?.message === "idle" || err?.code === "ETIMEDOUT") return "timeout";
-    if (/CERT|TLS|SSL|SELF_SIGNED|UNABLE_TO/.test(String(err?.code ?? ""))) return "tls";
+    if (/CERT|TLS|SSL|SELF_SIGNED|UNABLE_TO/.test(String(err?.code ?? ""))) return "TLS";
     return "connection";
 };
 
@@ -3419,7 +3429,9 @@ const pktLine = (text) => {
 // Rejected requests close the connection: a body Outpost never reads must not keep it open.
 const refuse = (res, status, contentType, body) => {
     if (res.headersSent || res.destroyed) return res.destroy();
-    res.on("finish", () => res.socket?.destroy());
+    // Node detaches the socket before "finish" listeners run, so it is captured here.
+    const socket = res.socket;
+    res.on("finish", () => socket?.destroy());
     res.writeHead(status, { "Content-Type": contentType, "Cache-Control": "no-cache", Connection: "close" });
     res.end(body);
 };
@@ -5100,7 +5112,7 @@ git commit -m "Vault: Werkzeug, Ziel und Abzeichen „schreibt“ auf der Freiga
 
 Umsetzung nach Artboard `docs/design/mockups/ui-agent-access.html` und Anleitung `ui-agent-access.md` (Rev. 16): dritter Haken „Git“ (nicht vorbelegt), darunter — nur solange Git angehakt ist — UI-AGENT-ACCESS-GIT-NOTE mit Info-Icon in `--subtext`, kein `role="alert"`, sperrt „Einrichten“ nicht. Die Bestandszustände von SETUP (`loading`, `error`, `disabled`, `partial`), RESULT (`empty`, `error` mit Befehl und „Kopieren“, `partial`) und KEYS gelten für Git unverändert, weil sie nicht am Agententyp hängen; neu sind nur die Erfolgszeile für Git und die Zeile für `no_git_entries`. Die Agent-Beschriftung kommt wie bisher aus `vault.agents.<agentType>` — mit `vault.agents.git` aus Task 9 zeigen KEYS und UI-API-KEYS-AGENTS „Git“ ohne weiteren Code. In UI-API-KEYS-AGENTS ordnet der Task die Keys eines Servers nach Agent (Claude Code · Codex · Git, Beispiel im Manifest); die Liste kommt neuester zuerst vom Server, ein später eingerichteter Git-Key stünde sonst oben. Im Agenten-Zugang bleibt die Reihenfolge des Servers, weil die Vorbelegung der Adresse den neuesten Key braucht.
 
-Datenvertrag mit Task 8: Die Erfolgszeile „Git eingerichtet für root: https://github.com läuft über Outpost.“ braucht die eingerichteten Hosts. Der Client liest sie aus `result.hosts` (`string[]`, Hostnamen bzw. `host:port` wie in den Einträgen) des Ergebnisses für `git` und schreibt sie als `https://<host>`, kommagetrennt. „Schnittstellen“ Task 8 nennt dieses Feld bisher nicht — Task 8 muss es in `setupOne`/`setupAgent` für `git` mitgeben (es sind dieselben Hosts, die `gitSetupCommand` bekommt). `no_git_entries` erkennt der Client am `reason`, unabhängig von `status`; das Ergebnis hat `id: null` und keinen Befehl, also weder „Kopieren“ noch Key-Hinweis, und `discardPending` überspringt es (`id != null`).
+Datenvertrag mit Task 8: Die Erfolgszeile „Git eingerichtet für root: https://github.com läuft über Outpost.“ braucht die eingerichteten Hosts. Der Client liest sie aus `result.hosts` (`string[]`, Hostnamen bzw. `host:port` wie in den Einträgen) des Ergebnisses für `git` und schreibt sie als `https://<host>`, kommagetrennt. „Schnittstellen“ Task 8 liefert dieses Feld für jedes Git-Ergebnis (bei `no_git_entries` `[]`). `no_git_entries` erkennt der Client am `reason`, unabhängig von `status`; das Ergebnis hat `id: null` und keinen Befehl, also weder „Kopieren“ noch Key-Hinweis, und `discardPending` überspringt es (`id != null`).
 
 - [ ] **Step 1: Write the failing tests** — `client/src/pages/Servers/components/AgentAccessDialog/__tests__/AgentAccessDialog.test.jsx`
 
@@ -5117,7 +5129,7 @@ Anhängen:
 test.each([
     ["set up", { id: 46, agentType: "git", status: "configured", remoteUser: "root", hosts: ["github.com"], probe: null, replacedRegistration: false },
         "Git set up for root: https://github.com runs through Outpost."],
-    ["without a Git entry", { id: null, agentType: "git", status: "manual", reason: "no_git_entries", remoteUser: "root", probe: null, replacedRegistration: false },
+    ["without a Git entry", { id: null, agentType: "git", hosts: [], status: "manual", reason: "no_git_entries", remoteUser: "root", probe: null, replacedRegistration: false },
         t("servers.agentAccess.result.noGitEntries")],
 ])("the SSH note follows the Git checkbox, setup sends git, and the result says %s", async (_, result, text) => {
     const user = userEvent.setup();
@@ -5291,7 +5303,7 @@ In `docs/vault.md` (englisch, Stil der Datei) einfügen bzw. ändern:
 2. Abschnitt **4. Agent access**, „Set up with one click“: Schritt 2 nennt **Git** als dritten Agenten; neuer Unterabschnitt **Git** mit: was die Einrichtung schreibt (die drei `git config --file "$HOME/.gitconfig"`-Zeilen aus der Spec, Modus 600), dass nur Hosts von Einträgen mit „Use for Git“ eingerichtet werden und man nach neuen Hosts erneut einrichtet, dass SSH-Remotes nicht über den Vault laufen und wie man umstellt (`git remote set-url origin https://github.com/o/r.git`), dass `git config` den Key für die Laufzeit des Befehls in der Prozessliste zeigt, die Grenzen (30 Git-Vorgänge pro Minute je Git-Key, höchstens 4 gleichzeitige Weiterleitungen, kein Dumb-HTTP und kein LFS → 404, Lesevorgänge ohne Zeitgrenze), und dass Entziehen nur die eigenen Zeilen entfernt und die Git-Sitzung beendet.
 3. Abschnitt **5. Approvals**: Lesen und Schreiben getrennt (was als schreibend gilt), „For this session“ je Art — Lesen, Schreiben über API/Git und Eintragen im Browser sind getrennte Freigaben, Git-Sitzung mit 12 h Leerlauf, „Once“ deckt bei Git einen Vorgang und bei Push genau einen Push, die entry-weite 60-s-Sperre nach Ablehnen, das Abzeichen „schreibt“ auf der Karte.
 4. Abschnitt **Time limits**: `vault_http` 30 s; Git-Uploads ohne Zeitgrenze, 60 s ohne Daten beenden; hinter einem Reverse-Proxy für `/api/vault/git/` und `/api/mcp` eine ausreichende Body-Grenze und ungepufferte Requests (`client_max_body_size 0; proxy_request_buffering off;` in nginx); `/api/vault/git/` braucht dazu dasselbe `proxy_read_timeout` von mindestens 150 s wie `/api/mcp`, weil `info/refs` auf die Freigabe wartet.
-5. Abschnitt **7. Security model and limits**: neuer Punkt **Responses** — der Token wird in `vault_http`-Antworten und Git-Text-Antworten geschwärzt, Pack-Daten nicht; Daten, die ein Dienst diesem Token zeigt, sieht der Agent. Neuer Punkt **Fill anywhere** — Risiko des Schalters, eine Sitzungsfreigabe gilt nur für eine Origin. Neuer Punkt **Proxy environment** — Node `fetch` und `node:https` nutzen `HTTP(S)_PROXY` nur mit `NODE_USE_ENV_PROXY=1`; Outpost setzt sie nicht, mit dieser Variable ginge der Token über den Proxy.
+5. Abschnitt **7. Security model and limits**: neuer Punkt **Responses** — the token is replaced by •••• in vault_http responses and in Git text responses (plain, percent/form-encoded, JSON-escaped, base64); pack data is not. A service that echoes the token transformed (a byte range of it, \u-escaped, hashed, reversed) is not caught; entries should only list hosts whose APIs do not reflect the Authorization header. Whatever data a service shows this token, the agent sees. Neuer Punkt **Fill anywhere** — Risiko des Schalters, eine Sitzungsfreigabe gilt nur für eine Origin. Neuer Punkt **Proxy environment** — Node `fetch` und `node:https` nutzen `HTTP(S)_PROXY` nur mit `NODE_USE_ENV_PROXY=1`; Outpost setzt sie nicht, mit dieser Variable ginge der Token über den Proxy.
 6. Abschnitt **9. Tools**: Tabelle um `vault_http` und `browser_fill_secret` ergänzen (Argumente, Rückgabe, Grenzen wie Spec), eine Zeile zum Git-Proxy; Fehlercode-Tabelle um alle Codes aus Spec „Fehlercodes“ mit ihrer Meldung ergänzen.
 
 Run: `cd /root/outpost && yarn docs:build`
