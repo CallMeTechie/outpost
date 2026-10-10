@@ -10,6 +10,8 @@ Claude Code und Codex auf einem Server nutzen API-Tokens aus dem Vault für drei
 
 Erfolg: Claude auf einem LAN-Server legt mit einem GitHub-PAT aus dem Vault ein Issue an, klont ein privates Repo, pusht einen Branch und trägt den PAT in ein Formular im Outpost-Browser ein. Der PAT taucht in keiner Antwort, keinem Snapshot, keiner Datei auf dem Server und keinem Audit-Eintrag auf. Lesende und schreibende Zugriffe gibst du getrennt frei.
 
+**Umsetzungsreihenfolge.** (A) Vermittlungskern, Erweiterung der Freigaben, Schwärzung, neue Felder, `vault_http`; (B) `browser_fill_secret`, `fillAnywhere`; (C) Git-Proxy, Auth-Änderung, Einrichtung und Entziehen. B und C hängen nur von A ab und laufen parallel; gemeinsame Dateien sind `server/lib/vault/errors.js`, `server/lib/vault/mcpProvider.js` (`vault_list`) und die Locale-Dateien.
+
 ### Einordnung
 
 Teilprojekt 2 des Vaults (siehe `docs/superpowers/specs/2026-10-09-vault-core-design.md`, „Einordnung“) ist in drei Specs geschnitten: **2a Tokens** (diese Spec), 2b `ssh_exec`, 2c `db_query`. 2a baut auf dem Kern aus Teilprojekt 1 auf: Einträge, Bindung an Server, Agenten-Keys mit IP-Bindung, MCP-Endpunkt, Freigabe-Karte, Audit, `vaultGuard`.
@@ -19,6 +21,8 @@ Teilprojekt 2 des Vaults (siehe `docs/superpowers/specs/2026-10-09-vault-core-de
 Wie in Teilprojekt 1 gibt kein Werkzeug einen Wert heraus. Was eine Antwort enthält, bestimmt der angefragte Dienst; Outpost schwärzt darin den Token und seine Varianten (Abschnitt „Schwärzung“), aber nicht andere Daten, die der Dienst mit diesem Token herausgibt — wer `api.github.com` lesen darf, liest, was GitHub diesem Token zeigt. Der Git-Key liegt in `~/.gitconfig` des entfernten Benutzers und ist vor dem Agenten nicht geheim; er taugt nur für den Git-Proxy, nur von der Adresse dieses Servers aus (IP-Bindung), nur mit Freigabe und nur für Einträge, die für diesen Server gelten.
 
 Anfragen gehen vom Outpost-Server aus. Erreichbar ist, was Outpost erreicht; APIs, die nur auf dem localhost des Agenten-Servers lauschen, gehören nicht zu 2a.
+
+Git-Antworten (Pack-Daten, `remote:`-Meldungen) laufen ungeschwärzt durch; Outpost schickt den Token dort nur im `Authorization`-Header an den Git-Host und gibt von dessen Antwort-Headern nur die Liste in „Ablauf“ weiter.
 
 ## Entscheidungen
 
@@ -30,7 +34,7 @@ Anfragen gehen vom Outpost-Server aus. Erreichbar ist, was Outpost erreicht; API
 | Eintragen im Browser | Je Eintrag „Darf im Browser eingetragen werden auf“ (`fillOrigins`). Leer heißt nirgends, außer der Schalter „Token auf jeder Seite eintragen erlauben“ (`vault_settings.fillAnywhere`) ist an; dann jede Seite, immer mit Freigabe, Sitzungsfreigabe nur für die eine Origin. |
 | Git | Git-Proxy mit `insteadOf` und `extraHeader` in der globalen gitconfig; eigener Agenten-Key `git@<server>`. Kein Credential-Helper (der Token läge sonst im Git-Prozess auf dem Server). |
 | Klartext-HTTP | Nur mit `allowHttp` je Eintrag; sonst nur `https:`. |
-| Hosts | `hosts` des Eintrags gilt für `vault_http` und Git; exakter Abgleich, ohne Platzhalter, ohne Groß-/Kleinschreibung, mit optionalem Port. |
+| Hosts | `hosts` des Eintrags gilt für `vault_http` und Git; exakter Abgleich, ohne Platzhalter, ohne Groß-/Kleinschreibung, mit optionalem Port. Ein Port in `hosts` gleicht nur URLs mit genau diesem Nicht-Standardport; `host:443` und `host:80` lehnt die Prüfung ab („leave out the default port“). |
 
 ## Datenmodell
 
@@ -64,23 +68,25 @@ Migration `0049-add-vault-fill-anywhere.js`: `fillAnywhere` BOOLEAN NOT NULL, St
 1. Eintrag über `findVisibleItem(caller, itemRef)` laden (Bindung an den Server des Agenten-Keys, Organisation, `vault.use`).
 2. `check(item)` — die Prüfungen des Werkzeugs (Typ, Host, Methode, Feld, Origin). Wirft `VaultError`.
 3. Freigabe, wenn `item.approvalRequired` oder Impersonation: `approvals.requestApproval({ …, tool, access, target, scope })`.
-4. Nach der Freigabe: Key noch gültig (`keyStillValid`), Eintrag neu laden, `check` erneut — geänderte Hosts, `readOnly`, `git`, `fillOrigins` oder Ziel ergeben `vault.approval_stale` („changed while the approval was open; nothing was done“).
+4. Nach der Freigabe: Key noch gültig (`keyStillValid`), Eintrag neu laden, `check` erneut. Geänderte Hosts, `readOnly`, `git`, `fillOrigins` oder Ziel ergeben `vault.approval_stale` („changed while the approval was open; nothing was done“). Ausnahme `browser_fill_credential`: geänderte `origins` ergeben dort weiter `vault.origin_mismatch` mit der bisherigen Meldung (`mcpProvider.test.js`, „an origin is added to the entry“).
 5. `secret = readSecret(item.id, field)`; `act(secret, item)` — nur hier ist der Wert im Speicher.
+
+Bei den Browser-Werkzeugen läuft die Zielprüfung nach der Freigabe nicht getrennt von `act`: `act` ruft `assertFillableSession` und die Origin-/Feldprüfung innerhalb desselben `session.runAgent`-Aufrufs auf, in dem `readSecret` und das Eintragen laufen, wie heute in `fill`.
 6. Audit `vault.use` (Erfolg) bzw. `vault.use_denied` mit Code (Ablehnung), wie heute; `lastUsedAt` per `silent: true`.
 
-`browser_fill_credential` wird auf `use` umgestellt, ohne Verhaltensänderung; seine bestehenden Tests (`server/lib/vault/__tests__/`, `server/lib/browser/__tests__/vaultGuard.test.js`) bleiben unverändert grün. `field` ist `password` (login), `token` (api_key), `value` (generic).
+`browser_fill_credential` wird auf `use` umgestellt, ohne Verhaltensänderung außer den werkzeugneutralen Standardmeldungen (Abschnitt „Fehlercodes“); seine bestehenden Tests (`server/lib/vault/__tests__/`, `server/lib/browser/__tests__/vaultGuard.test.js`) bleiben unverändert grün. `field` ist `password` (login), `token` (api_key), `value` (generic).
 
 ### Freigabe (`server/lib/vault/approvals.js`)
 
 - Eine Anfrage trägt zusätzlich `tool` (`vault_http`, `browser_fill_secret`, `browser_fill_credential`, `git`), `access` (`read` | `write`) und `target` (Abschnitte unten). Die Karte zeigt sie (`UI-VAULT-APPROVAL-CARD`, `UI-VAULT-APPROVAL-WRITE`).
 - Sitzungsfreigaben gelten für (Sitzung, Eintrag, Umfang). Umfang = `access`, bei „jeder Seite“ zusätzlich die Ziel-Origin (`write|https://coolify.example.net`). `browser_fill_credential` hat Umfang `write` wie jedes Eintragen; sein Verhalten bleibt gleich, weil es nur diesen Umfang hat.
-- Sitzung = `transportId` der MCP-Verbindung (wie heute) oder `git:<keyId>` beim Git-Proxy. Eine Git-Sitzung endet nach 12 Stunden ohne Git-Anfrage dieses Keys (gemessen an der letzten Anfrage) und beim Entziehen des Keys.
+- Sitzung = `transportId` der MCP-Verbindung (wie heute) oder `git:<keyId>` beim Git-Proxy. Eine Git-Sitzung endet nach 12 Stunden ohne Git-Anfrage dieses Keys (gemessen an der letzten Anfrage) und beim Entziehen des Keys. Offene Karten gelten wie heute je (Sitzung, Eintrag): ein zweiter Git-Vorgang desselben Keys mit demselben Eintrag (z. B. paralleler Clone eines anderen Repos auf demselben Host) endet, solange eine Karte offen ist, mit `vault.approval_pending`.
 - Der Stempel einer Sitzungsfreigabe (`grantStamp`) enthält zusätzlich `hosts`, `readOnly`, `allowHttp`, `git`, `gitUsername`, `fillOrigins`; jede Änderung beendet die Freigabe.
-- Unverändert: 120 s Laufzeit, 3 offene Karten je Agent, 60 s Sperre nach Ablehnen, bei Impersonation nur „Einmal“, `vault.approval_unavailable` ohne offenes Fenster.
+- Unverändert: 120 s Laufzeit, 3 offene Karten je Agent, 60 s Sperre nach Ablehnen — sie gilt je (Agent, Eintrag) unabhängig von `access`: wer einen Schreibzugriff ablehnt, sperrt für 60 s auch das Lesen dieses Eintrags — bei Impersonation nur „Einmal“, `vault.approval_unavailable` ohne offenes Fenster.
 
 ### Schwärzung
 
-`redactSecretText(text, variants)` in `server/lib/vault/redact.js` ersetzt jede Variante durch `••••` (längste zuerst). Varianten eines Tokens: der Token, `variantsOf(token)` aus `vaultGuard` (Prozent- und Formular-Kodierung), der fertige Header-Wert (`headerTemplate` mit eingesetztem Token), bei Git `gitUsername:token` im Klartext und base64, `token` base64. Leere Varianten und solche unter 4 Zeichen werden nicht ersetzt (sonst schwärzt ein kurzer Token beliebige Antworttexte); ein Token unter 4 Zeichen wird beim Speichern abgelehnt (`secretsOf("api_key")`, `token` min 4).
+`redactSecretText(text, variants)` in `server/lib/vault/redact.js` ersetzt jede Variante durch `••••` (längste zuerst). Varianten eines Tokens: der Token, `variantsOf(token)` aus `server/lib/browser/vaultGuard.js` (Prozent- und Formular-Kodierung; heute modulintern, wird für `redact.js` exportiert), der fertige Header-Wert (`headerTemplate` mit eingesetztem Token), bei Git `gitUsername:token` im Klartext und base64, `token` base64. Leere Varianten und solche unter 4 Zeichen werden nicht ersetzt (sonst schwärzt ein kurzer Token beliebige Antworttexte); Neu: `token` von `api_key` verlangt beim Speichern mindestens 4 Zeichen (`secretsOf` in `server/validations/vault.js` bekommt für `token` `min(4)`; heute gilt für alle geheimen Felder `min(1)`). Ein bestehender Eintrag mit kürzerem Token wird von `vault_http` und Git bei der Nutzung mit `vault.secret_too_short` abgelehnt, bevor etwas gesendet wird.
 
 ## `vault_http`
 
@@ -95,11 +101,11 @@ Beschreibung an den Agenten (englisch): Call an HTTP API with a vault API key. O
 ### Prüfungen (`check`)
 
 1. Typ `api_key`, sonst `vault.wrong_type`.
-2. `url` absolut, höchstens 8 KB; Schema `https:` oder (`http:` und `allowHttp`), sonst `vault.http_not_allowed`. Keine Zugangsdaten in der URL (`vault.bad_url`).
+2. `url` absolut, ohne Zugangsdaten, höchstens 8 KB, Schema `http:` oder `https:`, sonst `vault.bad_url`; `http:` nur mit `allowHttp`, sonst `vault.http_not_allowed`.
 3. `host[:port]` der URL (Port nur, wenn nicht Standard) steht in `hosts`, sonst `vault.host_not_allowed`.
 4. `method` ∈ GET, HEAD, POST, PUT, PATCH, DELETE (`vault.bad_method`); bei `readOnly` nur GET/HEAD (`vault.read_only`).
 5. `headers`: höchstens 30, Namen Token-Zeichen, Werte ohne CR/LF, zusammen höchstens 8 KB. Abgelehnt (`vault.header_not_allowed`): `headerName` des Eintrags, `Authorization`, `Cookie`, `Host`, `Content-Length`, `Transfer-Encoding`, `Connection`, alles mit `Proxy-`.
-6. `body`: String bis 1 MB; bei GET/HEAD nicht erlaubt (`vault.bad_body`).
+6. `body`: String bis 1 MB; bei GET/HEAD nicht erlaubt (`vault.bad_body`). Dafür bekommt `/api/mcp` in `server/index.js` vor dem globalen Parser `app.use("/api/mcp", express.json({ limit: "2mb" }))`; der globale `express.json()` (Standard 100 KB) überspringt bereits gelesene Bodies.
 
 `access` = `read` für GET/HEAD, sonst `write`. `target` = `METHOD host/path` ohne Query und Fragment, gekürzt auf 200 Zeichen.
 
@@ -107,7 +113,7 @@ Beschreibung an den Agenten (englisch): Call an HTTP API with a vault API key. O
 
 - `fetch` von Node mit `redirect: "manual"`, 30 s Gesamtzeit (`AbortSignal.timeout`), ohne Proxy-Umgebung; Header des Agenten plus `headerName: headerTemplate` mit eingesetztem Token.
 - Weiterleitungen (301, 302, 303, 307, 308) folgt Outpost höchstens 5-mal und nur, wenn die neue URL dieselbe Origin hat; 303 wird zu GET ohne Body. Eine Weiterleitung auf eine andere Origin wird nicht verfolgt und mit ihrem `location` an den Agenten gegeben; der Token geht nicht dorthin.
-- Antwort: `status`, Header aus der Liste `content-type`, `content-length`, `location`, `link`, `etag`, `last-modified`, `retry-after`, `x-ratelimit-*`, `x-github-request-id` (nie `set-cookie`); Body bei Text (`text/*`, `*json*`, `*xml*`, `javascript`, `x-www-form-urlencoded`) als UTF-8 bis 256 KB, darüber gekürzt mit `[truncated after 262144 bytes]`; sonst `[binary body, <type>, <bytes> bytes]`. Alles läuft durch `redactSecretText`.
+- Antwort: `status`, Header aus der Liste `content-type`, `content-length`, `location`, `link`, `etag`, `last-modified`, `retry-after`, `x-ratelimit-*`, `x-github-request-id` (nie `set-cookie`); Body bei Text (`text/*`, `*json*`, `*xml*`, `javascript`, `x-www-form-urlencoded`) als UTF-8 bis 256 KB. Ist der Body länger, kürzt Outpost auf 256 KB, entfernt am Ende jeden Rest, der Anfang einer Variante ist, schwärzt erst dann und hängt `[truncated after 262144 bytes]` an; sonst `[binary body, <type>, <bytes> bytes]`. Alles läuft durch `redactSecretText`.
 - Ergebnis an den Agenten: Text `HTTP <status>\n<header>: <wert>\n…\n\n<body>`.
 - Netzfehler: `vault.http_failed` mit der Art (Zeitüberschreitung, Verbindung, TLS), ohne URL-Query und ohne Token.
 
@@ -121,13 +127,13 @@ Beschreibung an den Agenten (englisch): Call an HTTP API with a vault API key. O
 browser_fill_secret({ item, ref, sessionId? })
 ```
 
-Beschreibung (englisch): Type the value of an API key or "other" entry into one field of a browser session, for example a token field in a web form. You never see the value: snapshots show ••••, browser_evaluate and screenshots stay locked while it is visible. The field's frame and all frames around it must be one of the entry's fill origins. Needs approval unless the entry says otherwise.
+Beschreibung (englisch): Type the value of an API key or "other" entry into one field of a browser session, for example a token field in a web form. You never see the value: snapshots show ••••, browser_evaluate stays locked in this browser context afterwards, and screenshots stay locked while the value is visible in a field that is not a password field. The field's frame and all frames around it must be one of the entry's fill origins. Needs approval unless the entry says otherwise.
 
 - Verfügbar wie `browser_fill_credential`: Vault an, `vault.use`, `connect.browser`.
 - Typ `api_key` (Feld `token`) oder `generic` (Feld `value`), sonst `vault.wrong_type`.
 - Ziel: `<input>` vom Typ `text`, `password`, `search`, `url` oder ohne Typ, oder `<textarea>`; sonst `vault.field_not_fillable`. Prüfung wie `checkFillTarget` in `server/lib/vault/fill.js`: Frame des Felds und alle umgebenden Frames haben eine Origin aus `fillOrigins` (`vault.origin_mismatch`). Leere `fillOrigins` und `fillAnywhere` aus: `vault.no_fill_origins`. Leer und `fillAnywhere` an: jede Origin, Freigabe immer (auch wenn `approvalRequired` aus ist), Umfang `write|<origin>`.
 - `access` = `write`, `target` = Origin des Feld-Frames.
-- Eintragen: wie `fillCredential` (Feld leeren über `Runtime.callFunctionOn`, Wert per `Input.insertText`, `input`- und `change`-Event); danach `vaultGuard.markFilled(contextKey, { backendNodeIds: [feld], secret, targetId })`. Daraus folgen ohne neuen Code: Schwärzung in Snapshots und Fehlern, Sperre von `browser_evaluate`, Markier- und Kopiertasten, Mittelklick, und Screenshot-Sperre, solange das Feld kein Passwortfeld ist und der Frame nicht weiternavigiert (`assertScreenshotAllowed`).
+- Eintragen: über `typeInto` aus `server/lib/vault/fill.js` (Fokus, Feld leeren über `Runtime.callFunctionOn`, Fokus prüfen, Wert per `Input.insertText`, das selbst `input` auslöst). `vaultGuard.markFilled(contextKey, { backendNodeIds: [feld], secret, targetId })` läuft wie in `fillCredential` als `beforeInsert` unmittelbar vor `Input.insertText`, im selben synchronen Schritt wie die Taint-Prüfung — nie danach. Daraus folgen ohne neuen Code: Schwärzung in Snapshots und Fehlern, Sperre von `browser_evaluate`, Markier- und Kopiertasten, Mittelklick, und Screenshot-Sperre, solange das Feld kein Passwortfeld ist und der Frame nicht weiternavigiert (`assertScreenshotAllowed`).
 - Ergebnis: `Filled the value of <item> into the field.`
 - Rate: gemeinsam mit `browser_fill_credential` (`FILL_LIMIT` 20 pro Minute).
 
@@ -154,8 +160,12 @@ Beschreibung (englisch): Type the value of an API key or "other" entry into one 
 
 1. Eintrag suchen: alle für diesen Key sichtbaren Einträge vom Typ `api_key` mit `git` an, deren `hosts` `<host>` enthält. Keiner: `vault.git_not_enabled`; mehrere: `vault.git_ambiguous` (Meldung nennt die Einträge). Der Eintrag ist damit nicht vom Agenten gewählt, sondern vom Host bestimmt.
 2. `broker.use` mit `tool: "git"`, `access` aus der Tabelle, `target` = `Git · <host>/<repo ohne .git>`, Sitzung `git:<keyId>`. `readOnly` und `receive-pack`: `vault.read_only`.
-3. Weiterleiten an `https://<host>/<repo>/<rest>?<query>` mit `Authorization: Basic base64(gitUsername:token)`, `Content-Type`, `Accept`, `Content-Encoding`, `Git-Protocol` und `User-Agent` des Clients. Request-Body und Antwort werden gestreamt (`node:https`, kein Puffern, keine Größengrenze). Keine Weiterleitungen. 60 s ohne Daten in einer Richtung beendet die Verbindung. Upstream-Header zurück: `content-type`, `cache-control`, `expires`, `pragma`; nie `set-cookie`, `www-authenticate`.
+3. Weiterleiten an `https://<host>/<repo>/<rest>?<query>` mit `Authorization: Basic base64(gitUsername:token)`, `Content-Type`, `Accept`, `Content-Encoding`, `Git-Protocol` und `User-Agent` des Clients. Request-Body und Antwort werden gestreamt (`node:https`, kein Puffern, keine Größengrenze). Keine Weiterleitungen. 60 s, in denen in keiner Richtung Daten fließen, beendet die Verbindung. Upstream-Header zurück: `content-type`, `cache-control`, `expires`, `pragma`; nie `set-cookie`, `www-authenticate`.
 4. Der Git-Host antwortet 401/403: Outpost gibt eine Fehlermeldung (unten) mit „the token was refused by <host>“ und auditiert `vault.use_denied` mit Code `vault.upstream_refused`.
+
+Ein **Git-Vorgang** beginnt mit einer erfolgreichen `info/refs`-Anfrage und umfasst die POST-Anfragen desselben Keys an denselben Dienst (`upload-pack` | `receive-pack`) und dasselbe Repo. Er bleibt offen, solange eine seiner Anfragen läuft, und danach 60 s ab dem Ende der letzten (Antwort vollständig gesendet oder Verbindung beendet). Das Ablaufen des Fensters beendet keine laufende Anfrage; es entscheidet nur, ob ein neuer POST noch dazugehört. POSTs desselben Vorgangs dürfen gleichzeitig laufen und zählen einzeln zu den 4 gleichzeitigen Weiterleitungen. Prüfung und Freigabe (auch „Einmal“) laufen bei `info/refs`; der Vorgang speichert dabei `grantStamp(item)` und die Eintrags-ID. Ein POST des Vorgangs ruft `broker.use({ …, approved: vorgang })` auf: Schritt 3 (Freigabe) entfällt, Schritt 4 läuft — Key entzogen: `vault.item_unknown`; Stempel des neu geladenen Eintrags weicht ab oder `check` scheitert: `vault.approval_stale` bzw. der Code von `check`. Ein POST ohne offenen Vorgang: 403 `vault.git_no_operation`. Ein `receive-pack`-Vorgang endet nach dem ersten POST, dessen Body mehr als die Flush-Zeile `0000` enthält (Gits leerer Probe-POST zählt nicht): „Einmal“ deckt genau einen Push, jeder weitere öffnet eine neue Karte, außer eine Sitzungsfreigabe gilt. Audit: ein `vault.use` je Vorgang, geschrieben, wenn der Vorgang endet, `bytes` summiert über alle Anfragen; eine Ablehnung eines POST erzeugt ein eigenes `vault.use_denied`.
+
+**Dauer eines Uploads.** Node bricht Requests, deren Body nicht innerhalb von `server.requestTimeout` (Standard 300 s) ankommt, mit 408 ab; je Request lässt sich das nicht aufheben (geprüft mit Node 22: `req.setTimeout(0)` und `req.socket.setTimeout(0)` wirken nicht). Deshalb setzt `server/index.js` für beide Listener (`app.listen` und den HTTPS-Server) `requestTimeout = 0`, und eine Middleware `server/middlewares/requestDeadline.js`, als erste nach `app.set("trust proxy", …)` eingehängt, startet je Request einen Timer von 300 s. Läuft er ab und ist `req.complete` noch `false`, antwortet sie mit 408 und `Connection: close`; sind die Header schon gesendet, zerstört sie den Socket. Den Stream liest sie nicht. Der Timer endet bei `res` `close`/`finish`. WebSocket-Upgrades durchlaufen die Middleware über express-ws, sind aber sofort `complete` und bleiben unberührt; MCP-Aufrufe in der Freigabe-Wartezeit und lange Downloads ebenso, weil ihr Body vollständig ist. Die Frist gilt auch unter `/api/vault/git/`: erst wenn der Git-Router Key, Eintrag und Vorgang geprüft hat und die Weiterleitung beginnt, hebt er sie für diesen Request auf (`req.clearRequestDeadline()`) und setzt die 60-s-Leerlaufgrenze aus Schritt 3. Abgelehnte Git-Requests antworten mit `Connection: close` und zerstören den Socket nach dem Senden, damit ein ungelesener Body die Verbindung nicht offen hält. `headersTimeout` (60 s) bleibt unverändert.
 
 ### Fehler, die Git anzeigt
 
@@ -163,22 +173,25 @@ Für `info/refs` (der erste Schritt jedes Vorgangs) antwortet Outpost bei Ablehn
 
 ### Grenzen
 
-30 Git-Vorgänge pro Minute je Git-Key (gezählt werden `info/refs`-Anfragen), darüber `vault.rate_limited`. Höchstens 4 gleichzeitige Weiterleitungen je Key (`vault.busy`).
+30 Git-Vorgänge pro Minute je Git-Key (gezählt werden `info/refs`-Anfragen, also Vorgänge wie oben), darüber `vault.rate_limited`. Höchstens 4 gleichzeitige Weiterleitungen je Key (`vault.busy`).
 
 ### Einrichtung (`server/lib/vault/provision.js`, `server/controllers/agentKeys.js`)
 
 Der Agenten-Zugang-Dialog bietet „Git“ als dritten Agenten. Er braucht kein CLI außer `git` (`command -v git` wie bei Claude/Codex; fehlt es: Ergebnis „git nicht gefunden“ mit Befehl zum Kopieren). Ablauf wie bei Claude/Codex: Key-Ablage per `keyDropCommand`, Adressprüfung per `probeCommand`, dann:
 
 ```
-git config --global --replace-all url."<base>/api/vault/git/<host>/".insteadOf "https://<host>/"   # je Host
-git config --global --replace-all http."<base>/api/vault/git/".extraHeader "Authorization: Bearer <key>"
-chmod 600 ~/.gitconfig
+git config --file "$HOME/.gitconfig" --replace-all url."<base>/api/vault/git/<host>/".insteadOf "https://<host>/" || exit 1   # je Host
+git config --file "$HOME/.gitconfig" --replace-all http."<base>/api/vault/git/".extraHeader "Authorization: Bearer <key>" || exit 1
+chmod 600 "$HOME/.gitconfig" || exit 1
 ```
+
+`--file "$HOME/.gitconfig"` statt `--global`, auch beim Entfernen und in der Prüfung: Git liest `~/.gitconfig` neben `~/.config/git/config` immer, `--global` schriebe aber in die XDG-Datei, wenn nur diese existiert.
 
 - `<base>` = Agenten-Adresse dieses Keys ohne abschließenden Schrägstrich. `<host>` = Vereinigung der `hosts` aller für diesen Server sichtbaren `api_key`-Einträge mit `git` an, zum Zeitpunkt der Einrichtung; ohne solche Einträge: Ergebnis „Kein Eintrag mit „Für Git nutzen“ gilt für diesen Server.“ und kein Key.
 - Vorher entfernt der Befehl eigene alte Zeilen: jede `url.*.insteadOf`, deren Abschnittsname `/api/vault/git/` enthält, und `http.*/api/vault/git/.extraHeader`. Andere `insteadOf`-Regeln bleiben.
 - Werte gehen durch `shQuote`; der Key wird wie heute aus der Ablagedatei gelesen. `git config` nimmt den Header-Wert als Argument; die Prozessliste zeigt ihn für die Laufzeit des Befehls (wie bei `claude mcp add`, `docs/vault.md` nennt das).
-- Registrierungsprüfung und Entziehen (`registrationStateLines` für `git`): MATCH, wenn `git config --global --get-all http.<base>/api/vault/git/.extraHeader` den Präfix des Keys enthält; OTHER bei anderem Key; sonst ABSENT. Entziehen bei MATCH entfernt die Zeilen wie oben und meldet REMOVED.
+- `server/controllers/agentKeys.js`: `setupAgent` und `manualCommand` haben einen Zweig für `git`, der statt `setupCommand`/`/api/mcp` ein neues `gitSetupCommand({ base, hosts, keyFile | key })` aus `provision.js` nutzt; `CLI_NAMES` enthält `git` für `findCliCommand`. Die Hosts ermittelt `createAgentKeys` vor dem Anlegen des Keys mit `visibleItems({ accountId, agent: { entryId } })`; ohne Treffer kein Key.
+- Registrierungsprüfung und Entziehen: das modulinterne `registrationStateLines` in `provision.js` bekommt einen Zweig für `git`, wirksam über die Exporte `registrationCheckCommand` und `revokeCommands`. MATCH, wenn `git config --file "$HOME/.gitconfig" --get-all http.<base>/api/vault/git/.extraHeader` den Präfix des Keys enthält; OTHER bei anderem Key; sonst ABSENT. `revokeCommands` sucht für `git` kein CLI über `findCliScript`, sondern entfernt bei MATCH die Zeilen wie oben und meldet REMOVED.
 - Kommen später neue Git-Hosts hinzu, richtet man den Zugang erneut ein; `docs/vault.md` sagt das.
 
 ### Hinweis SSH-Remotes
@@ -198,7 +211,7 @@ Nach Manifest Revision 16 (Design-Block unten), Regeln in `docs/design/design-sy
 - **Eintrag-Dialog:** Gruppe „Nutzung durch Agenten“ mit `UI-VAULT-DIALOG-READONLY`, `-HTTP`, `-GIT` (mit „Git-Benutzername“), `-FILL`; die ersten drei nur bei API-Key, FILL bei API-Key und Sonstiges.
 - **Detail:** `UI-VAULT-DETAIL-USAGE`.
 - **Freigabe-Karte:** Werkzeug und Ziel, Abzeichen „schreibt“ bei `access: write`. `VAULT_APPROVALS` liefert je Anfrage zusätzlich `tool`, `access`, `target`.
-- **Einstellungen › Vault:** `UI-VAULT-SETTINGS-FILLANY`.
+- **Einstellungen › Vault:** `UI-VAULT-SETTINGS-FILLANY`, gespeichert über `UI-VAULT-SETTINGS-SAVE`.
 - **Agenten-Zugang:** Haken „Git“, Ergebnis für Git, `UI-AGENT-ACCESS-GIT-NOTE`; „Git“ in den Key-Listen (`UI-AGENT-ACCESS-KEYS`, `UI-API-KEYS-AGENTS`).
 - Texte in `client/public/assets/locales/de_DE.json` und `en.json`.
 
@@ -215,15 +228,19 @@ Nach Manifest Revision 16 (Design-Block unten), Regeln in `docs/design/design-sy
 
 ## Audit
 
-Keine neue Aktion. `vault.use` und `vault.use_denied` tragen in `details` zusätzlich `tool` und `access`; `vault_http`: `method`, `host`, `path` (ohne Query), `status`, `bytes`; `browser_fill_secret`: `origin`, `fieldType`; Git: `host`, `repo`, `service` (`fetch` | `push`), `bytes` (Summe beider Richtungen, nach Ende des Streams). Nie Header-Werte, Bodies oder Query-Strings.
+Keine neue Aktion. `vault.use` und `vault.use_denied` tragen in `details` zusätzlich `tool` und `access`; `vault_http`: `method`, `host`, `path` (ohne Query), `status`, `bytes`; `browser_fill_secret`: `origin`, `fieldType`; Git: `host`, `repo`, `service` (`fetch` | `push`), `bytes` (Summe beider Richtungen über alle Anfragen des Vorgangs, geschrieben beim Ende des Vorgangs). Nie Header-Werte, Bodies oder Query-Strings.
+
+## Fehlercodes
+
+Neue Codes in `server/lib/vault/errors.js` (Meldung englisch, ohne Token, ohne Query): `vault.approval_stale` "The entry changed while the approval was open; nothing was done. Call again so the user approves the entry as it is now." · `vault.http_not_allowed` "This entry only allows https." · `vault.bad_url` "url must be an absolute http(s) URL without credentials, at most 8 KB." · `vault.host_not_allowed` "This host is not one of the entry's hosts (vault_list shows them)." · `vault.bad_method` "method must be GET, HEAD, POST, PUT, PATCH or DELETE." · `vault.read_only` "This entry is read-only: only GET/HEAD and git fetch." · `vault.header_not_allowed` "This header cannot be set; Outpost sets authentication, Host, Cookie, Content-Length, Transfer-Encoding, Connection and Proxy-* itself." · `vault.bad_body` "body must be a string of at most 1 MB and is not allowed with GET or HEAD." · `vault.http_failed` "The request failed (<kind>); nothing was returned." · `vault.busy` "Too many calls of this key are running; wait for one to finish." · `vault.field_not_fillable` "ref must point to a text, password, search or url input, or a textarea." · `vault.no_fill_origins` "This entry may not be filled in the browser; ask the user to add fill origins." · `vault.git_not_enabled` "No vault entry with Git enabled covers <host> on this server." · `vault.git_ambiguous` "Several vault entries with Git enabled cover <host> on this server (<entries>); ask the user to restrict one." · `vault.git_no_operation` "This request does not belong to a running git operation; run the git command again." · `vault.upstream_refused` "The token was refused by <host>; ask the user to check the entry." · `vault.secret_too_short` "The token of this entry is shorter than 4 characters; ask the user to replace it in Outpost.". Die Standardmeldungen von `vault.wrong_type`, `vault.rate_limited`, `vault.no_secret`, `vault.approval_timeout`, `vault.approval_pending` ("An approval request for this entry is already open for this caller. Wait for the user to answer it before calling again."), `vault.client_gone` und `vault.item_unreadable` werden werkzeugneutral („nothing was done“). Auch `browser_fill_credential` zeigt diese neutralen Texte, weil `approvals.js`, `secrets.js` und `mcpProvider.js` sie ohne eigene Meldung werfen; nur seine expliziten Meldungen (`wrong_type`, `item_unknown`, `origin_mismatch`, `bad_username_field`) bleiben. Kein Test prüft die Standardtexte.
 
 ## Fehler- und Randfälle
 
 - Token im Eintrag leer oder unlesbar: `vault.no_secret` bzw. `vault.item_unreadable` (wie heute).
 - Eintrag während der offenen Karte geändert oder Key entzogen: nichts wird gesendet oder eingetragen (`vault.approval_stale` bzw. `vault.item_unknown`).
 - Upstream liefert die Antwort langsam: 30 s gelten für den ganzen `vault_http`-Aufruf ohne die Wartezeit der Freigabe.
-- Git-Push großer Repos: Streaming, keine Grenze; Abbruch des Clients bricht die Weiterleitung ab, das Audit zählt die bis dahin übertragenen Bytes.
-- Ein Eintrag mit `git` und `readOnly`: clone/fetch gehen, push endet mit `ERR vault: this entry is read-only (vault.read_only)`.
+- Git-Push großer Repos: Streaming ohne Größen- und Zeitgrenze (Abschnitt „Dauer eines Uploads“); nur 60 s, in denen in keiner Richtung Daten fließen, beenden die Verbindung. Abbruch des Clients bricht die Weiterleitung ab, das Audit zählt die bis dahin übertragenen Bytes.
+- Ein Eintrag mit `git` und `readOnly`: clone/fetch gehen, push endet mit `ERR vault: This entry is read-only: only GET/HEAD and git fetch. (vault.read_only)`.
 - Der Git-Host leitet um (z. B. umbenanntes Repo): Outpost folgt nicht; Git meldet den Status, der Agent nutzt die neue URL.
 - Zwei Einträge mit `git` für `github.com`, die für denselben Server gelten: `vault.git_ambiguous`. Abhilfe: Bindung eines Eintrags einschränken.
 
@@ -234,19 +251,20 @@ Ein Test je Verhalten, möglichst über echte Nahtstellen:
 1. **`vault_http` gegen einen lokalen HTTP-Server** (`server/lib/vault/__tests__/vaultHttp.test.js`): Header wird eingesetzt; der Server wiederholt Token und Header-Wert in Body, `location` und einem Header, der Agent sieht `••••`; fremder Host → `vault.host_not_allowed`; `readOnly` + POST → `vault.read_only`; `http:` ohne `allowHttp` → `vault.http_not_allowed`; Weiterleitung auf andere Origin kommt als 3xx zurück und der zweite Server sieht keinen Token; Body über 256 KB wird gekürzt; verbotener Header → `vault.header_not_allowed`.
 2. **Freigaben** (`approvals`-Test erweitert): Sitzungsfreigabe für `read` deckt `write` nicht; Änderung von `hosts` beendet die Freigabe; Key entzogen bei offener Karte → nichts gesendet; „jede Seite“: Freigabe für Origin A deckt Origin B nicht; Git-Sitzung endet nach 12 h ohne Anfrage.
 3. **`browser_fill_secret`** mit dem CDP-Double aus `vaultGuard.test.js`: passende Origin → eingetragen, Snapshot `••••`; Frame mit fremder Origin, `<select>`, leere `fillOrigins` → abgelehnt; `text`-Feld → Screenshot gesperrt; `fillAnywhere` → Freigabe trotz `approvalRequired: false`.
-4. **Git-Proxy Ende-zu-Ende** (`server/lib/vault/__tests__/gitProxy.test.js`): ein lokaler `git http-backend` hinter Basic-Auth spielt den Git-Host; ein Test-Home mit `insteadOf`/`extraHeader` wie von der Einrichtung geschrieben; echtes `git clone`, `git fetch`, `git push` über Outpost gelingen; mit `readOnly` scheitert der Push mit `remote error: vault:`; im Test-Home, in der gitconfig und in den Ausgaben von Git steht der Token nicht; ein nicht erlaubter Pfad (`/objects/…`) → 404.
+4. **Git-Proxy Ende-zu-Ende** (`server/lib/vault/__tests__/gitProxy.test.js`): ein lokaler `git http-backend` hinter Basic-Auth spielt den Git-Host; ein Test-Home mit `insteadOf`/`extraHeader` wie von der Einrichtung geschrieben; echtes `git clone`, `git fetch`, `git push` über Outpost gelingen; mit `readOnly` scheitert der Push mit `remote error: vault:`; im Test-Home, in der gitconfig und in den Ausgaben von Git steht der Token nicht; ein nicht erlaubter Pfad (`/objects/…`) → 404; ein `git push` mit „Einmal“ zeigt genau eine Karte, ein zweiter Push danach eine neue; ein POST ohne vorheriges `info/refs` → 403 `vault.git_no_operation`.
 5. **Einrichtung und Entziehen Git** (`agentKeysRoute.test.js`, Exec-Double): Befehle mit `insteadOf` je Host und `extraHeader`, fremde `insteadOf` bleiben; Entziehen entfernt nur eigene Zeilen; ohne Git-Eintrag kein Key.
 6. **Auth**: Git-Key an `/api/mcp` → 403, Claude-Key an `/api/vault/git/` → 403.
+6a. **Upload-Dauer** (`requestDeadline`): ein langsamer Body an einer beliebigen Route endet nach der Frist mit 408, ein geprüfter Push unter `/api/vault/git/` nicht (Frist im Test verkürzt); ein unauthentifizierter, tröpfelnder POST unter `/api/vault/git/` endet ebenfalls nach der Frist.
 7. **`browser_fill_credential` nach dem Umbau auf den Broker**: bestehende Tests unverändert grün.
 8. **Client**: Felder im Eintrag-Dialog je Typ, Abzeichen „schreibt“ auf der Karte, Git-Haken samt Hinweis im Agenten-Zugang, Schalter in den Einstellungen.
 9. **Handtest** mit echtem GitHub-PAT: Issue anlegen (`vault_http`), clone/push über den Proxy, PAT in ein Formular im Outpost-Browser.
 
 ## Betrieb und Doku
 
-`docs/vault.md` bekommt Abschnitte zu `vault_http`, `browser_fill_secret` und Git (Einrichtung, SSH-Remotes umstellen, neue Hosts → neu einrichten, Grenzen), die neuen Felder und `fillAnywhere`. Die Werkzeugtabelle in Abschnitt 9 und die Fehlercodes werden ergänzt.
+`docs/vault.md` bekommt Abschnitte zu `vault_http`, `browser_fill_secret` und Git (Einrichtung, SSH-Remotes umstellen, neue Hosts → neu einrichten, Grenzen; hinter einem Reverse-Proxy brauchen `/api/vault/git/` und `/api/mcp` eine ausreichende Body-Grenze, Git zusätzlich ungepufferte Requests, nginx: `client_max_body_size 0; proxy_request_buffering off;`), die neuen Felder und `fillAnywhere`. Die Werkzeugtabelle in Abschnitt 9 und die Fehlercodes werden ergänzt.
 
 <!-- mockingbird:design:begin -->
-<!-- design: manifest=docs/design/manifest.yaml design_rev=16 design_hash=sha256:05e8e2140a4b9390cb5585a4ecfeb8591235074cc9e02c3115aaf01235e26568 system=docs/design/design-system.md index=docs/design/mockups/index.html adapter=web screens=UI-VAULT,UI-VAULT-DIALOG,UI-VAULT-APPROVAL,UI-VAULT-SETTINGS,UI-AGENT-ACCESS,UI-API-KEYS consumes=UI-SHELL-ACCOUNT,UI-SHELL-MOBILE-NAV,UI-SHELL-NAV -->
+<!-- design: manifest=docs/design/manifest.yaml design_rev=16 design_hash=sha256:c19f65dc008434e82b206171d1b050b6e533d3de3cea2430c64542c23f095475 system=docs/design/design-system.md index=docs/design/mockups/index.html adapter=web screens=UI-VAULT,UI-VAULT-DIALOG,UI-VAULT-APPROVAL,UI-VAULT-SETTINGS,UI-AGENT-ACCESS,UI-API-KEYS consumes=UI-SHELL-ACCOUNT,UI-SHELL-MOBILE-NAV,UI-SHELL-NAV -->
 <!-- Generiert aus docs/design/manifest.yaml. Nicht von Hand ändern —
      Änderungen hier werden beim nächsten mockingbird-Lauf überschrieben.
      Design ändern heißt Manifest ändern. -->
@@ -289,7 +307,7 @@ Ein Test je Verhalten, möglichst über echte Nahtstellen:
 | UI-VAULT-SETTINGS-IPBIND | IP-Bindung als Standard | UI-VAULT-SETTINGS | required | Ob neue Agenten-Keys standardmäßig nur von der IP ihres Servers gelten. Belegt den Schalter „Nur von der IP dieses Servers“ im Agenten-Zugang vor; dort lässt er sich je Server ändern. Aus für Umgebungen, in denen Outpost die Absenderadressen nicht sieht. Nicht: vault_binding, allowed_origin, proxy_trust_warning. |
 | UI-VAULT-SETTINGS-FILLANY | Token auf jeder Seite eintragen erlauben | UI-VAULT-SETTINGS | required | Ob browser_fill_secret einen Wert ohne eigene Origin-Liste auf jeder Seite eintragen darf — dann immer mit Freigabe, und eine Sitzungsfreigabe gilt nur für die eine Origin, die auf der Karte stand. Standard aus. Nicht: fill_origin, approval_policy. |
 | UI-VAULT-SETTINGS-PROXY | Hinweis Reverse-Proxy | UI-VAULT-SETTINGS | required | Warnt, wenn Outpost jedem X-Forwarded-For glaubt (TRUST_PROXY=true) — dann ist die IP-Bindung von Agenten-Keys wirkungslos. Sonst nicht sichtbar. Nicht: vault_key_status, agent_base_url. |
-| UI-VAULT-SETTINGS-SAVE | Einstellungen speichern | UI-VAULT-SETTINGS | required | Speichert die Outpost-Adresse für Agenten und den Standard der IP-Bindung, wie der Speichern-Knopf der Browser-Einstellungen. |
+| UI-VAULT-SETTINGS-SAVE | Einstellungen speichern | UI-VAULT-SETTINGS | required | Speichert die Outpost-Adresse für Agenten, den Standard der IP-Bindung und „Token auf jeder Seite eintragen erlauben“, wie der Speichern-Knopf der Browser-Einstellungen. |
 | UI-API-KEYS-LIST | API-Schlüssel | UI-API-KEYS | required | Die API-Keys des Kontos mit voller Kontoberechtigung — Name, Präfix, zuletzt genutzt, Ablauf; Anlegen und Löschen wie bisher. Nicht: agent_key. |
 | UI-API-KEYS-AGENTS | Agenten-Schlüssel | UI-API-KEYS | required | Die Agenten-Keys des Kontos, gruppiert nach Server — Agent, zuletzt genutzt, IP-Bindung; je Server Bearbeiten (öffnet Agenten-Zugang) und je Key Entziehen. Agenten-Keys erreichen nur den MCP-Endpunkt, Git-Keys nur den Git-Proxy. Nicht: api_key, vault_item. |
 | UI-VAULT-APPROVAL-CARD | Freigabe angefordert | UI-VAULT-APPROVAL | required | Eine Karte unten rechts über jeder Seite, nicht modal: ein Agent will einen Vault-Eintrag nutzen. Zeigt Agent und Server, Eintrag, Werkzeug und Ziel (Ursprung beim Eintragen, Methode mit Host und Pfad bei vault_http, Git mit Host und Repo) und die verbleibende Zeit; Antworten Einmal, Für diese Sitzung, Ablehnen. „Für diese Sitzung“ gilt getrennt für lesende und schreibende Zugriffe. Mehrere Anfragen stapeln sich, die älteste unten. Der Stapel liegt über Dialogen und Toasts. Eine abgelaufene Karte zeigt fünf Sekunden den Fehlerzustand und verschwindet; scheitert das Senden einer Antwort, bleibt die Karte stehen und ein Toast nennt den Grund. Nicht: notification, toast, error. |
@@ -302,3 +320,32 @@ Ein Test je Verhalten, möglichst über echte Nahtstellen:
 
 Artboards: `docs/design/mockups/index.html` · Design-System: `docs/design/design-system.md`
 <!-- mockingbird:design:end -->
+
+<!-- preflight:security:begin -->
+<!-- facts: network_surface=both has_accounts=yes auth_method=api-key
+     has_privilege_levels=yes session_transport=bearer-header has_owned_data=yes
+     is_multi_tenant=yes persistence=sql renders_html=yes accepts_uploads=no
+     handles_pii=yes -->
+
+## Security Requirements
+
+| ID | Maßnahme | Geltungsbereich | Status | Begründung |
+|----|----------|-----------------|--------|------------|
+| SEC-INPUT-01 | Input-Validierung per Whitelist | Argumente von `vault_http` und `browser_fill_secret`, Git-Pfade, neue `fields`, `fillAnywhere` | required | HTTP-API |
+| SEC-ERR-01 | Fehlermeldungen ohne Stack-Traces und DB-Details | Werkzeugfehler, Git-`ERR`-Meldungen, Netzfehler ohne Query und Token | required | HTTP-API |
+| SEC-SECRET-01 | Secrets außerhalb von Code und Repo | Token, Header-Wert und Basic-Auth nie in Log, Audit oder Antwort; Schwärzung der Antworten | required | immer |
+| SEC-DEP-01 | Abhängigkeiten auf bekannte Schwachstellen prüfen | keine neue Abhängigkeit geplant (Node `fetch`, `node:https`); neue nur nach Prüfung | required | immer |
+| SEC-INJECT-01 | Fremde Eingaben nicht in Befehle oder Pfade bauen | gitconfig-Befehle über `shQuote` in `server/lib/vault/provision.js`, Upstream-URL nur aus geprüftem Host und Repo-Pfad | required | immer |
+| SEC-RATE-01 | Rate Limiting auf zustandsändernden Endpunkten | `vault_http` 60/min, Git 30/min, Fills 20/min, gleichzeitige Aufrufe je Key | required | HTTP-API |
+| SEC-RATE-02 | Brute-Force-Bremse am Login | Login | not-applicable | (2026-10-10) 2a ändert den Login nicht; Agenten- und Git-Keys haben 256 Bit Entropie |
+| SEC-SQLI-01 | Prepared Statements, keine String-Konkatenation | Suche der Git-Einträge, Einstellungen | required | SQL-Persistenz |
+| SEC-XSS-01 | Kontextsensitives Output-Encoding | Freigabe-Karte mit Ziel aus Agenten-Eingabe, Detailansicht | required | React-Oberfläche |
+| SEC-CSP-01 | Content Security Policy | Bestand (Report-Only, Issue #16); 2a fügt keine Quellen hinzu | required | React-Oberfläche |
+| SEC-IDOR-01 | Objektbezogene Autorisierung bei jedem Zugriff über eine ID | Eintrag über `findVisibleItem`, Git-Eintrag nur aus sichtbaren Einträgen | required | Einträge gehören Konten oder Organisationen |
+| SEC-TENANT-01 | Mandanten-Scoping in jeder Abfrage | Organisations-Einträge nur für aktive Mitglieder, Git-Suche je Server | required | Organisationen als Mandanten |
+| SEC-RBAC-01 | Rollen- oder Rechtemodell | `vault.use`, `connect.browser`, Agententyp `git` nur am Git-Proxy | required | Berechtigungssystem |
+| SEC-APIKEY-01 | API-Keys hoch entropisch, gehasht, widerrufbar, zeitkonstant verglichen | Git-Keys wie Agenten-Keys | required | Agenten-Keys |
+| SEC-SESS-02 | Ablauf, Rotation, serverseitiger Widerruf | Git-Sitzung 12 h, Freigaben enden bei Änderung oder Widerruf | required | Bearer-Header |
+| SEC-TOKEN-01 | Token-Validierung, Lebensdauer, sichere Ablage, Widerruf | Git-Key in `~/.gitconfig` (Modus 600), `extraHeader` nur gegenüber Outpost | required | Bearer-Header |
+| SEC-PII-01 | Datensparsamkeit, Zugriffsprotokoll, Löschkonzept | Audit ohne Query, Bodies und Header-Werte | required | Audit der Nutzung mit Personenbezug |
+<!-- preflight:security:end -->
