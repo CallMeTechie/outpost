@@ -870,6 +870,8 @@
         "delete": "Delete"
       },
       "agentKeys": {
+        "loadFailed": "Could not load the agent keys",
+        "retry": "Retry",
         "sectionTitle": "Agent keys",
         "sectionDescription": "Agent keys only reach the MCP endpoint.",
         "edit": "Edit",
@@ -1756,6 +1758,7 @@
       "saveSuccess": "Vault settings saved",
       "errors": {
         "loadSettings": "Could not load the vault settings",
+        "retry": "Retry",
         "saveSettings": "Could not save the vault settings"
       }
     }

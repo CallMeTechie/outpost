@@ -870,6 +870,8 @@
         "delete": "Löschen"
       },
       "agentKeys": {
+        "loadFailed": "Agenten-Schlüssel konnten nicht geladen werden",
+        "retry": "Erneut versuchen",
         "sectionTitle": "Agenten-Schlüssel",
         "sectionDescription": "Agenten-Schlüssel erreichen nur den MCP-Endpunkt.",
         "edit": "Bearbeiten",
@@ -1756,6 +1758,7 @@
       "saveSuccess": "Vault-Einstellungen gespeichert",
       "errors": {
         "loadSettings": "Vault-Einstellungen konnten nicht geladen werden",
+        "retry": "Erneut versuchen",
         "saveSettings": "Vault-Einstellungen konnten nicht gespeichert werden"
       }
     }
