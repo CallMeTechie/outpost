@@ -43,6 +43,7 @@ const serialize = (key, entryNames) => ({
     remoteUser: key.remoteUser,
     ipBinding: key.ipBinding,
     allowedCidrs: cidrsOf(key.allowedCidrs),
+    agentUrl: key.agentUrl ?? null,
     createdAt: key.createdAt,
     lastUsedAt: key.lastUsedAt,
 });
@@ -152,13 +153,13 @@ const setupOne = async ({ accountId, entry, identity, organizationId, agentUrl, 
         accountId, name: `${agentType}@${entry.name}`, tokenHash: hashToken(token),
         prefix: `${token.slice(0, TOKEN_PREFIX.length + 6)}…`, kind: "agent", pending: true,
         entryId: entry.id, agentType, ipBinding, allowedCidrs: allowedCidrs.length > 0 ? allowedCidrs : null,
-        identityId: identity?.id ?? null, remoteUser,
+        identityId: identity?.id ?? null, remoteUser, agentUrl,
     });
     try {
         await createAuditLog({
             accountId, organizationId, action: AUDIT_ACTIONS.VAULT_AGENT_KEY_CREATE,
             resource: RESOURCE_TYPES.VAULT, resourceId: null,
-            details: { keyId: key.id, agentType, entryId: entry.id, entryName: entry.name, remoteUser, ipBinding },
+            details: { keyId: key.id, agentType, entryId: entry.id, entryName: entry.name, remoteUser, ipBinding, agentUrl },
             ...context,
         });
     } catch (err) {
@@ -172,9 +173,14 @@ const setupOne = async ({ accountId, entry, identity, organizationId, agentUrl, 
     return { id: key.id, agentType, remoteUser, ...outcome };
 };
 
-const createAgentKeys = async ({ accountId, entryId, agentTypes, ipBinding = true, allowedCidrs = [], ipAddress = null, userAgent = null }) => {
-    const { agentUrl } = await VaultSettings.getOrCreate();
-    if (!agentUrl) return { code: 409, message: "Set the Outpost address for agents in Settings › Vault first" };
+const createAgentKeys = async ({
+    accountId, entryId, agentTypes, agentUrl: requestedUrl = null, ipBinding: requestedBinding,
+    allowedCidrs = [], ipAddress = null, userAgent = null,
+}) => {
+    const settings = await VaultSettings.getOrCreate();
+    const agentUrl = requestedUrl || settings.agentUrl;
+    if (!agentUrl) return { code: 409, message: "Enter the Outpost address for agents, here or in Settings › Vault" };
+    const ipBinding = requestedBinding ?? settings.ipBindingDefault !== false;
     if (!(await canUseVault(accountId))) return { code: 403, message: "You are not allowed to set up agent access" };
 
     const entry = await findEntry(accountId, entryId);

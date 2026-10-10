@@ -109,9 +109,13 @@ const agentUrl = Joi.string().max(2048).custom((value, helpers) => {
     }
     if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash)
         return helpers.error("any.invalid");
-    return url.origin + url.pathname.replace(/\/+$/, "");
+    const normalized = url.origin + url.pathname.replace(/\/+$/, "");
+    return normalized.length > 2048 ? helpers.error("any.invalid") : normalized;
 }).messages({ "any.invalid": "agentUrl must be an http or https address without credentials, query or fragment" });
 
+module.exports.agentUrl = agentUrl;
+
 module.exports.updateVaultSettingsValidation = Joi.object({
-    agentUrl: agentUrl.allow(null, "").required(),
-});
+    agentUrl: agentUrl.allow(null, ""),
+    ipBindingDefault: Joi.boolean(),
+}).min(1);

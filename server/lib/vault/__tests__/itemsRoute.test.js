@@ -223,18 +223,20 @@ test("PATCH, dessen Speichern scheitert, verliert keine Werte: Name zwischen PrÃ
     assert.ok(!audits.some((entry) => entry.action === "vault.item_update"));
 });
 
-test("available meldet Schalter, Rechte, Agenten-Adresse, Impersonation und TRUST_PROXY=true; bei ausgeschaltetem Vault sind alle Rechte leer", async (t) => {
+test("available meldet Schalter, Rechte, Agenten-Adresse, Standard der IP-Bindung, Impersonation und TRUST_PROXY=true; bei ausgeschaltetem Vault sind alle Rechte leer", async (t) => {
     const { get, patch } = await listen(t, { trustProxy: true });
 
     assert.strictEqual((await patch("/settings", "s-owner", { agentUrl: "https://outpost.example.com" })).status, 403);
-    assert.deepStrictEqual((await patch("/settings", "s-revealer", { agentUrl: "https://outpost.example.com/" })).body,
-        { keyStatus: "active", agentUrl: "https://outpost.example.com", trustProxyUnsafe: true });
+    assert.deepStrictEqual((await patch("/settings", "s-revealer", { agentUrl: "https://outpost.example.com/", ipBindingDefault: false })).body,
+        { keyStatus: "active", agentUrl: "https://outpost.example.com", ipBindingDefault: false, trustProxyUnsafe: true });
+    assert.strictEqual((await patch("/settings", "s-revealer", {})).status, 400);
+    const urlFields = { agentUrl: "https://outpost.example.com", ipBindingDefault: false };
 
     assert.deepStrictEqual((await get("/available", "s-imp")).body, {
-        enabled: true, canUse: true, canManageOrgs: [], canProvision: true, agentUrlSet: true, impersonating: true, trustProxyUnsafe: true,
+        enabled: true, canUse: true, canManageOrgs: [], canProvision: true, agentUrlSet: true, ...urlFields, impersonating: true, trustProxyUnsafe: true,
     });
     assert.deepStrictEqual((await get("/available", "s-revealer")).body, {
-        enabled: true, canUse: true, canManageOrgs: [20], canProvision: true, agentUrlSet: true, impersonating: false, trustProxyUnsafe: true,
+        enabled: true, canUse: true, canManageOrgs: [20], canProvision: true, agentUrlSet: true, ...urlFields, impersonating: false, trustProxyUnsafe: true,
     });
     assert.deepStrictEqual((await get("/available", "s-invited")).body.canManageOrgs, []);
 

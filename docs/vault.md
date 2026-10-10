@@ -101,12 +101,16 @@ Agents sign in with an **agent key**. It belongs to one server, works only at th
 
 ### Before you start
 
-Under **Settings → Vault**, set **Outpost address for agents**: the address under which your servers reach Outpost, for example `http://192.168.2.10:6989`. Outpost appends `/api/mcp`. Prefer an address on your LAN that reaches Outpost directly rather than through a public reverse proxy (see [time limits](#time-limits) and [section 6](#_6-reverse-proxy-and-trust-proxy)). Until the address is set, setup is disabled.
+Under **Settings → Vault**, set **Outpost address for agents**: the address under which your servers reach Outpost, for example `http://192.168.2.10:6989`. Outpost appends `/api/mcp`. While nothing is saved, the field suggests the address your browser uses; check that your servers reach Outpost under it before saving. Prefer an address on your LAN that reaches Outpost directly rather than through a public reverse proxy (see [time limits](#time-limits) and [section 6](#_6-reverse-proxy-and-trust-proxy)).
+
+This address is the default. The setup dialog has its own field **Outpost address for this server**, so servers outside your LAN can use another address, for example a domain behind your reverse proxy, while LAN servers keep the direct one. The field is prefilled with the address of the last setup on that server, otherwise with the default. Without an address in either place, setup is disabled.
+
+**IP binding by default** decides whether **Only from this server's IP** starts switched on in the setup dialog. Turn it off if Outpost cannot see the addresses requests come from (see [sender addresses behind Docker](#sender-addresses-behind-docker)); you can still switch it per server.
 
 ### Set up with one click
 
 1. In the server list, right-click an SSH server and choose **Agent access…**. The entry exists only for SSH servers and only if you may use the vault.
-2. Select **Claude Code**, **Codex** or both. Leave **Only from this server's IP** on. Add extra address ranges in CIDR notation if the agent's requests come from another network, for example `10.0.0.0/24`. These settings are fixed for the key; to change them, revoke the access and set it up again.
+2. Select **Claude Code**, **Codex** or both. Check **Outpost address for this server**. Leave **Only from this server's IP** on. Add extra address ranges in CIDR notation if the agent's requests come from another network, for example `10.0.0.0/24`. These settings are fixed for the key; to change them, revoke the access and set it up again.
 3. Start the setup.
 
 Outpost then:
@@ -128,7 +132,7 @@ Setting up the same server, agent and remote user again replaces your previous k
 
 ### Address check
 
-While the new key is not yet in use, Outpost lets the server call `GET <Outpost address for agents>/api/vault/agent-keys/probe` with it, using `curl` or else `wget`. The key goes to the tool from a temporary file with mode `600` that the command deletes afterwards, never on the tool's command line. Outpost stores the address the first request arrived from; later probe calls with the same key change nothing.
+While the new key is not yet in use, Outpost lets the server call `GET <address from the dialog>/api/vault/agent-keys/probe` with it, using `curl` or else `wget`. The key goes to the tool from a temporary file with mode `600` that the command deletes afterwards, never on the tool's command line. Outpost stores the address the first request arrived from; later probe calls with the same key change nothing.
 
 If that address differs from what the server's host name resolves to, the dialog says so and offers to add it, for example "Seen 172.17.0.1 instead of 192.168.2.40 — adopt as address range? Without adopting it, Outpost refuses the key." Typical causes are NAT, IPv6, and an agent on a Docker host whose requests reach an Outpost container through the Docker gateway. Accepting adds exactly the measured address as `/32` (IPv4) or `/128` (IPv6). This works once and only within 15 minutes of creating the key. If the measured address is the address your own browser reaches Outpost from, Outpost refuses to adopt it ("The measured address is the address of your browser; Outpost sees a proxy, not the server"): both requests then arrive through the same proxy, and the range would let in everyone behind it. Fix `TRUST_PROXY` (see [section 6](#_6-reverse-proxy-and-trust-proxy)) or use Outpost's LAN address as **Outpost address for agents**. Without it, the IP binding rejects the agent with `403`, and the audit log records `vault.agent_ip_denied`.
 
@@ -200,7 +204,13 @@ The IP binding compares the address a request comes from. Behind a reverse proxy
 
 The address list is comma separated and takes addresses, CIDR ranges and the names `loopback`, `linklocal` and `uniquelocal`. In Docker, give the proxy container a fixed address or a network of its own, because every address in a trusted range can set `X-Forwarded-For`.
 
-The simplest setup: point **Outpost address for agents** at Outpost's direct LAN address. Agents then do not pass the proxy at all.
+The simplest setup: point **Outpost address for agents** at Outpost's direct LAN address. Agents then do not pass the proxy at all. Servers outside the LAN get the proxy's address in the setup dialog instead, and `TRUST_PROXY` lists every proxy hop between them and Outpost, for example the gateway in your LAN and the reverse proxy's address in the VPN.
+
+### Sender addresses behind Docker
+
+With a published port (`ports: "6989:6989"`), Docker can replace the sender address with its own bridge gateway, so every request seems to come from the same `172.x` or `192.168.x.1` address. This happens when the connection goes through `docker-proxy`, the default on Synology and some other NAS systems. Then the IP binding cannot tell servers apart, and the address check reports your browser's address for every server.
+
+To check, run `docker exec outpost cat /proc/net/tcp6` while a server is connected and look at the remote addresses on port 6989 (`1B4D`). If they all show the same gateway, either run Outpost with `network_mode: host`, or turn off **IP binding by default** and rely on the key alone. In host mode, Outpost no longer reaches the browser container by name: give the container a fixed address on its network (`ipv4_address`), set **Launcher URL** in the browser settings to that address (for example `http://172.31.99.2:9300`) and **Callback host** to the network's gateway (`172.31.99.1`), and set `ALLOWED_CLIENTS` of the browser container to that gateway address.
 
 ## 7. Security model and limits
 

@@ -24,7 +24,7 @@ const failed = (res, error) => {
  * @tags Vault
  * @produces application/json
  * @security BearerAuth
- * @return {object} 200 - { enabled, canUse, canManageOrgs, canProvision, agentUrlSet, impersonating, trustProxyUnsafe }
+ * @return {object} 200 - { enabled, canUse, canManageOrgs, canProvision, agentUrlSet, impersonating, trustProxyUnsafe }, plus agentUrl and ipBindingDefault when canUse
  */
 app.get("/available", authenticate, async (req, res) => {
     try {

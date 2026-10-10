@@ -42,6 +42,11 @@
 	.vs-btn { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 2.25rem; padding: 0 var(--space-4); border: 0; border-radius: var(--radius-sm); background: var(--primary); color: var(--on-accent); font: var(--type-body); }
 	.vs-btn svg { width: 1rem; height: 1rem; flex: none; }
 	.vs-btn[disabled] { opacity: 0.5; }
+	.vs-toggle-row { display: flex; align-items: center; gap: var(--space-3); }
+	.toggle { width: 2.25rem; height: 1.25rem; border-radius: var(--radius-xl); background: var(--gray); position: relative; flex: none; }
+	.toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: calc(1.25rem - 4px); height: calc(1.25rem - 4px); border-radius: 50%; background: var(--subtext); }
+	.toggle.on { background: var(--primary); }
+	.toggle.on::after { left: auto; right: 2px; background: var(--white); }
 </style>
 </head>
 <body>
@@ -99,6 +104,15 @@
 					<p class="vs-help">Unter dieser Adresse erreichen deine Server Outpost; daraus entsteht die MCP-URL für Agenten.</p>
 				</div>
 
+				<div class="vs-state" data-ui-state="partial">
+					<span class="vs-tag">partial</span>
+					<div class="vs-input">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+						<span>https://outpost.example.net</span>
+					</div>
+					<p class="vs-help">Vorschlag aus der Adresse dieses Browsers — prüfen, ob deine Server Outpost darunter erreichen.</p>
+				</div>
+
 				<div class="vs-state" data-ui-state="error">
 					<span class="vs-tag">error</span>
 					<div class="vs-input invalid">
@@ -107,6 +121,27 @@
 					</div>
 					<p class="vs-error">Keine gültige http- oder https-Adresse.</p>
 					<p class="vs-help">Unter dieser Adresse erreichen deine Server Outpost; daraus entsteht die MCP-URL für Agenten.</p>
+				</div>
+			</div>
+
+			<div class="vs-item" data-ui-id="UI-VAULT-SETTINGS-IPBIND">
+				<div class="vs-label"><h4>IP-Bindung als Standard <code>UI-VAULT-SETTINGS-IPBIND</code></h4></div>
+				<p class="vs-help">Neue Agenten-Keys gelten nur von der IP ihres Servers. Abschalten, wenn Outpost die Absenderadressen nicht sieht, etwa hinter NAT; im Dialog lässt es sich je Server ändern.</p>
+
+				<div class="vs-state" data-ui-state="default">
+					<span class="vs-tag">default</span>
+					<div class="vs-toggle-row">
+						<span class="toggle on" role="switch" aria-checked="true" aria-label="IP-Bindung als Standard"></span>
+						<span class="vs-status-text">an</span>
+					</div>
+				</div>
+
+				<div class="vs-state" data-ui-state="selected">
+					<span class="vs-tag">selected</span>
+					<div class="vs-toggle-row">
+						<span class="toggle" role="switch" aria-checked="false" aria-label="IP-Bindung als Standard"></span>
+						<span class="vs-status-text">aus</span>
+					</div>
 				</div>
 			</div>
 

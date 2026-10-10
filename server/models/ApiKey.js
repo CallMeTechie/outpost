@@ -52,6 +52,7 @@ module.exports = db.define("api_keys", {
     remoteUser: { type: Sequelize.STRING, allowNull: true },
     seenIp: { type: Sequelize.STRING, allowNull: true },
     seenIpAdopted: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
+    agentUrl: { type: Sequelize.STRING(2048), allowNull: true },
 }, {
     freezeTableName: true,
     timestamps: true,

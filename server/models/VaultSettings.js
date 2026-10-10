@@ -3,7 +3,8 @@ const db = require("../utils/database");
 
 const VaultSettings = db.define("vault_settings", {
     id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
-    agentUrl: { type: Sequelize.STRING, allowNull: true },
+    agentUrl: { type: Sequelize.STRING(2048), allowNull: true },
+    ipBindingDefault: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: true },
     keyCheck: { type: Sequelize.TEXT, allowNull: true },
     keyCheckIV: { type: Sequelize.STRING, allowNull: true },
     keyCheckAuthTag: { type: Sequelize.STRING, allowNull: true },

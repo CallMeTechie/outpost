@@ -55,12 +55,12 @@ sichtbar machen, auch ohne `vault.reveal`. Das ist hingenommen und steht in `doc
 | Geltung für Server | Vereinigung aus Servern, Ordnern (mit Unterordnern), Tags (nur persönliche Einträge) oder „alle Server“. Standard: keine Geltung. |
 | Freigabe | Je Eintrag `approvalRequired`, Standard an. Antworten: einmal / für diese Agenten-Sitzung / ablehnen; 2 Minuten ohne Antwort = abgelehnt. |
 | Agenten-Key auf den Server | Ein-Klick-Einrichtung per Exec; Kopierbefehl als Ausweg. |
-| IP-Bindung | Je Key, Standard an; zusätzliche CIDRs und das Abschalten werden beim Einrichten festgelegt, einschließlich der Übernahme der gemessenen Adresse im Einrichtungsdialog (Schritt 1a); später nur durch Entziehen und Neu-Einrichten. |
+| IP-Bindung | Je Key, vorbelegt mit dem Standard aus Einstellungen › Vault (`ipBindingDefault`, an); zusätzliche CIDRs und das Abschalten werden beim Einrichten festgelegt, einschließlich der Übernahme der gemessenen Adresse im Einrichtungsdialog (Schritt 1a); später nur durch Entziehen und Neu-Einrichten. |
 | Architektur | Im Outpost-Server integriert, eigener `VAULT_KEY`. Kein eigener Container, kein Master-Passwort (späterer Ausbau möglich, die Verschlüsselung liegt hinter einer Schnittstelle). |
 
 ## Datenmodell
 
-Neue Migration `0047-add-vault.js` mit `vault_items`, `vault_secrets`, `vault_bindings`, `vault_settings` und den neuen Spalten von `api_keys`.
+Neue Migration `0047-add-vault.js` mit `vault_items`, `vault_secrets`, `vault_bindings`, `vault_settings` und den neuen Spalten von `api_keys`. Migration `0048-add-vault-agent-url.js` ergänzt `api_keys.agentUrl` und `vault_settings.ipBindingDefault`.
 
 ### `vault_items`
 
@@ -131,6 +131,7 @@ heißt bei ihnen „alle Server der Organisation“.
 | `allowedCidrs` | JSON null | zusätzliche Adressbereiche |
 | `identityId` | INTEGER null | nur bei `agent`; `SET NULL` |
 | `remoteUser` | STRING null | nur bei `agent` |
+| `agentUrl` | STRING(2048) null | nur bei `agent`; die Outpost-Adresse, mit der der Key eingerichtet wurde |
 
 Bestehende Keys bekommen `kind = account` und verhalten sich unverändert. Die bestehende
 Liste, das Löschen und die Obergrenze von 50 in `server/controllers/apiKey.js` gelten nur für
@@ -138,7 +139,7 @@ Liste, das Löschen und die Obergrenze von 50 in `server/controllers/apiKey.js` 
 
 ### `vault_settings`
 
-Eine Zeile, Muster `browser_settings` (Migration 0046): `agentUrl` (STRING null), `keyCheck`, `keyCheckIV`, `keyCheckAuthTag` (je STRING null; ein fester Prüftext, mit `VAULT_KEY` verschlüsselt, geschrieben beim ersten Start mit Schlüssel). `keyStatus` wird beim Start daraus berechnet und nicht gespeichert.
+Eine Zeile, Muster `browser_settings` (Migration 0046): `agentUrl` (STRING null), `ipBindingDefault` (BOOLEAN, Standard `true`), `keyCheck`, `keyCheckIV`, `keyCheckAuthTag` (je STRING null; ein fester Prüftext, mit `VAULT_KEY` verschlüsselt, geschrieben beim ersten Start mit Schlüssel). `keyStatus` wird beim Start daraus berechnet und nicht gespeichert.
 
 ### Berechtigungen (`server/permissions/registry.js`)
 
@@ -224,7 +225,7 @@ den Eintrag). Auswahl Claude Code und/oder Codex.
      in die Befehle gesetzt.
    - Die CLIs werden per `command -v` in einer Login-Shell gesucht (`bash -lc`, ersatzweise `sh -lc`) und zusätzlich unter `~/.local/bin`, `~/.claude/local` und `~/.npm-global/bin`. Gefunden wird mit absolutem Pfad aufgerufen. „CLI fehlt“ heißt: an keiner dieser Stellen gefunden.
    - `execCommand` gibt `entry.config.engineId` heute nicht weiter (`server/controllers/execCommand.js:48`). Die Einrichtung ergänzt das Argument, wie `openEngineSession` in `server/lib/browser/proxy.js` es tut.
-3. `<url>` = Einstellung „Outpost-Adresse für Agenten“ + `/api/mcp`.
+3. `<url>` = Adresse aus dem Dialog + `/api/mcp`. Der Dialog belegt sie mit der Adresse der letzten Einrichtung auf diesem Server vor, sonst mit der Einstellung „Outpost-Adresse für Agenten“; so lassen sich Server im LAN direkt und Server außerhalb über einen Reverse-Proxy anbinden. `POST /agent-keys` nimmt sie als `agentUrl` (dieselbe Prüfung wie die Einstellung), fehlt sie, gilt die Einstellung. Der Key speichert die verwendete Adresse; Messung (Schritt 1a) und Befehl zum Kopieren nutzen sie. Fehlt `ipBinding` in der Anfrage, gilt `ipBindingDefault`.
 4. Scheitert ein Schritt (CLI fehlt, Exec-Fehler), zeigt der Dialog den fertigen Befehl zum
    Kopieren. Der Key wird nur in diesem Dialog angezeigt.
 5. Ein neuer Agenten-Key ist zunächst `pending`. Er wird endgültig, wenn die automatische
@@ -232,8 +233,8 @@ den Eintrag). Auswahl Claude Code und/oder Codex.
    Schließt der Nutzer den Dialog vorher, löscht der Client ihn (`DELETE /agent-keys/:id`);
    was danach noch `pending` ist, löscht der Server nach 15 Minuten. Ein `pending`-Key wird von
    `authenticate` nur an `probe` akzeptiert (Schritt 1a).
-6. Ist „Outpost-Adresse für Agenten“ nicht gesetzt (Standard: leer), ist Einrichten gesperrt
-   mit Verweis auf Einstellungen › Vault.
+6. Gibt es weder im Dialog noch als Einstellung eine Adresse, ist Einrichten gesperrt
+   (`409`) mit dem Hinweis, sie im Dialog oder in Einstellungen › Vault einzutragen.
 7. Erneutes Einrichten für denselben Server, Agenten und entfernten Benutzer ersetzt den bisherigen Key dieses Kontos: Nach gelungener Einrichtung bzw. Bestätigung wird der alte gelöscht. Hat ein **anderes** Konto für denselben Server und entfernten Benutzer schon einen Agenten-Key, warnt der Dialog vor dem Einrichten: Die Registrierung wird ersetzt, und Agenten dieses Benutzers handeln danach mit den Einträgen und Freigaben des neuen Kontos.
 
 8. Mehrere Konten auf demselben Unix-Benutzer: In Teilprojekt 1 nur die Warnung aus Schritt 7.
@@ -321,7 +322,8 @@ Log oder Audit.
 - **Einstellungen → Konto → API-Keys**: Agenten-Keys gruppiert nach Server mit Agententyp,
   zuletzt genutzt und IP-Bindung; je Key Entziehen, je Server „Bearbeiten“ (öffnet den Agenten-Zugang-Dialog).
 - **Einstellungen → Vault** (System, `settings.vault`): Status von `VAULT_KEY`,
-  „Outpost-Adresse für Agenten“.
+  „Outpost-Adresse für Agenten“ (ist sie leer, mit der Adresse des Browsers vorbelegt und als
+  Vorschlag gekennzeichnet; gespeichert wird erst mit Speichern) und „IP-Bindung als Standard“.
 
 Gestaltung kommt aus mockingbird (Manifest und Artboards) vor der Umsetzung; diese Spec legt
 nur Verhalten und Inhalte fest.
@@ -348,7 +350,7 @@ Unter `/api/vault`, nur Login-Session oder Konto-Key (Agenten-Keys sind ausgesch
 Ist der Vault ausgeschaltet, antworten alle mit `404`, außer `GET /settings`, `PATCH /settings` (die Agenten-Adresse lässt sich vor dem Schlüssel setzen) und `GET /available`.
 
 Ausnahme `GET /api/vault/available`, nach dem Muster von `GET /api/browser/available`: antwortet
-immer `200` mit `{ enabled, canUse, canManageOrgs: [orgId…], canProvision, agentUrlSet, impersonating, trustProxyUnsafe }`. `enabled` = Vault
+immer `200` mit `{ enabled, canUse, canManageOrgs: [orgId…], canProvision, agentUrlSet, impersonating, trustProxyUnsafe }`, bei `canUse` zusätzlich `agentUrl` und `ipBindingDefault` (Vorbelegung im Agenten-Zugang-Dialog). `enabled` = Vault
 eingeschaltet; `canUse` = `vault.use` oder aktives Mitglied mindestens einer Organisation (steuert den
 Bereich in der Navigation); `canProvision` = Vault eingeschaltet und `vault.use` oder aktives Mitglied
 (steuert „Agenten-Zugang…“ im Server-Kontextmenü); `impersonating` = die Sitzung trägt
@@ -437,7 +439,7 @@ Die übernommenen Elemente unten werden nicht neu gebaut, aber ergänzt (Manifes
   `canProvision` (Anleitung `docs/design/guides/ui-servers.md`).
 
 <!-- mockingbird:design:begin -->
-<!-- design: manifest=docs/design/manifest.yaml design_rev=14 design_hash=sha256:773e6849d87fdf0bcbe5d61b0fed25231d97d0ecfa576d67aa98d1f6657c9024 system=docs/design/design-system.md index=docs/design/mockups/index.html adapter=web screens=UI-VAULT,UI-VAULT-DIALOG,UI-AGENT-ACCESS,UI-VAULT-SETTINGS,UI-API-KEYS,UI-VAULT-APPROVAL consumes=UI-SHELL-NAV,UI-SHELL-MOBILE-NAV,UI-SHELL-ACCOUNT,UI-SERVERS-LIST-MENU -->
+<!-- design: manifest=docs/design/manifest.yaml design_rev=15 design_hash=sha256:423b56fc550d2cf0835685c78dd763c3c38bc80266bd4543e13641fe31bc3493 system=docs/design/design-system.md index=docs/design/mockups/index.html adapter=web screens=UI-AGENT-ACCESS,UI-API-KEYS,UI-DIRECT-CONNECT,UI-FILES,UI-SERVER-DIALOG,UI-SERVERS,UI-SHELL,UI-TMUX-DIALOG,UI-VAULT,UI-VAULT-APPROVAL,UI-VAULT-DIALOG,UI-VAULT-SETTINGS -->
 <!-- Generiert aus docs/design/manifest.yaml. Nicht von Hand ändern —
      Änderungen hier werden beim nächsten mockingbird-Lauf überschrieben.
      Design ändern heißt Manifest ändern. -->
@@ -446,6 +448,46 @@ Die übernommenen Elemente unten werden nicht neu gebaut, aber ergänzt (Manifes
 
 | ID | Element | Screen | Status | Fachlicher Anker |
 |----|---------|--------|--------|------------------|
+| UI-SHELL-LOGO | Outpost | UI-SHELL | required | Die Bildmarke, zugleich der Schalter, der die Leiste ein- und ausklappt. Vier Pfosten unterschiedlicher Höhe, der letzte in der Erfolgsfarbe. |
+| UI-SHELL-NAV | Bereiche | UI-SHELL | required | Die Bereiche der Anwendung — Server, Monitoring, Snippets, Vault, Audit — und dazwischen die Aktion Browser. Ein Eintrag je Bereich, der aktive hervorgehoben; Browser ist kein Bereich, sondern öffnet unter Server einen neuen Browser-Tab und wird deshalb nie hervorgehoben. Browser nur, wenn Browser-Tabs aktiviert sind und das Konto das Recht dazu hat; Vault nur, wenn der Vault eingeschaltet ist und das Konto vault.use hat oder Mitglied einer Organisation ist; Audit nur mit dem Recht dafür. Nicht: server_entry, session. |
+| UI-SHELL-ACCOUNT | Konto | UI-SHELL | required | Das eigene Konto am Fuß der Leiste. Öffnet ein Menü mit Einstellungen, Unterstützung und Abmelden. Nicht: server_entry, identity. |
+| UI-SHELL-REVEAL | Seitenleiste einblenden | UI-SHELL | required | Der schmale Streifen am linken Rand, solange die Leiste eingeklappt ist. Mit Maus fährt sie beim Überfahren vorübergehend ein, ein Tipp oder Klick holt sie dauerhaft zurück. |
+| UI-SHELL-MOBILE-NAV | Bereiche (schmaler Schirm) | UI-SHELL | required | Unter 768px ersetzt eine Leiste am unteren Rand die seitliche. Sie zeigt dieselben Einträge mit Beschriftung, Browser auch hier als Aktion ohne hervorgehobenen Zustand; ein Tipp auf den bereits offenen Bereich klappt dort die Serverliste auf. Nicht: server_entry, session. |
+| UI-SERVERS-LIST | Server | UI-SERVERS | required | Die Verbindungsziele des Nutzers, gruppiert nach Ordner und Organisation, plus verknüpfte OneDrive-Konten. Nicht: session, tab, identity, snippet. |
+| UI-SERVERS-SEARCH | Suche | UI-SERVERS | required | Filtert die Server-Liste nach Name, IP oder Tag, ohne die Gruppierung aufzulösen. |
+| UI-SERVERS-LIST-MENU | Kontextmenü Server | UI-SERVERS | required | Zweitweg für Aktionen auf einem Eintrag — Verbinden, SFTP öffnen, Notizen, Bearbeiten, Duplizieren, Session beitreten, Agenten-Zugang… (nur SSH, nur bei eingeschaltetem Vault), Löschen. Port weiterleiten erscheint nur in der Desktop-App (Tauri), im Web-Build nie. Nicht: primary_navigation. |
+| UI-SERVERS-TABS | Sessions | UI-SERVERS | required | Die aktuell offenen Sessions als Tabs, jede mit ihrer Split-View-Zuordnungsfarbe; Kontextmenü mit Umbenennen, Duplizieren, Teilen, Schlafen legen, Ausklinken, Schließen — bei einer getrennten Session zusätzlich Neu verbinden, an erster Stelle. Nicht: server_entry, folder. |
+| UI-SERVERS-TAB-MARKER | Zustand eines Tabs | UI-SERVERS | required | Der Platz links im Tab. Im Ruhezustand ein Punkt in der Farbe des Split-Fensters, zu dem der Tab gehört. Läuft ein Befehl, der Prozente ausgibt, steht dort stattdessen ein Ring, der sich im Uhrzeigersinn füllt. Nicht: connection_state, session. |
+| UI-SERVERS-TAB-CONTEXT | Kontextfüllung | UI-SERVERS | required | Der Streifen am oberen Rand eines Tabs. Ohne Agenten die Farbe des Split-Fensters über die volle Breite; meldet ein Agent seine Kontextfüllung, wird derselbe Streifen zur Spur, in der ein Balken dieser Länge wächst -- in derselben Farbe, aber höher, damit „kein Agent" und „randvoll" sich unterscheiden. Nicht: session_activity, connection_state, pane_color. |
+| UI-SERVERS-TAB-LABEL | Beschriftung eines Tabs | UI-SERVERS | required | Der Text eines Tabs. Name zuerst, dann die Art in Klammern, zuletzt die Nummer. Die Nummer unterscheidet Tabs, die sonst gleich hießen, und erscheint nur, solange in der Leiste tatsächlich ein zweiter solcher Tab steht. Nicht: server_entry, hostname. |
+| UI-SERVERS-TAB-CONNECTION | Verbindungszustand eines Tabs | UI-SERVERS | required | Zeigt am Label, dass die Verbindung einer Session weg ist oder gerade neu aufgebaut wird: das Label wird in --subtext gedämpft, dahinter steht ein kleines Icon — Unplug bei getrennt, ein sich drehendes RotateCw beim Neuverbinden. Im Normalzustand ist nichts zu sehen. Marker und Kontextstreifen bleiben unberührt; ein Ring im Marker heißt weiterhin Fortschritt, nicht Verbindung. Nicht: session_activity, agent_context, pane_color. |
+| UI-SERVERS-VIEW | Arbeitsfläche | UI-SERVERS | required | Der Inhalt der aktiven Session, einzeln oder als Split; Terminal und Datei-Pane nebeneinander sind der Kernfall. Nicht: server_entry. |
+| UI-SERVERS-VIEW-ERROR | Verbindungsfehler | UI-SERVERS | required | Die Karte, die in der Arbeitsfläche an die Stelle einer abgebrochenen Session tritt: Icon, Titel, Fehlertext im Klartext, darunter eine Knopfzeile. Primär Neu verbinden (während der Automatik Jetzt verbinden), sekundär Schließen. Läuft die Automatik, steht über den Knöpfen der Countdown mit Versuchszähler. Neu verbinden baut dieselbe Session im selben Tab und an derselben Stelle im Layout wieder auf; es öffnet keinen neuen Tab. Nicht: server_entry, server_dialog. |
+| UI-SERVERS-FOCUS | Fokus-Modus | UI-SERVERS | required | Blendet Server-Liste und Tab-Leiste aus, nur das aktive Pane bleibt; Taste Ctrl+Shift+F, greift automatisch unter den Mindestbreiten (Terminal 40 rem, Datei-Pane 22 rem). Nicht: fullscreen_browser. |
+| UI-SERVERS-KEYBAR | Tastenleiste | UI-SERVERS | required | Terminal-Sondertasten (Esc, Tab, Ctrl, Alt, Shift, Pfeile, Home, Ende, Bild auf/ab sowie die auf Touch-Tastaturen vergrabenen Zeichen | ~ - /), und nur wenn das aktive Pane ein Terminal ist. Sichtbar nach der Einstellung terminal.keyBar (auto/always/never); auto heißt "es gibt gar keinen präzisen Zeiger" — die Frage ist any-pointer, nicht pointer, denn ein Tablet meldet einen groben Primärzeiger auch mit angeschlossener Maus, und wer eine Maus hat, braucht keine Tastenleiste. Sie sitzt über der Arbeitsfläche, nicht darunter: unterhalb schneidet eine Kette aus vier height-100%-Containern sie ab. |
+| UI-SERVERS-ACTIONS | Aktionen | UI-SERVERS | required | Werkzeuge für das aktive Pane: Snippets, Broadcast an alle Panes (nur bei geteilter Ansicht bedienbar), Vollbild. Tastenkürzel nur bei Guacamole-Sitzungen, wo sie hingehören. Teilen, Ausklinken und Schließen liegen im Tab-Kontextmenü (UI-SERVERS-TABS), nicht hier — die Trennung ist beabsichtigt: hier Werkzeuge, dort Sitzungsverwaltung. |
+| UI-SERVERS-WELCOME | Willkommen | UI-SERVERS | required | Leerzustand ohne offene Session — links die Begrüßung mit Namen und die Einstiege (Schnellverbindung, Server anlegen, Gerät verbinden, Apps herunterladen), rechts die zuletzt genutzten Verbindungen als Zeilen mit Farbfeld (Kennfarbe aus der Eintrags-ID, nicht die Pane-Farbe eines Tabs), Name, Alter und Protokoll-Badge. Schlafende Sitzungen erscheinen in der Liste und werden fortgesetzt statt neu verbunden. Positiv, handlungsorientiert, kein Marketing. Nicht: all_servers, marketing. |
+| UI-FILES-ACTIONBAR | Aktionsleiste | UI-FILES | required | Bestand: Zurück, Vorwärts, Hoch, die Adresszeile, und rechts die Icon-Gruppe Suchen · Ansicht · Neu laden · Datei hochladen · Ordner hochladen · Neue Datei · Neuer Ordner. Diese Runde setzt genau ein Icon hinzu, den Stern, links neben der Lupe — die Reihenfolge der übrigen Icons bleibt unangetastet. |
+| UI-FILES-ADDRESS | Adresszeile | UI-FILES | required | Der Pfad des gerade angezeigten Verzeichnisses als anklickbare Brotkrumen. Beim Öffnen einer Datei-Sitzung steht hier das Verzeichnis, in dem dieses Konto auf diesem Server mit diesem Benutzer zuletzt war. Gibt es keines, das Startverzeichnis des verbundenen Benutzers — für root also /root, nicht /; über FTP das PWD der Verbindung. Ist der gemerkte Pfad verschwunden oder nicht lesbar, der nächste vorhandene übergeordnete Ordner; im Grenzfall das Startverzeichnis, zuletzt /. Nicht: filesystem_root, home_directory, bookmark_path, transfer_destination. |
+| UI-FILES-FAVORITES-TOGGLE | Favoriten | UI-FILES | required | Blendet die Favoritenleiste ein und aus — ein Stern in der Icon-Gruppe der Aktionsleiste, unmittelbar links neben der Lupe. Er merkt sich nichts und legt nichts an: er zeigt nur den Streifen. Solange der Streifen offen ist, ist der Stern gefüllt und trägt die Akzentfarbe, wie der Suchen-Button es im Bestand schon tut. Der Zustand gilt kontoweit, nicht je Sitzung, und überlebt das Neuladen. Taste Strg+B. Nicht: add_bookmark, mark_folder_as_favorite, search, filter, rating. |
+| UI-FILES-FAVORITES | Favoriten | UI-FILES | required | Die von diesem Konto auf diesem Server gemerkten Verzeichnisse, als eine Zeile Chips mit Ordner-Icon und Ordnernamen; der volle Pfad steht im Tooltip. Ein Klick springt in den Ordner. Der Chip des gerade angezeigten Verzeichnisses ist in der Akzentfarbe hinterlegt. Die Zeile scrollt nicht und bricht nicht um; was nicht passt, geht ins Überlauf-Menü. Umsortiert wird per Ziehen oder mit Umschalt+Pfeil auf dem fokussierten Chip. Nicht: navigation_history, recent_directory, open_tab, server_entry, tag, saved_search. |
+| UI-FILES-FAVORITES-OVERFLOW | Weitere Favoriten | UI-FILES | required | Ein Chevron am rechten Ende der Zeile, das die verdeckten Bookmarks als Menü öffnet — in derselben Reihenfolge wie im Balken, mit Ordner-Icon und Namen. Es erscheint nur, wenn wirklich etwas verdeckt ist, und verschwindet, sobald die Kachel breit genug wird. Nicht: more_actions_menu, chip_context_menu, pagination, sort_menu. |
+| UI-FILES-FAVORITE-MENU | Favoriten-Kontextmenü | UI-FILES | required | Rechtsklick auf einen Chip: Umbenennen und Entfernen. Umbenennen ersetzt die Beschriftung des Chips an Ort und Stelle durch ein Eingabefeld, wie die Dateiliste es beim Umbenennen einer Datei schon tut. Entfernen fragt nicht nach — ein Bookmark ist mit einem Rechtsklick wieder angelegt, und der Ordner selbst bleibt unangetastet. Nicht: delete_folder, file_context_menu, overflow_menu. |
+| UI-FILES-LIST | Dateien | UI-FILES | required | Bestand: der Inhalt des angezeigten Verzeichnisses — Ordner zuerst, dann Dateien, mit Name, Größe, Änderungsdatum und Rechten, in drei Ansichtsarten. Diese Runde ändert daran nichts außer den beiden Kontextmenü-Einträgen. Nicht: directory_bookmark, server_entry, transfer, search_result. |
+| UI-FILES-LIST-MENU | Kontextmenü der Dateiliste | UI-FILES | required | Rechtsklick auf einen Eintrag. Bestand: Umbenennen, Vorschau und Bearbeiten (nur Dateien), Herunterladen, Pfad kopieren, Eigenschaften, Terminal hier öffnen (nur Ordner), Löschen. Neu und ausschließlich bei Ordnern: "Als Bookmark anlegen", das den angeklickten Ordner merkt — nicht das angezeigte Verzeichnis. Ist der Ordner schon gemerkt, steht an derselben Stelle "Bookmark entfernen". Nicht: empty_area_menu, favorite_context_menu, drop_menu. |
+| UI-FILES-EMPTY-MENU | Kontextmenü der freien Fläche | UI-FILES | required | Rechtsklick auf die freie Fläche unter den Einträgen. Bestand: Neue Datei, Neuer Ordner, Trenner, Ordner herunterladen, Eigenschaften, Terminal hier öffnen. Neu: "Diesen Ordner als Bookmark", das das gerade angezeigte Verzeichnis merkt — nicht einen darin liegenden Ordner. Ist es schon gemerkt, steht dort "Bookmark entfernen". Nicht: item_context_menu, favorite_context_menu, drop_menu. |
+| UI-SERVER-DIALOG-TABS | Details · Identität · Einstellungen | UI-SERVER-DIALOG | required | Die drei Abschnitte des Dialogs in fester Reihenfolge. |
+| UI-SERVER-DIALOG-DETAILS | Details | UI-SERVER-DIALOG | required | Name, Icon, Server-IP, Port, Protokoll, Engine, MAC-Adresse und WoL-Broadcast des Servers. Nicht: identity. |
+| UI-SERVER-DIALOG-IDENTITY | Identität | UI-SERVER-DIALOG | required | Zugangsdaten, mit denen dieser Server erreicht wird — persönliche und Organisations-Identitäten, verknüpfbar; Authentifizierung Passwort, SSH-Key oder beides. Nicht: server_entry, user_account. |
+| UI-SERVER-DIALOG-SETTINGS | Einstellungen | UI-SERVER-DIALOG | required | Verhalten dieses Servers, nicht seine Stammdaten: Jump-Hosts, Startbefehl, tmux ein/aus, Monitoring, Wake-on-LAN, Terminal-Tastenverhalten (Backspace, Entf, Funktionstasten) und für RDP zusätzlich Sicherheit, Tastaturlayout, Anzeige, Audio und Leistung. Nicht: server_entry. |
+| UI-SERVER-DIALOG-SAVE | Speichern | UI-SERVER-DIALOG | required | Legt den Server an bzw. speichert Änderungen und schließt den Dialog; Beschriftung „Erstellen" beim Anlegen, „Speichern" beim Bearbeiten. |
+| UI-TMUX-DIALOG-SESSIONS | Sessions | UI-TMUX-DIALOG | required | Die tmux-Sessions des Servers — nicht Outposts eigene Tabs. Eine Zeile je Session: der Name in voller Länge, rechts die drei Aktionen (Fenster anzeigen, Umbenennen, Beenden), die über dem Zeilenende liegen und nur auf der Zeile erscheinen, auf der man ist. Die Fensterzahl steht nicht als Text da — sie ist im Fenster-Icon gezeichnet; der Name braucht den Platz. Nicht: tab, server_entry, window. |
+| UI-TMUX-DIALOG-WINDOWS | Fenster | UI-TMUX-DIALOG | required | Die Fenster der gewählten Session als Raster, aktives Fenster markiert. Nicht: tmux_session, tab. |
+| UI-TMUX-DIALOG-ATTACH | Beitreten | UI-TMUX-DIALOG | required | Hängt das Terminal an die gewählte Session und das gewählte Fenster. |
+| UI-TMUX-DIALOG-NEW | Neue Session | UI-TMUX-DIALOG | required | Startet eine neue tmux-Session auf dem Server und hängt sich an. |
+| UI-DIRECT-CONNECT-HOST | Host | UI-DIRECT-CONNECT | required | Zieladresse (Host oder IP) und Port für eine Einmalverbindung. |
+| UI-DIRECT-CONNECT-AUTH | Authentifizierung | UI-DIRECT-CONNECT | required | Zugangsdaten nur für diese Verbindung — nicht gespeichert, keine Identität. Nicht: identity, server_entry. |
+| UI-DIRECT-CONNECT-GO | Verbinden | UI-DIRECT-CONNECT | required | Öffnet eine Session-Tab mit dieser Verbindung und schließt den Dialog. |
 | UI-VAULT-NEW | Neuer Eintrag | UI-VAULT | required | Öffnet den Eintrag-Dialog zum Anlegen. Nur sichtbar mit Recht vault.use oder vault.manage in mindestens einer Organisation. |
 | UI-VAULT-SCOPE | Persönlich · Organisationen | UI-VAULT | required | Wechselt, wessen Einträge die Liste zeigt — die eigenen oder die einer Organisation. Ein Reiter je Besitzer. Nicht: server_folder, tag, item_type. |
 | UI-VAULT-SEARCH | Suchen | UI-VAULT | required | Filtert die Liste nach Name, Benutzer, Host, Ursprung und Beschreibung. Durchsucht nie geheime Werte. |
@@ -466,21 +508,17 @@ Die übernommenen Elemente unten werden nicht neu gebaut, aber ergänzt (Manifes
 | UI-VAULT-DIALOG-SAVE | Speichern | UI-VAULT-DIALOG | required | Legt den Eintrag an bzw. speichert Änderungen und schließt den Dialog; Beschriftung Erstellen beim Anlegen. |
 | UI-AGENT-ACCESS-KEYS | Agenten auf diesem Server | UI-AGENT-ACCESS | required | Die Agenten-Keys dieses Servers — Agent, angelegt, zuletzt genutzt, IP-Bindung — je mit Entziehen. Entziehen widerruft den Key und entfernt die Registrierung auf dem Server. Nicht: api_key, vault_item, identity. |
 | UI-AGENT-ACCESS-SETUP | Einrichten | UI-AGENT-ACCESS | required | Welche Agenten eingerichtet werden (Claude Code, Codex) und welche zusätzlichen Adressbereiche (CIDR) ihr Key neben der IP dieses Servers akzeptiert. Nicht: api_key, vault_binding. |
-| UI-AGENT-ACCESS-IPBIND | Nur von der IP dieses Servers | UI-AGENT-ACCESS | required | Ob der Key nur Anfragen von der Adresse dieses Servers (plus den eingetragenen Adressbereichen) akzeptiert. Standard an; aus heißt von überall. Nicht: vault_binding, allowed_origin. |
+| UI-AGENT-ACCESS-URL | Outpost-Adresse für diesen Server | UI-AGENT-ACCESS | required | Die Adresse, unter der dieser Server Outpost erreicht; daraus entstehen MCP-URL und Adressprüfung dieses Keys. Vorbelegt mit der Adresse der letzten Einrichtung auf diesem Server, sonst mit der Standardadresse aus den Einstellungen. Für Server außerhalb des LANs zum Beispiel die Domain über einen Reverse-Proxy. Nicht: browser_launcher_url, vault_binding. |
+| UI-AGENT-ACCESS-IPBIND | Nur von der IP dieses Servers | UI-AGENT-ACCESS | required | Ob der Key nur Anfragen von der Adresse dieses Servers (plus den eingetragenen Adressbereichen) akzeptiert. Vorbelegt mit dem Standard aus Einstellungen › Vault; aus heißt von überall. Nicht: vault_binding, allowed_origin. |
 | UI-AGENT-ACCESS-RESULT | Ergebnis | UI-AGENT-ACCESS | required | Je Agent das Ergebnis der Einrichtung — eingerichtet, oder der fertige Befehl zum Kopieren, wenn die automatische Einrichtung scheiterte (CLI fehlt, Exec-Fehler). Der Key ist nur hier und nur jetzt sichtbar; ein Key, der weder automatisch eingerichtet noch kopiert wurde, wird beim Schließen gelöscht. Nicht: agent_key, toast. |
 | UI-VAULT-SETTINGS-KEY | Vault-Schlüssel | UI-VAULT-SETTINGS | required | Ob der Vault läuft — Schlüssel aktiv, fehlt (Vault aus) oder passt nicht zu den gespeicherten Daten (Vault aus). Bei fehlendem Schlüssel ein Satz, wie man VAULT_KEY setzt. Nicht: encryption_key, api_key. |
 | UI-VAULT-SETTINGS-URL | Outpost-Adresse für Agenten | UI-VAULT-SETTINGS | required | Die Adresse, unter der Server Outpost erreichen; daraus entsteht die MCP-URL, die beim Einrichten eines Agenten eingetragen wird. Nicht: browser_launcher_url. |
+| UI-VAULT-SETTINGS-IPBIND | IP-Bindung als Standard | UI-VAULT-SETTINGS | required | Ob neue Agenten-Keys standardmäßig nur von der IP ihres Servers gelten. Belegt den Schalter „Nur von der IP dieses Servers“ im Agenten-Zugang vor; dort lässt er sich je Server ändern. Aus für Umgebungen, in denen Outpost die Absenderadressen nicht sieht. Nicht: vault_binding, allowed_origin, proxy_trust_warning. |
 | UI-VAULT-SETTINGS-PROXY | Hinweis Reverse-Proxy | UI-VAULT-SETTINGS | required | Warnt, wenn Outpost jedem X-Forwarded-For glaubt (TRUST_PROXY=true) — dann ist die IP-Bindung von Agenten-Keys wirkungslos. Sonst nicht sichtbar. Nicht: vault_key_status, agent_base_url. |
 | UI-VAULT-SETTINGS-SAVE | Einstellungen speichern | UI-VAULT-SETTINGS | required | Speichert die Outpost-Adresse für Agenten, wie der Speichern-Knopf der Browser-Einstellungen. |
 | UI-API-KEYS-LIST | API-Schlüssel | UI-API-KEYS | required | Die API-Keys des Kontos mit voller Kontoberechtigung — Name, Präfix, zuletzt genutzt, Ablauf; Anlegen und Löschen wie bisher. Nicht: agent_key. |
 | UI-API-KEYS-AGENTS | Agenten-Schlüssel | UI-API-KEYS | required | Die Agenten-Keys des Kontos, gruppiert nach Server — Agent, zuletzt genutzt, IP-Bindung; je Server Bearbeiten (öffnet Agenten-Zugang) und je Key Entziehen. Agenten-Keys erreichen nur den MCP-Endpunkt. Nicht: api_key, vault_item. |
 | UI-VAULT-APPROVAL-CARD | Freigabe angefordert | UI-VAULT-APPROVAL | required | Eine Karte unten rechts über jeder Seite, nicht modal: ein Agent will einen Vault-Eintrag nutzen. Zeigt Agent und Server, Eintrag und Ziel (Ursprung oder Host) und die verbleibende Zeit; Antworten Einmal, Für diese Sitzung, Ablehnen. Mehrere Anfragen stapeln sich, die älteste unten. Der Stapel liegt über Dialogen und Toasts. Eine abgelaufene Karte zeigt fünf Sekunden den Fehlerzustand und verschwindet; scheitert das Senden einer Antwort, bleibt die Karte stehen und ein Toast nennt den Grund. Nicht: notification, toast, error. |
-
-**Übernommene Elemente** (hier nicht zu bauen, nur zu verwenden):
-- `UI-SHELL-NAV` — Bereiche
-- `UI-SHELL-MOBILE-NAV` — Bereiche (schmaler Schirm)
-- `UI-SHELL-ACCOUNT` — Konto
-- `UI-SERVERS-LIST-MENU` — Kontextmenü Server
 
 Artboards: `docs/design/mockups/index.html` · Design-System: `docs/design/design-system.md`
 <!-- mockingbird:design:end -->

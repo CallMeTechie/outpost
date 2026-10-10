@@ -1,5 +1,6 @@
 const net = require("node:net");
 const Joi = require("joi");
+const { agentUrl } = require("./vault");
 
 const cidr = Joi.string().trim().max(64).custom((value, helpers) => {
     const [address, bits, ...rest] = value.split("/");
@@ -14,7 +15,8 @@ const cidr = Joi.string().trim().max(64).custom((value, helpers) => {
 module.exports.createAgentKeysValidation = Joi.object({
     entryId: Joi.number().integer().positive().required(),
     agentTypes: Joi.array().items(Joi.string().valid("claude", "codex")).min(1).unique().required(),
-    ipBinding: Joi.boolean().default(true),
+    agentUrl: agentUrl.allow(null, ""),
+    ipBinding: Joi.boolean(),
     allowedCidrs: Joi.array().items(cidr).max(16).unique().default([]),
 });
 
