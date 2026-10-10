@@ -11,6 +11,7 @@ const { createAuditLog, AUDIT_ACTIONS, RESOURCE_TYPES } = require("./audit");
 const stateBroadcaster = require("../lib/StateBroadcaster");
 const logger = require("../utils/logger");
 const SessionManager = require("../lib/SessionManager");
+const { removeBindings } = require("../lib/vault/bindings");
 
 const cleanupOrganizationIdentities = async (entryIds, oldOrganizationId) => {
     if (!entryIds.length || !oldOrganizationId) return;
@@ -148,6 +149,10 @@ module.exports.deleteFolder = async (accountId, folderId) => {
     for (let subfolder of subfolders) {
         await module.exports.deleteFolder(accountId, subfolder.id);
     }
+
+    const entryIds = (await Entry.findAll({ where: { folderId: folder.id }, attributes: ["id"] })).map((entry) => entry.id);
+    await removeBindings("entry", entryIds);
+    await removeBindings("folder", [folder.id]);
 
     await Entry.destroy({ where: { folderId: folderId } });
 
