@@ -17,11 +17,11 @@ module.exports = {
                 primaryKey: true, 
                 allowNull: false 
             },
-            credentialId: {
-                type: DataTypes.TEXT,
-                allowNull: false,
-                unique: true,
-            },
+            // MySQL cannot index TEXT. A WebAuthn credential ID is at most 1023 bytes, i.e. 1364
+            // base64url characters; ascii_bin keeps the index under 3072 bytes and compares case-sensitively.
+            credentialId: isMysql
+                ? { type: "VARCHAR(1364) CHARACTER SET ascii COLLATE ascii_bin", allowNull: false }
+                : { type: DataTypes.TEXT, allowNull: false, unique: true },
             credentialPublicKey: {
                 type: DataTypes.TEXT,
                 allowNull: false,
