@@ -82,7 +82,7 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
     }, [open, entryId, loadKeys]);
 
     const discardPending = (list) => Promise.all(list
-        .filter((result) => !result.confirmed)
+        .filter((result) => result.id != null && !result.confirmed)
         .map((result) => deleteRequest(`vault/agent-keys/${result.id}`).catch(() => {})));
 
     const fieldsDisabled = settingUp || !agentUrlSet || impersonating;
@@ -362,7 +362,7 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
                     {results.length === 0 ? (
                         <p className="agent-access-empty">{t("servers.agentAccess.result.empty")}</p>
                     ) : results.map((result) => (
-                        <div key={result.id} className={`agent-result ${result.status === "configured" ? "is-ok" : "is-fail"}`}>
+                        <div key={result.id ?? result.agentType} className={`agent-result ${result.status === "configured" ? "is-ok" : "is-fail"}`}>
                             <div className="agent-result-head">
                                 <span>{agentLabel(result.agentType)}</span>
                                 <span className="agent-result-status">
@@ -373,7 +373,7 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
                             {result.replacedRegistration && (
                                 <p className="agent-access-notice">{t("servers.agentAccess.result.replaced")}</p>
                             )}
-                            {result.status !== "configured" && (
+                            {result.status !== "configured" && result.command && (
                                 <>
                                     <div className="agent-result-command">
                                         <pre>{result.command}</pre>

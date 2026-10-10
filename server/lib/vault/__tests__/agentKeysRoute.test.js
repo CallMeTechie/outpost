@@ -226,7 +226,8 @@ test("scheitert die Einrichtung, kommt der Befehl zum Kopieren und der Key bleib
     Object.assign(state, { setupFails: false, auditFailsFor: "codex" });
     const both = (await setUp(tokens.a, { agentTypes: ["claude", "codex"] })).body.results;
     assert.deepStrictEqual(both.map((r) => [r.agentType, r.status, r.reason]), [["claude", "configured", null], ["codex", "manual", "exec_failed"]]);
-    assert.match(both[1].command, /outpost_[0-9a-f]{64}/);
+    assert.deepStrictEqual([both[1].id, both[1].command], [null, undefined], "a key without its create audit is never handed out");
+    assert.strictEqual(await ApiKey.count({ where: { agentType: "codex", pending: true } }), 0);
 });
 
 test("sweepPending löscht nur pending-Keys, die älter als 15 Minuten sind", async (t) => {

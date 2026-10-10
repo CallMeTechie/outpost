@@ -154,13 +154,18 @@ const setupOne = async ({ accountId, entry, identity, organizationId, agentUrl, 
         entryId: entry.id, agentType, ipBinding, allowedCidrs: allowedCidrs.length > 0 ? allowedCidrs : null,
         identityId: identity?.id ?? null, remoteUser,
     });
+    try {
+        await createAuditLog({
+            accountId, organizationId, action: AUDIT_ACTIONS.VAULT_AGENT_KEY_CREATE,
+            resource: RESOURCE_TYPES.VAULT, resourceId: null,
+            details: { keyId: key.id, agentType, entryId: entry.id, entryName: entry.name, remoteUser, ipBinding },
+            ...context,
+        });
+    } catch (err) {
+        await ApiKey.destroy({ where: { id: key.id } });
+        throw err;
+    }
     attempt.key = key;
-    await createAuditLog({
-        accountId, organizationId, action: AUDIT_ACTIONS.VAULT_AGENT_KEY_CREATE,
-        resource: RESOURCE_TYPES.VAULT, resourceId: null,
-        details: { keyId: key.id, agentType, entryId: entry.id, entryName: entry.name, remoteUser, ipBinding },
-        ...context,
-    });
 
     const outcome = await setupAgent({ accountId, entry, identity, agentUrl, key, token });
     if (outcome.status === "configured") await finalize(key, entry, context);
