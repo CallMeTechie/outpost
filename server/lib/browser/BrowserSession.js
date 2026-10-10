@@ -323,6 +323,7 @@ class BrowserSession extends EventEmitter {
         if (this.closed) return;
         this.closed = true;
         this.closeReason = reason;
+        vaultGuard.forgetTarget(this.contextKey, this.targetId);
         logger.info("Browser session ended", { session: this.id, accountId: this.accountId, reason });
         this.cdp.off("event", this.onCdpEvent);
         for (const { ws } of this.viewers) {
@@ -346,7 +347,7 @@ class BrowserSession extends EventEmitter {
             case "Page.frameNavigated":
                 if (params.frame?.parentId) return;
                 this.refs.reset();
-                vaultGuard.noteNavigation(this.contextKey, this.targetId);
+                vaultGuard.forgetTarget(this.contextKey, this.targetId);
                 await this.#resumeScreencast();
                 return this.#refreshState();
             case "Page.navigatedWithinDocument":

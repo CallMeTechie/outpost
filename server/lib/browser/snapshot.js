@@ -9,8 +9,9 @@ const OPTION_ROLES = new Set(["option", "MenuListOption"]);
 const MAX_TEXT = 100;
 const REDACTED = "••••";
 
-const clip = (value) => {
-    const text = String(value ?? "").replace(/\s+/g, " ").trim();
+const clip = (value, redact = (text) => text) => {
+    // Collapse whitespace first: the redaction has to see the text as the page shows it.
+    const text = redact(String(value ?? "").replace(/\s+/g, " ").trim());
     return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT - 1)}…` : text;
 };
 
@@ -68,7 +69,7 @@ const optionsOf = (node, byId) => {
 
 const describe = (node, refs, options, redactBackendIds, redact) => {
     const role = node.role?.value;
-    const name = clip(redact(String(node.name?.value ?? "")));
+    const name = clip(node.name?.value, redact);
     if (role === "heading") {
         if (!name) return null;
         const level = propertyOf(node, "level");
@@ -80,7 +81,7 @@ const describe = (node, refs, options, redactBackendIds, redact) => {
     let line = `- ${label} [ref=${refs.assign(node.backendDOMNodeId, label, options.length > 0 ? { options } : {})}]`;
     const value = node.value?.value;
     if (VALUE_ROLES.has(role) && value !== undefined && value !== "")
-        line += ` value=${JSON.stringify(redactBackendIds.has(node.backendDOMNodeId) ? REDACTED : clip(redact(String(value))))}`;
+        line += ` value=${JSON.stringify(redactBackendIds.has(node.backendDOMNodeId) ? REDACTED : clip(value, redact))}`;
     const checked = propertyOf(node, "checked");
     if (checked === "mixed") line += " checked=mixed";
     else if (checked === "true" || checked === true) line += " checked";
@@ -103,7 +104,7 @@ const buildSnapshot = (nodes, refs, { redactBackendIds = new Set(), redact = (te
             if (options.length > 0) {
                 // A native select's options are chosen through its own ref (A23), so they get none.
                 for (const option of options)
-                    lines.push(`  - option ${JSON.stringify(clip(redact(option.name)))}${option.selected ? " selected" : ""}${option.disabled ? " disabled" : ""}`);
+                    lines.push(`  - option ${JSON.stringify(clip(option.name, redact))}${option.selected ? " selected" : ""}${option.disabled ? " disabled" : ""}`);
                 continue;
             }
         }

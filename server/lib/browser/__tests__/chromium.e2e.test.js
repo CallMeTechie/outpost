@@ -132,7 +132,7 @@ test("against a real Chromium: a filled field stays masked after Show password, 
         const session = pool.get(/^Session: (\S+)/m.exec(opened)[1]);
         const typed = text(await tools.call("browser_type", { ref: refOf(opened, 'textbox "Password"'), text: value }, ctx));
         assert.ok(!typed.includes("pa55"), "the typed password does not reach the snapshot");
-        vaultGuard.markFilled(session.contextKey, { backendNodeIds: [session.refs.resolve(refOf(typed, 'textbox "Password"')).backendNodeId], secret: value });
+        vaultGuard.markFilled(session.contextKey, { backendNodeIds: [session.refs.resolve(refOf(typed, 'textbox "Password"')).backendNodeId], secret: value, targetId: session.targetId });
         assert.strictEqual((await tools.call("browser_screenshot", {}, ctx)).content[0].type, "image", "the filled field is still a password field");
 
         const shown = text(await tools.call("browser_click", { ref: refOf(typed, 'button "Show password"') }, ctx));
