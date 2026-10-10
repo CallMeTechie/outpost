@@ -41,6 +41,13 @@ test("a ciphertext only decrypts in its own row and field, and only with the ful
     }
     assert.strictEqual(await readSecret(other.id, "token"), null);
     assert.throws(() => decryptValue({ encrypted: sealed.valueEncrypted, iv: sealed.valueIV, authTag: sealed.valueAuthTag.slice(0, 8) }, `vault:${own.id}:password`));
+    const ownKey = process.env.VAULT_KEY;
+    process.env.VAULT_KEY = "ff".repeat(32);
+    try {
+        assert.throws(() => decryptValue({ encrypted: sealed.valueEncrypted, iv: sealed.valueIV, authTag: sealed.valueAuthTag }, `vault:${own.id}:password`));
+    } finally {
+        process.env.VAULT_KEY = ownKey;
+    }
 
     assert.deepStrictEqual([isUnreadable(own.id), isUnreadable(other.id)], [true, true]);
     await writeSecret(other.id, "password", "hunter3");
