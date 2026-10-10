@@ -42,10 +42,10 @@ const originOf = (url) => {
 };
 
 class BrowserSession extends EventEmitter {
-    constructor({ id, accountId, profile, via = null, origin, organizationId = null, cdp, targetId, cdpSessionId,
+    constructor({ id, accountId, keyId = null, contextKey = null, profile, via = null, origin, organizationId = null, cdp, targetId, cdpSessionId,
                   bufferLimit = VIEWER_BUFFER_LIMIT, stallMs = STALL_MS }) {
         super();
-        Object.assign(this, { id, accountId, profile, via, origin, organizationId, cdp, targetId, cdpSessionId, bufferLimit, stallMs });
+        Object.assign(this, { id, accountId, keyId, contextKey, profile, via, origin, organizationId, cdp, targetId, cdpSessionId, bufferLimit, stallMs });
         this.viewers = [];
         this.viewport = { ...DEFAULT_VIEWPORT };
         this.refs = new RefTable();

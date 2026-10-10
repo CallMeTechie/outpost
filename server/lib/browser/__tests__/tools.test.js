@@ -38,7 +38,7 @@ const fakePool = () => {
             const session = sessions.get(id);
             return session && session.accountId === accountId ? session : null;
         },
-        listForAccount: (accountId) => [...sessions.values()].filter((s) => s.accountId === accountId).map((s) => s.summary()),
+        listForCaller: ({ accountId }) => [...sessions.values()].filter((s) => s.accountId === accountId).map((s) => s.summary()),
         async close(id) { sessions.delete(id); },
     };
 };
