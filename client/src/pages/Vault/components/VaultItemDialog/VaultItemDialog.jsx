@@ -77,6 +77,11 @@ export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwn
     const [showMissing, setShowMissing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [failure, setFailure] = useState(null);
+    const [wasOpen, setWasOpen] = useState(open);
+    if (open !== wasOpen) {
+        setWasOpen(open);
+        if (!open) setSecrets({});
+    }
 
     const spec = VAULT_TYPES[form.type];
     const isEdit = item !== null;
