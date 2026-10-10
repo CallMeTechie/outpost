@@ -29,6 +29,7 @@ const VaultErrorCode = Object.freeze({
     CLIENT_GONE: "vault.client_gone",
     RATE_LIMITED: "vault.rate_limited",
     NO_SECRET: "vault.no_secret",
+    SESSION_NOT_ALLOWED: "vault.session_not_allowed",
 });
 
 const C = VaultErrorCode;
@@ -54,6 +55,7 @@ const VaultErrorMessage = Object.freeze({
     [C.CLIENT_GONE]: "The request ended before the approval arrived, so nothing was filled.",
     [C.RATE_LIMITED]: "Too many credential fills; wait a minute and try again.",
     [C.NO_SECRET]: "This entry has no stored password; ask the user to enter it in Outpost.",
+    [C.SESSION_NOT_ALLOWED]: "Requests from an impersonation session can only be approved once.",
 });
 
 module.exports = { VaultError, VaultErrorCode, VaultErrorMessage };

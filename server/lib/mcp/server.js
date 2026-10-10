@@ -30,6 +30,8 @@ const createMcpServer = ({ providers, now = Date.now }) => {
     };
 
     const handle = async ({ body, transportId, accountId, keyId = null, agent = null, impersonatorId = null, ipAddress = null, userAgent = null, signal }) => {
+        if (agent && !(Number.isInteger(keyId) && Number.isInteger(agent.entryId)))
+            throw new TypeError("An agent caller needs a numeric keyId and entryId");
         sweep();
         if (Array.isArray(body)) return { status: 400, body: rpcError(null, -32600, "Batched requests are not supported") };
         if (!body || body.jsonrpc !== "2.0" || typeof body.method !== "string")

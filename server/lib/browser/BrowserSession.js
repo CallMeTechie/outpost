@@ -347,7 +347,7 @@ class BrowserSession extends EventEmitter {
             case "Page.frameNavigated":
                 if (params.frame?.parentId) return;
                 this.refs.reset();
-                vaultGuard.forgetTarget(this.contextKey, this.targetId);
+                vaultGuard.noteNavigation(this.contextKey, this.targetId);
                 await this.#resumeScreencast();
                 return this.#refreshState();
             case "Page.navigatedWithinDocument":

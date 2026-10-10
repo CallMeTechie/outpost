@@ -50,7 +50,7 @@ const expire = (request, reason) => {
 
 const hasSessionApproval = (transportId, item) => sessionGrants.get(transportId)?.get(item.id) === grantStamp(item);
 
-const requestApproval = async ({ accountId, keyId = null, transportId, agentType = null, entryName = null, item, target, signal }) => {
+const requestApproval = async ({ accountId, keyId = null, transportId, agentType = null, entryName = null, impersonated = false, item, target, signal }) => {
     if (hasSessionApproval(transportId, item)) return "session";
     const now = Date.now();
     prune(now);
@@ -67,7 +67,7 @@ const requestApproval = async ({ accountId, keyId = null, transportId, agentType
         const request = {
             id: randomUUID(), accountId, keyId, caller: callerKey(accountId, keyId), transportId,
             itemId: item.id, stamp: grantStamp(item), organizationId: item.organizationId ?? null, item: itemRef(item),
-            agentType, entryName, target, expiresAt: now + APPROVAL_TTL_MS, resolve, reject, signal,
+            agentType, entryName, impersonated: Boolean(impersonated), target, expiresAt: now + APPROVAL_TTL_MS, resolve, reject, signal,
         };
         request.timer = setTimeout(() => expire(request, "expired"), APPROVAL_TTL_MS);
         request.onAbort = () => expire(request, "client_gone");
@@ -90,6 +90,7 @@ const answerApproval = (id, accountId, decision, meta = {}) => {
         expire(request, "expired");
         return { status: 410 };
     }
+    if (decision === "session" && request.impersonated) return { status: 400, code: VaultErrorCode.SESSION_NOT_ALLOWED };
     close(request, 409);
     if (decision === "deny") {
         denials.set(denialKey(request.accountId, request.keyId, request.itemId), now + DENY_LOCK_MS);
@@ -111,8 +112,8 @@ const listOpenApprovals = (accountId) => {
     return [...open.values()]
         .filter((request) => Number(request.accountId) === Number(accountId))
         .sort((a, b) => a.expiresAt - b.expiresAt)
-        .map(({ id, agentType, entryName, item, target, expiresAt }) => ({
-            id, agentType, entryName, item, target,
+        .map(({ id, agentType, entryName, impersonated, item, target, expiresAt }) => ({
+            id, agentType, entryName, impersonated, item, target,
             expiresAt: new Date(expiresAt).toISOString(), remainingMs: Math.max(0, expiresAt - now),
         }));
 };

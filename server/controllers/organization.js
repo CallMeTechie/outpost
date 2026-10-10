@@ -2,12 +2,15 @@ const Organization = require("../models/Organization");
 const OrganizationMember = require("../models/OrganizationMember");
 const OrganizationMemberPermission = require("../models/OrganizationMemberPermission");
 const Account = require("../models/Account");
+const Entry = require("../models/Entry");
+const Folder = require("../models/Folder");
 const { hasOrganizationPermission, getOrganizationPermissions } = require("../permissions/engine");
 const { Permission } = require("../permissions/registry");
 const stateBroadcaster = require("../lib/StateBroadcaster");
 const { revokeLiveSessionAccess } = require("./liveSession");
 const { Op } = require("sequelize");
 const { ACCOUNT_VIEW_ATTRIBUTES, toAccountView } = require("../utils/accountView");
+const { removeBindings } = require("../lib/vault/bindings");
 
 module.exports.createOrganization = async (accountId, configuration) => {
     const organization = await Organization.create({
@@ -36,6 +39,14 @@ module.exports.deleteOrganization = async (accountId, organizationId) => {
     if (!canManage) {
         return { code: 403, message: "You don't have permission to delete this organization or it doesn't exist" };
     }
+
+    const folderIds = (await Folder.findAll({ where: { organizationId: orgId }, attributes: ["id"] })).map((folder) => folder.id);
+    const entryIds = (await Entry.findAll({
+        where: { [Op.or]: [{ organizationId: orgId }, ...(folderIds.length ? [{ folderId: { [Op.in]: folderIds } }] : [])] },
+        attributes: ["id"],
+    })).map((entry) => entry.id);
+    await removeBindings("entry", entryIds);
+    await removeBindings("folder", folderIds);
 
     await OrganizationMember.destroy({ where: { organizationId } });
     await OrganizationMemberPermission.destroy({ where: { organizationId } });

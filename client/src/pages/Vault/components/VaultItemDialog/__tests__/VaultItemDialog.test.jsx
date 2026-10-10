@@ -26,11 +26,11 @@ const Targets = ({ children }) => (
     </ServerContext.Provider>
 );
 
-const editItem = () => renderWithProviders(
-    <VaultItemDialog open onClose={() => {}} item={item} onSaved={() => {}} defaultOwner="personal"
-                     owners={[{ value: "personal", label: "Personal (ma.backes)", organizationId: null }]} />,
-    { providers: [Targets] },
+const dialog = (open) => (
+    <VaultItemDialog open={open} onClose={() => {}} item={item} onSaved={() => {}} defaultOwner="personal"
+                     owners={[{ value: "personal", label: "Personal (ma.backes)", organizationId: null }]} />
 );
+const editItem = () => renderWithProviders(dialog(true), { providers: [Targets] });
 
 beforeEach(() => {
     requestDouble.reset();
@@ -64,9 +64,9 @@ test("ein geänderter Ursprung verwirft den gespeicherten Wert: Speichern erst m
     }]);
 });
 
-test("ohne Zieländerung schickt Speichern kein leeres Geheimfeld mit, der gespeicherte Wert bleibt", async () => {
+test("ohne Zieländerung schickt Speichern kein leeres Geheimfeld mit, der gespeicherte Wert bleibt; ein getippter Wert überdauert das Schließen nicht", async () => {
     const user = userEvent.setup();
-    editItem();
+    const { rerender } = editItem();
 
     await user.clear(screen.getByLabelText("User"));
     await user.type(screen.getByLabelText("User"), "admin");
@@ -75,4 +75,9 @@ test("ohne Zieländerung schickt Speichern kein leeres Geheimfeld mit, der gespe
     expect(requestDouble.calls).toHaveLength(1);
     expect(requestDouble.calls[0].body.fields).toEqual({ username: "admin", origins: ["https://portal.example.com"] });
     expect(requestDouble.calls[0].body).not.toHaveProperty("secrets");
+
+    await user.type(screen.getByLabelText("Password"), "Wn4-eTq8");
+    rerender(dialog(false));
+    rerender(dialog(true));
+    expect(await screen.findByLabelText("Password")).toHaveValue("");
 });

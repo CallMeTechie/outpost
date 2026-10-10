@@ -13,6 +13,7 @@ fake("../../../utils/database", db);
 fake("../../../permissions/engine", {
     getSystemPermissions: async (accountId) => ({ isAdmin: false, permissions: systemPermissions.get(accountId) ?? [] }),
     getOrganizationPermissions: async () => ({ isOwner: false, isAdmin: false, permissions: [] }),
+    hasOrganizationPermission: async (accountId, organizationId, permission) => accountId === 1 && organizationId === 20 && permission === "org.delete",
 });
 
 const Entry = require("../../../models/Entry");
@@ -26,6 +27,7 @@ const { deleteEntry } = require("../../../controllers/entry");
 const { deleteFolder } = require("../../../controllers/folder");
 const { deleteTag } = require("../../../controllers/tag");
 const { deleteIntegration } = require("../../../controllers/integration");
+const { deleteOrganization } = require("../../../controllers/organization");
 const { setBindings, validateBindings } = require("../bindings");
 
 const ANNA = 1;
@@ -63,15 +65,20 @@ test("Ordner mit Unterordnern löschen entfernt Bindungen an Ordner, Unterordner
     assert.strictEqual(await Entry.count({ where: { id: servers.slice(0, 3).map((entry) => entry.id) } }), 0);
 });
 
-test("Server, Tag oder Integration löschen entfernt genau deren Bindungen", async () => {
+test("Server, Tag, Integration oder Organisation löschen entfernt genau deren Bindungen", async () => {
     const gone = await Entry.create({ accountId: ANNA, type: "server", name: "old-nas" });
     const stays = await Entry.create({ accountId: ANNA, type: "server", name: "new-nas" });
     const tag = await Tag.create({ accountId: ANNA, name: "prod", color: "#ff0000" });
     const pve = await Integration.create({ type: "proxmox", name: "pve", config: { ip: "192.0.2.80", port: 8006 }, status: "online" });
     const pveRoot = await Folder.create({ name: "pve", accountId: ANNA, integrationId: pve.id, type: "integration-root" });
     const pveVm = await Entry.create({ accountId: ANNA, folderId: pveRoot.id, integrationId: pve.id, type: "pve-qemu", name: "vm-100" });
+    const orgFolder = await Folder.create({ name: "org", accountId: null, organizationId: 20 });
+    const orgServer = await Entry.create({ accountId: null, organizationId: 20, type: "server", name: "org-nas" });
+    const orgFolderServer = await Entry.create({ accountId: null, folderId: orgFolder.id, type: "server", name: "org-vm" });
     const item = await login("router");
     await setBindings(item.id, [
+        ...[orgServer, orgFolderServer].map((entry) => ({ kind: "entry", targetId: entry.id })),
+        { kind: "folder", targetId: orgFolder.id },
         { kind: "entry", targetId: gone.id },
         { kind: "entry", targetId: stays.id },
         { kind: "tag", targetId: tag.id },
@@ -82,6 +89,7 @@ test("Server, Tag oder Integration löschen entfernt genau deren Bindungen", asy
     assert.deepStrictEqual(await deleteEntry(ANNA, gone.id), { success: true });
     assert.deepStrictEqual(await deleteTag(ANNA, tag.id), { success: true });
     assert.deepStrictEqual(await deleteIntegration(ANNA, pve.id), { success: true });
+    assert.deepStrictEqual(await deleteOrganization(ANNA, "20"), { success: true });
 
     assert.deepStrictEqual(await remaining(item.id), [`entry:${stays.id}`]);
 });

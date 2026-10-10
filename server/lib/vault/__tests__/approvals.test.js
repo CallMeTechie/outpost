@@ -65,8 +65,8 @@ test("Einmal gibt genau ein Ausfüllen frei; die erste Antwort gewinnt, jede wei
     const first = approvals.requestApproval(call());
     await flush();
     const [card] = window.cards();
-    assert.deepStrictEqual(Object.keys(card).sort(), ["agentType", "entryName", "expiresAt", "id", "item", "remainingMs", "target"]);
-    assert.deepStrictEqual([card.item, card.agentType, card.entryName, card.target], ["portal-login", "claude", "web-01", "https://portal.example.com"]);
+    assert.deepStrictEqual(Object.keys(card).sort(), ["agentType", "entryName", "expiresAt", "id", "impersonated", "item", "remainingMs", "target"]);
+    assert.deepStrictEqual([card.item, card.agentType, card.entryName, card.impersonated, card.target], ["portal-login", "claude", "web-01", false, "https://portal.example.com"]);
 
     assert.deepStrictEqual(approvals.answerApproval(card.id, 2, "once"), { status: 404 });
     assert.deepStrictEqual(approvals.answerApproval(card.id, 1, "once"), { status: 200 });
@@ -220,15 +220,16 @@ test("ab der vierten offenen Anfrage desselben Aufrufers approval_busy", async (
     await Promise.all([...open, otherKey]);
 });
 
-test("Freigabe-Antworten nur aus einer Login-Session: Impersonation und Konto-Key bekommen 403", async (t) => {
+test("Freigabe-Antworten nur aus einer Login-Session: Impersonation und Konto-Key bekommen 403; eine Anfrage aus einer Impersonation gibt es nur einmal frei", async (t) => {
     openWindow(t, 1);
     const app = express();
     app.use(express.json());
     app.use("/api/vault", router);
     const server = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)); });
     t.after(() => server.close());
-    const pending = approvals.requestApproval(call());
-    const [{ id }] = approvals.listOpenApprovals(1);
+    const pending = approvals.requestApproval(call({ impersonated: true }));
+    const [{ id, impersonated }] = approvals.listOpenApprovals(1);
+    assert.strictEqual(impersonated, true);
     const answer = (token, body = { decision: "once" }) => fetch(`http://127.0.0.1:${server.address().port}/api/vault/approvals/${id}`, {
         method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify(body),
     });
@@ -236,6 +237,9 @@ test("Freigabe-Antworten nur aus einer Login-Session: Impersonation und Konto-Ke
     assert.strictEqual((await answer("s-imp")).status, 403);
     assert.strictEqual((await answer("k-owner")).status, 403);
     assert.strictEqual((await answer("s-owner", { decision: "always" })).status, 400);
+    const session = await answer("s-owner", { decision: "session" });
+    assert.deepStrictEqual([session.status, (await session.json()).code], [400, "vault.session_not_allowed"]);
+    assert.strictEqual(approvals.listOpenApprovals(1).length, 1, "the request stays open");
     assert.strictEqual((await answer("s-owner")).status, 200);
     assert.strictEqual(await pending, "once");
     assert.strictEqual((await answer("s-owner")).status, 409);

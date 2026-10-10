@@ -68,13 +68,15 @@ test("the countdown runs from remainingMs on receipt; an expired card shows its 
     expect(stack()).toBeNull();
 });
 
-test("Once sends the decision, shows the sending state, and removes the card on success", async () => {
+test("Once sends the decision, shows the sending state, and removes the card on success; a request from an impersonation says so and offers no session", async () => {
     const user = userEvent.setup();
     let resolve;
     requestDouble.stub("postRequest", "vault/approvals/a1", new Promise((r) => { resolve = r; }));
     mount();
-    push([approval("a1", 120_000)]);
+    push([{ ...approval("a1", 120_000), impersonated: true }]);
 
+    expect(screen.getByText(t("vault.approval.impersonated"))).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("vault.approval.actions.session") })).not.toBeInTheDocument();
     await user.click(button("vault.approval.actions.once"));
 
     expect(screen.getByText(t("vault.approval.sending"))).toBeInTheDocument();

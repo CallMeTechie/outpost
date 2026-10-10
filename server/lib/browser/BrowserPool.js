@@ -11,6 +11,10 @@ const SWEEP_INTERVAL_MS = 60 * 1000;
 const PERSISTENT_LINGER_MS = 60 * 1000;
 const PROFILES = new Set(["ephemeral", "persistent"]);
 
+const assertKeyFilter = (keyId) => {
+    if (keyId !== null && !Number.isInteger(keyId)) throw new TypeError("keyId must be an agent key id, or null for every session of the account");
+};
+
 class BrowserPool extends EventEmitter {
     constructor({ getSettings, launcher, connectCdp = (url) => CdpConnection.connect(url), createVia, persistentLingerMs = PERSISTENT_LINGER_MS }) {
         super();
@@ -28,16 +32,18 @@ class BrowserPool extends EventEmitter {
         return this.sessions.get(sessionId)?.session ?? null;
     }
 
-    getOwned(accountId, sessionId, { keyId = null } = {}) {
+    getOwned(accountId, sessionId, { keyId } = {}) {
+        assertKeyFilter(keyId);
         const session = this.get(sessionId);
         return session && session.accountId === accountId && (keyId === null || session.keyId === keyId) ? session : null;
     }
 
     listForAccount(accountId) {
-        return this.listForCaller({ accountId });
+        return this.listForCaller({ accountId, keyId: null });
     }
 
-    listForCaller({ accountId, keyId = null }) {
+    listForCaller({ accountId, keyId }) {
+        assertKeyFilter(keyId);
         return [...this.sessions.values()]
             .filter(({ session }) => session.accountId === accountId && (keyId === null || session.keyId === keyId))
             .map(({ session }) => session.summary());
