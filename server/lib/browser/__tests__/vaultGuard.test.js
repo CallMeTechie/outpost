@@ -268,9 +268,11 @@ test("secrets with quotes, backslashes, a clip boundary or a shorter sibling are
     const ref = /\[ref=(e\d+)\]/.exec(snapshot)[1];
     const clicked = text(await tools.call("browser_click", { ref }, agent("T")));
     assert.match(snapshot, /- heading "Hi •••• •••• x •••• y"/);
+    // The session id is a random UUID and may contain "def" by chance.
+    const withoutIds = (value) => value.replace(/browser-[0-9a-f•-]+/g, "browser-<id>");
     for (const leaked of ["Tr0ub", "p\\\" q", "q y", "le\\\\x9", "x9", "def", "xxxxxxx", "yyyyyy".repeat(2) + "Tr"]) {
-        assert.ok(!snapshot.includes(leaked) && !clicked.includes(leaked), `${leaked} reached the agent`);
-        assert.ok(!JSON.stringify(audit).includes(leaked), `${leaked} reached the audit log`);
+        assert.ok(!withoutIds(snapshot).includes(leaked) && !withoutIds(clicked).includes(leaked), `${leaked} reached the agent`);
+        assert.ok(!withoutIds(JSON.stringify(audit)).includes(leaked), `${leaked} reached the audit log`);
     }
 });
 
