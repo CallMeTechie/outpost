@@ -2,7 +2,7 @@
 <html lang="de" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<title>outpost — Mockups (Revision 16)</title>
+<title>outpost — Mockups (Revision 17)</title>
 <link rel="stylesheet" href="./tokens.css">
 <style>
 .mb-page { font: var(--type-body, 500 0.875rem/1.45 system-ui, sans-serif); color: var(--text, #eee); background: var(--background, #111); margin: 0; padding: var(--space-8, 2rem); }
@@ -943,7 +943,7 @@
 </head>
 <body class="mb-page">
 <h1>outpost — Mockups</h1>
-<p class="sub">Manifest-Revision 16 · 2026-10-10 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
+<p class="sub">Manifest-Revision 17 · 2026-10-10 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
 <ul class="mb-toc">
 <li><a href="#UI-SHELL">Rahmen — Navigation</a> <code>UI-SHELL</code></li>
 <li><a href="#UI-SERVERS">Servers — Arbeitsfläche</a> <code>UI-SERVERS</code></li>
@@ -3159,7 +3159,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <tr><td><code>UI-VAULT-DETAIL-SECRET</code></td><td>Geheimer Wert</td><td>Je geheimem Feld eine Zeile mit genau zwölf Punkten, unabhängig von der Länge des Werts. Anzeigen und Kopieren nur für den Besitzer persönlicher Einträge oder mit vault.reveal, nie in einer Impersonations-Sitzung; sonst der Hinweis, dass der Wert nur für Agenten nutzbar ist. Ein angezeigter Wert verbirgt sich nach 30 Sekunden. <b>Nicht:</b> vault_item_fields, identity.</td><td><code>default · selected · disabled · success</code></td></tr>
 <tr><td><code>UI-VAULT-DETAIL-SCOPE</code></td><td>Gilt für</td><td>Für welche Server Agenten diesen Eintrag sehen — einzelne Server, Ordner mit Unterordnern, Tags oder alle Server. <b>Nicht:</b> vault_owner, permission.</td><td><code>default · empty</code></td></tr>
 <tr><td><code>UI-VAULT-DETAIL-POLICY</code></td><td>Freigabe erforderlich</td><td>Ob jede Nutzung durch einen Agenten bestätigt werden muss, und wann der Eintrag zuletzt genutzt wurde. <b>Nicht:</b> permission, vault_binding.</td><td><code>default · disabled</code></td></tr>
-<tr><td><code>UI-VAULT-DETAIL-USAGE</code></td><td>Nutzung durch Agenten</td><td>Was Agenten mit diesem Wert tun dürfen: nur lesen, auch über http, für Git (mit Benutzername), Eintragen im Browser auf den genannten Origins. Ausgeschaltetes fehlt als Zeile. Nur bei API-Key und Sonstiges sichtbar. <b>Nicht:</b> vault_binding, approval_policy, permission.</td><td><code>default · empty</code></td></tr>
+<tr><td><code>UI-VAULT-DETAIL-USAGE</code></td><td>Nutzung durch Agenten</td><td>Was Agenten mit diesem Wert tun dürfen: nur lesen, auch über http, für Git (mit Benutzername), Eintragen im Browser auf den genannten Origins. Ausgeschaltetes fehlt als Zeile. Nur bei API-Key und Sonstiges sichtbar. <b>Nicht:</b> vault_binding, approval_policy, permission.</td><td><code>default · empty · disabled</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-vault.html — alle Zustände, wie im Artboard</div><div id="ab-ui-vault">
 
@@ -3341,6 +3341,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 			<div class="v-cap"><code>UI-VAULT-DETAIL-USAGE</code> · region · Nutzung durch Agenten · nur bei API-Key und Sonstiges sichtbar</div>
 			<section class="v-state" data-ui-state="default"><div class="v-usage"><div>Nur lesen</div><div>Git · Benutzername x-access-token</div><div>Eintragen auf <span class="v-mono">https://coolify.example.net</span></div></div></section>
 			<section class="v-state" data-ui-state="empty"><div class="v-usage"><div class="sub">vault_http über https</div></div></section>
+			<section class="v-state" data-ui-state="disabled"><div class="v-usage"><div class="sub">Nur von Hand nutzbar — kein Eintragen im Browser</div></div></section>
 		</div>
 
 	</div>
@@ -3922,7 +3923,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 <tr><td><code>UI-VAULT-SETTINGS-IPBIND</code></td><td>IP-Bindung als Standard</td><td>Ob neue Agenten-Keys standardmäßig nur von der IP ihres Servers gelten. Belegt den Schalter „Nur von der IP dieses Servers“ im Agenten-Zugang vor; dort lässt er sich je Server ändern. Aus für Umgebungen, in denen Outpost die Absenderadressen nicht sieht. <b>Nicht:</b> vault_binding, allowed_origin, proxy_trust_warning.</td><td><code>default · selected</code></td></tr>
 <tr><td><code>UI-VAULT-SETTINGS-FILLANY</code></td><td>Token auf jeder Seite eintragen erlauben</td><td>Ob browser_fill_secret einen Wert ohne eigene Origin-Liste auf jeder Seite eintragen darf — dann immer mit Freigabe, und eine Sitzungsfreigabe gilt nur für die eine Origin, die auf der Karte stand. Standard aus. <b>Nicht:</b> fill_origin, approval_policy.</td><td><code>default · selected</code></td></tr>
 <tr><td><code>UI-VAULT-SETTINGS-PROXY</code></td><td>Hinweis Reverse-Proxy</td><td>Warnt, wenn Outpost jedem X-Forwarded-For glaubt (TRUST_PROXY=true) — dann ist die IP-Bindung von Agenten-Keys wirkungslos. Sonst nicht sichtbar. <b>Nicht:</b> vault_key_status, agent_base_url.</td><td><code>default · error</code></td></tr>
-<tr><td><code>UI-VAULT-SETTINGS-SAVE</code></td><td>Einstellungen speichern</td><td>Speichert die Outpost-Adresse für Agenten und den Standard der IP-Bindung, wie der Speichern-Knopf der Browser-Einstellungen.</td><td><code>default · disabled</code></td></tr>
+<tr><td><code>UI-VAULT-SETTINGS-SAVE</code></td><td>Einstellungen speichern</td><td>Speichert die Outpost-Adresse für Agenten, den Standard der IP-Bindung und „Token auf jeder Seite eintragen erlauben“, wie der Speichern-Knopf der Browser-Einstellungen.</td><td><code>default · disabled</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-vault-settings.html — alle Zustände, wie im Artboard</div><div id="ab-ui-vault-settings">
 

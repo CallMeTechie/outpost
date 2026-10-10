@@ -173,7 +173,7 @@ Zugriffe tragen kein Abzeichen; das Fehlen ist die Aussage. Git als dritter Agen
 heißt in Klartext „Git“, ohne Icon wie Claude Code und Codex.
 
 Die neuen Schalter im Eintrag-Dialog sind ToggleSwitches in der Reihe „Nutzung
-durch Agenten“ unter den Angaben, je mit einer Zeile Beschriftung und einer Zeile
+durch Agenten“ nach „Freigabe erforderlich“ und vor Speichern, je mit einer Zeile Beschriftung und einer Zeile
 `--subtext`; „Git-Benutzername“ erscheint als IconInput erst, wenn „Für Git nutzen“
 an ist. Die Origin-Liste „Darf im Browser eingetragen werden auf“ ist dieselbe
 Listen-Eingabe wie die Origins eines Logins (IconInput, Einträge durch Komma oder

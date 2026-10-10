@@ -1,6 +1,6 @@
 schema: mockingbird/1
 project: outpost
-revision: 16
+revision: 17
 updated: 2026-10-10
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
@@ -65,6 +65,10 @@ changelog:
     date: 2026-10-10
     summary: Vault Teilprojekt 2a (Tokens) — Nutzung durch Agenten im Eintrag (nur lesen, HTTP, Git, Eintragen im Browser), Werkzeug und Abzeichen „schreibt“ auf der Freigabe-Karte, Eintragen auf jeder Seite in den Einstellungen, Git als dritter Agent
     touched: [UI-VAULT-DIALOG-READONLY, UI-VAULT-DIALOG-HTTP, UI-VAULT-DIALOG-GIT, UI-VAULT-DIALOG-FILL, UI-VAULT-DETAIL-USAGE, UI-VAULT-APPROVAL-CARD, UI-VAULT-APPROVAL-WRITE, UI-VAULT-SETTINGS-FILLANY, UI-AGENT-ACCESS-SETUP, UI-AGENT-ACCESS-RESULT, UI-AGENT-ACCESS-KEYS, UI-AGENT-ACCESS-GIT-NOTE, UI-API-KEYS-AGENTS]
+  - rev: 17
+    date: 2026-10-10
+    summary: Nachzug aus dem Plan-Review — eigener Leerzustand der Nutzung durch Agenten für Sonstiges ohne Origins, Beispiel der Git-Zeile wie im Artboard
+    touched: [UI-VAULT-DETAIL-USAGE]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -1155,11 +1159,12 @@ screens:
             und Sonstiges sichtbar.
           concept: agent_use_policy
           not: [vault_binding, approval_policy, permission]
-          example: "Nur lesen · Git (x-access-token) · Eintragen auf https://coolify.example.net"
-          empty_means: Nur vault_http über https, lesend und schreibend.
+          example: "Nur lesen · Git · Benutzername x-access-token · Eintragen auf https://coolify.example.net"
+          empty_means: Bei API-Key nur vault_http über https, lesend und schreibend; bei Sonstiges ohne Origins nur von Hand nutzbar.
         states:
           - { id: default }
           - { id: empty, copy: "vault_http über https" }
+          - { id: disabled, copy: "Nur von Hand nutzbar — kein Eintragen im Browser" }
         locators:
           web: "[data-ui-id='UI-VAULT-DETAIL-USAGE']"
 

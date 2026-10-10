@@ -8,15 +8,15 @@
 
 **Tech Stack:** Node.js ≥ 22 (Express 5, Sequelize, Joi, `node:test`, globales `fetch`, `node:https`), Chromium über CDP, React 19 + Vite, vitest/jsdom/Testing Library (`*.test.jsx`), lucide-react, `git` (Tests: `git http-backend`).
 
-**Spec:** `docs/superpowers/specs/2026-10-10-vault-tokens-design.md` (inkl. mockingbird-Block Manifest-Revision 16 und preflight-Sicherheitsblock). Die Spec ist maßgeblich; dieser Plan argumentiert aus ihr. Abweichungen stehen unter „Abweichungen und Ergänzungen zur Spec“. Grundlage: `docs/superpowers/specs/2026-10-09-vault-core-design.md` (Teilprojekt 1, umgesetzt).
+**Spec:** `docs/superpowers/specs/2026-10-10-vault-tokens-design.md` (inkl. mockingbird-Block Manifest-Revision 17 und preflight-Sicherheitsblock). Die Spec ist maßgeblich; dieser Plan argumentiert aus ihr. Abweichungen stehen unter „Abweichungen und Ergänzungen zur Spec“. Grundlage: `docs/superpowers/specs/2026-10-09-vault-core-design.md` (Teilprojekt 1, umgesetzt).
 
-**Design:** `docs/design/manifest.yaml` (rev 16) — Design-System: `docs/design/design-system.md` („Neu in Runde 16“) — Artboards: `docs/design/mockups/index.html`
+**Design:** `docs/design/manifest.yaml` (rev 17) — Design-System: `docs/design/design-system.md` („Neu in Runde 16“) — Artboards: `docs/design/mockups/index.html`
 
-**Design Scope:** UI-VAULT, UI-VAULT-DIALOG, UI-VAULT-APPROVAL, UI-VAULT-SETTINGS, UI-AGENT-ACCESS, UI-API-KEYS — zu bauen sind nur die 13 Elemente aus `touched` von Revision 16 (UI-VAULT-DIALOG-READONLY, -HTTP, -GIT, -FILL, UI-VAULT-DETAIL-USAGE, UI-VAULT-APPROVAL-CARD (geändert), UI-VAULT-APPROVAL-WRITE, UI-VAULT-SETTINGS-FILLANY, UI-AGENT-ACCESS-SETUP (geändert), -RESULT (geändert), -KEYS (geändert), -GIT-NOTE, UI-API-KEYS-AGENTS (geändert)); alle übrigen Elemente dieser Screens sind Bestand aus Teilprojekt 1 und bleiben unverändert.
+**Design Scope:** UI-VAULT, UI-VAULT-DIALOG, UI-VAULT-APPROVAL, UI-VAULT-SETTINGS, UI-AGENT-ACCESS, UI-API-KEYS — zu bauen sind nur die 13 Elemente aus `touched` von Revision 16 (Revision 17 ergänzt bei UI-VAULT-DETAIL-USAGE den Zustand `disabled`) (UI-VAULT-DIALOG-READONLY, -HTTP, -GIT, -FILL, UI-VAULT-DETAIL-USAGE, UI-VAULT-APPROVAL-CARD (geändert), UI-VAULT-APPROVAL-WRITE, UI-VAULT-SETTINGS-FILLANY, UI-AGENT-ACCESS-SETUP (geändert), -RESULT (geändert), -KEYS (geändert), -GIT-NOTE, UI-API-KEYS-AGENTS (geändert)); alle übrigen Elemente dieser Screens sind Bestand aus Teilprojekt 1 und bleiben unverändert.
 
 ## Global Constraints
 
-- Design-Quelle: `docs/design/manifest.yaml` (rev 16). Bei Konflikt zwischen Plan-Text und Manifest gilt das Manifest; melde den Konflikt, statt ihn still aufzulösen.
+- Design-Quelle: `docs/design/manifest.yaml` (rev 17). Bei Konflikt zwischen Plan-Text und Manifest gilt das Manifest; melde den Konflikt, statt ihn still aufzulösen.
 - Jedes gebaute UI-Element trägt seine Manifest-ID im Code: Web `data-ui-id="UI-…"`, andere Medien nach `adapters:` im Manifest. Ohne ID ist das Element nicht prüfbar.
 - Design-Tokens ausschließlich aus `docs/design/mockups/tokens.css` bzw. `docs/design/design-system.md`. Keine neuen Farben, Abstände, Radien oder Schriftgrößen.
 - Sichtbare Texte (Labels, Leer-, Lade- und Fehlerzustände) wörtlich aus dem Manifest (`label`, `states[].copy`). Keine eigenen Formulierungen.
@@ -24,7 +24,7 @@
 - Umsetzungsanleitungen je Screen: `docs/design/guides/ui-vault-dialog.md`, `ui-vault.md`, `ui-vault-approval.md`, `ui-vault-settings.md`, `ui-agent-access.md`, `ui-api-keys.md` (Abschnitte „neu in Rev. 16“).
 - Kein geheimer Wert (Token, Header-Wert, Basic-Auth-String, Git-Key nach seiner Ablage) erscheint je in einer Werkzeug-Antwort an einen Agenten, in einem Log, im Audit-Log, in einer Fehlermeldung oder in einer Listen-Antwort der REST-API. Antworten von `vault_http` und Text-Antworten des Git-Proxys laufen durch `redactSecretText`; Pack-Daten laufen ungeschwärzt durch (Spec „Grenze des Modells“).
 - Nur `https:` für `vault_http`, außer `fields.allowHttp`; Git immer `https:` zum Git-Host. Weiterleitungen: `vault_http` nur gleiche Origin, höchstens 5; Git nie.
-- Freigabe: Umfang `read` | `write`, bei „jeder Seite“ `write|<origin>`; Sitzungen `transportId` (MCP) oder `git:<keyId>` (12 h Leerlauf); Sperre nach Ablehnen 60 s je (Agent, Eintrag) unabhängig vom Umfang; „Einmal“ deckt bei Git genau einen Vorgang, bei `receive-pack` genau einen Push.
+- Freigabe: Umfang `read` | `write` bei `vault_http` und Git, `fill` beim Eintragen im Browser (beide Fill-Werkzeuge), bei „jeder Seite“ `fill|<origin>` — Sitzungsfreigaben gelten je Umfang, eine fürs Eintragen gibt kein API-Schreiben frei; Sitzungen `transportId` (MCP) oder `git:<keyId>` (12 h Leerlauf); Sperre nach Ablehnen 60 s je (Agent, Eintrag) unabhängig vom Umfang; „Einmal“ deckt bei Git genau einen Vorgang, bei `receive-pack` genau einen Push.
 - Grenzen: `vault_http` 60/min und 4 gleichzeitig je Key; Git 30 Vorgänge/min und 4 gleichzeitige Weiterleitungen je Key; Fills (Passwort und Secret zusammen) 20/min; `vault_http`-Body 1 MB, Antwort-Body 256 KB, 30 s; Git ohne Größen- und Zeitgrenze, 60 s ohne Daten in beiden Richtungen beendet.
 - Fehlercodes und Meldungen exakt wie Spec „Fehlercodes“ (englisch, ohne Token, ohne Query).
 - Sicherheitsanforderungen aus dem preflight-Block der Spec gelten für jeden Task in ihrem Geltungsbereich, insbesondere SEC-INJECT-01 (Befehle nur über `server/lib/vault/provision.js`/`shQuote`; Upstream-URL nur aus geprüftem Host und Repo-Pfad), SEC-SECRET-01, SEC-IDOR-01/-TENANT-01 (Einträge nur über `findVisibleItem`/`visibleItems`), SEC-RATE-01, SEC-TOKEN-01 (`~/.gitconfig` Modus 600, `extraHeader` nur für die Outpost-URL), SEC-PII-01 (Audit ohne Query, Bodies, Header-Werte).
@@ -53,9 +53,12 @@ Beim Lesen des Codes gefunden; im Plan so umgesetzt, beim Review bitte bestätig
 2. **`variantsOf` zieht nach `server/lib/vault/redact.js`** und wird von dort sowohl von `vaultGuard.js` als auch vom Broker benutzt (statt aus `vaultGuard` exportiert); eine Quelle der Wahrheit für Varianten, keine Abhängigkeit der Vault-Kernlogik von der Browser-Bibliothek.
 3. **Git-Sitzungen leben in `approvals.js`**, nicht im Git-Router: `gitSessionId(keyId)` liefert die Sitzungs-ID `git:<keyId>`, ein 12-h-Leerlauf-Ablauf gilt nur für IDs mit diesem Präfix, `touchSession(id)` setzt die Uhr. `StateBroadcaster.js` braucht keine Änderung, die Payload kommt aus `listOpenApprovals`.
 4. **Meldungen mit Platzhaltern** (`<kind>`, `<host>`, `<entries>`) liegen als Vorlage in `VaultErrorMessage`; Task 4 und Task 7 ersetzen den Platzhalter beim Werfen (`new VaultError(code, VaultErrorMessage[code].replace("<host>", host))`).
-6. **Design-Quellen widersprechen sich an zwei Stellen; der Plan folgt dem Artboard:** die Gruppe „Nutzung durch Agenten“ steht im Eintrag-Dialog nach „Freigabe erforderlich“, und die Git-Zeile der Detailansicht lautet „Git · Benutzername x-access-token“ (Manifest-Beispiel: „Git (x-access-token)“). Task 13 gleicht Guide und Manifest-Beispiel an.
+5. **Bestehende Tests mit Ein-Zeichen-Tokens** (`"t"`) werden in Task 1 auf `"ghp_test"` umgestellt (Mindestlänge 4). Hosts bleiben gespeichert, wie eingegeben (`targetOf` in `server/controllers/vaultItems.js` vergleicht exakt und löschte sonst beim Speichern eines Bestandseintrags mit Großbuchstaben dessen Token); Task 4, 7 und 8 vergleichen ohne Groß-/Kleinschreibung.
+6. **Design-Quellen angeglichen (Revision 17):** die Gruppe „Nutzung durch Agenten“ steht im Eintrag-Dialog nach „Freigabe erforderlich“, die Git-Zeile der Detailansicht lautet „Git · Benutzername x-access-token“; Guide, Design-System und Manifest-Beispiel sind nachgezogen.
 7. **Texte:** die endgültige Liste der 33 neuen Schlüssel steht in Task 9; sie ersetzt die Aufzählung unter „Schnittstellen“ Task 9. `successGit` und `gitNote` enthalten `<mono>`-Tags und werden mit `Trans` gerendert.
-5. **Bestehende Tests mit Ein-Zeichen-Tokens** (`"t"`) werden in Task 1 auf `"ghp_test"` umgestellt (Mindestlänge 4); Hosts werden bei der Validierung kleingeschrieben.
+
+8. **Bestandstests mit geänderter Schnittstelle:** `approvals.test.js` (Aufrufe mit Umfang, Kartenschlüssel um `tool`/`access`/`target`) und der Test „without connect.browser …“ in `mcpProvider.test.js` (Werkzeugliste um `vault_http`, `browser_fill_secret`, in Task 3) ändern sich; das Verhalten von `browser_fill_credential` bleibt bis auf werkzeugneutrale Standardmeldungen und das Audit von Drossel-Ablehnungen einmal je Werkzeug und Minute.
+9. **Entscheidungen aus dem Plan-Review (vom Nutzer):** Sitzungsfreigaben für Schreiben gelten je Werkzeugart (`write` für API/Git, `fill` fürs Eintragen); „Sonstiges“ ohne Origins zeigt in der Detailansicht „Nur von Hand nutzbar — kein Eintragen im Browser“ (Rev. 17); Git-Lesevorgänge haben keine Obergrenze. Der Plan ergänzt außerdem: `Content-Length` wird an den Git-Host weitergereicht, ein zweiter gleichzeitiger `receive-pack`-POST wird abgelehnt, die Upload-Frist endet erst mit vollständigem Body. Die Spec ist entsprechend nachgezogen.
 
 ## Dateistruktur und Parallelgruppen
 
@@ -66,12 +69,12 @@ Beim Lesen des Codes gefunden; im Plan so umgesetzt, beim Review bitte bestätig
 | `server/lib/vault/errors.js` | neue Codes, neutrale Standardmeldungen | 1 |
 | `server/lib/vault/approvals.js` | Umfang, `tool`/`access`/`target`, Git-Sitzung, Stempel | 2 |
 | `server/lib/vault/redact.js` (neu), `server/lib/browser/vaultGuard.js` | Varianten, Schwärzung, Kürzen | 3 |
-| `server/lib/vault/broker.js` (neu), `server/lib/vault/mcpProvider.js` | Vermittlungskern, Umbau `browser_fill_credential`, Werkzeug-Tabelle, `vault_list` | 3 |
-| `server/lib/vault/tools/http.js` (neu), `server/index.js` (nur `/api/mcp`-Parser) | `vault_http` | 4 |
-| `server/lib/vault/tools/fillSecret.js` (neu), `server/lib/vault/fill.js` | `browser_fill_secret` | 5 |
+| `server/lib/vault/broker.js` (neu), `server/lib/vault/mcpProvider.js`, `server/lib/vault/tools/http.js` und `tools/fillSecret.js` (Platzhalter) | Vermittlungskern, Umbau `browser_fill_credential`, Werkzeug-Tabelle mit beiden neuen Werkzeugen, `vault_list` | 3 |
+| `server/lib/vault/tools/http.js` (ersetzt den Platzhalter), `server/index.js` (nur `/api/mcp`-Parser) | `vault_http` | 4 |
+| `server/lib/vault/tools/fillSecret.js` (ersetzt den Platzhalter), `server/lib/vault/fill.js` | `browser_fill_secret` | 5 |
 | `server/middlewares/auth.js`, `server/middlewares/requestDeadline.js` (neu), `server/index.js` (Listener, Middleware) | Git-Keys nur am Git-Proxy, Upload-Frist | 6 |
 | `server/routes/vault/git.js` (neu), `server/lib/vault/gitProxy.js` (neu), `server/routes/vault/index.js` | Git-Proxy | 7 |
-| `server/lib/vault/provision.js`, `server/controllers/agentKeys.js`, `server/validations/vaultAgentKeys.js` | Einrichtung/Entziehen Git | 8 |
+| `server/lib/vault/provision.js`, `server/lib/vault/gitHosts.js` (neu), `server/controllers/agentKeys.js`, `server/validations/vaultAgentKeys.js` | Einrichtung/Entziehen Git, gemeinsamer Host-Abgleich | 8 |
 | `client/public/assets/locales/en.json`, `de_DE.json` | alle neuen Texte | 9 |
 | `client/src/pages/Vault/components/VaultItemDialog/*`, `VaultDetail/*`, `client/src/pages/Vault/vaultTypes.js` | Eintrag-Dialog, Detail | 10 |
 | `client/src/common/components/VaultApprovalCard/*`, `client/src/pages/Settings/pages/Vault/*` | Freigabe-Karte, Einstellungen | 11 |
@@ -85,7 +88,7 @@ Beim Lesen des Codes gefunden; im Plan so umgesetzt, beim Review bitte bestätig
 - **Welle C:** Task 4, Task 5, Task 7
 - **Welle D:** Task 13
 
-Gemeinsame Datei in Welle C: `server/lib/vault/mcpProvider.js` bekommt aus Task 4 und Task 5 je genau eine Zeile in `TOOLS`; der Controller löst den trivialen Konflikt beim Zusammenführen. `server/index.js` ändern Task 4 (Welle C) und Task 6 (Welle A) — verschiedene Wellen.
+Welle C teilt keine Dateien: Task 3 legt beide Werkzeug-Module als Platzhalter an und trägt sie in `TOOLS` und in die Werkzeuglisten von `mcpProvider.test.js` ein; Task 4 und Task 5 ersetzen nur ihr eigenes Modul. `server/index.js` ändern Task 4 (Welle C) und Task 6 (Welle A) — verschiedene Wellen.
 
 ## Schnittstellen (verbindlich für alle Tasks)
 
@@ -95,17 +98,17 @@ Gemeinsame Datei in Welle C: `server/lib/vault/mcpProvider.js` bekommt aus Task 
 - `VaultErrorCode` neu: `APPROVAL_STALE: "vault.approval_stale"`, `HTTP_NOT_ALLOWED`, `BAD_URL`, `HOST_NOT_ALLOWED`, `BAD_METHOD`, `READ_ONLY`, `HEADER_NOT_ALLOWED`, `BAD_BODY`, `HTTP_FAILED`, `BUSY`, `FIELD_NOT_FILLABLE`, `NO_FILL_ORIGINS`, `GIT_NOT_ENABLED`, `GIT_AMBIGUOUS`, `GIT_NO_OPERATION`, `UPSTREAM_REFUSED`, `SECRET_TOO_SHORT` (Werte `vault.<snake_case>`), Meldungen aus Spec „Fehlercodes“; neutrale Standardmeldungen für `WRONG_TYPE`, `RATE_LIMITED`, `NO_SECRET`, `APPROVAL_TIMEOUT`, `APPROVAL_PENDING`, `CLIENT_GONE`, `ITEM_UNREADABLE`.
 
 **Task 2 → 3, 7, 11**
-- `requestApproval({ accountId, keyId, transportId, agentType, entryName, impersonated, item, target, tool, access, scope = access, signal })` → `"once" | "session"`; `hasSessionApproval(transportId, item, scope)`; Sitzungsfreigabe gespeichert unter `(transportId, item.id, scope)`.
+- Umfänge: `read`, `write` (API/Git), `fill` (Eintragen), `fill|<origin>` (jede Seite). `requestApproval({ accountId, keyId, transportId, agentType, entryName, impersonated, item, target, tool, access, scope = access, signal })` → `"once" | "session"`; `hasSessionApproval(transportId, item, scope)`; Sitzungsfreigabe gespeichert unter `(transportId, item.id, scope)`.
 - `grantStamp(item)` enthält `updatedAt`, `origins`, `hosts`, `readOnly`, `allowHttp`, `git`, `gitUsername`, `fillOrigins` (sortiert, JSON); exportiert.
-- `gitSessionId(keyId)` → `"git:<keyId>"`; `touchSession(id)`; Git-Sitzungen (Präfix `git:`) verlieren ihre Freigaben 12 h nach dem letzten `touchSession`; `forgetSession(id)` (Umbenennung von `forgetTransport`, alter Name bleibt als Alias).
+- `gitSessionId(keyId)` → `"git:<keyId>"`; `touchSession(id)` (lässt eine seit 12 h ruhende Git-Sitzung erst verfallen, dann setzt es die Uhr); Git-Sitzungen (Präfix `git:`) verlieren ihre Freigaben 12 h nach dem letzten `touchSession`; `forgetSession(id)` (Umbenennung von `forgetTransport`, alter Name bleibt als Alias).
 - `listOpenApprovals(accountId)` liefert je Anfrage zusätzlich `tool`, `access`, `target` (Payload von `VAULT_APPROVALS`).
 
 **Task 3 → 4, 5, 7**
 - `server/lib/vault/redact.js`: `variantsOf(secret)` (bisher in `vaultGuard`), `secretVariants({ token, headerValue = null, gitUsername = null })` → `string[]` (Token, `variantsOf(token)`, Header-Wert, `gitUsername:token` und dessen base64, `token` base64; leer und < 4 Zeichen entfernt; längste zuerst), `redactSecretText(text, variants)` → `string`, `truncateAndRedact(text, limitBytes, variants)` → `{ text, truncated }` (kürzt auf `limitBytes` UTF-8, entfernt am Ende jeden Rest, der Anfang einer Variante ist, schwärzt, hängt bei Kürzung `[truncated after <limit> bytes]` an).
 - `server/lib/vault/broker.js`: `use({ ctx, itemRef, tool, access, target, scope = access, field, check, act, approved = null, audit = {} })` → `Promise<{ result, approval, item }>`; `check(item, { phase: "before" | "after" })` wirft `VaultError`; `act(secret, item)` ist das Einzige, das den Wert bekommt; `approved = { itemId, stamp }` überspringt die Freigabe (Git-Vorgang), prüft aber Key, Stempel und `check`; Audit `vault.use`/`vault.use_denied` mit `details: { tool, access, ...audit }`. `ctx` = MCP-Kontext (`accountId`, `keyId`, `agent`, `transportId`, `impersonatorId`, `signal`, `ipAddress`, `userAgent`) bzw. für Git `transportId = gitSessionId(keyId)`.
 - `broker.use` nimmt zusätzlich `precheck`, `stale = (item) => new VaultError(APPROVAL_STALE)` und `deferUse = false` (dann kein `vault.use`, stattdessen `recordUse(extraDetails)` im Ergebnis; Git schreibt so ein `vault.use` je Vorgang); `check(item, { phase, approving })`. `broker.js` exportiert `use` (gemeinsame Instanz), `createBroker({ approvals, audit })`, `createRateLimit({ windowMs, limit })`. Werkzeug-Module exportieren `{ def, handler, needsBrowser }`; die `TOOLS`-Zeile lautet `[HTTP]: require("./tools/http"),` bzw. `[FILL_SECRET]: require("./tools/fillSecret"),`. Einzelheiten: Abweichungsnotiz am Anfang von Task 3.
-- `broker.use` (Ergänzung für Task 5): `target`, `scope` und `field` dürfen auch Funktionen `(item) => string` sein, aufgelöst nach `check(item, { phase: "before" })`; ein `scope` mit `|` (`write|<origin>`) verlangt immer eine Freigabe, auch bei `approvalRequired: false`; `check` darf ein Promise liefern; das `audit`-Objekt wird erst beim Schreiben des Audits gelesen, `check` darf es ergänzen.
-- `mcpProvider.js`: `TOOLS` (Name → `{ def, handler(args, ctx, deps), needsBrowser }`); `deps = { broker, getBrowserTools, approvals, assertFillRate }`; `assertFillRate(ctx, { tool })` ist die gemeinsame Grenze von 20 Fills pro Minute (Passwort und Secret) und auditiert `vault.use_denied` höchstens einmal je Fenster; `vault_list` `usableBy` nach Spec „vault_list“.
+- `broker.use` (Ergänzung für Task 5): `target`, `scope` und `field` dürfen auch Funktionen `(item) => string` sein, aufgelöst nach `check(item, { phase: "before" })`; ein `scope` mit `|` (`fill|<origin>`) verlangt immer eine Freigabe, auch bei `approvalRequired: false`; `check` darf ein Promise liefern; das `audit`-Objekt wird erst beim Schreiben des Audits gelesen, `check` darf es ergänzen.
+- `mcpProvider.js`: `TOOLS` (Name → `{ def, handler(args, ctx, deps), needsBrowser }`); `deps = { broker, getBrowserTools, approvals, fillRate, httpLimits }`; `fillRate(ctx)` ist die gemeinsame Grenze von 20 Fills pro Minute (Passwort und Secret, aufgerufen im `precheck`; der Broker auditiert die Ablehnung einmal je Werkzeug, Aufrufer und Minute); `httpLimits = createHttpLimits()` aus `tools/http.js` hält Zähler je Anbieter-Instanz; die Broker-Option für zusätzliche Audit-Details heißt `auditExtra`; `vault_list` `usableBy` nach Spec „vault_list“.
 
 **Task 6 → 7**
 - Agenten-Keys: `agentType` `claude`/`codex` nur `/api/mcp`, `git` nur Pfade unter `/api/vault/git/`; `req.agent = { keyId, entryId, agentType }` wie bisher.
@@ -113,7 +116,7 @@ Gemeinsame Datei in Welle C: `server/lib/vault/mcpProvider.js` bekommt aus Task 
 
 **Task 8 → 12**
 - `POST /api/vault/agent-keys` akzeptiert `agentTypes` ⊆ `["claude", "codex", "git"]`; Ergebnis je Agent wie bisher, für `git` zusätzlich Grund `no_git_entries`, wenn kein Git-Eintrag für den Server gilt (dann kein Key, `id: null`). Jedes Git-Ergebnis trägt `hosts: string[]` (die an `gitSetupCommand` übergebenen Hosts, sortiert, ohne Doppelte; bei `no_git_entries` `[]`).
-- `provision.gitSetupCommand({ base, hosts, key | keyFile })`, `revokeCommands({ agentType: "git", keyPrefix, base })`, `registrationCheckCommand({ agentType: "git", keyPrefix, base })`.
+- `server/lib/vault/gitHosts.js`: `coversGit(item, host)`, `gitHostsOf(items)` (ohne Groß-/Kleinschreibung, nur Hosts, die `provision.isGitHost` annimmt; Task 7 nutzt `coversGit`). `provision.gitSetupCommand({ base, hosts, key | keyFile })`, `provision.isGitHost(host)`, `revokeCommands({ agentType: "git", keyPrefix, base })`, `registrationCheckCommand({ agentType: "git", keyPrefix, base })`.
 
 **Task 9 → 10, 11, 12** — Locale-Schlüssel (de/en):
 - `vault.agents.git` = „Git“
@@ -145,11 +148,11 @@ Gemeinsame Datei in Welle C: `server/lib/vault/mcpProvider.js` bekommt aus Task 
 
 **Parallel:** Task 2, Task 6, Task 8, Task 9 (Welle A).
 
-> **Hinweise aus der Planung (gelten für diesen und die folgenden Tasks dieser Datei):**
+> **Hinweise aus der Planung:**
 >
-> Keine Abweichung von den Schnittstellen im Plan-Kopf.
+> # Plan 2a — Task 1 und Task 2
 >
-> Hinweise: (b) `server/lib/StateBroadcaster.js` braucht für die neue Payload keine Änderung, weil `VAULT_APPROVALS` schon `listOpenApprovals` durchreicht; Task 2 fasst die Datei deshalb nicht an. (c) Meldungen mit Platzhalter (`vault.http_failed`, `vault.git_not_enabled`, `vault.git_ambiguous`, `vault.upstream_refused`) stehen als Vorlage mit `<kind>`, `<host>` bzw. `<entries>` in `VaultErrorMessage`; Task 4 und Task 7 übergeben die Meldung mit ersetztem Platzhalter, z. B. `new VaultError(C.GIT_NOT_ENABLED, VaultErrorMessage[C.GIT_NOT_ENABLED].replace("<host>", host))`.
+> Hinweis für den Zusammenbau: `server/lib/StateBroadcaster.js` braucht für die neue Payload keine Änderung, weil `VAULT_APPROVALS` schon `listOpenApprovals` durchreicht; Task 2 fasst die Datei deshalb nicht an.
 
 
 - [ ] **Step 1: Failing tests schreiben**
@@ -188,7 +191,7 @@ test("API-Key und Sonstiges: Nutzung durch Agenten mit Standardwerten, Hosts mit
         return value.fields;
     };
     assert.deepStrictEqual(fieldsOf(apiKey({ hosts: ["Coolify.LAN:8000", "api.github.com"] })), {
-        hosts: ["coolify.lan:8000", "api.github.com"], headerName: "Authorization", headerTemplate: "Bearer {{secret}}",
+        hosts: ["Coolify.LAN:8000", "api.github.com"], headerName: "Authorization", headerTemplate: "Bearer {{secret}}",
         readOnly: false, allowHttp: false, git: false, gitUsername: "x-access-token", fillOrigins: [],
     });
     const full = fieldsOf(apiKey({ readOnly: true, allowHttp: true, git: true, gitUsername: "oauth2", fillOrigins: ["HTTPS://Coolify.Example.net:443"] }));
@@ -270,7 +273,7 @@ Expected: FAIL — der neue Validierungstest mit `"fields.hosts[0]" must be a va
 `server/validations/vault.js` — nach `SECRET_MAX_LENGTH` (Zeile 12) einfügen:
 
 ```js
-// redact.js skips variants shorter than 4 characters, so a shorter token would go unredacted in responses.
+// redact.js ignores variants under 4 characters.
 const SECRET_MIN_LENGTH = { token: 4 };
 ```
 
@@ -295,11 +298,11 @@ durch:
 const hostname = Joi.string().hostname();
 // vault_http and the git proxy compare the URL's host[:port] with new URL().host, which drops default ports.
 const host = Joi.string().max(261).custom((value, helpers) => {
-    if (!hostname.validate(value).error) return value.toLowerCase();
+    if (!hostname.validate(value).error) return value;
     const match = /^([^:]+):([1-9][0-9]{0,4})$/.exec(value);
     if (!match || hostname.validate(match[1]).error || Number(match[2]) > 65535) return helpers.error("any.invalid");
     if (match[2] === "80" || match[2] === "443") return helpers.error("host.defaultPort");
-    return `${match[1].toLowerCase()}:${match[2]}`;
+    return value;
 }).messages({ "any.invalid": "hosts must look like host or host:port", "host.defaultPort": "hosts: leave out the default port (80 or 443)" });
 
 const fillOrigins = Joi.array().items(origin).max(20).default([]);
@@ -322,7 +325,7 @@ const FIELDS = {
     }),
 ```
 
-Hosts werden dabei kleingeschrieben gespeichert (`Coolify.LAN:8000` → `coolify.lan:8000`); IPv4/IPv6 ohne Port gehen wie bisher über `hostname()`. Bestehende Einträge mit Großbuchstaben bleiben gespeichert, wie sie sind — Task 4 und Task 7 vergleichen deshalb weiterhin ohne Groß-/Kleinschreibung.
+Hosts bleiben gespeichert, wie eingegeben: `targetOf` in `server/controllers/vaultItems.js` vergleicht Hosts exakt und löschte sonst beim nächsten Speichern eines Bestandseintrags mit Großbuchstaben dessen Token. Task 4, Task 7 und Task 8 vergleichen ohne Groß-/Kleinschreibung. IPv4/IPv6 ohne Port gehen wie bisher über `hostname()`.
 
 `generic` ersetzen:
 
@@ -607,7 +610,7 @@ git commit -m "Vault: Felder für die Nutzung durch Agenten, Einstellung fillAny
 
 **Design:** kein UI-Anteil (Payload für UI-VAULT-APPROVAL-CARD/-WRITE kommt hier, die Anzeige baut Task 11).
 
-**Tests:** 4 Tests — (1) Sitzungsfreigabe für `read` deckt `write` desselben Eintrags nicht, `write|https://a` deckt `write|https://b` nicht; (2) Änderung von `hosts` (neuer `updatedAt`/Stempel) beendet die Sitzungsfreigabe; (3) Git-Sitzung: Freigabe gilt nach `touchSession` weiter und ist 12 h nach dem letzten `touchSession` weg (Uhr per `Date.now`-Stub); (4) `listOpenApprovals` liefert `tool`, `access`, `target`. Bestehende Tests bleiben grün.
+**Tests:** 4 Tests — (1) Sitzungsfreigabe für `read` deckt `write` desselben Eintrags nicht, `write` deckt `fill` nicht, `fill|https://a` deckt `fill|https://b` nicht; (2) Änderung von `hosts` (neuer `updatedAt`/Stempel) beendet die Sitzungsfreigabe; (3) Git-Sitzung: Freigabe gilt nach `touchSession` weiter und ist 12 h nach dem letzten `touchSession` weg (Uhr per `Date.now`-Stub); (4) `listOpenApprovals` liefert `tool`, `access`, `target`. Bestehende Tests bleiben grün.
 
 **Parallel:** Task 1, Task 6, Task 8, Task 9 (Welle A).
 
@@ -631,7 +634,7 @@ const API_KEY = {
 const HOUR = 60 * 60 * 1000;
 const call = (overrides = {}) => ({
     accountId: 1, keyId: 5, transportId: "t-1", agentType: "claude", entryName: "web-01",
-    item: ITEM, target: "https://portal.example.com", tool: "browser_fill_credential", access: "write",
+    item: ITEM, target: "https://portal.example.com", tool: "browser_fill_credential", access: "write", scope: "fill",
     signal: new AbortController().signal, ...overrides,
 });
 const flush = () => new Promise((resolve) => setImmediate(resolve));
@@ -649,14 +652,14 @@ durch:
     assert.deepStrictEqual(Object.keys(card).sort(), ["access", "agentType", "entryName", "expiresAt", "id", "impersonated", "item", "remainingMs", "target", "tool"]);
 ```
 
-Im bestehenden Test „Für diese Sitzung gilt bis zum Ende des Transports …“ fragen die drei `hasSessionApproval`-Aufrufe künftig den Umfang `write` ab (den `browser_fill_credential` hat):
+Im bestehenden Test „Für diese Sitzung gilt bis zum Ende des Transports …“ fragen die drei `hasSessionApproval`-Aufrufe künftig den Umfang `fill` ab (den `browser_fill_credential` hat; `call()` setzt ihn als Standard):
 
 ```js
     assert.strictEqual(approvals.hasSessionApproval("t-1", reordered), true);
 ```
 →
 ```js
-    assert.strictEqual(approvals.hasSessionApproval("t-1", reordered, "write"), true);
+    assert.strictEqual(approvals.hasSessionApproval("t-1", reordered, "fill"), true);
 ```
 
 ```js
@@ -664,7 +667,7 @@ Im bestehenden Test „Für diese Sitzung gilt bis zum Ende des Transports …�
 ```
 →
 ```js
-    assert.strictEqual(approvals.hasSessionApproval("t-1", moved, "write"), false);
+    assert.strictEqual(approvals.hasSessionApproval("t-1", moved, "fill"), false);
 ```
 
 ```js
@@ -674,22 +677,22 @@ Im bestehenden Test „Für diese Sitzung gilt bis zum Ende des Transports …�
 →
 ```js
     approvals.forgetTransport("t-1");
-    assert.strictEqual(approvals.hasSessionApproval("t-1", ITEM, "write"), false);
+    assert.strictEqual(approvals.hasSessionApproval("t-1", ITEM, "fill"), false);
 ```
 
 (`forgetTransport` bleibt hier bewusst stehen: es prüft nebenbei den Alias.)
 
-Am Ende der Datei die vier Tests des Budgets anhängen:
+Am Ende der Datei die vier Tests des Budgets anhängen. Wer `call()` nutzt und nicht `fill` meint, setzt `scope` ausdrücklich, weil `call()` `scope: "fill"` vorgibt. Der Git-Test ruft wie der Git-Router erst `touchSession`, dann `hasSessionApproval` auf:
 
 ```js
-test("Für diese Sitzung gilt je Umfang: Lesen gibt Schreiben nicht frei, Eintragen auf Origin A nicht Origin B", async (t) => {
+test("Für diese Sitzung gilt je Umfang: Lesen deckt Schreiben nicht, Schreiben nicht Eintragen, Eintragen auf Origin A nicht Origin B", async (t) => {
     const window = openWindow(t, 1);
     const answerNext = async (decision) => {
         await flush();
         assert.strictEqual(window.cards().length, 1);
         approvals.answerApproval(window.cards()[0].id, 1, decision);
     };
-    const http = (access) => call({ item: API_KEY, tool: "vault_http", access, target: `${access === "read" ? "GET" : "POST"} api.github.com/repos/o/r/issues` });
+    const http = (access) => call({ item: API_KEY, tool: "vault_http", access, scope: access, target: `${access === "read" ? "GET" : "POST"} api.github.com/repos/o/r/issues` });
 
     const read = approvals.requestApproval(http("read"));
     await answerNext("session");
@@ -697,15 +700,16 @@ test("Für diese Sitzung gilt je Umfang: Lesen gibt Schreiben nicht frei, Eintra
     assert.strictEqual(await approvals.requestApproval(http("read")), "session");
     assert.strictEqual(approvals.hasSessionApproval("t-1", API_KEY, "write"), false);
     const write = approvals.requestApproval(http("write"));
-    await answerNext("once");
-    assert.strictEqual(await write, "once");
+    await answerNext("session");
+    assert.strictEqual(await write, "session");
+    assert.strictEqual(approvals.hasSessionApproval("t-1", API_KEY, "fill"), false);
 
-    const fill = (origin) => call({ item: API_KEY, tool: "browser_fill_secret", access: "write", scope: `write|${origin}`, target: origin });
+    const fill = (origin) => call({ item: API_KEY, tool: "browser_fill_secret", access: "write", scope: `fill|${origin}`, target: origin });
     const onA = approvals.requestApproval(fill("https://a.example.net"));
     await answerNext("session");
     assert.strictEqual(await onA, "session");
     assert.strictEqual(await approvals.requestApproval(fill("https://a.example.net")), "session");
-    assert.deepStrictEqual(["write|https://b.example.net", "write"].map((scope) => approvals.hasSessionApproval("t-1", API_KEY, scope)), [false, false]);
+    assert.deepStrictEqual(["fill|https://b.example.net", "fill"].map((scope) => approvals.hasSessionApproval("t-1", API_KEY, scope)), [false, false]);
     const onB = approvals.requestApproval(fill("https://b.example.net"));
     await answerNext("once");
     assert.strictEqual(await onB, "once");
@@ -713,7 +717,7 @@ test("Für diese Sitzung gilt je Umfang: Lesen gibt Schreiben nicht frei, Eintra
 
 test("jede Änderung an Hosts, Lesen/Schreiben, http, Git oder Eintrags-Origins beendet die Sitzungsfreigabe", async (t) => {
     const window = openWindow(t, 1);
-    const pending = approvals.requestApproval(call({ item: API_KEY, tool: "vault_http", access: "read", target: "GET api.github.com/user" }));
+    const pending = approvals.requestApproval(call({ item: API_KEY, tool: "vault_http", access: "read", scope: "read", target: "GET api.github.com/user" }));
     await flush();
     approvals.answerApproval(window.cards()[0].id, 1, "session");
     await pending;
@@ -737,22 +741,25 @@ test("Git-Sitzung git:<keyId>: Freigaben bleiben, solange touchSession sie auffr
     const session = approvals.gitSessionId(5);
     assert.strictEqual(session, "git:5");
     const grant = async (transportId, tool, target) => {
-        const pending = approvals.requestApproval(call({ transportId, agentType: transportId === session ? "git" : "claude", item: API_KEY, tool, access: "read", target }));
+        if (transportId === session) approvals.touchSession(session);
+        const pending = approvals.requestApproval(call({ transportId, agentType: transportId === session ? "git" : "claude", item: API_KEY, tool, access: "read", scope: "read", target }));
         await flush();
         approvals.answerApproval(window.cards()[0].id, 1, "session");
         await pending;
+    };
+    const gitRequest = () => {
+        approvals.touchSession(session);
+        return approvals.hasSessionApproval(session, API_KEY, "read");
     };
     await grant(session, "git", "Git · github.com/o/r");
     await grant("t-1", "vault_http", "GET api.github.com/user");
 
     t.mock.timers.tick(11 * HOUR);
-    approvals.touchSession(session);
+    assert.strictEqual(gitRequest(), true);
     t.mock.timers.tick(12 * HOUR - 1);
-    assert.strictEqual(approvals.hasSessionApproval(session, API_KEY, "read"), true);
-    t.mock.timers.tick(1);
-    assert.strictEqual(approvals.hasSessionApproval(session, API_KEY, "read"), false);
-    approvals.touchSession(session);
-    assert.strictEqual(approvals.hasSessionApproval(session, API_KEY, "read"), false, "a later request does not bring the grant back");
+    assert.strictEqual(gitRequest(), true);
+    t.mock.timers.tick(12 * HOUR);
+    assert.strictEqual(gitRequest(), false);
     assert.strictEqual(approvals.hasSessionApproval("t-1", API_KEY, "read"), true, "MCP transports do not expire here");
 
     await grant(session, "git", "Git · github.com/o/r");
@@ -773,7 +780,7 @@ test("listOpenApprovals liefert Werkzeug, Art und Ziel jeder offenen Anfrage", a
 - [ ] **Step 2: Tests laufen lassen, Fehlschlag prüfen**
 
 Run: `cd /root/outpost && node --test server/lib/vault/__tests__/approvals.test.js`
-Expected: FAIL — „Einmal gibt genau ein Ausfüllen frei …“ (Karte ohne `access`/`tool`), „Für diese Sitzung gilt je Umfang …“ und „jede Änderung an Hosts …“ (`AssertionError`: Lesen deckt Schreiben, Stempel kennt `hosts` nicht), „Git-Sitzung …“ mit `approvals.gitSessionId is not a function`, „listOpenApprovals liefert …“ (`tool` ist `undefined`). Die übrigen acht bestehenden Tests bleiben grün.
+Expected: FAIL — „Einmal gibt genau ein Ausfüllen frei …“ (Karte ohne `access`/`tool`), „Für diese Sitzung gilt je Umfang …“ und „jede Änderung an Hosts …“ (`AssertionError`: Lesen deckt Schreiben und Eintragen, Stempel kennt `hosts` nicht), „Git-Sitzung …“ mit `approvals.gitSessionId is not a function`, „listOpenApprovals liefert …“ (`tool` ist `undefined`). Die übrigen acht bestehenden Tests bleiben grün.
 
 - [ ] **Step 3: Freigaben mit Umfang, Werkzeug, Stempel und Git-Sitzung**
 
@@ -813,7 +820,11 @@ const early = (code) => new VaultError(code, undefined, { early: true });
 
 const gitSessionId = (keyId) => `${GIT_SESSION_PREFIX}${keyId}`;
 const isGitSession = (id) => typeof id === "string" && id.startsWith(GIT_SESSION_PREFIX);
-const touchSession = (id) => { sessionSeen.set(id, Date.now()); };
+const touchSession = (id) => {
+    const now = Date.now();
+    if (now - (sessionSeen.get(id) ?? now) >= GIT_SESSION_IDLE_MS) sessionGrants.delete(id);
+    sessionSeen.set(id, now);
+};
 
 const publish = (accountId) =>
     stateBroadcaster.sendStateToAccount(accountId, stateBroadcaster.STATE_TYPES.VAULT_APPROVALS).catch(() => {});
@@ -914,10 +925,9 @@ const answerApproval = (id, accountId, decision, meta = {}) => {
         request.reject(new VaultError(VaultErrorCode.APPROVAL_DENIED));
     } else {
         if (decision === "session") {
+            if (isGitSession(request.transportId)) touchSession(request.transportId);
             if (!sessionGrants.has(request.transportId)) sessionGrants.set(request.transportId, new Map());
             sessionGrants.get(request.transportId).set(grantKey(request.itemId, request.scope), request.stamp);
-            // Without this a grant of a git session that sends no further request would never expire.
-            if (isGitSession(request.transportId)) touchSession(request.transportId);
         }
         audit(request, AUDIT_ACTIONS.VAULT_APPROVE, { decision }, meta);
         request.resolve(decision);
@@ -957,7 +967,7 @@ module.exports = {
 };
 ```
 
-Was sich gegenüber dem Bestand ändert: Sitzungsfreigaben liegen unter `(Sitzung, Eintrag, Umfang)` (`grantKey`), `scope` ist standardmäßig `access`; der Stempel enthält zusätzlich `hosts`, `readOnly`, `allowHttp`, `git`, `gitUsername`, `fillOrigins` (Listen sortiert, Schalter als echte Booleans, damit Bestandseinträge ohne die Felder denselben Stempel behalten); offene Karten und die 60-s-Sperre bleiben je (Sitzung bzw. Aufrufer, Eintrag) ohne Umfang; Anfrage, Karte und die Audits von Freigabe, Ablehnen und Ablauf tragen `tool` und `access`; Sitzungen mit Präfix `git:` verlieren ihre Freigaben 12 h nach dem letzten `touchSession` (eine erteilte Sitzungsfreigabe zählt als Berührung); `forgetTransport` ist Alias von `forgetSession`.
+Was sich gegenüber dem Bestand ändert: Sitzungsfreigaben liegen unter `(Sitzung, Eintrag, Umfang)` (`grantKey`), `scope` ist standardmäßig `access`. Umfänge: `read` (GET/HEAD, git fetch), `write` (schreibendes `vault_http`, git push), `fill` (`browser_fill_secret` und `browser_fill_credential`), `fill|<origin>` (`browser_fill_secret` bei `fillAnywhere`); Schreiben und Eintragen werden also getrennt freigegeben, und `browser_fill_credential` verhält sich wie bisher, weil es nur `fill` kennt. Der Stempel enthält zusätzlich `hosts`, `readOnly`, `allowHttp`, `git`, `gitUsername`, `fillOrigins` (Listen sortiert, Schalter als echte Booleans, damit Bestandseinträge ohne die Felder denselben Stempel behalten). Offene Karten und die 60-s-Sperre bleiben je (Sitzung bzw. Aufrufer, Eintrag) ohne Umfang. Anfrage, Karte und die Audits von Freigabe, Ablehnen und Ablauf tragen `tool` und `access`. Sitzungen mit Präfix `git:` verlieren ihre Freigaben 12 h nach dem letzten `touchSession`: `touchSession` prüft den Leerlauf, bevor es die Uhr neu setzt, denn der Git-Router berührt die Sitzung vor der Freigabeprüfung — andersherum liefe eine Git-Sitzung nie ab. Eine erteilte Sitzungsfreigabe berührt die Sitzung vor dem Speichern, damit eine ältere, abgelaufene Berührung die neue Freigabe nicht sofort löscht. `prune` räumt abgelaufene Git-Sitzungen zusätzlich auf. `forgetTransport` ist Alias von `forgetSession`.
 
 - [ ] **Step 4: Aufruf in `mcpProvider.js` umbenennen**
 
@@ -993,6 +1003,8 @@ git commit -m "Vault: Freigaben je Umfang mit Werkzeug, Ziel und Git-Sitzung"
 - Create: `server/lib/vault/redact.js`, `server/lib/vault/broker.js`
 - Modify: `server/lib/browser/vaultGuard.js` (`variantsOf` aus `redact.js`)
 - Modify: `server/lib/vault/mcpProvider.js` (`fill` über `broker.use`, Tabelle `TOOLS`, `vault_list` `usableBy`)
+- Create: `server/lib/vault/tools/http.js`, `server/lib/vault/tools/fillSecret.js` (Platzhalter, die Task 4 und Task 5 vollständig ersetzen)
+- Modify: `server/lib/vault/__tests__/helpers/vaultBed.js` (Ersatz für `controllers/vaultSettings`)
 - Test: `server/lib/vault/__tests__/redact.test.js` (neu), `server/lib/vault/__tests__/broker.test.js` (neu), bestehende `mcpProvider.test.js`, `server/lib/browser/__tests__/vaultGuard.test.js`
 - Modify: `server/lib/vault/__tests__/helpers/vaultBed.js` (Ersatz für `controllers/vaultSettings`)
 
@@ -1006,19 +1018,20 @@ git commit -m "Vault: Freigaben je Umfang mit Werkzeug, Ziel und Git-Sitzung"
 
 **Parallel:** Task 10, Task 11, Task 12 (Welle B).
 
-> **Hinweise aus der Planung (gelten für diesen und die folgenden Tasks dieser Datei):**
+> **Hinweise aus der Planung:**
 >
-> **Abweichung (Tasks 3 und 4):** Die Schnittstellen aus „Schnittstellen“ Task 3 gelten unverändert. Ohne die folgenden **Ergänzungen** lässt sich `browser_fill_credential` aber nicht ohne Verhaltensänderung auf `broker.use` umstellen, und der Git-Proxy (Task 7) bekäme nicht ein `vault.use` je Vorgang. Alle Ergänzungen sind optional, und wer sie nicht nutzt, bemerkt sie nicht. Bitte an Task 5 und Task 7 weitergeben:
+> **Abweichung (Tasks 3 und 4):** Die Schnittstellen aus „Schnittstellen“ Task 3 gelten mit den folgenden **Ergänzungen und einer Umbenennung**. Ohne sie lässt sich `browser_fill_credential` nicht ohne Verhaltensänderung auf `broker.use` umstellen, und der Git-Proxy (Task 7) bekäme nicht ein `vault.use` je Vorgang. Die Ergänzungen sind optional. Bitte an Task 5 und Task 7 weitergeben, besonders Punkt 0:
+>
+> 0. Die Broker-Option für zusätzliche Audit-Details heißt **`auditExtra`**. Tasks 5 und 7 übergeben ihre Details ebenfalls als `auditExtra`.
 >
 > 1. `broker.use` nimmt zusätzlich `precheck = null` (läuft als Erstes im auditierten Abschnitt, noch vor dem Laden des Eintrags: für Argumente und Drosseln, deren Ablehnung schon heute mit `item: <Argument, max. 200 Zeichen>` ins Audit geht; eine `vault.rate_limited`-Ablehnung aus `precheck` auditiert der Broker höchstens einmal je Werkzeug, Aufrufer und Minute), `stale = (item) => new VaultError(APPROVAL_STALE)` (welcher Fehler bei abweichendem Stempel geworfen wird — `browser_fill_credential` übergibt hier sein `ORIGIN_MISMATCH`, wie es die Spec als Ausnahme verlangt) und `deferUse = false` (true: kein `vault.use` und kein `lastUsedAt`, stattdessen liefert `use` zusätzlich `recordUse(extraDetails)`; für Task 7, der `vault.use` erst beim Ende des Vorgangs mit summierten `bytes` schreibt).
-> 2. `target`, `scope` und `field` dürfen Funktionen `(item) => string` sein. Der Broker wertet sie nach `check(item, { phase: "before" })` aus (`field` beim Lesen des Werts), `target` noch einmal beim Schreiben des Audits; vor dem Laden des Eintrags gilt eine Funktion als `null`. Das brauchen die Browser-Werkzeuge: Ihr Ziel (die Origin von Sitzung bzw. Feld) steht erst fest, wenn `check` die Sitzung aufgelöst hat. `check` darf ein Promise liefern (es wird abgewartet). `audit` wird erst beim Schreiben gelesen, `check` und `act` dürfen es also ergänzen (`vault_http` setzt dort `status` und `bytes`, Task 5 `origin` und `fieldType`).
-> 3. `check(item, { phase, approving })`: `approving` sagt, ob der Eintrag (`approvalRequired`) oder der Aufrufer (Impersonation) eine Freigabe verlangt. Dazu fragt der Broker immer, wenn der ausgewertete `scope` ein `|` enthält (`write|<origin>` bei `fillAnywhere`, Task 5), auch bei `approvalRequired: false`. So bleibt die Freigabepflicht an einer Stelle.
+> 2. `target`, `scope` und `field` dürfen Funktionen `(item) => string` sein. Der Broker wertet sie nach `check(item, { phase: "before" })` aus (`field` beim Lesen des Werts), `target` noch einmal beim Schreiben des Audits; vor dem Laden des Eintrags gilt eine Funktion als `null`. Das brauchen die Browser-Werkzeuge: Ihr Ziel (die Origin von Sitzung bzw. Feld) steht erst fest, wenn `check` die Sitzung aufgelöst hat. `check` darf ein Promise liefern (es wird abgewartet). `auditExtra` wird erst beim Schreiben gelesen, `check` und `act` dürfen es also ergänzen (`vault_http` setzt dort `status` und `bytes`, Task 5 `origin` und `fieldType`).
+> 3. `check(item, { phase, approving })`: `approving` sagt, ob der Eintrag (`approvalRequired`) oder der Aufrufer (Impersonation) eine Freigabe verlangt. Dazu fragt der Broker immer, wenn der ausgewertete `scope` ein `|` enthält (`fill|<origin>` bei `fillAnywhere`, Task 5), auch bei `approvalRequired: false`. So bleibt die Freigabepflicht an einer Stelle. `vault_http` nutzt `scope = access` (`read`/`write`), Schreibfreigaben gelten also je Werkzeug.
 > 4. Stempelvergleich nach der Freigabe: Gab es eine Karte, vergleicht der Broker `grantStamp` des Eintrags vor und nach der Freigabe mit auf 0 gesetztem `updatedAt`. Eine Änderung außerhalb der gestempelten Felder (Beschreibung, Benutzername) hält eine gerade erteilte Freigabe also nicht auf, so wie heute. Bei `approved` vergleicht er den vollen `grantStamp` mit `approved.stamp` und prüft `approved.itemId`. Der Vergleich läuft **vor** `check(…, { phase: "after" })`, damit geänderte Hosts immer `vault.approval_stale` ergeben (Review Focus 4). Einen Wechsel des Ziels (etwa eine andere Origin nach der Freigabe) prüft das Werkzeug selbst in `check(…, { phase: "after" })`. `browser_fill_credential` prüft ihn wie heute über die Origin-Prüfung in `act`.
 > 5. `broker.js` exportiert `createBroker({ approvals = require("./approvals"), audit })` → `{ use }`, dazu `createRateLimit({ windowMs, limit })` → `(ctx) => void` (wirft `RATE_LIMITED`, Schlüssel `accountId:keyId`) und `use` als Funktion einer gemeinsamen Standardinstanz (für den Git-Router). Der Vault-Anbieter legt je Instanz einen eigenen Broker an, wie bisher seine Zähler.
-> 6. `deps` enthält zusätzlich `assertFillRate(ctx, { tool, item? })`, die gemeinsame Drossel von `browser_fill_credential` und `browser_fill_secret` (20 je Aufrufer und Minute). Über der Grenze schreibt sie selbst ein `vault.use_denied` mit `code: "vault.rate_limited"`, höchstens einmal je Aufrufer und Minute, und wirft `VaultError(RATE_LIMITED)`. Das Werkzeug ruft sie vor `broker.use` auf. Sie ersetzt `assertFillRate`/`firstRefusalInWindow` im bisherigen `mcpProvider.js`; `item` ist optional und landet gekürzt im Audit.
-> 7. Ein Werkzeug-Modul exportiert `{ def, handler, needsBrowser }`. Die eine Zeile, die Task 4 und Task 5 in `TOOLS` eintragen, lautet deshalb `[HTTP]: require("./tools/http"),` bzw. `[FILL_SECRET]: require("./tools/fillSecret"),`. Die Konstanten `HTTP` und `FILL_SECRET` legt Task 3 an.
-> 8. Task 3 ändert zusätzlich `server/lib/vault/__tests__/helpers/vaultBed.js` (Ersatz für `controllers/vaultSettings` mit `state.settings`, damit `vault_list` und Task 5 `fillAnywhere` lesen können). Die Datei fehlt in der Files-Zeile der Karte.
-> 9. Task 4 ändert zusätzlich zwei Zeilen in `server/lib/vault/__tests__/mcpProvider.test.js`: Die Werkzeugliste ohne bzw. mit `connect.browser` enthält jetzt `vault_http`. Task 5 ändert dieselbe zweite Zeile. Das ergibt beim Zusammenführen einen ebenso trivialen Konflikt wie die `TOOLS`-Zeile.
+> 6. `deps` enthält zusätzlich `fillRate` (`createRateLimit({ windowMs: 60000, limit: 20 })` je Anbieter-Instanz), die gemeinsame Drossel von `browser_fill_credential` und `browser_fill_secret`. Die Werkzeuge rufen sie in `precheck` auf. Die Ablehnung auditiert der Broker höchstens einmal je Werkzeug, Aufrufer und Minute. Bisher galt das je Aufrufer über beide Werkzeuge hinweg, und `browser_fill_secret` gab es noch nicht; der bestehende Drossel-Test nutzt nur `browser_fill_credential` und bleibt grün. Dazu `httpLimits` (`createHttpLimits()` aus `tools/http.js`, je Anbieter-Instanz: `{ rate, enter, leave }` für 60/min und 4 gleichzeitige Aufrufe von `vault_http`).
+> 7. Ein Werkzeug-Modul exportiert `{ def, handler, needsBrowser }`. Task 3 legt Platzhalter `server/lib/vault/tools/http.js` (zusätzlich mit `createHttpLimits`) und `server/lib/vault/tools/fillSecret.js` an, trägt beide in `TOOLS` ein und passt die Werkzeuglisten in `mcpProvider.test.js` an. Task 4 und Task 5 ersetzen nur noch ihr eigenes Modul und teilen sich in Welle C keine Datei.
+> 8. Task 3 ändert zusätzlich `server/lib/vault/__tests__/helpers/vaultBed.js` (Ersatz für `controllers/vaultSettings` mit `state.settings`, damit `vault_list` und Task 5 `fillAnywhere` lesen können).
 
 
 - [ ] **Step 1: Failing test für die Schwärzung schreiben**
@@ -1083,7 +1096,9 @@ const usable = (variants) => [...new Set(variants)]
 
 const secretVariants = ({ token, headerValue = null, gitUsername = null }) => {
     const basic = gitUsername === null ? [] : [`${gitUsername}:${token}`, base64(`${gitUsername}:${token}`)];
-    return usable([token, ...variantsOf(token), headerValue, ...basic, base64(token)]);
+    // JSON escapes: a JSON body may repeat the token with \" or \/ in it.
+    const json = [JSON.stringify(token).slice(1, -1), token.replaceAll("/", "\\/")];
+    return usable([token, ...variantsOf(token), ...json, headerValue, ...basic, base64(token)]);
 };
 
 const redactSecretText = (text, variants) => {
@@ -1301,7 +1316,7 @@ const createBroker = ({ approvals = require("./approvals"), audit = defaultAudit
 
     const use = async ({
         ctx, itemRef: ref, tool, access, target = null, scope = access, field, check, act,
-        approved = null, precheck = null, stale = staleEntry, deferUse = false, audit: extra = {},
+        approved = null, precheck = null, stale = staleEntry, deferUse = false, auditExtra = {},
     }) => {
         const caller = { accountId: ctx.accountId, agent: ctx.agent ?? null };
         const note = { item: typeof ref === "string" ? ref.slice(0, 200) : null, stage: "before_approval" };
@@ -1310,7 +1325,7 @@ const createBroker = ({ approvals = require("./approvals"), audit = defaultAudit
         let auditedByApprovals = false;
         let result;
         const details = () => ({
-            item: note.item, target: valueOf(target, item) ?? null, tool, access, ...extra,
+            item: note.item, target: valueOf(target, item) ?? null, tool, access, ...auditExtra,
             agentType: ctx.agent?.agentType ?? null, keyId: ctx.keyId ?? null, entryId: ctx.agent?.entryId ?? null,
         });
         const load = async () => {
@@ -1484,8 +1499,22 @@ test("vault_list names every visible entry without a stored value; organization 
 });
 ```
 
+Im Test „without connect.browser …“ stehen künftig auch die Werkzeuge der Platzhalter in der Liste. Der Testname wird zu `"without connect.browser the MCP endpoint lists no browser tool and answers browser_fill_credential as an unknown tool"`, und
+
+```js
+    assert.deepStrictEqual(await names(), ["vault_list", "vault_http"]);
+```
+
+ersetzt `assert.deepStrictEqual(await names(), ["vault_list"]);`, sowie
+
+```js
+    assert.deepStrictEqual(await names(), ["vault_list", "vault_http", FILL, "browser_fill_secret"]);
+```
+
+ersetzt `assert.deepStrictEqual(await names(), ["vault_list", FILL]);`.
+
 Run: `node --test server/lib/vault/__tests__/mcpProvider.test.js`
-Expected: FAIL, `# fail 1`: Der erste Test scheitert an `deepStrictEqual` (`usableBy: []` statt `["vault_http"]`, `readOnly`/`fillOrigins` fehlen). Die übrigen 5 Tests bestehen.
+Expected: FAIL, `# fail 2`: Der erste Test scheitert an `deepStrictEqual` (`usableBy: []` statt `["vault_http"]`, `readOnly`/`fillOrigins` fehlen), der Test „without connect.browser …“ an der Werkzeugliste (`["vault_list"]` statt `["vault_list", "vault_http"]`). Die übrigen 4 Tests bestehen.
 
 - [ ] **Step 10: `server/lib/vault/mcpProvider.js` auf Broker und `TOOLS` umbauen**
 
@@ -1497,6 +1526,7 @@ const { isVaultEnabled } = require("./state");
 const { itemRef, visibleItems, canUseVault } = require("./visibility");
 const { checkFillTarget, fillCredential, assertFillableSession, normalizeOrigin } = require("./fill");
 const { createBroker, createRateLimit } = require("./broker");
+const { createHttpLimits } = require("./tools/http");
 const { getVaultSettings } = require("../../controllers/vaultSettings");
 const { defaultAudit } = require("../browser/tools");
 const vaultGuard = require("../browser/vaultGuard");
@@ -1572,7 +1602,7 @@ const listItems = async (args, ctx) => {
         : "No vault entries are available to this connection.");
 };
 
-const fillLogin = async (args, ctx, { broker, getBrowserTools, assertFillRate }) => {
+const fillLogin = async (args, ctx, { broker, getBrowserTools, fillRate }) => {
     const usernameRef = args.usernameRef ?? null;
     const refs = { passwordRef: args.passwordRef, usernameRef };
     const seen = { sessionId: null };
@@ -1587,11 +1617,13 @@ const fillLogin = async (args, ctx, { broker, getBrowserTools, assertFillRate })
         assertFillableSession(session);
         return checkFillTarget(session, refs, fieldsOf(item).origins ?? []);
     };
-    await assertFillRate(ctx, { tool: FILL, item: args.item });
     try {
         const { item } = await broker.use({
-            ctx, itemRef: args.item, tool: FILL, access: "write", field: "password", target: () => origin, audit: seen,
-            precheck: () => assertFillArgs(args),
+            ctx, itemRef: args.item, tool: FILL, access: "write", field: "password", target: () => origin, auditExtra: seen,
+            precheck: () => {
+                fillRate(ctx);
+                assertFillArgs(args);
+            },
             check: async (item, { phase, approving }) => {
                 const name = itemRef(item);
                 if (item.type !== "login")
@@ -1626,6 +1658,7 @@ const TOOLS = {
         handler: listItems,
         needsBrowser: false,
     },
+    [HTTP]: require("./tools/http"),
     [FILL]: {
         def: {
             name: FILL,
@@ -1644,42 +1677,18 @@ const TOOLS = {
         handler: fillLogin,
         needsBrowser: true,
     },
+    [FILL_SECRET]: require("./tools/fillSecret"),
 };
 
 const createVaultProvider = ({ getBrowserTools, approvals = require("./approvals"), audit = defaultAudit }) => {
     const browserAllowed = new WeakMap();
-    const fillRate = createRateLimit({ windowMs: FILL_WINDOW_MS, limit: FILL_LIMIT });
-    const refusalsAudited = new Map();
-
-    const firstRefusalInWindow = (ctx) => {
-        const now = Date.now();
-        for (const [key, at] of refusalsAudited) if (now - at >= FILL_WINDOW_MS) refusalsAudited.delete(key);
-        const key = `${ctx.accountId}:${ctx.keyId ?? null}`;
-        if (refusalsAudited.has(key)) return false;
-        refusalsAudited.set(key, now);
-        return true;
+    const deps = {
+        broker: createBroker({ approvals, audit }),
+        getBrowserTools,
+        approvals,
+        fillRate: createRateLimit({ windowMs: FILL_WINDOW_MS, limit: FILL_LIMIT }),
+        httpLimits: createHttpLimits(),
     };
-
-    const assertFillRate = async (ctx, { tool, item = null }) => {
-        try {
-            fillRate(ctx);
-        } catch (err) {
-            if (firstRefusalInWindow(ctx)) {
-                await audit({
-                    accountId: ctx.accountId, organizationId: null, action: "vault.use_denied", resource: "vault", resourceId: null,
-                    details: {
-                        item: typeof item === "string" ? item.slice(0, 200) : null, target: null, tool, access: "write",
-                        agentType: ctx.agent?.agentType ?? null, keyId: ctx.keyId ?? null, entryId: ctx.agent?.entryId ?? null,
-                        stage: "before_approval", code: err.code,
-                    },
-                    ipAddress: ctx.ipAddress ?? null, userAgent: ctx.userAgent ?? null,
-                });
-            }
-            throw err;
-        }
-    };
-
-    const deps = { broker: createBroker({ approvals, audit }), getBrowserTools, approvals, assertFillRate };
     const offered = (name, browser) => Object.hasOwn(TOOLS, name) && (!TOOLS[name].needsBrowser || browser);
 
     return {
@@ -1711,8 +1720,31 @@ const createVaultProvider = ({ getBrowserTools, approvals = require("./approvals
 module.exports = { createVaultProvider };
 ```
 
+Platzhalter, damit `TOOLS` schon beide Werkzeuge der Welle C kennt. Task 4 und Task 5 ersetzen diese Dateien vollständig.
+
+`server/lib/vault/tools/http.js`:
+
+```js
+module.exports = {
+    def: { name: "vault_http", description: "", inputSchema: { type: "object", properties: {} } },
+    handler: async () => { throw new Error("not implemented"); },
+    needsBrowser: false,
+    createHttpLimits: () => ({ rate: () => {}, enter: () => null, leave: () => {} }),
+};
+```
+
+`server/lib/vault/tools/fillSecret.js`:
+
+```js
+module.exports = {
+    def: { name: "browser_fill_secret", description: "", inputSchema: { type: "object", properties: {} } },
+    handler: async () => { throw new Error("not implemented"); },
+    needsBrowser: true,
+};
+```
+
 Was gleich bleibt, Punkt für Punkt gegen den bisherigen `fill`, damit der Umbau keine Verhaltensänderung bringt:
-- Die Drossel (`assertFillRate`, vor `broker.use`) und die Argumentprüfung (`precheck`) laufen wie bisher vor dem Laden. Ihre Ablehnungen gehen wie bisher mit gekürztem `item` ins Audit, `vault.rate_limited` höchstens einmal je Aufrufer und Minute. Wie bisher zählt jeder Aufruf, auch einer mit ungültigen Argumenten.
+- Drossel und Argumentprüfung laufen wie bisher vor dem Laden (`precheck`), und wie bisher zählt jeder Aufruf, auch einer mit ungültigen Argumenten. Ihre Ablehnungen gehen wie bisher mit gekürztem `item` ins Audit, `vault.rate_limited` höchstens einmal je Werkzeug, Aufrufer und Minute.
 - Ohne Freigabe gibt es genau ein `runAgent` (Prüfen und Eintragen). Mit Freigabe gibt es eines vor der Karte (nur Prüfen) und nach der Karte wie bisher eines, in dem `assertFillableSession`, `checkFillTarget` und `fillCredential` zusammen laufen.
 - Nach der Freigabe in derselben Reihenfolge wie bisher: Abbruch → `vault.client_gone`, Key widerrufen → `vault.item_unknown`, Eintrag neu laden, geänderte `origins` → `vault.origin_mismatch` (über `stale`, denn für Logins enthält der Stempel ohne `updatedAt` nur die `origins`), Sitzung neu auflösen, Ziel neu setzen.
 - Neu ist nur: Der Broker liest das Passwort unmittelbar vor `act` statt innerhalb von `runAgent`. Der Wert ist dadurch etwas früher im Speicher, gelesen wird er nur, wenn alle Prüfungen vor `act` bestanden sind.
@@ -1720,18 +1752,19 @@ Was gleich bleibt, Punkt für Punkt gegen den bisherigen `fill`, damit der Umbau
 - [ ] **Step 11: Betroffene Tests laufen lassen, sie bestehen**
 
 Run: `node --test server/lib/vault/__tests__/redact.test.js server/lib/vault/__tests__/broker.test.js server/lib/vault/__tests__/mcpProvider.test.js server/lib/browser/__tests__/vaultGuard.test.js server/lib/browser/__tests__/tools.test.js server/lib/mcp/__tests__/mcpRoute.test.js server/lib/browser/__tests__/chromium.e2e.test.js`
-Expected: PASS, `# fail 0`. `mcpProvider.test.js` meldet `# pass 6`: die fünf bestehenden Tests von `browser_fill_credential` unverändert grün, dazu der erweiterte `vault_list`-Test. `chromium.e2e.test.js` lädt und überspringt ohne `OUTPOST_BROWSER_E2E_LAUNCHER`.
+Expected: PASS, `# fail 0`. `mcpProvider.test.js` meldet `# pass 6`: die vier unveränderten Tests von `browser_fill_credential` grün, dazu der erweiterte `vault_list`-Test und der Listen-Test mit den neuen Werkzeugnamen. `chromium.e2e.test.js` lädt und überspringt ohne `OUTPOST_BROWSER_E2E_LAUNCHER`.
 
 Run: `node -e "require('./server/routes/mcp')"` (aus `/root/outpost`)
 Expected: kein Fehler (Route lädt mit Broker, `controllers/vaultSettings` und echtem `approvals`).
 
 Run: `yarn lint`
-Expected: keine Fehler in `server/lib/vault/redact.js`, `server/lib/vault/broker.js`, `server/lib/vault/mcpProvider.js`, `server/lib/browser/vaultGuard.js` und den Testdateien.
+Expected: keine Fehler in `server/lib/vault/redact.js`, `server/lib/vault/broker.js`, `server/lib/vault/mcpProvider.js`, `server/lib/vault/tools/*.js`, `server/lib/browser/vaultGuard.js` und den Testdateien.
 
 - [ ] **Step 12: Commit**
 
 ```bash
-git add server/lib/vault/redact.js server/lib/vault/broker.js server/lib/vault/mcpProvider.js server/lib/browser/vaultGuard.js \
+git add server/lib/vault/redact.js server/lib/vault/broker.js server/lib/vault/mcpProvider.js server/lib/vault/tools/http.js \
+    server/lib/vault/tools/fillSecret.js server/lib/browser/vaultGuard.js \
     server/lib/vault/__tests__/redact.test.js server/lib/vault/__tests__/broker.test.js server/lib/vault/__tests__/mcpProvider.test.js \
     server/lib/vault/__tests__/helpers/vaultBed.js
 git commit -m "Vault: Vermittlungskern, Schwärzung und Werkzeug-Tabelle, browser_fill_credential über den Broker"
@@ -1742,9 +1775,8 @@ git commit -m "Vault: Vermittlungskern, Schwärzung und Werkzeug-Tabelle, browse
 ### Task 4: `vault_http`
 
 **Files:**
-- Create: `server/lib/vault/tools/http.js`
-- Modify: `server/lib/vault/mcpProvider.js` (eine Zeile in `TOOLS`)
-- Modify: `server/index.js` (`app.use("/api/mcp", express.json({ limit: "2mb" }))` vor dem globalen `express.json()`)
+- Modify: `server/lib/vault/tools/http.js` (Platzhalter aus Task 3 vollständig ersetzen)
+- Modify: `server/index.js` (globaler `express.json()` überspringt `/api/mcp`; `/api/mcp` liest Bodies bis 2 MB erst nach `authenticate`)
 - Test: `server/lib/vault/__tests__/vaultHttp.test.js` (neu)
 - Modify: `server/lib/vault/__tests__/mcpProvider.test.js` (Werkzeuglisten um `vault_http`)
 
@@ -1922,9 +1954,11 @@ test("a session approval for reading does not cover writing: the next GET goes w
 - [ ] **Step 2: Tests laufen lassen, sie schlagen fehl**
 
 Run: `node --test server/lib/vault/__tests__/vaultHttp.test.js`
-Expected: FAIL, `# fail 5`. Jeder Aufruf antwortet mit `Unknown tool: vault_http`, Test (5) scheitert an `condition not reached`.
+Expected: FAIL, `# fail 5`. Jeder Aufruf antwortet mit `vault_http failed unexpectedly; try again.` (der Platzhalter aus Task 3 wirft), Test (5) scheitert an `condition not reached`.
 
-- [ ] **Step 3: `server/lib/vault/tools/http.js` anlegen**
+- [ ] **Step 3: `server/lib/vault/tools/http.js` schreiben (ersetzt den Platzhalter)**
+
+Hinweis: Node-`fetch` und `node:https` nutzen `HTTP_PROXY`/`HTTPS_PROXY` nur mit `NODE_USE_ENV_PROXY=1`. Outpost setzt das nicht, Anfragen von `vault_http` gehen also ohne Proxy-Umgebung direkt zum Host.
 
 ```js
 const { VaultError, VaultErrorCode, VaultErrorMessage } = require("../errors");
@@ -1935,8 +1969,11 @@ const { secretVariants, redactSecretText, truncateAndRedact } = require("../reda
 const NAME = "vault_http";
 const METHODS = new Set(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"]);
 const READS = new Set(["GET", "HEAD"]);
-const FORBIDDEN_HEADERS = new Set(["authorization", "cookie", "host", "content-length", "transfer-encoding", "connection"]);
+const FORBIDDEN_HEADERS = new Set([
+    "authorization", "cookie", "host", "content-length", "transfer-encoding", "connection", "keep-alive", "upgrade", "expect", "te", "trailer",
+]);
 const HEADER_NAME = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
+const HEADER_VALUE_INVALID = /[^\t\x20-\x7e\x80-\xff]/;
 const URL_LIMIT = 8 * 1024;
 const HEADERS_LIMIT = 8 * 1024;
 const MAX_HEADERS = 30;
@@ -1948,6 +1985,8 @@ const MAX_RUNNING = 4;
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
 const SHOWN_HEADERS = new Set(["content-type", "content-length", "location", "link", "etag", "last-modified", "retry-after", "x-github-request-id"]);
 const TEXT_TYPE = /^text\/|json|xml|javascript|x-www-form-urlencoded/i;
+// fetch decodes exactly these; any other encoding would reach the redaction still compressed.
+const DECODED_ENCODINGS = new Set(["", "identity", "gzip", "x-gzip", "deflate", "br"]);
 
 const def = {
     name: NAME,
@@ -1967,21 +2006,24 @@ const def = {
 
 const textResult = (text) => ({ content: [{ type: "text", text }] });
 const callerKey = (ctx) => `${ctx.accountId}:${ctx.keyId ?? null}`;
-const rate = createRateLimit({ windowMs: 60 * 1000, limit: 60 });
-const running = new Map();
 
-const enter = (ctx) => {
-    const key = callerKey(ctx);
-    const count = running.get(key) ?? 0;
-    if (count >= MAX_RUNNING) throw new VaultError(VaultErrorCode.BUSY);
-    running.set(key, count + 1);
-    return key;
-};
-
-const leave = (key) => {
-    const count = (running.get(key) ?? 1) - 1;
-    if (count > 0) running.set(key, count);
-    else running.delete(key);
+const createHttpLimits = () => {
+    const running = new Map();
+    return {
+        rate: createRateLimit({ windowMs: 60 * 1000, limit: 60 }),
+        enter: (ctx) => {
+            const key = callerKey(ctx);
+            const count = running.get(key) ?? 0;
+            if (count >= MAX_RUNNING) throw new VaultError(VaultErrorCode.BUSY);
+            running.set(key, count + 1);
+            return key;
+        },
+        leave: (key) => {
+            const count = (running.get(key) ?? 1) - 1;
+            if (count > 0) running.set(key, count);
+            else running.delete(key);
+        },
+    };
 };
 
 const parseUrl = (value) => {
@@ -2001,7 +2043,7 @@ const headerProblem = (headers, entryHeader) => {
     if (entries.length > MAX_HEADERS) return "shape";
     let size = 0;
     for (const [name, value] of entries) {
-        if (!HEADER_NAME.test(name) || typeof value !== "string" || /[\r\n\0]/.test(value)) return "shape";
+        if (!HEADER_NAME.test(name) || typeof value !== "string" || HEADER_VALUE_INVALID.test(value)) return "shape";
         size += Buffer.byteLength(name) + Buffer.byteLength(value);
         const lower = name.toLowerCase();
         if (FORBIDDEN_HEADERS.has(lower) || lower.startsWith("proxy-") || lower === entryHeader.toLowerCase()) return "forbidden";
@@ -2071,17 +2113,24 @@ const readCapped = async (response, limit) => {
     return Buffer.concat(chunks).subarray(0, limit);
 };
 
-const bodyText = (type, raw, bytes, variants) => {
+const isText = (headers) => {
+    const type = headers.get("content-type") ?? "";
+    const charset = /charset\s*=\s*"?([^";\s]+)/i.exec(type)?.[1]?.toLowerCase() ?? "utf-8";
+    const encoding = (headers.get("content-encoding") ?? "").trim().toLowerCase();
+    return TEXT_TYPE.test(type) && (charset === "utf-8" || charset === "utf8") && DECODED_ENCODINGS.has(encoding);
+};
+
+const bodyText = (headers, raw, size, variants) => {
     if (raw.length === 0) return "";
-    if (!TEXT_TYPE.test(type)) return `[binary body, ${redactSecretText(type, variants) || "no content type"}, ${bytes} bytes]`;
+    if (!isText(headers)) return `[binary body, ${redactSecretText(headers.get("content-type") ?? "", variants) || "no content type"}, ${size}]`;
     return truncateAndRedact(raw.toString("utf8"), RESPONSE_LIMIT, variants).text;
 };
 
-const formatResponse = (response, raw, bytes, variants) => {
+const formatResponse = (response, raw, size, variants) => {
     const lines = [`HTTP ${response.status}`];
     for (const [name, value] of response.headers)
         if (SHOWN_HEADERS.has(name) || name.startsWith("x-ratelimit-")) lines.push(`${name}: ${redactSecretText(value, variants)}`);
-    return `${lines.join("\n")}\n\n${bodyText(response.headers.get("content-type") ?? "", raw, bytes, variants)}`;
+    return `${lines.join("\n")}\n\n${bodyText(response.headers, raw, size, variants)}`;
 };
 
 const failure = (err, ctx) => {
@@ -2091,21 +2140,20 @@ const failure = (err, ctx) => {
     return new VaultError(VaultErrorCode.HTTP_FAILED, VaultErrorMessage[VaultErrorCode.HTTP_FAILED].replace("<kind>", kind));
 };
 
-const handler = async (args, ctx, { broker }) => {
+const handler = async (args, ctx, { broker, httpLimits }) => {
     const method = typeof args.method === "string" ? args.method.toUpperCase() : "";
     const url = parseUrl(args.url);
     const details = { method: method.slice(0, 10) || null, host: url?.host ?? null, path: url ? url.pathname.slice(0, 200) : null };
     let entered = null;
     try {
         const { result } = await broker.use({
-            ctx, itemRef: args.item, tool: NAME, access: READS.has(method) ? "read" : "write", field: "token", audit: details,
+            ctx, itemRef: args.item, tool: NAME, access: READS.has(method) ? "read" : "write", field: "token", auditExtra: details,
             target: url ? `${method} ${url.host}${url.pathname}`.slice(0, 200) : null,
-            precheck: () => {
-                rate(ctx);
-                entered = enter(ctx);
-            },
+            precheck: () => httpLimits.rate(ctx),
             check: (item) => assertRequest(item, { url, method, headers: args.headers, body: args.body }),
             act: async (token, item) => {
+                // Taken only now: a call waiting for the user's approval does not hold one of the 4 slots.
+                entered = httpLimits.enter(ctx);
                 if (token.length < 4) throw new VaultError(VaultErrorCode.SECRET_TOO_SHORT);
                 const fields = item.fields ?? {};
                 const headerValue = (fields.headerTemplate ?? "Bearer {{secret}}").split("{{secret}}").join(token);
@@ -2119,9 +2167,9 @@ const handler = async (args, ctx, { broker }) => {
                     });
                     const raw = await readCapped(response, RESPONSE_LIMIT + 1);
                     const declared = Number.parseInt(response.headers.get("content-length") ?? "", 10);
-                    const bytes = Number.isSafeInteger(declared) && declared >= 0 ? declared : raw.length;
+                    const bytes = Number.isSafeInteger(declared) && declared >= 0 ? declared : raw.length > RESPONSE_LIMIT ? null : raw.length;
                     Object.assign(details, { status: response.status, bytes });
-                    return textResult(formatResponse(response, raw, bytes, variants));
+                    return textResult(formatResponse(response, raw, bytes === null ? `more than ${RESPONSE_LIMIT} bytes` : `${bytes} bytes`, variants));
                 } catch (err) {
                     if (err instanceof VaultError) throw err;
                     throw failure(err, ctx);
@@ -2130,68 +2178,55 @@ const handler = async (args, ctx, { broker }) => {
         });
         return result;
     } finally {
-        if (entered) leave(entered);
+        if (entered) httpLimits.leave(entered);
     }
 };
 
-module.exports = { def, handler, needsBrowser: false };
+module.exports = { def, handler, needsBrowser: false, createHttpLimits };
 ```
 
-- [ ] **Step 4: Werkzeug eintragen und Body-Grenze für `/api/mcp` setzen**
+Ohne `content-length` und mit einem Body über 256 KB steht im Audit `bytes: null`, und eine binäre Antwort meldet `more than 262144 bytes`.
 
-In `server/lib/vault/mcpProvider.js` kommt in `TOOLS` nach dem Eintrag `[LIST]: { … },` genau diese Zeile dazu:
+- [ ] **Step 4: Body-Grenze für `/api/mcp` erst nach der Authentifizierung**
+
+In `server/index.js` wird die Zeile `app.use(express.json());` ersetzt durch:
 
 ```js
-    [HTTP]: require("./tools/http"),
+// /api/mcp reads its larger bodies itself, after authenticate: nobody unauthenticated gets 2 MB parsed.
+const json = express.json();
+app.use((req, res, next) => (req.path === "/api/mcp" || req.path.startsWith("/api/mcp/") ? next() : json(req, res, next)));
 ```
 
-In `server/index.js` kommt unmittelbar vor `app.use(express.json());` diese Zeile (der globale Parser überspringt Bodies, die schon gelesen sind):
+und die Einhängung `app.use("/api/mcp", authenticate, require("./routes/mcp"));` durch:
 
 ```js
-app.use("/api/mcp", express.json({ limit: "2mb" }));
+app.use("/api/mcp", authenticate, express.json({ limit: "2mb" }), require("./routes/mcp"));
 ```
-
-In `server/lib/vault/__tests__/mcpProvider.test.js` (Test „without connect.browser …“) steht `vault_http` jetzt in der Werkzeugliste, weil das Werkzeug kein `connect.browser` braucht:
-
-```js
-    assert.deepStrictEqual(await names(), ["vault_list", "vault_http"]);
-```
-
-statt `assert.deepStrictEqual(await names(), ["vault_list"]);`, und
-
-```js
-    assert.deepStrictEqual(await names(), ["vault_list", "vault_http", FILL]);
-```
-
-statt `assert.deepStrictEqual(await names(), ["vault_list", FILL]);`. Der Testname wird zu `"without connect.browser the MCP endpoint lists no browser tool and answers browser_fill_credential as an unknown tool"`.
 
 - [ ] **Step 5: Tests laufen lassen, sie bestehen**
 
-Run: `node --test server/lib/vault/__tests__/vaultHttp.test.js server/lib/vault/__tests__/mcpProvider.test.js server/lib/vault/__tests__/broker.test.js`
-Expected: PASS, `# tests 13`, `# pass 13`, `# fail 0`.
+Run: `node --test server/lib/vault/__tests__/vaultHttp.test.js server/lib/vault/__tests__/mcpProvider.test.js server/lib/vault/__tests__/broker.test.js server/lib/mcp/__tests__/mcpRoute.test.js`
+Expected: PASS, `# fail 0`. Davon `vaultHttp.test.js` `# pass 5`.
 
-Run: `grep -n 'express.json' server/index.js`
-Expected: zwei Zeilen, zuerst `app.use("/api/mcp", express.json({ limit: "2mb" }));`, direkt danach `app.use(express.json());`.
+Run: `grep -n 'express.json\|"/api/mcp"' server/index.js`
+Expected: drei Treffer, in dieser Reihenfolge: `const json = express.json();`, die Zeile mit `req.path === "/api/mcp"` und `app.use("/api/mcp", authenticate, express.json({ limit: "2mb" }), require("./routes/mcp"));`. Ein `app.use(express.json());` gibt es nicht mehr.
 
 Run: `yarn lint`
-Expected: keine Fehler in `server/lib/vault/tools/http.js`, `server/lib/vault/mcpProvider.js`, `server/index.js` und `server/lib/vault/__tests__/vaultHttp.test.js`.
+Expected: keine Fehler in `server/lib/vault/tools/http.js`, `server/index.js` und `server/lib/vault/__tests__/vaultHttp.test.js`.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add server/lib/vault/tools/http.js server/lib/vault/mcpProvider.js server/index.js \
-    server/lib/vault/__tests__/vaultHttp.test.js server/lib/vault/__tests__/mcpProvider.test.js
+git add server/lib/vault/tools/http.js server/index.js server/lib/vault/__tests__/vaultHttp.test.js
 git commit -m "Vault: Werkzeug vault_http"
 ```
 
 ### Task 5: `browser_fill_secret`
 
 **Files:**
-- Create: `server/lib/vault/tools/fillSecret.js`
+- Modify: `server/lib/vault/tools/fillSecret.js` (Stub aus Task 3 vollständig ersetzen; Task 3 hat `[FILL_SECRET]` bereits in `TOOLS` eingetragen und die Werkzeuglisten in `mcpProvider.test.js` angepasst — `mcpProvider.js` und `mcpProvider.test.js` bleiben in Task 5 unberührt)
 - Modify: `server/lib/vault/fill.js` (`checkSecretTarget(session, ref, origins | null)`, `typeInto` exportieren)
-- Modify: `server/lib/vault/mcpProvider.js` (eine Zeile in `TOOLS`)
-- Test: `server/lib/vault/__tests__/fillSecret.test.js` (neu, CDP-Double wie `vaultGuard.test.js`)
-- Modify: `server/lib/vault/__tests__/mcpProvider.test.js` (Werkzeugliste mit `connect.browser` um `browser_fill_secret`)
+- Test: `server/lib/browser/__tests__/vaultGuard.test.js` (CDP-Double erweitern) oder `server/lib/vault/__tests__/fillSecret.test.js` (neu) mit demselben Double
 
 **Interfaces:**
 - Consumes: Task 3 (`broker.use`, `TOOLS`), Task 1 (`fillOrigins`, `fillAnywhere`, Codes), Bestand `vaultGuard.markFilled`, `assertFillableSession`.
@@ -2199,25 +2234,13 @@ git commit -m "Vault: Werkzeug vault_http"
 
 **Design:** kein UI-Anteil.
 
-**Tests:** 4 Tests — (1) passende Origin → eingetragen, `markFilled` vor `Input.insertText`, Snapshot zeigt `••••`; (2) Ablehnungen: `<textarea>` in iframe erlaubter Origin unter fremder Hauptseite → `vault.origin_mismatch` (Review Focus 5), `<select>` → `vault.field_not_fillable`, leere `fillOrigins` bei `fillAnywhere` aus → `vault.no_fill_origins`; (3) `text`-Feld gefüllt → `browser_screenshot` gesperrt; (4) `fillAnywhere` an, Eintrag ohne Freigabepflicht → Karte trotzdem, Umfang `write|<origin>`.
+**Tests:** 4 Tests — (1) passende Origin → eingetragen, `markFilled` vor `Input.insertText`, Snapshot zeigt `••••`; (2) Ablehnungen: `<textarea>` in iframe erlaubter Origin unter fremder Hauptseite → `vault.origin_mismatch` (Review Focus 5), `<select>` → `vault.field_not_fillable`, leere `fillOrigins` bei `fillAnywhere` aus → `vault.no_fill_origins`; (3) `text`-Feld gefüllt → `browser_screenshot` gesperrt; (4) `fillAnywhere` an, Eintrag ohne Freigabepflicht → Karte trotzdem, Umfang `fill|<origin>`.
 
 **Parallel:** Task 4, Task 7 (Welle C).
 
-> **Hinweise aus der Planung (gelten für diesen und die folgenden Tasks dieser Datei):**
->
-> Abweichung: Task 5 braucht vier Ergänzungen an der Schnittstelle von Task 3 (`broker.use`, `deps`), weil Ziel, Umfang, Feld und Freigabepflicht von `browser_fill_secret` erst nach dem Laden des Eintrags bzw. nach der Prüfung im Browser feststehen. Task 3 muss sie so bauen; `vault_http` und Git übergeben weiter feste Werte und merken davon nichts.
->
-> 1. **`target`, `scope` und `field` von `broker.use` dürfen auch Funktionen `(item) => string` sein.** Der Broker ruft sie nach `check(item, { phase: "before" })` auf und nutzt die Ergebnisse für `requestApproval` und `readSecret`. Grund: Das Ziel ist die Origin des Feld-Frames (die liefert erst die Prüfung im Browser), der Umfang ist `write|<origin>` nur bei leeren `fillOrigins` mit `fillAnywhere`, das Feld ist `token` (api_key) oder `value` (generic).
-> 2. **Ein Umfang mit `|` verlangt immer eine Freigabe**, auch wenn `item.approvalRequired` aus ist (Spec „browser_fill_secret“: „Leer und `fillAnywhere` an: jede Origin, Freigabe immer“). Andere Umfänge: Freigabe wie bisher bei `approvalRequired` oder Impersonation.
-> 3. **`check` darf ein Promise liefern**, der Broker wartet darauf (die Prüfung von `browser_fill_secret` läuft in `session.runAgent`). Das an `audit` übergebene Objekt liest der Broker erst beim Schreiben des Audits; `check` ergänzt dort `origin` und `fieldType`.
-> 4. **`deps` bekommt zusätzlich `assertFillRate(ctx, { tool })` → `Promise<void>`**: der Zähler, den heute `browser_fill_credential` nutzt (`FILL_LIMIT` 20 je Minute und Key, gemeinsam für beide Fill-Werkzeuge; Spec „Rate: gemeinsam mit `browser_fill_credential`“). Überschreitung: `VaultError(RATE_LIMITED)`; das Audit `vault.use_denied` mit `details: { tool, code: "vault.rate_limited" }` schreibt die Funktion selbst, höchstens einmal je Fenster und Key (wie heute `firstRefusalInWindow`). Task 3 lässt auch `browser_fill_credential` darüber laufen.
->
-> Task 6 hält die Schnittstellen aus „Schnittstellen“ ein.
+Gewählt ist die neue Datei `server/lib/vault/__tests__/fillSecret.test.js`: `vaultGuard.test.js` bleibt unberührt (kein Konflikt mit anderen Tasks). Das Double ist dasselbe wie dort (`helpers/fakeCdp.js`, echter `BrowserPool`, echte `BrowserSession`, echte `createBrowserTools`), ergänzt um die Antworten, die `fill.js` braucht (Muster `mcpProvider.test.js`: `Runtime.callFunctionOn` liefert das `INSPECT`-Ergebnis je Knoten, `DOM.focus`/`DEEPEST_ACTIVE` für die Fokusprüfung). Einträge, Werte, Rechte und `fillAnywhere` kommen aus `helpers/vaultBed.js` (`bed.state.settings`, dort ersetzt Task 3 `controllers/vaultSettings`), die Freigaben per Attrappe wie in `mcpProvider.test.js`. Über die Naht `createVaultProvider().call("browser_fill_secret", …)` laufen damit echter Broker (Task 3), echte `fill.js`, echter `vaultGuard`. Test 2 fängt auch einen Fehler in den Funktionen für `target`/`scope`: Der Broker ruft `target(item)` beim Audit einer Ablehnung, sobald der Eintrag geladen ist, auch wenn `check` vor dem Feld gescheitert ist; ein `field.origin` ohne `?.` würfe dort einen `TypeError`, die `VaultError` und ihr `vault.use_denied` gingen verloren.
 
-
-Gewählt ist die neue Datei `server/lib/vault/__tests__/fillSecret.test.js`: `vaultGuard.test.js` bleibt unberührt (kein Konflikt mit anderen Tasks). Das Double ist dasselbe wie dort (`helpers/fakeCdp.js`, echter `BrowserPool`, echte `BrowserSession`, echte `createBrowserTools`), ergänzt um die Antworten, die `fill.js` braucht (Muster `mcpProvider.test.js`: `Runtime.callFunctionOn` liefert das `INSPECT`-Ergebnis je Knoten, `DOM.focus`/`DEEPEST_ACTIVE` für die Fokusprüfung). Einträge, Werte und Rechte kommen aus `helpers/vaultBed.js`; `controllers/vaultSettings` wird per `require.cache` ersetzt (`fillAnywhere` schaltbar), die Freigaben per Attrappe wie in `mcpProvider.test.js`. Über die Naht `createVaultProvider().call("browser_fill_secret", …)` laufen damit echter Broker (Task 3), echte `fill.js`, echter `vaultGuard`.
-
-Nicht getestet: die Argumentprüfung (Whitelist wie `assertFillArgs`, SEC-INPUT-01; reine Eingabeformate), `vault.wrong_type` (eine Zeile, Muster aus `browser_fill_credential`), der gemeinsame Zähler (Abweichung 4, testet Task 3 über den bestehenden `browser_fill_credential`-Test), die Schwärzung von Fehlermeldungen (Bestand `vaultGuard.redactText`), `vault.approval_stale` bei geänderter Feld-Origin nach der Freigabe (Broker-Stempel testet Task 3; hier eine Zeile in `act`). SEC-Abdeckung: SEC-SECRET-01 (Wert nur in `Input.insertText`, nie in Antwort, Snapshot oder Audit — Tests 1, 3), SEC-IDOR-01 (Eintrag nur über `broker.use` → `findVisibleItem`), SEC-INPUT-01 (Feldtypen und Origins per Whitelist — Test 2), SEC-RATE-01 (gemeinsamer Fill-Zähler).
+Nicht getestet: die Argumentprüfung (Whitelist wie `assertFillArgs`, SEC-INPUT-01; reine Eingabeformate), `vault.wrong_type` (eine Zeile, Muster aus `browser_fill_credential`), der gemeinsame Zähler (`deps.fillRate` im `precheck`; Grenze und einmaliges Audit je Minute testet Task 3 über den bestehenden `browser_fill_credential`-Test), die Schwärzung von Fehlermeldungen (Bestand `vaultGuard.redactText`), `vault.approval_stale` bei geänderter Feld-Origin nach der Freigabe (Broker-Stempel testet Task 3; hier eine Zeile in `act`). SEC-Abdeckung: SEC-SECRET-01 (Wert nur in `Input.insertText`, nie in Antwort, Snapshot oder Audit — Tests 1, 3), SEC-IDOR-01 (Eintrag nur über `broker.use` → `findVisibleItem`), SEC-INPUT-01 (Feldtypen und Origins per Whitelist — Test 2), SEC-RATE-01 (gemeinsamer Fill-Zähler).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2235,14 +2258,6 @@ const { createFakeCdp, flush } = require("../../browser/__tests__/helpers/fakeCd
 const { Permission } = require("../../../permissions/registry");
 const { VaultErrorCode } = require("../errors");
 
-const settings = { fillAnywhere: false };
-const fakeModule = (path, exports) => {
-    const resolved = require.resolve(path);
-    require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports };
-};
-fakeModule("../../../controllers/vaultSettings", {
-    getVaultSettings: async () => ({ keyStatus: "ok", agentUrl: null, ipBindingDefault: true, fillAnywhere: settings.fillAnywhere }),
-});
 const { createVaultProvider } = require("../mcpProvider");
 
 const FILL = "browser_fill_secret";
@@ -2290,7 +2305,6 @@ const until = async (condition) => {
 
 const setup = async () => {
     vaultGuard._resetForTests();
-    settings.fillAnywhere = false;
     bed.reset({
         items: [API, OTHER], secrets: { "61:token": TOKEN, "62:value": VALUE },
         permissions: [Permission.VAULT_USE, Permission.CONNECT_BROWSER], apiKeys: [41], entries: [{ id: 7, name: "web01" }],
@@ -2414,12 +2428,12 @@ test("a filled field that is not a password field locks browser_screenshot; a fi
 
 test("with fillAnywhere an entry without fill origins asks even without approvalRequired, for this one origin", async () => {
     const env = await setup();
-    settings.fillAnywhere = true;
+    bed.state.settings.fillAnywhere = true;
     const pending = env.fill({ item: "recovery", ref: env.refs.Notes });
     await until(() => env.approvals.open.length === 1);
 
     const { request } = env.approvals.open[0];
-    assert.deepStrictEqual([request.tool, request.access, request.target, request.scope], [FILL, "write", FORMS, `write|${FORMS}`]);
+    assert.deepStrictEqual([request.tool, request.access, request.target, request.scope], [FILL, "write", FORMS, `fill|${FORMS}`]);
     assert.deepStrictEqual(env.page.inserted, [], "nothing is typed while the card is open");
     env.approvals.open[0].answer("once");
 
@@ -2431,7 +2445,7 @@ test("with fillAnywhere an entry without fill origins asks even without approval
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `node --test server/lib/vault/__tests__/fillSecret.test.js`
-Expected: FAIL, `# fail 4`. Tests 1–3 bekommen `Unknown tool: browser_fill_secret` statt des Ergebnisses (z. B. `'Unknown tool: browser_fill_secret' !== 'Filled the value of forms-token into the field.'`), Test 4 endet mit `condition not reached`, weil keine Karte geöffnet wird.
+Expected: FAIL, `# fail 4`. Der Stub aus Task 3 trägt nichts ein: Tests 1–3 bekommen dessen Fehlermeldung statt des Ergebnisses (Test 1: `!== 'Filled the value of forms-token into the field.'`, Test 2: Antwort endet nicht auf `(vault.origin_mismatch)`, Test 3: `refused.isError` ist `false`), Test 4 endet mit `condition not reached`, weil keine Karte geöffnet wird.
 
 - [ ] **Step 3: `fill.js` — Zielprüfung für Werte, `typeInto` exportieren**
 
@@ -2505,9 +2519,9 @@ In `typeInto` nennt die zweite `FOCUS_LOST`-Meldung kein bestimmtes Werkzeug meh
 module.exports = { checkFillTarget, checkSecretTarget, fillCredential, typeInto, releaseObjects, assertFillableSession, normalizeOrigin };
 ```
 
-- [ ] **Step 4: Werkzeug `server/lib/vault/tools/fillSecret.js`**
+- [ ] **Step 4: Werkzeug `server/lib/vault/tools/fillSecret.js` (Stub aus Task 3 ersetzen)**
 
-Ablauf über `broker.use` (mit den Ergänzungen aus „Abweichung“ oben): `check` Phase `before` prüft Typ und `fillOrigins`/`fillAnywhere`, löst die Sitzung auf und prüft Sitzung und Feld in `runAgent` — so auditiert der Broker auch `UNKNOWN_SESSION`, `vault.session_tainted` und `vault.origin_mismatch`. Phase `after` (nur nach einer Freigabe) prüft Typ und Einstellung erneut; der Broker vergleicht den Stempel (`fillOrigins` gehört dazu). `act` löst die Sitzung neu auf und prüft Sitzung, Origins und Feld innerhalb desselben `runAgent`, in dem eingetragen wird; liegt das Feld jetzt auf einer anderen Origin als bei der Prüfung (also als auf der Karte), endet es mit `vault.approval_stale`. `markFilled` läuft als `beforeInsert` von `typeInto`, unmittelbar vor `Input.insertText`.
+Ablauf über `broker.use` mit den Optionen aus Task 3: `precheck` zählt den Aufruf gegen die gemeinsame Fill-Grenze (`deps.fillRate`) und prüft die Argumente, beides vor dem Laden des Eintrags und auditiert vom Broker. Umfang ist `fill`, bei leeren `fillOrigins` mit `fillAnywhere` `fill|<origin>` — der Broker verlangt dafür immer eine Freigabe, und eine Sitzungsfreigabe gilt nur für diese eine Origin. `target`, `scope` und `field` sind Funktionen des Eintrags; `target` liefert `null`, solange `check` das Feld nicht gefunden hat (Audit einer frühen Ablehnung). `origin` und `fieldType` ergänzt `check` in `auditExtra`. `check` Phase `before` prüft Typ und `fillOrigins`/`fillAnywhere`, löst die Sitzung auf und prüft Sitzung und Feld in `runAgent` — so auditiert der Broker auch `UNKNOWN_SESSION`, `vault.session_tainted` und `vault.origin_mismatch`. Phase `after` (nur nach einer Freigabe) prüft Typ und Einstellung erneut; der Broker vergleicht den Stempel (`fillOrigins` gehört dazu). `act` löst die Sitzung neu auf und prüft Sitzung, Origins und Feld innerhalb desselben `runAgent`, in dem eingetragen wird; liegt das Feld jetzt auf einer anderen Origin als bei der Prüfung (also als auf der Karte), endet es mit `vault.approval_stale`. `markFilled` läuft als `beforeInsert` von `typeInto`, unmittelbar vor `Input.insertText`.
 
 ```js
 const { VaultError, VaultErrorCode } = require("../errors");
@@ -2563,9 +2577,7 @@ const typeSecret = async (session, backendNodeId, secret) => {
 };
 
 const handler = async (args, ctx, deps) => {
-    assertArgs(args);
-    await deps.assertFillRate(ctx, { tool: TOOL });
-    const audit = {};
+    const auditExtra = {};
     let session = null;
     let field = null;
     const check = async (item, { phase }) => {
@@ -2578,7 +2590,7 @@ const handler = async (args, ctx, deps) => {
             assertFillableSession(session);
             return checkSecretTarget(session, args.ref, fillOriginsOf(item));
         });
-        Object.assign(audit, { origin: field.origin, fieldType: field.fieldType });
+        Object.assign(auditExtra, { origin: field.origin, fieldType: field.fieldType });
     };
     // Waiting for the approval happens outside runAgent; act checks the session and the field again
     // inside the runAgent that types, so nothing can change between the check and the keystroke.
@@ -2597,10 +2609,15 @@ const handler = async (args, ctx, deps) => {
     try {
         const { result } = await deps.broker.use({
             ctx, itemRef: args.item, tool: TOOL, access: "write",
-            target: () => field.origin,
-            scope: (item) => (fillOriginsOf(item) === null ? `write|${field.origin}` : "write"),
+            precheck: () => {
+                deps.fillRate(ctx);
+                assertArgs(args);
+            },
+            // Also read for the audit of a refusal, before check has located the field.
+            target: () => field?.origin ?? null,
+            scope: (item) => (fillOriginsOf(item) === null ? `fill|${field.origin}` : "fill"),
             field: (item) => SECRET_FIELD[item.type],
-            check, act, audit,
+            check, act, auditExtra,
         });
         return { content: [{ type: "text", text: result }] };
     } catch (err) {
@@ -2612,25 +2629,7 @@ const handler = async (args, ctx, deps) => {
 module.exports = { def, handler, needsBrowser: true };
 ```
 
-- [ ] **Step 5: Werkzeug in `TOOLS` eintragen**
-
-`server/lib/vault/mcpProvider.js`, in der Tabelle `TOOLS` (Task 3) direkt nach dem Eintrag von `browser_fill_credential`:
-
-```js
-    [FILL_SECRET]: require("./tools/fillSecret"),
-```
-
-`FILL_SECRET` ist die Konstante aus Task 3. In `server/lib/vault/__tests__/mcpProvider.test.js` (Test „without connect.browser …“) die Liste mit `connect.browser` um das neue Werkzeug ergänzen. Nach dem Zusammenführen mit Task 4 lautet die Zeile:
-
-```js
-    assert.deepStrictEqual(await names(), ["vault_list", "vault_http", FILL, "browser_fill_secret"]);
-```
-
-(Läuft Task 5 vor Task 4 ein: `["vault_list", FILL, "browser_fill_secret"]`; der Controller gleicht beim Zusammenführen an.)
-
-`needsBrowser: true` steht im Modul; damit gilt für `browser_fill_secret` dieselbe Verfügbarkeit wie für `browser_fill_credential` (Vault an, `vault.use`, `connect.browser`). Task 4 trägt `vault_http` in dieselbe Tabelle ein; beim Zusammenführen bleiben beide Zeilen stehen.
-
-- [ ] **Step 6: Run test to verify it passes**
+- [ ] **Step 5: Run test to verify it passes**
 
 Run: `node --test server/lib/vault/__tests__/fillSecret.test.js`
 Expected: PASS, 4 Tests.
@@ -2638,13 +2637,13 @@ Expected: PASS, 4 Tests.
 Run (Gegenprüfung `browser_fill_credential` nach der Änderung an `fill.js`, Browser-Sperren, Broker): `node --test server/lib/vault/__tests__/mcpProvider.test.js server/lib/vault/__tests__/broker.test.js server/lib/browser/__tests__/*.test.js`
 Expected: PASS (die beiden Chromium-Tests ohne `OUTPOST_BROWSER_E2E_LAUNCHER` übersprungen).
 
-Run: `npx eslint server/lib/vault/fill.js server/lib/vault/tools/fillSecret.js server/lib/vault/mcpProvider.js server/lib/vault/__tests__/fillSecret.test.js`
+Run: `npx eslint server/lib/vault/fill.js server/lib/vault/tools/fillSecret.js server/lib/vault/__tests__/fillSecret.test.js`
 Expected: keine Ausgabe.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add server/lib/vault/fill.js server/lib/vault/tools/fillSecret.js server/lib/vault/mcpProvider.js server/lib/vault/__tests__/fillSecret.test.js server/lib/vault/__tests__/mcpProvider.test.js
+git add server/lib/vault/fill.js server/lib/vault/tools/fillSecret.js server/lib/vault/__tests__/fillSecret.test.js
 git commit -m "Vault: browser_fill_secret trägt Token und Werte in ein Formularfeld ein, nur auf Fill-Origins oder mit Freigabe je Seite"
 ```
 
@@ -2664,13 +2663,13 @@ git commit -m "Vault: browser_fill_secret trägt Token und Werte in ein Formular
 
 **Design:** kein UI-Anteil.
 
-**Tests:** 2 Tests — (1) Auth: Git-Key an `/api/mcp` → 403, Claude-Key an `/api/vault/git/github.com/o/r.git/info/refs` → 403, Git-Key dort → durchgelassen (mit Stub-Route); (2) `requestDeadline` (Frist 200 ms): tröpfelnder POST an beliebiger Route → 408, derselbe POST unter `/api/vault/git/` ohne `clearRequestDeadline` → 408, mit `clearRequestDeadline` → läuft durch; vollständiger Body mit langer Antwortzeit → kein 408.
+**Tests:** 2 Tests — (1) Auth: Git-Key an `/api/mcp` → 403, Claude-Key an `/api/vault/git/github.com/o/r.git/info/refs` → 403, Git-Key dort → durchgelassen (mit Stub-Route); (2) `requestDeadline` (Frist 200 ms): tröpfelnder POST an beliebiger Route → 408, derselbe POST unter `/api/vault/git/` ohne `clearRequestDeadline` → 408, mit `clearRequestDeadline` → läuft durch; vollständiger Body mit langer Antwortzeit → kein 408; Route antwortet 401, ohne den Body zu lesen, der Client tröpfelt weiter → Verbindung binnen ~3× Frist geschlossen.
 
 **Parallel:** Task 1, Task 2, Task 8, Task 9 (Welle A).
 
-Zwei Node-Fakten tragen den Entwurf (mit Node 22 in diesem Projekt geprüft): `server.requestTimeout` lässt sich je Request nicht aufheben (`req.setTimeout(0)`, `req.socket.setTimeout(0)` wirken nicht), wohl aber für den ganzen Server, auch nach dem Erzeugen (`server.requestTimeout = 0` nach `listen` — ein Body, der länger als die alte Frist tröpfelt, kommt dann mit 200 an statt mit 408); `req.complete` ist bei WebSocket-Upgrades sofort `true` und wird bei kleinen Bodies `true`, sobald sie angekommen sind, auch ungelesen. Deshalb prüft die Middleware beim Ablauf nur `req.complete`: MCP-Aufrufe in der Freigabe-Wartezeit, lange Downloads und WebSockets bleiben unberührt, ohne dass sie Routen kennen muss.
+Zwei Node-Fakten tragen den Entwurf (mit Node 22 in diesem Projekt geprüft): `server.requestTimeout` lässt sich je Request nicht aufheben (`req.setTimeout(0)`, `req.socket.setTimeout(0)` wirken nicht), wohl aber für den ganzen Server, auch nach dem Erzeugen (`server.requestTimeout = 0` nach `listen` — ein Body, der länger als die alte Frist tröpfelt, kommt dann mit 200 an statt mit 408); `req.complete` ist bei WebSocket-Upgrades sofort `true` und wird bei kleinen Bodies `true`, sobald sie angekommen sind, auch ungelesen. Deshalb prüft die Middleware beim Ablauf nur `req.complete`: MCP-Aufrufe in der Freigabe-Wartezeit, lange Downloads und WebSockets bleiben unberührt, ohne dass sie Routen kennen muss. Eine Antwort allein beendet die Frist nicht: Routen, die mit 401, 404 oder 413 antworten, ohne den Body zu lesen, lassen Node den Rest auf einer Keep-alive-Verbindung weiterlesen — mit `requestTimeout = 0` so lange, wie der Client tröpfelt (Slow-Loris, nachgestellt). Der Timer endet deshalb erst mit dem Body (`req` `end`, oder `finish`/`close` der Antwort bei `req.complete`, `close` auch bei zerstörtem Request); läuft er nach gesendeter Antwort ab, zerstört er den Socket.
 
-Nicht getestet: die zwei Zeilen `requestTimeout = 0` in `server/index.js` (Konfiguration; der Fakt oben ist geprüft, Task 7 belegt den langen Push Ende-zu-Ende nur mit verkürzter Frist, der Handtest in Task 13 mit echtem Push), das Zerstören des Sockets bei bereits gesendeten Headern (ein Zweig ohne eigenes Verhalten gegenüber dem Client), die Reihenfolge der Middleware in `index.js` (Weiterreichung). SEC-Abdeckung: SEC-RBAC-01 (Agententyp `git` nur am Git-Proxy, `claude`/`codex` nur an `/api/mcp` — Test 1), SEC-TOKEN-01 (Git-Key taugt nur für den Git-Proxy — Test 1), SEC-RATE-01 (ein unauthentifizierter, tröpfelnder Upload hält keine Verbindung länger als die Frist — Test 2).
+Nicht getestet: die zwei Zeilen `requestTimeout = 0` in `server/index.js` (Konfiguration; der Fakt oben ist geprüft, der Handtest in Task 13 schiebt einen echten Push), die Reihenfolge der Middleware in `index.js` (Weiterreichung). Dass der Git-Router die Frist erst nach seinen Prüfungen aufhebt, belegt Task 7 (Test 5). SEC-Abdeckung: SEC-RBAC-01 (Agententyp `git` nur am Git-Proxy, `claude`/`codex` nur an `/api/mcp` — Test 1), SEC-TOKEN-01 (Git-Key taugt nur für den Git-Proxy — Test 1), SEC-RATE-01 (ein unauthentifizierter, tröpfelnder Upload hält keine Verbindung länger als die Frist, auch wenn die Route schon mit 401 geantwortet hat — Test 2).
 
 - [ ] **Step 1: Write the failing auth test**
 
@@ -2727,6 +2726,7 @@ app.post("/api/vault/git/cleared", (req, res, next) => {
     next();
 }, drain);
 app.post("/api/vault/git/kept", drain);
+app.post("/api/vault/git/refused", (req, res) => res.status(401).json({ message: "no" }));
 app.post("/api/entries", drain);
 app.post("/api/slow", (req, res) => setTimeout(() => res.json({ ok: req.body.ok }), DEADLINE_MS * 2));
 
@@ -2769,6 +2769,28 @@ const post = (path, { body = "x".repeat(12), trickleMs = 0, type = "application/
     sendNext();
 });
 
+// Keeps sending after the answer, like a slow-loris client; settles when the server closes the connection.
+const uploadUntilClosed = (path, { giveUpMs }) => new Promise((resolve) => {
+    const started = Date.now();
+    const req = http.request({
+        host: "127.0.0.1", port: server.address().port, path, method: "POST",
+        headers: { "content-type": "application/octet-stream", "content-length": 100000 },
+    });
+    let status = null;
+    const sending = setInterval(() => req.write("x"), 20);
+    const giveUp = setTimeout(() => req.destroy(), giveUpMs);
+    req.on("response", (res) => {
+        status = res.statusCode;
+        res.resume();
+    });
+    req.on("socket", (socket) => socket.once("close", () => {
+        clearInterval(sending);
+        clearTimeout(giveUp);
+        resolve({ status, closedAfterMs: Date.now() - started });
+    }));
+    req.on("error", () => {});
+});
+
 test("a body that has not arrived after the deadline ends with 408, also under /api/vault/git/ until the route lifts it; a slow answer to a complete body does not", async () => {
     const trickle = { trickleMs: DEADLINE_MS * 3 };
 
@@ -2777,6 +2799,10 @@ test("a body that has not arrived after the deadline ends with 408, also under /
     assert.strictEqual((await post("/api/vault/git/cleared", trickle)).status, 200, "clearRequestDeadline lets the upload run past the deadline");
     assert.strictEqual((await post("/api/slow", { body: JSON.stringify({ ok: true }), type: "application/json" })).status, 200,
         "a complete body is not cut off while the route takes its time");
+
+    const refused = await uploadUntilClosed("/api/vault/git/refused", { giveUpMs: DEADLINE_MS * 10 });
+    assert.strictEqual(refused.status, 401);
+    assert.ok(refused.closedAfterMs < DEADLINE_MS * 3, `an answer without reading the body still ends the upload at the deadline (${refused.closedAfterMs} ms)`);
 });
 ```
 
@@ -2821,6 +2847,8 @@ const DEFAULT_MS = 300 * 1000;
 
 // Stands in for server.requestTimeout, which index.js sets to 0: Node cannot lift that limit for a
 // single request, and a git push may upload for longer. Only a route that knows who is sending lifts this one.
+// An answer alone does not end the deadline: after a 401 or 404 Node keeps reading an unread body on a
+// keep-alive connection, without requestTimeout for as long as the client sends.
 const requestDeadline = ({ ms = DEFAULT_MS } = {}) => (req, res, next) => {
     let timer = setTimeout(() => {
         timer = null;
@@ -2833,15 +2861,20 @@ const requestDeadline = ({ ms = DEFAULT_MS } = {}) => (req, res, next) => {
         timer = null;
     };
     req.clearRequestDeadline = clear;
-    res.once("finish", clear);
-    res.once("close", clear);
+    req.once("end", clear);
+    res.once("finish", () => {
+        if (req.complete) clear();
+    });
+    res.once("close", () => {
+        if (req.complete || req.destroyed) clear();
+    });
     next();
 };
 
 module.exports = { requestDeadline };
 ```
 
-Kein `unref`: der Timer endet mit `finish`/`close` der Antwort. Bei WebSocket-Upgrades schickt express-ws eine Attrappe als `res`, die nie endet; dort läuft der Timer einmal ab und tut nichts, weil `req.complete` `true` ist.
+Kein `unref`: der Timer endet mit dem Body oder läuft ab. Bei WebSocket-Upgrades schickt express-ws eine Attrappe als `res`, die nie endet; dort läuft der Timer einmal ab und tut nichts, weil `req.complete` `true` ist.
 
 - [ ] **Step 6: `server/index.js` — Middleware und Listener**
 
@@ -2863,7 +2896,6 @@ app.use(requestDeadline());
         const httpServer = app.listen(APP_PORT, () =>
             logger.system(`Server listening on port ${APP_PORT}`)
         );
-        // requestDeadline keeps the 300 s per request instead; Node cannot lift requestTimeout for one request.
         httpServer.requestTimeout = 0;
 ```
 
@@ -2901,36 +2933,34 @@ git commit -m "Vault: Git-Keys nur am Git-Proxy, Upload-Frist je Request statt r
 - Test: `server/lib/vault/__tests__/gitProxy.test.js` (neu)
 
 **Interfaces:**
-- Consumes: Task 3 (`broker.use` mit `approved`, `secretVariants`, `redactSecretText`), Task 2 (`gitSessionId`, `touchSession`, `grantStamp`), Task 6 (`req.agent.agentType === "git"`, `req.clearRequestDeadline()`), Task 1 (`git`, `gitUsername`, `readOnly`, Codes), Bestand `visibleItems`.
+- Consumes: Task 3 (`broker.use` mit `approved`, `secretVariants`, `redactSecretText`), Task 2 (`gitSessionId`, `touchSession`, `grantStamp`), Task 6 (`req.agent.agentType === "git"`, `req.clearRequestDeadline()`), Task 1 (`git`, `gitUsername`, `readOnly`, Codes), Task 8 (`coversGit` aus `server/lib/vault/gitHosts.js`), Bestand `visibleItems`.
 - Produces: Endpunkte `GET|POST /api/vault/git/<host>/<repo>/(info/refs|git-upload-pack|git-receive-pack)`.
 
 **Design:** kein UI-Anteil.
 
-**Tests:** 4 Tests, Ende-zu-Ende mit echtem `git` gegen einen lokalen `git http-backend` (CGI über `node:http`, Basic-Auth, TLS mit selbstsigniertem Zertifikat und `NODE_EXTRA_CA_CERTS` bzw. injizierbarem Agent für den Upstream) und einem Test-Home mit `insteadOf`/`extraHeader` — (1) `git clone`, Änderung, `git push` gelingen; ein Push mit „Einmal“ zeigt genau eine Karte, ein zweiter Push eine neue; Token steht weder im Test-Home noch in der gitconfig noch in Git-Ausgaben; (2) `readOnly`: clone gelingt, push scheitert mit `remote error: vault:` und `vault.read_only`; (3) POST ohne `info/refs` → 403 `vault.git_no_operation`; nicht erlaubter Pfad → 404; (4) Vorgangsfenster (verkürzt auf 200 ms): ein POST, der länger als das Fenster streamt, hält den Vorgang offen, der nächste POST gehört dazu (Review Focus 3); Hosts geändert zwischen `info/refs` und POST → `vault.approval_stale` (Review Focus 4).
+**Tests:** 5 Tests, Ende-zu-Ende mit echtem `git` gegen einen lokalen `git http-backend` (CGI über `node:https`, Basic-Auth, TLS mit selbstsigniertem Zertifikat über den injizierbaren `https.Agent` des Proxys) und einem Test-Home mit `insteadOf`/`extraHeader` — (1) `git clone`, Änderung, `git push`, `git fetch` gelingen; ein Push mit „Einmal“ zeigt genau eine Karte, ein zweiter Push eine neue; ein `vault.use` je Vorgang; Token steht weder im Test-Home noch in der gitconfig noch in Git-Ausgaben; (2) `readOnly`: clone gelingt, push scheitert mit `remote error: vault:` und `vault.read_only`; (3) POST ohne `info/refs` → 403 `vault.git_no_operation`; nicht erlaubter Pfad → 404; (4) Vorgangsfenster (verkürzt auf 200 ms): ein POST, der länger als das Fenster streamt, hält den Vorgang offen, der nächste POST gehört dazu (Review Focus 3); ein zweiter `receive-pack`-POST, während einer läuft → `vault.git_no_operation`; Hosts geändert zwischen `info/refs` und POST → `vault.approval_stale` (Review Focus 4); (5) Upload-Frist (Spec-Test 6a, Frist verkürzt): ein langsamer Body an einer anderen Route endet mit 408, ein geprüfter `upload-pack`-POST, dessen Body länger als die Frist tröpfelt, wird weitergeleitet und erreicht den Git-Host.
 
 **Parallel:** Task 4, Task 5 (Welle C).
 
-> **Hinweise aus der Planung (gelten für diesen und die folgenden Tasks dieser Datei):**
->
-> Abstimmung mit Task 3 (keine Abweichung mehr): Task 7 nutzt die Broker-Ergänzungen aus der Abweichungsnotiz am Anfang von Task 3 — `broker.use` der gemeinsamen Standardinstanz mit `deferUse: true` (kein `vault.use` je Anfrage; der Proxy ruft das zurückgegebene `recordUse({ bytes })` beim Ende des Git-Vorgangs), `precheck` für die Drossel von 30 Vorgängen pro Minute aus `broker.createRateLimit({ windowMs, limit })` (die Ablehnung auditiert der Broker höchstens einmal je Minute) und `approved = { itemId, stamp }` mit vollem `grantStamp` für die POSTs eines Vorgangs. Platzhalter in `VaultErrorMessage` (`<host>`, `<entries>`, `<kind>`) ersetzt der Proxy beim Werfen.
->
-> `server/middlewares/requestDeadline.js` (Task 6) exportiert benannt `{ requestDeadline }` (abgeglichen mit `t05-06.md`). Upstream-TLS im Test: `createGitProxy({ agent })` nimmt einen `https.Agent`; der Test übergibt `new https.Agent({ ca: <selbstsigniertes Zertifikat> })`. Kein `NODE_EXTRA_CA_CERTS` (wirkt nur beim Prozessstart) und kein Abschalten der Zertifikatsprüfung; in Produktion ist `agent` `undefined` (globaler Agent, System-CAs).
-
-
 Entscheidungen dieses Tasks (aus der Spec abgeleitet, im Code umgesetzt):
-- Der Upstream ist im Test ein `node:https`-Server (nicht `node:http`: Git geht laut Spec immer über `https:` zum Git-Host), der `git http-backend` als CGI startet; das Zertifikat erzeugt das vorhandene `selfsigned` (keine neue Abhängigkeit), den Upstream erreicht der Proxy über den injizierten `https.Agent` mit diesem Zertifikat als CA.
+- Broker: `broker.use` der gemeinsamen Standardinstanz (`server/lib/vault/broker.js`, Task 3) mit `deferUse: true` — kein `vault.use` je Anfrage; das zurückgegebene `recordUse({ bytes })` aus `info/refs` schreibt beim Ende des Vorgangs genau ein `vault.use` mit `bytes` (Summe beider Richtungen über alle Anfragen des Vorgangs) und setzt `lastUsedAt`. Antwortet der Git-Host auf `info/refs` nicht mit 200, entsteht kein Vorgang und `recordUse` läuft sofort. POSTs eines Vorgangs laufen mit `approved = { itemId, stamp }` (voller `grantStamp` aus `info/refs`); Zusatzangaben fürs Audit gehen als `auditExtra` (`host`, `repo`, `service`).
+- Drossel und Audit vor dem Broker: Die Drossel (30 `info/refs` pro Minute je Key, `broker.createRateLimit({ windowMs, limit })`) läuft bei jedem `info/refs` **vor** der Eintragssuche; `precheck` bleibt leer. Ablehnungen vor dem Broker (`vault.rate_limited`, `vault.git_not_enabled`, `vault.git_ambiguous`, `vault.git_no_operation`) auditiert der Proxy selbst als `vault.use_denied`, höchstens einmal je Key, Code und Minute (kleine Map mit Bereinigung des Fensters) — ein Skript, das in Schleife wiederholt, flutet sonst das Audit. Alles ab `broker.use` auditiert der Broker.
+- Hostvergleich ohne Groß-/Kleinschreibung über `coversGit` aus `server/lib/vault/gitHosts.js` (Task 8): dieselbe Regel wie bei der Einrichtung; Task 1 speichert Hosts wie eingegeben.
 - Ein Vorgang wird registriert, sobald der Git-Host `info/refs` mit 200 beantwortet — **bevor** die Antwort an Git geht. Git schickt den ersten POST, sobald es die Advertisement gelesen hat; würde der Vorgang erst nach `broker.use` registriert, käme der POST im Wettlauf zu früh (`vault.git_no_operation`).
-- Ein Vorgang zählt aktive Anfragen (`active`); das Fenster (Standard 60 s, `windowMs`) startet erst, wenn `active` auf 0 fällt. Ein `receive-pack`-POST mit mehr als `0000` im Body beendet den Vorgang nach seinem Ende.
-- Audit: `info/refs` und jeder POST laufen mit `deferUse: true`; das `recordUse` aus `info/refs` schreibt beim Ende des Vorgangs genau ein `vault.use` mit `bytes` (Summe beider Richtungen über alle Anfragen) und setzt `lastUsedAt`. Antwortet der Git-Host auf `info/refs` nicht mit 200, entsteht kein Vorgang und `recordUse` läuft sofort. Ablehnungen vor dem Broker (`vault.git_not_enabled`, `vault.git_ambiguous`, `vault.git_no_operation` — es gibt noch keinen bzw. keinen eindeutigen Eintrag) auditiert der Proxy selbst als `vault.use_denied`; alles ab `broker.use` (auch `vault.rate_limited` aus `precheck`) auditiert der Broker.
+- Ein Vorgang zählt aktive Anfragen (`active`); das Fenster (Standard 60 s, `windowMs`) startet erst, wenn `active` auf 0 fällt. Ein `receive-pack`-POST mit mehr als `0000` im Body beendet den Vorgang nach seinem Ende. Solange ein `receive-pack`-POST läuft, nimmt der Vorgang keinen zweiten an (`pushing`, → `vault.git_no_operation`): „Einmal“ deckt genau einen Push.
+- Abbruch: Unmittelbar bevor die Weiterleitung zählt und startet, prüft `act` `ctx.signal.aborted`, `req.destroyed` und `res.destroyed` → `vault.client_gone`; ein Client, der während der Freigabe aufgab, löst keine Anfrage an den Git-Host aus.
+- Request-Header an den Git-Host: `Content-Type`, `Content-Length` (nur wenn der Client einen schickte; sonst chunked), `Accept`, `Content-Encoding`, `Git-Protocol`, `User-Agent` und das eigene `Authorization: Basic …`.
 - Antworten für Ablehnungen: `info/refs` → 200 `application/x-<dienst>-advertisement` mit `ERR vault: <Meldung> (<code>)`; POST → 403 Text; immer `Connection: close` und Socket-Ende nach dem Senden. Platzhalter der Meldungen (`<host>`, `<entries>`, `<kind>`) ersetzt der Proxy in den Vorlagen aus `VaultErrorMessage` (Task 1).
 - Upstream-URL nur aus geprüftem Host und Repo-Pfad (SEC-INJECT-01): Query wird nicht durchgereicht, sondern aus dem geprüften Dienstnamen gebaut (`?service=git-upload-pack|git-receive-pack`).
+- Upstream-TLS: `createGitProxy({ windowMs, idleMs, agent })` nimmt einen `https.Agent`; in Produktion ist `agent` `undefined` (globaler Agent, System-CAs). Der Test übergibt `new https.Agent({ ca: <selbstsigniertes Zertifikat> })` — kein `NODE_EXTRA_CA_CERTS` (wirkt nur beim Prozessstart), kein Abschalten der Zertifikatsprüfung. Der Upstream ist im Test ein `node:https`-Server, der `git http-backend` als CGI startet; das Zertifikat erzeugt das vorhandene `selfsigned` (keine neue Abhängigkeit).
+- Upload-Frist: `server/middlewares/requestDeadline.js` (Task 6) exportiert benannt `{ requestDeadline }`; der Proxy hebt die Frist mit `req.clearRequestDeadline()` erst auf, wenn Key, Eintrag, Vorgang und Freigabe geprüft sind und die Weiterleitung beginnt.
 
-- [ ] **Step 0: Voraussetzungen aus Task 3 und Task 6 prüfen**
+- [ ] **Step 0: Voraussetzungen aus Task 3, Task 6 und Task 8 prüfen**
 
-Run: `cd /root/outpost && grep -n "deferUse\|createRateLimit\|precheck" server/lib/vault/broker.js && grep -n "requestDeadline" server/middlewares/requestDeadline.js && grep -n "gitSessionId\|touchSession\|grantStamp" server/lib/vault/approvals.js && grep -n "secretVariants\|redactSecretText" server/lib/vault/redact.js && grep -n "GIT_NO_OPERATION\|UPSTREAM_REFUSED\|SECRET_TOO_SHORT" server/lib/vault/errors.js`
-Expected: jede Suche trifft; `broker.js` exportiert `{ createBroker, createRateLimit, use }` und `use` liefert mit `deferUse: true` `{ result, approval, item, recordUse }`; `requestDeadline.js` exportiert `requestDeadline` benannt; `approvals.js` exportiert die drei Funktionen.
+Run: `cd /root/outpost && grep -n "deferUse\|createRateLimit\|auditExtra" server/lib/vault/broker.js && grep -n "requestDeadline" server/middlewares/requestDeadline.js && grep -n "gitSessionId\|touchSession\|grantStamp" server/lib/vault/approvals.js && grep -n "secretVariants\|redactSecretText" server/lib/vault/redact.js && grep -n "GIT_NO_OPERATION\|UPSTREAM_REFUSED\|SECRET_TOO_SHORT" server/lib/vault/errors.js && grep -n "coversGit" server/lib/vault/gitHosts.js`
+Expected: jede Suche trifft; `broker.js` exportiert `{ createBroker, createRateLimit, use }` und `use` liefert mit `deferUse: true` `{ result, approval, item, recordUse }`; `requestDeadline.js` exportiert `requestDeadline` benannt; `approvals.js` exportiert die drei Funktionen; `gitHosts.js` exportiert `coversGit`.
 
-Weicht ein Export ab: anhalten und melden (Task 3 bzw. Task 6 nachziehen oder den `require` im Test anpassen), nicht raten.
+Weicht ein Export ab: anhalten und melden (Task 3, 6 bzw. 8 nachziehen oder den `require` anpassen), nicht raten.
 
 - [ ] **Step 1: Failing Test schreiben**
 
@@ -2945,6 +2975,7 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const http = require("node:http");
 const https = require("node:https");
 const { execFile, spawn } = require("node:child_process");
 const express = require("express");
@@ -3085,10 +3116,12 @@ const startUpstream = async (t, { onRequest = async () => {} } = {}) => {
     return { host: `localhost:${server.address().port}`, bare, seen };
 };
 
-const listen = async (t, options = {}) => {
+// /slow stands for any other route that reads its whole body: there the deadline must still bite.
+const listen = async (t, { deadlineMs = 300000, ...options } = {}) => {
     const app = express();
-    app.use(requestDeadline({ ms: 300000 }));
+    app.use(requestDeadline({ ms: deadlineMs }));
     app.use(express.json());
+    app.post("/slow", (req, res) => { req.resume(); req.on("end", () => res.end("read")); });
     app.use("/api/vault", createGitRouter(createGitProxy({ agent: new https.Agent({ ca: tls.cert }), ...options })));
     const server = await new Promise((resolve) => { const s = app.listen(0, "127.0.0.1", () => resolve(s)); });
     t.after(() => { server.closeAllConnections(); server.close(); });
@@ -3139,19 +3172,34 @@ const openWindow = (t) => {
     t.after(() => stateBroadcaster.unregister(ACCOUNT, ws));
 };
 
-const gitCall = async (url, { method = "GET", body } = {}) => {
+const gitCall = async (url, { method = "GET", body, service = "upload-pack" } = {}) => {
     const res = await fetch(url, {
         method, body,
-        headers: { authorization: `Bearer ${GIT_KEY}`, ...(body ? { "content-type": "application/x-git-upload-pack-request" } : {}) },
+        headers: { authorization: `Bearer ${GIT_KEY}`, ...(body ? { "content-type": `application/x-git-${service}-request` } : {}) },
     });
     return { status: res.status, connection: res.headers.get("connection"), text: await res.text() };
 };
+
+// A POST whose body ("0000", a flush) arrives in two halves pauseMs apart, chunked as Git sends large bodies.
+const trickle = (url, pauseMs) => new Promise((resolve) => {
+    const req = http.request(url, {
+        method: "POST", headers: { authorization: `Bearer ${GIT_KEY}`, "content-type": "application/x-git-upload-pack-request" },
+    }, (res) => {
+        let text = "";
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => { text += chunk; });
+        res.on("end", () => resolve({ status: res.statusCode, text }));
+    });
+    req.on("error", () => {});
+    req.write("00");
+    setTimeout(() => req.end("00"), pauseMs);
+});
 
 const filesUnder = (dir) => fs.readdirSync(dir, { recursive: true })
     .map((name) => path.join(dir, name))
     .filter((file) => fs.statSync(file).isFile());
 
-test("git clone, Änderung und push laufen über Outpost; „Einmal“ deckt genau einen Vorgang, der Token erscheint nirgends auf dem Server", async (t) => {
+test("git clone, Änderung, push und fetch laufen über Outpost; „Einmal“ deckt genau einen Vorgang, der Token erscheint nirgends auf dem Server", async (t) => {
     const upstream = await startUpstream(t);
     await addItem(upstream.host, {}, true);
     openWindow(t);
@@ -3172,15 +3220,16 @@ test("git clone, Änderung und push laufen über Outpost; „Einmal“ deckt gen
         await ok("-C", work, "commit", "-qm", file);
         await ok("-C", work, "push", "origin", "main");
     }
+    await ok("-C", work, "fetch", "origin");
 
     const target = `Git · ${upstream.host}/o/r`;
     assert.deepStrictEqual(cards.map((card) => [card.tool, card.access, card.target]),
-        [["git", "read", target], ["git", "write", target], ["git", "write", target]]);
+        [["git", "read", target], ["git", "write", target], ["git", "write", target], ["git", "read", target]]);
     assert.strictEqual((await run("git", ["--git-dir", upstream.bare, "log", "--format=%s", "main"])).stdout, "b.txt\na.txt\ninit\n");
 
     await sleep(1500);
     const uses = audits.filter((entry) => entry.action === "vault.use");
-    assert.deepStrictEqual(uses.map((entry) => entry.details.service).sort(), ["fetch", "push", "push"]);
+    assert.deepStrictEqual(uses.map((entry) => entry.details.service).sort(), ["fetch", "fetch", "push", "push"]);
     assert.ok(uses.every((entry) => entry.details.tool === "git" && entry.details.host === upstream.host
         && entry.details.repo === "o/r" && entry.details.bytes > 0));
 
@@ -3233,11 +3282,13 @@ test("ein POST ohne info/refs bekommt 403 vault.git_no_operation, andere Pfade 4
     assert.deepStrictEqual(upstream.seen, []);
 });
 
-test("Review Focus 3 und 4: ein POST, der länger als das Vorgangsfenster läuft, hält den Vorgang offen; geänderte Hosts zwischen info/refs und POST ergeben vault.approval_stale", async (t) => {
+test("Review Focus 3 und 4: ein POST, der länger als das Vorgangsfenster läuft, hält den Vorgang offen; ein zweiter Push-POST während des ersten und geänderte Hosts zwischen info/refs und POST werden abgelehnt", async (t) => {
     let posts = 0;
     const upstream = await startUpstream(t, {
-        onRequest: async ({ method }) => {
-            if (method === "POST" && ++posts === 1) await sleep(4 * WINDOW_MS);
+        onRequest: async ({ method, path: pathname }) => {
+            if (method !== "POST") return;
+            if (pathname.endsWith("/git-receive-pack")) return sleep(3 * WINDOW_MS);
+            if (++posts === 1) await sleep(4 * WINDOW_MS);
         },
     });
     const item = await addItem(upstream.host);
@@ -3252,6 +3303,14 @@ test("Review Focus 3 und 4: ein POST, der länger als das Vorgangsfenster läuft
     await sleep(2 * WINDOW_MS);
     assert.strictEqual((await gitCall(`${repo}/git-upload-pack`, { method: "POST", body: "0000" })).status, 403);
 
+    assert.strictEqual((await gitCall(`${repo}/info/refs?service=git-receive-pack`)).status, 200);
+    const firstPush = gitCall(`${repo}/git-receive-pack`, { method: "POST", body: "0000", service: "receive-pack" });
+    await sleep(WINDOW_MS / 2);
+    const secondPush = await gitCall(`${repo}/git-receive-pack`, { method: "POST", body: "0000", service: "receive-pack" });
+    assert.strictEqual(secondPush.status, 403);
+    assert.match(secondPush.text, /\(vault\.git_no_operation\)/);
+    assert.strictEqual((await firstPush).status, 200);
+
     const advertisement = await gitCall(`${repo}/info/refs?service=git-upload-pack`);
     assert.strictEqual(advertisement.status, 200);
     assert.match(advertisement.text, /# service=git-upload-pack/);
@@ -3262,6 +3321,22 @@ test("Review Focus 3 und 4: ein POST, der länger als das Vorgangsfenster läuft
     assert.strictEqual(stale.status, 403);
     assert.match(stale.text, /\(vault\.approval_stale\)/);
     assert.strictEqual(upstream.seen.length, seen);
+});
+
+test("Spec-Test 6a: die Upload-Frist beendet einen langsamen Body an einer anderen Route, ein geprüfter Git-POST läuft über sie hinaus", async (t) => {
+    const deadlineMs = 300;
+    const upstream = await startUpstream(t);
+    await addItem(upstream.host.toUpperCase());
+    const outpost = await listen(t, { deadlineMs });
+    const repo = `${outpost}/api/vault/git/${upstream.host}/o/r.git`;
+
+    assert.strictEqual((await trickle(`${outpost}/slow`, 2 * deadlineMs)).status, 408);
+    assert.strictEqual((await gitCall(`${repo}/info/refs?service=git-upload-pack`)).status, 200);
+    const seen = upstream.seen.length;
+    const post = await trickle(`${repo}/git-upload-pack`, 2 * deadlineMs);
+
+    assert.strictEqual(post.status, 200);
+    assert.deepStrictEqual(upstream.seen.slice(seen).map((request) => `${request.method} ${request.path}`), ["POST /o/r.git/git-upload-pack"]);
 });
 ```
 
@@ -3279,6 +3354,7 @@ const { visibleItems, itemRef } = require("./visibility");
 const broker = require("./broker");
 const approvals = require("./approvals");
 const { secretVariants, redactSecretText } = require("./redact");
+const { coversGit } = require("./gitHosts");
 const { createAuditLog } = require("../../controllers/audit");
 const logger = require("../../utils/logger");
 
@@ -3294,7 +3370,7 @@ const SERVICES = {
     "git-upload-pack": { service: "fetch", access: "read" },
     "git-receive-pack": { service: "push", access: "write" },
 };
-const REQUEST_HEADERS = ["content-type", "accept", "content-encoding", "git-protocol", "user-agent"];
+const REQUEST_HEADERS = ["content-type", "content-length", "accept", "content-encoding", "git-protocol", "user-agent"];
 const RESPONSE_HEADERS = ["content-type", "cache-control", "expires", "pragma"];
 const FLUSH = Buffer.from("0000");
 const C = VaultErrorCode;
@@ -3329,9 +3405,6 @@ const parseGitRequest = (method, path, query) => {
     };
 };
 
-const coversGit = (item, host) =>
-    item.type === "api_key" && item.fields?.git === true && Array.isArray(item.fields.hosts) && item.fields.hosts.includes(host);
-
 const failureKind = (err) => {
     if (err?.message === "idle" || err?.code === "ETIMEDOUT") return "timeout";
     if (/CERT|TLS|SSL|SELF_SIGNED|UNABLE_TO/.test(String(err?.code ?? ""))) return "tls";
@@ -3354,7 +3427,18 @@ const refuse = (res, status, contentType, body) => {
 const createGitProxy = ({ windowMs = OPERATION_WINDOW_MS, idleMs = IDLE_MS, agent = undefined } = {}) => {
     const operations = new Map();
     const forwards = new Map();
+    const refusalsAudited = new Map();
     const advertiseRate = broker.createRateLimit({ windowMs: RATE_WINDOW_MS, limit: RATE_LIMIT });
+
+    // Refusals before the broker repeat as fast as a script retries; one audit entry per key, code and minute says enough.
+    const firstRefusal = (keyId, code) => {
+        const now = Date.now();
+        for (const [name, at] of refusalsAudited) if (now - at >= RATE_WINDOW_MS) refusalsAudited.delete(name);
+        const name = `${keyId}|${code}`;
+        if (refusalsAudited.has(name)) return false;
+        refusalsAudited.set(name, now);
+        return true;
+    };
 
     const record = (ctx, item, action, details) => createAuditLog({
         accountId: ctx.accountId, organizationId: item?.organizationId ?? null, action,
@@ -3456,16 +3540,19 @@ const createGitProxy = ({ windowMs = OPERATION_WINDOW_MS, idleMs = IDLE_MS, agen
         let op = null;
         let item = null;
         let brokered = false;
+        let pushing = false;
         try {
             if (request.advertise) {
+                advertiseRate(ctx);
                 item = await findGitItem(ctx, request.host);
             } else {
                 const current = operations.get(key);
-                if (!current || current.ended || current.finished) throw new VaultError(C.GIT_NO_OPERATION);
+                if (!current || current.ended || current.finished || current.pushing) throw new VaultError(C.GIT_NO_OPERATION);
                 op = current;
                 op.active += 1;
                 clearTimeout(op.timer);
                 item = op.item;
+                if (request.name === "git-receive-pack") pushing = op.pushing = true;
             }
             const check = (candidate) => {
                 if (!coversGit(candidate, request.host)) throw refusal(C.GIT_NOT_ENABLED, { host: request.host });
@@ -3477,6 +3564,7 @@ const createGitProxy = ({ windowMs = OPERATION_WINDOW_MS, idleMs = IDLE_MS, agen
                 const username = current.fields.gitUsername || DEFAULT_GIT_USERNAME;
                 variants = secretVariants({ token: secret, gitUsername: username });
                 const basic = Buffer.from(`${username}:${secret}`).toString("base64");
+                if (ctx.signal.aborted || req.destroyed || res.destroyed) throw new VaultError(C.CLIENT_GONE);
                 forwards.set(keyId, (forwards.get(keyId) ?? 0) + 1);
                 req.clearRequestDeadline();
                 try {
@@ -3488,7 +3576,7 @@ const createGitProxy = ({ windowMs = OPERATION_WINDOW_MS, idleMs = IDLE_MS, agen
                             const previous = operations.get(key);
                             op = {
                                 key, item: current, stamp: approvals.grantStamp(current),
-                                active: 1, bytes: 0, finished: false, ended: false, timer: null, recordUse: null,
+                                active: 1, bytes: 0, pushing: false, finished: false, ended: false, timer: null, recordUse: null,
                             };
                             operations.set(key, op);
                             if (previous && previous.active === 0) end(previous);
@@ -3505,18 +3593,20 @@ const createGitProxy = ({ windowMs = OPERATION_WINDOW_MS, idleMs = IDLE_MS, agen
             const { result, recordUse } = await broker.use({
                 ctx, itemRef: itemRef(item), tool: "git", access: request.access, target: `Git · ${request.host}/${request.repoName}`,
                 field: "token", check, act, approved: request.advertise ? null : { itemId: op.item.id, stamp: op.stamp },
-                precheck: request.advertise ? () => advertiseRate(ctx) : null, audit: details, deferUse: true,
+                auditExtra: details, deferUse: true,
             });
             if (request.advertise && op) op.recordUse = recordUse;
             else if (request.advertise) await recordUse({ bytes: result.bytes });
         } catch (err) {
             if (!(err instanceof VaultError)) logger.warn("Git proxy request failed", { error: err?.name });
-            if (!brokered && err instanceof VaultError) record(ctx, item, "vault.use_denied", { access: request.access, ...details, code: err.code });
+            if (!brokered && err instanceof VaultError && firstRefusal(keyId, err.code))
+                record(ctx, item, "vault.use_denied", { access: request.access, ...details, code: err.code });
             const message = redactSecretText(err instanceof VaultError ? `${err.message} (${err.code})` : "The git request failed unexpectedly; nothing was sent.", variants);
             if (request.advertise) refuse(res, 200, `application/x-${request.name}-advertisement`, pktLine(`ERR vault: ${message}`));
             else refuse(res, 403, "text/plain; charset=utf-8", `vault: ${message}\n`);
         } finally {
             variants = [];
+            if (pushing) op.pushing = false;
             if (op) settle(op);
         }
     };
@@ -3531,7 +3621,7 @@ Hinweise zum Code:
 - `req.path` ist relativ zum Einhängepunkt `/api/vault/git` und nicht dekodiert: `%2e%2e`, `%20` usw. scheitern an `SEGMENT` (404).
 - Die 60-s-Leerlaufgrenze ist `upstream.setTimeout(idleMs)`: Sie misst den Upstream-Socket, über den beide Richtungen laufen — stockt der Client beim Senden oder beim Lesen (Gegendruck), steht auch der Upstream-Socket still.
 - `onlyFlush`: Gits Probe-POST vor großen Pushes ist genau `0000` mit `Content-Length: 4`; `receive-pack`-Bodies sind nie gzip-kodiert (Git komprimiert nur `upload-pack`-Anfragen).
-- Kein Content-Length an den Upstream (Spec-Liste der weitergegebenen Header): `node:https` sendet chunked, wie Git selbst bei großen POSTs.
+- `Content-Length` geht nur weiter, wenn der Client ihn schickte; sonst sendet `node:https` chunked, wie Git selbst bei großen POSTs. `onlyFlush` und `bytes` zählen in beiden Fällen dieselben Body-Bytes.
 
 - [ ] **Step 4: Router anlegen und einhängen**
 
@@ -3555,7 +3645,7 @@ const { createGitProxy } = require("../../lib/vault/gitProxy");
  */
 const createGitRouter = (proxy = createGitProxy()) => {
     const app = Router();
-    app.use("/git", requireVaultEnabled, authenticate, proxy.handle);
+    app.use("/git", authenticate, requireVaultEnabled, proxy.handle);
     return app;
 };
 
@@ -3569,12 +3659,12 @@ module.exports.createGitRouter = createGitRouter;
 app.use(require("./git"));
 ```
 
-`app.use("/git", …)` ist pfadgebunden und läuft damit nur für `/api/vault/git/…` (der Kommentar in `index.js` warnt vor Router-Middleware ohne Pfad). Der globale `express.json()` liest die Git-Bodies nicht (`application/x-git-*`).
+`authenticate` steht vor `requireVaultEnabled` wie in den Routern `items` und `approvals`. `app.use("/git", …)` ist pfadgebunden und läuft damit nur für `/api/vault/git/…` (der Kommentar in `index.js` warnt vor Router-Middleware ohne Pfad). Der globale `express.json()` liest die Git-Bodies nicht (`application/x-git-*`).
 
 - [ ] **Step 5: Test laufen lassen, Erfolg prüfen**
 
 Run: `cd /root/outpost && node --test server/lib/vault/__tests__/gitProxy.test.js`
-Expected: PASS — `# pass 4`, `# fail 0`.
+Expected: PASS — `# pass 5`, `# fail 0`.
 
 Run: `cd /root/outpost && node --test server/lib/vault/__tests__/agentAuth.test.js server/lib/vault/__tests__/agentKeysRoute.test.js`
 Expected: PASS (der neue Router hängt unter demselben `/api/vault`; Auth und Agenten-Keys bleiben grün).
@@ -3588,18 +3678,19 @@ cd /root/outpost && git add server/lib/vault/gitProxy.js server/routes/vault/git
 ### Task 8: Einrichtung und Entziehen für Git
 
 **Files:**
-- Modify: `server/lib/vault/provision.js` (`CLI_NAMES` + `git`, `gitSetupCommand`, Git-Zweig in `registrationStateLines`/`revokeCommands`)
-- Modify: `server/controllers/agentKeys.js` (Git-Zweig in `createAgentKeys`, `setupAgent`, `manualCommand`; Hosts aus `visibleItems`)
+- Modify: `server/lib/vault/provision.js` (`CLI_NAMES` + `git`, `gitSetupCommand`, `isGitHost`, Git-Zweig in `registrationStateLines`/`revokeCommands`)
+- Create: `server/lib/vault/gitHosts.js` (`hostsOf`, `coversGit`, `gitHostsOf` — gemeinsame Hostregel für Einrichtung und Git-Proxy)
+- Modify: `server/controllers/agentKeys.js` (Git-Zweig in `createAgentKeys`, `setupAgent`, `manualCommand`; Hosts aus `visibleItems`; Git-Sitzung beim Entziehen/Ersetzen beenden)
 - Modify: `server/validations/vaultAgentKeys.js` (`agentTypes` + `git`)
 - Test: `server/lib/vault/__tests__/provision.test.js`, `server/lib/vault/__tests__/agentKeysRoute.test.js`
 
 **Interfaces:**
 - Consumes: Task 1 (`fields.git`, `fields.hosts` — nur als Datenvertrag; Felder können in Tests direkt gesetzt werden), Bestand `visibleItems`, `keyDropCommand`, `probeCommand`.
-- Produces: siehe „Schnittstellen“ Task 8.
+- Produces: siehe „Schnittstellen“ Task 8; zusätzlich `provision.isGitHost(host)` und `server/lib/vault/gitHosts.js`: `hostsOf(item)` (nur `api_key` mit `fields.git === true`, Hosts kleingeschrieben, ohne Hosts, die `isGitHost` ablehnt), `coversGit(item, host)` (Vergleich ohne Groß-/Kleinschreibung; Task 7), `gitHostsOf(items)` (sortiert, ohne Doppelte); jedes Git-Ergebnis von `POST /api/vault/agent-keys` trägt `hosts`.
 
 **Design:** kein UI-Anteil (UI baut Task 12).
 
-**Tests:** 3 Tests — (1) `gitSetupCommand`/`revokeCommands` gegen eine echte Shell in einem Test-Home: fremde `insteadOf`-Regel bleibt, eigene alte Zeilen werden ersetzt, `~/.gitconfig` Modus 600, XDG-Datei `~/.config/git/config` bleibt unberührt, Entziehen entfernt nur eigene Zeilen und nur bei passendem Präfix; Werte mit Sonderzeichen sicher gequotet; (2) Route mit Exec-Double: `agentTypes: ["git"]` legt `git@web01` an, Befehle enthalten je Host eine `insteadOf`-Zeile; (3) ohne Git-Eintrag für den Server: kein Key, Ergebnis `no_git_entries`.
+**Tests:** 3 Tests — (1) `gitSetupCommand`/`revokeCommands` gegen eine echte Shell in einem Test-Home: fremde `insteadOf`-Regel bleibt, eigene alte Zeilen werden ersetzt, `~/.gitconfig` Modus 600, XDG-Datei `~/.config/git/config` bleibt unberührt, Entziehen entfernt nur eigene Zeilen und nur bei passendem Präfix; Werte mit Sonderzeichen sicher gequotet; (2) Route mit Exec-Double: `agentTypes: ["git"]` legt `git@web01` an, Befehle enthalten je Host eine `insteadOf`-Zeile, Hosts kleingeschrieben, ein nicht Git-tauglicher Host (`fd00::1`) fehlt, `hosts` im Ergebnis; (3) ohne Git-Eintrag für den Server (auch: nur nicht Git-taugliche Hosts): kein Key, Ergebnis `no_git_entries` mit `hosts: []`.
 
 **Parallel:** Task 1, Task 2, Task 6, Task 9 (Welle A).
 
@@ -3610,7 +3701,9 @@ Entscheidungen dieses Tasks:
 - `base` = Agenten-Adresse ohne abschließenden Schrägstrich (`endpoint(agentUrl, "")`); beim Entziehen aus `key.agentUrl` (bei jedem Git-Key gesetzt), ersatzweise aus den Einstellungen.
 - Jedes Git-Ergebnis trägt `hosts: string[]` — genau die Hosts, die an `gitSetupCommand` gingen (sortiert, ohne Doppelte), bei `configured` wie bei `manual` (Task 12 zeigt sie in „Git eingerichtet für {{user}}: {{hosts}} …“).
 - Ohne Git-Eintrag: Ergebnis `{ id: null, agentType: "git", remoteUser, hosts: [], status: "manual", reason: "no_git_entries", probe: null, replacedRegistration: false }` ohne `command`; andere Agenten derselben Anfrage laufen normal; die Reihenfolge der Ergebnisse folgt `agentTypes`.
-- Hosts werden in `gitSetupCommand` zusätzlich gegen `/^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?(?::[1-9][0-9]{0,4})?$/` geprüft (`TypeError` sonst) — Task 1 validiert sie schon, `shQuote` schützt die Shell; die Prüfung hält auch die gitconfig-Abschnittsnamen sauber.
+- Hostregel an einer Stelle: `server/lib/vault/gitHosts.js` (diese Task) nimmt die Hosts eines Eintrags mit `git` kleingeschrieben und lässt alles weg, was `provision.isGitHost` (`/^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?(?::[1-9][0-9]{0,4})?$/`) ablehnt — Joi (Task 1) erlaubt auch `fd00::1` oder `bücher.de`, die als gitconfig-Abschnitt bzw. `insteadOf`-Präfix nicht taugen; ohne diesen Filter würfe `gitSetupCommand` (`TypeError`) und die Einrichtung endete mit 500. Bleibt kein Host übrig: `no_git_entries`. Task 1 speichert Hosts wie eingegeben; der Git-Proxy (Task 7) vergleicht mit demselben `coversGit`.
+- Datei vor dem Key privat: `gitSetupCommand` legt `~/.gitconfig` bei Bedarf unter `umask 077` an und setzt Modus 600, **bevor** der Key hineingeschrieben wird. Scheitert ein Schreiben, entfernt der Befehl die eigenen Zeilen wieder und endet mit Exit 1 — kein `insteadOf` bleibt stehen, das Git ohne Header zu Outpost schickt.
+- Entziehen und Ersetzen beenden die Git-Sitzung des alten Keys: ``approvals.forgetTransport(`git:${key.id}`)`` in `revoke` und in `finalize` (für ersetzte Git-Keys). Wörtlich statt `gitSessionId`: Task 2 läuft parallel in Welle A; `forgetTransport` gibt es heute schon und bleibt als Alias von `forgetSession`.
 
 - [ ] **Step 1: Failing Tests schreiben**
 
@@ -3695,7 +3788,7 @@ const gitItem = (accountId, name, fields, allServers = true) => VaultItem.create
 test("Git: die Einrichtung legt git@web01 an und schreibt je Host des Servers eine insteadOf-Zeile; Entziehen nutzt dieselbe Adresse", async (t) => {
     await listen(t);
     t.after(() => VaultItem.destroy({ where: {} }));
-    await gitItem(ACCOUNT_B, "github", { hosts: ["github.com", "git.example.net:8443"], git: true });
+    await gitItem(ACCOUNT_B, "github", { hosts: ["GitHub.com", "git.example.net:8443", "fd00::1"], git: true });
     await gitItem(ACCOUNT_B, "gitlab-api", { hosts: ["gitlab.example.com"], git: false });
     await gitItem(ACCOUNT_B, "elsewhere", { hosts: ["code.example.org"], git: true }, false);
 
@@ -3708,7 +3801,7 @@ test("Git: die Einrichtung legt git@web01 an und schreibt je Host des Servers ei
     const base = "https://outpost.example/api/vault/git/";
     for (const host of ["github.com", "git.example.net:8443"])
         assert.ok(setup.command.includes(`url.${base}${host}/.insteadOf`) && setup.command.includes(`https://${host}/`), host);
-    assert.ok(!/gitlab\.example\.com|code\.example\.org/.test(setup.command));
+    assert.ok(!/gitlab\.example\.com|code\.example\.org|GitHub|fd00/.test(setup.command));
     assert.ok(setup.command.includes(`http.${base}.extraHeader`));
     assert.ok(!setup.command.includes(keyFrom(execs[0].command)), "the key is read from the drop file");
 
@@ -3722,6 +3815,7 @@ test("Git: ohne Eintrag mit „Für Git nutzen“ für diesen Server entsteht ke
     t.after(() => VaultItem.destroy({ where: {} }));
     await gitItem(ACCOUNT_A, "github", { hosts: ["github.com"], git: true });
     await gitItem(ACCOUNT_B, "github-api", { hosts: ["api.github.com"], git: false });
+    await gitItem(ACCOUNT_B, "ipv6-only", { hosts: ["fd00::1"], git: true });
 
     const { status, body } = await setUp(tokens.b, { agentTypes: ["git"] });
 
@@ -3734,14 +3828,14 @@ test("Git: ohne Eintrag mit „Für Git nutzen“ für diesen Server entsteht ke
 });
 ```
 
-Der Eintrag von Konto A im zweiten Test ist für Konto B unsichtbar (SEC-IDOR-01/-TENANT-01 über `visibleItems`), der Eintrag `elsewhere` im ersten gilt für keinen Server (`allServers: false`, keine Bindung).
+`GitHub.com` kommt kleingeschrieben an, `fd00::1` fällt weg (im zweiten Test bleibt dadurch kein Host). Der Eintrag von Konto A im zweiten Test ist für Konto B unsichtbar (SEC-IDOR-01/-TENANT-01 über `visibleItems`), der Eintrag `elsewhere` im ersten gilt für keinen Server (`allServers: false`, keine Bindung).
 
 - [ ] **Step 2: Tests laufen lassen, Fehlschlag prüfen**
 
 Run: `cd /root/outpost && node --test server/lib/vault/__tests__/provision.test.js server/lib/vault/__tests__/agentKeysRoute.test.js`
 Expected: FAIL — `provision.test.js`: der Git-Test mit `TypeError: provision.gitSetupCommand is not a function`, die übrigen 5 grün; `agentKeysRoute.test.js`: „Git: die Einrichtung …“ mit `TypeError: undefined is not iterable` (die Validierung antwortet 400), „Git: ohne Eintrag …“ mit `400 !== 201`, die übrigen 10 grün.
 
-- [ ] **Step 3: `server/lib/vault/provision.js` erweitern**
+- [ ] **Step 3: `server/lib/vault/provision.js` erweitern, `server/lib/vault/gitHosts.js` anlegen**
 
 Zeile 1:
 
@@ -3760,6 +3854,8 @@ const OWN_GIT_KEYS = "^(url\\..*/api/vault/git/.*\\.insteadof|http\\..*/api/vaul
 Vor `const probeCommand = ({ url, keyFile }) => {` einfügen:
 
 ```js
+const isGitHost = (host) => typeof host === "string" && GIT_HOST.test(host);
+
 const gitPrefix = (base) => {
     if (typeof base !== "string" || !/^https?:\/\/[^/\s]+[^\s]*$/.test(base) || base.endsWith("/")) throw new TypeError("Invalid agent base URL");
     return `${base}/api/vault/git/`;
@@ -3779,15 +3875,22 @@ const removeOwnGitLines = (code, announce = false) => [
 
 const gitSetupCommand = ({ base, hosts, key, keyFile }) => {
     const prefix = gitPrefix(base);
-    if (!Array.isArray(hosts) || hosts.length === 0 || !hosts.every((host) => typeof host === "string" && GIT_HOST.test(host)))
-        throw new TypeError("Invalid git hosts");
+    if (!Array.isArray(hosts) || hosts.length === 0 || !hosts.every(isGitHost)) throw new TypeError("Invalid git hosts");
     const header = keyWord({ keyFile, key }, "Authorization: Bearer ");
+    // Private before the key is written; a failed write takes the own lines out again, so no insteadOf
+    // is left that sends git to Outpost without the header.
     return asCommand([
         `cli=$( ${findCliScript("git")} ) || exit 1`,
         ...header.setup,
+        `( umask 077; [ -e "${GITCONFIG}" ] || : > "${GITCONFIG}" ) && chmod 600 "${GITCONFIG}" || exit 1`,
         ...removeOwnGitLines(1, true),
-        ...hosts.map((host) => `"$cli" config --file "${GITCONFIG}" --replace-all ${shQuote(`url.${prefix}${host}/.insteadOf`)} ${shQuote(`https://${host}/`)} || exit 1`),
-        `"$cli" config --file "${GITCONFIG}" --replace-all ${shQuote(`http.${prefix}.extraHeader`)} ${header.word} || exit 1`,
+        "failed=0",
+        ...hosts.map((host) => `"$cli" config --file "${GITCONFIG}" --replace-all ${shQuote(`url.${prefix}${host}/.insteadOf`)} ${shQuote(`https://${host}/`)} || failed=1`),
+        `[ "$failed" = 1 ] || "$cli" config --file "${GITCONFIG}" --replace-all ${shQuote(`http.${prefix}.extraHeader`)} ${header.word} || failed=1`,
+        "if [ \"$failed\" = 1 ]; then",
+        ...removeOwnGitLines(1),
+        "exit 1",
+        "fi",
         `chmod 600 "${GITCONFIG}" || exit 1`,
         ...header.cleanup,
     ]);
@@ -3844,9 +3947,28 @@ In `module.exports` nach `setupCommand,` ergänzen:
 
 ```js
     gitSetupCommand,
+    isGitHost,
 ```
 
 Hinweise: Fehlt `git` beim Prüfen/Entziehen, endet der Befehl mit Exit 3 ohne Marker → `registration: "unknown"` mit Kopierbefehl, wie bei fehlender CLI. Entziehen entfernt bei MATCH alle eigenen Zeilen (auch die einer früheren Adresse), wie die Einrichtung vorher; fremde `insteadOf`-Regeln und `~/.config/git/config` bleiben.
+
+`server/lib/vault/gitHosts.js` anlegen:
+
+```js
+const { isGitHost } = require("./provision");
+
+// Hosts are stored as entered; Git and DNS compare them without case. A host that Joi accepts but a
+// gitconfig section cannot carry (fd00::1, bücher.de) is left out instead of breaking the setup.
+const hostsOf = (item) => (item?.type === "api_key" && item.fields?.git === true && Array.isArray(item.fields.hosts)
+    ? item.fields.hosts.map((host) => String(host).toLowerCase()).filter(isGitHost)
+    : []);
+
+const coversGit = (item, host) => hostsOf(item).includes(String(host).toLowerCase());
+
+const gitHostsOf = (items) => [...new Set(items.flatMap(hostsOf))].sort();
+
+module.exports = { hostsOf, coversGit, gitHostsOf };
+```
 
 - [ ] **Step 4: Controller und Validierung**
 
@@ -3858,10 +3980,15 @@ Hinweise: Fehlt `git` beim Prüfen/Entziehen, endet der Befehl mit Exit 3 ohne M
 
 `server/controllers/agentKeys.js`:
 
-Import (Zeile 14):
+Import (Zeile 14), dazu nach `const provision = require("../lib/vault/provision");` zwei Zeilen:
 
 ```js
 const { canUseVault, visibleItems } = require("../lib/vault/visibility");
+```
+
+```js
+const approvals = require("../lib/vault/approvals");
+const { gitHostsOf } = require("../lib/vault/gitHosts");
 ```
 
 `manualCommand` (Zeilen 32–33) ersetzen durch:
@@ -3874,9 +4001,11 @@ const setupCommandFor = ({ agentType, cliPath, agentUrl, keyFile, gitHosts }) =>
     ? provision.gitSetupCommand({ base: endpoint(agentUrl, ""), hosts: gitHosts, keyFile })
     : provision.setupCommand({ agentType, cliPath, url: endpoint(agentUrl, "/api/mcp"), keyFile }));
 
-const gitHostsFor = async (accountId, entryId) => [...new Set((await visibleItems({ accountId, agent: { entryId } }))
-    .filter((item) => item.type === "api_key" && item.fields?.git === true && Array.isArray(item.fields.hosts))
-    .flatMap((item) => item.fields.hosts.map((host) => String(host).toLowerCase())))].sort();
+const gitHostsFor = async (accountId, entryId) => gitHostsOf(await visibleItems({ accountId, agent: { entryId } }));
+// Literal instead of gitSessionId: approvals.js keeps forgetTransport as the name for every session.
+const forgetGitSession = (key) => {
+    if (key.agentType === "git") approvals.forgetTransport(`git:${key.id}`);
+};
 ```
 
 `setupAgent`: Kopf und `manual` ersetzen —
@@ -3939,14 +4068,26 @@ const setupOne = async ({ accountId, entry, identity, organizationId, agentUrl, 
         return { results: agentTypes.map((agentType) => (runnable.includes(agentType) ? results[runnable.indexOf(agentType)] : noGitEntries)) };
 ```
 
-`revoke`: die Zeile `const command = provision.revokeCommands(…)` ersetzen durch:
+`finalize`: nach `await ApiKey.destroy({ where: { id: replaced.map((old) => old.id) } });` einfügen:
+
+```js
+        replaced.forEach(forgetGitSession);
+```
+
+`revoke`: nach dem ersten `await ApiKey.destroy({ where: { id: key.id } });` einfügen:
+
+```js
+    forgetGitSession(key);
+```
+
+und die Zeile `const command = provision.revokeCommands(…)` ersetzen durch:
 
 ```js
         const base = key.agentType === "git" ? endpoint(key.agentUrl || (await VaultSettings.getOrCreate()).agentUrl || "", "") : undefined;
         const command = provision.revokeCommands({ agentType: key.agentType, keyPrefix: keyPrefixOf(key), base });
 ```
 
-`confirm`, `finalize` und `listAgentKeys` bleiben: Ein neuer Git-Key ersetzt beim Bestätigen den alten Git-Key desselben (Server, entfernter Benutzer) ohne Entfernbefehle, weil die Einrichtung die alten Zeilen schon ersetzt hat.
+`confirm` und `listAgentKeys` bleiben: Ein neuer Git-Key ersetzt beim Bestätigen den alten Git-Key desselben (Server, entfernter Benutzer) ohne Entfernbefehle, weil die Einrichtung die alten Zeilen schon ersetzt hat.
 
 - [ ] **Step 5: Tests laufen lassen, Erfolg prüfen**
 
@@ -3956,7 +4097,7 @@ Expected: PASS — `# pass 18`, `# fail 0` (6 in `provision.test.js`, 12 in `age
 - [ ] **Step 6: Commit**
 
 ```bash
-cd /root/outpost && git add server/lib/vault/provision.js server/controllers/agentKeys.js server/validations/vaultAgentKeys.js server/lib/vault/__tests__/provision.test.js server/lib/vault/__tests__/agentKeysRoute.test.js && git commit -m "Vault: Einrichtung und Entziehen für Git über insteadOf und extraHeader in ~/.gitconfig"
+cd /root/outpost && git add server/lib/vault/provision.js server/lib/vault/gitHosts.js server/controllers/agentKeys.js server/validations/vaultAgentKeys.js server/lib/vault/__tests__/provision.test.js server/lib/vault/__tests__/agentKeysRoute.test.js && git commit -m "Vault: Einrichtung und Entziehen für Git über insteadOf und extraHeader in ~/.gitconfig"
 ```
 
 ### Task 9: Client-Texte
@@ -3978,7 +4119,7 @@ cd /root/outpost && git add server/lib/vault/provision.js server/controllers/age
 
 Die Schlüsselliste aus „Schnittstellen“ Task 9 ist hier vervollständigt; Tasks 10–12 benutzen genau diese Schlüssel und ändern keine Locale-Datei. Gegenüber der Liste im Kopf:
 
-- ergänzt: `vault.dialog.usage.off`/`.on` („aus“/„an“, Hinweiszeile der Schalter), `.readOnlyHint` = „an — nur lesen“ (Manifest READONLY `selected`), `.allowHttpOff` = „aus — nur https“ (HTTP `default`), `.gitHint` = „an · Git-Benutzername“ (GIT `selected`; der Benutzername wird in `--type-mono` dahinter gesetzt), `.gitUsernameHelp` (Hilfetext laut `ui-vault-dialog.md`, Wortlaut aus `semantic_anchor.means` von UI-VAULT-DIALOG-GIT), `settings.vault.fillAnywhere.off`/`.on` (FILLANY `default`/`selected`, Schema laut `ui-vault-settings.md`).
+- ergänzt: `vault.dialog.usage.off`/`.on` („aus“/„an“, Hinweiszeile der Schalter), `.readOnlyHint` = „an — nur lesen“ (Manifest READONLY `selected`), `.allowHttpOff` = „aus — nur https“ (HTTP `default`), `.gitHint` = „an · Git-Benutzername“ (GIT `selected`; der Benutzername wird in `--type-mono` dahinter gesetzt), `.gitUsernameHelp` (Hilfetext laut `ui-vault-dialog.md`, Wortlaut aus `semantic_anchor.means` von UI-VAULT-DIALOG-GIT), `settings.vault.fillAnywhere.off`/`.on` (FILLANY `default`/`selected`, Schema laut `ui-vault-settings.md`), `vault.detail.usage.emptyGeneric` (UI-VAULT-DETAIL-USAGE `disabled`, Manifest-Revision 17: „Sonstiges“ ohne `fillOrigins`).
 - geändert: `vault.detail.usage.fill` = „Eintragen auf“ ohne Platzhalter — die Origins stehen laut Artboard in `--type-mono` dahinter und werden im JSX angehängt. `servers.agentAccess.result.successGit` und `servers.agentAccess.gitNote` tragen `<mono>…</mono>` um Adresse bzw. `git@github.com:` (gerendert mit `Trans`, Anleitung `ui-agent-access.md`: „in `--type-mono`“). `settings.account.agentKeys.sectionDescription` nennt jetzt beides (UI-API-KEYS-AGENTS `means`, Wortlaut des Artboards `ui-api-keys.html`).
 
 Endgültige Schlüssel (de_DE / en):
@@ -4008,6 +4149,7 @@ Endgültige Schlüssel (de_DE / en):
 | `vault.detail.usage.git` | Git · Benutzername {{user}} | Git · username {{user}} |
 | `vault.detail.usage.fill` | Eintragen auf | Fill in on |
 | `vault.detail.usage.empty` | vault_http über https | vault_http over https |
+| `vault.detail.usage.emptyGeneric` | Nur von Hand nutzbar — kein Eintragen im Browser | Manual use only — not filled in the browser |
 | `vault.approval.write` | schreibt | writes |
 | `vault.approval.target.fill` | Eintragen auf {{origin}} | Fill in on {{origin}} |
 | `settings.vault.fillAnywhere.title` | Token auf jeder Seite eintragen erlauben | Allow filling tokens on any page |
@@ -4052,6 +4194,7 @@ const TEXTS = {
     "vault.detail.usage.git": ["Git · Benutzername {{user}}", "Git · username {{user}}"],
     "vault.detail.usage.fill": ["Eintragen auf", "Fill in on"],
     "vault.detail.usage.empty": ["vault_http über https", "vault_http over https"],
+    "vault.detail.usage.emptyGeneric": ["Nur von Hand nutzbar — kein Eintragen im Browser", "Manual use only — not filled in the browser"],
     "vault.approval.write": ["schreibt", "writes"],
     "vault.approval.target.fill": ["Eintragen auf {{origin}}", "Fill in on {{origin}}"],
     "settings.vault.fillAnywhere.title": ["Token auf jeder Seite eintragen erlauben", "Allow filling tokens on any page"],
@@ -4109,7 +4252,7 @@ const KEYS = [
     "vault.agents.git",
     ...["title", "off", "on", "readOnly", "readOnlyHint", "allowHttp", "allowHttpOff", "allowHttpWarning", "git", "gitHint",
         "gitUsername", "gitUsernameHelp", "gitUsernameMissing", "fill", "fillEmpty", "fillInvalid"].map((key) => `vault.dialog.usage.${key}`),
-    ...["title", "readOnly", "allowHttp", "git", "fill", "empty"].map((key) => `vault.detail.usage.${key}`),
+    ...["title", "readOnly", "allowHttp", "git", "fill", "empty", "emptyGeneric"].map((key) => `vault.detail.usage.${key}`),
     "vault.approval.write", "vault.approval.target.fill",
     ...["title", "description", "off", "on"].map((key) => `settings.vault.fillAnywhere.${key}`),
     "servers.agentAccess.result.successGit", "servers.agentAccess.result.noGitEntries", "servers.agentAccess.gitNote",
@@ -4127,12 +4270,12 @@ EOF
 Expected:
 
 ```
-client/public/assets/locales/de_DE.json: 33/33
-client/public/assets/locales/en.json: 33/33
+client/public/assets/locales/de_DE.json: 34/34
+client/public/assets/locales/en.json: 34/34
 ```
 
 Run: `git diff --stat`
-Expected: `2 files changed, 92 insertions(+), 12 deletions(-)` — nur die beiden Locale-Dateien.
+Expected: `2 files changed, 94 insertions(+), 12 deletions(-)` — nur die beiden Locale-Dateien.
 
 Run: `cd client && npx vitest run src/pages/Vault src/common/components/VaultApprovalCard src/pages/Settings/pages/Vault src/pages/Servers/components/AgentAccessDialog`
 Expected: PASS (5 Dateien, 21 Tests) — die Bestandstests sehen keine geänderten Texte außer der Kopfzeile der Agenten-Schlüssel, die kein Test prüft.
@@ -4163,7 +4306,7 @@ git commit -m "Vault: Texte für Tokens, Git und Eintragen im Browser"
 | UI-VAULT-DIALOG-HTTP | Unverschlüsseltes HTTP erlauben | default, selected | nur API-Key |
 | UI-VAULT-DIALOG-GIT | Für Git nutzen | default, selected, error | nur API-Key; Git-Benutzername erst bei an |
 | UI-VAULT-DIALOG-FILL | Darf im Browser eingetragen werden auf | default, empty, error | API-Key und Sonstiges; Listen-Eingabe wie Login-Origins |
-| UI-VAULT-DETAIL-USAGE | Nutzung durch Agenten | default, empty | ausgeschaltetes fehlt als Zeile |
+| UI-VAULT-DETAIL-USAGE | Nutzung durch Agenten | default, empty, disabled | ausgeschaltetes fehlt als Zeile |
 
 **Tests:** 2 Tests — (1) Dialog API-Key: Schalter und Felder erscheinen, Git-Benutzername nur bei „Für Git nutzen“, Speichern sendet `fields` mit den Werten; Sonstiges zeigt nur FILL; (2) Detail zeigt nur eingeschaltete Zeilen, sonst den Leerzustand.
 
@@ -4249,7 +4392,7 @@ Anhängen:
 const node = (id) => document.querySelector(`[data-ui-id='${id}']`);
 const detail = (shown) => <VaultDetail item={shown} impersonating={false} onEdit={() => {}} onDelete={() => {}} />;
 
-test("die Nutzung durch Agenten nennt nur Eingeschaltetes, ohne Option den Leerzustand, und fehlt bei Login", () => {
+test("die Nutzung durch Agenten nennt nur Eingeschaltetes, ohne Option den Leerzustand je Typ, und fehlt bei Login", () => {
     const { rerender } = show({
         ...item, id: 6, name: "github-pat", type: "api_key", secretFields: ["token"],
         fields: {
@@ -4261,9 +4404,13 @@ test("die Nutzung durch Agenten nennt nur Eingeschaltetes, ohne Option den Leerz
         "Read only", "Git · username x-access-token", "Fill in on https://coolify.example.net",
     ]);
 
-    rerender(detail({ ...item, id: 7, name: "coolify-token", type: "generic", fields: { fillOrigins: [] }, secretFields: ["value"] }));
+    rerender(detail({ ...item, id: 6, name: "github-pat", type: "api_key", secretFields: ["token"], fields: { hosts: ["api.github.com"] } }));
     expect(within(node("UI-VAULT-DETAIL-USAGE")).queryAllByRole("listitem")).toEqual([]);
     expect(node("UI-VAULT-DETAIL-USAGE")).toHaveTextContent("vault_http over https");
+
+    rerender(detail({ ...item, id: 7, name: "coolify-token", type: "generic", fields: { fillOrigins: [] }, secretFields: ["value"] }));
+    expect(within(node("UI-VAULT-DETAIL-USAGE")).queryAllByRole("listitem")).toEqual([]);
+    expect(node("UI-VAULT-DETAIL-USAGE")).toHaveTextContent("Manual use only — not filled in the browser");
 
     rerender(detail(item));
     expect(node("UI-VAULT-DETAIL-USAGE")).toBeNull();
@@ -4580,7 +4727,9 @@ const USAGE_TYPES = ["api_key", "generic"];
                             {usage.map(([key, content]) => <li key={key}>{content}</li>)}
                         </ul>
                     ) : (
-                        <p className="vault-detail-hint">{t("vault.detail.usage.empty")}</p>
+                        <p className="vault-detail-hint">
+                            {t(item.type === "generic" ? "vault.detail.usage.emptyGeneric" : "vault.detail.usage.empty")}
+                        </p>
                     )}
                 </div>
             )}
@@ -4603,7 +4752,7 @@ const USAGE_TYPES = ["api_key", "generic"];
     font: tokens.$type-mono
 ```
 
-Zeilen wie im Artboard `ui-vault.html`: „Nur lesen“, „Auch über http“, „Git · Benutzername <name>“, „Eintragen auf <Origins in mono>“; ausgeschaltete Optionen fehlen. `empty` „vault_http über https“ in `--subtext`. Login, SSH und Datenbank rendern die Region nicht.
+Zeilen wie im Artboard `ui-vault.html`: „Nur lesen“, „Auch über http“, „Git · Benutzername <name>“, „Eintragen auf <Origins in mono>“; ausgeschaltete Optionen fehlen. `empty` (API-Key ohne Option) „vault_http über https“ und `disabled` („Sonstiges“ ohne `fillOrigins`, Manifest-Revision 17) „Nur von Hand nutzbar — kein Eintragen im Browser“, beide in `--subtext`. Login, SSH und Datenbank rendern die Region nicht.
 
 - [ ] **Step 8: Run tests to verify they pass**
 
@@ -5123,6 +5272,7 @@ git commit -m "Vault: Git als dritter Agent im Agenten-Zugang und bei den Agente
 
 **Files:**
 - Modify: `docs/vault.md`
+- Befunde aus Step 4–6 werden in der Datei des zuständigen Tasks behoben (dessen **Files:**-Zeile).
 
 **Interfaces:**
 - Consumes: alle Tasks.
@@ -5138,19 +5288,17 @@ git commit -m "Vault: Git als dritter Agent im Agenten-Zugang und bei den Agente
 In `docs/vault.md` (englisch, Stil der Datei) einfügen bzw. ändern:
 
 1. Abschnitt **3. Entries**, Tabelle der Typen: Zeile *API key* bekommt in „Fields“ `read only, allow http, use for Git (Git username), fill origins` und in „Usable by agents“ `vault_http`, `git`, `browser_fill_secret`; Zeile *Other* in „Fields“ `fill origins` und „Usable by agents“ `browser_fill_secret`. Darunter ein Absatz **Use by agents** mit den fünf Schaltern und ihren Standardwerten wie in der Spec „Datenmodell“, einschließlich der Regel zu Ports in `hosts` („leave out the default port“) und der Mindestlänge von 4 Zeichen für Tokens.
-2. Abschnitt **4. Agent access**, „Set up with one click“: Schritt 2 nennt **Git** als dritten Agenten; neuer Unterabschnitt **Git** mit: was die Einrichtung schreibt (die drei `git config --file "$HOME/.gitconfig"`-Zeilen aus der Spec, Modus 600), dass nur Hosts von Einträgen mit „Use for Git“ eingerichtet werden und man nach neuen Hosts erneut einrichtet, dass SSH-Remotes nicht über den Vault laufen und wie man umstellt (`git remote set-url origin https://github.com/o/r.git`), dass `git config` den Key für die Laufzeit des Befehls in der Prozessliste zeigt, und dass Entziehen nur die eigenen Zeilen entfernt.
-3. Abschnitt **5. Approvals**: Lesen und Schreiben getrennt (was als schreibend gilt), „For this session“ je Art, Git-Sitzung mit 12 h Leerlauf, „Once“ deckt bei Git einen Vorgang und bei Push genau einen Push, die entry-weite 60-s-Sperre nach Ablehnen, das Abzeichen „schreibt“ auf der Karte.
-4. Abschnitt **Time limits**: `vault_http` 30 s; Git-Uploads ohne Zeitgrenze, 60 s ohne Daten beenden; hinter einem Reverse-Proxy für `/api/vault/git/` und `/api/mcp` eine ausreichende Body-Grenze und ungepufferte Requests (`client_max_body_size 0; proxy_request_buffering off;` in nginx).
-5. Abschnitt **7. Security model and limits**: neuer Punkt **Responses** — der Token wird in `vault_http`-Antworten und Git-Text-Antworten geschwärzt, Pack-Daten nicht; Daten, die ein Dienst diesem Token zeigt, sieht der Agent. Neuer Punkt **Fill anywhere** — Risiko des Schalters, eine Sitzungsfreigabe gilt nur für eine Origin.
+2. Abschnitt **4. Agent access**, „Set up with one click“: Schritt 2 nennt **Git** als dritten Agenten; neuer Unterabschnitt **Git** mit: was die Einrichtung schreibt (die drei `git config --file "$HOME/.gitconfig"`-Zeilen aus der Spec, Modus 600), dass nur Hosts von Einträgen mit „Use for Git“ eingerichtet werden und man nach neuen Hosts erneut einrichtet, dass SSH-Remotes nicht über den Vault laufen und wie man umstellt (`git remote set-url origin https://github.com/o/r.git`), dass `git config` den Key für die Laufzeit des Befehls in der Prozessliste zeigt, die Grenzen (30 Git-Vorgänge pro Minute je Git-Key, höchstens 4 gleichzeitige Weiterleitungen, kein Dumb-HTTP und kein LFS → 404, Lesevorgänge ohne Zeitgrenze), und dass Entziehen nur die eigenen Zeilen entfernt und die Git-Sitzung beendet.
+3. Abschnitt **5. Approvals**: Lesen und Schreiben getrennt (was als schreibend gilt), „For this session“ je Art — Lesen, Schreiben über API/Git und Eintragen im Browser sind getrennte Freigaben, Git-Sitzung mit 12 h Leerlauf, „Once“ deckt bei Git einen Vorgang und bei Push genau einen Push, die entry-weite 60-s-Sperre nach Ablehnen, das Abzeichen „schreibt“ auf der Karte.
+4. Abschnitt **Time limits**: `vault_http` 30 s; Git-Uploads ohne Zeitgrenze, 60 s ohne Daten beenden; hinter einem Reverse-Proxy für `/api/vault/git/` und `/api/mcp` eine ausreichende Body-Grenze und ungepufferte Requests (`client_max_body_size 0; proxy_request_buffering off;` in nginx); `/api/vault/git/` braucht dazu dasselbe `proxy_read_timeout` von mindestens 150 s wie `/api/mcp`, weil `info/refs` auf die Freigabe wartet.
+5. Abschnitt **7. Security model and limits**: neuer Punkt **Responses** — der Token wird in `vault_http`-Antworten und Git-Text-Antworten geschwärzt, Pack-Daten nicht; Daten, die ein Dienst diesem Token zeigt, sieht der Agent. Neuer Punkt **Fill anywhere** — Risiko des Schalters, eine Sitzungsfreigabe gilt nur für eine Origin. Neuer Punkt **Proxy environment** — Node `fetch` und `node:https` nutzen `HTTP(S)_PROXY` nur mit `NODE_USE_ENV_PROXY=1`; Outpost setzt sie nicht, mit dieser Variable ginge der Token über den Proxy.
 6. Abschnitt **9. Tools**: Tabelle um `vault_http` und `browser_fill_secret` ergänzen (Argumente, Rückgabe, Grenzen wie Spec), eine Zeile zum Git-Proxy; Fehlercode-Tabelle um alle Codes aus Spec „Fehlercodes“ mit ihrer Meldung ergänzen.
-
-7. **Design-Quellen angleichen** (Abweichung 6 im Plan-Kopf): in `docs/design/guides/ui-vault-dialog.md` die Lage der Gruppe „Nutzung durch Agenten“ auf „nach UI-VAULT-DIALOG-APPROVAL, vor UI-VAULT-DIALOG-SAVE“ setzen; in `docs/design/design-system.md` „Neu in Runde 16“ denselben Ort nennen; in `docs/design/manifest.yaml` das `example` von `UI-VAULT-DETAIL-USAGE` auf „Nur lesen · Git · Benutzername x-access-token · Eintragen auf https://coolify.example.net“ ändern (kein neuer Revisionseintrag: Beispiel, kein Text des Produkts), dann `/root/mockingbird/plugin/scripts/mockingbird-scope.sh --validate --root .` und `/root/mockingbird/plugin/scripts/mb-insert-block.sh docs/superpowers/specs/2026-10-10-vault-tokens-design.md --root . --spec docs/superpowers/specs/2026-10-10-vault-tokens-design.md --screens UI-VAULT,UI-VAULT-DIALOG,UI-VAULT-APPROVAL,UI-VAULT-SETTINGS,UI-AGENT-ACCESS,UI-API-KEYS` erneut ausführen.
 
 Run: `cd /root/outpost && yarn docs:build`
 Expected: `build complete`, keine `dead link`-Meldung.
 
 ```bash
-git add docs/vault.md docs/design docs/superpowers/specs/2026-10-10-vault-tokens-design.md
+git add docs/vault.md
 git commit -m "Vault: Doku zu vault_http, browser_fill_secret und Git-Proxy"
 ```
 
@@ -5205,9 +5353,9 @@ Aufbau: Branch-Image auf die Testinstanz (NAS, wie Release-Ablauf), `docs/browse
 
 1. **API lesen.** Claude ruft `vault_http` GET `https://api.github.com/repos/o/vault-test` → Karte ohne Abzeichen, „Für diese Sitzung“; Antwort mit Repo-Daten; ein zweiter GET ohne Karte. Transcript auf `web01` enthält den PAT nicht.
 2. **API schreiben.** `vault_http` POST `/repos/o/vault-test/issues` mit Titel → neue Karte **mit** Abzeichen „schreibt“; „Einmal“ → Issue angelegt; ein zweiter POST → wieder Karte.
-3. **Git.** `git clone https://github.com/o/vault-test` auf `web01` → Karte „Git · github.com/o/vault-test · lesen“, „Einmal“, Klon gelingt. Datei ändern, `git push` → genau **eine** Karte mit „schreibt“; „Einmal“; Push gelingt; ein zweiter Push → neue Karte. `grep -r "<PAT-Anfang>" ~ 2>/dev/null` findet nichts; `stat -c %a ~/.gitconfig` → `600`.
+3. **Git.** `git clone https://github.com/o/vault-test` auf `web01` → Karte „Git · github.com/o/vault-test“ ohne Abzeichen „schreibt“, „Einmal“, Klon gelingt. Datei ändern, `git push` → genau **eine** Karte mit „schreibt“; „Einmal“; Push gelingt; ein zweiter Push → neue Karte. `grep -r "<PAT-Anfang>" ~ 2>/dev/null` findet nichts; `stat -c %a ~/.gitconfig` → `600`.
 4. **Nur lesen.** Eintrag auf „Nur lesen“ stellen → `git push` endet mit `fatal: remote error: vault: This entry is read-only …`; POST über `vault_http` → `vault.read_only`.
-5. **Browser.** Claude öffnet `http://web01:8080/`, ruft `browser_fill_secret` für `github-pat` auf das Token-Feld → Karte „Eintragen auf http://web01:8080“ mit „schreibt“; danach Snapshot `••••`, `browser_screenshot` → `vault.screenshot_locked`.
+5. **Browser.** Claude öffnet `http://web01:8080/`, ruft `browser_fill_secret` für `github-pat` auf das Token-Feld → Karte „Eintragen auf http://web01:8080“ mit „schreibt“; „Für diese Sitzung“; danach Snapshot `••••`, `browser_screenshot` → `vault.screenshot_locked`; ein folgender `vault_http`-POST öffnet trotzdem eine eigene Karte (Freigaben je Werkzeug).
 6. **Entziehen.** Git-Zugang entziehen → `~/.gitconfig` ohne die `/api/vault/git/`-Zeilen, eine eigene `insteadOf`-Regel des Nutzers bleibt; `git fetch` geht wieder direkt an GitHub (ohne Token: 401/Prompt).
 
 Befunde wie in Step 4 beheben.
@@ -5221,7 +5369,7 @@ Befunde wie in Step 4 beheben.
 | SEC-SECRET-01 | 3, 4, 7 | `redact.test.js`, `vaultHttp.test.js` (Token in Body/Header/`location` → `••••`), `gitProxy.test.js` (Token nicht im Test-Home, nicht in Ausgaben); Step 4 Zeile 4 |
 | SEC-DEP-01 | alle | Step 4 Zeile 1 |
 | SEC-INJECT-01 | 7, 8 | `provision.test.js` (Quoting gegen echte Shell), Step 4 Zeilen 5–6 |
-| SEC-RATE-01 | 4, 5, 7 | Grenzen in `tools/http.js`, `tools/fillSecret.js` (gemeinsame Fill-Rate), `gitProxy.js`; Step 4 lesen |
+| SEC-RATE-01 | 3, 4, 5, 6, 7 | `fillRate`/`httpLimits` je Anbieter (Task 3, 4), `gitProxy.js` (30/min vor der Eintragssuche, Ablehnungen einmal je Key/Code/Minute auditiert), `requestDeadline.test.js` (Slow-Loris); Step 4 lesen |
 | SEC-RATE-02 | — | not-applicable (Spec-Sicherheitsblock) |
 | SEC-SQLI-01 | 1, 7, 8 | Step 4 Zeile 3 |
 | SEC-XSS-01 | 11 | Step 4 Zeile 2; Zielzeile der Karte als Text gerendert |
@@ -5230,7 +5378,7 @@ Befunde wie in Step 4 beheben.
 | SEC-TENANT-01 | 3, 7, 8 | wie IDOR; `agentKeysRoute.test.js` (Hosts nur aus sichtbaren Einträgen des Servers) |
 | SEC-RBAC-01 | 4, 5, 6 | `agentAuth.test.js` (Git-Key nur Git-Proxy, Claude-Key nicht), Verfügbarkeit `browser_fill_secret` nur mit `connect.browser` |
 | SEC-APIKEY-01 | 8 | Git-Keys über `generateToken`/`hashToken` wie Agenten-Keys (`agentKeysRoute.test.js`) |
-| SEC-SESS-02 | 2 | `approvals.test.js` (Git-Sitzung 12 h, Stempel beendet Freigabe) |
+| SEC-SESS-02 | 2, 8 | `approvals.test.js` (Git-Sitzung 12 h in Reihenfolge des Routers, Stempel beendet Freigabe); `agentKeys.js` `revoke`/`finalize` beenden `git:<keyId>` |
 | SEC-TOKEN-01 | 8 | `provision.test.js` (`~/.gitconfig` 600, `extraHeader` nur für die Outpost-URL) |
 | SEC-PII-01 | 3, 4, 7 | Audit-Details ohne Query/Body/Header in `vaultHttp.test.js` und `gitProxy.test.js` |
 
@@ -5244,7 +5392,7 @@ Befunde wie in Step 4 beheben.
 | 4 Git Ende-zu-Ende | 7 | `gitProxy.test.js` |
 | 5 Einrichtung/Entziehen Git | 8 | `provision.test.js`, `agentKeysRoute.test.js` |
 | 6 Auth | 6 | `agentAuth.test.js` |
-| 6a Upload-Dauer | 6 | `requestDeadline.test.js` |
+| 6a Upload-Dauer | 6, 7 | `requestDeadline.test.js` (auch früh beantworteter, tröpfelnder Upload), `gitProxy.test.js` (Test 5) |
 | 7 `browser_fill_credential` nach Umbau | 3 | bestehende `mcpProvider.test.js`, `vaultGuard.test.js` |
 | 8 Client | 10, 11, 12 | vitest-Dateien der Tasks |
 | 9 Handtest | 13 | Step 6 |
