@@ -1,3 +1,4 @@
+const crypto = require("node:crypto");
 const net = require("node:net");
 const { Op } = require("sequelize");
 const ApiKey = require("../models/ApiKey");
@@ -99,6 +100,7 @@ const finalize = async (key, entry, context) => {
 const setupAgent = async ({ accountId, entry, identity, agentUrl, key, token }) => {
     const url = endpoint(agentUrl, "/api/mcp");
     const keyPrefix = keyPrefixOf(key);
+    const keyFile = `key-${key.id}-${crypto.randomBytes(8).toString("hex")}`;
     const manual = (reason, probe = null, replacedRegistration = false) => ({
         status: "manual", reason, probe, replacedRegistration,
         command: provision.setupCommand({ agentType: key.agentType, cliPath: key.agentType, url, key: token }),
@@ -106,9 +108,9 @@ const setupAgent = async ({ accountId, entry, identity, agentUrl, key, token }) 
     if (!identity) return manual("exec_failed");
 
     const run = (command) => runRemote(accountId, entry, identity.id, command);
-    const cleanup = () => run(provision.keyCleanupCommand({ keyPrefix }));
+    const cleanup = () => run(provision.keyCleanupCommand({ keyFile }));
 
-    const drop = await run(provision.keyDropCommand({ keyPrefix, key: token }));
+    const drop = await run(provision.keyDropCommand({ keyFile, key: token }));
     if (!drop.ran || drop.exitCode !== 0) {
         await cleanup();
         return manual("exec_failed");
@@ -116,7 +118,7 @@ const setupAgent = async ({ accountId, entry, identity, agentUrl, key, token }) 
 
     let finished = false;
     try {
-        await run(provision.probeCommand({ url: endpoint(agentUrl, "/api/vault/agent-keys/probe"), keyPrefix }));
+        await run(provision.probeCommand({ url: endpoint(agentUrl, "/api/vault/agent-keys/probe"), keyFile }));
         const probe = await probeResult(key.id, entry);
 
         const found = await run(provision.findCliCommand(key.agentType));
@@ -124,7 +126,7 @@ const setupAgent = async ({ accountId, entry, identity, agentUrl, key, token }) 
         const cliPath = found.exitCode === 0 ? outputLines(found.stdout).filter((line) => line.startsWith("/")).pop() : null;
         if (!cliPath) return manual("cli_missing", probe);
 
-        const setup = await run(provision.setupCommand({ agentType: key.agentType, cliPath, url, keyPrefix }));
+        const setup = await run(provision.setupCommand({ agentType: key.agentType, cliPath, url, keyFile }));
         const replacedRegistration = outputLines(setup.stdout).includes("OUTPOST_REPLACED=1");
         const configured = { status: "configured", reason: null, probe, replacedRegistration };
         if (setup.ran && setup.exitCode === 0) {

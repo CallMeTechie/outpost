@@ -20,6 +20,7 @@ const execs = [];
 const SERVER_IP = "198.51.100.7";
 const RESET = { cliFound: true, setupFails: false, registered: "ABSENT", revokeOutput: "REMOVED\n", probeFrom: SERVER_IP };
 const dropped = {};
+const files = [];
 const state = { base: null, identityOf: {}, ...RESET };
 
 fake("../../../utils/database", db);
@@ -61,12 +62,17 @@ fake("../../controlPlane/ControlPlaneServer", {
         const ok = (stdout) => ({ success: true, stdout, stderr: "", exitCode: 0 });
         if (command.includes("chmod 700")) {
             const [token] = /outpost_[0-9a-f]{64}/.exec(command);
-            dropped[token.slice(0, 14)] = token;
+            const [file] = /key-\d+-[0-9a-f]{16}/.exec(command);
+            dropped[file] = token;
+            files.push(["drop", file]);
             return ok("");
         }
-        if (command.includes('rm -f "$HOME/.config/outpost/key-')) return ok("");
+        if (command.includes('rm -f "$HOME/.config/outpost/key-')) {
+            files.push(["cleanup", /key-\d+-[0-9a-f]{16}/.exec(command)[0]]);
+            return ok("");
+        }
         if (command.includes("/api/vault/agent-keys/probe")) {
-            const token = dropped[/key-(outpost_[0-9a-f]{6})/.exec(command)[1]];
+            const token = dropped[/key-\d+-[0-9a-f]{16}/.exec(command)[0]];
             const res = await fetch(`${state.base}/api/vault/agent-keys/probe`, {
                 headers: { authorization: `Bearer ${token}`, ...(state.probeFrom ? { "x-forwarded-for": state.probeFrom } : {}) },
             });
@@ -116,6 +122,7 @@ test.before(async () => {
 
 test.beforeEach(async () => {
     execs.length = 0;
+    files.length = 0;
     audits.length = 0;
     Object.assign(state, RESET);
     await ApiKey.destroy({ where: { kind: "agent" } });
@@ -195,6 +202,9 @@ test("scheitert die Einrichtung, kommt der Befehl zum Kopieren und der Key bleib
     assert.deepStrictEqual([result.status, result.reason], ["manual", "cli_missing"]);
     const key = keyFrom(result.command);
     assert.match(result.command, /mcp add --scope user --transport http outpost/);
+    assert.strictEqual(files.length, 2);
+    assert.deepStrictEqual(files.map(([op]) => op), ["drop", "cleanup"]);
+    assert.strictEqual(files[0][1], files[1][1]);
     assert.deepStrictEqual((await call("GET", `/api/vault/agent-keys?entryId=${ENTRY_ID}`, tokens.a)).body.keys, []);
     assert.strictEqual((await call("POST", "/api/mcp", key)).status, 401);
 

@@ -15,6 +15,7 @@ const ODD_URL = "https://out post.example/a'b\"c$(touch \"$HOME/pwned\")`touch \
 
 const newKey = () => `outpost_${crypto.randomBytes(32).toString("hex")}`;
 const prefixOf = (key) => key.slice(0, "outpost_".length + 6);
+const fileOf = (key) => `key-7-${key.slice(8, 24)}`;
 const ODD_KEY = newKey();
 
 const node = (body) => `#!${process.execPath}\n${body}`;
@@ -92,7 +93,7 @@ const makeHome = (t) => {
     });
     const read = (name) => fs.readFileSync(path.join(home, name), "utf8");
     const calls = (name) => read(`${name}-calls.log`).trim().split("\n").map((line) => JSON.parse(line));
-    const drop = (key) => run(provision.keyDropCommand({ keyPrefix: prefixOf(key), key }));
+    const drop = (key) => run(provision.keyDropCommand({ keyFile: fileOf(key), key }));
     const pwned = () => fs.readdirSync(home).filter((name) => name.startsWith("pwned"));
     return { home, bin, install, run, drop, read, calls, pwned };
 };
@@ -105,20 +106,37 @@ test("Spec-Test 9: der Claude-Befehl reicht URL und Key mit Sonderzeichen unverÃ
         mcpServers: { outpost: { type: "http", url: "http://old", headers: { Authorization: "Bearer outpost_old" } } },
     }, null, 2));
 
-    const dropCommand = provision.keyDropCommand({ keyPrefix: prefixOf(ODD_KEY), key: ODD_KEY });
+    const dropCommand = provision.keyDropCommand({ keyFile: fileOf(ODD_KEY), key: ODD_KEY });
     const commands = [
-        provision.claudeSetupCommand({ cliPath, url: ODD_URL, keyPrefix: prefixOf(ODD_KEY) }),
-        provision.setupCommand({ agentType: "codex", cliPath, url: ODD_URL, keyPrefix: prefixOf(ODD_KEY) }),
-        provision.probeCommand({ url: ODD_URL, keyPrefix: prefixOf(ODD_KEY) }),
-        provision.keyCleanupCommand({ keyPrefix: prefixOf(ODD_KEY) }),
+        provision.claudeSetupCommand({ cliPath, url: ODD_URL, keyFile: fileOf(ODD_KEY) }),
+        provision.setupCommand({ agentType: "codex", cliPath, url: ODD_URL, keyFile: fileOf(ODD_KEY) }),
+        provision.probeCommand({ url: ODD_URL, keyFile: fileOf(ODD_KEY) }),
+        provision.keyCleanupCommand({ keyFile: fileOf(ODD_KEY) }),
     ];
     assert.ok(dropCommand.includes(ODD_KEY));
     assert.ok(commands.every((command) => !command.includes(ODD_KEY)));
     assert.ok(!/claude|codex|curl|wget/.test(dropCommand));
-    assert.throws(() => provision.keyDropCommand({ keyPrefix: prefixOf(ODD_KEY), key: "outpost_k'e$(id)" }), TypeError);
+    assert.throws(() => provision.keyDropCommand({ keyFile: fileOf(ODD_KEY), key: "outpost_k'e$(id)" }), TypeError);
+
+    const codexCli = env.install("codex");
+    fs.mkdirSync(path.join(env.home, ".codex"));
+    fs.writeFileSync(path.join(env.home, ".codex/outpost.env"), "export OUTPOST_MCP_TOKEN='outpost_old'\n");
+    const oldJson = env.read(".claude.json");
+    const missing = [
+        commands[0],
+        provision.setupCommand({ agentType: "codex", cliPath: codexCli, url: ODD_URL, keyFile: fileOf(ODD_KEY) }),
+        provision.codexEnvCommand({ keyFile: fileOf(ODD_KEY) }),
+    ];
+    for (const command of missing) assert.notStrictEqual((await env.run(command)).code, 0);
+    assert.strictEqual(fs.existsSync(path.join(env.home, "claude-calls.log")), false);
+    assert.strictEqual(fs.existsSync(path.join(env.home, "codex-calls.log")), false);
+    assert.strictEqual(env.read(".codex/outpost.env"), "export OUTPOST_MCP_TOKEN='outpost_old'\n");
+    assert.strictEqual(env.read(".claude.json"), oldJson);
+    fs.rmSync(path.join(env.home, ".codex"), { recursive: true });
+
     assert.strictEqual((await env.drop(ODD_KEY)).code, 0);
     assert.strictEqual(fs.statSync(path.join(env.home, ".config/outpost")).mode & 0o777, 0o700);
-    assert.strictEqual(fs.statSync(path.join(env.home, `.config/outpost/key-${prefixOf(ODD_KEY)}`)).mode & 0o777, 0o600);
+    assert.strictEqual(fs.statSync(path.join(env.home, `.config/outpost/${fileOf(ODD_KEY)}`)).mode & 0o777, 0o600);
 
     const { code, stdout } = await env.run(commands[0]);
 
@@ -131,6 +149,14 @@ test("Spec-Test 9: der Claude-Befehl reicht URL und Key mit Sonderzeichen unverÃ
     ]);
     assert.strictEqual(fs.statSync(path.join(env.home, ".claude.json")).mode & 0o777, 0o600);
     assert.deepStrictEqual(fs.readdirSync(path.join(env.home, ".config/outpost")), []);
+
+    env.install("claude", env.bin);
+    env.install("codex", env.bin);
+    const literal = { cliPath: "claude", url: ODD_URL, key: ODD_KEY };
+    assert.strictEqual((await env.run(provision.setupCommand({ agentType: "claude", ...literal }))).code, 0);
+    assert.strictEqual(env.calls("claude").at(-1).at(-1), `Authorization: Bearer ${ODD_KEY}`);
+    assert.strictEqual((await env.run(provision.setupCommand({ agentType: "codex", ...literal, cliPath: "codex" }))).code, 0);
+    assert.strictEqual((await env.run(". \"$HOME/.codex/outpost.env\"; printf '%s' \"$OUTPOST_MCP_TOKEN\"")).stdout, ODD_KEY);
     assert.deepStrictEqual(env.pwned(), []);
 });
 
@@ -138,7 +164,7 @@ test("Spec-Test 9: Codex liest den Key aus einer privaten Datei, die jede Shell 
     const env = makeHome(t);
     const cliPath = env.install("codex");
     fs.writeFileSync(path.join(env.home, ".zshrc"), "export ZSH_SEEN=1");
-    const command = provision.setupCommand({ agentType: "codex", cliPath, url: ODD_URL, keyPrefix: prefixOf(ODD_KEY) });
+    const command = provision.setupCommand({ agentType: "codex", cliPath, url: ODD_URL, keyFile: fileOf(ODD_KEY) });
 
     await env.drop(ODD_KEY);
     assert.strictEqual((await env.run(command)).code, 0);
@@ -160,7 +186,7 @@ test("Spec-Test 9: Codex liest den Key aus einer privaten Datei, die jede Shell 
     fs.writeFileSync(path.join(env.home, "fail-add"), "");
     const other = newKey();
     await env.drop(other);
-    const failed = await env.run(provision.setupCommand({ agentType: "codex", cliPath, url: ODD_URL, keyPrefix: prefixOf(other) }));
+    const failed = await env.run(provision.setupCommand({ agentType: "codex", cliPath, url: ODD_URL, keyFile: fileOf(other) }));
     assert.notStrictEqual(failed.code, 0);
     assert.match(failed.stdout, /^OUTPOST_REPLACED=1$/m);
     assert.strictEqual((await env.run(". \"$HOME/.codex/outpost.env\"; printf '%s' \"$OUTPOST_MCP_TOKEN\"")).stdout, ODD_KEY);
@@ -169,7 +195,7 @@ test("Spec-Test 9: Codex liest den Key aus einer privaten Datei, die jede Shell 
 test("die Probe gibt den Key nur Ã¼ber eine 0600-Datei an curl bzw. wget und lÃ¶scht die Datei danach", async (t) => {
     const env = makeHome(t);
     const url = "https://outpost.example/x'y$(touch \"$HOME/pwned\")/api/vault/agent-keys/probe";
-    const command = provision.probeCommand({ url, keyPrefix: prefixOf(ODD_KEY) });
+    const command = provision.probeCommand({ url, keyFile: fileOf(ODD_KEY) });
     await env.drop(ODD_KEY);
 
     env.install("curl", env.bin);
@@ -215,7 +241,7 @@ test("Review Focus 4: PrÃ¼fen und Entziehen erkennen nur eine Registrierung, die
     for (const agentType of ["claude", "codex"]) {
         const cliPath = env.install(agentType);
         await env.drop(theirs);
-        assert.strictEqual((await env.run(provision.setupCommand({ agentType, cliPath, url: "https://outpost.example/api/mcp", keyPrefix: prefixOf(theirs) }))).code, 0);
+        assert.strictEqual((await env.run(provision.setupCommand({ agentType, cliPath, url: "https://outpost.example/api/mcp", keyFile: fileOf(theirs) }))).code, 0);
         const revokeMine = provision.revokeCommands({ agentType, keyPrefix: prefixOf(mine) });
         const revokeTheirs = provision.revokeCommands({ agentType, keyPrefix: prefixOf(theirs) });
         const check = async (key) => (await env.run(provision.registrationCheckCommand({ agentType, keyPrefix: prefixOf(key) }))).stdout;

@@ -5,6 +5,7 @@ const SOURCE_LINE = "[ -f ~/.codex/outpost.env ] && . ~/.codex/outpost.env";
 const RC_FILES = ["$HOME/.bashrc", "$HOME/.profile", "$HOME/.bash_profile", "$HOME/.zshrc"];
 const KEY_PREFIX = /^[A-Za-z0-9_]{8,64}$/;
 const KEY_TOKEN = /^[A-Za-z0-9_]{16,128}$/;
+const KEY_FILE = /^key-\d{1,12}-[0-9a-f]{16}$/;
 const KEY_DIR = "$HOME/.config/outpost";
 
 // Relies on the layout Claude Code writes (JSON.stringify with two spaces): only the user-scope
@@ -48,32 +49,36 @@ const findCliScript = (name) => {
 
 const findCliCommand = (name) => asCommand([findCliScript(name)]);
 
-const keyFile = (keyPrefix) => {
-    if (!KEY_PREFIX.test(keyPrefix)) throw new TypeError("Invalid key prefix");
-    return `${KEY_DIR}/key-${keyPrefix}`;
+const keyPath = (keyFile) => {
+    if (typeof keyFile !== "string" || !KEY_FILE.test(keyFile)) throw new TypeError("Invalid key file name");
+    return `${KEY_DIR}/${keyFile}`;
 };
 
 // The key travels in argv only inside keyDropCommand. Everything else reads it from the drop file via
 // a builtin printf/redirect; a literal key is for the copy command shown to the user.
-const keyWord = ({ keyPrefix, key }, before = "", after = "") => (keyPrefix !== undefined
-    ? { setup: [`k="${keyFile(keyPrefix)}"`], word: `"${before}$(cat "$k")${after}"`, cleanup: ["rm -f \"$k\""] }
+const keyWord = ({ keyFile, key }, before = "", after = "") => (keyFile !== undefined
+    ? {
+        setup: [`k="${keyPath(keyFile)}"`, "key=$(cat \"$k\") && [ -n \"$key\" ] || exit 1"],
+        word: `"${before}$key${after}"`,
+        cleanup: ["rm -f \"$k\""],
+    }
     : { setup: [], word: shQuote(`${before}${key}${after}`), cleanup: [] });
 
 const withCliPath = ["case \"$cli\" in /*) PATH=\"${cli%/*}:$PATH\"; export PATH ;; esac"];
 
-const keyDropCommand = ({ keyPrefix, key }) => {
+const keyDropCommand = ({ keyFile, key }) => {
     if (typeof key !== "string" || !KEY_TOKEN.test(key)) throw new TypeError("Invalid key");
     return asCommand([
         `mkdir -p "${KEY_DIR}" || exit 1`,
         `chmod 700 "${KEY_DIR}" || exit 1`,
-        `printf '%s' ${shQuote(key)} > "${keyFile(keyPrefix)}" || exit 1`,
+        `printf '%s' ${shQuote(key)} > "${keyPath(keyFile)}" || exit 1`,
     ]);
 };
 
-const keyCleanupCommand = ({ keyPrefix }) => asCommand([`rm -f "${keyFile(keyPrefix)}"`]);
+const keyCleanupCommand = ({ keyFile }) => asCommand([`rm -f "${keyPath(keyFile)}"`]);
 
-const claudeSetupCommand = ({ cliPath, url, key, keyPrefix }) => {
-    const header = keyWord({ keyPrefix, key }, "Authorization: Bearer ");
+const claudeSetupCommand = ({ cliPath, url, key, keyFile }) => {
+    const header = keyWord({ keyFile, key }, "Authorization: Bearer ");
     return asCommand([
     `cli=${shQuote(cliPath)}`,
     ...withCliPath,
@@ -91,8 +96,8 @@ const claudeSetupCommand = ({ cliPath, url, key, keyPrefix }) => {
 };
 
 // The key file comes last and is swapped in whole: until then the previous key stays readable.
-const codexEnvCommand = ({ key, keyPrefix }) => {
-    const line = keyWord({ keyPrefix, key }, "export OUTPOST_MCP_TOKEN='", "'");
+const codexEnvCommand = ({ key, keyFile }) => {
+    const line = keyWord({ keyFile, key }, "export OUTPOST_MCP_TOKEN='", "'");
     return asCommand([
     ...line.setup,
     "mkdir -p \"$HOME/.codex\" || exit 1",
@@ -112,9 +117,10 @@ const codexEnvCommand = ({ key, keyPrefix }) => {
     ]);
 };
 
-const codexSetupCommand = ({ cliPath, url }) => asCommand([
+const codexSetupCommand = ({ cliPath, url, key, keyFile }) => asCommand([
     `cli=${shQuote(cliPath)}`,
     ...withCliPath,
+    ...keyWord({ keyFile, key }).setup,
     "if \"$cli\" mcp get outpost >/dev/null 2>&1; then",
     "echo OUTPOST_REPLACED=1",
     "\"$cli\" mcp remove outpost >/dev/null 2>&1 || true",
@@ -124,13 +130,13 @@ const codexSetupCommand = ({ cliPath, url }) => asCommand([
     `"$cli" mcp add outpost --url ${shQuote(url)} --bearer-token-env-var OUTPOST_MCP_TOKEN >/dev/null || exit 1`,
 ]);
 
-const setupCommand = ({ agentType, cliPath, url, key, keyPrefix }) => (cliName(agentType) === "claude"
-    ? claudeSetupCommand({ cliPath, url, key, keyPrefix })
-    : `${codexSetupCommand({ cliPath, url })} && ${codexEnvCommand({ key, keyPrefix })}`);
+const setupCommand = ({ agentType, cliPath, url, key, keyFile }) => (cliName(agentType) === "claude"
+    ? claudeSetupCommand({ cliPath, url, key, keyFile })
+    : `${codexSetupCommand({ cliPath, url, key, keyFile })} && ${codexEnvCommand({ key, keyFile })}`);
 
-const probeCommand = ({ url, keyPrefix }) => {
-    const bearer = keyWord({ keyPrefix }, "Authorization: Bearer ");
-    const wgetHeader = keyWord({ keyPrefix }, "header = Authorization: Bearer ");
+const probeCommand = ({ url, keyFile }) => {
+    const bearer = keyWord({ keyFile }, "Authorization: Bearer ");
+    const wgetHeader = keyWord({ keyFile }, "header = Authorization: Bearer ");
     return asCommand([
     ...bearer.setup,
     "f=$(mktemp) || exit 1",
