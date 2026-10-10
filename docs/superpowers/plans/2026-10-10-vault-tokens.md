@@ -147,11 +147,9 @@ Gemeinsame Datei in Welle C: `server/lib/vault/mcpProvider.js` bekommt aus Task 
 
 > **Hinweise aus der Planung (gelten für diesen und die folgenden Tasks dieser Datei):**
 >
-> # Plan 2a — Task 1 und Task 2
+> Keine Abweichung von den Schnittstellen im Plan-Kopf.
 >
-> Keine Abweichung von den Schnittstellen in `00-head.md`.
->
-> Hinweise für den Zusammenbau: (a) `00-head.md` nennt unter „Abweichungen und Ergänzungen“ Punkt 3 eine Funktion `sessionFor({ transportId, keyId, git })`, die verbindlichen „Schnittstellen“ dagegen `gitSessionId(keyId)`. Task 2 baut, wie die Schnittstellen sagen, `gitSessionId`; Punkt 3 im Kopf sollte angeglichen werden. (b) `server/lib/StateBroadcaster.js` braucht für die neue Payload keine Änderung, weil `VAULT_APPROVALS` schon `listOpenApprovals` durchreicht; Task 2 fasst die Datei deshalb nicht an. (c) Meldungen mit Platzhalter (`vault.http_failed`, `vault.git_not_enabled`, `vault.git_ambiguous`, `vault.upstream_refused`) stehen als Vorlage mit `<kind>`, `<host>` bzw. `<entries>` in `VaultErrorMessage`; Task 4 und Task 7 übergeben die Meldung mit ersetztem Platzhalter, z. B. `new VaultError(C.GIT_NOT_ENABLED, VaultErrorMessage[C.GIT_NOT_ENABLED].replace("<host>", host))`.
+> Hinweise: (b) `server/lib/StateBroadcaster.js` braucht für die neue Payload keine Änderung, weil `VAULT_APPROVALS` schon `listOpenApprovals` durchreicht; Task 2 fasst die Datei deshalb nicht an. (c) Meldungen mit Platzhalter (`vault.http_failed`, `vault.git_not_enabled`, `vault.git_ambiguous`, `vault.upstream_refused`) stehen als Vorlage mit `<kind>`, `<host>` bzw. `<entries>` in `VaultErrorMessage`; Task 4 und Task 7 übergeben die Meldung mit ersetztem Platzhalter, z. B. `new VaultError(C.GIT_NOT_ENABLED, VaultErrorMessage[C.GIT_NOT_ENABLED].replace("<host>", host))`.
 
 
 - [ ] **Step 1: Failing tests schreiben**
@@ -1127,7 +1125,7 @@ In `server/lib/browser/vaultGuard.js` kommt `variantsOf` künftig aus `redact.js
 const { variantsOf } = require("../vault/redact");
 ```
 
-und diese Zeilen fallen weg (bisher Z. 278–284):
+und diese Zeilen fallen weg (bisher Z. 53–59):
 
 ```js
 // document.title and innerText collapse runs of whitespace, so the value can show up in that form too.
@@ -2914,7 +2912,7 @@ git commit -m "Vault: Git-Keys nur am Git-Proxy, Upload-Frist je Request statt r
 
 > **Hinweise aus der Planung (gelten für diesen und die folgenden Tasks dieser Datei):**
 >
-> Abstimmung mit Task 3 (keine Abweichung mehr): Task 7 nutzt die Broker-Ergänzungen aus `t03-04.md` — `broker.use` der gemeinsamen Standardinstanz mit `deferUse: true` (kein `vault.use` je Anfrage; der Proxy ruft das zurückgegebene `recordUse({ bytes })` beim Ende des Git-Vorgangs), `precheck` für die Drossel von 30 Vorgängen pro Minute aus `broker.createRateLimit({ windowMs, limit })` (die Ablehnung auditiert der Broker höchstens einmal je Minute) und `approved = { itemId, stamp }` mit vollem `grantStamp` für die POSTs eines Vorgangs. Platzhalter in `VaultErrorMessage` (`<host>`, `<entries>`, `<kind>`) ersetzt der Proxy beim Werfen.
+> Abstimmung mit Task 3 (keine Abweichung mehr): Task 7 nutzt die Broker-Ergänzungen aus der Abweichungsnotiz am Anfang von Task 3 — `broker.use` der gemeinsamen Standardinstanz mit `deferUse: true` (kein `vault.use` je Anfrage; der Proxy ruft das zurückgegebene `recordUse({ bytes })` beim Ende des Git-Vorgangs), `precheck` für die Drossel von 30 Vorgängen pro Minute aus `broker.createRateLimit({ windowMs, limit })` (die Ablehnung auditiert der Broker höchstens einmal je Minute) und `approved = { itemId, stamp }` mit vollem `grantStamp` für die POSTs eines Vorgangs. Platzhalter in `VaultErrorMessage` (`<host>`, `<entries>`, `<kind>`) ersetzt der Proxy beim Werfen.
 >
 > `server/middlewares/requestDeadline.js` (Task 6) exportiert benannt `{ requestDeadline }` (abgeglichen mit `t05-06.md`). Upstream-TLS im Test: `createGitProxy({ agent })` nimmt einen `https.Agent`; der Test übergibt `new https.Agent({ ca: <selbstsigniertes Zertifikat> })`. Kein `NODE_EXTRA_CA_CERTS` (wirkt nur beim Prozessstart) und kein Abschalten der Zertifikatsprüfung; in Produktion ist `agent` `undefined` (globaler Agent, System-CAs).
 
@@ -5146,7 +5144,7 @@ In `docs/vault.md` (englisch, Stil der Datei) einfügen bzw. ändern:
 5. Abschnitt **7. Security model and limits**: neuer Punkt **Responses** — der Token wird in `vault_http`-Antworten und Git-Text-Antworten geschwärzt, Pack-Daten nicht; Daten, die ein Dienst diesem Token zeigt, sieht der Agent. Neuer Punkt **Fill anywhere** — Risiko des Schalters, eine Sitzungsfreigabe gilt nur für eine Origin.
 6. Abschnitt **9. Tools**: Tabelle um `vault_http` und `browser_fill_secret` ergänzen (Argumente, Rückgabe, Grenzen wie Spec), eine Zeile zum Git-Proxy; Fehlercode-Tabelle um alle Codes aus Spec „Fehlercodes“ mit ihrer Meldung ergänzen.
 
-7. **Design-Quellen angleichen** (Abweichung 6 im Plan-Kopf): in `docs/design/guides/ui-vault-dialog.md` die Lage der Gruppe „Nutzung durch Agenten“ auf „nach UI-VAULT-DIALOG-APPROVAL, vor UI-VAULT-DIALOG-SAVE“ setzen; in `docs/design/design-system.md` „Neu in Runde 16“ denselben Ort nennen; in `docs/design/manifest.yaml` das `example` von `UI-VAULT-DETAIL-USAGE` auf „Nur lesen · Git · Benutzername x-access-token · Eintragen auf https://coolify.example.net“ ändern (kein neuer Revisionseintrag: Beispiel, kein Text des Produkts), dann `/root/mockingbird/plugin/scripts/mockingbird-scope.sh --validate --root .` und `mb-insert-block.sh` für die Spec erneut ausführen.
+7. **Design-Quellen angleichen** (Abweichung 6 im Plan-Kopf): in `docs/design/guides/ui-vault-dialog.md` die Lage der Gruppe „Nutzung durch Agenten“ auf „nach UI-VAULT-DIALOG-APPROVAL, vor UI-VAULT-DIALOG-SAVE“ setzen; in `docs/design/design-system.md` „Neu in Runde 16“ denselben Ort nennen; in `docs/design/manifest.yaml` das `example` von `UI-VAULT-DETAIL-USAGE` auf „Nur lesen · Git · Benutzername x-access-token · Eintragen auf https://coolify.example.net“ ändern (kein neuer Revisionseintrag: Beispiel, kein Text des Produkts), dann `/root/mockingbird/plugin/scripts/mockingbird-scope.sh --validate --root .` und `/root/mockingbird/plugin/scripts/mb-insert-block.sh docs/superpowers/specs/2026-10-10-vault-tokens-design.md --root . --spec docs/superpowers/specs/2026-10-10-vault-tokens-design.md --screens UI-VAULT,UI-VAULT-DIALOG,UI-VAULT-APPROVAL,UI-VAULT-SETTINGS,UI-AGENT-ACCESS,UI-API-KEYS` erneut ausführen.
 
 Run: `cd /root/outpost && yarn docs:build`
 Expected: `build complete`, keine `dead link`-Meldung.
