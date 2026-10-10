@@ -155,7 +155,7 @@ const createVaultProvider = ({ getBrowserTools, approvals = require("./approvals
     };
 
     const fill = async (args, ctx) => {
-        const note = { item: args.item, sessionId: null, target: null, stage: "before_approval" };
+        const note = { item: typeof args.item === "string" ? args.item.slice(0, 200) : null, sessionId: null, target: null, stage: "before_approval" };
         const caller = { accountId: ctx.accountId, agent: ctx.agent ?? null };
         const usernameRef = args.usernameRef ?? null;
         const refs = { passwordRef: args.passwordRef, usernameRef };
@@ -179,8 +179,8 @@ const createVaultProvider = ({ getBrowserTools, approvals = require("./approvals
             return checkFillTarget(current, refs, fields.origins ?? []);
         };
         try {
-            assertFillArgs(args);
             assertFillRate(ctx);
+            assertFillArgs(args);
             await loadItem();
             session = locate(args.sessionId ?? null);
             Object.assign(note, { sessionId: session.id, target: normalizeOrigin(session.state.url) });
