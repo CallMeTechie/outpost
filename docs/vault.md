@@ -234,7 +234,7 @@ services:
       CSP_ENFORCE: "true"
 ```
 
-Outpost then sends the whole policy as `Content-Security-Policy` instead of `Content-Security-Policy-Report-Only`. If something stops working, remove the variable again and report the logged violation. Enforcing will become the default in a later release.
+Outpost then sends the whole policy as `Content-Security-Policy` instead of `Content-Security-Policy-Report-Only`. If something stops working, remove the variable again and report the logged violation. Enforcing becomes the default by 2026-12-31; progress is tracked in [issue #16](https://github.com/CallMeTechie/outpost/issues/16).
 
 | Directive | Value | Why |
 | - | - | - |
