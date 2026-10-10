@@ -14,7 +14,7 @@ import { isCredentiallessProtocol } from "@/common/utils/ConnectionUtil.js";
 import { useDevFeature } from "@/common/utils/devFeatures.js";
 import { useBodyClass } from "@/common/hooks/useBodyClass.js";
 import Icon from "@/common/components/Icon";
-import { CircleUser as IconCircleUser, CircleAlert as IconCircleAlert, Radio as IconRadio, Cog as IconCog, Cable as IconCable, SquareTerminal as IconSquareTerminal, Copy as IconCopy, MousePointerClick as IconMousePointerClick, Computer as IconComputer, FileText as IconFileText, FlaskConical as IconFlaskConical, FolderSymlink as IconFolderSymlink, FolderOpen as IconFolderOpen, FolderPlus as IconFolderPlus, FolderMinus as IconFolderMinus, TextCursorInput as IconTextCursorInput, Import as IconImport, Search as IconSearch, Monitor as IconMonitor, NotebookPen as IconNotebookPen, Pencil as IconPencil, Play as IconPlay, CirclePlus as IconCirclePlus, Power as IconPower, PlugZap as IconPlugZap, ScrollText as IconScrollText, ServerOff as IconServerOff, Square as IconSquare, RefreshCcw as IconRefreshCcw, Tag as IconTag, Waypoints as IconWaypoints } from "lucide-react";
+import { CircleUser as IconCircleUser, CircleAlert as IconCircleAlert, Radio as IconRadio, Cog as IconCog, Cable as IconCable, SquareTerminal as IconSquareTerminal, Copy as IconCopy, MousePointerClick as IconMousePointerClick, Computer as IconComputer, FileText as IconFileText, FlaskConical as IconFlaskConical, FolderSymlink as IconFolderSymlink, FolderOpen as IconFolderOpen, FolderPlus as IconFolderPlus, FolderMinus as IconFolderMinus, TextCursorInput as IconTextCursorInput, Import as IconImport, Search as IconSearch, Monitor as IconMonitor, NotebookPen as IconNotebookPen, Pencil as IconPencil, Play as IconPlay, CirclePlus as IconCirclePlus, Power as IconPower, PlugZap as IconPlugZap, ScrollText as IconScrollText, ServerOff as IconServerOff, Square as IconSquare, RefreshCcw as IconRefreshCcw, Tag as IconTag, Waypoints as IconWaypoints, KeyRound as IconKeyRound } from "lucide-react";
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator, useContextMenu } from "@/common/components/ContextMenu";
 import { useDrop, useDragLayer } from "react-dnd";
 import { deleteRequest, patchRequest, postRequest, putRequest } from "@/common/utils/RequestUtil.js";
@@ -27,6 +27,8 @@ import { useToast } from "@/common/contexts/ToastContext.jsx";
 import ActionConfirmDialog from "@/common/components/ActionConfirmDialog";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { Permission } from "@/common/utils/permissions.js";
+import { useVaultAvailable } from "@/common/hooks/useVaultAvailable.js";
+import AgentAccessDialog from "@/pages/Servers/components/AgentAccessDialog";
 
 const flattenEntries = (entries, path = []) => (entries || []).flatMap(entry =>
     entry.type === "folder" || entry.type === "organization"
@@ -95,6 +97,7 @@ export const ServerList = ({
     const canManageResources = hasPermission(Permission.RESOURCES_MANAGE);
     const { sendToast } = useToast();
     const demoEnabled = useDevFeature("demo", import.meta.env.DEV);
+    const { canProvision, impersonating } = useVaultAvailable();
 
     const [search, setSearch] = useState("");
     const [selectedTags, setSelectedTags] = useState([]);
@@ -118,6 +121,7 @@ export const ServerList = ({
     const [scriptsMenuServer, setScriptsMenuServer] = useState(null);
     const [isMobile, setIsMobile] = useState(false);
     const [deleteConfirmDialog, setDeleteConfirmDialog] = useState({ open: false, name: "", id: null, isFolder: false });
+    const [agentAccessEntryId, setAgentAccessEntryId] = useState(null);
 
     const contextMenu = useContextMenu();
 
@@ -927,6 +931,14 @@ export const ServerList = ({
                                     <TagsSubmenu entryId={contextClickedId} entryTags={server?.tags || []} />
                                 </ContextMenuItem>
 
+                                {server?.protocol === "ssh" && canProvision && !impersonating && (
+                                    <ContextMenuItem
+                                        icon={IconKeyRound}
+                                        label={t("servers.contextMenu.agentAccess")}
+                                        onClick={() => setAgentAccessEntryId(server.id)}
+                                    />
+                                )}
+
                                 <ContextMenuSeparator />
                                 <ContextMenuItem
                                     icon={IconServerOff}
@@ -1036,6 +1048,12 @@ export const ServerList = ({
                         setOpen={(open) => setDeleteConfirmDialog(prev => ({ ...prev, open }))}
                         onConfirm={handleDeleteConfirm}
                         text={t("servers.contextMenu.deleteConfirm", { name: deleteConfirmDialog.name })}
+                    />
+
+                    <AgentAccessDialog
+                        open={agentAccessEntryId !== null}
+                        entryId={agentAccessEntryId}
+                        onClose={() => setAgentAccessEntryId(null)}
                     />
 
                     <ScriptsMenu

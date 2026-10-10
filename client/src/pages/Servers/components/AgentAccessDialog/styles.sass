@@ -1,0 +1,186 @@
+@use "@/common/styles/colors"
+@use "@/common/styles/tokens"
+
+.agent-access-dialog
+  display: flex
+  flex-direction: column
+  gap: tokens.$space-4
+  width: 40rem
+  max-width: 90vw
+  max-height: 85vh
+  overflow-y: auto
+
+  h2
+    margin: 0
+    font: tokens.$type-title
+    color: colors.$white
+
+  h3
+    margin: 0 0 tokens.$space-2
+    font: tokens.$type-heading
+
+  p
+    margin: 0
+
+  .mono
+    font: tokens.$type-mono
+
+  // The form only groups SETUP for its marker; with display: contents its parts
+  // join this column, so IPBIND (outside SETUP) can sit between agent choice and ranges.
+  .agent-access-setup
+    display: contents
+
+  .agent-access-keys
+    order: 1
+
+  .agent-access-foreign
+    order: 2
+
+  .agent-access-checks
+    order: 3
+    display: flex
+    gap: tokens.$space-6
+
+  .agent-access-ipbind
+    order: 4
+    display: flex
+    flex-direction: column
+    gap: tokens.$space-2
+
+  .agent-access-cidr-field
+    order: 5
+    display: flex
+    flex-direction: column
+    gap: tokens.$space-1
+
+    &.is-error .input
+      border-color: colors.$error
+
+  .agent-access-url-missing
+    order: 6
+
+  .agent-access-submit
+    order: 7
+    display: flex
+    justify-content: flex-end
+
+  .agent-access-result
+    order: 8
+    display: flex
+    flex-direction: column
+    gap: tokens.$space-2
+
+  .agent-access-check
+    display: flex
+    align-items: center
+    gap: tokens.$space-2
+
+  .agent-row
+    display: flex
+    align-items: center
+    gap: tokens.$space-3
+    padding: tokens.$space-2 0
+
+    svg
+      flex-shrink: 0
+      color: colors.$subtext
+
+    .agent-row-main
+      display: flex
+      flex: 1
+      flex-direction: column
+      min-width: 0
+
+    .agent-row-meta
+      font: tokens.$type-mono
+      color: colors.$subtext
+      overflow-wrap: anywhere
+
+    &.is-loading .skeleton
+      flex: 1
+      height: 1rem
+      border-radius: tokens.$radius-sm
+      background: colors.$gray
+
+  .agent-access-empty
+    color: colors.$subtext
+
+  .agent-access-confirm,
+  .agent-access-warning
+    padding: tokens.$space-3
+    border-left: 3px solid colors.$warning
+    border-radius: tokens.$radius-md
+    background: colors.$warning-opacity
+
+  .agent-access-actions
+    display: flex
+    justify-content: flex-end
+    gap: tokens.$space-2
+    margin-top: tokens.$space-2
+
+  .agent-access-ipbind-row
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: tokens.$space-4
+
+  .agent-access-ipbind-label
+    display: flex
+    flex-direction: column
+
+  .agent-access-help
+    font: tokens.$type-caption
+    color: colors.$subtext
+
+    &.is-error
+      color: colors.$error
+
+  .agent-access-error
+    color: colors.$error
+
+  .agent-access-revoked
+    display: flex
+    flex-direction: column
+    gap: tokens.$space-1
+    margin-top: tokens.$space-2
+
+  .agent-access-notice
+    font: tokens.$type-caption
+    color: colors.$warning
+
+  .agent-result
+    display: flex
+    flex-direction: column
+    gap: tokens.$space-1
+    padding: tokens.$space-2 tokens.$space-3
+    border-left: 3px solid colors.$subtext
+
+    &.is-ok
+      border-left-color: colors.$success
+
+    &.is-fail
+      border-left-color: colors.$error
+
+  .agent-result-head
+    display: flex
+    justify-content: space-between
+    gap: tokens.$space-2
+
+  .agent-result-status
+    font: tokens.$type-caption
+    color: colors.$subtext
+
+  .agent-result-command
+    display: flex
+    align-items: flex-start
+    gap: tokens.$space-2
+
+    pre
+      flex: 1
+      margin: 0
+      padding: tokens.$space-2
+      font: tokens.$type-mono
+      white-space: pre-wrap
+      overflow-wrap: anywhere
+      background: colors.$dark-gray
+      border-radius: tokens.$radius-sm
