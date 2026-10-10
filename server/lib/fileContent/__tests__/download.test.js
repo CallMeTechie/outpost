@@ -40,6 +40,19 @@ test("a download is an attachment, a preview is inline, and both carry the encod
     assert.match(preview["Content-Disposition"], /^inline; /);
 });
 
+// The iframe's sandbox attribute is gone once the preview URL is opened in a tab of its own; the
+// header keeps a foreign page out of Outpost's origin there too.
+test("a preview except a PDF is sandboxed even outside the iframe", () => {
+    const SANDBOX = "sandbox allow-scripts allow-forms allow-popups";
+    for (const ext of ["html", "svg", "png"]) {
+        const headers = contentHeaders({ fileName: `x.${ext}`, size: 1, ext, preview: true });
+        assert.strictEqual(headers["Content-Security-Policy"], SANDBOX, ext);
+    }
+    assert.strictEqual("Content-Security-Policy" in contentHeaders({ fileName: "x.pdf", size: 1, ext: "pdf", preview: true }), false,
+        "Chromium does not start its PDF viewer in a sandboxed document");
+    assert.strictEqual("Content-Security-Policy" in contentHeaders({ fileName: "x.html", size: 1, ext: "html", preview: false }), false);
+});
+
 // Without this branch, an unknown extension would reach the browser with a guessed type.
 test("an unknown extension gets no Content-Type at all", () => {
     const headers = contentHeaders({ fileName: "x.zzz", size: 1, ext: "zzz", preview: false });

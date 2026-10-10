@@ -18,6 +18,8 @@ const sanitizeFileName = (name) => name.replaceAll(/[^\w\s.-]/g, "_").substring(
 
 const clampThumbSize = (size) => Math.min(Math.max(Number.parseInt(size) || 100, 50), 300);
 
+const PREVIEW_SANDBOX = "sandbox allow-scripts allow-forms allow-popups";
+
 const contentHeaders = ({ fileName, size, ext, preview }) => {
     const disposition = preview ? "inline" : "attachment";
     const safeFileName = sanitizeFileName(fileName);
@@ -27,6 +29,9 @@ const contentHeaders = ({ fileName, size, ext, preview }) => {
     };
     // An unknown extension gets no Content-Type at all, rather than a guessed one.
     if (MIME_TYPES[ext]) headers["Content-Type"] = MIME_TYPES[ext];
+    // Opened in a tab of its own, a preview loses the iframe's sandbox attribute. PDF is left out:
+    // Chromium does not start its PDF viewer in a sandboxed document.
+    if (preview && ext !== "pdf") headers["Content-Security-Policy"] = PREVIEW_SANDBOX;
     return headers;
 };
 
