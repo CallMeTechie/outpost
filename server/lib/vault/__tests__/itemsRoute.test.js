@@ -188,10 +188,15 @@ test("PATCH mit geändertem Ursprung löscht die gespeicherten Werte im selben V
     });
     assert.deepStrictEqual([movedWithValue.body.secretsCleared, movedWithValue.body.item.secretFields], [true, ["password"]]);
     assert.strictEqual(await readSecret(item.id, "password"), "pw-two");
+    const STAMP = "2026-01-01 00:00:00.000 +00:00";
+    await db.query(`UPDATE ${VaultItem.getTableName()} SET updatedAt = ? WHERE id = ?`, { replacements: [STAMP, item.id] });
+    await patch(`/items/${item.id}`, "s-owner", { secrets: { password: "pw-three" } });
+    const { updatedAt } = await VaultItem.findByPk(item.id);
+    assert.ok(typeof updatedAt === "string" && new Date(updatedAt) > new Date(STAMP), "a new value ends grants stamped with the old updatedAt");
 
     const list = await get("/items", "s-owner");
     assert.deepStrictEqual(list.body.items.map((entry) => entry.ref).sort(), ["org:20/backup-db", "portal-login", "shop-login"]);
-    assert.doesNotMatch(list.text + JSON.stringify(audits), /pw-one|pw-two|hunter2/);
+    assert.doesNotMatch(list.text + JSON.stringify(audits), /pw-one|pw-two|pw-three|hunter2/);
 });
 
 test("available meldet Schalter, Rechte, Agenten-Adresse, Impersonation und TRUST_PROXY=true; bei ausgeschaltetem Vault sind alle Rechte leer", async (t) => {

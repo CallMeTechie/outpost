@@ -166,6 +166,10 @@ module.exports.updateItem = async (caller, id, body) => {
         }
     }
     for (const [field, secret] of Object.entries(value.secrets ?? {})) await writeSecret(item.id, field, secret);
+    // "For this session" grants are stamped with updatedAt (approvals.js), so a new value has to move it.
+    // Model.update skips a change that touches only updatedAt.
+    if (Object.keys(value.secrets ?? {}).length)
+        await VaultItem.sequelize.getQueryInterface().bulkUpdate(VaultItem.getTableName(), { updatedAt: new Date() }, { id: item.id }, {}, VaultItem.getAttributes());
     if (value.bindings) await setBindings(item.id, value.bindings);
 
     await audit(caller, item, AUDIT_ACTIONS.VAULT_ITEM_UPDATE, {
