@@ -3,23 +3,33 @@ const packageJson = require("../../../package.json");
 
 const SUPPORTED_VERSIONS = ["2025-06-18", "2025-03-26"];
 const TRANSPORT_IDLE_MS = 12 * 60 * 60 * 1000;
-const MAX_TRANSPORTS_PER_ACCOUNT = 50;
+const MAX_TRANSPORTS_PER_CALLER = 50;
 
 const rpcResult = (id, result) => ({ jsonrpc: "2.0", id, result });
 const rpcError = (id, code, message) => ({ jsonrpc: "2.0", id: id ?? null, error: { code, message } });
 
-const createMcpServer = ({ tools, canUseBrowser, now = Date.now }) => {
+const createMcpServer = ({ providers, now = Date.now }) => {
     const transports = new Map();
+
+    const forget = (transportId) => {
+        transports.delete(transportId);
+        for (const provider of providers) provider.forgetTransport(transportId);
+    };
 
     const sweep = () => {
         for (const [id, transport] of transports) {
-            if (now() - transport.lastSeen <= TRANSPORT_IDLE_MS) continue;
-            transports.delete(id);
-            tools.forgetTransport(id);
+            if (now() - transport.lastSeen > TRANSPORT_IDLE_MS) forget(id);
         }
     };
 
-    const handle = async ({ body, transportId, accountId, ipAddress = null, userAgent = null }) => {
+    const ownedBy = (transport, accountId, keyId) => !!transport && transport.accountId === accountId && transport.keyId === keyId;
+
+    const availableProviders = async (ctx) => {
+        const available = await Promise.all(providers.map((provider) => provider.available(ctx)));
+        return providers.filter((_, index) => available[index]);
+    };
+
+    const handle = async ({ body, transportId, accountId, keyId = null, agent = null, impersonatorId = null, ipAddress = null, userAgent = null, signal }) => {
         sweep();
         if (Array.isArray(body)) return { status: 400, body: rpcError(null, -32600, "Batched requests are not supported") };
         if (!body || body.jsonrpc !== "2.0" || typeof body.method !== "string")
@@ -28,13 +38,10 @@ const createMcpServer = ({ tools, canUseBrowser, now = Date.now }) => {
         const params = body.params ?? {};
 
         if (method === "initialize") {
-            const own = [...transports].filter(([, t]) => t.accountId === accountId).sort(([, a], [, b]) => a.lastSeen - b.lastSeen);
-            for (const [oldId] of own.slice(0, Math.max(0, own.length - MAX_TRANSPORTS_PER_ACCOUNT + 1))) {
-                transports.delete(oldId);
-                tools.forgetTransport(oldId);
-            }
+            const own = [...transports].filter(([, t]) => ownedBy(t, accountId, keyId)).sort(([, a], [, b]) => a.lastSeen - b.lastSeen);
+            for (const [oldId] of own.slice(0, Math.max(0, own.length - MAX_TRANSPORTS_PER_CALLER + 1))) forget(oldId);
             const newId = randomUUID();
-            transports.set(newId, { accountId, lastSeen: now() });
+            transports.set(newId, { accountId, keyId, lastSeen: now() });
             return {
                 status: 200,
                 headers: { "Mcp-Session-Id": newId },
@@ -47,7 +54,7 @@ const createMcpServer = ({ tools, canUseBrowser, now = Date.now }) => {
         }
 
         const transport = transportId ? transports.get(transportId) : null;
-        if (!transport || transport.accountId !== accountId) {
+        if (!ownedBy(transport, accountId, keyId)) {
             return transportId
                 ? { status: 404, body: rpcError(id, -32001, "Unknown MCP session; initialize again") }
                 : { status: 400, body: rpcError(id, -32600, "Missing Mcp-Session-Id header") };
@@ -56,27 +63,27 @@ const createMcpServer = ({ tools, canUseBrowser, now = Date.now }) => {
 
         if (id === undefined) return { status: 202 };
 
+        const ctx = { accountId, agent, keyId, impersonatorId, transportId, ipAddress, userAgent, signal };
         switch (method) {
             case "ping":
                 return { status: 200, body: rpcResult(id, {}) };
-            case "tools/list":
-                return { status: 200, body: rpcResult(id, { tools: (await canUseBrowser(accountId)) ? tools.list() : [] }) };
+            case "tools/list": {
+                const tools = (await availableProviders(ctx)).flatMap((provider) => provider.list(ctx));
+                return { status: 200, body: rpcResult(id, { tools }) };
+            }
             case "tools/call": {
-                if (!(await canUseBrowser(accountId)) || !tools.has(params.name))
-                    return { status: 200, body: rpcError(id, -32602, `Unknown tool: ${params.name}`) };
-                const ctx = { accountId, transportId, ipAddress, userAgent };
-                return { status: 200, body: rpcResult(id, await tools.call(params.name, params.arguments ?? {}, ctx)) };
+                const provider = (await availableProviders(ctx)).find((p) => p.has(params.name, ctx));
+                if (!provider) return { status: 200, body: rpcError(id, -32602, `Unknown tool: ${params.name}`) };
+                return { status: 200, body: rpcResult(id, await provider.call(params.name, params.arguments ?? {}, ctx)) };
             }
             default:
                 return { status: 200, body: rpcError(id, -32601, `Method not found: ${method}`) };
         }
     };
 
-    const end = ({ transportId, accountId }) => {
-        const transport = transports.get(transportId);
-        if (!transport || transport.accountId !== accountId) return { status: 404 };
-        transports.delete(transportId);
-        tools.forgetTransport(transportId);
+    const end = ({ transportId, accountId, keyId = null }) => {
+        if (!ownedBy(transports.get(transportId), accountId, keyId)) return { status: 404 };
+        forget(transportId);
         return { status: 200 };
     };
 
