@@ -18,6 +18,7 @@ const Account = require("../../../models/Account");
 const ApiKey = require("../../../models/ApiKey");
 const AuditLog = require("../../../models/AuditLog");
 const Entry = require("../../../models/Entry");
+const DeviceCode = require("../../../models/DeviceCode");
 const Session = require("../../../models/Session");
 const { createAuditLog, AUDIT_ACTIONS } = require("../../../controllers/audit");
 const { authenticate } = require("../../../middlewares/auth");
@@ -31,10 +32,12 @@ const echo = (req, res) => res.json({ accountId: req.user.id, agent: req.agent ?
 
 const app = express();
 app.set("trust proxy", true);
+app.use(express.json());
 app.use("/api/mcp", authenticate, echo);
 app.get("/api/vault/agent-keys/probe", authenticate, (req, res) => res.json({ seenIp: req.ip }));
 app.use("/api/entries", authenticate, echo);
 app.get(REVEAL_PATH, authenticate, requireLoginSession, echo);
+app.use("/api/auth", require("../../../routes/auth"));
 app.use("/api/accounts/api-keys", require("../../../routes/apiKey"));
 app.post("/api/audited", authenticate, async (req, res) => {
     await createAuditLog({ accountId: req.user.id, action: AUDIT_ACTIONS.VAULT_REVEAL, resource: "vault", details: { item: "nas-admin" } });
@@ -186,4 +189,36 @@ test("requireLoginSession weist Impersonation und Konto-Keys ab; Audits der Impe
         { item: "nas-admin", impersonatorId: anna.id },
         { item: "nas-admin" },
     ]);
+});
+
+test("der Geräte-Code umgeht die Login-Session-Pflicht nicht", async () => {
+    const ben = await Account.create({ firstName: "Dev", lastName: "Ice", username: "dev", password: "x" });
+    const own = await Session.create({ accountId: ben.id, ip: "192.0.2.50", userAgent: "test" });
+    const impersonated = await createSession(ben.id, "test", { impersonatorId: anna.id });
+    const accountKey = await createApiKey(ben.id, { name: "cli" });
+
+    const authorize = async (token) => {
+        const deviceCode = await DeviceCode.create({ ipAddress: "192.0.2.60", userAgent: "device", clientType: "mobile" });
+        const response = await fetch(`http://127.0.0.1:${server.address().port}/api/auth/device/authorize`, {
+            method: "POST",
+            headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+            body: JSON.stringify({ code: deviceCode.code }),
+        });
+        return { status: response.status, deviceCode: await DeviceCode.findByPk(deviceCode.id) };
+    };
+    const sessionsOfBen = () => Session.count({ where: { accountId: ben.id } });
+
+    const before = await sessionsOfBen();
+    const viaKey = await authorize(accountKey.token);
+    assert.deepStrictEqual([viaKey.status, viaKey.deviceCode.sessionId, await sessionsOfBen()], [403, null, before]);
+
+    const viaImpersonation = await authorize(impersonated.token);
+    assert.strictEqual(viaImpersonation.status, 200);
+    const deviceSession = await Session.findByPk(viaImpersonation.deviceCode.sessionId);
+    assert.strictEqual(deviceSession.impersonatorId, anna.id);
+    assert.strictEqual((await call("GET", REVEAL_PATH, deviceSession.token)).status, 403);
+
+    const viaOwn = await authorize(own.token);
+    const ownDeviceSession = await Session.findByPk(viaOwn.deviceCode.sessionId);
+    assert.strictEqual((await call("GET", REVEAL_PATH, ownDeviceSession.token)).status, 200);
 });

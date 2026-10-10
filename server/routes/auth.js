@@ -8,6 +8,7 @@ const { validateSchema } = require("../utils/schema");
 const { generateAuthenticationOptions, verifyAuthentication } = require("../controllers/passkey");
 const { createCode, pollToken, authorizeCode, getCodeInfo, checkLinkStatus } = require("../controllers/deviceCode");
 const { authenticate } = require("../middlewares/auth");
+const { blockApiKeyAuth } = require("../middlewares/blockApiKeyAuth");
 const Session = require("../models/Session");
 const Account = require("../models/Account");
 
@@ -177,11 +178,12 @@ app.post("/device/info", authenticate, async (req, res) => {
  * @return {object} 200 - Authorization success confirmation
  * @return {object} 404 - Device code not found or expired
  */
-app.post("/device/authorize", authenticate, async (req, res) => {
+app.post("/device/authorize", authenticate, blockApiKeyAuth, async (req, res) => {
     if (validateSchema(res, authorizeDeviceCodeValidation, req.body)) return;
     const result = await authorizeCode({
         code: req.body.code,
         accountId: req.user.id,
+        impersonatorId: req.session?.impersonatorId ?? null,
     });
     if (result?.code) return res.json(result);
     res.json(result);

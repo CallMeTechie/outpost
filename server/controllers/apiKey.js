@@ -76,7 +76,6 @@ const touchApiKey = async (id) => {
     await ApiKey.update({ lastUsedAt: new Date() }, { where: { id } });
 };
 
-
 const validateApiKey = async (token) => {
     if (!isApiKeyToken(token)) return null;
 
