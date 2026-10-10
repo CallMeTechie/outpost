@@ -60,7 +60,7 @@ app.put("/", requirePermission(Permission.USERS_MANAGE), async (req, res) => {
  * @return {object} 403 - Insufficient permissions
  */
 app.post("/:accountId/login", requirePermission(Permission.USERS_IMPERSONATE), async (req, res) => {
-    const account = await createSession(req.params.accountId, req.headers["user-agent"]);
+    const account = await createSession(req.params.accountId, req.headers["user-agent"], { impersonatorId: req.session?.impersonatorId ?? req.user.id });
     if (account?.code) return res.json(account);
 
     res.json({ message: "Session got successfully created", token: account.token });
