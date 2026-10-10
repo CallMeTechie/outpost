@@ -138,7 +138,7 @@ If the check fails (neither `curl` nor `wget`, or Outpost unreachable from the s
 
 If the automatic setup fails, for example because the CLI is missing or the SSH command failed, the dialog shows the finished command. Copy it and run it on the server in your own terminal, not inside an agent session, so the key does not end up in a transcript. Copying is what makes the key valid. The key is shown only in this dialog and only this once. Closing the dialog without copying deletes the key; a key that is never used or copied is deleted by the server after 15 minutes.
 
-Use the command exactly as the dialog shows it. It is a single `/bin/sh -c '...'` command that replaces an existing `outpost` registration and adds the new one. For Codex it also writes `~/.codex/outpost.env` and the lines in your shell start files. The key is part of the command line, so it appears in the process list of that server while the command runs and may land in your shell history.
+Use the command exactly as the dialog shows it. It is a single `/bin/sh -c '...'` command that replaces an existing `outpost` registration and adds the new one. For Codex it also writes `~/.codex/outpost.env` and the lines in your shell start files. The key is part of the command line, so it appears in the process list of that server while the command runs. The command starts with a space, which keeps it out of the bash history only with `HISTCONTROL=ignorespace` or `ignoreboth`. Otherwise remove the line from the history (`history -d`) or clear the history after pasting.
 
 ### Several Outpost accounts on one server user
 

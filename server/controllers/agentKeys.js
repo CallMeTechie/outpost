@@ -103,7 +103,7 @@ const setupAgent = async ({ accountId, entry, identity, agentUrl, key, token }) 
     const keyFile = `key-${key.id}-${crypto.randomBytes(8).toString("hex")}`;
     const manual = (reason, probe = null, replacedRegistration = false) => ({
         status: "manual", reason, probe, replacedRegistration,
-        command: provision.setupCommand({ agentType: key.agentType, cliPath: key.agentType, url, key: token }),
+        command: ` ${provision.setupCommand({ agentType: key.agentType, cliPath: key.agentType, url, key: token })}`,
     });
     if (!identity) return manual("exec_failed");
 
