@@ -199,6 +199,30 @@ test("PATCH mit geändertem Ursprung löscht die gespeicherten Werte im selben V
     assert.doesNotMatch(list.text + JSON.stringify(audits), /pw-one|pw-two|pw-three|hunter2/);
 });
 
+test("PATCH, dessen Speichern scheitert, verliert keine Werte: Name zwischen Prüfung und Schreiben vergeben, Ziel geändert → 409, Wert und Felder wie vorher", async (t) => {
+    const { post, patch } = await listen(t);
+    const fields = { username: "ma", origins: ["https://bank.example.com"] };
+    const { item } = (await post("/items", "s-owner", { name: "bank-login", type: "login", fields, secrets: { password: "pw-bank" } })).body;
+    // Another request takes the name after nameTaken has looked.
+    VaultItem.addHook("beforeBulkUpdate", "takeName", async (options) => {
+        await VaultItem.create({
+            accountId: 1, name: "bank-renamed", type: "login", fields, approvalRequired: true, allServers: false, createdBy: 1,
+        }, { transaction: options.transaction });
+    });
+    t.after(() => VaultItem.removeHook("beforeBulkUpdate", "takeName"));
+
+    const failed = await patch(`/items/${item.id}`, "s-owner", {
+        name: "bank-renamed", fields: { username: "ma.backes", origins: ["https://bank.example.net"] }, secrets: { password: "pw-new" },
+    });
+    VaultItem.removeHook("beforeBulkUpdate", "takeName");
+
+    assert.strictEqual(failed.status, 409);
+    assert.strictEqual(await readSecret(item.id, "password"), "pw-bank");
+    const stored = await VaultItem.findByPk(item.id);
+    assert.deepStrictEqual([stored.name, typeof stored.fields === "string" ? JSON.parse(stored.fields) : stored.fields], ["bank-login", fields]);
+    assert.ok(!audits.some((entry) => entry.action === "vault.item_update"));
+});
+
 test("available meldet Schalter, Rechte, Agenten-Adresse, Impersonation und TRUST_PROXY=true; bei ausgeschaltetem Vault sind alle Rechte leer", async (t) => {
     const { get, patch } = await listen(t, { trustProxy: true });
 

@@ -7,12 +7,15 @@ const aadFor = (itemId, field) => `vault:${itemId}:${field}`;
 
 const unreadable = new Set();
 
-const writeSecret = async (itemId, field, value) => {
+const afterCommit = (transaction, fn) => (transaction ? transaction.afterCommit(fn) : fn());
+
+const writeSecret = async (itemId, field, value, { transaction } = {}) => {
     const { encrypted, iv, authTag } = encryptValue(value, aadFor(itemId, field));
-    const values = { valueEncrypted: encrypted, valueIV: iv, valueAuthTag: authTag };
-    const [updated] = await VaultSecret.update(values, { where: { itemId, field } });
-    if (updated === 0) await VaultSecret.create({ itemId, field, ...values });
-    unreadable.delete(Number(itemId));
+    await VaultSecret.upsert(
+        { itemId, field, valueEncrypted: encrypted, valueIV: iv, valueAuthTag: authTag },
+        { conflictFields: ["itemId", "field"], transaction },
+    );
+    afterCommit(transaction, () => unreadable.delete(Number(itemId)));
 };
 
 const readSecret = async (itemId, field) => {
@@ -27,9 +30,9 @@ const readSecret = async (itemId, field) => {
     }
 };
 
-const clearSecrets = async (itemId) => {
-    const removed = await VaultSecret.destroy({ where: { itemId } });
-    unreadable.delete(Number(itemId));
+const clearSecrets = async (itemId, { transaction } = {}) => {
+    const removed = await VaultSecret.destroy({ where: { itemId }, transaction });
+    afterCommit(transaction, () => unreadable.delete(Number(itemId)));
     return removed;
 };
 
