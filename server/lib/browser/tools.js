@@ -1,5 +1,7 @@
 const { createHash } = require("node:crypto");
 const { BrowserError, BrowserErrorCode } = require("./errors");
+const { VaultError, VaultErrorCode } = require("../vault/errors");
+const vaultGuard = require("./vaultGuard");
 
 const EXPRESSION_LOG_LIMIT = 500;
 const WAIT_POLL_MS = 250;
@@ -59,13 +61,26 @@ const auditUrl = (raw) => {
         return String(raw);
     }
 };
-const formatSessions = (sessions) => sessions.map((s) => `- ${s.id}  ${s.title || "(untitled)"}  ${s.url}`).join("\n");
-const errorResult = (err) => {
-    const list = err.details?.sessions?.length ? `\nOpen sessions:\n${formatSessions(err.details.sessions)}` : "";
-    return { isError: true, content: [{ type: "text", text: `${err.message}${list}` }] };
+// Each line is checked against its own session's context, whichever caller asks for the list.
+const formatSessions = (sessions, pool) => sessions
+    .map((s) => vaultGuard.redactText(pool.get(s.id)?.contextKey ?? [], `- ${s.id}  ${s.title || "(untitled)"}  ${s.url}`))
+    .join("\n");
+const errorResult = (err, pool) => {
+    const list = err.details?.sessions?.length ? `\nOpen sessions:\n${formatSessions(err.details.sessions, pool)}` : "";
+    const code = err instanceof VaultError ? ` (${err.code})` : "";
+    return { isError: true, content: [{ type: "text", text: `${err.message}${code}${list}` }] };
 };
 const pageResult = (session, snapshot, note = "") =>
-    textResult(`Session: ${session.id}\nURL: ${session.state.url}\nTitle: ${session.state.title}${note}\n\n${snapshot}`);
+    textResult(vaultGuard.redactText(session.contextKey, `Session: ${session.id}\nURL: ${session.state.url}\nTitle: ${session.state.title}${note}\n\n${snapshot}`));
+const redactError = (session, err) => {
+    if (typeof err?.message === "string") err.message = vaultGuard.redactText(session.contextKey, err.message);
+    return err;
+};
+const LOCK_AUDIT = Object.freeze({
+    [VaultErrorCode.EVALUATE_LOCKED]: "vault.evaluate_locked",
+    [VaultErrorCode.SCREENSHOT_LOCKED]: "vault.screenshot_locked",
+    [VaultErrorCode.INPUT_LOCKED]: "vault.input_locked",
+});
 
 const defaultAudit = (entry) => require("../../controllers/audit").createAuditLog(entry);
 
@@ -74,7 +89,8 @@ const recordBrowserAudit = (audit, ctx, session, action, details) => audit({
     organizationId: session.organizationId ?? null,
     action,
     resource: "browser",
-    details: { url: auditUrl(session.state.url), sessionId: session.id, ...details },
+    details: Object.fromEntries(Object.entries({ url: auditUrl(session.state.url), sessionId: session.id, ...details })
+        .map(([key, value]) => [key, vaultGuard.redactText(session.contextKey, value)])),
     ipAddress: ctx.ipAddress ?? null,
     userAgent: ctx.userAgent ?? null,
 });
@@ -133,7 +149,13 @@ const createBrowserTools = ({
 
     const act = (name, fn) => async (args, ctx) => {
         const session = resolveSession(ctx, args.sessionId);
-        return session.runAgent(name, () => fn(session, args, ctx));
+        try {
+            vaultGuard.assertInputAllowed(session, name, args);
+            return await session.runAgent(name, () => fn(session, args, ctx));
+        } catch (err) {
+            if (Object.hasOwn(LOCK_AUDIT, err?.code)) await record(ctx, session, LOCK_AUDIT[err.code], { tool: name });
+            throw redactError(session, err);
+        }
     };
 
     const waitFor = async (session, { condition, value, timeoutMs }) => {
@@ -142,8 +164,8 @@ const createBrowserTools = ({
             return snapshotAfter(session);
         }
         const checks = {
-            load: async () => !session.state.loading && (await session.evaluate("document.readyState")) === "complete",
-            text: async () => (await session.evaluate(`(document.body?.innerText ?? '').includes(${JSON.stringify(String(value))})`)) === true,
+            load: async () => !session.state.loading && (await session.readyState()) === "complete",
+            text: () => session.containsText(value),
             ref: () => session.refVisible(value).then(() => true, (err) => {
                 if (err.code === BrowserErrorCode.NOT_VISIBLE) return false;
                 throw err;
@@ -179,7 +201,7 @@ const createBrowserTools = ({
             } catch (err) {
                 // The session exists even when its first snapshot fails (a dialog on load); say so, or the agent opens another.
                 if (err instanceof BrowserError) err.message = `Session ${session.id} is open. ${err.message}`;
-                throw err;
+                throw redactError(session, err);
             }
         },
         browser_navigate: act("browser_navigate", async (session, { url }, ctx) => {
@@ -235,7 +257,7 @@ const createBrowserTools = ({
         }),
         browser_list: async (args, ctx) => {
             const open = getPool().listForCaller(callerOf(ctx));
-            return textResult(open.length > 0 ? formatSessions(open) : "No browser sessions are open.");
+            return textResult(open.length > 0 ? formatSessions(open, getPool()) : "No browser sessions are open.");
         },
     };
 
@@ -246,7 +268,8 @@ const createBrowserTools = ({
             try {
                 return await handlers[name](args ?? {}, ctx);
             } catch (err) {
-                return errorResult(err instanceof BrowserError ? err : new BrowserError(BrowserErrorCode.INTERNAL, err.message));
+                const known = err instanceof BrowserError || err instanceof VaultError;
+                return errorResult(known ? err : new BrowserError(BrowserErrorCode.INTERNAL, err.message), getPool());
             }
         },
         forgetTransport: (transportId) => defaults.delete(transportId),

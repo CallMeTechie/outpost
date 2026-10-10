@@ -91,12 +91,18 @@ const pressKey = async (send, combo) => {
     await send("Input.dispatchKeyEvent", { type: "keyUp", ...base });
 };
 
-const typeText = async (send, backendNodeId, text, { submit = false } = {}) => {
+const typeText = async (send, backendNodeId, text, { submit = false, clearWithoutSelection = false } = {}) => {
     await click(send, backendNodeId);
-    // "commands" makes select-all work regardless of the platform's shortcut mapping.
-    const selectAll = { key: "a", code: "KeyA", windowsVirtualKeyCode: 65, modifiers: MODIFIERS.Control };
-    await send("Input.dispatchKeyEvent", { type: "rawKeyDown", ...selectAll, commands: ["selectAll"] });
-    await send("Input.dispatchKeyEvent", { type: "keyUp", ...selectAll });
+    if (clearWithoutSelection) {
+        // A selection of a filled field lands in the primary selection, which other contexts can paste.
+        const { object } = await send("DOM.resolveNode", { backendNodeId });
+        await send("Runtime.callFunctionOn", { objectId: object.objectId, functionDeclaration: "function () { this.value = ''; }" });
+    } else {
+        // "commands" makes select-all work regardless of the platform's shortcut mapping.
+        const selectAll = { key: "a", code: "KeyA", windowsVirtualKeyCode: 65, modifiers: MODIFIERS.Control };
+        await send("Input.dispatchKeyEvent", { type: "rawKeyDown", ...selectAll, commands: ["selectAll"] });
+        await send("Input.dispatchKeyEvent", { type: "keyUp", ...selectAll });
+    }
     await send("Input.insertText", { text: String(text) });
     if (submit) await pressKey(send, "Enter");
 };
@@ -123,4 +129,4 @@ const scroll = async (send, { backendNodeId = null, deltaY, deltaX = 0, viewport
     await send("Input.dispatchMouseEvent", { type: "mouseWheel", x: point.x, y: point.y, deltaX, deltaY });
 };
 
-module.exports = { clickablePoint, click, typeText, selectOption, pressKey, scroll };
+module.exports = { clickablePoint, click, typeText, selectOption, pressKey, scroll, parseKey, MODIFIERS };

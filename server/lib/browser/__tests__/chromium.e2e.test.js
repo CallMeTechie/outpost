@@ -100,3 +100,51 @@ test("against a real Chromium: snapshot, type, click, frames, navigation, close,
         assert.strictEqual(await again.session.evaluate("document.cookie"), "login=ada");
         await pool.close(again.session.id, "test");
     });
+
+test("against a real Chromium: a filled field stays masked after Show password, and screenshot and evaluate lock",
+    { skip: !LAUNCHER && "set OUTPOST_BROWSER_E2E_LAUNCHER and OUTPOST_BROWSER_E2E_PAGE_HOST" }, async (t) => {
+        process.env.VAULT_KEY ??= "5a".repeat(32);
+        const vaultGuard = require("../vaultGuard");
+        const value = "guard pa55&word";
+        const page = `<!doctype html><title>Guard</title>
+<input id="pass" type="password" aria-label="Password">
+<button type="button" onclick="const f = document.getElementById('pass'); f.type = f.type === 'password' ? 'text' : 'password'">Show password</button>`;
+        const server = http.createServer((req, res) => {
+            res.setHeader("content-type", "text/html");
+            res.end(page);
+        });
+        await new Promise((resolve) => server.listen(0, "0.0.0.0", resolve));
+        t.after(() => server.close());
+        const pool = new BrowserPool({
+            getSettings: async () => ({ enabled: true, maxSessions: 4, idleMinutes: 30, callbackHost: PAGE_HOST }),
+            launcher: createLauncherClient(async () => LAUNCHER),
+            createVia: async () => { throw new Error("via is part of the manual acceptance"); },
+        });
+        t.after(() => {
+            for (const instance of pool.live.values()) instance.cdp.close();
+        });
+        const audit = [];
+        const tools = require("../tools").createBrowserTools({ getPool: () => pool, audit: async (entry) => { audit.push(entry); } });
+        const ctx = { accountId: 1, keyId: null, agent: null, transportId: "E2E-GUARD", ipAddress: "127.0.0.1", userAgent: "e2e" };
+        const text = (result) => result.content.map((c) => c.text ?? "").join("");
+
+        const opened = text(await tools.call("browser_open", { url: `http://${PAGE_HOST}:${server.address().port}/` }, ctx));
+        const session = pool.get(/^Session: (\S+)/m.exec(opened)[1]);
+        const typed = text(await tools.call("browser_type", { ref: refOf(opened, 'textbox "Password"'), text: value }, ctx));
+        assert.ok(!typed.includes("pa55"), "the typed password does not reach the snapshot");
+        vaultGuard.markFilled(session.contextKey, { backendNodeIds: [session.refs.resolve(refOf(typed, 'textbox "Password"')).backendNodeId], secret: value });
+        assert.strictEqual((await tools.call("browser_screenshot", {}, ctx)).content[0].type, "image", "the filled field is still a password field");
+
+        const shown = text(await tools.call("browser_click", { ref: refOf(typed, 'button "Show password"') }, ctx));
+        assert.match(shown, /- textbox "Password" \[ref=e\d+\] value="••••"/);
+        assert.ok(!shown.includes("pa55"), "the value in plain text does not reach the snapshot");
+        const shot = await tools.call("browser_screenshot", {}, ctx);
+        assert.strictEqual(shot.isError, true);
+        assert.match(text(shot), /browser_screenshot is locked/);
+        const evaluated = await tools.call("browser_evaluate", { expression: "document.getElementById('pass').value" }, ctx);
+        assert.strictEqual(evaluated.isError, true);
+        assert.match(text(evaluated), /browser_evaluate is locked/);
+        assert.deepStrictEqual(audit.filter((e) => e.action.startsWith("vault.")).map((e) => e.action), ["vault.screenshot_locked", "vault.evaluate_locked"]);
+        assert.ok(!JSON.stringify(audit).includes("pa55"));
+        await pool.close(session.id, "test");
+    });
