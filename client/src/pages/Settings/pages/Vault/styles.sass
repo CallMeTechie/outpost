@@ -1,0 +1,67 @@
+@use "@/common/styles/colors"
+@use "@/common/styles/tokens"
+
+.vault-settings
+  display: flex
+  flex-direction: column
+  gap: tokens.$space-8
+  max-width: 44rem
+  margin-top: tokens.$space-4
+
+  .vault-key-status
+    display: flex
+    flex-direction: column
+    align-items: flex-end
+    gap: tokens.$space-1
+
+    p
+      margin: 0
+      font: tokens.$type-caption
+      color: colors.$subtext
+      text-align: right
+
+  .vault-key-pill
+    display: inline-flex
+    align-items: center
+    gap: tokens.$space-1
+    padding: tokens.$space-1 tokens.$space-2
+    border-radius: tokens.$radius-sm
+    font: tokens.$type-caption
+
+    &.is-active
+      color: colors.$success
+      background: colors.$success-opacity
+
+    &.is-missing
+      color: colors.$warning
+      background: colors.$warning-opacity
+
+    &.is-mismatch
+      color: colors.$error
+      background: colors.$error-opacity
+
+  .setting-input.is-error .input
+    border-color: colors.$error
+
+  .vault-url-error
+    margin: tokens.$space-1 0 0
+    font: tokens.$type-caption
+    color: colors.$error
+
+  .vault-proxy-warning
+    display: flex
+    align-items: flex-start
+    gap: tokens.$space-2
+    padding: tokens.$space-3
+    border-radius: tokens.$radius-md
+    color: colors.$warning
+    background: colors.$warning-opacity
+
+    p
+      margin: 0
+      color: inherit
+
+.vault-settings-loading
+  padding: tokens.$space-8
+  text-align: center
+  color: colors.$subtext

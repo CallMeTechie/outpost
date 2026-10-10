@@ -1,0 +1,72 @@
+@use "@/common/styles/colors"
+@use "@/common/styles/tokens"
+
+.agent-keys-section
+  .agent-keys-title-icon
+    margin-right: tokens.$space-2
+
+  .agent-keys-revoked
+    display: flex
+    flex-direction: column
+    gap: tokens.$space-2
+    margin-bottom: tokens.$space-3
+    padding: tokens.$space-3
+    border-left: 3px solid colors.$warning
+    border-radius: tokens.$radius-md
+    background: colors.$warning-opacity
+
+    p
+      margin: 0
+
+  .agent-keys-command
+    display: flex
+    align-items: flex-start
+    gap: tokens.$space-2
+
+    pre
+      flex: 1
+      margin: 0
+      padding: tokens.$space-2
+      font-family: tokens.$font-mono
+      white-space: pre-wrap
+      overflow-wrap: anywhere
+      background: colors.$dark-gray
+      border-radius: tokens.$radius-sm
+
+  .agent-key-groups
+    display: flex
+    flex-direction: column
+    gap: tokens.$space-3
+
+  .agent-key-group
+    padding: tokens.$space-3
+    border: 1px solid colors.$dark-gray
+    border-radius: tokens.$radius-md
+
+  .agent-key-group-head
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: tokens.$space-2
+    margin-bottom: tokens.$space-2
+
+  .agent-key-group-name
+    font: tokens.$type-heading
+
+  .agent-key-meta
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: tokens.$space-3
+
+  .agent-key-address
+    font-family: tokens.$font-mono
+
+  .agent-key-anywhere
+    padding: 0 tokens.$space-2
+    border-radius: tokens.$radius-sm
+    color: colors.$warning
+    background: colors.$warning-opacity
+
+  .item-actions .btn
+    color: colors.$error

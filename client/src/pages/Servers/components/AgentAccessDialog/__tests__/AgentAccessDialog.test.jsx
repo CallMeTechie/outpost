@@ -72,7 +72,8 @@ test("closing without copying or automatic setup deletes the pending key", async
 test("copying the command confirms the key, so closing afterwards deletes nothing", async () => {
     const user = userEvent.setup();
     clipboard.copyToClipboard.mockResolvedValue(true);
-    open();
+    const onClose = vi.fn();
+    open(onClose);
     await runSetup(user, [manual]);
     requestDouble.stub("postRequest", "vault/agent-keys/41/confirm", { success: true });
 
@@ -85,6 +86,7 @@ test("copying the command confirms the key, so closing afterwards deletes nothin
     await waitFor(() => expect(screen.queryByText(t("servers.agentAccess.result.keyNotice"))).not.toBeInTheDocument());
 
     await closeDialog(user);
+    expect(onClose).toHaveBeenCalled();
     expect(requestDouble.calls.filter((call) => call.method === "deleteRequest")).toEqual([]);
 });
 
