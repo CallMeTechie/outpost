@@ -39,26 +39,32 @@ test.each([
     expect(screen.getByText(t(pillKey))).toBeInTheDocument();
 });
 
-test("an address without http or https blocks saving; a valid one is saved and refreshes availability", async () => {
+test("an empty address is suggested from the browser; a wrong one blocks saving, a valid one is saved with the binding default", async () => {
     const user = userEvent.setup();
     requestDouble.stub("getRequest", "vault/settings", settings());
-    requestDouble.stub("patchRequest", "vault/settings", settings({ agentUrl: "http://192.168.2.10:6989" }));
+    requestDouble.stub("patchRequest", "vault/settings", settings({ agentUrl: "http://192.168.2.10:6989", ipBindingDefault: false }));
     mount();
     const field = await screen.findByRole("textbox");
     const save = () => screen.getByRole("button", { name: t("settings.vault.saveSettings") });
+    expect(field).toHaveValue(window.location.origin);
+    expect(screen.getByText(t("settings.vault.agentUrl.suggested"))).toBeInTheDocument();
 
+    await user.clear(field);
     await user.type(field, "192.168.2.10:6989");
     expect(screen.getByText(t("settings.vault.agentUrl.invalid"))).toBeInTheDocument();
+    expect(screen.queryByText(t("settings.vault.agentUrl.suggested"))).not.toBeInTheDocument();
     expect(save()).toBeDisabled();
 
     await user.clear(field);
     await user.type(field, "http://192.168.2.10:6989");
+    await user.click(screen.getByRole("checkbox"));
     await user.click(save());
 
     await waitFor(() => expect(requestDouble.calls).toContainEqual(
-        { method: "patchRequest", path: "vault/settings", body: { agentUrl: "http://192.168.2.10:6989" } },
+        { method: "patchRequest", path: "vault/settings", body: { agentUrl: "http://192.168.2.10:6989", ipBindingDefault: false } },
     ));
     expect(vaultAvailable.refresh).toHaveBeenCalled();
+    expect(screen.getByRole("checkbox")).not.toBeChecked();
 });
 
 test("failed loads show an error with retry instead of loading text or the empty state", async () => {

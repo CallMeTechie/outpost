@@ -9,8 +9,10 @@ import { getRequest, patchRequest } from "@/common/utils/RequestUtil.js";
 import Button from "@/common/components/Button";
 import IconInput from "@/common/components/IconInput";
 import Icon from "@/common/components/Icon";
+import ToggleSwitch from "@/common/components/ToggleSwitch";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useVaultAvailable } from "@/common/hooks/useVaultAvailable.js";
+import { isValidAgentUrl } from "@/common/utils/agentUrl.js";
 
 const KEY_STATUS = {
     active: { icon: IconCheck, text: null },
@@ -18,15 +20,7 @@ const KEY_STATUS = {
     mismatch: { icon: IconCircleAlert, text: "key.mismatchText" },
 };
 
-export const isValidAgentUrl = (value) => {
-    if (value === "") return true;
-    try {
-        const url = new URL(value);
-        return (url.protocol === "http:" || url.protocol === "https:") && url.hostname !== "";
-    } catch {
-        return false;
-    }
-};
+export { isValidAgentUrl };
 
 const SettingItem = ({ title, description, dataUiId, children }) => (
     <div className="setting-item" data-ui-id={dataUiId}>
@@ -44,23 +38,30 @@ export const Vault = () => {
     const { refresh } = useVaultAvailable();
     const [settings, setSettings] = useState(null);
     const [agentUrl, setAgentUrl] = useState("");
+    const [suggested, setSuggested] = useState(false);
+    const [ipBindingDefault, setIpBindingDefault] = useState(true);
     const [saving, setSaving] = useState(false);
     const [loadFailed, setLoadFailed] = useState(false);
 
     const s = (key) => t(`settings.vault.${key}`);
 
+    // Only a suggestion: the browser may reach Outpost through a proxy that the servers cannot use.
+    const apply = useCallback((data) => {
+        setSettings(data);
+        setAgentUrl(data.agentUrl ?? window.location.origin);
+        setSuggested(!data.agentUrl);
+        setIpBindingDefault(data.ipBindingDefault !== false);
+    }, []);
+
     const load = useCallback(() => {
         setLoadFailed(false);
         getRequest("vault/settings")
-            .then((data) => {
-                setSettings(data);
-                setAgentUrl(data.agentUrl ?? "");
-            })
+            .then(apply)
             .catch(() => {
                 setLoadFailed(true);
                 sendToast(t("common.error"), t("settings.vault.errors.loadSettings"));
             });
-    }, [sendToast, t]);
+    }, [apply, sendToast, t]);
 
     useEffect(() => {
         load();
@@ -72,9 +73,7 @@ export const Vault = () => {
     const save = async () => {
         try {
             setSaving(true);
-            const data = await patchRequest("vault/settings", { agentUrl: trimmed || null });
-            setSettings(data);
-            setAgentUrl(data.agentUrl ?? "");
+            apply(await patchRequest("vault/settings", { agentUrl: trimmed || null, ipBindingDefault }));
             refresh();
             sendToast(t("common.success"), s("saveSuccess"));
         } catch {
@@ -113,9 +112,14 @@ export const Vault = () => {
                 </SettingItem>
                 <SettingItem title={s("agentUrl.title")} description={s("agentUrl.description")} dataUiId="UI-VAULT-SETTINGS-URL">
                     <div className={`setting-input${urlInvalid ? " is-error" : ""}`}>
-                        <IconInput icon={IconLink} value={agentUrl} setValue={setAgentUrl} />
+                        <IconInput icon={IconLink} value={agentUrl} setValue={(value) => { setAgentUrl(value); setSuggested(false); }} />
                         {urlInvalid && <p className="vault-url-error" role="alert">{s("agentUrl.invalid")}</p>}
+                        {suggested && !urlInvalid && <p className="vault-url-hint">{s("agentUrl.suggested")}</p>}
                     </div>
+                </SettingItem>
+                <SettingItem title={s("ipBindingDefault.title")} description={s("ipBindingDefault.description")}
+                             dataUiId="UI-VAULT-SETTINGS-IPBIND">
+                    <ToggleSwitch id="vault-ipbind-default" checked={ipBindingDefault} onChange={setIpBindingDefault} />
                 </SettingItem>
                 {settings.trustProxyUnsafe && (
                     <div className="vault-proxy-warning" data-ui-id="UI-VAULT-SETTINGS-PROXY" role="alert">

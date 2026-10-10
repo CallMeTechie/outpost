@@ -1,7 +1,7 @@
 schema: mockingbird/1
 project: outpost
-revision: 14
-updated: 2026-10-09
+revision: 15
+updated: 2026-10-10
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
 tokens_css: docs/design/mockups/tokens.css
@@ -57,6 +57,10 @@ changelog:
     date: 2026-10-10
     summary: Nachzug aus dem Plan-Review — Ergebnis des Entziehens, wenn die Registrierung einem anderen Konto gehört oder nicht entfernt werden konnte
     touched: [UI-AGENT-ACCESS-KEYS, UI-API-KEYS-AGENTS]
+  - rev: 15
+    date: 2026-10-10
+    summary: Agenten-Adresse je Server im Agenten-Zugang, Standard der IP-Bindung in den Einstellungen, leere Agenten-Adresse mit der Browser-Adresse vorbelegt
+    touched: [UI-AGENT-ACCESS-URL, UI-AGENT-ACCESS-SETUP, UI-AGENT-ACCESS-IPBIND, UI-VAULT-SETTINGS-URL, UI-VAULT-SETTINGS-IPBIND]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -1310,10 +1314,32 @@ screens:
           - { id: default }
           - { id: loading, copy: "Richte ein …" }
           - { id: error, copy: "Ungültiger Adressbereich." }
-          - { id: disabled, copy: "Outpost-Adresse für Agenten fehlt — in Einstellungen › Vault setzen." }
+          - { id: disabled, copy: "Outpost-Adresse für Agenten fehlt — hier eintragen oder in Einstellungen › Vault einen Standard setzen." }
           - { id: partial, copy: "Für root auf web01 hat bereits ein anderes Konto Agenten-Zugang eingerichtet — die Registrierung wird ersetzt." }
         locators:
           web: "[data-ui-id='UI-AGENT-ACCESS-SETUP']"
+
+      - id: UI-AGENT-ACCESS-URL
+        type: field
+        label: Outpost-Adresse für diesen Server
+        status: required
+        verify: required
+        data_source: "Adresse des letzten Agenten-Keys dieses Servers, sonst Einstellung vault.agentUrl"
+        semantic_anchor:
+          means: >
+            Die Adresse, unter der dieser Server Outpost erreicht; daraus entstehen MCP-URL und Adressprüfung
+            dieses Keys. Vorbelegt mit der Adresse der letzten Einrichtung auf diesem Server, sonst mit der
+            Standardadresse aus den Einstellungen. Für Server außerhalb des LANs zum Beispiel die Domain über
+            einen Reverse-Proxy.
+          concept: agent_base_url
+          not: [browser_launcher_url, vault_binding]
+          example: "https://outpost.example.net"
+        states:
+          - { id: default }
+          - { id: error, copy: "Keine gültige http- oder https-Adresse." }
+          - { id: empty, copy: "Outpost-Adresse für Agenten fehlt — hier eintragen oder in Einstellungen › Vault einen Standard setzen." }
+        locators:
+          web: "[data-ui-id='UI-AGENT-ACCESS-URL']"
 
       - id: UI-AGENT-ACCESS-IPBIND
         type: toggle
@@ -1322,7 +1348,7 @@ screens:
         verify: required
         data_source: "aufgelöste Adresse des Server-Eintrags"
         semantic_anchor:
-          means: Ob der Key nur Anfragen von der Adresse dieses Servers (plus den eingetragenen Adressbereichen) akzeptiert. Standard an; aus heißt von überall.
+          means: Ob der Key nur Anfragen von der Adresse dieses Servers (plus den eingetragenen Adressbereichen) akzeptiert. Vorbelegt mit dem Standard aus Einstellungen › Vault; aus heißt von überall.
           concept: ip_binding
           not: [vault_binding, allowed_origin]
           example: "an · 192.168.2.40"
@@ -1397,9 +1423,30 @@ screens:
           example: "http://192.168.2.10:6989"
         states:
           - { id: default }
+          - { id: partial, copy: "Vorschlag aus der Adresse dieses Browsers — prüfen, ob deine Server Outpost darunter erreichen." }
           - { id: error, copy: "Keine gültige http- oder https-Adresse." }
         locators:
           web: "[data-ui-id='UI-VAULT-SETTINGS-URL']"
+
+      - id: UI-VAULT-SETTINGS-IPBIND
+        type: toggle
+        label: IP-Bindung als Standard
+        status: required
+        verify: required
+        data_source: "Einstellung vault.ipBindingDefault"
+        semantic_anchor:
+          means: >
+            Ob neue Agenten-Keys standardmäßig nur von der IP ihres Servers gelten. Belegt den Schalter
+            „Nur von der IP dieses Servers“ im Agenten-Zugang vor; dort lässt er sich je Server ändern.
+            Aus für Umgebungen, in denen Outpost die Absenderadressen nicht sieht.
+          concept: ip_binding
+          not: [vault_binding, allowed_origin, proxy_trust_warning]
+          example: "an"
+        states:
+          - { id: default, copy: "an" }
+          - { id: selected, copy: "aus" }
+        locators:
+          web: "[data-ui-id='UI-VAULT-SETTINGS-IPBIND']"
 
       - id: UI-VAULT-SETTINGS-PROXY
         type: feedback

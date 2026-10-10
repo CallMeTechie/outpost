@@ -15,9 +15,9 @@ const clipboard = vi.hoisted(() => ({ copyToClipboard: vi.fn() }));
 
 vi.mock("@/common/utils/RequestUtil.js", () => requestDouble.asModule());
 vi.mock("@/common/utils/clipboard.js", () => clipboard);
-vi.mock("@/common/hooks/useVaultAvailable.js", () => ({
-    useVaultAvailable: () => ({ canProvision: true, agentUrlSet: true, trustProxyUnsafe: false, impersonating: false }),
-}));
+const AVAILABLE = { canProvision: true, agentUrlSet: true, agentUrl: "http://192.168.2.10:6989", ipBindingDefault: true, trustProxyUnsafe: false, impersonating: false };
+const vaultAvailable = vi.hoisted(() => ({ current: null }));
+vi.mock("@/common/hooks/useVaultAvailable.js", () => ({ useVaultAvailable: () => vaultAvailable.current }));
 
 const t = (key, options) => testI18n.t(key, options);
 
@@ -51,6 +51,7 @@ const manual = {
 };
 
 beforeEach(() => {
+    vaultAvailable.current = AVAILABLE;
     requestDouble.reset();
     clipboard.copyToClipboard.mockReset();
     requestDouble.stub("getRequest", "vault/agent-keys?entryId=7", { keys: [], remoteUser: "root", otherAccountConfigured: false });
@@ -133,4 +134,34 @@ test("revoking a key whose registration could not be removed shows the command t
 
     await user.click(within(keys).getByRole("button", { name: t("servers.agentAccess.result.copy") }));
     expect(clipboard.copyToClipboard).toHaveBeenCalledWith(commands);
+});
+
+test("the address of the server's last setup prefills the field and goes with the setup; the binding follows the default", async () => {
+    const user = userEvent.setup();
+    vaultAvailable.current = { ...AVAILABLE, ipBindingDefault: false };
+    requestDouble.stub("getRequest", "vault/agent-keys?entryId=7", {
+        keys: [{ id: 44, entryId: 7, agentType: "claude", pending: false, ipBinding: false, allowedCidrs: [],
+            agentUrl: "https://gate.example.net", createdAt: "2026-10-09T08:00:00.000Z", lastUsedAt: null }],
+        remoteUser: "root", otherAccountConfigured: false,
+    });
+    open();
+    const field = within(node("UI-AGENT-ACCESS-URL")).getByRole("textbox");
+    const submit = within(node("UI-AGENT-ACCESS-SETUP")).getByRole("button");
+    await waitFor(() => expect(field).toHaveValue("https://gate.example.net"));
+    expect(within(node("UI-AGENT-ACCESS-IPBIND")).getByRole("checkbox")).not.toBeChecked();
+
+    await user.clear(field);
+    await user.type(field, "gate.example.net");
+    expect(submit).toBeDisabled();
+    await user.clear(field);
+    expect(within(node("UI-AGENT-ACCESS-URL")).getByText(t("servers.agentAccess.setup.urlMissing"))).toBeInTheDocument();
+    expect(submit).toBeDisabled();
+
+    await user.type(field, "https://outpost.example.org");
+    await runSetup(user, [{ id: 45, agentType: "claude", status: "configured", remoteUser: "root", probe: null, replacedRegistration: false }]);
+
+    expect(requestDouble.calls).toContainEqual({
+        method: "postRequest", path: "vault/agent-keys",
+        body: { entryId: 7, agentTypes: ["claude", "codex"], agentUrl: "https://outpost.example.org", ipBinding: false, allowedCidrs: [] },
+    });
 });

@@ -168,6 +168,10 @@
 							<label class="label" for="s-cidr">Zusätzliche Adressbereiche</label>
 							<input class="input" id="s-cidr" value="10.0.0.0/24">
 						</div>
+						<div class="field">
+							<label class="label" for="s-url">Outpost-Adresse für diesen Server</label>
+							<input class="input" id="s-url" value="http://192.168.2.10:6989">
+						</div>
 						<div class="actions"><span class="kbd">Ctrl+Enter</span><button class="btn primary" type="button">Einrichten</button></div>
 					</section>
 
@@ -179,6 +183,10 @@
 						<div class="field">
 							<label class="label" for="l-cidr">Zusätzliche Adressbereiche</label>
 							<input class="input" id="l-cidr" value="10.0.0.0/24" disabled>
+						</div>
+						<div class="field">
+							<label class="label" for="l-url">Outpost-Adresse für diesen Server</label>
+							<input class="input" id="l-url" value="http://192.168.2.10:6989" disabled>
 						</div>
 						<div class="actions"><button class="btn primary" type="button" disabled>Richte ein …</button></div>
 					</section>
@@ -193,6 +201,10 @@
 							<input class="input is-error" id="e-cidr" value="10.0.0.0/33" aria-invalid="true" aria-describedby="e-cidr-help">
 							<span class="help error" id="e-cidr-help" role="alert">Ungültiger Adressbereich.</span>
 						</div>
+						<div class="field">
+							<label class="label" for="e-url">Outpost-Adresse für diesen Server</label>
+							<input class="input" id="e-url" value="http://192.168.2.10:6989">
+						</div>
 						<div class="actions"><span class="kbd">Ctrl+Enter</span><button class="btn primary" type="button">Einrichten</button></div>
 					</section>
 
@@ -205,7 +217,11 @@
 							<label class="label" for="d-cidr">Zusätzliche Adressbereiche</label>
 							<input class="input" id="d-cidr" value="" disabled>
 						</div>
-						<span class="notice">Outpost-Adresse für Agenten fehlt — in Einstellungen › Vault setzen.</span>
+						<div class="field">
+							<label class="label" for="d-url">Outpost-Adresse für diesen Server</label>
+							<input class="input" id="d-url" value="" disabled>
+						</div>
+						<span class="notice">Outpost-Adresse für Agenten fehlt — hier eintragen oder in Einstellungen › Vault einen Standard setzen.</span>
 						<div class="actions"><button class="btn primary" type="button" disabled>Einrichten</button></div>
 					</section>
 
@@ -219,7 +235,38 @@
 							<label class="label" for="p-cidr">Zusätzliche Adressbereiche</label>
 							<input class="input" id="p-cidr" value="10.0.0.0/24">
 						</div>
+						<div class="field">
+							<label class="label" for="p-url">Outpost-Adresse für diesen Server</label>
+							<input class="input" id="p-url" value="http://192.168.2.10:6989">
+						</div>
 						<div class="actions"><span class="kbd">Ctrl+Enter</span><button class="btn primary" type="button">Einrichten</button></div>
+					</section>
+				</div>
+
+				<div class="element" data-ui-id="UI-AGENT-ACCESS-URL">
+					<header><code>UI-AGENT-ACCESS-URL</code><span class="type">field</span><span class="name">Outpost-Adresse für diesen Server</span></header>
+
+					<section class="state" data-ui-state="default">
+						<div class="field">
+							<label class="label" for="u-url">Outpost-Adresse für diesen Server</label>
+							<input class="input" id="u-url" value="https://outpost.example.net">
+						</div>
+					</section>
+
+					<section class="state is-error" data-ui-state="error">
+						<div class="field">
+							<label class="label" for="ue-url">Outpost-Adresse für diesen Server</label>
+							<input class="input is-error" id="ue-url" value="outpost.example.net" aria-invalid="true" aria-describedby="ue-url-help">
+							<span class="help error" id="ue-url-help" role="alert">Keine gültige http- oder https-Adresse.</span>
+						</div>
+					</section>
+
+					<section class="state" data-ui-state="empty">
+						<div class="field">
+							<label class="label" for="um-url">Outpost-Adresse für diesen Server</label>
+							<input class="input" id="um-url" value="" aria-describedby="um-url-help">
+							<span class="help" id="um-url-help">Outpost-Adresse für Agenten fehlt — hier eintragen oder in Einstellungen › Vault einen Standard setzen.</span>
+						</div>
 					</section>
 				</div>
 

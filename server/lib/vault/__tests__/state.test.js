@@ -8,6 +8,7 @@ require.cache[databasePath] = { id: databasePath, filename: databasePath, loaded
 
 const VaultSettings = require("../../../models/VaultSettings");
 const migration = require("../../../migrations/0047-add-vault");
+const agentUrlMigration = require("../../../migrations/0048-add-vault-agent-url");
 const { initVaultState, getKeyStatus, isVaultEnabled, _resetForTests } = require("../state");
 const { writeSecret } = require("../secrets");
 const { decryptValue } = require("../crypto");
@@ -31,6 +32,8 @@ test.before(async () => {
     await queryInterface.bulkInsert("api_keys", [{ accountId: 1, name: "ci", tokenHash: "h", prefix: "outpost_0011", createdAt: new Date() }]);
     await migration.up(queryInterface, DataTypes);
     await migration.up(queryInterface, DataTypes);
+    await agentUrlMigration.up(queryInterface, DataTypes);
+    await agentUrlMigration.up(queryInterface, DataTypes);
 });
 
 test.afterEach(() => {

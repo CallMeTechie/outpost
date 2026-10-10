@@ -327,3 +327,30 @@ test("Entziehen läuft mit der gespeicherten Identität; ist sie gelöscht, komm
     assert.match(revoked.commands, /mcp remove --scope user outpost/);
     assert.strictEqual(await ApiKey.findByPk(second.id), null);
 });
+
+test("eine Adresse aus dem Dialog gilt für diesen Key; ohne Angabe gelten Standardadresse und Standard der IP-Bindung", async (t) => {
+    await listen(t);
+    const settings = await VaultSettings.getOrCreate();
+    t.after(() => settings.update({ agentUrl: "https://outpost.example/", ipBindingDefault: true }));
+    await settings.update({ agentUrl: null, ipBindingDefault: false });
+    const commandsWith = (url) => execs.filter((exec) => exec.command.includes(url)).map((exec) => /api\/(mcp|vault\/agent-keys\/probe)/.exec(exec.command)?.[0]);
+
+    assert.deepStrictEqual(await setUp(), {
+        status: 409, body: { code: 409, message: "Enter the Outpost address for agents, here or in Settings › Vault" },
+    });
+
+    const [own] = (await setUp(tokens.a, { agentUrl: "https://gate.example.net/outpost/" })).body.results;
+    assert.deepStrictEqual(commandsWith("https://gate.example.net/outpost/api/"), ["api/vault/agent-keys/probe", "api/mcp"]);
+    const stored = await ApiKey.findByPk(own.id);
+    assert.deepStrictEqual([stored.agentUrl, stored.ipBinding], ["https://gate.example.net/outpost", false]);
+
+    await settings.update({ agentUrl: "https://outpost.example/" });
+    execs.length = 0;
+    const [standard] = (await setUp(tokens.a, { agentTypes: ["codex"], ipBinding: true })).body.results;
+    assert.deepStrictEqual(commandsWith("https://outpost.example/api/"), ["api/vault/agent-keys/probe", "api/mcp"]);
+    assert.strictEqual((await ApiKey.findByPk(standard.id)).ipBinding, true);
+
+    const { body } = await call("GET", `/api/vault/agent-keys?entryId=${ENTRY_ID}`, tokens.a);
+    assert.deepStrictEqual(body.keys.map((key) => [key.agentType, key.agentUrl]).sort(),
+        [["claude", "https://gate.example.net/outpost"], ["codex", "https://outpost.example/"]]);
+});

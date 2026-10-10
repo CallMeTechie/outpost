@@ -1750,7 +1750,8 @@
       "agentUrl": {
         "title": "Outpost-Adresse für Agenten",
         "description": "Unter dieser Adresse erreichen deine Server Outpost; daraus entsteht die MCP-URL für Agenten.",
-        "invalid": "Keine gültige http- oder https-Adresse."
+        "invalid": "Keine gültige http- oder https-Adresse.",
+        "suggested": "Vorschlag aus der Adresse dieses Browsers — prüfen, ob deine Server Outpost darunter erreichen."
       },
       "proxy": {
         "warning": "TRUST_PROXY=true — Outpost glaubt jedem X-Forwarded-For, die IP-Bindung von Agenten-Keys ist wirkungslos. Hop-Zahl oder Adressliste setzen."
@@ -1761,6 +1762,10 @@
         "loadSettings": "Vault-Einstellungen konnten nicht geladen werden",
         "retry": "Erneut versuchen",
         "saveSettings": "Vault-Einstellungen konnten nicht gespeichert werden"
+      },
+      "ipBindingDefault": {
+        "title": "IP-Bindung als Standard",
+        "description": "Neue Agenten-Keys gelten nur von der IP ihres Servers. Abschalten, wenn Outpost die Absenderadressen nicht sieht, etwa hinter NAT; im Dialog lässt es sich je Server ändern."
       }
     }
   },
@@ -1890,8 +1895,10 @@
         "cidrInvalid": "Ungültiger Adressbereich.",
         "submit": "Einrichten",
         "loading": "Richte ein …",
-        "urlMissing": "Outpost-Adresse für Agenten fehlt — in Einstellungen › Vault setzen.",
-        "foreignAccount": "Für {{user}} auf {{server}} hat bereits ein anderes Konto Agenten-Zugang eingerichtet — die Registrierung wird ersetzt."
+        "urlMissing": "Outpost-Adresse für Agenten fehlt — hier eintragen oder in Einstellungen › Vault einen Standard setzen.",
+        "foreignAccount": "Für {{user}} auf {{server}} hat bereits ein anderes Konto Agenten-Zugang eingerichtet — die Registrierung wird ersetzt.",
+        "urlLabel": "Outpost-Adresse für diesen Server",
+        "urlInvalid": "Keine gültige http- oder https-Adresse."
       },
       "ipBind": {
         "label": "Nur von der IP dieses Servers",

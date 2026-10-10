@@ -2,21 +2,26 @@ const VaultSettings = require("../models/VaultSettings");
 const { getKeyStatus, isVaultEnabled } = require("../lib/vault/state");
 const { activeOrganizationIds, canUseVault, canCreateFor } = require("../lib/vault/visibility");
 
-const getAgentUrl = async () => (await VaultSettings.getOrCreate()).agentUrl || null;
-
-const getVaultSettings = async () => ({ keyStatus: getKeyStatus(), agentUrl: await getAgentUrl() });
-
-const updateVaultSettings = async ({ agentUrl }) => {
+const getVaultSettings = async () => {
     const settings = await VaultSettings.getOrCreate();
-    await settings.update({ agentUrl: agentUrl || null });
+    return { keyStatus: getKeyStatus(), agentUrl: settings.agentUrl || null, ipBindingDefault: settings.ipBindingDefault !== false };
+};
+
+const updateVaultSettings = async ({ agentUrl, ipBindingDefault }) => {
+    const settings = await VaultSettings.getOrCreate();
+    await settings.update({
+        ...(agentUrl !== undefined ? { agentUrl: agentUrl || null } : {}),
+        ...(ipBindingDefault !== undefined ? { ipBindingDefault } : {}),
+    });
     return getVaultSettings();
 };
 
 const getVaultAvailability = async (accountId, { impersonating, trustProxyUnsafe }) => {
     const enabled = isVaultEnabled();
+    const { agentUrl, ipBindingDefault } = await getVaultSettings();
     const result = {
         enabled, canUse: false, canManageOrgs: [], canProvision: false,
-        agentUrlSet: Boolean(await getAgentUrl()), impersonating, trustProxyUnsafe,
+        agentUrlSet: Boolean(agentUrl), agentUrl, ipBindingDefault, impersonating, trustProxyUnsafe,
     };
     if (!enabled) return result;
     const canUse = await canUseVault(accountId);
@@ -26,4 +31,4 @@ const getVaultAvailability = async (accountId, { impersonating, trustProxyUnsafe
     return { ...result, canUse, canProvision: canUse };
 };
 
-module.exports = { getAgentUrl, getVaultSettings, updateVaultSettings, getVaultAvailability };
+module.exports = { getVaultSettings, updateVaultSettings, getVaultAvailability };

@@ -31,8 +31,14 @@ Die Seite gibt es noch nicht. Sie folgt dem Bestand der Browser-Einstellungsseit
 ### UI-VAULT-SETTINGS-URL — Outpost-Adresse für Agenten (neu)
 - `data-ui-id` am Wrapper der Zeile (Label, `IconInput` mit Link-Icon, Hilfetext) — genau einmal.
 - Datenquelle: `agentUrl` aus `GET /api/vault/settings`, geschrieben mit `PATCH /api/vault/settings`; muss eine http- oder https-Adresse sein. Das ist die Adresse, unter der Server Outpost erreichen — **nicht** die Launcher-Adresse der Browser-Einstellungen (`not: browser_launcher_url`), obwohl beide mit `IconInput` gebaut sind.
-- `default`: Feld standardmäßig leer; `http://192.168.2.10:6989` im Artboard ist nur ein Beispiel, kein Vorgabewert. Hilfetext „Unter dieser Adresse erreichen deine Server Outpost; daraus entsteht die MCP-URL für Agenten.“
+- `default`: gespeicherte Adresse; `http://192.168.2.10:6989` im Artboard ist nur ein Beispiel.
+- `partial`: Ist nichts gespeichert, steht `window.location.origin` im Feld, darunter in `--subtext` „Vorschlag aus der Adresse dieses Browsers — prüfen, ob deine Server Outpost darunter erreichen.“ Gespeichert wird erst mit Speichern; jede Eingabe blendet den Hinweis aus. Hilfetext „Unter dieser Adresse erreichen deine Server Outpost; daraus entsteht die MCP-URL für Agenten.“
 - `error`: Rahmen `--error`, Text „Keine gültige http- oder https-Adresse.“ über dem Hilfetext. Gültig = beginnt mit `http://` oder `https://`.
+
+### UI-VAULT-SETTINGS-IPBIND — IP-Bindung als Standard (neu in Rev. 15)
+- `data-ui-id` an der Zeile (Titel, Beschreibung, `ToggleSwitch`), zwischen Adresse und Proxy-Hinweis.
+- Datenquelle: `ipBindingDefault` aus `GET /api/vault/settings`, geschrieben mit `PATCH /api/vault/settings` zusammen mit der Adresse.
+- Zustände: `default` an, `selected` aus. Belegt den Schalter UI-AGENT-ACCESS-IPBIND neuer Einrichtungen vor; bestehende Keys ändern sich nicht.
 
 ### UI-VAULT-SETTINGS-PROXY — Hinweis Reverse-Proxy (neu)
 - `data-ui-id` am Wrapper des Hinweises, zwischen Adresse und Speichern. Im Zustand `default` nicht gerendert (kein Platzhalter, keine Lücke) — genau einmal im DOM, solange die Warnung gilt.

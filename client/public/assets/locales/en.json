@@ -1750,7 +1750,8 @@
       "agentUrl": {
         "title": "Outpost address for agents",
         "description": "Your servers reach Outpost at this address; the MCP URL for agents is built from it.",
-        "invalid": "Not a valid http or https address."
+        "invalid": "Not a valid http or https address.",
+        "suggested": "Suggested from this browser's address — check that your servers reach Outpost under it."
       },
       "proxy": {
         "warning": "TRUST_PROXY=true — Outpost trusts every X-Forwarded-For, so IP binding of agent keys has no effect. Set a hop count or an address list."
@@ -1761,6 +1762,10 @@
         "loadSettings": "Could not load the vault settings",
         "retry": "Retry",
         "saveSettings": "Could not save the vault settings"
+      },
+      "ipBindingDefault": {
+        "title": "IP binding by default",
+        "description": "New agent keys work only from their server's IP. Turn off if Outpost cannot see sender addresses, for example behind NAT; the dialog can change it per server."
       }
     }
   },
@@ -1892,8 +1897,10 @@
         "cidrInvalid": "Invalid address range.",
         "submit": "Set up",
         "loading": "Setting up …",
-        "urlMissing": "Outpost address for agents is missing — set it in Settings › Vault.",
-        "foreignAccount": "Another account has already set up agent access for {{user}} on {{server}} — the registration will be replaced."
+        "urlMissing": "Outpost address for agents is missing — enter it here or set a default in Settings › Vault.",
+        "foreignAccount": "Another account has already set up agent access for {{user}} on {{server}} — the registration will be replaced.",
+        "urlLabel": "Outpost address for this server",
+        "urlInvalid": "Not a valid http or https address."
       },
       "ipBind": {
         "label": "Only from this server's IP",

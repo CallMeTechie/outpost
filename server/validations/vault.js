@@ -112,6 +112,9 @@ const agentUrl = Joi.string().max(2048).custom((value, helpers) => {
     return url.origin + url.pathname.replace(/\/+$/, "");
 }).messages({ "any.invalid": "agentUrl must be an http or https address without credentials, query or fragment" });
 
+module.exports.agentUrl = agentUrl;
+
 module.exports.updateVaultSettingsValidation = Joi.object({
-    agentUrl: agentUrl.allow(null, "").required(),
-});
+    agentUrl: agentUrl.allow(null, ""),
+    ipBindingDefault: Joi.boolean(),
+}).min(1);

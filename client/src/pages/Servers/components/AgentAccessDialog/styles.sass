@@ -56,8 +56,14 @@
     &.is-error .input
       border-color: colors.$error
 
-  .agent-access-url-missing
+  .agent-access-url-field
     order: 6
+    display: flex
+    flex-direction: column
+    gap: tokens.$space-1
+
+    &.is-error .input
+      border-color: colors.$error
 
   .agent-access-submit
     order: 7

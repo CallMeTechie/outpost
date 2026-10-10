@@ -1,7 +1,7 @@
 import "./styles.sass";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Copy as IconCopy, KeyRound as IconKeyRound, Network as IconNetwork } from "lucide-react";
+import { Copy as IconCopy, KeyRound as IconKeyRound, Link as IconLink, Network as IconNetwork } from "lucide-react";
 import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
 import Checkbox from "@/common/components/Checkbox";
@@ -12,6 +12,7 @@ import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import { useToast } from "@/common/contexts/ToastContext.jsx";
 import { useVaultAvailable } from "@/common/hooks/useVaultAvailable.js";
 import { deleteRequest, getRequest, postRequest } from "@/common/utils/RequestUtil.js";
+import { isValidAgentUrl } from "@/common/utils/agentUrl.js";
 import { copyToClipboard } from "@/common/utils/clipboard.js";
 import { formatTimeAgo } from "@/common/utils/timeAgo.js";
 
@@ -40,7 +41,7 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
     const { t } = useTranslation();
     const { sendToast } = useToast();
     const { getServerById } = useContext(ServerContext);
-    const { agentUrlSet, trustProxyUnsafe, impersonating } = useVaultAvailable();
+    const { agentUrl: defaultUrl, ipBindingDefault, trustProxyUnsafe, impersonating } = useVaultAvailable();
     const server = entryId ? getServerById(entryId) : null;
     const serverName = server?.name ?? String(entryId ?? "");
     const address = server?.ip ?? "";
@@ -49,7 +50,8 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
     const [remoteUser, setRemoteUser] = useState(null);
     const [otherAccountConfigured, setOtherAccountConfigured] = useState(false);
     const [agents, setAgents] = useState({ claude: true, codex: true });
-    const [ipBinding, setIpBinding] = useState(true);
+    const [ipBindingChoice, setIpBinding] = useState(null);
+    const [urlText, setUrlText] = useState(null);
     const [cidrText, setCidrText] = useState("");
     const [cidrInvalid, setCidrInvalid] = useState(false);
     const [settingUp, setSettingUp] = useState(false);
@@ -85,8 +87,13 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
         .filter((result) => result.id != null && !result.confirmed)
         .map((result) => deleteRequest(`vault/agent-keys/${result.id}`).catch(() => {})));
 
-    const fieldsDisabled = settingUp || !agentUrlSet || impersonating;
-    const setupDisabled = fieldsDisabled || !AGENT_TYPES.some((type) => agents[type]);
+    // Keys come newest first: the address of the last setup on this server wins over the default.
+    const agentUrl = (urlText ?? (keys?.find((key) => key.agentUrl)?.agentUrl || defaultUrl || "")).trim();
+    const urlInvalid = !isValidAgentUrl(agentUrl);
+    const ipBinding = ipBindingChoice ?? ipBindingDefault !== false;
+
+    const fieldsDisabled = settingUp || impersonating;
+    const setupDisabled = fieldsDisabled || !agentUrl || urlInvalid || !AGENT_TYPES.some((type) => agents[type]);
 
     const setup = async () => {
         if (setupDisabled || setupInFlight.current) return;
@@ -105,6 +112,7 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
             const data = await postRequest("vault/agent-keys", {
                 entryId,
                 agentTypes: AGENT_TYPES.filter((type) => agents[type]),
+                agentUrl,
                 ipBinding,
                 allowedCidrs,
             });
@@ -196,6 +204,8 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
         setKeys(null);
         setCidrText("");
         setCidrInvalid(false);
+        setUrlText(null);
+        setIpBinding(null);
         setRevokeTarget(null);
         setRevokeErrorId(null);
         setRevokeOutcome(null);
@@ -316,9 +326,16 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
                             <span className="agent-access-help is-error" role="alert">{t("servers.agentAccess.setup.cidrInvalid")}</span>
                         )}
                     </div>
-                    {!agentUrlSet && (
-                        <p className="agent-access-notice agent-access-url-missing">{t("servers.agentAccess.setup.urlMissing")}</p>
-                    )}
+                    <div className={`agent-access-url-field${urlInvalid ? " is-error" : ""}`} data-ui-id="UI-AGENT-ACCESS-URL">
+                        <label htmlFor="agent-access-url">{t("servers.agentAccess.setup.urlLabel")}</label>
+                        <IconInput id="agent-access-url" icon={IconLink} value={agentUrl} disabled={fieldsDisabled}
+                                   setValue={setUrlText} />
+                        {urlInvalid ? (
+                            <span className="agent-access-help is-error" role="alert">{t("servers.agentAccess.setup.urlInvalid")}</span>
+                        ) : !agentUrl && (
+                            <span className="agent-access-help agent-access-url-missing">{t("servers.agentAccess.setup.urlMissing")}</span>
+                        )}
+                    </div>
                     <div className="agent-access-submit">
                         <Button type="primary" buttonType="button" onClick={setup} disabled={setupDisabled} loading={settingUp} kbd="Ctrl+Enter"
                                 text={settingUp ? t("servers.agentAccess.setup.loading") : t("servers.agentAccess.setup.submit")} />
