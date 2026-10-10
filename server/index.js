@@ -71,6 +71,7 @@ app.use("/api/accounts/api-keys", require("./routes/apiKey"));
 app.use("/api/microsoft", require("./routes/microsoft"));
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/auth", require("./routes/authProviders"));
+app.use("/api/csp-report", require("./routes/cspReport"));
 
 app.ws("/api/ws/term", require("./routes/term"));
 app.ws("/api/ws/guac", require("./routes/guac"));

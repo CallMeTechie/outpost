@@ -202,6 +202,7 @@ test("scheitert die Einrichtung, kommt der Befehl zum Kopieren und der Key bleib
     assert.deepStrictEqual([result.status, result.reason], ["manual", "cli_missing"]);
     const key = keyFrom(result.command);
     assert.match(result.command, /mcp add --scope user --transport http outpost/);
+    assert.ok(result.command.startsWith(" "), "a leading space keeps the command out of the bash history");
     assert.strictEqual(files.length, 2);
     assert.deepStrictEqual(files.map(([op]) => op), ["drop", "cleanup"]);
     assert.strictEqual(files[0][1], files[1][1]);
