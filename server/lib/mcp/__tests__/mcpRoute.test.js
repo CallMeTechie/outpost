@@ -25,6 +25,12 @@ fake("../../browser/tools", {
         forgetTransport: () => {},
     }),
 });
+fake("../../vault/mcpProvider", {
+    createVaultProvider: () => ({
+        name: "vault", available: async () => false, list: () => [], has: () => false,
+        call: async () => ({ content: [] }), forgetTransport: () => {},
+    }),
+});
 
 const router = require("../../../routes/mcp");
 
