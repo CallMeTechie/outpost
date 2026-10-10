@@ -2,7 +2,7 @@ import "./styles.sass";
 import Icon from "@/common/components/Icon";
 import { useEffect, useRef, useState, useCallback } from "react";
 
-export const TabSwitcher = ({ tabs, activeTab, onTabChange, variant = "default", iconOnly = false }) => {
+export const TabSwitcher = ({ tabs, activeTab, onTabChange, variant = "default", iconOnly = false, dataUiId }) => {
     const tabRefs = useRef({});
     const [indicatorStyle, setIndicatorStyle] = useState({});
 
@@ -26,7 +26,7 @@ export const TabSwitcher = ({ tabs, activeTab, onTabChange, variant = "default",
     }, [updateIndicator]);
 
     return (
-        <div className={`tab-switcher tab-switcher-${variant}${iconOnly ? ' tab-switcher-icon-only' : ''}`}>
+        <div className={`tab-switcher tab-switcher-${variant}${iconOnly ? ' tab-switcher-icon-only' : ''}`} data-ui-id={dataUiId}>
             <div className="tab-switcher-container">
                 <div
                     className="tab-switcher-indicator"
