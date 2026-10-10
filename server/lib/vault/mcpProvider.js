@@ -234,7 +234,7 @@ const createVaultProvider = ({ getBrowserTools, approvals = require("./approvals
         // silent: updatedAt is part of the stamp of a session approval (Task 6); touching it would end that approval after every fill.
         await VaultItem.update({ lastUsedAt: new Date() }, { where: { id: item.id }, silent: true })
             .catch((err) => logger.warn("Could not record the last use of a vault entry", { itemId: item.id, error: err.message }));
-        return textResult(usernameRef ? `Benutzername und Passwort von ${note.item} eingetragen.` : `Passwort von ${note.item} eingetragen.`);
+        return textResult(usernameRef ? `Filled username and password of ${note.item}.` : `Filled password of ${note.item}.`);
     };
 
     const handlers = { [LIST]: listItems, [FILL]: fill };
