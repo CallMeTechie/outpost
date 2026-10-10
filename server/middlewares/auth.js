@@ -72,6 +72,8 @@ module.exports.authenticate = async (req, res, next) => {
     if (req.user === null)
         return res.status(401).json({ message: "The account associated to the token is not registered" });
 
+    // Timers and emitters created inside the request inherit this store: code that creates a long-lived
+    // timer lazily on first use must not rely on it for audit attribution.
     if (req.session.impersonatorId)
         return auditContext.run({ impersonatorId: req.session.impersonatorId }, next);
 
