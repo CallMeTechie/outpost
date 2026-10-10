@@ -18,14 +18,17 @@ const ACCOUNT_B = 2;
 const audits = [];
 const execs = [];
 const SERVER_IP = "198.51.100.7";
-const RESET = { cliFound: true, setupFails: false, registered: "ABSENT", revokeOutput: "REMOVED\n", probeFrom: SERVER_IP };
+const RESET = { cliFound: true, setupFails: false, registered: "ABSENT", revokeOutput: "REMOVED\n", probeFrom: SERVER_IP, auditFailsFor: null };
 const dropped = {};
 const files = [];
 const state = { base: null, identityOf: {}, ...RESET };
 
 fake("../../../utils/database", db);
 fake("../../../controllers/audit", {
-    createAuditLog: async (entry) => { audits.push(entry); },
+    createAuditLog: async (entry) => {
+        if (entry.details?.agentType && entry.details.agentType === state.auditFailsFor) throw new Error("audit store down");
+        audits.push(entry);
+    },
     AUDIT_ACTIONS: {
         VAULT_AGENT_KEY_CREATE: "vault.agent_key_create",
         VAULT_AGENT_KEY_REVOKE: "vault.agent_key_revoke",
@@ -219,6 +222,11 @@ test("scheitert die Einrichtung, kommt der Befehl zum Kopieren und der Key bleib
     state.registered = "OTHER";
     const [failed] = (await setUp()).body.results;
     assert.deepStrictEqual([failed.status, failed.reason, (await ApiKey.findByPk(failed.id)).pending], ["manual", "exec_failed", true]);
+
+    Object.assign(state, { setupFails: false, auditFailsFor: "codex" });
+    const both = (await setUp(tokens.a, { agentTypes: ["claude", "codex"] })).body.results;
+    assert.deepStrictEqual(both.map((r) => [r.agentType, r.status, r.reason]), [["claude", "configured", null], ["codex", "manual", "exec_failed"]]);
+    assert.match(both[1].command, /outpost_[0-9a-f]{64}/);
 });
 
 test("sweepPending löscht nur pending-Keys, die älter als 15 Minuten sind", async (t) => {
