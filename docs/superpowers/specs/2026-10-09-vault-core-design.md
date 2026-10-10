@@ -350,7 +350,7 @@ Unter `/api/vault`, nur Login-Session oder Konto-Key (Agenten-Keys sind ausgesch
 Ist der Vault ausgeschaltet, antworten alle mit `404`, außer `GET /settings`, `PATCH /settings` (die Agenten-Adresse lässt sich vor dem Schlüssel setzen) und `GET /available`.
 
 Ausnahme `GET /api/vault/available`, nach dem Muster von `GET /api/browser/available`: antwortet
-immer `200` mit `{ enabled, canUse, canManageOrgs: [orgId…], canProvision, agentUrlSet, impersonating, trustProxyUnsafe }`. `enabled` = Vault
+immer `200` mit `{ enabled, canUse, canManageOrgs: [orgId…], canProvision, agentUrlSet, impersonating, trustProxyUnsafe }`, bei `canUse` zusätzlich `agentUrl` und `ipBindingDefault` (Vorbelegung im Agenten-Zugang-Dialog). `enabled` = Vault
 eingeschaltet; `canUse` = `vault.use` oder aktives Mitglied mindestens einer Organisation (steuert den
 Bereich in der Navigation); `canProvision` = Vault eingeschaltet und `vault.use` oder aktives Mitglied
 (steuert „Agenten-Zugang…“ im Server-Kontextmenü); `impersonating` = die Sitzung trägt

@@ -246,7 +246,7 @@ test("available meldet Schalter, Rechte, Agenten-Adresse, Standard der IP-Bindun
         state._resetForTests();
         await state.initVaultState();
         assert.deepStrictEqual((await get("/available", "s-revealer")).body, {
-            enabled: false, canUse: false, canManageOrgs: [], canProvision: false, agentUrlSet: true, ...urlFields, impersonating: false, trustProxyUnsafe: true,
+            enabled: false, canUse: false, canManageOrgs: [], canProvision: false, agentUrlSet: true, impersonating: false, trustProxyUnsafe: true,
         });
         assert.strictEqual((await get("/items", "s-revealer")).status, 404);
         assert.strictEqual((await get("/settings", "s-revealer")).body.keyStatus, "missing");

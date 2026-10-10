@@ -46,17 +46,17 @@ export const Vault = () => {
     const s = (key) => t(`settings.vault.${key}`);
 
     // Only a suggestion: the browser may reach Outpost through a proxy that the servers cannot use.
-    const apply = useCallback((data) => {
+    const apply = useCallback((data, { suggest = false } = {}) => {
         setSettings(data);
-        setAgentUrl(data.agentUrl ?? window.location.origin);
-        setSuggested(!data.agentUrl);
+        setAgentUrl(data.agentUrl ?? (suggest ? window.location.origin : ""));
+        setSuggested(suggest && !data.agentUrl);
         setIpBindingDefault(data.ipBindingDefault !== false);
     }, []);
 
     const load = useCallback(() => {
         setLoadFailed(false);
         getRequest("vault/settings")
-            .then(apply)
+            .then((data) => apply(data, { suggest: true }))
             .catch(() => {
                 setLoadFailed(true);
                 sendToast(t("common.error"), t("settings.vault.errors.loadSettings"));

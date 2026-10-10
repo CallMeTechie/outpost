@@ -4,7 +4,7 @@ import { getRequest } from "@/common/utils/RequestUtil.js";
 
 const UNAVAILABLE = Object.freeze({
     enabled: false, canUse: false, canManageOrgs: [], canProvision: false,
-    agentUrlSet: false, impersonating: false, trustProxyUnsafe: false,
+    agentUrlSet: false, agentUrl: null, ipBindingDefault: true, impersonating: false, trustProxyUnsafe: false,
 });
 
 const RETRY_MS = 30_000;

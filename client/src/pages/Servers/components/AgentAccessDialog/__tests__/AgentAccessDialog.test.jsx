@@ -136,7 +136,7 @@ test("revoking a key whose registration could not be removed shows the command t
     expect(clipboard.copyToClipboard).toHaveBeenCalledWith(commands);
 });
 
-test("the address of the server's last setup prefills the field and goes with the setup; the binding follows the default", async () => {
+test("the address of the server's last setup prefills the field and goes with the setup; an untouched binding is left to the server default", async () => {
     const user = userEvent.setup();
     vaultAvailable.current = { ...AVAILABLE, ipBindingDefault: false };
     requestDouble.stub("getRequest", "vault/agent-keys?entryId=7", {
@@ -151,7 +151,7 @@ test("the address of the server's last setup prefills the field and goes with th
     expect(within(node("UI-AGENT-ACCESS-IPBIND")).getByRole("checkbox")).not.toBeChecked();
 
     await user.clear(field);
-    await user.type(field, "gate.example.net");
+    await user.type(field, "https://gate.example.net/?x=1");
     expect(submit).toBeDisabled();
     await user.clear(field);
     expect(within(node("UI-AGENT-ACCESS-URL")).getByText(t("servers.agentAccess.setup.urlMissing"))).toBeInTheDocument();
@@ -162,6 +162,6 @@ test("the address of the server's last setup prefills the field and goes with th
 
     expect(requestDouble.calls).toContainEqual({
         method: "postRequest", path: "vault/agent-keys",
-        body: { entryId: 7, agentTypes: ["claude", "codex"], agentUrl: "https://outpost.example.org", ipBinding: false, allowedCidrs: [] },
+        body: { entryId: 7, agentTypes: ["claude", "codex"], agentUrl: "https://outpost.example.org", allowedCidrs: [] },
     });
 });

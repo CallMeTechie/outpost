@@ -339,6 +339,8 @@ test("eine Adresse aus dem Dialog gilt für diesen Key; ohne Angabe gelten Stand
         status: 409, body: { code: 409, message: "Enter the Outpost address for agents, here or in Settings › Vault" },
     });
 
+    for (const agentUrl of ["https://gate.example.net/?x=1", "https://user:pw@gate.example.net", "ftp://gate.example.net"])
+        assert.strictEqual((await setUp(tokens.b, { agentUrl })).status, 400, agentUrl);
     const [own] = (await setUp(tokens.a, { agentUrl: "https://gate.example.net/outpost/" })).body.results;
     assert.deepStrictEqual(commandsWith("https://gate.example.net/outpost/api/"), ["api/vault/agent-keys/probe", "api/mcp"]);
     const stored = await ApiKey.findByPk(own.id);

@@ -1471,7 +1471,7 @@ screens:
         verify: recommended
         data_source: static
         semantic_anchor:
-          means: Speichert die Outpost-Adresse für Agenten, wie der Speichern-Knopf der Browser-Einstellungen.
+          means: Speichert die Outpost-Adresse für Agenten und den Standard der IP-Bindung, wie der Speichern-Knopf der Browser-Einstellungen.
         states:
           - { id: default }
           - { id: disabled }

@@ -113,7 +113,7 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
                 entryId,
                 agentTypes: AGENT_TYPES.filter((type) => agents[type]),
                 agentUrl,
-                ipBinding,
+                ...(ipBindingChoice !== null ? { ipBinding: ipBindingChoice } : {}),
                 allowedCidrs,
             });
             const next = data.results.map((result) => ({ ...result, confirmed: result.status === "configured" }));
