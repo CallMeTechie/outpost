@@ -2,7 +2,7 @@ import "./styles.sass";
 import Icon from "@/common/components/Icon";
 
 export const IconInput = ({ type, id, name, required, icon, placeholder, customClass,
-                              autoComplete, value, setValue, onChange, onBlur, onKeyDown, autoFocus, disabled, dataUiId }) => {
+                              autoComplete, value, setValue, onChange, onBlur, onKeyDown, autoFocus, disabled, dataUiId, invalid }) => {
     const handleChange = (event) => {
         if (setValue) {
             setValue(event.target.value);
@@ -29,6 +29,7 @@ export const IconInput = ({ type, id, name, required, icon, placeholder, customC
                 onKeyDown={onKeyDown}
                 autoFocus={autoFocus}
                 disabled={disabled}
+                aria-invalid={invalid || undefined}
             />
         </div>
     );

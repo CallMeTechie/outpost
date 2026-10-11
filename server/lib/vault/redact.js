@@ -1,11 +1,11 @@
 const REDACTED = "••••";
 const MIN_LENGTH = 4;
 
-// document.title and innerText collapse runs of whitespace, so the value can show up in that form too.
 const lowerHex = (encoded) => encoded.replace(/%[0-9A-F]{2}/g, (m) => m.toLowerCase());
 const variantsOf = (secret) => {
     const percent = encodeURIComponent(secret);
     const form = new URLSearchParams([["", secret]]).toString().slice(1);
+    // document.title and innerText collapse runs of whitespace, so the value can show up in that form too.
     return [secret, percent, lowerHex(percent), form, lowerHex(form), secret.replace(/\s+/g, " ").trim()];
 };
 
@@ -54,4 +54,4 @@ const truncateAndRedact = (text, limitBytes, variants) => {
     };
 };
 
-module.exports = { REDACTED, variantsOf, secretVariants, redactSecretText, truncateAndRedact };
+module.exports = { REDACTED, MIN_LENGTH, variantsOf, secretVariants, redactSecretText, truncateAndRedact };

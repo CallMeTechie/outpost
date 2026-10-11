@@ -18,8 +18,9 @@ export const VaultApprovalCard = ({ approval, now, sending, onAnswer }) => {
     const expired = remaining <= 0;
     const disabled = expired || sending;
     const agent = approval.agentType ? t(`vault.agents.${approval.agentType}`) : null;
+    const fillKey = approval.field ? "vault.approval.target.fillField" : "vault.approval.target.fill";
     const toolLine = approval.target && (FILL_TOOLS.includes(approval.tool)
-        ? t("vault.approval.target.fill", { origin: approval.target, interpolation: { escapeValue: false } })
+        ? t(fillKey, { origin: approval.target, field: approval.field, interpolation: { escapeValue: false } })
         : approval.target);
 
     // On the card, not on the document: a dialog underneath needs Esc for itself.
@@ -65,7 +66,7 @@ export const VaultApprovalCard = ({ approval, now, sending, onAnswer }) => {
             <div className="vault-approval-actions">
                 <Button type="primary" text={t("vault.approval.actions.once")} disabled={disabled} loading={sending}
                         onClick={() => onAnswer("once")} />
-                {!approval.impersonated && (
+                {!approval.impersonated && approval.allowSession !== false && (
                     <Button text={t("vault.approval.actions.session")} disabled={disabled} onClick={() => onAnswer("session")} />
                 )}
                 <Button text={t("vault.approval.actions.deny")} disabled={disabled} onClick={() => onAnswer("deny")} />

@@ -3,7 +3,7 @@ const { VaultError, VaultErrorCode, VaultErrorMessage } = require("./errors");
 const { visibleItems, itemRef } = require("./visibility");
 const broker = require("./broker");
 const approvals = require("./approvals");
-const { secretVariants, redactSecretText, truncateAndRedact } = require("./redact");
+const { MIN_LENGTH, secretVariants, redactSecretText, truncateAndRedact } = require("./redact");
 const { coversGit } = require("./gitHosts");
 const { createAuditLog } = require("../../controllers/audit");
 const logger = require("../../utils/logger");
@@ -145,7 +145,9 @@ const createGitProxy = ({ windowMs = OPERATION_WINDOW_MS, idleMs = IDLE_MS, agen
         };
         const headers = { authorization: `Basic ${basic}` };
         for (const name of REQUEST_HEADERS) if (typeof req.headers[name] === "string") headers[name] = req.headers[name];
-        const upstream = https.request({ hostname: request.hostname, port: request.port, method: req.method, path: request.upstreamPath, headers, agent });
+        const upstream = https.request({
+            hostname: request.hostname, port: request.port, method: req.method, path: request.upstreamPath, headers, agent, timeout: idleMs,
+        });
         upstream.setTimeout(idleMs, () => upstream.destroy(new Error("idle")));
         upstream.on("error", (err) => {
             if (res.headersSent) return res.destroy();
@@ -241,7 +243,7 @@ const createGitProxy = ({ windowMs = OPERATION_WINDOW_MS, idleMs = IDLE_MS, agen
                 if (request.name === "git-receive-pack" && candidate.fields.readOnly === true) throw new VaultError(C.READ_ONLY);
             };
             const act = async (secret, current) => {
-                if (secret.length < 4) throw new VaultError(C.SECRET_TOO_SHORT);
+                if (secret.length < MIN_LENGTH) throw new VaultError(C.SECRET_TOO_SHORT);
                 const username = current.fields.gitUsername || DEFAULT_GIT_USERNAME;
                 variants = secretVariants({ token: secret, gitUsername: username });
                 const basic = Buffer.from(`${username}:${secret}`).toString("base64");

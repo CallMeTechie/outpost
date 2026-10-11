@@ -1,7 +1,7 @@
 const { VaultError, VaultErrorCode, VaultErrorMessage } = require("../errors");
 const { itemRef } = require("../visibility");
-const { createRateLimit } = require("../broker");
-const { secretVariants, redactSecretText, truncateAndRedact } = require("../redact");
+const { createRateLimit, callerKey } = require("../broker");
+const { MIN_LENGTH, secretVariants, redactSecretText, truncateAndRedact } = require("../redact");
 
 const NAME = "vault_http";
 const METHODS = new Set(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"]);
@@ -21,6 +21,7 @@ const TIMEOUT_MS = 30 * 1000;
 const MAX_REDIRECTS = 5;
 const MAX_RUNNING = 4;
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
+const BODY_HEADERS = new Set(["content-type", "content-encoding", "content-language", "content-location"]);
 const SHOWN_HEADERS = new Set(["content-type", "content-length", "location", "link", "etag", "last-modified", "retry-after", "x-github-request-id"]);
 const TEXT_TYPE = /^text\/|json|xml|javascript|x-www-form-urlencoded/i;
 // fetch decodes exactly these; any other encoding would reach the redaction still compressed.
@@ -43,7 +44,6 @@ const def = {
 };
 
 const textResult = (text) => ({ content: [{ type: "text", text }] });
-const callerKey = (ctx) => `${ctx.accountId}:${ctx.keyId ?? null}`;
 
 const createHttpLimits = () => {
     const running = new Map();
@@ -101,7 +101,7 @@ const assertRequest = (item, { url, method, headers, body }) => {
     const problem = headerProblem(headers, fields.headerName ?? "Authorization");
     if (problem === "shape")
         throw new VaultError(VaultErrorCode.HEADER_NOT_ALLOWED,
-            "headers must be an object of at most 30 headers with token names and single-line string values, at most 8 KB together.");
+            `headers must be an object of at most ${MAX_HEADERS} headers with token names and single-line string values, at most ${HEADERS_LIMIT / 1024} KB together.`);
     if (problem) throw new VaultError(VaultErrorCode.HEADER_NOT_ALLOWED);
     if (body != null && (typeof body !== "string" || READS.has(method) || Buffer.byteLength(body) > BODY_LIMIT))
         throw new VaultError(VaultErrorCode.BAD_BODY);
@@ -122,7 +122,8 @@ const send = async ({ url, method, headers, body, signal }) => {
     let current = url;
     let currentMethod = method;
     let currentBody = body;
-    const request = () => fetch(current, { method: currentMethod, headers, body: currentBody, redirect: "manual", signal });
+    let currentHeaders = headers;
+    const request = () => fetch(current, { method: currentMethod, headers: currentHeaders, body: currentBody, redirect: "manual", signal });
     let response = await request();
     for (let hop = 0; hop < MAX_REDIRECTS; hop += 1) {
         const next = REDIRECTS.has(response.status) ? sameOrigin(response.headers.get("location"), current) : null;
@@ -131,6 +132,7 @@ const send = async ({ url, method, headers, body, signal }) => {
         if (response.status === 303 || ((response.status === 301 || response.status === 302) && currentMethod === "POST")) {
             currentMethod = currentMethod === "HEAD" ? "HEAD" : "GET";
             currentBody = undefined;
+            currentHeaders = Object.fromEntries(Object.entries(currentHeaders).filter(([name]) => !BODY_HEADERS.has(name.toLowerCase())));
         }
         current = next;
         response = await request();
@@ -192,7 +194,7 @@ const handler = async (args, ctx, { broker, httpLimits }) => {
             act: async (token, item) => {
                 // Taken only now: a call waiting for the user's approval does not hold one of the 4 slots.
                 entered = httpLimits.enter(ctx);
-                if (token.length < 4) throw new VaultError(VaultErrorCode.SECRET_TOO_SHORT);
+                if (token.length < MIN_LENGTH) throw new VaultError(VaultErrorCode.SECRET_TOO_SHORT);
                 const fields = item.fields ?? {};
                 const headerValue = (fields.headerTemplate ?? "Bearer {{secret}}").split("{{secret}}").join(token);
                 const variants = secretVariants({ token, headerValue });
@@ -205,7 +207,9 @@ const handler = async (args, ctx, { broker, httpLimits }) => {
                         headers: { ...(args.headers ?? {}), [fields.headerName ?? "Authorization"]: headerValue },
                     });
                     const raw = await readCapped(response, RESPONSE_LIMIT + 1);
-                    const declared = Number.parseInt(response.headers.get("content-length") ?? "", 10);
+                    // Content-Length counts the encoded bytes, but fetch hands over the decoded body.
+                    const encoding = (response.headers.get("content-encoding") ?? "").trim().toLowerCase();
+                    const declared = encoding === "" || encoding === "identity" ? Number.parseInt(response.headers.get("content-length") ?? "", 10) : NaN;
                     const bytes = Number.isSafeInteger(declared) && declared >= 0 ? declared : raw.length > RESPONSE_LIMIT ? null : raw.length;
                     Object.assign(details, { status: response.status, bytes });
                     return textResult(formatResponse(response, raw, bytes === null ? `more than ${RESPONSE_LIMIT} bytes` : `${bytes} bytes`, variants));

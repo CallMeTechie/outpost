@@ -15,7 +15,7 @@ export const VAULT_TYPES = {
         defaults: { username: "", origins: "" },
     },
     api_key: {
-        labelKey: "vault.types.apiKey", icon: IconKeyRound, secrets: ["token"], targets: ["hosts"],
+        labelKey: "vault.types.apiKey", icon: IconKeyRound, secrets: ["token"], targets: ["hosts", "fillOrigins"],
         defaults: {
             hosts: "", headerName: "Authorization", headerTemplate: "Bearer {{secret}}",
             readOnly: false, allowHttp: false, git: false, gitUsername: "x-access-token", fillOrigins: "",
@@ -29,7 +29,7 @@ export const VAULT_TYPES = {
         labelKey: "vault.types.database", icon: IconDatabase, secrets: ["password"], targets: ["host"],
         defaults: { engine: "postgres", host: "", port: "", database: "", username: "" },
     },
-    generic: { labelKey: "vault.types.other", icon: IconLock, secrets: ["value"], targets: [], defaults: { fillOrigins: "" } },
+    generic: { labelKey: "vault.types.other", icon: IconLock, secrets: ["value"], targets: ["fillOrigins"], defaults: { fillOrigins: "" } },
 };
 
 export const TYPE_KEYS = Object.keys(VAULT_TYPES);

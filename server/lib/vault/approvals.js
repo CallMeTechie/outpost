@@ -86,9 +86,9 @@ const hasSessionApproval = (transportId, item, scope) => {
 
 const requestApproval = async ({
     accountId, keyId = null, transportId, agentType = null, entryName = null, impersonated = false,
-    item, target, tool, access, scope = access, signal,
+    item, target, tool, access, scope = access, field = null, allowSession = true, signal,
 }) => {
-    if (hasSessionApproval(transportId, item, scope)) return "session";
+    if (allowSession && hasSessionApproval(transportId, item, scope)) return "session";
     const now = Date.now();
     prune(now);
     if ((denials.get(denialKey(accountId, keyId, item.id)) ?? 0) > now) throw early(VaultErrorCode.APPROVAL_DENIED);
@@ -104,7 +104,7 @@ const requestApproval = async ({
         const request = {
             id: randomUUID(), accountId, keyId, caller: callerKey(accountId, keyId), transportId,
             itemId: item.id, stamp: grantStamp(item), organizationId: item.organizationId ?? null, item: itemRef(item),
-            agentType, entryName, impersonated: Boolean(impersonated), target, tool, access, scope,
+            agentType, entryName, impersonated: Boolean(impersonated), target, tool, access, scope, field, allowSession: allowSession !== false,
             expiresAt: now + APPROVAL_TTL_MS, resolve, reject, signal,
         };
         request.timer = setTimeout(() => expire(request, "expired"), APPROVAL_TTL_MS);
@@ -129,19 +129,20 @@ const answerApproval = (id, accountId, decision, meta = {}) => {
         return { status: 410 };
     }
     if (decision === "session" && request.impersonated) return { status: 400, code: VaultErrorCode.SESSION_NOT_ALLOWED };
+    const answer = decision === "session" && !request.allowSession ? "once" : decision;
     close(request, 409);
-    if (decision === "deny") {
+    if (answer === "deny") {
         denials.set(denialKey(request.accountId, request.keyId, request.itemId), now + DENY_LOCK_MS);
         audit(request, AUDIT_ACTIONS.VAULT_DENY, {}, meta);
         request.reject(new VaultError(VaultErrorCode.APPROVAL_DENIED));
     } else {
-        if (decision === "session") {
+        if (answer === "session") {
             if (isGitSession(request.transportId)) touchSession(request.transportId);
             if (!sessionGrants.has(request.transportId)) sessionGrants.set(request.transportId, new Map());
             sessionGrants.get(request.transportId).set(grantKey(request.itemId, request.scope), request.stamp);
         }
-        audit(request, AUDIT_ACTIONS.VAULT_APPROVE, { decision }, meta);
-        request.resolve(decision);
+        audit(request, AUDIT_ACTIONS.VAULT_APPROVE, { decision: answer }, meta);
+        request.resolve(answer);
     }
     return { status: 200 };
 };
@@ -151,8 +152,8 @@ const listOpenApprovals = (accountId) => {
     return [...open.values()]
         .filter((request) => Number(request.accountId) === Number(accountId))
         .sort((a, b) => a.expiresAt - b.expiresAt)
-        .map(({ id, agentType, entryName, impersonated, item, tool, access, target, expiresAt }) => ({
-            id, agentType, entryName, impersonated, item, tool, access, target,
+        .map(({ id, agentType, entryName, impersonated, item, tool, access, target, field, allowSession, expiresAt }) => ({
+            id, agentType, entryName, impersonated, item, tool, access, target, field, allowSession,
             expiresAt: new Date(expiresAt).toISOString(), remainingMs: Math.max(0, expiresAt - now),
         }));
 };

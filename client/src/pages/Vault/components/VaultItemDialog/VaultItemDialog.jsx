@@ -77,6 +77,8 @@ const ownerNodes = (servers, owner) => (owner === "personal"
     ? (servers || []).filter((node) => node.type !== "organization")
     : (servers || []).find((node) => node.type === "organization" && node.id === owner)?.entries || []);
 
+const targetOf = (fields, field) => JSON.stringify([].concat(fields[field] ?? []).sort());
+
 // Mount with a fresh `key` per opening: the form is initialised from props once, not synced by an effect.
 export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwner, onSaved }) => {
     const { t } = useTranslation();
@@ -98,8 +100,7 @@ export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwn
     const isEdit = item !== null;
     const payloadFields = toPayloadFields(form.fields);
     const storedFields = item ? toPayloadFields(toFormFields(item.type, item.fields)) : {};
-    const targetChanged = isEdit && spec.targets.some((field) =>
-        JSON.stringify(payloadFields[field] ?? null) !== JSON.stringify(storedFields[field] ?? null));
+    const targetChanged = isEdit && spec.targets.some((field) => targetOf(payloadFields, field) !== targetOf(storedFields, field));
     const secretsMissing = isSecretMissing(form.type, secrets);
     const nameValid = NAME_PATTERN.test(form.name);
     const fieldsMissing = missingFields(form.type, payloadFields).length > 0;
@@ -306,7 +307,7 @@ export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwn
                                             {form.fields.git && (
                                                 <div className={`form-group${problems.gitUsername ? " is-error" : ""}`}>
                                                     <label htmlFor="vault-git-username">{t("vault.dialog.usage.gitUsername")}</label>
-                                                    <IconInput id="vault-git-username" icon={IconUser} customClass="vault-mono"
+                                                    <IconInput id="vault-git-username" icon={IconUser} customClass="vault-mono" invalid={problems.gitUsername}
                                                                value={form.fields.gitUsername} setValue={(value) => setField("gitUsername", value)} />
                                                     {problems.gitUsername ? (
                                                         <span className="vault-help vault-help--error" role="alert">{t("vault.dialog.usage.gitUsernameMissing")}</span>

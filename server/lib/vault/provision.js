@@ -57,8 +57,9 @@ const keyPath = (keyFile) => {
     return `${KEY_DIR}/${keyFile}`;
 };
 
-// The key travels in argv only inside keyDropCommand. Everything else reads it from the drop file via
-// a builtin printf/redirect; a literal key is for the copy command shown to the user.
+// The key travels in argv inside keyDropCommand and, for the runtime of `claude mcp add`, in the
+// Claude CLI's argv: its --header has no other way in. Everything else reads it from the drop file
+// via a builtin printf/redirect; a literal key is for the copy command shown to the user.
 const keyWord = ({ keyFile, key }, before = "", after = "") => (keyFile !== undefined
     ? {
         setup: [`k="${keyPath(keyFile)}"`, "key=$(cat \"$k\") && [ -n \"$key\" ] || exit 1"],
@@ -156,6 +157,8 @@ const removeOwnGitLines = (code, announce = false) => [
     `done || exit ${code}`,
 ];
 
+const gitSubsection = (name) => name.replace(/[\\"]/g, (char) => `\\${char}`);
+
 const gitSetupCommand = ({ base, hosts, key, keyFile }) => {
     const prefix = gitPrefix(base);
     if (!Array.isArray(hosts) || hosts.length === 0 || !hosts.every(isGitHost)) throw new TypeError("Invalid git hosts");
@@ -169,7 +172,9 @@ const gitSetupCommand = ({ base, hosts, key, keyFile }) => {
         ...removeOwnGitLines(1, true),
         "failed=0",
         ...hosts.map((host) => `"$cli" config --file "${GITCONFIG}" --replace-all ${shQuote(`url.${prefix}${host}/.insteadOf`)} ${shQuote(`https://${host}/`)} || failed=1`),
-        `[ "$failed" = 1 ] || "$cli" config --file "${GITCONFIG}" --replace-all ${shQuote(`http.${prefix}.extraHeader`)} ${header.word} || failed=1`,
+        // printf is a shell builtin, so unlike `git config` the key never shows up in a process list.
+        `if [ "$failed" = 0 ] && [ -s "${GITCONFIG}" ] && [ -n "$(tail -c 1 "${GITCONFIG}")" ]; then echo >> "${GITCONFIG}" || failed=1; fi`,
+        `[ "$failed" = 1 ] || printf '[http "%s"]\\n\\textraHeader = "%s"\\n' ${shQuote(gitSubsection(prefix))} ${header.word} >> "${GITCONFIG}" || failed=1`,
         "if [ \"$failed\" = 1 ]; then",
         ...removeOwnGitLines(1),
         "exit 1",

@@ -71,7 +71,7 @@ const createBroker = ({ approvals = require("./approvals"), audit = defaultAudit
     });
 
     const use = async ({
-        ctx, itemRef: ref, tool, access, target = null, scope = access, field, check, act,
+        ctx, itemRef: ref, tool, access, target = null, scope = access, field, check, act, fieldLabel = null, allowSession = true,
         approved = null, precheck = null, stale = staleEntry, revoked = REVOKED_MESSAGE, lazySecret = false, deferUse = false, auditExtra = {},
     }) => {
         const caller = { accountId: ctx.accountId, agent: ctx.agent ?? null };
@@ -104,7 +104,7 @@ const createBroker = ({ approvals = require("./approvals"), audit = defaultAudit
                         accountId: ctx.accountId, keyId: ctx.keyId ?? null, transportId: ctx.transportId,
                         agentType: ctx.agent?.agentType ?? null, entryName: await entryNameOf(ctx.agent),
                         impersonated: Boolean(ctx.impersonatorId), item, target: valueOf(target, item), tool, access, scope: scopeNow,
-                        signal: ctx.signal,
+                        field: valueOf(fieldLabel, item), allowSession: valueOf(allowSession, item) !== false, signal: ctx.signal,
                     }).catch((err) => {
                         // approvals.js audits answers, timeouts and withdrawn cards itself; only early refusals come back unaudited.
                         auditedByApprovals = APPROVAL_CODES.has(err?.code) && !err.details?.early;
@@ -157,4 +157,4 @@ const createBroker = ({ approvals = require("./approvals"), audit = defaultAudit
 let shared = null;
 const use = (options) => (shared ??= createBroker()).use(options);
 
-module.exports = { createBroker, createRateLimit, use };
+module.exports = { createBroker, createRateLimit, callerKey, use };

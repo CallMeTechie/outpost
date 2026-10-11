@@ -74,7 +74,7 @@ test("Einmal gibt genau ein Ausfüllen frei; die erste Antwort gewinnt, jede wei
     const first = approvals.requestApproval(call());
     await flush();
     const [card] = window.cards();
-    assert.deepStrictEqual(Object.keys(card).sort(), ["access", "agentType", "entryName", "expiresAt", "id", "impersonated", "item", "remainingMs", "target", "tool"]);
+    assert.deepStrictEqual(Object.keys(card).sort(), ["access", "agentType", "allowSession", "entryName", "expiresAt", "field", "id", "impersonated", "item", "remainingMs", "target", "tool"]);
     assert.deepStrictEqual([card.item, card.agentType, card.entryName, card.impersonated, card.target], ["portal-login", "claude", "web-01", false, "https://portal.example.com"]);
 
     assert.deepStrictEqual(approvals.answerApproval(card.id, 2, "once"), { status: 404 });
@@ -92,7 +92,7 @@ test("Einmal gibt genau ein Ausfüllen frei; die erste Antwort gewinnt, jede wei
     assert.strictEqual(await second, "once");
 });
 
-test("Für diese Sitzung gilt bis zum Ende des Transports, nur für ihn und nur für den unveränderten Eintrag", async (t) => {
+test("Für diese Sitzung gilt bis zum Ende des Transports, nur für ihn und nur für den unveränderten Eintrag; eine Anfrage ohne allowSession nimmt sie als Einmal", async (t) => {
     const window = openWindow(t, 1);
     const first = approvals.requestApproval(call());
     await flush();
@@ -119,6 +119,24 @@ test("Für diese Sitzung gilt bis zum Ende des Transports, nur für ihn und nur 
     assert.strictEqual(window.cards().length, 1);
     approvals.answerApproval(window.cards()[0].id, 1, "once");
     await otherTransport;
+
+    const textField = { tool: "browser_fill_secret", item: API_KEY, target: "https://github.com", field: "Comment", allowSession: false };
+    const passwordField = approvals.requestApproval(call({ ...textField, field: "Token", allowSession: true }));
+    await flush();
+    approvals.answerApproval(window.cards()[0].id, 1, "session");
+    assert.strictEqual(await passwordField, "session");
+    const once = approvals.requestApproval(call(textField));
+    await flush();
+    assert.deepStrictEqual([window.cards()[0].field, window.cards()[0].allowSession], ["Comment", false]);
+    assert.deepStrictEqual(approvals.answerApproval(window.cards()[0].id, 1, "session"), { status: 200 });
+    assert.strictEqual(await once, "once", "without allowSession the server takes session as once");
+    assert.deepStrictEqual(audits.at(-1).details.decision, "once");
+    assert.ok(!JSON.stringify(audits).includes("Comment"));
+    const again = approvals.requestApproval(call(textField));
+    await flush();
+    assert.strictEqual(window.cards().length, 1, "no session approval was stored");
+    approvals.answerApproval(window.cards()[0].id, 1, "once");
+    await again;
 
     approvals.forgetTransport("t-1");
     assert.strictEqual(approvals.hasSessionApproval("t-1", ITEM, "fill"), false);

@@ -94,7 +94,7 @@ const editEntry = (shown) => renderWithProviders(
 );
 const node = (id) => document.querySelector(`[data-ui-id='${id}']`);
 
-test("API-Key zeigt die Nutzung durch Agenten, der Git-Benutzername erscheint erst mit Git, Speichern schickt die Felder; Sonstiges kennt nur das Eintragen im Browser", async () => {
+test("API-Key zeigt die Nutzung durch Agenten, der Git-Benutzername erscheint erst mit Git, neue Origins zum Eintragen verlangen den Token neu, Speichern schickt die Felder; Sonstiges kennt nur das Eintragen im Browser", async () => {
     const user = userEvent.setup();
     requestDouble.stub("patchRequest", "vault/items/6", { item: apiKey, secretsCleared: false });
     const { unmount } = editEntry(apiKey);
@@ -118,6 +118,9 @@ test("API-Key zeigt die Nutzung durch Agenten, der Git-Benutzername erscheint er
     expect(save).toBeDisabled();
     await user.clear(fill());
     await user.type(fill(), "https://coolify.example.net");
+    expect(screen.getByText("Target changed — stored values will be discarded. Enter them again.")).toBeInTheDocument();
+    expect(save).toBeDisabled();
+    await user.type(screen.getByLabelText("Token"), "ghp-new");
     await user.click(save);
 
     expect(requestDouble.calls).toEqual([{
@@ -127,6 +130,7 @@ test("API-Key zeigt die Nutzung durch Agenten, der Git-Benutzername erscheint er
                 hosts: ["api.github.com"], headerName: "Authorization", headerTemplate: "Bearer {{secret}}",
                 readOnly: true, allowHttp: false, git: true, gitUsername: "oauth2", fillOrigins: ["https://coolify.example.net"],
             },
+            secrets: { token: "ghp-new" },
         }),
     }]);
 

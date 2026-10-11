@@ -26,6 +26,7 @@ fake("../../visibility", {
         return { ...item };
     },
     canUseVault: async () => state.permissions.has(Permission.VAULT_USE) || state.memberships > 0,
+    canRevealItem: async (accountId, item) => !item.organizationId || state.permissions.has(Permission.VAULT_REVEAL),
 });
 fake("../../secrets", {
     readSecret: async (itemId, field) => {

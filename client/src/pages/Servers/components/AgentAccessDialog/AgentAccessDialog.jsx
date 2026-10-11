@@ -334,7 +334,7 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
                     )}
                     <div className={`agent-access-cidr-field${cidrInvalid ? " is-error" : ""}`}>
                         <label htmlFor="agent-access-cidrs">{t("servers.agentAccess.setup.cidrLabel")}</label>
-                        <IconInput id="agent-access-cidrs" icon={IconNetwork} value={cidrText} disabled={fieldsDisabled}
+                        <IconInput id="agent-access-cidrs" icon={IconNetwork} value={cidrText} disabled={fieldsDisabled} invalid={cidrInvalid}
                                    setValue={(value) => { setCidrText(value); setCidrInvalid(false); }} />
                         {cidrInvalid && (
                             <span className="agent-access-help is-error" role="alert">{t("servers.agentAccess.setup.cidrInvalid")}</span>
@@ -392,32 +392,38 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
                 <section className="agent-access-result" data-ui-id="UI-AGENT-ACCESS-RESULT">
                     {results.length === 0 ? (
                         <p className="agent-access-empty">{t("servers.agentAccess.result.empty")}</p>
-                    ) : results.map((result) => (
-                        <div key={result.id ?? result.agentType} className={`agent-result ${result.status === "configured" ? "is-ok" : "is-fail"}`}>
-                            <div className="agent-result-head">
-                                <span>{agentLabel(result.agentType)}</span>
-                                <span className="agent-result-status">
-                                    {t(result.status === "configured" ? "servers.agentAccess.result.configured" : "servers.agentAccess.result.failed")}
-                                </span>
-                            </div>
-                            <p className={`agent-access-help${result.status === "configured" ? "" : " is-error"}`}>{resultText(result)}</p>
-                            {result.replacedRegistration && (
-                                <p className="agent-access-notice">{t("servers.agentAccess.result.replaced")}</p>
-                            )}
-                            {result.status !== "configured" && result.command && (
-                                <>
-                                    <div className="agent-result-command">
-                                        <pre>{result.command}</pre>
-                                        <Button type="secondary" buttonType="button" icon={IconCopy}
-                                                text={t("servers.agentAccess.result.copy")} onClick={() => copyCommand(result)} />
-                                    </div>
-                                    {!result.confirmed && (
-                                        <p className="agent-access-notice">{t("servers.agentAccess.result.keyNotice")}</p>
+                    ) : results.map((result) => {
+                        const configured = result.status === "configured";
+                        const neutral = result.reason === "no_git_entries";
+                        return (
+                            <div key={result.id ?? result.agentType} className={`agent-result${configured ? " is-ok" : neutral ? "" : " is-fail"}`}>
+                                <div className="agent-result-head">
+                                    <span>{agentLabel(result.agentType)}</span>
+                                    {!neutral && (
+                                        <span className="agent-result-status">
+                                            {t(configured ? "servers.agentAccess.result.configured" : "servers.agentAccess.result.failed")}
+                                        </span>
                                     )}
-                                </>
-                            )}
-                        </div>
-                    ))}
+                                </div>
+                                <p className={`agent-access-help${configured || neutral ? "" : " is-error"}`}>{resultText(result)}</p>
+                                {result.replacedRegistration && result.agentType !== "git" && (
+                                    <p className="agent-access-notice">{t("servers.agentAccess.result.replaced")}</p>
+                                )}
+                                {result.status !== "configured" && result.command && (
+                                    <>
+                                        <div className="agent-result-command">
+                                            <pre>{result.command}</pre>
+                                            <Button type="secondary" buttonType="button" icon={IconCopy}
+                                                    text={t("servers.agentAccess.result.copy")} onClick={() => copyCommand(result)} />
+                                        </div>
+                                        {!result.confirmed && (
+                                            <p className="agent-access-notice">{t("servers.agentAccess.result.keyNotice")}</p>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        );
+                    })}
                 </section>
             </div>
         </DialogProvider>

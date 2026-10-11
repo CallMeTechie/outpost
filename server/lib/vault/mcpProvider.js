@@ -4,6 +4,7 @@ const { itemRef, visibleItems, canUseVault } = require("./visibility");
 const { checkFillTarget, fillCredential, assertFillableSession, normalizeOrigin } = require("./fill");
 const { createBroker, createRateLimit } = require("./broker");
 const { createHttpLimits } = require("./tools/http");
+const fillSecret = require("./tools/fillSecret");
 const { getVaultSettings } = require("../../controllers/vaultSettings");
 const { defaultAudit } = require("../browser/tools");
 const vaultGuard = require("../browser/vaultGuard");
@@ -31,7 +32,7 @@ const fieldsOf = (item) => item.fields ?? {};
 const canUseBrowser = (accountId) => permission.hasAccountPermission(accountId, Permission.CONNECT_BROWSER);
 
 const usableBy = (item, fields, { canFill, fillAnywhere }) => {
-    const fillable = canFill && ((fields.fillOrigins ?? []).length > 0 || fillAnywhere);
+    const fillable = canFill && ((fields.fillOrigins ?? []).length > 0 || fillAnywhere.has(item.id));
     if (item.type === "login") return canFill ? [FILL] : [];
     if (item.type === "api_key") return [HTTP, ...(fields.git === true ? ["git"] : []), ...(fillable ? [FILL_SECRET] : [])];
     if (item.type === "generic") return fillable ? [FILL_SECRET] : [];
@@ -73,7 +74,11 @@ const listItems = async (args, ctx) => {
     const orgs = orgIds.length > 0 ? await Organization.findAll({ where: { id: orgIds }, attributes: ["id", "name"] }) : [];
     const orgNames = new Map(orgs.map((org) => [org.id, org.name]));
     const canFill = await canUseBrowser(ctx.accountId);
-    const fillAnywhere = items.some((item) => FILLABLE_TYPES.has(item.type)) && (await getVaultSettings()).fillAnywhere === true;
+    const fillAnywhere = new Set();
+    const withoutOrigins = items.filter((item) => FILLABLE_TYPES.has(item.type) && (fieldsOf(item).fillOrigins ?? []).length === 0);
+    if (canFill && withoutOrigins.length > 0 && (await getVaultSettings()).fillAnywhere === true) {
+        for (const item of withoutOrigins) if (await fillSecret.mayFillAnywhere(item, ctx.accountId)) fillAnywhere.add(item.id);
+    }
     return textResult(items.length > 0
         ? JSON.stringify(items.map((item) => describeItem(item, orgNames, { canFill, fillAnywhere })), null, 2)
         : "No vault entries are available to this connection.");
@@ -156,7 +161,7 @@ const TOOLS = {
         handler: fillLogin,
         needsBrowser: true,
     },
-    [FILL_SECRET]: require("./tools/fillSecret"),
+    [FILL_SECRET]: fillSecret,
 };
 
 const createVaultProvider = ({ getBrowserTools, approvals = require("./approvals"), audit = defaultAudit }) => {

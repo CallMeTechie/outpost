@@ -39,9 +39,8 @@ const setupCommandFor = ({ agentType, cliPath, agentUrl, keyFile, gitHosts }) =>
     : provision.setupCommand({ agentType, cliPath, url: endpoint(agentUrl, "/api/mcp"), keyFile }));
 
 const gitHostsFor = async (accountId, entryId) => gitHostsOf(await visibleItems({ accountId, agent: { entryId } }));
-// Literal instead of gitSessionId: approvals.js keeps forgetTransport as the name for every session.
 const forgetGitSession = (key) => {
-    if (key.agentType === "git") approvals.forgetTransport(`git:${key.id}`);
+    if (key.agentType === "git") approvals.forgetSession(approvals.gitSessionId(key.id));
 };
 
 const serialize = (key, entryNames) => ({
