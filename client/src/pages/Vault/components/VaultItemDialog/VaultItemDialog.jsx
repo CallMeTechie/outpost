@@ -23,7 +23,7 @@ import {
 const FIELD_INPUTS = {
     username: { labelKey: "vault.fields.username", icon: IconUser },
     origins: { labelKey: "vault.fields.origin", icon: IconGlobe },
-    hosts: { labelKey: "vault.fields.hosts", icon: IconGlobe },
+    hosts: { labelKey: "vault.fields.hosts", icon: IconGlobe, placeholder: "api.github.com, github.com" },
     headerName: { labelKey: "vault.fields.headerName", icon: IconTextCursorInput },
     headerTemplate: { labelKey: "vault.fields.headerTemplate", icon: IconTextCursorInput },
     host: { labelKey: "vault.fields.host", icon: IconServer },
@@ -226,6 +226,7 @@ export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwn
                                 <div className="form-group" key={key}>
                                     <label htmlFor={`vault-field-${key}`}>{t(FIELD_INPUTS[key].labelKey)}</label>
                                     <IconInput id={`vault-field-${key}`} icon={FIELD_INPUTS[key].icon} customClass="vault-mono"
+                                               placeholder={FIELD_INPUTS[key].placeholder}
                                                value={form.fields[key]} setValue={(value) => setField(key, value)} />
                                 </div>
                             )))}

@@ -115,8 +115,9 @@ const finalize = async (key, entry, context) => {
 const setupAgent = async ({ accountId, entry, identity, agentUrl, key, token, gitHosts }) => {
     const keyPrefix = keyPrefixOf(key);
     const keyFile = `key-${key.id}-${crypto.randomBytes(8).toString("hex")}`;
-    const manual = (reason, probe = null, replacedRegistration = false) => ({
-        status: "manual", reason, probe, replacedRegistration, command: manualCommand(key.agentType, agentUrl, token, gitHosts),
+    let checked = { probe: null, probeFailure: null };
+    const manual = (reason, replacedRegistration = false) => ({
+        status: "manual", reason, ...checked, replacedRegistration, command: manualCommand(key.agentType, agentUrl, token, gitHosts),
     });
     if (!identity) return manual("exec_failed");
 
@@ -131,17 +132,20 @@ const setupAgent = async ({ accountId, entry, identity, agentUrl, key, token, gi
 
     let finished = false;
     try {
-        await run(provision.probeCommand({ url: endpoint(agentUrl, "/api/vault/agent-keys/probe"), keyFile }));
+        const probeRun = await run(provision.probeCommand({ url: endpoint(agentUrl, "/api/vault/agent-keys/probe"), keyFile }));
         const probe = await probeResult(key.id, entry);
+        // 127 is the probe's own exit for "neither curl nor wget"; a probe that never ran proves nothing either way.
+        const probeFailure = probe || !probeRun.ran ? null : probeRun.exitCode === 127 ? "no_client" : "unreachable";
+        checked = { probe, probeFailure };
 
         const found = await run(provision.findCliCommand(key.agentType));
-        if (!found.ran) return manual("exec_failed", probe);
+        if (!found.ran) return manual("exec_failed");
         const cliPath = found.exitCode === 0 ? outputLines(found.stdout).filter((line) => line.startsWith("/")).pop() : null;
-        if (!cliPath) return manual("cli_missing", probe);
+        if (!cliPath) return manual("cli_missing");
 
         const setup = await run(setupCommandFor({ agentType: key.agentType, cliPath, agentUrl, keyFile, gitHosts }));
         const replacedRegistration = outputLines(setup.stdout).includes("OUTPOST_REPLACED=1");
-        const configured = { status: "configured", reason: null, probe, replacedRegistration };
+        const configured = { status: "configured", reason: null, ...checked, replacedRegistration };
         if (setup.ran && setup.exitCode === 0) {
             finished = true;
             return configured;
@@ -151,7 +155,7 @@ const setupAgent = async ({ accountId, entry, identity, agentUrl, key, token, gi
             const check = await run(provision.registrationCheckCommand({ agentType: key.agentType, keyPrefix, base: endpoint(agentUrl, "") }));
             if (check.ran && outputLines(check.stdout).includes("MATCH")) return configured;
         }
-        return manual("exec_failed", probe, replacedRegistration);
+        return manual("exec_failed", replacedRegistration);
     } finally {
         if (!finished) await cleanup();
     }
@@ -214,13 +218,13 @@ const createAgentKeys = async ({
             logger.warn("Agent setup failed", { entryId: entry.id, agentType, error: reason?.name });
             return {
                 id: key?.id ?? null, agentType, remoteUser: identity?.username || null, ...(agentType === "git" ? { hosts: gitHosts } : {}),
-                status: "manual", reason: "exec_failed", probe: null, replacedRegistration: false,
+                status: "manual", reason: "exec_failed", probe: null, probeFailure: null, replacedRegistration: false,
                 ...(key ? { command: manualCommand(agentType, agentUrl, token, gitHosts) } : {}),
             };
         });
         const noGitEntries = {
             id: null, agentType: "git", remoteUser: identity?.username || null, hosts: [],
-            status: "manual", reason: "no_git_entries", probe: null, replacedRegistration: false,
+            status: "manual", reason: "no_git_entries", probe: null, probeFailure: null, replacedRegistration: false,
         };
         return { results: agentTypes.map((agentType) => (runnable.includes(agentType) ? results[runnable.indexOf(agentType)] : noGitEntries)) };
     } finally {

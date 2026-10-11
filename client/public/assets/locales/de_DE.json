@@ -1944,7 +1944,6 @@
         "on": "an",
         "off": "aus — von überall",
         "seenOther": "Gesehen wurde {{seen}} statt {{expected}} — als Adressbereich übernehmen? Ohne Übernahme weist Outpost den Key ab.",
-        "probeFailed": "Adresse konnte nicht gemessen werden — der Key gilt für die aufgelöste Adresse des Servers.",
         "adopt": "Übernehmen",
         "decline": "Nein",
         "trustProxy": "TRUST_PROXY=true — die IP-Bindung ist wirkungslos."
@@ -1961,9 +1960,47 @@
         "keyNotice": "Der Key ist nur jetzt sichtbar. Schließen ohne Übernahme löscht ihn.",
         "replaced": "Bestehende Registrierung ersetzt — der alte Konto-Key bleibt gültig, bis du ihn unter API-Schlüssel löschst.",
         "successGit": "Git eingerichtet für {{user}}: <mono>{{hosts}}</mono> läuft über Outpost.",
-        "noGitEntries": "Kein Eintrag mit „Für Git nutzen“ gilt für diesen Server."
+        "noGitEntries": "Kein Eintrag mit „Für Git nutzen“ gilt für diesen Server.",
+        "unreachable": "{{server}} hat Outpost unter {{url}} nicht erreicht. Adresse prüfen (http oder https?) — bis dahin kann sich kein Agent verbinden.",
+        "noHttpClient": "Auf {{server}} fehlen curl und wget — Outpost konnte nicht prüfen, ob der Server {{url}} erreicht."
       },
-      "gitNote": "Remotes per SSH (<mono>git@github.com:</mono>) gehen nicht über den Vault — auf HTTPS umstellen."
+      "gitNote": "Remotes per SSH (<mono>git@github.com:</mono>) gehen nicht über den Vault — auf HTTPS umstellen.",
+      "guide": {
+        "open": "Anleitung",
+        "title": "Agenten-Zugang einrichten",
+        "intro": "Mit dem Agenten-Zugang nutzen Claude Code, Codex und Git auf diesem Server Einträge aus dem Vault, ohne den geheimen Wert je zu sehen. Jede Nutzung läuft über Outpost; verlangt ein Eintrag eine Freigabe, erscheint unten rechts eine Karte.",
+        "needsTitle": "Was du brauchst",
+        "needs": [
+          "Einen SSH-Zugang zu diesem Server in Outpost — darüber richtet Outpost alles ein.",
+          "Eine Outpost-Adresse, die der Server erreicht, mit dem richtigen Protokoll: im LAN zum Beispiel <mono>http://192.168.1.10:6989</mono>, von außen die https-Adresse deines Reverse-Proxys. Outpost selbst spricht auf seinem Port nur http; <mono>https://</mono> davor scheitert.",
+          "Auf dem Server <mono>curl</mono> oder <mono>wget</mono> und je nach Agent das Programm <mono>claude</mono>, <mono>codex</mono> oder <mono>git</mono>."
+        ],
+        "agentsTitle": "Was eingerichtet wird",
+        "agents": [
+          "<b>Claude Code und Codex:</b> Outpost trägt sich als MCP-Server ein. Die Agenten bekommen Werkzeuge wie <mono>vault_http</mono> für API-Aufrufe mit einem Token und den Outpost-Browser. Danach Claude Code neu starten und <mono>/mcp</mono> aufrufen, Codex in einer neuen Shell starten.",
+          "<b>Git:</b> Outpost leitet https-Remotes auf die Hosts deiner Git-Einträge über sich und setzt den Token selbst ein. Auf dem Server liegt nur ein Agenten-Key in <mono>~/.gitconfig</mono> (nur für den Benutzer lesbar), nie der Token."
+        ],
+        "githubTitle": "Git mit GitHub, Schritt für Schritt",
+        "github": [
+          "Auf GitHub: Settings → Developer settings → Personal access tokens → <b>Fine-grained tokens</b> → Generate new token.",
+          "Repository access: <b>Only select repositories</b> mit den Repos, die der Agent braucht. Permissions: <b>Contents</b> Read and write (Read-only genügt für Clone und Pull); Issues oder Pull requests nur, wenn der Agent sie über die API bearbeiten soll. Ein Ablaufdatum setzen.",
+          "Den Token kopieren — GitHub zeigt ihn nur einmal.",
+          "In Outpost: Vault → Neuer Eintrag → Typ <b>API-Key</b>, Name zum Beispiel <mono>github</mono>. Hosts <mono>api.github.com, github.com</mono>, Token einfügen.",
+          "Unter „Nutzung durch Agenten“ <b>Für Git nutzen</b> einschalten, Git-Benutzername <mono>x-access-token</mono>. „Nur lesen“, wenn der Agent nichts pushen soll.",
+          "„Gilt für“ diesen Server oder Alle Server, „Freigabe erforderlich“ an lassen, Erstellen.",
+          "Hier <b>Git</b> anhaken und Einrichten.",
+          "Auf dem Server prüfen: <mono>git clone https://github.com/owner/repo.git</mono> — in Outpost erscheint die Freigabe-Karte."
+        ],
+        "gitlab": "<b>GitLab:</b> Host <mono>gitlab.com</mono> oder deine Instanz, Benutzername <mono>oauth2</mono>, Personal Access Token mit <mono>read_repository</mono> und <mono>write_repository</mono>, für API-Aufrufe zusätzlich <mono>api</mono>.",
+        "notesTitle": "Gut zu wissen",
+        "notes": [
+          "Nur https-Remotes laufen über Outpost. Ein SSH-Remote stellst du um mit <mono>git remote set-url origin https://github.com/owner/repo.git</mono>.",
+          "Auf der Freigabe-Karte gilt „Einmal“ für genau diesen Zugriff, „Für diese Sitzung“ für weitere gleicher Art. Lesen und Schreiben gibst du getrennt frei; „schreibt“ markiert Zugriffe, die etwas ändern.",
+          "„Nur von der IP dieses Servers“ lässt den Key nur von dieser Adresse zu. Sieht Outpost eine andere, etwa hinter Docker oder NAT, bietet der Dialog an, sie zu übernehmen.",
+          "Entziehen widerruft den Key sofort und entfernt die Einrichtung auf dem Server; fremde Zeilen in der gitconfig bleiben stehen."
+        ],
+        "close": "Schließen"
+      }
     },
     "passwordHint": {
       "paste": "Passwort einfügen",

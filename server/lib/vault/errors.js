@@ -63,7 +63,7 @@ const VaultErrorMessage = Object.freeze({
     [C.BAD_USERNAME_FIELD]: "usernameRef must point to a text, email or tel input on the same origin as the password field. Take a browser_snapshot and pass the right ref, or leave usernameRef out.",
     [C.FOCUS_LOST]: "The target field lost focus before anything was typed, so nothing was filled. Take a browser_snapshot and try again.",
     [C.EVALUATE_LOCKED]: "browser_evaluate is locked in this session because credentials were filled in its browser context. Use browser_snapshot and browser_click instead.",
-    [C.SCREENSHOT_LOCKED]: "browser_screenshot is locked while a field filled by browser_fill_credential shows its value in plain text. Use browser_snapshot instead.",
+    [C.SCREENSHOT_LOCKED]: "browser_screenshot is locked while a field filled by browser_fill_credential or browser_fill_secret shows its value in plain text. Use browser_snapshot instead.",
     [C.INPUT_LOCKED]: "Selecting text and middle-click paste are locked in this session because credentials were filled in its browser context. Use browser_click and browser_type on single fields instead.",
     [C.APPROVAL_TIMEOUT]: "The user did not answer the approval request within 2 minutes, so nothing was done. Ask the user, then try again.",
     [C.APPROVAL_UNAVAILABLE]: "No Outpost window of this account is open to approve the request. Ask the user to open Outpost, then try again.",

@@ -199,3 +199,74 @@
       overflow-wrap: anywhere
       background: colors.$dark-gray
       border-radius: tokens.$radius-sm
+
+  .agent-access-title
+    display: flex
+    align-items: center
+    gap: tokens.$space-2
+    padding-right: tokens.$space-8
+
+  .agent-access-guide-btn
+    display: flex
+    align-items: center
+    justify-content: center
+    width: 1.75rem
+    height: 1.75rem
+    padding: 0
+    flex-shrink: 0
+    border: 1px solid colors.$gray
+    border-radius: tokens.$radius-md
+    background: none
+    color: colors.$subtext
+    cursor: pointer
+
+    &:hover
+      background-color: colors.$gray
+      color: colors.$white
+
+    &:focus-visible
+      outline: 2px solid colors.$primary
+      outline-offset: 2px
+
+.agent-access-guide
+  display: flex
+  flex-direction: column
+  gap: tokens.$space-3
+  width: 44rem
+  max-width: 90vw
+  max-height: 85vh
+  overflow-y: auto
+  padding-right: tokens.$space-2
+
+  h2
+    margin: 0
+    padding-right: tokens.$space-8
+    font: tokens.$type-title
+    color: colors.$white
+
+  h3
+    margin: tokens.$space-2 0 0
+    font: tokens.$type-heading
+
+  p
+    margin: 0
+
+  ul,
+  ol
+    display: flex
+    flex-direction: column
+    gap: tokens.$space-2
+    margin: 0
+    padding-left: tokens.$space-6
+
+  strong
+    color: colors.$white
+
+  .mono
+    font: tokens.$type-mono
+    overflow-wrap: anywhere
+
+  .agent-access-guide-actions
+    display: flex
+    justify-content: flex-end
+    margin-top: tokens.$space-2

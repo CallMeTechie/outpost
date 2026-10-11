@@ -211,3 +211,39 @@ test("the account's agent keys list Git as the third agent of a server, after Cl
     expect([...section.querySelectorAll(".item-details h3")].map((heading) => heading.textContent))
         .toEqual([t("vault.agents.claude"), t("vault.agents.codex"), t("vault.agents.git")]);
 });
+
+test("a failed callback during setup is named, without curl or wget apart from a wrong address, even without IP binding", async () => {
+    const user = userEvent.setup();
+    vaultAvailable.current = { ...AVAILABLE, ipBindingDefault: false, agentUrl: "https://192.168.2.10:6989" };
+    open();
+    const configured = { id: 51, agentType: "claude", status: "configured", remoteUser: "root", replacedRegistration: false };
+
+    const expected = (key) => t(key, { server: "web01", url: "https://192.168.2.10:6989", interpolation: { escapeValue: false } });
+
+    await runSetup(user, [{ ...configured, probe: null, probeFailure: "unreachable" }]);
+    expect(node("UI-AGENT-ACCESS-UNREACHABLE")).toHaveTextContent(expected("servers.agentAccess.result.unreachable"));
+
+    await runSetup(user, [{ ...configured, id: 52, probe: null, probeFailure: "no_client" }]);
+    expect(node("UI-AGENT-ACCESS-UNREACHABLE")).toHaveTextContent(expected("servers.agentAccess.result.noHttpClient"));
+
+    await runSetup(user, [{ ...configured, id: 53, probe: { seenIp: "192.168.2.40", matches: true }, probeFailure: null }]);
+    expect(node("UI-AGENT-ACCESS-UNREACHABLE")).toBeNull();
+});
+
+test("the guide opens over the dialog and Escape closes only the guide", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    open(onClose);
+
+    await user.click(screen.getByRole("button", { name: t("servers.agentAccess.guide.open") }));
+    expect(node("UI-AGENT-ACCESS-GUIDE")).toHaveTextContent(t("servers.agentAccess.guide.githubTitle"));
+
+    await user.keyboard("{Escape}");
+    const dialogs = document.querySelectorAll(".dialog");
+    fireEvent(dialogs[dialogs.length - 1], new Event("webkitAnimationEnd", { bubbles: true }));
+
+    await waitFor(() => expect(node("UI-AGENT-ACCESS-GUIDE")).toBeNull());
+    expect(node("UI-AGENT-ACCESS")).not.toBeNull();
+    expect(document.querySelector(".dialog-hidden")).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+});

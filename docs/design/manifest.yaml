@@ -1,6 +1,6 @@
 schema: mockingbird/1
 project: outpost
-revision: 18
+revision: 19
 updated: 2026-10-11
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
@@ -73,6 +73,10 @@ changelog:
     date: 2026-10-11
     summary: Nachzug aus dem Gesamt-Review — die Freigabe-Karte nennt beim Eintragen eines Tokens das Feld und bietet für andere als Passwortfelder nur „Einmal“; kein Git-Eintrag ist im Ergebnis des Agenten-Zugangs ein neutraler Hinweis statt eines Fehlers
     touched: [UI-VAULT-APPROVAL-CARD, UI-AGENT-ACCESS-RESULT]
+  - rev: 19
+    date: 2026-10-11
+    summary: Nachzug aus dem Handtest — Anleitung hinter einem Fragezeichen im Agenten-Zugang, deutliche Warnung, wenn der Server Outpost unter der eingetragenen Adresse nicht erreicht hat (ersetzt den Hinweis an der IP-Bindung)
+    touched: [UI-AGENT-ACCESS-HELP, UI-AGENT-ACCESS-GUIDE, UI-AGENT-ACCESS-UNREACHABLE, UI-AGENT-ACCESS-IPBIND]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -1469,7 +1473,6 @@ screens:
           - { id: default }
           - { id: selected, copy: "aus — von überall" }
           - { id: partial, copy: "Gesehen wurde 172.17.0.1 statt 192.168.2.40 — als Adressbereich übernehmen? Ohne Übernahme weist Outpost den Key ab." }
-          - { id: disabled, copy: "Adresse konnte nicht gemessen werden — der Key gilt für die aufgelöste Adresse des Servers." }
           - { id: error, copy: "TRUST_PROXY=true — die IP-Bindung ist wirkungslos." }
         locators:
           web: "[data-ui-id='UI-AGENT-ACCESS-IPBIND']"
@@ -1514,6 +1517,68 @@ screens:
           - { id: empty, copy: "nicht sichtbar, solange Git nicht ausgewählt ist" }
         locators:
           web: "[data-ui-id='UI-AGENT-ACCESS-GIT-NOTE']"
+
+      - id: UI-AGENT-ACCESS-UNREACHABLE
+        type: feedback
+        label: Outpost nicht erreicht
+        status: required
+        verify: required
+        data_source: "probe je Ergebnis von POST /api/vault/agent-keys"
+        semantic_anchor:
+          means: >
+            Warnung über dem Ergebnis, wenn der Server Outpost während der Einrichtung nicht unter der
+            eingetragenen Adresse zurückgerufen hat (probeFailure eines eingerichteten Agenten) —
+            unabhängig von der IP-Bindung. unreachable: der Rückruf lief und kam nicht an, typisch https vor
+            einem Port, an dem Outpost nur http spricht; ohne ihn kann sich auch kein Agent verbinden.
+            no_client: auf dem Server fehlen curl und wget, die Adresse ist ungeprüft, nicht falsch.
+          concept: agent_url_unreachable
+          not: [ip_binding, agent_setup_result, toast]
+          example: "web01 hat Outpost unter https://192.168.2.10:6989 nicht erreicht. Adresse prüfen (http oder https?) — bis dahin kann sich kein Agent verbinden."
+        states:
+          - { id: default, copy: "web01 hat Outpost unter https://192.168.2.10:6989 nicht erreicht. Adresse prüfen (http oder https?) — bis dahin kann sich kein Agent verbinden." }
+          - { id: partial, copy: "Auf web01 fehlen curl und wget — Outpost konnte nicht prüfen, ob der Server https://192.168.2.10:6989 erreicht." }
+          - { id: empty, copy: "nicht sichtbar, solange der Server Outpost erreicht hat oder nichts eingerichtet wurde" }
+        locators:
+          web: "[data-ui-id='UI-AGENT-ACCESS-UNREACHABLE']"
+
+      - id: UI-AGENT-ACCESS-HELP
+        type: action
+        label: Anleitung
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: Fragezeichen-Knopf rechts neben dem Titel des Agenten-Zugangs; öffnet die Einrichtungsanleitung (UI-AGENT-ACCESS-GUIDE) über dem Dialog. Der Agenten-Zugang bleibt mit allen Eingaben offen und lässt sich, solange die Anleitung offen ist, nicht schließen.
+          concept: setup_guide_trigger
+          not: [support_dialog, tooltip, agent_setup_result]
+          example: "?"
+        states:
+          - { id: default }
+          - { id: selected, copy: "Anleitung offen" }
+        locators:
+          web: "[data-ui-id='UI-AGENT-ACCESS-HELP']"
+
+      - id: UI-AGENT-ACCESS-GUIDE
+        type: overlay
+        label: Agenten-Zugang einrichten
+        status: required
+        verify: required
+        data_source: static
+        semantic_anchor:
+          means: >
+            Modale Anleitung über dem Agenten-Zugang: wofür er da ist (Vault-Einträge nutzen, ohne den Wert zu
+            sehen, Freigabe-Karten), was man braucht (SSH-Zugang, erreichbare Outpost-Adresse mit dem richtigen
+            Protokoll, curl oder wget, claude/codex/git), was je Agent eingerichtet wird, Git mit GitHub Schritt
+            für Schritt vom Fine-grained PAT bis zum ersten Clone, GitLab in einer Zeile, und Hinweise zu
+            SSH-Remotes, Freigaben, IP-Bindung und Entziehen. Schließen mit Esc, Backdrop oder Schließen führt
+            zurück in den Dialog.
+          concept: setup_guide
+          not: [support_dialog, agent_setup_result, documentation_page]
+          example: "Git mit GitHub, Schritt für Schritt · 1. Auf GitHub: Settings → Developer settings → Personal access tokens → Fine-grained tokens …"
+        states:
+          - { id: default }
+        locators:
+          web: "[data-ui-id='UI-AGENT-ACCESS-GUIDE']"
 
   - id: UI-VAULT-SETTINGS
     kind: panel

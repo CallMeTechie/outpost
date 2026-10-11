@@ -152,7 +152,9 @@ While the new key is not yet in use, Outpost lets the server call `GET <address 
 
 If that address differs from what the server's host name resolves to, the dialog says so and offers to add it, for example "Seen 172.17.0.1 instead of 192.168.2.40 — adopt as address range? Without adopting it, Outpost refuses the key." Typical causes are NAT, IPv6, and an agent on a Docker host whose requests reach an Outpost container through the Docker gateway. Accepting adds exactly the measured address as `/32` (IPv4) or `/128` (IPv6). This works once and only within 15 minutes of creating the key. If the measured address is the address your own browser reaches Outpost from, Outpost refuses to adopt it ("The measured address is the address of your browser; Outpost sees a proxy, not the server"): both requests then arrive through the same proxy, and the range would let in everyone behind it. Fix `TRUST_PROXY` (see [section 6](#_6-reverse-proxy-and-trust-proxy)) or use Outpost's LAN address as **Outpost address for agents**. Without it, the IP binding rejects the agent with `403`, and the audit log records `vault.agent_ip_denied`.
 
-If the check fails (neither `curl` nor `wget`, or Outpost unreachable from the server), the result says so and the setup continues with the resolved addresses.
+If the check fails (neither `curl` nor `wget`, or Outpost unreachable from the server), the result shows a warning regardless of the IP binding: "web01 could not reach Outpost at https://192.168.2.10:6989. Check the address (http or https?) — until then no agent can connect." Without `curl` and `wget` it says instead that the address could not be checked. The setup still goes through with the resolved addresses. The most common cause is `https://` in front of Outpost's own port, which speaks only http; use `http://` there, or the https address of your reverse proxy.
+
+The **?** next to the dialog title opens a short setup guide, including the steps for a GitHub token.
 
 ### Manual setup
 

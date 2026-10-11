@@ -1,6 +1,6 @@
 # Agenten-Zugang — Umsetzungsanleitung (UI-AGENT-ACCESS)
 
-Artboard: docs/design/mockups/ui-agent-access.html · Manifest-Revision: 16
+Artboard: docs/design/mockups/ui-agent-access.html · Manifest-Revision: 19
 
 Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dialog, ein Menüpunkt im Bestandsmenü `UI-SERVERS-LIST-MENU`. Nicht neu gebaut werden: Dialog-Rahmen, Kontextmenü, Clipboard-Helfer, Toggle.
 
@@ -16,7 +16,7 @@ Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dial
 - Schließen: Esc, Backdrop, Schließen. Während die Einrichtung läuft `disableClosing`.
 - RESULT ist vor dem Einrichten leer (`empty`). Tastatur: `Ctrl+Enter` = Einrichten (Dialog-`onKeyDown`, nur wenn Einrichten nicht `disabled`).
 - Erscheint nicht: bei Einträgen ohne `protocol === "ssh"`, bei Pve-/Ordner-Einträgen, und wenn `GET /api/vault/available` `canProvision: false` liefert (Vault aus oder weder Recht `vault.use` noch Organisationsmitglied). Der Menüpunkt fehlt dann ganz, nicht `disabled`. `canProvision` einmal beim Laden des Server-Menüs holen, nach dem Muster von `GET /api/browser/available`.
-- Aufbau: KEYS, SETUP, IPBIND (steht optisch zwischen Agentenauswahl und Adressbereichen), RESULT.
+- Aufbau: Titelzeile mit HELP, KEYS, SETUP, IPBIND (steht optisch zwischen Agentenauswahl und Adressbereichen), RESULT mit UNREACHABLE oben.
 
 ## Elemente
 ### UI-AGENT-ACCESS — Agenten-Zugang (neu)
@@ -49,8 +49,7 @@ Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dial
 - `data-ui-id` an der Toggle-Zeile (`ToggleSwitch`), eigenes Element außerhalb des SETUP-Knotens; im Layout zwischen Agentenauswahl und Adressbereichen. Der Bindungszustand liegt im Dialog-State, nicht im SETUP-Knoten.
 - Datenquelle: aufgelöste Adresse des Server-Eintrags; vorbelegt mit `ipBindingDefault` aus `GET /api/vault/available`.
 - Zustände: `default` an, Hinweis „an · 192.168.2.40“ (IP in `--type-mono`); `selected` aus, Hinweis „aus — von überall“. Aus = Key ohne IP-Bindung.
-- `partial` Messung weicht ab: unter der Zeile eine Bestätigung im Warnrand-Muster (`--warning`): „Gesehen wurde 172.17.0.1 statt 192.168.2.40 — als Adressbereich übernehmen?“ mit „Nein“ (Ghost) / „Übernehmen“ (primär). Adressen in `--type-mono`. Datenquelle: das Probe-Ergebnis der Einrichtung (Spec „Einrichtung per Klick“ Schritt 1a: der Server ruft per Exec `GET <agentUrl>/api/vault/agent-keys/probe` mit dem `pending`-Key auf, die Antwort nennt `normalizeIp(req.ip)`). „Übernehmen“ ruft `POST /api/vault/agent-keys/:id/confirm` mit `{ addSeenIp: true }` (der Server trägt die von ihm gemessene Adresse ein, nie einen Wert vom Client; einmal, bis 15 Minuten nach dem Anlegen); „Nein“ verwirft den Vorschlag. Der Satz „Ohne Übernahme weist Outpost den Key ab.“ gehört zur Frage. Scheitert die Messung, erscheint `partial` nicht, sondern `disabled`.
-- `disabled` Messung nicht möglich: unter der Zeile Hinweis in `--subtext`: „Adresse konnte nicht gemessen werden — der Key gilt für die aufgelöste Adresse des Servers.“ Datenquelle: `probe === null` in der Antwort von `POST /api/vault/agent-keys`. Der Toggle bleibt bedienbar.
+- `partial` Messung weicht ab: unter der Zeile eine Bestätigung im Warnrand-Muster (`--warning`): „Gesehen wurde 172.17.0.1 statt 192.168.2.40 — als Adressbereich übernehmen?“ mit „Nein“ (Ghost) / „Übernehmen“ (primär). Adressen in `--type-mono`. Datenquelle: das Probe-Ergebnis der Einrichtung (Spec „Einrichtung per Klick“ Schritt 1a: der Server ruft per Exec `GET <agentUrl>/api/vault/agent-keys/probe` mit dem `pending`-Key auf, die Antwort nennt `normalizeIp(req.ip)`). „Übernehmen“ ruft `POST /api/vault/agent-keys/:id/confirm` mit `{ addSeenIp: true }` (der Server trägt die von ihm gemessene Adresse ein, nie einen Wert vom Client; einmal, bis 15 Minuten nach dem Anlegen); „Nein“ verwirft den Vorschlag. Der Satz „Ohne Übernahme weist Outpost den Key ab.“ gehört zur Frage. Scheitert die Messung, erscheint `partial` nicht; stattdessen warnt `UI-AGENT-ACCESS-UNREACHABLE` (Rev. 19, ersetzt den früheren Zustand `disabled`).
 - `error` Proxy-Vertrauen: unter der Zeile Warnhinweis in `--warning`, `role="alert"`: „TRUST_PROXY=true — die IP-Bindung ist wirkungslos.“ (`TRUST_PROXY=true` in `--type-mono`). Datenquelle: Feld `trustProxyUnsafe` aus `GET /api/vault/available`. Sichtbar nur, solange es `true` ist; der Toggle bleibt bedienbar.
 
 ### UI-AGENT-ACCESS-RESULT — Ergebnis (neu)
@@ -71,10 +70,25 @@ Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dial
 - Zustände: `default` „Remotes per SSH (git@github.com:) gehen nicht über den Vault — auf HTTPS umstellen.“ (`git@github.com:` in `--type-mono`); `empty` nicht sichtbar, solange Git nicht ausgewählt ist.
 - Nicht: kein Fehler (`not: error`) und kein Einrichtungsergebnis (`not: agent_setup_result`); sperrt „Einrichten“ nicht.
 
+### UI-AGENT-ACCESS-UNREACHABLE — Outpost nicht erreicht (neu in Rev. 19)
+- `data-ui-id` an einem Warnkasten (`.agent-access-warning`, Warnrand links, `--warning-opacity`, `role="alert"`) ganz oben in RESULT.
+- Sichtbar, wenn mindestens ein Ergebnis `status === "configured"` ein `probeFailure` trägt — **unabhängig** von der IP-Bindung. Der Server setzt es in `setupAgent` aus dem Exit-Code des Rückrufs an `<agentUrl>/api/vault/agent-keys/probe`: `unreachable` (Rückruf lief, kam nie an — typisch `https://` vor einem Port, an dem Outpost nur http spricht), `no_client` (Exit 127, weder curl noch wget). Lief der Rückruf gar nicht, bleibt es `null`: dann gibt es keine Aussage.
+- Text i18n `servers.agentAccess.result.unreachable` bzw. `.noHttpClient` mit `server` und der beim Einrichten benutzten `url`; verschwindet beim nächsten Einrichten oder Schließen.
+- Zustände: `default` Adresse nicht erreicht; `partial` curl und wget fehlen, Adresse ungeprüft; `empty` nicht gerendert.
+
+### UI-AGENT-ACCESS-HELP — Anleitung (neu in Rev. 19)
+- Quadratischer Icon-Knopf (`CircleHelp`, 1,75 rem, Rand `--gray`, `--subtext`) direkt rechts neben dem Titel in `.agent-access-title`; `aria-label`/`title` „Anleitung“ (`servers.agentAccess.guide.open`), `aria-haspopup="dialog"`, `aria-expanded`.
+- Öffnet UI-AGENT-ACCESS-GUIDE. Solange die Anleitung offen ist, trägt der Agenten-Dialog `disableClosing` — Esc und Klicks in die Anleitung schließen nur die Anleitung, Eingaben bleiben erhalten.
+
+### UI-AGENT-ACCESS-GUIDE — Agenten-Zugang einrichten (neu in Rev. 19)
+- `AgentAccessGuide.jsx` im Dialog-Ordner: eigener `DialogProvider`, gerendert als Kind des Agenten-Dialogs (Portal), 44 rem, max. 85 vh, scrollt.
+- Inhalt statisch aus `servers.agentAccess.guide.*` (Listen als Arrays, Markup `<mono>`/`<b>` per `Trans`): Einleitung, Was du brauchst, Was eingerichtet wird, Git mit GitHub Schritt für Schritt (geordnet), GitLab, Gut zu wissen; unten `DialogCancelButton` „Schließen“.
+- UI-Begriffe in der Anleitung exakt wie die Beschriftungen in Vault-Dialog und Agenten-Zugang.
+
 ## Datenquellen (Spec, Abschnitt REST-Endpunkte)
 - Beim Öffnen: `GET /api/vault/agent-keys?entryId=` → `keys`, `remoteUser`, `otherAccountConfigured` (Warnung `partial` von SETUP vor dem Einrichten).
 - `GET /api/vault/available` → `agentUrl` (Vorbelegung URL), `ipBindingDefault` (Vorbelegung IPBIND), `trustProxyUnsafe` (IPBIND `error`). Nicht `GET /api/vault/settings`: das verlangt `settings.vault`.
-- Nach dem Einrichten: Antwort von `POST /api/vault/agent-keys` je Agent `{ id, agentType, status, remoteUser, command?, probe, replacedRegistration }` → RESULT (`success`/`error`) und IPBIND `partial` (`probe.matches === false`, gesehene Adresse `probe.seenIp`), IPBIND `disabled` (`probe === null`) und RESULT `partial` (`replacedRegistration === true`).
+- Nach dem Einrichten: Antwort von `POST /api/vault/agent-keys` je Agent `{ id, agentType, status, remoteUser, command?, probe, replacedRegistration }` → RESULT (`success`/`error`) und IPBIND `partial` (`probe.matches === false`, gesehene Adresse `probe.seenIp`), UNREACHABLE (`probeFailure` bei einem eingerichteten Agenten) und RESULT `partial` (`replacedRegistration === true`).
 
 ## Ausdrücklich nicht
 - Keine KI-, Sparkle- oder Roboter-Symbolik; Agenten nur mit Produktnamen.
@@ -86,8 +100,8 @@ Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dial
 ## i18n
 Schema des Bestands (`servers.contextMenu.*`, `servers.dialog.*`); zuerst `client/public/assets/locales/de_DE.json`, dann die übrigen Sprachdateien:
 - `servers.contextMenu.agentAccess` („Agenten-Zugang…“)
-- `servers.agentAccess.title`, `.keys.empty`, `.keys.revoke`, `.keys.revokeConfirm`, `.keys.revokeError`, `.setup.submit`, `.setup.loading`, `.setup.cidrLabel`, `.setup.cidrInvalid`, `.setup.urlLabel`, `.setup.urlInvalid`, `.setup.urlMissing`, `.ipBind.label`, `.ipBind.on`, `.ipBind.off`, `.result.empty`, `.result.success`, `.result.copy`, `.result.keyNotice`, `.setup.foreignAccount`, `.ipBind.seenOther`, `.ipBind.adopt`, `.ipBind.decline`, `.ipBind.trustProxy`, `.setup.git`, `.gitNote`, `.result.git`; außerdem `vault.agents.git` („Git“) im Bereich der Agentennamen
+- `servers.agentAccess.title`, `.keys.empty`, `.keys.revoke`, `.keys.revokeConfirm`, `.keys.revokeError`, `.setup.submit`, `.setup.loading`, `.setup.cidrLabel`, `.setup.cidrInvalid`, `.setup.urlLabel`, `.setup.urlInvalid`, `.setup.urlMissing`, `.ipBind.label`, `.ipBind.on`, `.ipBind.off`, `.result.empty`, `.result.success`, `.result.copy`, `.result.keyNotice`, `.setup.foreignAccount`, `.ipBind.seenOther`, `.ipBind.adopt`, `.ipBind.decline`, `.ipBind.trustProxy`, `.setup.git`, `.gitNote`, `.result.git`, `.result.unreachable`, `.result.noHttpClient`, `.guide.*`; außerdem `vault.agents.git` („Git“) im Bereich der Agentennamen
 - Copy-Strings aus dem Manifest wörtlich; Allgemeines (`common.close`, `common.error`) wiederverwenden.
 
 ## Fertig, wenn
-- Sieben Marker (`UI-AGENT-ACCESS`, `-KEYS`, `-SETUP`, `-URL`, `-IPBIND`, `-RESULT`, `-GIT-NOTE`) plus `UI-SERVERS-LIST-MENU` am Menüpunkt-Verhalten (nur SSH, nur Vault an); `/design-verify --screen UI-AGENT-ACCESS` MATCH.
+- Zehn Marker (`UI-AGENT-ACCESS`, `-KEYS`, `-SETUP`, `-URL`, `-IPBIND`, `-RESULT`, `-GIT-NOTE`, `-UNREACHABLE`, `-HELP`, `-GUIDE`) plus `UI-SERVERS-LIST-MENU` am Menüpunkt-Verhalten (nur SSH, nur Vault an); `/design-verify --screen UI-AGENT-ACCESS` MATCH.

@@ -2,7 +2,7 @@
 <html lang="de" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<title>outpost — Mockups (Revision 17)</title>
+<title>outpost — Mockups (Revision 19)</title>
 <link rel="stylesheet" href="./tokens.css">
 <style>
 .mb-page { font: var(--type-body, 500 0.875rem/1.45 system-ui, sans-serif); color: var(--text, #eee); background: var(--background, #111); margin: 0; padding: var(--space-8, 2rem); }
@@ -87,6 +87,21 @@
 #ab-ui-agent-access .confirm p{ margin: 0; }
 #ab-ui-agent-access .warn{ display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--gray); border-left: 3px solid var(--warning); border-radius: var(--radius-sm); background: var(--background); color: var(--warning); font: var(--type-caption); }
 #ab-ui-agent-access .warn p{ margin: 0; }
+#ab-ui-agent-access .title-row{ display: flex; align-items: center; gap: var(--space-2); }
+#ab-ui-agent-access .icon-btn{ width: 2rem; height: 2rem; display: grid; place-items: center; padding: 0; border-radius: var(--radius-sm); background: transparent; color: var(--subtext); border: 1px solid var(--gray); }
+#ab-ui-agent-access .icon-btn svg{ width: 1rem; height: 1rem; }
+#ab-ui-agent-access .icon-btn.is-selected{ background: var(--primary-opacity); color: var(--primary); border-color: var(--primary); }
+#ab-ui-agent-access .guide-backdrop{ background: var(--dialog-background); padding: var(--space-6) var(--space-4); display: flex; justify-content: center; border-radius: var(--radius-md); }
+#ab-ui-agent-access .guide{ width: 100%; max-width: 44rem; max-height: 85vh; overflow-y: auto; background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); display: grid; }
+#ab-ui-agent-access .guide-head{ padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--gray); }
+#ab-ui-agent-access .guide-head h2{ margin: 0; font: var(--type-title); }
+#ab-ui-agent-access .guide-body{ padding: var(--space-4); display: grid; gap: var(--space-3); }
+#ab-ui-agent-access .guide-body h3{ margin: var(--space-2) 0 0; font: var(--type-heading); }
+#ab-ui-agent-access .guide-body p{ margin: 0; }
+#ab-ui-agent-access .guide-body ul, #ab-ui-agent-access .guide-body ol{ margin: 0; padding-left: var(--space-6); display: grid; gap: var(--space-1); }
+#ab-ui-agent-access .guide-body code{ font: var(--type-mono); font-size: 0.8125rem; padding: 0 var(--space-1); background: var(--terminal); border-radius: var(--radius-sm); }
+#ab-ui-agent-access .guide-foot{ padding: var(--space-3) var(--space-4); border-top: 1px solid var(--gray); display: flex; justify-content: flex-end; }
+#ab-ui-agent-access .btn.secondary{ background: var(--gray); color: var(--text); }
 
 </style>
 <style>
@@ -943,7 +958,7 @@
 </head>
 <body class="mb-page">
 <h1>outpost — Mockups</h1>
-<p class="sub">Manifest-Revision 17 · 2026-10-10 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
+<p class="sub">Manifest-Revision 19 · 2026-10-11 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
 <ul class="mb-toc">
 <li><a href="#UI-SHELL">Rahmen — Navigation</a> <code>UI-SHELL</code></li>
 <li><a href="#UI-SERVERS">Servers — Arbeitsfläche</a> <code>UI-SERVERS</code></li>
@@ -3568,9 +3583,12 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <tr><td><code>UI-AGENT-ACCESS-KEYS</code></td><td>Agenten auf diesem Server</td><td>Die Agenten-Keys dieses Servers — Agent, angelegt, zuletzt genutzt, IP-Bindung — je mit Entziehen. Entziehen widerruft den Key und entfernt die Registrierung auf dem Server. <b>Nicht:</b> api_key, vault_item, identity.</td><td><code>default · empty · loading · selected · error · partial · disabled</code></td></tr>
 <tr><td><code>UI-AGENT-ACCESS-SETUP</code></td><td>Einrichten</td><td>Welche Agenten eingerichtet werden (Claude Code, Codex, Git) und welche zusätzlichen Adressbereiche (CIDR) ihr Key neben der IP dieses Servers akzeptiert. Git richtet in der globalen gitconfig des entfernten Benutzers den Git-Proxy von Outpost ein. <b>Nicht:</b> api_key, vault_binding.</td><td><code>default · loading · error · disabled · partial</code></td></tr>
 <tr><td><code>UI-AGENT-ACCESS-URL</code></td><td>Outpost-Adresse für diesen Server</td><td>Die Adresse, unter der dieser Server Outpost erreicht; daraus entstehen MCP-URL und Adressprüfung dieses Keys. Vorbelegt mit der Adresse der letzten Einrichtung auf diesem Server, sonst mit der Standardadresse aus den Einstellungen. Für Server außerhalb des LANs zum Beispiel die Domain über einen Reverse-Proxy. <b>Nicht:</b> browser_launcher_url, vault_binding.</td><td><code>default · error · empty</code></td></tr>
-<tr><td><code>UI-AGENT-ACCESS-IPBIND</code></td><td>Nur von der IP dieses Servers</td><td>Ob der Key nur Anfragen von der Adresse dieses Servers (plus den eingetragenen Adressbereichen) akzeptiert. Vorbelegt mit dem Standard aus Einstellungen › Vault; aus heißt von überall. <b>Nicht:</b> vault_binding, allowed_origin.</td><td><code>default · selected · partial · disabled · error</code></td></tr>
-<tr><td><code>UI-AGENT-ACCESS-RESULT</code></td><td>Ergebnis</td><td>Je Agent das Ergebnis der Einrichtung — eingerichtet, oder der fertige Befehl zum Kopieren, wenn die automatische Einrichtung scheiterte (CLI fehlt, Exec-Fehler). Der Key ist nur hier und nur jetzt sichtbar; ein Key, der weder automatisch eingerichtet noch kopiert wurde, wird beim Schließen gelöscht. <b>Nicht:</b> agent_key, toast.</td><td><code>default · empty · success · partial · error</code></td></tr>
+<tr><td><code>UI-AGENT-ACCESS-IPBIND</code></td><td>Nur von der IP dieses Servers</td><td>Ob der Key nur Anfragen von der Adresse dieses Servers (plus den eingetragenen Adressbereichen) akzeptiert. Vorbelegt mit dem Standard aus Einstellungen › Vault; aus heißt von überall. <b>Nicht:</b> vault_binding, allowed_origin.</td><td><code>default · selected · partial · error</code></td></tr>
+<tr><td><code>UI-AGENT-ACCESS-RESULT</code></td><td>Ergebnis</td><td>Je Agent das Ergebnis der Einrichtung — eingerichtet, oder der fertige Befehl zum Kopieren, wenn die automatische Einrichtung scheiterte (CLI fehlt, Exec-Fehler). Der Key ist nur hier und nur jetzt sichtbar; ein Key, der weder automatisch eingerichtet noch kopiert wurde, wird beim Schließen gelöscht. <b>Nicht:</b> agent_key, toast.</td><td><code>default · empty · success · partial · error · disabled</code></td></tr>
 <tr><td><code>UI-AGENT-ACCESS-GIT-NOTE</code></td><td>Hinweis Git über SSH</td><td>Steht im Agenten-Zugang, sobald Git ausgewählt ist — Remotes über SSH (git@github.com:…) laufen nicht über den Vault und müssen auf https umgestellt werden. <b>Nicht:</b> error, agent_setup_result.</td><td><code>default · empty</code></td></tr>
+<tr><td><code>UI-AGENT-ACCESS-UNREACHABLE</code></td><td>Outpost nicht erreicht</td><td>Warnung über dem Ergebnis, wenn der Server Outpost während der Einrichtung nicht unter der eingetragenen Adresse zurückgerufen hat (probeFailure eines eingerichteten Agenten) — unabhängig von der IP-Bindung. unreachable: der Rückruf lief und kam nicht an, typisch https vor einem Port, an dem Outpost nur http spricht; ohne ihn kann sich auch kein Agent verbinden. no_client: auf dem Server fehlen curl und wget, die Adresse ist ungeprüft, nicht falsch. <b>Nicht:</b> ip_binding, agent_setup_result, toast.</td><td><code>default · partial · empty</code></td></tr>
+<tr><td><code>UI-AGENT-ACCESS-HELP</code></td><td>Anleitung</td><td>Fragezeichen-Knopf rechts neben dem Titel des Agenten-Zugangs; öffnet die Einrichtungsanleitung (UI-AGENT-ACCESS-GUIDE) über dem Dialog. Der Agenten-Zugang bleibt mit allen Eingaben offen und lässt sich, solange die Anleitung offen ist, nicht schließen. <b>Nicht:</b> support_dialog, tooltip, agent_setup_result.</td><td><code>default · selected</code></td></tr>
+<tr><td><code>UI-AGENT-ACCESS-GUIDE</code></td><td>Agenten-Zugang einrichten</td><td>Modale Anleitung über dem Agenten-Zugang: wofür er da ist (Vault-Einträge nutzen, ohne den Wert zu sehen, Freigabe-Karten), was man braucht (SSH-Zugang, erreichbare Outpost-Adresse mit dem richtigen Protokoll, curl oder wget, claude/codex/git), was je Agent eingerichtet wird, Git mit GitHub Schritt für Schritt vom Fine-grained PAT bis zum ersten Clone, GitLab in einer Zeile, und Hinweise zu SSH-Remotes, Freigaben, IP-Bindung und Entziehen. Schließen mit Esc, Backdrop oder Schließen führt zurück in den Dialog. <b>Nicht:</b> support_dialog, agent_setup_result, documentation_page.</td><td><code>default</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-agent-access.html — alle Zustände, wie im Artboard</div><div id="ab-ui-agent-access">
 
@@ -3588,11 +3606,29 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 	<div class="dialog" role="dialog" aria-labelledby="dlg-title" data-ui-id="UI-AGENT-ACCESS">
 
 		<div class="dialog-head">
-			<h1 id="dlg-title">Agenten-Zugang — web01</h1>
+			<div class="title-row">
+				<h1 id="dlg-title">Agenten-Zugang — web01</h1>
+				<button class="icon-btn" type="button" aria-label="Anleitung"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button>
+			</div>
 			<button class="close" type="button" aria-label="Schließen">×</button>
 		</div>
 
 		<div class="dialog-body">
+
+				<div class="element" data-ui-id="UI-AGENT-ACCESS-HELP">
+					<header><code>UI-AGENT-ACCESS-HELP</code><span class="type">action</span><span class="name">Anleitung</span></header>
+
+					<section class="state" data-ui-state="default">
+						<button class="icon-btn" type="button" aria-label="Anleitung"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button>
+					</section>
+
+					<section class="state" data-ui-state="selected">
+						<div class="row" style="justify-content:flex-start">
+							<button class="icon-btn is-selected" type="button" aria-label="Anleitung" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button>
+							<span class="help">Anleitung offen</span>
+						</div>
+					</section>
+				</div>
 
 				<div class="element" data-ui-id="UI-AGENT-ACCESS-KEYS">
 					<header><code>UI-AGENT-ACCESS-KEYS</code><span class="type">list</span><span class="name">Agenten auf diesem Server</span></header>
@@ -3815,17 +3851,6 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 						</div>
 					</section>
 
-					<section class="state" data-ui-state="disabled">
-						<div class="row">
-							<div class="ip-detect">
-								<span>Nur von der IP dieses Servers</span>
-								<span class="help">an · <span class="mono">192.168.2.40</span></span>
-							</div>
-							<span class="toggle on" role="switch" aria-checked="true" aria-label="Nur von der IP dieses Servers"></span>
-						</div>
-						<span class="help">Adresse konnte nicht gemessen werden — der Key gilt für die aufgelöste Adresse des Servers.</span>
-					</section>
-
 					<section class="state is-error" data-ui-state="error">
 						<div class="row">
 							<div class="ip-detect">
@@ -3835,6 +3860,22 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 							<span class="toggle on" role="switch" aria-checked="true" aria-label="Nur von der IP dieses Servers"></span>
 						</div>
 						<div class="warn" role="alert"><p><span class="mono">TRUST_PROXY=true</span> — die IP-Bindung ist wirkungslos.</p></div>
+					</section>
+				</div>
+
+				<div class="element" data-ui-id="UI-AGENT-ACCESS-UNREACHABLE">
+					<header><code>UI-AGENT-ACCESS-UNREACHABLE</code><span class="type">feedback</span><span class="name">Outpost nicht erreicht</span></header>
+
+					<section class="state" data-ui-state="default">
+						<div class="warn" role="status"><p>web01 hat Outpost unter <span class="mono">https://192.168.2.10:6989</span> nicht erreicht. Adresse prüfen (http oder https?) — bis dahin kann sich kein Agent verbinden.</p></div>
+					</section>
+
+					<section class="state" data-ui-state="partial">
+						<div class="warn" role="status"><p>Auf web01 fehlen curl und wget — Outpost konnte nicht prüfen, ob der Server <span class="mono">https://192.168.2.10:6989</span> erreicht.</p></div>
+					</section>
+
+					<section class="state" data-ui-state="empty">
+						<div class="empty-box">nicht sichtbar, solange der Server Outpost erreicht hat oder nichts eingerichtet wurde</div>
 					</section>
 				</div>
 
@@ -3893,6 +3934,14 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 						</div>
 					</section>
 
+					<section class="state" data-ui-state="disabled">
+						<div class="result-row">
+							<div class="result-head"><span>Git</span></div>
+							<span class="help">Kein Eintrag mit „Für Git nutzen“ gilt für diesen Server.</span>
+						</div>
+					</section>
+				</div>
+
 				<div class="element" data-ui-id="UI-AGENT-ACCESS-GIT-NOTE">
 					<header><code>UI-AGENT-ACCESS-GIT-NOTE</code><span class="type">feedback</span><span class="name">Hinweis Git über SSH</span></header>
 
@@ -3904,8 +3953,57 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 						<div class="empty-box">nicht sichtbar, solange Git nicht ausgewählt ist</div>
 					</section>
 				</div>
-				</div>
 
+				<div class="element" data-ui-id="UI-AGENT-ACCESS-GUIDE">
+					<header><code>UI-AGENT-ACCESS-GUIDE</code><span class="type">overlay</span><span class="name">Agenten-Zugang einrichten</span></header>
+
+					<section class="state" data-ui-state="default">
+						<div class="guide-backdrop">
+							<div class="guide" role="dialog" aria-modal="true" aria-labelledby="guide-title">
+								<div class="guide-head"><h2 id="guide-title">Agenten-Zugang einrichten</h2></div>
+								<div class="guide-body">
+									<p>Mit dem Agenten-Zugang nutzen Claude Code, Codex und Git auf diesem Server Einträge aus dem Vault, ohne den geheimen Wert je zu sehen. Jede Nutzung läuft über Outpost; verlangt ein Eintrag eine Freigabe, erscheint unten rechts eine Karte.</p>
+
+									<h3>Was du brauchst</h3>
+									<ul>
+										<li>SSH-Zugang zu diesem Server in Outpost</li>
+										<li>Eine Outpost-Adresse, die der Server erreicht, mit dem richtigen Protokoll — im LAN z. B. <code>http://192.168.1.10:6989</code>, von außen die https-Adresse des Reverse-Proxys</li>
+										<li><code>curl</code> oder <code>wget</code> und je nach Agent <code>claude</code>, <code>codex</code> oder <code>git</code></li>
+									</ul>
+
+									<h3>Was eingerichtet wird</h3>
+									<ul>
+										<li><b>Claude Code und Codex:</b> MCP-Server, Werkzeuge wie <code>vault_http</code>, danach neu starten und <code>/mcp</code></li>
+										<li><b>Git:</b> https-Remotes laufen über Outpost, auf dem Server liegt nur ein Agenten-Key in <code>~/.gitconfig</code>, nie der Token</li>
+									</ul>
+
+									<h3>Git mit GitHub, Schritt für Schritt</h3>
+									<ol>
+										<li>Auf GitHub: Settings → Developer settings → Personal access tokens → <b>Fine-grained tokens</b> → Generate new token</li>
+										<li>Only select repositories wählen, Contents auf Read and write setzen, ein Ablaufdatum festlegen</li>
+										<li>Token kopieren</li>
+										<li>In Outpost: Vault → Neuer Eintrag → <b>API-Key</b>, Name zum Beispiel <code>github</code>, Hosts <code>api.github.com, github.com</code></li>
+										<li><b>Für Git nutzen</b> aktivieren, Benutzername <code>x-access-token</code></li>
+										<li>„Gilt für“ diesen Server wählen, „Freigabe erforderlich“ einschalten, Erstellen</li>
+										<li>Hier im Agenten-Zugang <b>Git</b> anhaken und Einrichten</li>
+										<li>Prüfen mit <code>git clone https://github.com/owner/repo.git</code></li>
+									</ol>
+
+									<p><b>GitLab:</b> Host <code>gitlab.com</code>, Benutzername <code>oauth2</code>, Token mit <code>read_repository</code> und <code>write_repository</code>, für API-Aufrufe zusätzlich <code>api</code>.</p>
+
+									<h3>Gut zu wissen</h3>
+									<ul>
+										<li>Nur https-Remotes gehen über den Vault — SSH-Remotes umstellen mit <code>git remote set-url origin https://…</code></li>
+										<li>Freigaben gelten „Einmal“ oder „Für diese Sitzung“; Lesen und Schreiben werden getrennt freigegeben, eine Karte sagt „schreibt“</li>
+										<li>Die IP-Bindung lässt nur Anfragen von der Adresse dieses Servers zu; weicht die gesehene Adresse ab, bietet Outpost „Übernehmen“ an</li>
+										<li>Entziehen entfernt den Agenten-Key, lässt aber fremde Zeilen in der gitconfig stehen</li>
+									</ul>
+								</div>
+								<div class="guide-foot"><button class="btn secondary" type="button">Schließen</button></div>
+							</div>
+						</div>
+					</section>
+				</div>
 		</div>
 	</div>
 </div>
@@ -4246,7 +4344,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 <div class="ctx"><b>Art:</b> Shell (auf jedem Screen)<br><b>Erscheint über:</b> UI-SHELL<br><b>Öffnen durch:</b> ein Agent fordert die Nutzung eines Vault-Eintrags an<br><b>Größe:</b> unten rechts<br><b>Schließen:</b> nur durch Antwort oder Ablauf<br><b>Tastatur:</b> Tab erreicht die Karte; Enter Einmal</div>
 <p class="meta">Artboard: <a href="./ui-vault-approval.html">ui-vault-approval.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-vault-approval.md</code></p>
 <table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
-<tr><td><code>UI-VAULT-APPROVAL-CARD</code></td><td>Freigabe angefordert</td><td>Eine Karte unten rechts über jeder Seite, nicht modal: ein Agent will einen Vault-Eintrag nutzen. Zeigt Agent und Server, Eintrag, Werkzeug und Ziel (Ursprung beim Eintragen, Methode mit Host und Pfad bei vault_http, Git mit Host und Repo) und die verbleibende Zeit; Antworten Einmal, Für diese Sitzung, Ablehnen. „Für diese Sitzung“ gilt getrennt für lesende und schreibende Zugriffe. Mehrere Anfragen stapeln sich, die älteste unten. Der Stapel liegt über Dialogen und Toasts. Eine abgelaufene Karte zeigt fünf Sekunden den Fehlerzustand und verschwindet; scheitert das Senden einer Antwort, bleibt die Karte stehen und ein Toast nennt den Grund. <b>Nicht:</b> notification, toast, error.</td><td><code>default · empty · partial · loading · error</code></td></tr>
+<tr><td><code>UI-VAULT-APPROVAL-CARD</code></td><td>Freigabe angefordert</td><td>Eine Karte unten rechts über jeder Seite, nicht modal: ein Agent will einen Vault-Eintrag nutzen. Zeigt Agent und Server, Eintrag, Werkzeug und Ziel (Ursprung beim Eintragen, Methode mit Host und Pfad bei vault_http, Git mit Host und Repo) und die verbleibende Zeit; Antworten Einmal, Für diese Sitzung, Ablehnen. „Für diese Sitzung“ gilt getrennt für lesende und schreibende Zugriffe. Beim Eintragen eines Tokens nennt die Zeile auch das Feld, wie die Seite es bezeichnet („Eintragen auf https://github.com · Feld „Kommentar““); ist es kein Passwortfeld, gibt es nur „Einmal“ und „Ablehnen“. Mehrere Anfragen stapeln sich, die älteste unten. Der Stapel liegt über Dialogen und Toasts. Eine abgelaufene Karte zeigt fünf Sekunden den Fehlerzustand und verschwindet; scheitert das Senden einer Antwort, bleibt die Karte stehen und ein Toast nennt den Grund. <b>Nicht:</b> notification, toast, error.</td><td><code>default · empty · partial · loading · error · disabled</code></td></tr>
 <tr><td><code>UI-VAULT-APPROVAL-WRITE</code></td><td>schreibt</td><td>Abzeichen in der Kopfzeile der Freigabe-Karte, wenn der Zugriff etwas verändert; bei lesenden Zugriffen fehlt es. Eine Sitzungsfreigabe für Lesen gibt Schreiben nicht frei. <b>Nicht:</b> error, warning_toast.</td><td><code>default · empty</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-vault-approval.html — alle Zustände, wie im Artboard</div><div id="ab-ui-vault-approval">

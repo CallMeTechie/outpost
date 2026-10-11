@@ -76,6 +76,21 @@
 	.confirm p { margin: 0; }
 	.warn { display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--gray); border-left: 3px solid var(--warning); border-radius: var(--radius-sm); background: var(--background); color: var(--warning); font: var(--type-caption); }
 	.warn p { margin: 0; }
+	.title-row { display: flex; align-items: center; gap: var(--space-2); }
+	.icon-btn { width: 2rem; height: 2rem; display: grid; place-items: center; padding: 0; border-radius: var(--radius-sm); background: transparent; color: var(--subtext); border: 1px solid var(--gray); }
+	.icon-btn svg { width: 1rem; height: 1rem; }
+	.icon-btn.is-selected { background: var(--primary-opacity); color: var(--primary); border-color: var(--primary); }
+	.guide-backdrop { background: var(--dialog-background); padding: var(--space-6) var(--space-4); display: flex; justify-content: center; border-radius: var(--radius-md); }
+	.guide { width: 100%; max-width: 44rem; max-height: 85vh; overflow-y: auto; background: var(--lighter-background); border: 1px solid var(--gray); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); display: grid; }
+	.guide-head { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--gray); }
+	.guide-head h2 { margin: 0; font: var(--type-title); }
+	.guide-body { padding: var(--space-4); display: grid; gap: var(--space-3); }
+	.guide-body h3 { margin: var(--space-2) 0 0; font: var(--type-heading); }
+	.guide-body p { margin: 0; }
+	.guide-body ul, .guide-body ol { margin: 0; padding-left: var(--space-6); display: grid; gap: var(--space-1); }
+	.guide-body code { font: var(--type-mono); font-size: 0.8125rem; padding: 0 var(--space-1); background: var(--terminal); border-radius: var(--radius-sm); }
+	.guide-foot { padding: var(--space-3) var(--space-4); border-top: 1px solid var(--gray); display: flex; justify-content: flex-end; }
+	.btn.secondary { background: var(--gray); color: var(--text); }
 </style>
 </head>
 <body>
@@ -93,11 +108,29 @@
 	<div class="dialog" role="dialog" aria-labelledby="dlg-title" data-ui-id="UI-AGENT-ACCESS">
 
 		<div class="dialog-head">
-			<h1 id="dlg-title">Agenten-Zugang — web01</h1>
+			<div class="title-row">
+				<h1 id="dlg-title">Agenten-Zugang — web01</h1>
+				<button class="icon-btn" type="button" aria-label="Anleitung"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button>
+			</div>
 			<button class="close" type="button" aria-label="Schließen">×</button>
 		</div>
 
 		<div class="dialog-body">
+
+				<div class="element" data-ui-id="UI-AGENT-ACCESS-HELP">
+					<header><code>UI-AGENT-ACCESS-HELP</code><span class="type">action</span><span class="name">Anleitung</span></header>
+
+					<section class="state" data-ui-state="default">
+						<button class="icon-btn" type="button" aria-label="Anleitung"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button>
+					</section>
+
+					<section class="state" data-ui-state="selected">
+						<div class="row" style="justify-content:flex-start">
+							<button class="icon-btn is-selected" type="button" aria-label="Anleitung" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button>
+							<span class="help">Anleitung offen</span>
+						</div>
+					</section>
+				</div>
 
 				<div class="element" data-ui-id="UI-AGENT-ACCESS-KEYS">
 					<header><code>UI-AGENT-ACCESS-KEYS</code><span class="type">list</span><span class="name">Agenten auf diesem Server</span></header>
@@ -320,17 +353,6 @@
 						</div>
 					</section>
 
-					<section class="state" data-ui-state="disabled">
-						<div class="row">
-							<div class="ip-detect">
-								<span>Nur von der IP dieses Servers</span>
-								<span class="help">an · <span class="mono">192.168.2.40</span></span>
-							</div>
-							<span class="toggle on" role="switch" aria-checked="true" aria-label="Nur von der IP dieses Servers"></span>
-						</div>
-						<span class="help">Adresse konnte nicht gemessen werden — der Key gilt für die aufgelöste Adresse des Servers.</span>
-					</section>
-
 					<section class="state is-error" data-ui-state="error">
 						<div class="row">
 							<div class="ip-detect">
@@ -340,6 +362,22 @@
 							<span class="toggle on" role="switch" aria-checked="true" aria-label="Nur von der IP dieses Servers"></span>
 						</div>
 						<div class="warn" role="alert"><p><span class="mono">TRUST_PROXY=true</span> — die IP-Bindung ist wirkungslos.</p></div>
+					</section>
+				</div>
+
+				<div class="element" data-ui-id="UI-AGENT-ACCESS-UNREACHABLE">
+					<header><code>UI-AGENT-ACCESS-UNREACHABLE</code><span class="type">feedback</span><span class="name">Outpost nicht erreicht</span></header>
+
+					<section class="state" data-ui-state="default">
+						<div class="warn" role="status"><p>web01 hat Outpost unter <span class="mono">https://192.168.2.10:6989</span> nicht erreicht. Adresse prüfen (http oder https?) — bis dahin kann sich kein Agent verbinden.</p></div>
+					</section>
+
+					<section class="state" data-ui-state="partial">
+						<div class="warn" role="status"><p>Auf web01 fehlen curl und wget — Outpost konnte nicht prüfen, ob der Server <span class="mono">https://192.168.2.10:6989</span> erreicht.</p></div>
+					</section>
+
+					<section class="state" data-ui-state="empty">
+						<div class="empty-box">nicht sichtbar, solange der Server Outpost erreicht hat oder nichts eingerichtet wurde</div>
 					</section>
 				</div>
 
@@ -398,6 +436,14 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 						</div>
 					</section>
 
+					<section class="state" data-ui-state="disabled">
+						<div class="result-row">
+							<div class="result-head"><span>Git</span></div>
+							<span class="help">Kein Eintrag mit „Für Git nutzen“ gilt für diesen Server.</span>
+						</div>
+					</section>
+				</div>
+
 				<div class="element" data-ui-id="UI-AGENT-ACCESS-GIT-NOTE">
 					<header><code>UI-AGENT-ACCESS-GIT-NOTE</code><span class="type">feedback</span><span class="name">Hinweis Git über SSH</span></header>
 
@@ -409,8 +455,57 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 						<div class="empty-box">nicht sichtbar, solange Git nicht ausgewählt ist</div>
 					</section>
 				</div>
-				</div>
 
+				<div class="element" data-ui-id="UI-AGENT-ACCESS-GUIDE">
+					<header><code>UI-AGENT-ACCESS-GUIDE</code><span class="type">overlay</span><span class="name">Agenten-Zugang einrichten</span></header>
+
+					<section class="state" data-ui-state="default">
+						<div class="guide-backdrop">
+							<div class="guide" role="dialog" aria-modal="true" aria-labelledby="guide-title">
+								<div class="guide-head"><h2 id="guide-title">Agenten-Zugang einrichten</h2></div>
+								<div class="guide-body">
+									<p>Mit dem Agenten-Zugang nutzen Claude Code, Codex und Git auf diesem Server Einträge aus dem Vault, ohne den geheimen Wert je zu sehen. Jede Nutzung läuft über Outpost; verlangt ein Eintrag eine Freigabe, erscheint unten rechts eine Karte.</p>
+
+									<h3>Was du brauchst</h3>
+									<ul>
+										<li>SSH-Zugang zu diesem Server in Outpost</li>
+										<li>Eine Outpost-Adresse, die der Server erreicht, mit dem richtigen Protokoll — im LAN z. B. <code>http://192.168.1.10:6989</code>, von außen die https-Adresse des Reverse-Proxys</li>
+										<li><code>curl</code> oder <code>wget</code> und je nach Agent <code>claude</code>, <code>codex</code> oder <code>git</code></li>
+									</ul>
+
+									<h3>Was eingerichtet wird</h3>
+									<ul>
+										<li><b>Claude Code und Codex:</b> MCP-Server, Werkzeuge wie <code>vault_http</code>, danach neu starten und <code>/mcp</code></li>
+										<li><b>Git:</b> https-Remotes laufen über Outpost, auf dem Server liegt nur ein Agenten-Key in <code>~/.gitconfig</code>, nie der Token</li>
+									</ul>
+
+									<h3>Git mit GitHub, Schritt für Schritt</h3>
+									<ol>
+										<li>Auf GitHub: Settings → Developer settings → Personal access tokens → <b>Fine-grained tokens</b> → Generate new token</li>
+										<li>Only select repositories wählen, Contents auf Read and write setzen, ein Ablaufdatum festlegen</li>
+										<li>Token kopieren</li>
+										<li>In Outpost: Vault → Neuer Eintrag → <b>API-Key</b>, Name zum Beispiel <code>github</code>, Hosts <code>api.github.com, github.com</code></li>
+										<li><b>Für Git nutzen</b> aktivieren, Benutzername <code>x-access-token</code></li>
+										<li>„Gilt für“ diesen Server wählen, „Freigabe erforderlich“ einschalten, Erstellen</li>
+										<li>Hier im Agenten-Zugang <b>Git</b> anhaken und Einrichten</li>
+										<li>Prüfen mit <code>git clone https://github.com/owner/repo.git</code></li>
+									</ol>
+
+									<p><b>GitLab:</b> Host <code>gitlab.com</code>, Benutzername <code>oauth2</code>, Token mit <code>read_repository</code> und <code>write_repository</code>, für API-Aufrufe zusätzlich <code>api</code>.</p>
+
+									<h3>Gut zu wissen</h3>
+									<ul>
+										<li>Nur https-Remotes gehen über den Vault — SSH-Remotes umstellen mit <code>git remote set-url origin https://…</code></li>
+										<li>Freigaben gelten „Einmal“ oder „Für diese Sitzung“; Lesen und Schreiben werden getrennt freigegeben, eine Karte sagt „schreibt“</li>
+										<li>Die IP-Bindung lässt nur Anfragen von der Adresse dieses Servers zu; weicht die gesehene Adresse ab, bietet Outpost „Übernehmen“ an</li>
+										<li>Entziehen entfernt den Agenten-Key, lässt aber fremde Zeilen in der gitconfig stehen</li>
+									</ul>
+								</div>
+								<div class="guide-foot"><button class="btn secondary" type="button">Schließen</button></div>
+							</div>
+						</div>
+					</section>
+				</div>
 		</div>
 	</div>
 </div>

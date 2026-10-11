@@ -18,7 +18,7 @@ const ACCOUNT_B = 2;
 const audits = [];
 const execs = [];
 const SERVER_IP = "198.51.100.7";
-const RESET = { cliFound: true, setupFails: false, registered: "ABSENT", revokeOutput: "REMOVED\n", probeFrom: SERVER_IP, auditFailsFor: null };
+const RESET = { cliFound: true, setupFails: false, registered: "ABSENT", revokeOutput: "REMOVED\n", probeFrom: SERVER_IP, probeExit: null, auditFailsFor: null };
 const dropped = {};
 const files = [];
 const state = { base: null, identityOf: {}, ...RESET };
@@ -75,6 +75,7 @@ fake("../../controlPlane/ControlPlaneServer", {
             return ok("");
         }
         if (command.includes("/api/vault/agent-keys/probe")) {
+            if (state.probeExit !== null) return { success: true, stdout: "", stderr: "", exitCode: state.probeExit };
             const token = dropped[/key-\d+-[0-9a-f]{16}/.exec(command)[0]];
             const res = await fetch(`${state.base}/api/vault/agent-keys/probe`, {
                 headers: { authorization: `Bearer ${token}`, ...(state.probeFrom ? { "x-forwarded-for": state.probeFrom } : {}) },
@@ -401,8 +402,22 @@ test("Git: ohne Eintrag mit „Für Git nutzen“ für diesen Server entsteht ke
 
     assert.strictEqual(status, 201);
     assert.deepStrictEqual(body.results, [{
-        id: null, agentType: "git", remoteUser: "deploy", hosts: [], status: "manual", reason: "no_git_entries", probe: null, replacedRegistration: false,
+        id: null, agentType: "git", remoteUser: "deploy", hosts: [], status: "manual", reason: "no_git_entries", probe: null, probeFailure: null, replacedRegistration: false,
     }]);
     assert.deepStrictEqual(execs, []);
     assert.strictEqual(await ApiKey.count({ where: { agentType: "git" } }), 0);
+});
+
+// Account B: account A's per-account limiter is spent by the tests above.
+test("a probe that never reached Outpost is told apart from a server without curl or wget", async (t) => {
+    await listen(t);
+    const outcome = async (probeExit) => {
+        state.probeExit = probeExit;
+        const [result] = (await setUp(tokens.b)).body.results;
+        return { status: result.status, seenIp: result.probe?.seenIp ?? null, probeFailure: result.probeFailure };
+    };
+
+    assert.deepStrictEqual(await outcome(7), { status: "configured", seenIp: null, probeFailure: "unreachable" });
+    assert.deepStrictEqual(await outcome(127), { status: "configured", seenIp: null, probeFailure: "no_client" });
+    assert.deepStrictEqual(await outcome(null), { status: "configured", seenIp: SERVER_IP, probeFailure: null });
 });
