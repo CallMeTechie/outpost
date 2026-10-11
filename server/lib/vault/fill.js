@@ -14,12 +14,22 @@ const GONE = /No node (found|with given id)|detached from document|Could not fin
 
 // Runs in the realm of the element's own frame and reads only the global location, which is
 // unforgeable there. Getters such as ownerDocument can be replaced by page script to fake an origin.
+// The label is page content for the approval card only; page script can fake or break it, so it
+// must not be able to fail the origin check.
 const INSPECT = `function () {
     const ancestors = [];
     for (let i = 0; i < location.ancestorOrigins.length; i++) ancestors.push(location.ancestorOrigins[i]);
     const input = this instanceof HTMLInputElement;
     const textarea = this instanceof HTMLTextAreaElement;
-    return { origin: location.origin, ancestors, input, textarea, type: input ? this.type : null, connected: this.isConnected };
+    let label = null;
+    try {
+        const labelledBy = (this.getAttribute("aria-labelledby") || "").split(/\\s+/).filter(Boolean)
+            .map((id) => document.getElementById(id)?.textContent || "").join(" ");
+        const candidates = [labelledBy, this.getAttribute("aria-label"), this.labels?.[0]?.textContent,
+            this.getAttribute("placeholder"), this.getAttribute("name"), this.id];
+        label = candidates.find((value) => typeof value === "string" && value.trim()) ?? null;
+    } catch {}
+    return { origin: location.origin, ancestors, input, textarea, type: input ? this.type : null, connected: this.isConnected, label };
 }`;
 const DEEPEST_ACTIVE = `function () {
     let el = this.activeElement;
@@ -34,6 +44,13 @@ const normalizeOrigin = (value) => {
     } catch {
         return null;
     }
+};
+
+const MAX_LABEL = 60;
+const labelOf = (session, value) => {
+    if (typeof value !== "string") return null;
+    const label = vaultGuard.redactText(session.contextKey, value.replace(/\s+/g, " ").trim()).slice(0, MAX_LABEL).trim();
+    return label || null;
 };
 
 const releaseObjects = (session) => session.send("Runtime.releaseObjectGroup", { objectGroup: OBJECT_GROUP }).catch(() => {});
@@ -105,7 +122,7 @@ const checkSecretTarget = async (session, ref, origins) => {
                 `${ref} is in a frame without an origin of its own (about:blank, data: or sandboxed); nothing was filled. Open the page directly.`);
         const fieldType = field.textarea ? "textarea" : field.input && SECRET_INPUT_TYPES.has(field.type) ? field.type : null;
         if (fieldType === null) throw new VaultError(VaultErrorCode.FIELD_NOT_FILLABLE);
-        return { backendNodeId: field.backendNodeId, origin, fieldType };
+        return { backendNodeId: field.backendNodeId, origin, fieldType, label: labelOf(session, field.label) };
     } finally {
         releaseObjects(session);
     }

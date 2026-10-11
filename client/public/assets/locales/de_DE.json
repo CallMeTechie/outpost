@@ -595,7 +595,8 @@
       },
       "write": "schreibt",
       "target": {
-        "fill": "Eintragen auf {{origin}}"
+        "fill": "Eintragen auf {{origin}}",
+        "fillField": "Eintragen auf {{origin}} · Feld „{{field}}“"
       }
     }
   },

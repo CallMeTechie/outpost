@@ -96,7 +96,7 @@ const setup = async () => {
             const f = byId(nodeId(objectId));
             return { result: { value: {
                 origin: f.origin, ancestors: f.ancestors, input: f.tag === "input", textarea: f.tag === "textarea",
-                type: f.tag === "input" ? page.types.get(f.backendNodeId) : null, connected: true,
+                type: f.tag === "input" ? page.types.get(f.backendNodeId) : null, connected: true, label: `  ${f.name}\n` + "x".repeat(70),
             } } };
         },
         "DOM.focus": ({ backendNodeId }) => {
@@ -182,7 +182,7 @@ test("a filled field that is not a password field locks browser_screenshot; a fi
     assert.match(env.text(refused), /\(vault\.screenshot_locked\)$/);
 });
 
-test("with fillAnywhere an entry without fill origins asks even without approvalRequired, for this one origin", async () => {
+test("with fillAnywhere an entry without fill origins asks even without approvalRequired, for this one origin; a field that is not a password field names itself and offers no session approval", async () => {
     const env = await setup();
     bed.state.settings.fillAnywhere = true;
     const pending = env.fill({ item: "recovery", ref: env.refs.Notes });
@@ -190,11 +190,19 @@ test("with fillAnywhere an entry without fill origins asks even without approval
 
     const { request } = env.approvals.open[0];
     assert.deepStrictEqual([request.tool, request.access, request.target, request.scope], [FILL, "write", FORMS, `fill|${FORMS}`]);
+    assert.deepStrictEqual([request.field, request.allowSession], [`Notes ${"x".repeat(54)}`, false]);
     assert.deepStrictEqual(env.page.inserted, [], "nothing is typed while the card is open");
     env.approvals.open[0].answer("once");
 
     assert.strictEqual(env.text(await pending), "Filled the value of recovery into the field.");
     assert.deepStrictEqual(env.page.inserted.map((entry) => entry.text), [VALUE]);
+    assert.ok(!JSON.stringify(env.audit).includes("Notes"), "the field label is page content, not an audit datum");
+
+    const secret = env.fill({ item: "recovery", ref: env.refs.Secret });
+    await until(() => env.approvals.open.length === 1);
+    assert.strictEqual(env.approvals.open[0].request.allowSession, true, "a password field may be approved for the session");
+    env.approvals.open[0].answer("once");
+    await secret;
 
     const moved = await setup();
     bed.state.settings.fillAnywhere = true;

@@ -83,6 +83,9 @@ const handler = async (args, ctx, deps) => {
             // Also read for the audit of a refusal, before check has located the field.
             target: () => field?.origin ?? null,
             scope: (item) => (fillOriginsOf(item) === null ? `fill|${field.origin}` : "fill"),
+            // A session approval would cover every text field of the origin, comment boxes included.
+            fieldLabel: () => field?.label ?? null,
+            allowSession: () => field?.fieldType === "password",
             field: (item) => SECRET_FIELD[item.type],
             check, act, auditExtra, lazySecret: true,
         });
