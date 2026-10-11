@@ -481,7 +481,16 @@
       "edit": "Edit",
       "delete": "Delete",
       "deleteConfirm": "Delete {{name}}? Agents lose access immediately.",
-      "deleteFailed": "Deleting failed."
+      "deleteFailed": "Deleting failed.",
+      "usage": {
+        "title": "Use by agents",
+        "readOnly": "Read only",
+        "allowHttp": "Also over http",
+        "git": "Git · username {{user}}",
+        "fill": "Fill in on",
+        "empty": "vault_http over https",
+        "emptyGeneric": "Manual use only — not filled in the browser"
+      }
     },
     "fields": {
       "name": "Name",
@@ -547,11 +556,30 @@
       "create": "Create",
       "save": "Save",
       "saving": "Saving …",
-      "saveFailed": "Saving failed."
+      "saveFailed": "Saving failed.",
+      "usage": {
+        "title": "Use by agents",
+        "off": "off",
+        "on": "on",
+        "readOnly": "Read only",
+        "readOnlyHint": "on — read only",
+        "allowHttp": "Allow unencrypted HTTP",
+        "allowHttpOff": "off — https only",
+        "allowHttpWarning": "on — the token travels unencrypted over the network",
+        "git": "Use for Git",
+        "gitHint": "on · Git username",
+        "gitUsername": "Git username",
+        "gitUsernameHelp": "Default x-access-token for GitHub, oauth2 for GitLab",
+        "gitUsernameMissing": "Git username missing.",
+        "fill": "May be filled in the browser on",
+        "fillEmpty": "Nowhere — only for vault_http and Git",
+        "fillInvalid": "Not a valid origin (scheme://host[:port])."
+      }
     },
     "agents": {
       "claude": "Claude Code",
-      "codex": "Codex"
+      "codex": "Codex",
+      "git": "Git"
     },
     "approval": {
       "title": "Approval requested",
@@ -564,6 +592,10 @@
         "once": "Once",
         "session": "For this session",
         "deny": "Deny"
+      },
+      "write": "writes",
+      "target": {
+        "fill": "Fill in on {{origin}}"
       }
     }
   },
@@ -874,7 +906,7 @@
         "loadFailed": "Could not load the agent keys",
         "retry": "Retry",
         "sectionTitle": "Agent keys",
-        "sectionDescription": "Agent keys only reach the MCP endpoint.",
+        "sectionDescription": "Agent keys only reach the MCP endpoint, Git keys only the Git proxy.",
         "edit": "Edit",
         "revoke": "Revoke",
         "revokeConfirm": "Revoke access of {{agent}} on {{server}}? The agent loses access immediately.",
@@ -1766,6 +1798,12 @@
       "ipBindingDefault": {
         "title": "IP binding by default",
         "description": "New agent keys work only from their server's IP. Turn off if Outpost cannot see sender addresses, for example behind NAT; the dialog can change it per server."
+      },
+      "fillAnywhere": {
+        "title": "Allow filling tokens on any page",
+        "description": "Values without their own origin list can then be filled in on any page — each time with approval; a session approval covers only that one page.",
+        "off": "off",
+        "on": "on — values without their own list can be filled in on any page, each time with approval."
       }
     }
   },
@@ -1922,8 +1960,11 @@
         "manual": "Copy the command and run it on the server.",
         "copy": "Copy",
         "keyNotice": "The key is visible only now. Closing without adopting it deletes it.",
-        "replaced": "Existing registration replaced — the old account key stays valid until you delete it under API Keys."
-      }
+        "replaced": "Existing registration replaced — the old account key stays valid until you delete it under API Keys.",
+        "successGit": "Git set up for {{user}}: <mono>{{hosts}}</mono> runs through Outpost.",
+        "noGitEntries": "No entry with “Use for Git” applies to this server."
+      },
+      "gitNote": "Remotes over SSH (<mono>git@github.com:</mono>) do not go through the vault — switch them to HTTPS."
     },
     "passwordHint": {
       "paste": "paste password",
