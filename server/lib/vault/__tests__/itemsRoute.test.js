@@ -223,13 +223,16 @@ test("PATCH, dessen Speichern scheitert, verliert keine Werte: Name zwischen PrÃ
     assert.ok(!audits.some((entry) => entry.action === "vault.item_update"));
 });
 
-test("available meldet Schalter, Rechte, Agenten-Adresse, Standard der IP-Bindung, Impersonation und TRUST_PROXY=true; bei ausgeschaltetem Vault sind alle Rechte leer", async (t) => {
+test("Einstellungen speichern Agenten-Adresse, IP-Bindung und fillAnywhere; available meldet Schalter, Rechte, Agenten-Adresse, Standard der IP-Bindung, Impersonation und TRUST_PROXY=true; bei ausgeschaltetem Vault sind alle Rechte leer", async (t) => {
     const { get, patch } = await listen(t, { trustProxy: true });
 
     assert.strictEqual((await patch("/settings", "s-owner", { agentUrl: "https://outpost.example.com" })).status, 403);
     assert.deepStrictEqual((await patch("/settings", "s-revealer", { agentUrl: "https://outpost.example.com/", ipBindingDefault: false })).body,
-        { keyStatus: "active", agentUrl: "https://outpost.example.com", ipBindingDefault: false, trustProxyUnsafe: true });
+        { keyStatus: "active", agentUrl: "https://outpost.example.com", ipBindingDefault: false, fillAnywhere: false, trustProxyUnsafe: true });
     assert.strictEqual((await patch("/settings", "s-revealer", {})).status, 400);
+    assert.strictEqual((await patch("/settings", "s-revealer", { fillAnywhere: true })).body.fillAnywhere, true);
+    assert.deepStrictEqual((await get("/settings", "s-revealer")).body,
+        { keyStatus: "active", agentUrl: "https://outpost.example.com", ipBindingDefault: false, fillAnywhere: true, trustProxyUnsafe: true });
     const urlFields = { agentUrl: "https://outpost.example.com", ipBindingDefault: false };
 
     assert.deepStrictEqual((await get("/available", "s-imp")).body, {

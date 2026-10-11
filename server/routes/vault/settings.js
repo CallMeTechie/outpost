@@ -39,11 +39,11 @@ app.get("/available", authenticate, async (req, res) => {
 /**
  * GET /vault/settings
  * @summary Get Vault Settings
- * @description Status of VAULT_KEY and the Outpost address agents use. Answers while the vault is off, so the page can show why.
+ * @description Status of VAULT_KEY, the Outpost address agents use, the default of the IP binding and whether browser_fill_secret may fill entries without fill origins on any page. Answers while the vault is off, so the page can show why.
  * @tags Vault
  * @produces application/json
  * @security BearerAuth
- * @return {object} 200 - { keyStatus, agentUrl, trustProxyUnsafe }
+ * @return {object} 200 - { keyStatus, agentUrl, ipBindingDefault, fillAnywhere, trustProxyUnsafe }
  * @return {object} 403 - Permission required
  */
 app.get("/settings", authenticate, requirePermission(Permission.SETTINGS_VAULT), async (req, res) => {
@@ -57,12 +57,12 @@ app.get("/settings", authenticate, requirePermission(Permission.SETTINGS_VAULT),
 /**
  * PATCH /vault/settings
  * @summary Update Vault Settings
- * @description Sets the Outpost address agents use (http or https; empty clears it). Works while the vault is off.
+ * @description Sets the Outpost address agents use (http or https; empty clears it), the default of the IP binding and fillAnywhere. Works while the vault is off.
  * @tags Vault
  * @produces application/json
  * @security BearerAuth
- * @param {UpdateVaultSettings} request.body.required - { agentUrl }
- * @return {object} 200 - { keyStatus, agentUrl, trustProxyUnsafe }
+ * @param {UpdateVaultSettings} request.body.required - { agentUrl?, ipBindingDefault?, fillAnywhere? }, at least one
+ * @return {object} 200 - { keyStatus, agentUrl, ipBindingDefault, fillAnywhere, trustProxyUnsafe }
  * @return {object} 400 - Invalid address
  * @return {object} 403 - Permission required
  */
