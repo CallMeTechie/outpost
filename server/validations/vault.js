@@ -10,6 +10,8 @@ const SECRET_FIELDS = Object.freeze({
     generic: ["value"],
 });
 const SECRET_MAX_LENGTH = { password: 4096, token: 8192, privateKey: 16384, passphrase: 4096, value: 65536 };
+// redact.js ignores variants under 4 characters.
+const SECRET_MIN_LENGTH = { token: 4 };
 
 const name = Joi.string().pattern(/^[a-z0-9][a-z0-9._-]{0,63}$/)
     .messages({ "string.pattern.base": "name may only contain lowercase letters, digits, dot, dash and underscore (max. 64)" });
@@ -26,15 +28,33 @@ const origin = Joi.string().max(2048).custom((value, helpers) => {
     }
 }).messages({ "any.invalid": "origins must look like https://host[:port]" });
 
+const hostname = Joi.string().hostname();
+// vault_http and the git proxy compare the URL's host[:port] with new URL().host, which drops default ports.
+const host = Joi.string().max(261).custom((value, helpers) => {
+    if (!hostname.validate(value).error) return value;
+    const match = /^([^:]+):([1-9][0-9]{0,4})$/.exec(value);
+    if (!match || hostname.validate(match[1]).error || Number(match[2]) > 65535) return helpers.error("any.invalid");
+    if (match[2] === "80" || match[2] === "443") return helpers.error("host.defaultPort");
+    return value;
+}).messages({ "any.invalid": "hosts must look like host or host:port", "host.defaultPort": "hosts: leave out the default port (80 or 443)" });
+
+const fillOrigins = Joi.array().items(origin).max(20).default([]);
+
 const FIELDS = {
     login: Joi.object({
         username: Joi.string().max(255).allow(""),
         origins: Joi.array().items(origin).min(1).max(20).required(),
     }),
     api_key: Joi.object({
-        hosts: Joi.array().items(Joi.string().hostname()).min(1).max(20).required(),
+        hosts: Joi.array().items(host).min(1).max(20).required(),
         headerName: Joi.string().pattern(/^[A-Za-z0-9-]{1,64}$/).default("Authorization"),
         headerTemplate: Joi.string().max(512).pattern(/\{\{secret\}\}/).default("Bearer {{secret}}"),
+        readOnly: Joi.boolean().default(false),
+        allowHttp: Joi.boolean().default(false),
+        git: Joi.boolean().default(false),
+        gitUsername: Joi.string().pattern(/^[A-Za-z0-9._@-]{1,64}$/).default("x-access-token")
+            .messages({ "string.pattern.base": "gitUsername may only contain letters, digits, dot, underscore, @ and dash (max. 64)" }),
+        fillOrigins,
     }),
     ssh: Joi.object({
         username: Joi.string().max(255).required(),
@@ -46,11 +66,11 @@ const FIELDS = {
         database: Joi.string().max(1024).required(),
         username: Joi.string().max(255),
     }),
-    generic: Joi.object({}),
+    generic: Joi.object({ fillOrigins }),
 };
 
 const secretsOf = (type) => Joi.object(Object.fromEntries(
-    SECRET_FIELDS[type].map((field) => [field, Joi.string().min(1).max(SECRET_MAX_LENGTH[field])]),
+    SECRET_FIELDS[type].map((field) => [field, Joi.string().min(SECRET_MIN_LENGTH[field] ?? 1).max(SECRET_MAX_LENGTH[field])]),
 ));
 
 const CREATE_SECRETS = {
@@ -118,4 +138,5 @@ module.exports.agentUrl = agentUrl;
 module.exports.updateVaultSettingsValidation = Joi.object({
     agentUrl: agentUrl.allow(null, ""),
     ipBindingDefault: Joi.boolean(),
+    fillAnywhere: Joi.boolean(),
 }).min(1);

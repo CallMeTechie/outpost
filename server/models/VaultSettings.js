@@ -5,6 +5,7 @@ const VaultSettings = db.define("vault_settings", {
     id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
     agentUrl: { type: Sequelize.STRING(2048), allowNull: true },
     ipBindingDefault: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: true },
+    fillAnywhere: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
     keyCheck: { type: Sequelize.TEXT, allowNull: true },
     keyCheckIV: { type: Sequelize.STRING, allowNull: true },
     keyCheckAuthTag: { type: Sequelize.STRING, allowNull: true },
