@@ -307,7 +307,7 @@ export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwn
                                             {form.fields.git && (
                                                 <div className={`form-group${problems.gitUsername ? " is-error" : ""}`}>
                                                     <label htmlFor="vault-git-username">{t("vault.dialog.usage.gitUsername")}</label>
-                                                    <IconInput id="vault-git-username" icon={IconUser} customClass="vault-mono"
+                                                    <IconInput id="vault-git-username" icon={IconUser} customClass="vault-mono" invalid={problems.gitUsername}
                                                                value={form.fields.gitUsername} setValue={(value) => setField("gitUsername", value)} />
                                                     {problems.gitUsername ? (
                                                         <span className="vault-help vault-help--error" role="alert">{t("vault.dialog.usage.gitUsernameMissing")}</span>

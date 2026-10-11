@@ -334,7 +334,7 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
                     )}
                     <div className={`agent-access-cidr-field${cidrInvalid ? " is-error" : ""}`}>
                         <label htmlFor="agent-access-cidrs">{t("servers.agentAccess.setup.cidrLabel")}</label>
-                        <IconInput id="agent-access-cidrs" icon={IconNetwork} value={cidrText} disabled={fieldsDisabled}
+                        <IconInput id="agent-access-cidrs" icon={IconNetwork} value={cidrText} disabled={fieldsDisabled} invalid={cidrInvalid}
                                    setValue={(value) => { setCidrText(value); setCidrInvalid(false); }} />
                         {cidrInvalid && (
                             <span className="agent-access-help is-error" role="alert">{t("servers.agentAccess.setup.cidrInvalid")}</span>
