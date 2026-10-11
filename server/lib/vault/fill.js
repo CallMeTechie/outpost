@@ -141,18 +141,30 @@ const typeInto = async (session, backendNodeId, text, beforeInsert) => {
     await session.agentSend("Input.insertText", { text });
 };
 
-const fillCredential = async (session, { passwordNodeId, usernameNodeId = null, username = null, password }) => {
+// markFilled checks the taint in the same synchronous step, so no browser_evaluate in a popup of
+// this context can slip in between the check and the first keystroke. Only the marked field is
+// registered: a filled field that is no longer type=password locks screenshots.
+const markBeforeInsert = (session, backendNodeId, secret) => {
     let marked = false;
-    // markFilled checks the taint in the same synchronous step, so no browser_evaluate in a popup of
-    // this context can slip in between the check and the first keystroke. Only the password field is
-    // marked: a filled field that is no longer type=password locks screenshots.
-    const markOnce = () => {
+    return () => {
         if (marked) return;
         if (session.closed)
             throw new BrowserError(BrowserErrorCode.SESSION_CLOSED, `Session ${session.id} has ended; nothing was typed. Open a new session with browser_open and fill there.`);
-        vaultGuard.markFilled(session.contextKey, { targetId: session.targetId, backendNodeIds: [passwordNodeId], secret: password });
+        vaultGuard.markFilled(session.contextKey, { targetId: session.targetId, backendNodeIds: [backendNodeId], secret });
         marked = true;
     };
+};
+
+const fillField = async (session, backendNodeId, secret) => {
+    try {
+        await typeInto(session, backendNodeId, secret, markBeforeInsert(session, backendNodeId, secret));
+    } finally {
+        releaseObjects(session);
+    }
+};
+
+const fillCredential = async (session, { passwordNodeId, usernameNodeId = null, username = null, password }) => {
+    const markOnce = markBeforeInsert(session, passwordNodeId, password);
     try {
         if (usernameNodeId !== null) await typeInto(session, usernameNodeId, username, markOnce);
         await typeInto(session, passwordNodeId, password, markOnce);
@@ -161,4 +173,4 @@ const fillCredential = async (session, { passwordNodeId, usernameNodeId = null, 
     }
 };
 
-module.exports = { checkFillTarget, checkSecretTarget, fillCredential, typeInto, releaseObjects, assertFillableSession, normalizeOrigin };
+module.exports = { checkFillTarget, checkSecretTarget, fillCredential, fillField, assertFillableSession, normalizeOrigin };

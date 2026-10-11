@@ -1,6 +1,6 @@
 const { VaultError, VaultErrorCode } = require("../errors");
 const { itemRef } = require("../visibility");
-const { checkSecretTarget, typeInto, releaseObjects, assertFillableSession } = require("../fill");
+const { checkSecretTarget, fillField, assertFillableSession } = require("../fill");
 const vaultGuard = require("../../browser/vaultGuard");
 const { BrowserError, BrowserErrorCode } = require("../../browser/errors");
 const { getVaultSettings } = require("../../../controllers/vaultSettings");
@@ -37,19 +37,6 @@ const fillOriginsOf = (item) => {
     return origins.length > 0 ? origins : null;
 };
 
-const typeSecret = async (session, backendNodeId, secret) => {
-    try {
-        // markFilled checks the taint in the same synchronous step, directly before Input.insertText.
-        await typeInto(session, backendNodeId, secret, () => {
-            if (session.closed)
-                throw new BrowserError(BrowserErrorCode.SESSION_CLOSED, `Session ${session.id} has ended; nothing was typed. Open a new session with browser_open and fill there.`);
-            vaultGuard.markFilled(session.contextKey, { targetId: session.targetId, backendNodeIds: [backendNodeId], secret });
-        });
-    } finally {
-        releaseObjects(session);
-    }
-};
-
 const handler = async (args, ctx, deps) => {
     const auditExtra = {};
     let session = null;
@@ -76,7 +63,8 @@ const handler = async (args, ctx, deps) => {
             if (now.origin !== field.origin)
                 throw new VaultError(VaultErrorCode.APPROVAL_STALE,
                     `The field moved from ${field.origin} to ${now.origin} after the check; nothing was filled. Take a new snapshot and call browser_fill_secret again.`);
-            await typeSecret(session, now.backendNodeId, await read());
+            auditExtra.fieldType = now.fieldType;
+            await fillField(session, now.backendNodeId, await read());
         });
         return `Filled the value of ${itemRef(item)} into the field.`;
     };
