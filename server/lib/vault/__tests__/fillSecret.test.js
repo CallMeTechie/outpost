@@ -25,6 +25,8 @@ const OTHER = {
     fields: { fillOrigins: [] }, approvalRequired: false, allServers: true,
 };
 
+const ORG_OTHER = { ...OTHER, id: 63, accountId: null, organizationId: 3, name: "team-recovery" };
+
 const FORMS = "https://forms.test";
 const field = (backendNodeId, name, { tag = "input", type = "text", origin = FORMS, ancestors = [], role = "textbox" } = {}) => ({
     backendNodeId, name, role, tag, type, origin, ancestors,
@@ -57,7 +59,7 @@ const until = async (condition) => {
 const setup = async () => {
     vaultGuard._resetForTests();
     bed.reset({
-        items: [API, OTHER], secrets: { "61:token": TOKEN, "62:value": VALUE },
+        items: [API, OTHER, ORG_OTHER], secrets: { "61:token": TOKEN, "62:value": VALUE, "63:value": VALUE },
         permissions: [Permission.VAULT_USE, Permission.CONNECT_BROWSER], apiKeys: [41], entries: [{ id: 7, name: "web01" }],
     });
     const FIELDS = makeFields();
@@ -150,14 +152,16 @@ test("a token goes into a field on one of its fill origins; markFilled runs befo
     assert.ok(!JSON.stringify(env.audit).includes(TOKEN));
 });
 
-test("refused without typing or decrypting: a textarea in a frame of the fill origin inside a foreign page, a select, an entry without fill origins", async () => {
+test("refused without typing or decrypting: a textarea in a frame of the fill origin inside a foreign page, a select, an entry without fill origins, an organization's entry on any page without reveal", async () => {
     const cases = [
         ["textarea of forms.test embedded in ads.evil.test", { item: "forms-token", ref: "Notes" }, VaultErrorCode.ORIGIN_MISMATCH],
         ["select on the fill origin", { item: "forms-token", ref: "Scope" }, VaultErrorCode.FIELD_NOT_FILLABLE],
         ["generic entry without fill origins, fillAnywhere off", { item: "recovery", ref: "API token" }, VaultErrorCode.NO_FILL_ORIGINS],
+        ["organization entry without fill origins, fillAnywhere on, no reveal", { item: "org:3/team-recovery", ref: "API token", fillAnywhere: true }, VaultErrorCode.NO_FILL_ORIGINS],
     ];
-    for (const [label, { item, ref }, code] of cases) {
+    for (const [label, { item, ref, fillAnywhere = false }, code] of cases) {
         const env = await setup();
+        bed.state.settings.fillAnywhere = fillAnywhere;
         const result = await env.fill({ item, ref: env.refs[ref] });
 
         assert.strictEqual(result.isError, true, label);

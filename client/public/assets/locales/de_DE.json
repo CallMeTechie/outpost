@@ -1801,7 +1801,7 @@
       },
       "fillAnywhere": {
         "title": "Token auf jeder Seite eintragen erlauben",
-        "description": "Werte ohne eigene Origin-Liste lassen sich dann auf jeder Seite eintragen — jedes Mal mit Freigabe, eine Sitzungsfreigabe gilt nur für die eine Seite.",
+        "description": "Werte ohne eigene Origin-Liste lassen sich dann auf jeder Seite eintragen — jedes Mal mit Freigabe, eine Sitzungsfreigabe gilt nur für die eine Seite. Einträge einer Organisation nur für Mitglieder, die sie aufdecken dürfen.",
         "off": "aus",
         "on": "an — Werte ohne eigene Liste lassen sich auf jeder Seite eintragen, jedes Mal mit Freigabe."
       }

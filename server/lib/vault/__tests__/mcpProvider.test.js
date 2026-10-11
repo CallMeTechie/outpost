@@ -134,7 +134,7 @@ const until = async (condition) => {
 
 const rpc = (id, method, params = {}) => ({ jsonrpc: "2.0", id, method, params });
 
-test("vault_list names every visible entry without a stored value; organization entries as org:<id>/<name>; usableBy follows type, git and fill origins", async () => {
+test("vault_list names every visible entry without a stored value; organization entries as org:<id>/<name>; usableBy follows type, git, fill origins and, for fillAnywhere on organization entries, reveal", async () => {
     const { provider, ctx, text } = setup({ items: [LOGIN, ORG_API, GIT_API, NOTE] });
     const result = await provider.call("vault_list", {}, ctx());
 
@@ -161,8 +161,11 @@ test("vault_list names every visible entry without a stored value; organization 
     bed.state.settings.fillAnywhere = true;
     const anywhere = JSON.parse(text(await provider.call("vault_list", {}, ctx())));
     assert.deepStrictEqual(anywhere.map((entry) => entry.usableBy), [
-        ["browser_fill_credential"], ["vault_http", "browser_fill_secret"], ["vault_http", "git", "browser_fill_secret"], ["browser_fill_secret"],
-    ], "with fillAnywhere every API key and other entry can be filled in the browser");
+        ["browser_fill_credential"], ["vault_http"], ["vault_http", "git", "browser_fill_secret"], ["browser_fill_secret"],
+    ], "with fillAnywhere every personal API key and other entry can be filled in the browser, an organization's only with reveal");
+    bed.state.permissions.add(Permission.VAULT_REVEAL);
+    const revealer = JSON.parse(text(await provider.call("vault_list", {}, ctx())));
+    assert.deepStrictEqual(revealer[1].usableBy, ["vault_http", "browser_fill_secret"]);
 });
 
 

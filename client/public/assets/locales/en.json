@@ -1801,7 +1801,7 @@
       },
       "fillAnywhere": {
         "title": "Allow filling tokens on any page",
-        "description": "Values without their own origin list can then be filled in on any page — each time with approval; a session approval covers only that one page.",
+        "description": "Values without their own origin list can then be filled in on any page — each time with approval; a session approval covers only that one page. An organization's entries only for members who may reveal them.",
         "off": "off",
         "on": "on — values without their own list can be filled in on any page, each time with approval."
       }

@@ -1,5 +1,5 @@
 const { VaultError, VaultErrorCode } = require("../errors");
-const { itemRef } = require("../visibility");
+const { itemRef, canRevealItem } = require("../visibility");
 const { checkSecretTarget, fillField, assertFillableSession } = require("../fill");
 const vaultGuard = require("../../browser/vaultGuard");
 const { BrowserError, BrowserErrorCode } = require("../../browser/errors");
@@ -37,6 +37,10 @@ const fillOriginsOf = (item) => {
     return origins.length > 0 ? origins : null;
 };
 
+// On a page of their choosing the caller can read the value with the page's own script,
+// so an organization's entry goes anywhere only for members who may reveal it.
+const mayFillAnywhere = async (item, accountId) => !item.organizationId || canRevealItem(accountId, item);
+
 const handler = async (args, ctx, deps) => {
     const auditExtra = {};
     let session = null;
@@ -44,7 +48,8 @@ const handler = async (args, ctx, deps) => {
     const check = async (item, { phase }) => {
         if (!Object.hasOwn(SECRET_FIELD, item.type))
             throw new VaultError(VaultErrorCode.WRONG_TYPE, `${itemRef(item)} is a ${item.type} entry; browser_fill_secret fills API key and "other" entries only.`);
-        if (fillOriginsOf(item) === null && !(await getVaultSettings()).fillAnywhere) throw new VaultError(VaultErrorCode.NO_FILL_ORIGINS);
+        if (fillOriginsOf(item) === null && !((await getVaultSettings()).fillAnywhere && await mayFillAnywhere(item, ctx.accountId)))
+            throw new VaultError(VaultErrorCode.NO_FILL_ORIGINS);
         if (phase !== "before") return;
         session = deps.getBrowserTools().resolveSession(ctx, args.sessionId ?? null);
         field = await session.runAgent(TOOL, async () => {
@@ -88,4 +93,4 @@ const handler = async (args, ctx, deps) => {
     }
 };
 
-module.exports = { def, handler, needsBrowser: true };
+module.exports = { def, handler, needsBrowser: true, mayFillAnywhere };
