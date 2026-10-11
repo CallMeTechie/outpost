@@ -9,6 +9,8 @@ import { formatTimeAgo } from "@/common/utils/timeAgo.js";
 import { VAULT_TYPES, detailRows } from "../../vaultTypes.js";
 import { SecretRow } from "./SecretRow.jsx";
 
+const USAGE_TYPES = ["api_key", "generic"];
+
 export const VaultDetail = ({ item, impersonating, onEdit, onDelete }) => {
     const { t } = useTranslation();
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -25,6 +27,13 @@ export const VaultDetail = ({ item, impersonating, onEdit, onDelete }) => {
     const type = VAULT_TYPES[item.type];
     const owner = item.organizationId ? item.ownerName : t("vault.scope.personal");
     const rows = detailRows(item);
+    const { readOnly, allowHttp, git, gitUsername, fillOrigins = [] } = item.fields || {};
+    const usage = [
+        readOnly && ["readOnly", t("vault.detail.usage.readOnly")],
+        allowHttp && ["allowHttp", t("vault.detail.usage.allowHttp")],
+        git && ["git", t("vault.detail.usage.git", { user: gitUsername, interpolation: { escapeValue: false } })],
+        fillOrigins.length > 0 && ["fill", <>{t("vault.detail.usage.fill")} <span className="vault-detail-mono">{fillOrigins.join(", ")}</span></>],
+    ].filter(Boolean);
     const lastUsed = item.lastUsedAt ? ` · ${t("vault.policy.lastUsed", { time: formatTimeAgo(item.lastUsedAt, t), interpolation: { escapeValue: false } })}` : "";
 
     return (
@@ -94,6 +103,21 @@ export const VaultDetail = ({ item, impersonating, onEdit, onDelete }) => {
                     {t(item.approvalRequired ? "vault.policy.required" : "vault.policy.notRequired")}{lastUsed}
                 </p>
             </div>
+
+            {USAGE_TYPES.includes(item.type) && (
+                <div className="vault-detail-section" data-ui-id="UI-VAULT-DETAIL-USAGE">
+                    <h4>{t("vault.detail.usage.title")}</h4>
+                    {usage.length > 0 ? (
+                        <ul className="vault-detail-usage">
+                            {usage.map(([key, content]) => <li key={key}>{content}</li>)}
+                        </ul>
+                    ) : (
+                        <p className="vault-detail-hint">
+                            {t(item.type === "generic" ? "vault.detail.usage.emptyGeneric" : "vault.detail.usage.empty")}
+                        </p>
+                    )}
+                </div>
+            )}
 
             <ActionConfirmDialog open={confirmOpen} setOpen={setConfirmOpen} onConfirm={() => onDelete(item)}
                                  text={t("vault.detail.deleteConfirm", { name: item.name, interpolation: { escapeValue: false } })} />

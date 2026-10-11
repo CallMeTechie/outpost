@@ -81,3 +81,59 @@ test("ohne Zieländerung schickt Speichern kein leeres Geheimfeld mit, der gespe
     rerender(dialog(true));
     expect(await screen.findByLabelText("Password")).toHaveValue("");
 });
+
+const apiKey = {
+    ...item, id: 6, ref: "github-pat", name: "github-pat", type: "api_key", secretFields: ["token"],
+    fields: { hosts: ["api.github.com"], headerName: "Authorization", headerTemplate: "Bearer {{secret}}" },
+};
+const generic = { ...item, id: 7, ref: "coolify-token", name: "coolify-token", type: "generic", fields: {}, secretFields: ["value"] };
+const editEntry = (shown) => renderWithProviders(
+    <VaultItemDialog open onClose={() => {}} item={shown} onSaved={() => {}} defaultOwner="personal"
+                     owners={[{ value: "personal", label: "Personal (ma.backes)", organizationId: null }]} />,
+    { providers: [Targets] },
+);
+const node = (id) => document.querySelector(`[data-ui-id='${id}']`);
+
+test("API-Key zeigt die Nutzung durch Agenten, der Git-Benutzername erscheint erst mit Git, Speichern schickt die Felder; Sonstiges kennt nur das Eintragen im Browser", async () => {
+    const user = userEvent.setup();
+    requestDouble.stub("patchRequest", "vault/items/6", { item: apiKey, secretsCleared: false });
+    const { unmount } = editEntry(apiKey);
+    const save = screen.getByRole("button", { name: "Save" });
+    const fill = () => screen.getByLabelText("May be filled in the browser on");
+
+    expect(screen.getByRole("checkbox", { name: "Read only" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Allow unencrypted HTTP" })).not.toBeChecked();
+    expect(screen.queryByLabelText("Git username")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("checkbox", { name: "Use for Git" }));
+    expect(screen.getByLabelText("Git username")).toHaveValue("x-access-token");
+    await user.clear(screen.getByLabelText("Git username"));
+    expect(screen.getByText("Git username missing.")).toBeInTheDocument();
+    expect(save).toBeDisabled();
+    await user.type(screen.getByLabelText("Git username"), "oauth2");
+
+    await user.click(screen.getByRole("checkbox", { name: "Read only" }));
+    await user.type(fill(), "coolify");
+    expect(screen.getByText("Not a valid origin (scheme://host[:port]).")).toBeInTheDocument();
+    expect(save).toBeDisabled();
+    await user.clear(fill());
+    await user.type(fill(), "https://coolify.example.net");
+    await user.click(save);
+
+    expect(requestDouble.calls).toEqual([{
+        method: "patchRequest", path: "vault/items/6",
+        body: expect.objectContaining({
+            fields: {
+                hosts: ["api.github.com"], headerName: "Authorization", headerTemplate: "Bearer {{secret}}",
+                readOnly: true, allowHttp: false, git: true, gitUsername: "oauth2", fillOrigins: ["https://coolify.example.net"],
+            },
+        }),
+    }]);
+
+    unmount();
+    editEntry(generic);
+    expect(node("UI-VAULT-DIALOG-READONLY")).toBeNull();
+    expect(node("UI-VAULT-DIALOG-HTTP")).toBeNull();
+    expect(node("UI-VAULT-DIALOG-GIT")).toBeNull();
+    expect(node("UI-VAULT-DIALOG-FILL")).toHaveTextContent("Nowhere — only for vault_http and Git");
+});
