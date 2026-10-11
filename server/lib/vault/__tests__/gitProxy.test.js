@@ -352,6 +352,16 @@ test("Review Focus 3 und 4: ein POST, der länger als das Vorgangsfenster läuft
     assert.strictEqual(stale.status, 403);
     assert.match(stale.text, /\(vault\.approval_stale\)/);
     assert.strictEqual(upstream.seen.length, seen);
+
+    assert.strictEqual((await gitCall(`${repo}/info/refs?service=git-receive-pack`)).status, 200);
+    await VaultItem.update({ fields: { ...item.fields, hosts: [upstream.host, "git.example.org"] } }, { where: { id: item.id } });
+    const audited = audits.length;
+    const retries = [];
+    for (let i = 0; i < 4; i++) retries.push(await gitCall(`${repo}/git-receive-pack`, { method: "POST", body: "0000", service: "receive-pack" }));
+
+    assert.ok(retries.every((retry) => retry.status === 403));
+    const denied = audits.slice(audited).filter((entry) => entry.action === "vault.use_denied").map((entry) => entry.details.code);
+    assert.strictEqual(denied.length, new Set(denied).size, denied.join(", "));
 });
 
 test("Spec-Test 6a: die Upload-Frist beendet einen langsamen Body an einer anderen Route, ein geprüfter Git-POST läuft über sie hinaus", async (t) => {
