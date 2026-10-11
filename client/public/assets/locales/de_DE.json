@@ -481,7 +481,16 @@
       "edit": "Bearbeiten",
       "delete": "Löschen",
       "deleteConfirm": "{{name}} löschen? Agenten verlieren den Zugriff sofort.",
-      "deleteFailed": "Löschen fehlgeschlagen."
+      "deleteFailed": "Löschen fehlgeschlagen.",
+      "usage": {
+        "title": "Nutzung durch Agenten",
+        "readOnly": "Nur lesen",
+        "allowHttp": "Auch über http",
+        "git": "Git · Benutzername {{user}}",
+        "fill": "Eintragen auf",
+        "empty": "vault_http über https",
+        "emptyGeneric": "Nur von Hand nutzbar — kein Eintragen im Browser"
+      }
     },
     "fields": {
       "name": "Name",
@@ -547,11 +556,30 @@
       "create": "Erstellen",
       "save": "Speichern",
       "saving": "Speichere …",
-      "saveFailed": "Speichern fehlgeschlagen."
+      "saveFailed": "Speichern fehlgeschlagen.",
+      "usage": {
+        "title": "Nutzung durch Agenten",
+        "off": "aus",
+        "on": "an",
+        "readOnly": "Nur lesen",
+        "readOnlyHint": "an — nur lesen",
+        "allowHttp": "Unverschlüsseltes HTTP erlauben",
+        "allowHttpOff": "aus — nur https",
+        "allowHttpWarning": "an — der Token geht unverschlüsselt über das Netz",
+        "git": "Für Git nutzen",
+        "gitHint": "an · Git-Benutzername",
+        "gitUsername": "Git-Benutzername",
+        "gitUsernameHelp": "Standard x-access-token für GitHub, oauth2 für GitLab",
+        "gitUsernameMissing": "Git-Benutzername fehlt.",
+        "fill": "Darf im Browser eingetragen werden auf",
+        "fillEmpty": "Nirgends — nur für vault_http und Git",
+        "fillInvalid": "Keine gültige Origin (scheme://host[:port])."
+      }
     },
     "agents": {
       "claude": "Claude Code",
-      "codex": "Codex"
+      "codex": "Codex",
+      "git": "Git"
     },
     "approval": {
       "title": "Freigabe angefordert",
@@ -564,6 +592,10 @@
         "once": "Einmal",
         "session": "Für diese Sitzung",
         "deny": "Ablehnen"
+      },
+      "write": "schreibt",
+      "target": {
+        "fill": "Eintragen auf {{origin}}"
       }
     }
   },
@@ -874,7 +906,7 @@
         "loadFailed": "Agenten-Schlüssel konnten nicht geladen werden",
         "retry": "Erneut versuchen",
         "sectionTitle": "Agenten-Schlüssel",
-        "sectionDescription": "Agenten-Schlüssel erreichen nur den MCP-Endpunkt.",
+        "sectionDescription": "Agenten-Schlüssel erreichen nur den MCP-Endpunkt, Git-Keys nur den Git-Proxy.",
         "edit": "Bearbeiten",
         "revoke": "Entziehen",
         "revokeConfirm": "Zugang von {{agent}} auf {{server}} entziehen? Der Agent verliert sofort den Zugriff.",
@@ -1766,6 +1798,12 @@
       "ipBindingDefault": {
         "title": "IP-Bindung als Standard",
         "description": "Neue Agenten-Keys gelten nur von der IP ihres Servers. Abschalten, wenn Outpost die Absenderadressen nicht sieht, etwa hinter NAT; im Dialog lässt es sich je Server ändern."
+      },
+      "fillAnywhere": {
+        "title": "Token auf jeder Seite eintragen erlauben",
+        "description": "Werte ohne eigene Origin-Liste lassen sich dann auf jeder Seite eintragen — jedes Mal mit Freigabe, eine Sitzungsfreigabe gilt nur für die eine Seite.",
+        "off": "aus",
+        "on": "an — Werte ohne eigene Liste lassen sich auf jeder Seite eintragen, jedes Mal mit Freigabe."
       }
     }
   },
@@ -1920,8 +1958,11 @@
         "manual": "Befehl kopieren und auf dem Server ausführen.",
         "copy": "Kopieren",
         "keyNotice": "Der Key ist nur jetzt sichtbar. Schließen ohne Übernahme löscht ihn.",
-        "replaced": "Bestehende Registrierung ersetzt — der alte Konto-Key bleibt gültig, bis du ihn unter API-Schlüssel löschst."
-      }
+        "replaced": "Bestehende Registrierung ersetzt — der alte Konto-Key bleibt gültig, bis du ihn unter API-Schlüssel löschst.",
+        "successGit": "Git eingerichtet für {{user}}: <mono>{{hosts}}</mono> läuft über Outpost.",
+        "noGitEntries": "Kein Eintrag mit „Für Git nutzen“ gilt für diesen Server."
+      },
+      "gitNote": "Remotes per SSH (<mono>git@github.com:</mono>) gehen nicht über den Vault — auf HTTPS umstellen."
     },
     "passwordHint": {
       "paste": "Passwort einfügen",
