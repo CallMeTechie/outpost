@@ -260,7 +260,7 @@ const createVaultProvider = ({ getBrowserTools, approvals = require("./approvals
                 return errorResult(new BrowserError(BrowserErrorCode.INTERNAL, `${name} failed unexpectedly; try again.`));
             }
         },
-        forgetTransport: (transportId) => approvals.forgetTransport(transportId),
+        forgetTransport: (transportId) => approvals.forgetSession(transportId),
     };
 };
 
