@@ -1,7 +1,7 @@
 import "./styles.sass";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { Copy as IconCopy, KeyRound as IconKeyRound, Link as IconLink, Network as IconNetwork } from "lucide-react";
+import { Trans, useTranslation } from "react-i18next";
+import { Copy as IconCopy, Info as IconInfo, KeyRound as IconKeyRound, Link as IconLink, Network as IconNetwork } from "lucide-react";
 import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
 import Checkbox from "@/common/components/Checkbox";
@@ -16,7 +16,7 @@ import { isValidAgentUrl } from "@/common/utils/agentUrl.js";
 import { copyToClipboard } from "@/common/utils/clipboard.js";
 import { formatTimeAgo } from "@/common/utils/timeAgo.js";
 
-const AGENT_TYPES = ["claude", "codex"];
+const AGENT_TYPES = ["claude", "codex", "git"];
 const raw = { interpolation: { escapeValue: false } };
 
 // The prefix is optional: Task 8 stores a bare address as /32 or /128.
@@ -49,7 +49,7 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
     const [keys, setKeys] = useState(null);
     const [remoteUser, setRemoteUser] = useState(null);
     const [otherAccountConfigured, setOtherAccountConfigured] = useState(false);
-    const [agents, setAgents] = useState({ claude: true, codex: true });
+    const [agents, setAgents] = useState({ claude: true, codex: true, git: false });
     const [ipBindingChoice, setIpBinding] = useState(null);
     const [urlText, setUrlText] = useState(null);
     const [cidrText, setCidrText] = useState("");
@@ -232,6 +232,14 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
     ].join(" · ");
 
     const resultText = (result) => {
+        if (result.reason === "no_git_entries") return t("servers.agentAccess.result.noGitEntries");
+        if (result.status === "configured" && result.agentType === "git") {
+            const hosts = (result.hosts || []).map((host) => `https://${host}`).join(", ");
+            return (
+                <Trans i18nKey="servers.agentAccess.result.successGit" values={{ user: result.remoteUser, hosts }}
+                       components={{ mono: <span className="mono" /> }} tOptions={raw} />
+            );
+        }
         if (result.status === "configured") {
             return t(result.agentType === "codex" ? "servers.agentAccess.result.successCodex" : "servers.agentAccess.result.success",
                 { user: result.remoteUser, ...raw });
@@ -318,6 +326,12 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
                             </div>
                         ))}
                     </div>
+                    {agents.git && (
+                        <p className="agent-access-help agent-access-git-note" data-ui-id="UI-AGENT-ACCESS-GIT-NOTE">
+                            <Icon icon={IconInfo} />
+                            <span><Trans i18nKey="servers.agentAccess.gitNote" components={{ mono: <span className="mono" /> }} /></span>
+                        </p>
+                    )}
                     <div className={`agent-access-cidr-field${cidrInvalid ? " is-error" : ""}`}>
                         <label htmlFor="agent-access-cidrs">{t("servers.agentAccess.setup.cidrLabel")}</label>
                         <IconInput id="agent-access-cidrs" icon={IconNetwork} value={cidrText} disabled={fieldsDisabled}
