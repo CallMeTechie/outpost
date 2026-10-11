@@ -16,7 +16,8 @@ import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import { useTags } from "@/common/contexts/TagContext.jsx";
 import { patchRequest, postRequest } from "@/common/utils/RequestUtil.js";
 import {
-    DB_ENGINES, NAME_PATTERN, TYPE_KEYS, VAULT_TYPES, isSecretMissing, missingFields, ownerKey, toFormFields, toPayloadFields,
+    DB_ENGINES, NAME_PATTERN, TYPE_KEYS, USAGE_FIELDS, VAULT_TYPES, isSecretMissing, missingFields, ownerKey, toFormFields,
+    toPayloadFields, usageProblems,
 } from "../../vaultTypes.js";
 
 const FIELD_INPUTS = {
@@ -29,6 +30,16 @@ const FIELD_INPUTS = {
     port: { labelKey: "vault.fields.port", icon: IconHash },
     database: { labelKey: "vault.fields.database", icon: IconDatabase },
 };
+
+const UsageSwitch = ({ id, dataUiId, label, hint, warning = false, checked, onChange }) => (
+    <div className="vault-item-dialog-switch" data-ui-id={dataUiId}>
+        <div className="vault-item-dialog-switch-label">
+            <label htmlFor={id}>{label}</label>
+            <span className={`vault-help${warning ? " vault-help--warning" : ""}`}>{hint}</span>
+        </div>
+        <ToggleSwitch id={id} checked={checked} onChange={onChange} />
+    </div>
+);
 
 const BINDING_KINDS = [["entry", "vault.bindings.addServer"], ["folder", "vault.bindings.addFolder"], ["tag", "vault.bindings.addTag"]];
 const NO_BINDINGS = { entry: [], folder: [], tag: [] };
@@ -92,7 +103,9 @@ export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwn
     const secretsMissing = isSecretMissing(form.type, secrets);
     const nameValid = NAME_PATTERN.test(form.name);
     const fieldsMissing = missingFields(form.type, payloadFields).length > 0;
-    const saveBlocked = saving || !nameValid || fieldsMissing || (targetChanged && secretsMissing);
+    const problems = usageProblems(form.fields);
+    const saveBlocked = saving || !nameValid || fieldsMissing || (targetChanged && secretsMissing)
+        || problems.gitUsername || problems.fillOrigins;
 
     const targets = useMemo(() => {
         const found = collectTargets(ownerNodes(servers, form.owner));
@@ -163,6 +176,10 @@ export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwn
         }
     };
 
+    const gitUsername = form.fields.gitUsername?.trim();
+    const gitHint = !form.fields.git ? t("vault.dialog.usage.off") : gitUsername
+        ? <>{t("vault.dialog.usage.gitHint")} <span className="vault-mono">{gitUsername}</span></>
+        : t("vault.dialog.usage.on");
     const secretPlaceholder = (field, label) => (isEdit && !targetChanged && item.secretFields.includes(field)
         ? t("vault.dialog.secretStored")
         : t("vault.dialog.enterSecret", { field: label }));
@@ -199,7 +216,7 @@ export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwn
                                            setValue={(value) => { set("name", value); setFailure(null); }} placeholder="portal-login" />
                                 {failure === "nameTaken" && <span className="vault-help vault-help--error" role="alert">{t("vault.dialog.nameTaken")}</span>}
                             </div>
-                            {Object.keys(form.fields).map((key) => (key === "engine" ? (
+                            {Object.keys(form.fields).filter((key) => !USAGE_FIELDS.includes(key)).map((key) => (key === "engine" ? (
                                 <div className="form-group" key={key}>
                                     <label>{t("vault.fields.engine")}</label>
                                     <SelectBox options={DB_ENGINES} selected={form.fields.engine} setSelected={(value) => setField("engine", value)} />
@@ -269,6 +286,50 @@ export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwn
                             <label htmlFor="vault-approval">{t("vault.policy.required")}</label>
                             <ToggleSwitch id="vault-approval" checked={form.approvalRequired} onChange={(value) => set("approvalRequired", value)} />
                         </div>
+
+                        {"fillOrigins" in form.fields && (
+                            <div className="vault-item-dialog-usage" role="group" aria-labelledby="vault-usage-title">
+                                <h3 id="vault-usage-title">{t("vault.dialog.usage.title")}</h3>
+                                {form.type === "api_key" && (
+                                    <>
+                                        <UsageSwitch id="vault-read-only" dataUiId="UI-VAULT-DIALOG-READONLY"
+                                                     label={t("vault.dialog.usage.readOnly")} checked={form.fields.readOnly}
+                                                     onChange={(value) => setField("readOnly", value)}
+                                                     hint={t(form.fields.readOnly ? "vault.dialog.usage.readOnlyHint" : "vault.dialog.usage.off")} />
+                                        <UsageSwitch id="vault-allow-http" dataUiId="UI-VAULT-DIALOG-HTTP"
+                                                     label={t("vault.dialog.usage.allowHttp")} checked={form.fields.allowHttp}
+                                                     onChange={(value) => setField("allowHttp", value)} warning={form.fields.allowHttp}
+                                                     hint={t(form.fields.allowHttp ? "vault.dialog.usage.allowHttpWarning" : "vault.dialog.usage.allowHttpOff")} />
+                                        <div className="vault-item-dialog-git" data-ui-id="UI-VAULT-DIALOG-GIT">
+                                            <UsageSwitch id="vault-git" label={t("vault.dialog.usage.git")} checked={form.fields.git}
+                                                         onChange={(value) => setField("git", value)} hint={gitHint} />
+                                            {form.fields.git && (
+                                                <div className={`form-group${problems.gitUsername ? " is-error" : ""}`}>
+                                                    <label htmlFor="vault-git-username">{t("vault.dialog.usage.gitUsername")}</label>
+                                                    <IconInput id="vault-git-username" icon={IconUser} customClass="vault-mono"
+                                                               value={form.fields.gitUsername} setValue={(value) => setField("gitUsername", value)} />
+                                                    {problems.gitUsername ? (
+                                                        <span className="vault-help vault-help--error" role="alert">{t("vault.dialog.usage.gitUsernameMissing")}</span>
+                                                    ) : (
+                                                        <span className="vault-help">{t("vault.dialog.usage.gitUsernameHelp")}</span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                                <div className={`form-group${problems.fillOrigins ? " is-error" : ""}`} data-ui-id="UI-VAULT-DIALOG-FILL">
+                                    <label htmlFor="vault-fill-origins">{t("vault.dialog.usage.fill")}</label>
+                                    <IconInput id="vault-fill-origins" icon={IconGlobe} customClass="vault-mono"
+                                               value={form.fields.fillOrigins} setValue={(value) => setField("fillOrigins", value)} />
+                                    {problems.fillOrigins ? (
+                                        <span className="vault-help vault-help--error" role="alert">{t("vault.dialog.usage.fillInvalid")}</span>
+                                    ) : !form.fields.fillOrigins.trim() && (
+                                        <span className="vault-help">{t("vault.dialog.usage.fillEmpty")}</span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="vault-item-dialog-actions">

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { act, fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import { VaultDetail } from "@/pages/Vault/components/VaultDetail/VaultDetail.jsx";
 import { ToastProvider } from "@/common/contexts/ToastContext.jsx";
 import { renderWithProviders } from "@/test/renderWithProviders.jsx";
@@ -56,4 +56,31 @@ test.each([
     expect(screen.queryByRole("button", { name: "Copy" })).not.toBeInTheDocument();
     expect(screen.getByText("usable by agents only")).toBeInTheDocument();
     expect(requestDouble.calls).toEqual([]);
+});
+
+const node = (id) => document.querySelector(`[data-ui-id='${id}']`);
+const detail = (shown) => <VaultDetail item={shown} impersonating={false} onEdit={() => {}} onDelete={() => {}} />;
+
+test("die Nutzung durch Agenten nennt nur Eingeschaltetes, ohne Option den Leerzustand je Typ, und fehlt bei Login", () => {
+    const { rerender } = show({
+        ...item, id: 6, name: "github-pat", type: "api_key", secretFields: ["token"],
+        fields: {
+            hosts: ["api.github.com"], headerName: "Authorization", headerTemplate: "Bearer {{secret}}",
+            readOnly: true, allowHttp: false, git: true, gitUsername: "x-access-token", fillOrigins: ["https://coolify.example.net"],
+        },
+    });
+    expect(within(node("UI-VAULT-DETAIL-USAGE")).getAllByRole("listitem").map((row) => row.textContent)).toEqual([
+        "Read only", "Git · username x-access-token", "Fill in on https://coolify.example.net",
+    ]);
+
+    rerender(detail({ ...item, id: 6, name: "github-pat", type: "api_key", secretFields: ["token"], fields: { hosts: ["api.github.com"] } }));
+    expect(within(node("UI-VAULT-DETAIL-USAGE")).queryAllByRole("listitem")).toEqual([]);
+    expect(node("UI-VAULT-DETAIL-USAGE")).toHaveTextContent("vault_http over https");
+
+    rerender(detail({ ...item, id: 7, name: "coolify-token", type: "generic", fields: { fillOrigins: [] }, secretFields: ["value"] }));
+    expect(within(node("UI-VAULT-DETAIL-USAGE")).queryAllByRole("listitem")).toEqual([]);
+    expect(node("UI-VAULT-DETAIL-USAGE")).toHaveTextContent("Manual use only — not filled in the browser");
+
+    rerender(detail(item));
+    expect(node("UI-VAULT-DETAIL-USAGE")).toBeNull();
 });
