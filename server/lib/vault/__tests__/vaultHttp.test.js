@@ -48,6 +48,8 @@ const setup = async (t, { approvalRequired = false } = {}) => {
             return res.end(JSON.stringify({ authorization: req.headers.authorization, again: TOKEN, percent: encodeURIComponent(TOKEN) }));
         }
         if (path === "/hop") return res.writeHead(302, { location: "/echo" }).end();
+        if (path === "/see") return res.writeHead(303, { location: "/issues" }).end();
+        if (path === "/temp") return res.writeHead(307, { location: "/issues" }).end();
         if (path === "/away") return res.writeHead(302, { location: `${b.base}/steal` }).end();
         if (path === "/big") return res.writeHead(200, { "content-type": "text/plain" }).end(`${"a".repeat(LIMIT - 5)}${TOKEN}${"b".repeat(1000)}`);
         res.writeHead(201, { "content-type": "application/json" }).end('{"created":true}');
@@ -103,6 +105,12 @@ test("a redirect to another origin comes back as it is and the other host is nev
     assert.match(hop, /^HTTP 200\n/);
     assert.deepStrictEqual(env.a.seen.map((request) => [request.url, request.authorization]),
         [["/away", `Bearer ${TOKEN}`], ["/hop", `Bearer ${TOKEN}`], ["/echo", `Bearer ${TOKEN}`]]);
+
+    env.a.seen.length = 0;
+    for (const route of ["/see", "/temp"])
+        assert.match(env.text(await env.call({ item: "api", method: "POST", url: `${env.a.base}${route}`, body: "payload" })), /^HTTP 201\n/);
+    assert.deepStrictEqual(env.a.seen.map((request) => [request.method, request.url, request.body]),
+        [["POST", "/see", "payload"], ["GET", "/issues", ""], ["POST", "/temp", "payload"], ["POST", "/issues", "payload"]]);
 });
 
 test("vault_http refuses before reading the token: foreign host, write on a read-only entry, http without allowHttp, forbidden headers, a body with GET", async (t) => {
@@ -112,6 +120,7 @@ test("vault_http refuses before reading the token: foreign host, write on a read
         [{ item: "api-ro", method: "POST", url: `${env.a.base}/issues`, body: "{}" }, "vault.read_only"],
         [{ item: "api-tls", method: "GET", url: `${env.a.base}/echo` }, "vault.http_not_allowed"],
         [{ item: "api", method: "GET", url: `${env.a.base}/echo`, headers: { Cookie: "a=b" } }, "vault.header_not_allowed"],
+        [{ item: "api", method: "GET", url: `${env.a.base}/echo`, headers: { Range: "bytes=0-9" } }, "vault.header_not_allowed"],
         [{ item: "api", method: "GET", url: `${env.a.base}/echo`, headers: { "Proxy-Authorization": "Basic eDp5" } }, "vault.header_not_allowed"],
         [{ item: "api", method: "GET", url: `${env.a.base}/echo`, body: "q=1" }, "vault.bad_body"],
     ];

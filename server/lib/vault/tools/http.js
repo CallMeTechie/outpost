@@ -8,6 +8,7 @@ const METHODS = new Set(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"]);
 const READS = new Set(["GET", "HEAD"]);
 const FORBIDDEN_HEADERS = new Set([
     "authorization", "cookie", "host", "content-length", "transfer-encoding", "connection", "keep-alive", "upgrade", "expect", "te", "trailer",
+    "range", "if-range", "x-http-method-override", "x-method-override", "x-http-method",
 ]);
 const HEADER_NAME = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 const HEADER_VALUE_INVALID = /[^\t\x20-\x7e\x80-\xff]/;

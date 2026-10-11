@@ -66,7 +66,7 @@ app.set("trust proxy", parseTrustProxy(process.env.TRUST_PROXY));
 app.use(requestDeadline());
 // /api/mcp reads its larger bodies itself, after authenticate: nobody unauthenticated gets 2 MB parsed.
 const json = express.json();
-app.use((req, res, next) => (req.path === "/api/mcp" || req.path.startsWith("/api/mcp/") ? next() : json(req, res, next)));
+app.use((req, res, next) => (req.path.toLowerCase() === "/api/mcp" || req.path.toLowerCase().startsWith("/api/mcp/") ? next() : json(req, res, next)));
 
 app.use("/api/service", require("./routes/service"));
 app.use("/api/accounts", require("./routes/account"));
