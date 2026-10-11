@@ -9,7 +9,7 @@ const fake = (path, exports) => {
 
 const state = {
     enabled: true, items: [], secrets: new Map(), permissions: new Set(), memberships: 0,
-    orgs: [], entries: new Map(), apiKeys: new Set(), updates: [], secretReads: 0,
+    orgs: [], entries: new Map(), apiKeys: new Set(), updates: [], secretReads: 0, settings: { fillAnywhere: false },
 };
 
 const itemRef = (item) => (item.organizationId ? `org:${item.organizationId}/${item.name}` : item.name);
@@ -43,11 +43,15 @@ fake("../../../../models/VaultItem", {
 fake("../../../../models/ApiKey", { count: async ({ where }) => (where.pending === false && state.apiKeys.has(where.id) ? 1 : 0) });
 fake("../../../../models/Organization", { findAll: async () => state.orgs });
 fake("../../../../models/Entry", { findByPk: async (id) => state.entries.get(id) ?? null });
+fake("../../../../controllers/vaultSettings", {
+    getVaultSettings: async () => ({ keyStatus: "active", agentUrl: null, ipBindingDefault: true, ...state.settings }),
+});
 
-const reset = ({ items = [], secrets = {}, permissions = [], memberships = 0, orgs = [], entries = [], apiKeys = [] } = {}) => {
+const reset = ({ items = [], secrets = {}, permissions = [], memberships = 0, orgs = [], entries = [], apiKeys = [], settings = {} } = {}) => {
     Object.assign(state, {
         enabled: true, items, secrets: new Map(Object.entries(secrets)), permissions: new Set(permissions), memberships,
         orgs, entries: new Map(entries.map((entry) => [entry.id, entry])), apiKeys: new Set(apiKeys), updates: [], secretReads: 0,
+        settings: { fillAnywhere: false, ...settings },
     });
 };
 
