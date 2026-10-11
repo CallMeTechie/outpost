@@ -9,7 +9,7 @@ const provision = require("../provision");
 
 // The commands run for real in /bin/sh. PATH holds only the stub directory and a handful of
 // coreutils, so no CLI, curl, wget or bash of the test machine can leak in.
-const TOOLS = ["awk", "cat", "chmod", "grep", "mkdir", "mktemp", "mv", "rm", "tail"];
+const TOOLS = ["awk", "cat", "chmod", "git", "grep", "mkdir", "mktemp", "mv", "rm", "tail"];
 const SOURCE_LINE = "[ -f ~/.codex/outpost.env ] && . ~/.codex/outpost.env";
 const ODD_URL = "https://out post.example/a'b\"c$(touch \"$HOME/pwned\")`touch \"$HOME/pwned2\"`;&|*?!#\\x/api/mcp";
 
@@ -256,4 +256,52 @@ test("Review Focus 4: Prüfen und Entziehen erkennen nur eine Registrierung, die
         assert.strictEqual((await env.run(revokeMine)).stdout, "ABSENT\n", agentType);
         assert.strictEqual(await check(theirs), "ABSENT\n", agentType);
     }
+});
+
+test("Git: Einrichten ersetzt nur eigene Zeilen in ~/.gitconfig und macht sie privat, Entziehen nur bei passendem Präfix, die XDG-Datei bleibt", async (t) => {
+    const env = makeHome(t);
+    const base = "https://out'post.example/x\"$(touch${IFS}$HOME/pwned)`touch${IFS}$HOME/pwned2`;&|*?!#\\y";
+    const hosts = ["github.com", "git.example.net:8443"];
+    const [first, second] = [newKey(), newKey()];
+    const gitconfig = path.join(env.home, ".gitconfig");
+    const xdg = path.join(env.home, ".config/git/config");
+    const xdgContent = "[url \"https://xdg.example/api/vault/git/github.com/\"]\n\tinsteadOf = https://github.com/\n";
+    fs.mkdirSync(path.dirname(xdg), { recursive: true });
+    fs.writeFileSync(xdg, xdgContent);
+    fs.writeFileSync(gitconfig, [
+        "[user]", "\tname = Ada",
+        "[url \"https://mirror.example/\"]", "\tinsteadOf = https://gitlab.example/",
+        "[url \"https://old.example/api/vault/git/github.com/\"]", "\tinsteadOf = https://github.com/",
+        "[http \"https://old.example/api/vault/git/\"]", "\textraHeader = Authorization: Bearer outpost_old", "",
+    ].join("\n"));
+    const list = async () => (await env.run("git config --file \"$HOME/.gitconfig\" --list")).stdout.trim().split("\n").sort();
+    const foreign = ["user.name=Ada", "url.https://mirror.example/.insteadof=https://gitlab.example/"];
+    const expected = (key) => [
+        ...foreign,
+        ...hosts.map((host) => `url.${base}/api/vault/git/${host}/.insteadof=https://${host}/`),
+        `http.${base}/api/vault/git/.extraheader=Authorization: Bearer ${key}`,
+    ].sort();
+
+    for (const key of [first, second]) {
+        await env.drop(key);
+        const setup = await env.run(provision.gitSetupCommand({ base, hosts, keyFile: fileOf(key) }));
+        assert.strictEqual(setup.code, 0);
+        assert.match(setup.stdout, /^OUTPOST_REPLACED=1$/m);
+    }
+
+    assert.deepStrictEqual(await list(), expected(second));
+    assert.strictEqual(fs.statSync(gitconfig).mode & 0o777, 0o600);
+    assert.deepStrictEqual(fs.readdirSync(path.join(env.home, ".config/outpost")), []);
+    assert.throws(() => provision.gitSetupCommand({ base, hosts: ["github.com'; touch x"], keyFile: fileOf(first) }), TypeError);
+    const check = async (key) => (await env.run(provision.registrationCheckCommand({ agentType: "git", keyPrefix: prefixOf(key), base }))).stdout;
+    assert.deepStrictEqual([await check(first), await check(second)], ["OTHER\n", "MATCH\n"]);
+
+    const revoke = async (key) => (await env.run(provision.revokeCommands({ agentType: "git", keyPrefix: prefixOf(key), base }))).stdout;
+    assert.strictEqual(await revoke(first), "FOREIGN\n");
+    assert.deepStrictEqual(await list(), expected(second));
+    assert.strictEqual(await revoke(second), "REMOVED\n");
+    assert.deepStrictEqual(await list(), [...foreign].sort());
+    assert.strictEqual(await revoke(second), "ABSENT\n");
+    assert.strictEqual(fs.readFileSync(xdg, "utf8"), xdgContent);
+    assert.deepStrictEqual(env.pwned(), []);
 });
