@@ -9,6 +9,7 @@ const db = require("./utils/database");
 const packageJson = require("../package.json");
 const MigrationRunner = require("./utils/migrationRunner");
 const { authenticate } = require("./middlewares/auth");
+const { requestDeadline } = require("./middlewares/requestDeadline");
 const expressWs = require("express-ws");
 const { startStatusChecker, stopStatusChecker } = require("./utils/statusChecker");
 const { ensureInternalProvider } = require("./controllers/oidc");
@@ -62,6 +63,7 @@ generateOpenAPISpec(app);
 
 app.disable("x-powered-by");
 app.set("trust proxy", parseTrustProxy(process.env.TRUST_PROXY));
+app.use(requestDeadline());
 app.use(express.json());
 
 app.use("/api/service", require("./routes/service"));
@@ -188,9 +190,10 @@ db.authenticate()
 
         await controlPlane.start();
 
-        app.listen(APP_PORT, () =>
+        const httpServer = app.listen(APP_PORT, () =>
             logger.system(`Server listening on port ${APP_PORT}`)
         );
+        httpServer.requestTimeout = 0;
 
         if (hasSSLCerts()) {
             try {
@@ -200,6 +203,7 @@ db.authenticate()
                 };
 
                 const httpsServer = https.createServer(sslOptions, app);
+                httpsServer.requestTimeout = 0;
                 expressWs(app, httpsServer);
 
                 httpsServer.listen(HTTPS_PORT, () =>
