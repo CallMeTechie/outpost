@@ -96,7 +96,8 @@ const fillLogin = async (args, ctx, { broker, getBrowserTools, fillRate }) => {
     };
     try {
         const { item } = await broker.use({
-            ctx, itemRef: args.item, tool: FILL, access: "write", scope: "fill", field: "password", target: () => origin, auditExtra: seen,
+            ctx, itemRef: args.item, tool: FILL, access: "write", scope: "fill", field: "password", target: () => origin, auditExtra: seen, lazySecret: true,
+            revoked: "The key of this connection was revoked while the approval was open; nothing was filled.",
             precheck: () => {
                 fillRate(ctx);
                 assertFillArgs(args);
@@ -113,8 +114,9 @@ const fillLogin = async (args, ctx, { broker, getBrowserTools, fillRate }) => {
             },
             stale: (item) => new VaultError(VaultErrorCode.ORIGIN_MISMATCH,
                 `The origins of ${itemRef(item)} changed while the approval was open; nothing was filled. Call browser_fill_credential again so the user approves the entry as it is now.`),
-            act: (password, item) => session.runAgent(FILL, async () => {
+            act: (readPassword, item) => session.runAgent(FILL, async () => {
                 const nodes = await verify(item);
+                const password = await readPassword();
                 await fillCredential(session, { ...nodes, username: usernameRef ? fieldsOf(item).username : null, password });
             }),
         });

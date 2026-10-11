@@ -23,6 +23,7 @@ const valueOf = (value, item) => (typeof value !== "function" ? value : item ? v
 // Without updatedAt: an edit outside the stamped fields (description, username) does not stop a use the
 // user has just approved. Session approvals still end on every edit, their stamp keeps updatedAt.
 const useStamp = (item) => grantStamp({ id: item.id, fields: item.fields, updatedAt: 0 });
+const REVOKED_MESSAGE = "The key of this connection was revoked while the approval was open; nothing was done.";
 const staleEntry = () => new VaultError(VaultErrorCode.APPROVAL_STALE);
 
 const createRateLimit = ({ windowMs, limit }) => {
@@ -71,7 +72,7 @@ const createBroker = ({ approvals = require("./approvals"), audit = defaultAudit
 
     const use = async ({
         ctx, itemRef: ref, tool, access, target = null, scope = access, field, check, act,
-        approved = null, precheck = null, stale = staleEntry, deferUse = false, auditExtra = {},
+        approved = null, precheck = null, stale = staleEntry, revoked = REVOKED_MESSAGE, lazySecret = false, deferUse = false, auditExtra = {},
     }) => {
         const caller = { accountId: ctx.accountId, agent: ctx.agent ?? null };
         const note = { item: typeof ref === "string" ? ref.slice(0, 200) : null, stage: "before_approval" };
@@ -113,14 +114,18 @@ const createBroker = ({ approvals = require("./approvals"), audit = defaultAudit
                 note.stage = "after_approval";
                 if (ctx.signal?.aborted) throw new VaultError(VaultErrorCode.CLIENT_GONE);
                 if (!(await keyStillValid(ctx)))
-                    throw new VaultError(VaultErrorCode.ITEM_UNKNOWN, "The key of this connection was revoked while the approval was open; nothing was done.");
+                    throw new VaultError(VaultErrorCode.ITEM_UNKNOWN, revoked);
                 await load();
                 if (item.id !== expected.itemId || stampOf(item) !== expected.stamp) throw stale(item);
                 await check(item, { phase: "after", approving });
             }
-            const secret = await readSecret(item.id, valueOf(field, item));
-            if (secret === null) throw new VaultError(VaultErrorCode.NO_SECRET);
-            result = await act(secret, item);
+            const fieldName = valueOf(field, item);
+            const read = async () => {
+                const secret = await readSecret(item.id, fieldName);
+                if (secret === null) throw new VaultError(VaultErrorCode.NO_SECRET);
+                return secret;
+            };
+            result = await act(lazySecret ? read : await read(), item);
         } catch (err) {
             if (!auditedByApprovals && (err?.code !== VaultErrorCode.RATE_LIMITED || firstRefusalInWindow(tool, ctx))) {
                 if (err?.code === VaultErrorCode.ITEM_UNREADABLE) logger.warn("Vault entry unreadable", { itemId: item?.id ?? null });

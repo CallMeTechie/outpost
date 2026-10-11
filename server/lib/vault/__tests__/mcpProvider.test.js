@@ -173,6 +173,7 @@ test("an approval answered after more than 90 s still fills: the wait runs outsi
     await until(() => env.approvals.open.length === 1);
     assert.strictEqual(env.session.agentTool, null, "nobody holds the session while the user decides");
     assert.strictEqual(env.approvals.open[0].request.target, "https://login.test");
+    assert.strictEqual(env.approvals.open[0].request.scope, "fill");
 
     const second = await env.provider.call(FILL, { item: "github", passwordRef: "e1" }, env.ctx("A"));
     assert.match(env.text(second), /\(vault\.approval_pending\)$/, "a second call meets the open approval, not a busy session");
@@ -214,6 +215,9 @@ test("after the approval every check runs again with the entry as it is now; a f
         ["the key of the connection is revoked", "vault.item_unknown", () => {
             bed.state.apiKeys.clear();
         }],
+        ["the password field moves to another origin", "vault.origin_mismatch", (env) => {
+            env.page.nodes.get(11).origin = "https://evil.test";
+        }],
     ];
     for (const [change, code, during] of cases) {
         const env = setup({ items: [{ ...LOGIN, approvalRequired: true }] });
@@ -226,6 +230,7 @@ test("after the approval every check runs again with the entry as it is now; a f
         assert.strictEqual(result.isError, true, change);
         assert.ok(env.text(result).endsWith(`(${code})`), `${change}: ${env.text(result)}`);
         assert.deepStrictEqual(env.typed(), [], change);
+        assert.strictEqual(bed.state.secretReads, 0, `${change}: the password is not decrypted before the field checks pass`);
         const denied = env.vaultAudit().find((entry) => entry.action === "vault.use_denied");
         assert.deepStrictEqual([denied.details.code, denied.details.stage, denied.details.target, denied.details.item],
             [code, "after_approval", "https://login.test", "github"], change);
