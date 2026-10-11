@@ -75,7 +75,7 @@ changelog:
     touched: [UI-VAULT-APPROVAL-CARD, UI-AGENT-ACCESS-RESULT]
   - rev: 19
     date: 2026-10-11
-    summary: Nachzug aus dem Handtest — Anleitung hinter einem Fragezeichen im Agenten-Zugang, deutliche Warnung, wenn der Server Outpost unter der eingetragenen Adresse nicht erreicht hat (ersetzt den Hinweis an der IP-Bindung)
+    summary: Nachzug aus dem Handtest — Anleitung hinter einem Fragezeichen im Agenten-Zugang (fünf Abschnitte mit Leiste, Schritten und Kopieren-Knöpfen), deutliche Warnung, wenn der Server Outpost unter der eingetragenen Adresse nicht erreicht hat (ersetzt den Hinweis an der IP-Bindung)
     touched: [UI-AGENT-ACCESS-HELP, UI-AGENT-ACCESS-GUIDE, UI-AGENT-ACCESS-UNREACHABLE, UI-AGENT-ACCESS-IPBIND]
 
 adapters:
@@ -1566,15 +1566,17 @@ screens:
         data_source: static
         semantic_anchor:
           means: >
-            Modale Anleitung über dem Agenten-Zugang: wofür er da ist (Vault-Einträge nutzen, ohne den Wert zu
-            sehen, Freigabe-Karten), was man braucht (SSH-Zugang, erreichbare Outpost-Adresse mit dem richtigen
-            Protokoll, curl oder wget, claude/codex/git), was je Agent eingerichtet wird, Git mit GitHub Schritt
-            für Schritt vom Fine-grained PAT bis zum ersten Clone, GitLab in einer Zeile, und Hinweise zu
-            SSH-Remotes, Freigaben, IP-Bindung und Entziehen. Schließen mit Esc, Backdrop oder Schließen führt
-            zurück in den Dialog.
+            Modale Anleitung über dem Agenten-Zugang, randlos gerahmt mit Kopf (Titel, ein Satz), Abschnittsleiste
+            links (auf dem Handy oben, nur Nummern plus aktiver Abschnitt) und Fuß mit Fortschritt, Zurück und
+            Weiter. Fünf Abschnitte, je einer sichtbar: So funktioniert's (Agent → Outpost → Dienst, Karten je
+            Agent mit dem Schritt danach), Voraussetzungen (SSH, erreichbare Adresse mit richtigen und falschen
+            Beispielen, curl/wget und claude/codex/git), Git mit GitHub (acht Schritte in drei Phasen vom
+            Fine-grained PAT bis zum ersten Clone, Feldtabellen mit den Beschriftungen des Vault-Dialogs,
+            Kopieren-Knöpfe für Werte und Befehle), Git mit GitLab (Feldtabelle), Gut zu wissen (SSH-Remotes,
+            Freigabe-Karte, IP-Bindung, Entziehen). Fertig, Esc, Backdrop oder Schließen führen zurück in den Dialog.
           concept: setup_guide
           not: [support_dialog, agent_setup_result, documentation_page]
-          example: "Git mit GitHub, Schritt für Schritt · 1. Auf GitHub: Settings → Developer settings → Personal access tokens → Fine-grained tokens …"
+          example: "Git mit GitHub · Auf GitHub · 1 Fine-grained Token anlegen: Settings › Developer settings › Personal access tokens › Fine-grained tokens"
         states:
           - { id: default }
         locators:

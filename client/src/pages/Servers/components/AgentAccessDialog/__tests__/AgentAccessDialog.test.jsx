@@ -230,13 +230,19 @@ test("a failed callback during setup is named, without curl or wget apart from a
     expect(node("UI-AGENT-ACCESS-UNREACHABLE")).toBeNull();
 });
 
-test("the guide opens over the dialog and Escape closes only the guide", async () => {
+test("the guide walks through its sections over the dialog, and Escape closes only the guide", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     open(onClose);
 
     await user.click(screen.getByRole("button", { name: t("servers.agentAccess.guide.open") }));
-    expect(node("UI-AGENT-ACCESS-GUIDE")).toHaveTextContent(t("servers.agentAccess.guide.githubTitle"));
+    const guide = within(node("UI-AGENT-ACCESS-GUIDE"));
+    for (const section of ["needs", "github", "gitlab", "tips", "how"]) {
+        await user.click(within(guide.getByRole("navigation")).getByRole("button", { name: new RegExp(t(`servers.agentAccess.guide.${section}.nav`)) }));
+        expect(guide.getByRole("region", { name: t(`servers.agentAccess.guide.${section}.nav`) })).toBeInTheDocument();
+    }
+    await user.click(guide.getByRole("button", { name: t("servers.agentAccess.guide.next", { section: t("servers.agentAccess.guide.needs.nav") }) }));
+    expect(guide.getByRole("button", { current: "step" })).toHaveTextContent(t("servers.agentAccess.guide.needs.nav"));
 
     await user.keyboard("{Escape}");
     const dialogs = document.querySelectorAll(".dialog");

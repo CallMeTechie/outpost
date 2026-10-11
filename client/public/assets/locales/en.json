@@ -1970,38 +1970,89 @@
       "guide": {
         "open": "Guide",
         "title": "Setting up agent access",
-        "intro": "With agent access, Claude Code, Codex and Git on this server use vault entries without ever seeing the secret value. Every use goes through Outpost; if an entry requires approval, a card appears in the bottom right.",
-        "needsTitle": "What you need",
-        "needs": [
-          "SSH access to this server in Outpost — Outpost sets everything up through it.",
-          "An Outpost address the server can reach, with the right scheme: on the LAN for example <mono>http://192.168.1.10:6989</mono>, from outside the https address of your reverse proxy. Outpost itself speaks only http on its port; <mono>https://</mono> in front of it fails.",
-          "<mono>curl</mono> or <mono>wget</mono> on the server and, depending on the agent, the program <mono>claude</mono>, <mono>codex</mono> or <mono>git</mono>."
-        ],
-        "agentsTitle": "What gets set up",
-        "agents": [
-          "<b>Claude Code and Codex:</b> Outpost registers itself as an MCP server. The agents get tools such as <mono>vault_http</mono> for API calls with a token and the Outpost browser. Afterwards restart Claude Code and run <mono>/mcp</mono>; start Codex in a new shell.",
-          "<b>Git:</b> Outpost routes https remotes on the hosts of your Git entries through itself and inserts the token on its own. The server only holds an agent key in <mono>~/.gitconfig</mono> (readable by that user only), never the token."
-        ],
-        "githubTitle": "Git with GitHub, step by step",
-        "github": [
-          "On GitHub: Settings → Developer settings → Personal access tokens → <b>Fine-grained tokens</b> → Generate new token.",
-          "Repository access: <b>Only select repositories</b> with the repos the agent needs. Permissions: <b>Contents</b> Read and write (read-only is enough for clone and pull); Issues or Pull requests only if the agent should edit them through the API. Set an expiration date.",
-          "Copy the token — GitHub shows it only once.",
-          "In Outpost: Vault → New entry → type <b>API key</b>, name for example <mono>github</mono>. Hosts <mono>api.github.com, github.com</mono>, paste the token.",
-          "Under “Use by agents” turn on <b>Use for Git</b>, Git username <mono>x-access-token</mono>. “Read only” if the agent should not push.",
-          "“Applies to” this server or All servers, leave “Approval required” on, Create.",
-          "Here, tick <b>Git</b> and Set up.",
-          "Check on the server: <mono>git clone https://github.com/owner/repo.git</mono> — the approval card appears in Outpost."
-        ],
-        "gitlab": "<b>GitLab:</b> host <mono>gitlab.com</mono> or your instance, username <mono>oauth2</mono>, a personal access token with <mono>read_repository</mono> and <mono>write_repository</mono>, plus <mono>api</mono> for API calls.",
-        "notesTitle": "Good to know",
-        "notes": [
-          "Only https remotes go through Outpost. Switch an SSH remote with <mono>git remote set-url origin https://github.com/owner/repo.git</mono>.",
-          "On the approval card, “Once” covers exactly this access, “For this session” further ones of the same kind. Reading and writing are approved separately; “writes” marks accesses that change something.",
-          "“Only from this server's IP” accepts the key from this address only. If Outpost sees a different one, for example behind Docker or NAT, the dialog offers to adopt it.",
-          "Revoking invalidates the key immediately and removes the setup on the server; other lines in the gitconfig stay."
-        ],
-        "close": "Close"
+        "subtitle": "Claude Code, Codex and Git use vault entries without ever seeing the secret value.",
+        "sectionsLabel": "Sections",
+        "progress": "Step {{current}} of {{total}}",
+        "back": "Back",
+        "next": "Next: {{section}}",
+        "done": "Done",
+        "copy": "Copy",
+        "copied": "Copied",
+        "how": {
+          "nav": "How it works",
+          "lead": "The agent never gets the token itself, only an agent key of its own. Every use goes through Outpost — if an entry requires approval, Outpost asks you first.",
+          "agent": "Agent on the server",
+          "agentText": "only knows its agent key",
+          "outpost": "Outpost",
+          "outpostText": "checks, asks you, inserts the token",
+          "service": "GitHub, APIs",
+          "serviceText": "receive the real token",
+          "setUpLabel": "What gets set up",
+          "claude": "Outpost as an MCP server: tools such as <mono>vault_http</mono> and the Outpost browser.",
+          "claudeAfter": "Afterwards: <b>restart Claude Code</b>, then <mono>/mcp</mono>",
+          "codex": "The same tools, registered as an MCP server in Codex.",
+          "codexAfter": "Afterwards: <b>start Codex in a new shell</b>",
+          "git": "https remotes go through Outpost. <mono>~/.gitconfig</mono> only holds an agent key.",
+          "gitAfter": "Afterwards as usual: <mono>git clone</mono>, <mono>pull</mono>, <mono>push</mono>"
+        },
+        "needs": {
+          "nav": "Requirements",
+          "lead": "Three things, then Outpost sets everything up with one click.",
+          "ssh": "SSH access to this server",
+          "sshText": "Outpost sets up the access through it — the same one you connect with in Outpost.",
+          "address": "An Outpost address the server can reach",
+          "addressText": "With the right scheme: Outpost speaks only http on its own port.",
+          "lan": "on the LAN",
+          "proxy": "behind a reverse proxy",
+          "wrong": "https on the http port",
+          "programs": "Programs on the server",
+          "programsText": "<mono>curl</mono> or <mono>wget</mono>, plus <mono>claude</mono>, <mono>codex</mono> or <mono>git</mono> depending on the agent."
+        },
+        "github": {
+          "nav": "Git with GitHub",
+          "lead": "About five minutes. Afterwards clone, pull and push on this server go through Outpost.",
+          "onGithub": "On GitHub",
+          "inOutpost": "In Outpost",
+          "onServer": "On the server",
+          "token": "Create a fine-grained token",
+          "scope": "Limit the access",
+          "contentsHint": "read-only is enough for clone and pull",
+          "issuesValue": "only if the agent should edit them through the API",
+          "expirationValue": "set a date",
+          "copyToken": "Copy the token",
+          "copyTokenText": "GitHub shows it only this once.",
+          "entry": "{{vault}} › {{newEntry}}",
+          "tokenValue": "paste",
+          "git": "Turn on “{{useForGit}}”",
+          "readOnlyValue": "on if the agent should not push",
+          "share": "Share and create",
+          "shareText": "“{{scope}}” this server or {{allServers}}, leave “{{approval}}” on, {{create}}.",
+          "setup": "Tick Git here and {{setup}}",
+          "setupText": "In this server's agent access.",
+          "try": "Try it",
+          "tryText": "The approval card appears in the bottom right of Outpost."
+        },
+        "gitlab": {
+          "nav": "Git with GitLab",
+          "lead": "Same as GitHub from step 4, with these values:",
+          "hostsValue": "or your instance",
+          "tokenValue": "Personal access token",
+          "scopes": "Scopes",
+          "api": "For API calls",
+          "apiValue": "add <mono>api</mono>"
+        },
+        "tips": {
+          "nav": "Good to know",
+          "lead": "What you will run into day to day.",
+          "https": "Only https remotes",
+          "httpsText": "SSH remotes (<mono>git@github.com:</mono>) do not go through Outpost. Switch them like this:",
+          "approval": "Approval card",
+          "approvalText": "“{{once}}” covers exactly this access, “{{session}}” further ones of the same kind. Reading and writing are approved separately.",
+          "ipBind": "IP binding",
+          "ipBindText": "“{{label}}” accepts the key from there only. If Outpost sees a different address, for example behind Docker or NAT, the dialog offers to adopt it.",
+          "revoke": "Revoke",
+          "revokeText": "Invalidates the key immediately and removes the setup on the server. Other lines in the gitconfig stay."
+        }
       }
     },
     "passwordHint": {

@@ -81,9 +81,10 @@ Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dial
 - Öffnet UI-AGENT-ACCESS-GUIDE. Solange die Anleitung offen ist, trägt der Agenten-Dialog `disableClosing` — Esc und Klicks in die Anleitung schließen nur die Anleitung, Eingaben bleiben erhalten.
 
 ### UI-AGENT-ACCESS-GUIDE — Agenten-Zugang einrichten (neu in Rev. 19)
-- `AgentAccessGuide.jsx` im Dialog-Ordner: eigener `DialogProvider`, gerendert als Kind des Agenten-Dialogs (Portal), 44 rem, max. 85 vh, scrollt.
-- Inhalt statisch aus `servers.agentAccess.guide.*` (Listen als Arrays, Markup `<mono>`/`<b>` per `Trans`): Einleitung, Was du brauchst, Was eingerichtet wird, Git mit GitHub Schritt für Schritt (geordnet), GitLab, Gut zu wissen; unten `DialogCancelButton` „Schließen“.
-- UI-Begriffe in der Anleitung exakt wie die Beschriftungen in Vault-Dialog und Agenten-Zugang.
+- `AgentAccessGuide.jsx` im Dialog-Ordner: eigener `DialogProvider`, gerendert als Kind des Agenten-Dialogs (Portal). Das Panel (`.agent-access-guide`, 60 rem × 40 rem, höchstens 92 vw × 85 vh) hebt den Innenabstand des Dialog-Rahmens per negativem Rand auf, damit Kopf- und Fußlinie bis an den Rand laufen.
+- Aufbau: Kopf (Buch-Icon, Titel, ein Satz; rechts bleibt Platz für das X des Rahmens), Leiste mit fünf Abschnitten (`aria-current="step"`, Nummernkreise), Inhalt (scrollt, je ein Abschnitt, `section` mit `aria-labelledby`), Fuß mit „Schritt n von 5“, Zurück, „Weiter: <nächster Abschnitt>“ bzw. „Fertig“ (schließt über `DialogContext`). Unter 768 px liegt die Leiste oben und zeigt nur Nummern plus den aktiven Abschnitt; Feldtabellen stapeln Beschriftung über Wert.
+- Abschnitte: So funktioniert's (Fluss Agent → Outpost → Dienst, Karten Claude Code/Codex mit Stecker-Icon, Git mit Branch-Icon — keine Roboter), Voraussetzungen, Git mit GitHub (Phasen Auf GitHub / In Outpost / Auf dem Server, Schritte 1–8 mit Verbindungslinie), Git mit GitLab, Gut zu wissen (2×2 Karten).
+- Texte aus `servers.agentAccess.guide.*`; Beschriftungen von Outpost-Feldern kommen aus den Schlüsseln des Vault-Dialogs und der Freigabe-Karte selbst (`vault.fields.*`, `vault.dialog.usage.*`, `vault.approval.actions.*` …), damit die Anleitung nie von der Oberfläche abweicht. GitHub-Beschriftungen und Befehle sind Literale im Code. Werte und Befehle tragen einen Kopieren-Knopf (`copyToClipboard`, kurz ein Haken).
 
 ## Datenquellen (Spec, Abschnitt REST-Endpunkte)
 - Beim Öffnen: `GET /api/vault/agent-keys?entryId=` → `keys`, `remoteUser`, `otherAccountConfigured` (Warnung `partial` von SETUP vor dem Einrichten).
