@@ -287,8 +287,9 @@ const createGitProxy = ({ windowMs = OPERATION_WINDOW_MS, idleMs = IDLE_MS, agen
             if (!(err instanceof VaultError)) logger.warn("Git proxy request failed", { error: err?.name });
             if (!brokered && err instanceof VaultError && firstRefusal(keyId, err.code))
                 record(ctx, item, "vault.use_denied", { access: request.access, ...details, code: err.code });
-            // Retries of a refused POST then end as throttled git_no_operation instead of one broker audit each.
-            if (brokered && op && !request.advertise) end(op);
+            // Retries of a refused POST then end as throttled git_no_operation instead of one broker audit each;
+            // settle ends the operation once info/refs and parallel POSTs are done, so its vault.use stays complete.
+            if (brokered && op && !request.advertise) op.finished = true;
             const message = redactSecretText(err instanceof VaultError ? `${err.message} (${err.code})` : "The git request failed unexpectedly; nothing was sent.", variants);
             if (request.advertise) refuse(res, 200, `application/x-${request.name}-advertisement`, pktLine(`ERR vault: ${message}`));
             else refuse(res, 403, "text/plain; charset=utf-8", `vault: ${message}\n`);
