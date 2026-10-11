@@ -1,7 +1,7 @@
 schema: mockingbird/1
 project: outpost
-revision: 17
-updated: 2026-10-10
+revision: 18
+updated: 2026-10-11
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
 tokens_css: docs/design/mockups/tokens.css
@@ -69,6 +69,10 @@ changelog:
     date: 2026-10-10
     summary: Nachzug aus dem Plan-Review — eigener Leerzustand der Nutzung durch Agenten für Sonstiges ohne Origins, Beispiel der Git-Zeile wie im Artboard
     touched: [UI-VAULT-DETAIL-USAGE]
+  - rev: 18
+    date: 2026-10-11
+    summary: Nachzug aus dem Gesamt-Review — die Freigabe-Karte nennt beim Eintragen eines Tokens das Feld und bietet für andere als Passwortfelder nur „Einmal“; kein Git-Eintrag ist im Ergebnis des Agenten-Zugangs ein neutraler Hinweis statt eines Fehlers
+    touched: [UI-VAULT-APPROVAL-CARD, UI-AGENT-ACCESS-RESULT]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -1490,6 +1494,7 @@ screens:
           - { id: success, copy: "Eingerichtet für root. Claude Code neu starten, dann /mcp. · Git eingerichtet für root: https://github.com läuft über Outpost." }
           - { id: partial, copy: "Bestehende Registrierung ersetzt — der alte Konto-Key bleibt gültig, bis du ihn unter API-Schlüssel löschst." }
           - { id: error, copy: "codex nicht gefunden. Befehl kopieren und auf dem Server ausführen." }
+          - { id: disabled, copy: "Kein Eintrag mit „Für Git nutzen“ gilt für diesen Server." }
         locators:
           web: "[data-ui-id='UI-AGENT-ACCESS-RESULT']"
 
@@ -1692,6 +1697,9 @@ screens:
             (Ursprung beim Eintragen, Methode mit Host und Pfad bei vault_http, Git mit Host
             und Repo) und die verbleibende Zeit; Antworten Einmal, Für diese Sitzung, Ablehnen.
             „Für diese Sitzung“ gilt getrennt für lesende und schreibende Zugriffe.
+            Beim Eintragen eines Tokens nennt die Zeile auch das Feld, wie die Seite es bezeichnet
+            („Eintragen auf https://github.com · Feld „Kommentar““); ist es kein Passwortfeld, gibt es nur
+            „Einmal“ und „Ablehnen“.
             Mehrere Anfragen stapeln sich, die älteste unten. Der Stapel liegt über Dialogen und
             Toasts. Eine abgelaufene Karte zeigt fünf Sekunden den Fehlerzustand und verschwindet;
             scheitert das Senden einer Antwort, bleibt die Karte stehen und ein Toast nennt den Grund.
@@ -1707,6 +1715,7 @@ screens:
           - { id: partial, copy: "3 Anfragen offen" }
           - { id: loading, copy: "Antwort wird gesendet …" }
           - { id: error, copy: "Anfrage ist abgelaufen." }
+          - { id: disabled, copy: "Nur Einmal — kein Passwortfeld" }
         locators:
           web: "[data-ui-id='UI-VAULT-APPROVAL-CARD']"
 

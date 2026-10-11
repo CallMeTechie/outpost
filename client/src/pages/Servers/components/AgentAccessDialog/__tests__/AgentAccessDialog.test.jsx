@@ -190,7 +190,11 @@ test.each([
         method: "postRequest", path: "vault/agent-keys",
         body: { entryId: 7, agentTypes: ["claude", "codex", "git"], agentUrl: "http://192.168.2.10:6989", allowedCidrs: [] },
     });
-    expect(node("UI-AGENT-ACCESS-RESULT")).toHaveTextContent(text);
+    const shown = node("UI-AGENT-ACCESS-RESULT");
+    expect(shown).toHaveTextContent(text);
+    expect(within(shown).queryByText(t("servers.agentAccess.result.failed"))).toBeNull();
+    expect(within(shown).queryByRole("button", { name: t("servers.agentAccess.result.copy") })).toBeNull();
+    expect(shown.querySelector(".is-fail, .is-error")).toBeNull();
 });
 
 test("the account's agent keys list Git as the third agent of a server, after Claude Code and Codex", async () => {
