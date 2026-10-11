@@ -212,7 +212,7 @@ An approval separates reading from writing. These count as **writing**: the `vau
 - writing through `vault_http` or Git,
 - filling in the browser (`browser_fill_credential` and `browser_fill_secret`).
 
-An approval to read an entry grants no write, and the approval to fill grants no API call. For an entry without its own fill origins (see [Fill anywhere](#_7-security-model-and-limits)), the fill approval covers only the page it was given for.
+An approval to read an entry grants no write, and the approval to fill grants no API call. For an entry without its own fill origins (see [Fill anywhere](#_7-security-model-and-limits)), the fill approval covers only the page it was given for. `browser_fill_secret` into a field that is not a password field (text, search, url, textarea) can only be approved **Once**: the card names the field as the page labels it ("Fill in on https://github.com · field “Comment”") and offers no **For this session**, and an earlier session approval does not cover it. A session approval for such fields would cover every text field of the origin, including a comment box that publishes the value.
 
 For Git, **Once** covers one operation: a clone, a fetch or a pull. For a push it covers exactly one push, and the push counts as used as soon as its pack data has gone to the Git host, even if the push fails after that. The next push opens a new card unless a session approval applies. Git's empty probe request before a push does not count.
 
