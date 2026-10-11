@@ -14,6 +14,8 @@ import { copyToClipboard } from "@/common/utils/clipboard.js";
 import { formatTimeAgo } from "@/common/utils/timeAgo.js";
 
 const raw = { interpolation: { escapeValue: false } };
+const AGENT_ORDER = ["claude", "codex", "git"];
+const byAgent = (a, b) => AGENT_ORDER.indexOf(a.agentType) - AGENT_ORDER.indexOf(b.agentType);
 
 export const AgentKeysSection = () => {
     const { t } = useTranslation();
@@ -46,7 +48,8 @@ export const AgentKeysSection = () => {
     const serverName = (entryId) => getServerById(entryId)?.name ?? String(entryId);
     const agentLabel = (type) => t(`vault.agents.${type}`);
 
-    const groups = [...keys.reduce((map, key) => map.set(key.entryId, [...(map.get(key.entryId) || []), key]), new Map())];
+    const groups = [...keys.reduce((map, key) => map.set(key.entryId, [...(map.get(key.entryId) || []), key]), new Map())]
+        .map(([entryId, entryKeys]) => [entryId, [...entryKeys].sort(byAgent)]);
 
     const confirmRevoke = (key) => {
         setRevokeTarget(key);

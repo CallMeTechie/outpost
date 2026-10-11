@@ -5,6 +5,7 @@ import testI18n from "@/test/i18n.js";
 import { renderWithProviders } from "@/test/renderWithProviders.jsx";
 import { ToastProvider } from "@/common/contexts/ToastContext.jsx";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
+import AgentKeysSection from "@/pages/Settings/pages/Account/components/AgentKeysSection";
 import { AgentAccessDialog } from "../AgentAccessDialog.jsx";
 
 const requestDouble = await vi.hoisted(async () => {
@@ -164,4 +165,45 @@ test("the address of the server's last setup prefills the field and goes with th
         method: "postRequest", path: "vault/agent-keys",
         body: { entryId: 7, agentTypes: ["claude", "codex"], agentUrl: "https://outpost.example.org", allowedCidrs: [] },
     });
+});
+
+test.each([
+    ["set up", { id: 46, agentType: "git", status: "configured", remoteUser: "root", hosts: ["github.com"], probe: null, replacedRegistration: false },
+        "Git set up for root: https://github.com runs through Outpost."],
+    ["without a Git entry", { id: null, agentType: "git", hosts: [], status: "manual", reason: "no_git_entries", remoteUser: "root", probe: null, replacedRegistration: false },
+        t("servers.agentAccess.result.noGitEntries")],
+])("the SSH note follows the Git checkbox, setup sends git, and the result says %s", async (_, result, text) => {
+    const user = userEvent.setup();
+    open();
+    const git = screen.getByRole("checkbox", { name: t("vault.agents.git") });
+    expect(git).not.toBeChecked();
+    expect(node("UI-AGENT-ACCESS-GIT-NOTE")).toBeNull();
+
+    await user.click(git);
+    expect(node("UI-AGENT-ACCESS-GIT-NOTE")).toHaveTextContent("Remotes over SSH (git@github.com:) do not go through the vault — switch them to HTTPS.");
+    await user.click(git);
+    expect(node("UI-AGENT-ACCESS-GIT-NOTE")).toBeNull();
+    await user.click(git);
+    await runSetup(user, [result]);
+
+    expect(requestDouble.calls).toContainEqual({
+        method: "postRequest", path: "vault/agent-keys",
+        body: { entryId: 7, agentTypes: ["claude", "codex", "git"], agentUrl: "http://192.168.2.10:6989", allowedCidrs: [] },
+    });
+    expect(node("UI-AGENT-ACCESS-RESULT")).toHaveTextContent(text);
+});
+
+test("the account's agent keys list Git as the third agent of a server, after Claude Code and Codex", async () => {
+    vaultAvailable.current = { ...AVAILABLE, enabled: true };
+    const key = (id, agentType) => ({
+        id, entryId: 7, agentType, pending: false, ipBinding: true, allowedCidrs: [],
+        agentUrl: "http://192.168.2.10:6989", createdAt: "2026-10-10T08:00:00.000Z", lastUsedAt: null,
+    });
+    requestDouble.stub("getRequest", "vault/agent-keys", { keys: [key(50, "git"), key(49, "codex"), key(48, "claude")] });
+    renderWithProviders(<AgentKeysSection />, { providers: [ToastProvider, Servers] });
+
+    const section = node("UI-API-KEYS-AGENTS");
+    await within(section).findByText(t("vault.agents.git"));
+    expect([...section.querySelectorAll(".item-details h3")].map((heading) => heading.textContent))
+        .toEqual([t("vault.agents.claude"), t("vault.agents.codex"), t("vault.agents.git")]);
 });
