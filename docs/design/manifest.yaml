@@ -1,6 +1,6 @@
 schema: mockingbird/1
 project: outpost
-revision: 19
+revision: 20
 updated: 2026-10-11
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
@@ -77,6 +77,10 @@ changelog:
     date: 2026-10-11
     summary: Nachzug aus dem Handtest — Anleitung hinter einem Fragezeichen im Agenten-Zugang (fünf Abschnitte mit Leiste, Schritten und Kopieren-Knöpfen), deutliche Warnung, wenn der Server Outpost unter der eingetragenen Adresse nicht erreicht hat (ersetzt den Hinweis an der IP-Bindung)
     touched: [UI-AGENT-ACCESS-HELP, UI-AGENT-ACCESS-GUIDE, UI-AGENT-ACCESS-UNREACHABLE, UI-AGENT-ACCESS-IPBIND]
+  - rev: 20
+    date: 2026-10-11
+    summary: Vault Teilprojekt 2b (ssh_exec) — SSH-Eintrag mit Zielen aus der Serverliste, freien Hosts und Sitzungsfreigabe-Schalter; Ziele mit gemerktem Host-Key und Vergessen; Freigabe-Karte mit Befehl, Abzeichen „führt aus“ und Kasten für neue Ziele; Anleitung um SSH ergänzt
+    touched: [UI-VAULT-DIALOG-SSH-SERVERS, UI-VAULT-DIALOG-SSH-HOSTS, UI-VAULT-DIALOG-SSH-SESSION, UI-VAULT-DETAIL-SSH-TARGETS, UI-VAULT-DETAIL-USAGE, UI-VAULT-APPROVAL-CARD, UI-VAULT-APPROVAL-EXEC, UI-VAULT-APPROVAL-COMMAND, UI-VAULT-APPROVAL-HOSTKEY, UI-AGENT-ACCESS-GUIDE]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -1159,12 +1163,12 @@ screens:
         label: Nutzung durch Agenten
         status: required
         verify: required
-        data_source: "fields.readOnly, allowHttp, git, gitUsername, fillOrigins des Eintrags"
+        data_source: "fields.readOnly, allowHttp, git, gitUsername, fillOrigins des Eintrags; bei SSH fields.allowSession"
         semantic_anchor:
           means: >
             Was Agenten mit diesem Wert tun dürfen: nur lesen, auch über http, für Git (mit Benutzername),
-            Eintragen im Browser auf den genannten Origins. Ausgeschaltetes fehlt als Zeile. Nur bei API-Key
-            und Sonstiges sichtbar.
+            Eintragen im Browser auf den genannten Origins. Ausgeschaltetes fehlt als Zeile. Bei API-Key
+            und Sonstiges; bei SSH nur die Zeile „Nur Einmal“ oder „Sitzungsfreigabe erlaubt“.
           concept: agent_use_policy
           not: [vault_binding, approval_policy, permission]
           example: "Nur lesen · Git · Benutzername x-access-token · Eintragen auf https://coolify.example.net"
@@ -1175,6 +1179,33 @@ screens:
           - { id: disabled, copy: "Nur von Hand nutzbar — kein Eintragen im Browser" }
         locators:
           web: "[data-ui-id='UI-VAULT-DETAIL-USAGE']"
+
+      - id: UI-VAULT-DETAIL-SSH-TARGETS
+        type: list
+        label: Ziele
+        status: required
+        verify: required
+        data_source: "fields.servers und fields.hosts des SSH-Eintrags, Tabelle vault_ssh_host_keys je Eintrag und Ziel"
+        semantic_anchor:
+          means: >
+            Je Ziel eines SSH-Eintrags eine Zeile: Name bzw. Host, benutzer@host:port und der gemerkte
+            Host-Key (Algorithmus, SHA256-Fingerabdruck, bestätigt am, von wem) oder „noch nie verbunden“.
+            „Vergessen“ löscht den gemerkten Host-Key; die nächste Verbindung zeigt den Fingerabdruck wieder
+            auf der Freigabe-Karte. Nur bei SSH sichtbar.
+          concept: ssh_host_key_pin
+          aliases: [known_host]
+          not: [vault_binding, identity, ssh_key]
+          cardinality: many
+          example: "web02 · deploy@192.168.2.40:22 · ED25519 SHA256:3f9a…c21 · bestätigt 11.10. von Ada · Vergessen"
+          empty_means: Der Eintrag hat keine Ziele — ssh_exec kann ihn nicht nutzen.
+        states:
+          - { id: default }
+          - { id: empty, copy: "Keine Ziele — im Dialog Server oder Hosts eintragen." }
+          - { id: partial, copy: "noch nie verbunden" }
+          - { id: selected, copy: "Gemerkten Host-Key von web02 vergessen? Die nächste Verbindung fragt wieder." }
+          - { id: error, copy: "Vergessen fehlgeschlagen." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DETAIL-SSH-TARGETS']"
 
   - id: UI-VAULT-DIALOG
     kind: dialog
@@ -1366,6 +1397,76 @@ screens:
           - { id: error, copy: "Keine gültige Origin (scheme://host[:port])." }
         locators:
           web: "[data-ui-id='UI-VAULT-DIALOG-FILL']"
+
+      - id: UI-VAULT-DIALOG-SSH-SERVERS
+        type: field
+        label: Ziele aus der Serverliste
+        status: required
+        verify: required
+        data_source: "fields.servers eines SSH-Eintrags; Auswahl aus den SSH-Servern der Serverliste, die der Bearbeiter sieht"
+        semantic_anchor:
+          means: >
+            Server aus Outposts Serverliste, auf denen ssh_exec, ssh_put und ssh_get mit diesem Benutzer und
+            Geheimnis arbeiten dürfen. Host, Port, Jump-Hosts und Engine kommen vom Server-Eintrag, dessen
+            Identität wird nicht benutzt. Nur SSH-Server; bei Organisations-Einträgen nur Server derselben
+            Organisation. Nicht „Gilt für“: das sagt, von welchem Server aus ein Agent den Eintrag nutzt.
+          concept: ssh_target_server
+          aliases: [ssh_target]
+          not: [vault_binding, identity, jump_host]
+          cardinality: many
+          example: "web02 · nas"
+          empty_means: Keine Server-Ziele — nur die freien Hosts gelten.
+        states:
+          - { id: default }
+          - { id: empty, copy: "Keine Server ausgewählt" }
+          - { id: selected, copy: "web02, nas" }
+          - { id: error, copy: "Ziel geändert — gespeicherte Werte werden verworfen. Neu eingeben." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DIALOG-SSH-SERVERS']"
+
+      - id: UI-VAULT-DIALOG-SSH-HOSTS
+        type: field
+        label: Freie Hosts
+        status: required
+        verify: required
+        data_source: "fields.hosts eines SSH-Eintrags"
+        semantic_anchor:
+          means: >
+            Rechner außerhalb der Serverliste als host[:port], durch Komma oder Leerzeichen getrennt. Sie laufen
+            über die Standard-Engine, ohne Jump-Hosts. Ändern verwirft die gespeicherten Geheimnisse und die
+            gemerkten Host-Keys der entfernten Ziele.
+          concept: ssh_target_host
+          aliases: [ssh_target]
+          not: [api_host, fill_origin, vault_binding]
+          cardinality: many
+          example: "nas.example.net:2222"
+          empty_means: Keine freien Hosts — nur die Server-Ziele gelten.
+        states:
+          - { id: default }
+          - { id: empty, copy: "nas.example.net:2222" }
+          - { id: error, copy: "Kein gültiger Host (host oder host:port)." }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DIALOG-SSH-HOSTS']"
+
+      - id: UI-VAULT-DIALOG-SSH-SESSION
+        type: toggle
+        label: „Für diese Sitzung“ erlauben
+        status: required
+        verify: required
+        data_source: "fields.allowSession eines SSH-Eintrags"
+        semantic_anchor:
+          means: >
+            Ob die Freigabe-Karte für SSH-Zugriffe dieses Eintrags „Für diese Sitzung“ anbietet. Aus: jeder
+            Befehl und jede Datei braucht „Einmal“. An: eine Sitzungsfreigabe gilt je Ziel und Art (ausführen,
+            schreiben, lesen) für beliebige Befehle bis Sitzungsende. Standard aus.
+          concept: ssh_session_policy
+          not: [approval_policy, vault_binding]
+          example: "aus — jeder Befehl einzeln"
+        states:
+          - { id: default, copy: "aus — jeder Befehl einzeln" }
+          - { id: selected, copy: "an — eine Freigabe gilt bis Sitzungsende für beliebige Befehle auf diesem Ziel" }
+        locators:
+          web: "[data-ui-id='UI-VAULT-DIALOG-SSH-SESSION']"
 
       - id: UI-VAULT-DIALOG-SAVE
         type: action
@@ -1569,11 +1670,12 @@ screens:
             Modale Anleitung über dem Agenten-Zugang, randlos gerahmt mit Kopf (Titel, ein Satz), Abschnittsleiste
             links (auf dem Handy oben, nur Nummern plus aktiver Abschnitt) und Fuß mit Fortschritt, Zurück und
             Weiter. Fünf Abschnitte, je einer sichtbar: So funktioniert's (Agent → Outpost → Dienst, Karten je
-            Agent mit dem Schritt danach), Voraussetzungen (SSH, erreichbare Adresse mit richtigen und falschen
+            Agent mit dem Schritt danach, dazu ein Absatz zu SSH: Befehle und Dateien auf Zielen des Eintrags,
+            Host-Key beim ersten Mal), Voraussetzungen (SSH, erreichbare Adresse mit richtigen und falschen
             Beispielen, curl/wget und claude/codex/git), Git mit GitHub (acht Schritte in drei Phasen vom
             Fine-grained PAT bis zum ersten Clone, Feldtabellen mit den Beschriftungen des Vault-Dialogs,
             Kopieren-Knöpfe für Werte und Befehle), Git mit GitLab (Feldtabelle), Gut zu wissen (SSH-Remotes,
-            Freigabe-Karte, IP-Bindung, Entziehen). Fertig, Esc, Backdrop oder Schließen führen zurück in den Dialog.
+            Freigabe-Karte, IP-Bindung, Entziehen, SSH ohne Terminal: kein sudo mit Passwortabfrage). Fertig, Esc, Backdrop oder Schließen führen zurück in den Dialog.
           concept: setup_guide
           not: [support_dialog, agent_setup_result, documentation_page]
           example: "Git mit GitHub · Auf GitHub · 1 Fine-grained Token anlegen: Settings › Developer settings › Personal access tokens › Fine-grained tokens"
@@ -1767,6 +1869,9 @@ screens:
             Beim Eintragen eines Tokens nennt die Zeile auch das Feld, wie die Seite es bezeichnet
             („Eintragen auf https://github.com · Feld „Kommentar““); ist es kein Passwortfeld, gibt es nur
             „Einmal“ und „Ablehnen“.
+            Bei SSH: Werkzeug (SSH-Befehl, Datei hochladen, Datei holen), Ziel als Name und benutzer@host:port,
+            beim Befehl der Befehlsblock, bei Dateien Quelle → Ziel mit Größe; „Für diese Sitzung“ nur, wenn der
+            Eintrag es erlaubt, und dann je Ziel.
             Mehrere Anfragen stapeln sich, die älteste unten. Der Stapel liegt über Dialogen und
             Toasts. Eine abgelaufene Karte zeigt fünf Sekunden den Fehlerzustand und verschwindet;
             scheitert das Senden einer Antwort, bleibt die Karte stehen und ein Toast nennt den Grund.
@@ -1802,4 +1907,63 @@ screens:
           - { id: empty, copy: "nicht sichtbar bei lesendem Zugriff" }
         locators:
           web: "[data-ui-id='UI-VAULT-APPROVAL-WRITE']"
+
+      - id: UI-VAULT-APPROVAL-EXEC
+        type: badge
+        label: führt aus
+        status: required
+        verify: required
+        data_source: "Art des Zugriffs der Anfrage (exec: ssh_exec)"
+        semantic_anchor:
+          means: Rotes Abzeichen in der Kopfzeile der Freigabe-Karte bei ssh_exec. Ein Shell-Befehl kann alles, was der Ziel-Benutzer darf; ob er schreibt, lässt sich nicht erkennen. Steht anstelle von „schreibt“, nie zusammen damit.
+          concept: exec_access
+          not: [write_access, error, warning_toast]
+          example: "führt aus"
+        states:
+          - { id: default, copy: "führt aus" }
+          - { id: empty, copy: "nicht sichtbar außer bei ssh_exec" }
+        locators:
+          web: "[data-ui-id='UI-VAULT-APPROVAL-EXEC']"
+
+      - id: UI-VAULT-APPROVAL-COMMAND
+        type: region
+        label: Befehl
+        status: required
+        verify: required
+        data_source: "command der ssh_exec-Anfrage (höchstens 8 KB)"
+        semantic_anchor:
+          means: >
+            Der vollständige Befehl einer ssh_exec-Anfrage in Monospace, so wie er auf dem Ziel läuft — nichts
+            gekürzt oder umformuliert. Ab 20 Zeilen eingeklappt mit „Ganz anzeigen (n Zeilen)“; die Karte
+            bleibt dabei bedienbar.
+          concept: ssh_command
+          not: [audit_log, terminal]
+          example: "docker compose -f /srv/app/compose.yml ps"
+        states:
+          - { id: default, copy: "docker compose -f /srv/app/compose.yml ps" }
+          - { id: partial, copy: "Ganz anzeigen (42 Zeilen)" }
+          - { id: empty, copy: "nicht sichtbar außer bei ssh_exec" }
+        locators:
+          web: "[data-ui-id='UI-VAULT-APPROVAL-COMMAND']"
+
+      - id: UI-VAULT-APPROVAL-HOSTKEY
+        type: feedback
+        label: Neues Ziel
+        status: required
+        verify: required
+        data_source: "Fingerabdruck aus der Probe-Verbindung der Engine, wenn für Eintrag und Ziel noch kein Host-Key gemerkt ist"
+        semantic_anchor:
+          means: >
+            Hervorgehobener Kasten auf der Karte, wenn Outpost dieses Ziel für diesen Eintrag noch nie gesehen
+            hat: Algorithmus und SHA256-Fingerabdruck des Host-Keys mit dem Rat, ihn mit ssh-keyscan oder an
+            der Konsole zu vergleichen. Mit „Einmal“ oder „Für diese Sitzung“ wird er gemerkt; danach bricht
+            jede Verbindung mit anderem Key vor der Anmeldung ab.
+          concept: ssh_host_key_pin
+          not: [error, toast]
+          example: "Neues Ziel — ED25519 SHA256:3f9aT0…Xc21. Mit ssh-keyscan oder an der Konsole vergleichen."
+        states:
+          - { id: default, copy: "Neues Ziel — ED25519 SHA256:3f9aT0…Xc21. Mit ssh-keyscan oder an der Konsole vergleichen." }
+          - { id: empty, copy: "nicht sichtbar bei gemerktem Host-Key" }
+        locators:
+          web: "[data-ui-id='UI-VAULT-APPROVAL-HOSTKEY']"
 

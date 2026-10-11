@@ -629,6 +629,9 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
           <div class="ag-card"><div class="ag-card-head"><svg><use href="#i-plug"/></svg>Codex</div><p>Dieselben Werkzeuge, als MCP-Server in Codex eingetragen.</p><div class="after">Danach: <b>Codex in einer neuen Shell starten</b></div></div>
           <div class="ag-card"><div class="ag-card-head"><svg><use href="#i-branch"/></svg>Git</div><p>https-Remotes laufen über Outpost. In <code>~/.gitconfig</code> liegt nur ein Agenten-Key.</p><div class="after">Danach: <b>einfach</b> <code>git clone</code>, <code>pull</code>, <code>push</code></div></div>
         </div>
+        <div class="ag-cards" style="margin-top:var(--space-3)">
+          <div class="ag-card"><div class="ag-card-head"><svg><use href="#i-term"/></svg>SSH</div><p>Befehle und Dateien auf den Zielen eines SSH-Eintrags — Outpost meldet sich selbst an, der Schlüssel bleibt im Vault. Beim ersten Mal zeigt die Freigabe-Karte den Fingerabdruck des Ziels.</p></div>
+        </div>
       </div>
 <div class="ag-cap">Vorschau Abschnitt 2: Voraussetzungen</div>
       <div class="ag-preview">
@@ -666,6 +669,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
           <div class="ag-card"><div class="ag-card-head"><svg><use href="#i-shield"/></svg>Freigabe-Karte</div><p>„Einmal“ gilt für genau diesen Zugriff, „Für diese Sitzung“ für weitere gleicher Art. Lesen und Schreiben gibst du getrennt frei.</p><div class="ag-mini"><span>Einmal</span><span>Für diese Sitzung</span><span class="ag-badge">schreibt</span></div></div>
           <div class="ag-card"><div class="ag-card-head"><svg><use href="#i-net"/></svg>IP-Bindung</div><p>„Nur von der IP dieses Servers“ lässt den Key nur von dort zu. Sieht Outpost eine andere Adresse, etwa hinter Docker oder NAT, bietet der Dialog an, sie zu übernehmen.</p></div>
           <div class="ag-card"><div class="ag-card-head"><svg><use href="#i-undo"/></svg>Entziehen</div><p>Widerruft den Key sofort und entfernt die Einrichtung auf dem Server. Fremde Zeilen in der gitconfig bleiben stehen.</p></div>
+          <div class="ag-card"><div class="ag-card-head"><svg><use href="#i-term"/></svg>SSH ohne Terminal</div><p><code>ssh_exec</code> läuft ohne Terminal: interaktive Programme und <code>sudo</code> mit Passwortabfrage gehen nicht. Für Rechte als anderer Benutzer einen eigenen SSH-Eintrag anlegen.</p></div>
         </div>
       </div>
 </div>

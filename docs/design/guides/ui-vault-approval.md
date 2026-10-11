@@ -1,6 +1,6 @@
 # Freigabe-Karte — Umsetzungsanleitung (UI-VAULT-APPROVAL)
 
-Artboard: docs/design/mockups/ui-vault-approval.html · Manifest-Revision: 16
+Artboard: docs/design/mockups/ui-vault-approval.html · Manifest-Revision: 20
 
 Den Screen gibt es nicht. Neu: eine seitenübergreifende Karte, die offene Freigabe-Anfragen aus dem
 Zustandsstrom rendert und per `POST /api/vault/approvals/:id` beantwortet. Kein Toast, kein Dialog:
@@ -52,6 +52,18 @@ Zustandsstrom rendert und per `POST /api/vault/approvals/:id` beantwortet. Kein 
 - Zustände: `default` „schreibt“; `empty` nicht sichtbar bei lesendem Zugriff.
 - Nicht: kein `--error` und kein Toast-Stil (`not: error, warning_toast`); kein zusätzlicher Knopf und keine andere Beschriftung der Antworten. Das Abzeichen ist Information, keine Warnmeldung.
 
+
+### UI-VAULT-APPROVAL-EXEC — führt aus (neu in Rev. 20)
+- Abzeichen in der Kopfzeile wie `-WRITE`, aber `--error` auf `--error-opacity`, Icon `SquareTerminal`. Nur bei `tool === "ssh_exec"` (`access: "exec"`); nie zusammen mit „schreibt“.
+
+### UI-VAULT-APPROVAL-COMMAND — Befehl (neu in Rev. 20)
+- `<pre>` in `--type-mono` auf `--terminal`, `white-space: pre-wrap`, `overflow-wrap: anywhere`. Der Text kommt unverändert aus der Anfrage (kein Kürzen, kein Markup). Ab 20 Zeilen auf 20 Zeilen begrenzt mit Knopf „Ganz anzeigen (n Zeilen)“; ausgeklappt scrollt der Block (max. 40vh), die Knöpfe der Karte bleiben sichtbar.
+
+### UI-VAULT-APPROVAL-HOSTKEY — Neues Ziel (neu in Rev. 20)
+- Kasten über dem Befehl, Warnrand links, `--warning-opacity`; „Neues Ziel — <Algorithmus> <SHA256:…>. Mit ssh-keyscan oder an der Konsole vergleichen.“ Fingerabdruck in `--type-mono`, vollständig (nicht gekürzt). Nur wenn die Anfrage `hostKey.new === true` trägt.
+
+### UI-VAULT-APPROVAL-CARD — SSH (Rev. 20)
+- Zielzeile `<Werkzeug> · <Name> · <benutzer@host:port>` (Werkzeug: „SSH-Befehl“, „Datei hochladen“, „Datei holen“). Bei Dateien zusätzlich `quelle → ziel · <Größe>`. „Für diese Sitzung“ nur bei `allowSession === true` der Anfrage.
 
 ## Ausdrücklich nicht
 - Die Karte ist kein Toast und kein Dialog: keine Auto-Ausblendung der offenen Anfrage (nur der abgelaufenen Karte), kein Backdrop, kein Modal (`semantic_anchor.not`: notification, toast, error). `--warning` ist Randfarbe, die Karte ist keine Fehlermeldung.

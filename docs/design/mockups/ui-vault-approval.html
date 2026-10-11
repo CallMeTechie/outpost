@@ -45,6 +45,13 @@
 	.approval-card .head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 	.approval-card .tool { font: var(--type-mono); color: var(--text); overflow-wrap: anywhere; }
 	.write-badge { display: inline-flex; align-items: center; gap: var(--space-1); font: var(--type-caption); border-radius: var(--radius-sm); padding: var(--space-1) var(--space-2); color: var(--warning); background: var(--warning-opacity); white-space: nowrap; }
+	.exec-badge { display: inline-flex; align-items: center; gap: var(--space-1); font: var(--type-caption); border-radius: var(--radius-sm); padding: var(--space-1) var(--space-2); color: var(--error); background: var(--error-opacity); white-space: nowrap; }
+	.approval-card .cmd { margin: 0; padding: var(--space-2) var(--space-3); background: var(--terminal); border: 1px solid var(--gray); border-radius: var(--radius-sm); font: var(--type-mono); color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+	.approval-card .cmd-wrap { position: relative; }
+	.approval-card .cmd-wrap .cmd { max-height: calc(20 * 1.4em + 2 * var(--space-2)); overflow: hidden; line-height: 1.4; }
+	.approval-card .cmd-more { display: inline-block; margin-top: var(--space-1); font: var(--type-caption); color: var(--primary); }
+	.approval-card .hostkey { padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); border-left: 3px solid var(--warning); background: var(--warning-opacity); color: var(--text); overflow-wrap: anywhere; }
+	.approval-card .filemv { font: var(--type-mono); color: var(--text); overflow-wrap: anywhere; }
 	.approval-stack { display: flex; flex-direction: column; gap: var(--space-2); }
 	.approval-stack .count { font: var(--type-caption); color: var(--subtext); text-align: right; }
 	.approval-empty { width: 24rem; max-width: 100%; border: 1px dashed var(--gray-strong); border-radius: var(--radius-lg); padding: var(--space-4); font: var(--type-caption); color: var(--subtext); }
@@ -94,6 +101,64 @@
 						<div class="timer">1:42</div>
 						<div class="bar"><i style="width:70%"></i></div>
 					</div>
+					</section>
+				</div>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">default — SSH-Befehl (ssh_exec), Eintrag erlaubt Sitzung</div>
+			<div class="body" style="justify-content:flex-end">
+				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
+					<section data-variant="ssh-exec">
+					<div class="approval-card">
+							<div class="head"><h3>Freigabe angefordert</h3><span class="exec-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> führt aus</span></div>
+							<div class="who">Claude Code auf appmonster</div>
+							<div class="target">deploy-web</div>
+							<div class="tool">SSH-Befehl · web02 · deploy@192.168.2.40:22</div>
+							<pre class="cmd">docker compose -f /srv/app/compose.yml pull &amp;&amp; docker compose -f /srv/app/compose.yml up -d</pre>
+							<div class="actions"><span class="btn primary">Einmal</span><span class="btn">Für diese Sitzung</span><span class="btn">Ablehnen</span></div>
+							<div class="timer">1:42</div>
+							<div class="bar"><i style="width:70%"></i></div>
+						</div>
+					</section>
+				</div>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">default — SSH, erste Verbindung (Eintrag ohne allowSession)</div>
+			<div class="body" style="justify-content:flex-end">
+				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
+					<section data-variant="ssh-first">
+					<div class="approval-card">
+							<div class="head"><h3>Freigabe angefordert</h3><span class="exec-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> führt aus</span></div>
+							<div class="who">Claude Code auf appmonster</div>
+							<div class="target">deploy-web</div>
+							<div class="tool">SSH-Befehl · web02 · deploy@192.168.2.40:22</div>
+							<div class="hostkey"><strong>Neues Ziel</strong> — ED25519 SHA256:3f9aT0…Xc21. Mit ssh-keyscan oder an der Konsole vergleichen.</div>
+							<pre class="cmd">docker compose -f /srv/app/compose.yml pull &amp;&amp; docker compose -f /srv/app/compose.yml up -d</pre>
+							<div class="actions"><span class="btn primary">Einmal</span><span class="btn">Ablehnen</span></div>
+							<div class="timer">1:42</div>
+							<div class="bar"><i style="width:70%"></i></div>
+						</div>
+					</section>
+				</div>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">default — SSH, Datei hochladen (ssh_put)</div>
+			<div class="body" style="justify-content:flex-end">
+				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
+					<section data-variant="ssh-put">
+					<div class="approval-card">
+							<div class="head"><h3>Freigabe angefordert</h3><span class="write-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/></svg>schreibt</span></div>
+							<div class="who">Claude Code auf appmonster</div>
+							<div class="target">deploy-nas</div>
+							<div class="tool">Datei hochladen · nas · admin@nas.example.net:2222</div>
+							<div class="filemv">appmonster:~/build/app.tar.gz → nas:/volume1/deploy/app.tar.gz · 48,2 MB</div>
+							<div class="actions"><span class="btn primary">Einmal</span><span class="btn">Für diese Sitzung</span><span class="btn">Ablehnen</span></div>
+							<div class="timer">1:42</div>
+							<div class="bar"><i style="width:70%"></i></div>
+						</div>
 					</section>
 				</div>
 			</div>
@@ -265,6 +330,144 @@
 				</div>
 				</section>
 				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="block" style="margin-top:var(--space-6)">
+	<h2>führt aus <code>UI-VAULT-APPROVAL-EXEC</code></h2>
+	<p class="anchor">Rotes Abzeichen in der Kopfzeile der Freigabe-Karte bei ssh_exec. Ein Shell-Befehl kann alles, was der Ziel-Benutzer darf; ob er schreibt, lässt sich nicht erkennen. Steht anstelle von „schreibt“, nie zusammen damit.</p>
+	<p class="anchor-example">Beispiel: führt aus</p>
+
+	<div class="demo-row">
+		<div class="demo-card">
+			<div class="cap">default — ssh_exec</div>
+			<div class="body" style="justify-content:flex-end">
+				<section data-ui-state="default">
+				<div class="approval-card">
+<div class="head"><h3>Freigabe angefordert</h3><span class="exec-badge" data-ui-id="UI-VAULT-APPROVAL-EXEC"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> führt aus</span></div><div class="who">Claude Code auf appmonster</div><div class="target">deploy-web</div><div class="tool">SSH-Befehl · web02 · deploy@192.168.2.40:22</div>
+				</div>
+				</section>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">empty — nicht sichtbar außer bei ssh_exec</div>
+			<div class="body" style="justify-content:flex-end">
+				<section data-ui-state="empty">
+				<div class="approval-card">
+<div class="head"><h3>Freigabe angefordert</h3></div><div class="who">Claude Code auf web01</div><div class="target">github-pat</div><div class="tool">POST api.github.com/repos/o/r/issues</div>
+				</div>
+				</section>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="block" style="margin-top:var(--space-6)">
+	<h2>Befehl <code>UI-VAULT-APPROVAL-COMMAND</code></h2>
+	<p class="anchor">Der vollständige Befehl einer ssh_exec-Anfrage in Monospace, so wie er auf dem Ziel läuft — nichts gekürzt oder umformuliert. Ab 20 Zeilen eingeklappt mit „Ganz anzeigen (n Zeilen)“; die Karte bleibt dabei bedienbar.</p>
+	<p class="anchor-example">Beispiel: docker compose -f /srv/app/compose.yml ps</p>
+
+	<div class="demo-row">
+		<div class="demo-card">
+			<div class="cap">default — kurzer Befehl</div>
+			<div class="body" style="justify-content:flex-end">
+				<section data-ui-state="default">
+				<div class="approval-card">
+<div class="head"><h3>Freigabe angefordert</h3><span class="exec-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> führt aus</span></div><div class="who">Claude Code auf appmonster</div><div class="target">deploy-web</div><div class="tool">SSH-Befehl · web02 · deploy@192.168.2.40:22</div><pre class="cmd" data-ui-id="UI-VAULT-APPROVAL-COMMAND">docker compose -f /srv/app/compose.yml ps</pre>
+				</div>
+				</section>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">partial — 42 Zeilen, ab Zeile 20 eingeklappt</div>
+			<div class="body" style="justify-content:flex-end">
+				<section data-ui-state="partial">
+				<div class="approval-card">
+<div class="head"><h3>Freigabe angefordert</h3><span class="exec-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> führt aus</span></div><div class="who">Claude Code auf appmonster</div><div class="target">deploy-web</div><div class="tool">SSH-Befehl · web02 · deploy@192.168.2.40:22</div><div class="cmd-wrap"><pre class="cmd">#!/bin/sh
+set -eu
+cd /srv/app
+docker compose pull
+docker compose run --rm app migrate
+docker compose up -d --remove-orphans
+echo "Warte auf Healthcheck"
+i=0
+while [ "$i" -lt 30 ]; do
+  if curl -fsS http://localhost:8080/health &gt;/dev/null; then
+    echo "bereit nach ${i}s"
+    break
+  fi
+  i=$((i + 1))
+  sleep 1
+done
+if [ "$i" -ge 30 ]; then
+  echo "Healthcheck fehlgeschlagen" &gt;&amp;2
+  docker compose logs --tail=50 app &gt;&amp;2
+  exit 1
+fi
+docker image prune -f
+docker compose ps
+df -h /srv/app
+echo "Backup der Konfiguration"
+tar czf /srv/backup/app-config.tar.gz /srv/app/compose.yml
+ls -lh /srv/backup
+echo "Alte Backups entfernen"
+find /srv/backup -name "app-config*.tar.gz" -mtime +14 -delete
+echo "Dienste prüfen"
+for svc in app worker db; do
+  docker compose ps "$svc"
+done
+echo "Logrotation"
+logrotate -f /etc/logrotate.d/app
+echo "Cache leeren"
+docker compose exec -T app cache clear
+echo "Version"
+docker compose exec -T app version
+date -u
+uptime
+echo "Fertig"</pre><span class="cmd-more">Ganz anzeigen (42 Zeilen)</span></div>
+				</div>
+				</section>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">empty — nicht sichtbar außer bei ssh_exec</div>
+			<div class="body" style="justify-content:flex-end">
+				<section data-ui-state="empty">
+				<div class="approval-card">
+<div class="head"><h3>Freigabe angefordert</h3><span class="write-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/></svg>schreibt</span></div><div class="who">Claude Code auf appmonster</div><div class="target">deploy-nas</div><div class="tool">Datei hochladen · nas · admin@nas.example.net:2222</div>
+				</div>
+				</section>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="block" style="margin-top:var(--space-6)">
+	<h2>Neues Ziel <code>UI-VAULT-APPROVAL-HOSTKEY</code></h2>
+	<p class="anchor">Hervorgehobener Kasten auf der Karte, wenn Outpost dieses Ziel für diesen Eintrag noch nie gesehen hat: Algorithmus und SHA256-Fingerabdruck des Host-Keys mit dem Rat, ihn mit ssh-keyscan oder an der Konsole zu vergleichen. Mit „Einmal“ oder „Für diese Sitzung“ wird er gemerkt; danach bricht jede Verbindung mit anderem Key vor der Anmeldung ab.</p>
+	<p class="anchor-example">Beispiel: Neues Ziel — ED25519 SHA256:3f9aT0…Xc21. Mit ssh-keyscan oder an der Konsole vergleichen.</p>
+
+	<div class="demo-row">
+		<div class="demo-card">
+			<div class="cap">default — erste Verbindung</div>
+			<div class="body" style="justify-content:flex-end">
+				<section data-ui-state="default">
+				<div class="approval-card">
+<div class="head"><h3>Freigabe angefordert</h3><span class="exec-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> führt aus</span></div><div class="who">Claude Code auf appmonster</div><div class="target">deploy-web</div><div class="tool">SSH-Befehl · web02 · deploy@192.168.2.40:22</div><div class="hostkey" data-ui-id="UI-VAULT-APPROVAL-HOSTKEY"><strong>Neues Ziel</strong> — ED25519 SHA256:3f9aT0…Xc21. Mit ssh-keyscan oder an der Konsole vergleichen.</div>
+				</div>
+				</section>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">empty — nicht sichtbar bei gemerktem Host-Key</div>
+			<div class="body" style="justify-content:flex-end">
+				<section data-ui-state="empty">
+				<div class="approval-card">
+<div class="head"><h3>Freigabe angefordert</h3><span class="exec-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> führt aus</span></div><div class="who">Claude Code auf appmonster</div><div class="target">deploy-web</div><div class="tool">SSH-Befehl · web02 · deploy@192.168.2.40:22</div>
+				</div>
+				</section>
 			</div>
 		</div>
 	</div>

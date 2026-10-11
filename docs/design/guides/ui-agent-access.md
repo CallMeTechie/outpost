@@ -86,6 +86,8 @@ Neuer Dialog; es gibt weder Client- noch Servercode zum Vault. Neu sind der Dial
 - Abschnitte: So funktioniert's (Fluss Agent → Outpost → Dienst, Karten Claude Code/Codex mit Stecker-Icon, Git mit Branch-Icon — keine Roboter), Voraussetzungen, Git mit GitHub (Phasen Auf GitHub / In Outpost / Auf dem Server, Schritte 1–8 mit Verbindungslinie), Git mit GitLab, Gut zu wissen (2×2 Karten).
 - Texte aus `servers.agentAccess.guide.*`; Beschriftungen von Outpost-Feldern kommen aus den Schlüsseln des Vault-Dialogs und der Freigabe-Karte selbst (`vault.fields.*`, `vault.dialog.usage.*`, `vault.approval.actions.*` …), damit die Anleitung nie von der Oberfläche abweicht. GitHub-Beschriftungen und Befehle sind Literale im Code. Werte und Befehle tragen einen Kopieren-Knopf (`copyToClipboard`, kurz ein Haken).
 
+- Rev. 20: „So funktioniert's“ bekommt unter den Agenten-Karten eine Karte „SSH“ (Terminal-Icon), „Gut zu wissen“ eine fünfte Karte „SSH ohne Terminal“. Texte unter `servers.agentAccess.guide.how.ssh*` bzw. `.tips.ssh*`.
+
 ## Datenquellen (Spec, Abschnitt REST-Endpunkte)
 - Beim Öffnen: `GET /api/vault/agent-keys?entryId=` → `keys`, `remoteUser`, `otherAccountConfigured` (Warnung `partial` von SETUP vor dem Einrichten).
 - `GET /api/vault/available` → `agentUrl` (Vorbelegung URL), `ipBindingDefault` (Vorbelegung IPBIND), `trustProxyUnsafe` (IPBIND `error`). Nicht `GET /api/vault/settings`: das verlangt `settings.vault`.
