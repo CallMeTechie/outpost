@@ -8,5 +8,6 @@ app.use(require("./items"));
 app.use(require("./approvals"));
 app.use(require("./agentKeys"));
 app.use(require("./settings"));
+app.use(require("./git"));
 
 module.exports = app;
