@@ -1,4 +1,4 @@
-const CLI_NAMES = new Set(["claude", "codex"]);
+const CLI_NAMES = new Set(["claude", "codex", "git"]);
 const CLI_DIRS = ["$HOME/.local/bin", "$HOME/.claude/local", "$HOME/.npm-global/bin"];
 const CODEX_ENV = "$HOME/.codex/outpost.env";
 const SOURCE_LINE = "[ -f ~/.codex/outpost.env ] && . ~/.codex/outpost.env";
@@ -7,6 +7,9 @@ const KEY_PREFIX = /^[A-Za-z0-9_]{8,64}$/;
 const KEY_TOKEN = /^[A-Za-z0-9_]{16,128}$/;
 const KEY_FILE = /^key-\d{1,12}-[0-9a-f]{16}$/;
 const KEY_DIR = "$HOME/.config/outpost";
+const GITCONFIG = "$HOME/.gitconfig";
+const GIT_HOST = /^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?(?::[1-9][0-9]{0,4})?$/;
+const OWN_GIT_KEYS = "^(url\\..*/api/vault/git/.*\\.insteadof|http\\..*/api/vault/git/\\.extraheader)$";
 
 // Relies on the layout Claude Code writes (JSON.stringify with two spaces): only the user-scope
 // registration sits at this depth, project registrations are nested deeper and never match.
@@ -134,6 +137,48 @@ const setupCommand = ({ agentType, cliPath, url, key, keyFile }) => (cliName(age
     ? claudeSetupCommand({ cliPath, url, key, keyFile })
     : `${codexSetupCommand({ cliPath, url, key, keyFile })} && ${codexEnvCommand({ key, keyFile })}`);
 
+const isGitHost = (host) => typeof host === "string" && GIT_HOST.test(host);
+
+const gitPrefix = (base) => {
+    if (typeof base !== "string" || !/^https?:\/\/[^/\s]+[^\s]*$/.test(base) || base.endsWith("/")) throw new TypeError("Invalid agent base URL");
+    return `${base}/api/vault/git/`;
+};
+
+// --file instead of --global: with only ~/.config/git/config present, --global would write there.
+// Exit 5 of --unset-all means the key is already gone (a multi-valued key is listed once per value).
+const removeOwnGitLines = (code, announce = false) => [
+    `names=$("$cli" config --file "${GITCONFIG}" --get-regexp ${shQuote(OWN_GIT_KEYS)} 2>/dev/null)`,
+    ...(announce ? ["if [ -n \"$names\" ]; then echo OUTPOST_REPLACED=1; else echo OUTPOST_REPLACED=0; fi"] : []),
+    "printf '%s\\n' \"$names\" | while read -r name value; do",
+    "[ -n \"$name\" ] || continue",
+    `"$cli" config --file "${GITCONFIG}" --unset-all "$name"; rc=$?`,
+    `[ "$rc" -eq 0 ] || [ "$rc" -eq 5 ] || exit ${code}`,
+    `done || exit ${code}`,
+];
+
+const gitSetupCommand = ({ base, hosts, key, keyFile }) => {
+    const prefix = gitPrefix(base);
+    if (!Array.isArray(hosts) || hosts.length === 0 || !hosts.every(isGitHost)) throw new TypeError("Invalid git hosts");
+    const header = keyWord({ keyFile, key }, "Authorization: Bearer ");
+    // Private before the key is written; a failed write takes the own lines out again, so no insteadOf
+    // is left that sends git to Outpost without the header.
+    return asCommand([
+        `cli=$( ${findCliScript("git")} ) || exit 1`,
+        ...header.setup,
+        `( umask 077; [ -e "${GITCONFIG}" ] || : > "${GITCONFIG}" ) && chmod 600 "${GITCONFIG}" || exit 1`,
+        ...removeOwnGitLines(1, true),
+        "failed=0",
+        ...hosts.map((host) => `"$cli" config --file "${GITCONFIG}" --replace-all ${shQuote(`url.${prefix}${host}/.insteadOf`)} ${shQuote(`https://${host}/`)} || failed=1`),
+        `[ "$failed" = 1 ] || "$cli" config --file "${GITCONFIG}" --replace-all ${shQuote(`http.${prefix}.extraHeader`)} ${header.word} || failed=1`,
+        "if [ \"$failed\" = 1 ]; then",
+        ...removeOwnGitLines(1),
+        "exit 1",
+        "fi",
+        `chmod 600 "${GITCONFIG}" || exit 1`,
+        ...header.cleanup,
+    ]);
+};
+
 const probeCommand = ({ url, keyFile }) => {
     const bearer = keyWord({ keyFile }, "Authorization: Bearer ");
     const wgetHeader = keyWord({ keyFile }, "header = Authorization: Bearer ");
@@ -154,9 +199,15 @@ const probeCommand = ({ url, keyFile }) => {
 };
 
 // Sets $state to MATCH (the registration carries keyPrefix) or OTHER (another key); anything else means none.
-const registrationStateLines = (agentType, keyPrefix) => {
+const registrationStateLines = (agentType, keyPrefix, base) => {
     if (!KEY_PREFIX.test(keyPrefix)) throw new TypeError("Invalid key prefix");
-    if (cliName(agentType) === "claude") return [
+    if (cliName(agentType) === "git") return [
+        `cli=$( ${findCliScript("git")} ) || exit 3`,
+        `v=$("$cli" config --file "${GITCONFIG}" --get-all ${shQuote(`http.${gitPrefix(base)}.extraHeader`)} 2>/dev/null)`,
+        "state=ABSENT",
+        `if [ -n "$v" ]; then state=OTHER; printf '%s\\n' "$v" | grep -qF ${shQuote(`Bearer ${keyPrefix}`)} && state=MATCH; fi`,
+    ];
+    if (agentType === "claude") return [
         "f=\"$HOME/.claude.json\"",
         `state=$([ -f "$f" ] && awk -v p=${shQuote(`Bearer ${keyPrefix}`)} ${shQuote(CLAUDE_REGISTRATION_AWK)} "$f")`,
     ];
@@ -167,23 +218,25 @@ const registrationStateLines = (agentType, keyPrefix) => {
     ];
 };
 
-const registrationCheckCommand = ({ agentType, keyPrefix }) => asCommand([
-    ...registrationStateLines(agentType, keyPrefix),
+const registrationCheckCommand = ({ agentType, keyPrefix, base }) => asCommand([
+    ...registrationStateLines(agentType, keyPrefix, base),
     "case \"$state\" in MATCH|OTHER) echo \"$state\" ;; *) echo ABSENT ;; esac",
 ]);
 
-const revokeCommands = ({ agentType, keyPrefix }) => asCommand([
-    ...registrationStateLines(agentType, keyPrefix),
+const revokeCommands = ({ agentType, keyPrefix, base }) => asCommand([
+    ...registrationStateLines(agentType, keyPrefix, base),
     "case \"$state\" in",
     "MATCH) ;;",
     "OTHER) echo FOREIGN; exit 0 ;;",
     "*) echo ABSENT; exit 0 ;;",
     "esac",
-    `cli=$( ${findCliScript(agentType)} ) || exit 3`,
-    ...withCliPath,
-    ...(agentType === "claude"
-        ? ["\"$cli\" mcp remove --scope user outpost >/dev/null 2>&1 || exit 4"]
-        : ["\"$cli\" mcp remove outpost >/dev/null 2>&1 || exit 4", "rm -f \"$f\""]),
+    ...(agentType === "git" ? removeOwnGitLines(4) : [
+        `cli=$( ${findCliScript(agentType)} ) || exit 3`,
+        ...withCliPath,
+        ...(agentType === "claude"
+            ? ["\"$cli\" mcp remove --scope user outpost >/dev/null 2>&1 || exit 4"]
+            : ["\"$cli\" mcp remove outpost >/dev/null 2>&1 || exit 4", "rm -f \"$f\""]),
+    ]),
     "echo REMOVED",
 ]);
 
@@ -197,6 +250,8 @@ module.exports = {
     codexEnvCommand,
     codexSetupCommand,
     setupCommand,
+    gitSetupCommand,
+    isGitHost,
     probeCommand,
     registrationCheckCommand,
     revokeCommands,
