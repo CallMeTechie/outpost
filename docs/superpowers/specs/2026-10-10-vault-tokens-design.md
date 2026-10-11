@@ -184,7 +184,7 @@ Der Agenten-Zugang-Dialog bietet „Git“ als dritten Agenten. Er braucht kein 
 
 ```
 git config --file "$HOME/.gitconfig" --replace-all url."<base>/api/vault/git/<host>/".insteadOf "https://<host>/" || exit 1   # je Host
-git config --file "$HOME/.gitconfig" --replace-all http."<base>/api/vault/git/".extraHeader "Authorization: Bearer <key>" || exit 1
+printf '[http "%s"]\n\textraHeader = "%s"\n' "<base>/api/vault/git/" "Authorization: Bearer <key>" >> "$HOME/.gitconfig"   # Shell-Builtin
 chmod 600 "$HOME/.gitconfig" || exit 1
 ```
 
@@ -192,7 +192,7 @@ chmod 600 "$HOME/.gitconfig" || exit 1
 
 - `<base>` = Agenten-Adresse dieses Keys ohne abschließenden Schrägstrich. `<host>` = Vereinigung der `hosts` aller für diesen Server sichtbaren `api_key`-Einträge mit `git` an, zum Zeitpunkt der Einrichtung; ohne solche Einträge: Ergebnis „Kein Eintrag mit „Für Git nutzen“ gilt für diesen Server.“ und kein Key.
 - Vorher entfernt der Befehl eigene alte Zeilen: jede `url.*.insteadOf`, deren Abschnittsname `/api/vault/git/` enthält, und `http.*/api/vault/git/.extraHeader`. Andere `insteadOf`-Regeln bleiben.
-- Werte gehen durch `shQuote`; der Key wird wie heute aus der Ablagedatei gelesen. `git config` nimmt den Header-Wert als Argument; die Prozessliste zeigt ihn für die Laufzeit des Befehls (wie bei `claude mcp add`, `docs/vault.md` nennt das).
+- Werte gehen durch `shQuote`; der Key wird wie heute aus der Ablagedatei gelesen. Den Abschnitt mit `extraHeader` hängt das Shell-Builtin `printf` an `~/.gitconfig` an (Abschnittsname mit `\` und `"` maskiert, vorher ein fehlender Zeilenumbruch am Dateiende ergänzt), damit der Key nicht im argv von `git config` und so nicht in der Prozessliste steht; `git config --get-all` und `--unset-all` lesen und entfernen ihn wie einen von `git config` geschriebenen. Nur `claude mcp add` bekommt den Key weiter als Argument (`--header`), `docs/vault.md` nennt das.
 - `server/controllers/agentKeys.js`: `setupAgent` und `manualCommand` haben einen Zweig für `git`, der statt `setupCommand`/`/api/mcp` ein neues `gitSetupCommand({ base, hosts, keyFile | key })` aus `provision.js` nutzt; `CLI_NAMES` enthält `git` für `findCliCommand`. Die Hosts ermittelt `createAgentKeys` vor dem Anlegen des Keys mit `visibleItems({ accountId, agent: { entryId } })`; ohne Treffer kein Key.
 - Registrierungsprüfung und Entziehen: das modulinterne `registrationStateLines` in `provision.js` bekommt einen Zweig für `git`, wirksam über die Exporte `registrationCheckCommand` und `revokeCommands`. MATCH, wenn `git config --file "$HOME/.gitconfig" --get-all http.<base>/api/vault/git/.extraHeader` den Präfix des Keys enthält; OTHER bei anderem Key; sonst ABSENT. `revokeCommands` sucht für `git` kein CLI über `findCliScript`, sondern entfernt bei MATCH die Zeilen wie oben und meldet REMOVED.
 - Kommen später neue Git-Hosts hinzu, richtet man den Zugang erneut ein; `docs/vault.md` sagt das.

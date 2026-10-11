@@ -162,11 +162,11 @@ Use the command exactly as the dialog shows it. It is a `/bin/sh -c '...'` comma
 
 ### Git
 
-Git is the third agent in the setup dialog. It needs no CLI except `git` itself; if `git` is missing, the result says so and shows the command to copy. For each host of the entries with **Use for Git** that apply to the server, and for the key, the setup writes into `~/.gitconfig` of the remote user, with the same `git config` command on every run:
+Git is the third agent in the setup dialog. It needs no CLI except `git` itself; if `git` is missing, the result says so and shows the command to copy. For each host of the entries with **Use for Git** that apply to the server, and for the key, the setup writes into `~/.gitconfig` of the remote user, the same way on every run:
 
 ```sh
 git config --file "$HOME/.gitconfig" --replace-all url."<address>/api/vault/git/<host>/".insteadOf "https://<host>/"
-git config --file "$HOME/.gitconfig" --replace-all http."<address>/api/vault/git/".extraHeader "Authorization: Bearer <key>"
+printf '[http "%s"]\n\textraHeader = "%s"\n' "<address>/api/vault/git/" "Authorization: Bearer <key>" >> "$HOME/.gitconfig"
 chmod 600 "$HOME/.gitconfig"
 ```
 
@@ -174,7 +174,7 @@ The file ends up with mode `600`. The first line exists once per host. Before it
 
 - **Hosts are fixed at setup.** Only hosts of entries with **Use for Git** that apply to the server at that moment are set up. After you add a host or enable another entry, set up Git again.
 - **SSH remotes do not use the vault.** A remote such as `git@github.com:o/r.git` goes directly over SSH. Switch it to HTTPS: `git remote set-url origin https://github.com/o/r.git`. The setup dialog shows this note as soon as Git is selected.
-- **Process list.** `git config` takes the key as an argument, so it is visible in the process list for as long as that command runs, as with `claude mcp add`.
+- **Process list.** The key goes into `~/.gitconfig` through the shell's built-in `printf`, read from the key file, so unlike with `claude mcp add` it never shows up in the process list.
 - **One entry per host.** If two entries with **Use for Git** apply to the same host on this server, Git answers `vault.git_ambiguous`. Restrict the binding of one of them.
 - **Errors appear in Git.** A refusal shows up as `fatal: remote error: vault: <message> (<code>)`. A request that is not a plain smart-HTTP fetch or push is answered `404`: Outpost speaks neither dumb HTTP nor Git LFS.
 - **Limits.** 30 Git operations per minute per Git key (`vault.rate_limited` above that) and at most 4 forwarded requests at the same time (`vault.busy`). Pushes and clones have no size limit and no time limit; only 60 seconds in which no data flows in either direction end a connection. A running read has no upper limit as long as requests keep coming within its window.
