@@ -3,6 +3,7 @@ const { encryptValue, decryptValue } = require("../vault/crypto");
 const { VaultError, VaultErrorCode } = require("../vault/errors");
 const { REDACTED } = require("./snapshot");
 const { parseKey, MODIFIERS } = require("./actions");
+const { variantsOf } = require("../vault/redact");
 
 const GONE = /No node (found|with given id)|detached from document/i;
 const contexts = new Map();
@@ -49,14 +50,6 @@ const isFilled = (contextKey) => contexts.get(contextKey)?.filled === true;
 
 // backendNodeIds only mean something in the target they were filled in.
 const filledNodeIds = (contextKey, targetId) => [...(contexts.get(contextKey)?.nodeIds.get(targetId)?.ids ?? [])];
-
-// document.title and innerText collapse runs of whitespace, so the value can show up in that form too.
-const lowerHex = (encoded) => encoded.replace(/%[0-9A-F]{2}/g, (m) => m.toLowerCase());
-const variantsOf = (secret) => {
-    const percent = encodeURIComponent(secret);
-    const form = new URLSearchParams([["", secret]]).toString().slice(1);
-    return [secret, percent, lowerHex(percent), form, lowerHex(form), secret.replace(/\s+/g, " ").trim()];
-};
 
 const unchanged = (text) => text;
 
