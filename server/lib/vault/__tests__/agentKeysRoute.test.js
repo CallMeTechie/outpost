@@ -381,7 +381,8 @@ test("Git: die Einrichtung legt git@web01 an und schreibt je Host des Servers ei
     for (const host of ["github.com", "git.example.net:8443"])
         assert.ok(setup.command.includes(`url.${base}${host}/.insteadOf`) && setup.command.includes(`https://${host}/`), host);
     assert.ok(!/gitlab\.example\.com|code\.example\.org|GitHub|fd00/.test(setup.command));
-    assert.ok(setup.command.includes(`http.${base}.extraHeader`));
+    assert.ok(setup.command.includes(`printf '\\''[http "%s"]\\n\\textraHeader = "%s"\\n'\\'' '\\''${base}'\\''`),
+        "the header goes in with printf, not as an argument of git");
     assert.ok(!setup.command.includes(keyFrom(execs[0].command)), "the key is read from the drop file");
 
     execs.length = 0;

@@ -157,4 +157,4 @@ const createBroker = ({ approvals = require("./approvals"), audit = defaultAudit
 let shared = null;
 const use = (options) => (shared ??= createBroker()).use(options);
 
-module.exports = { createBroker, createRateLimit, use };
+module.exports = { createBroker, createRateLimit, callerKey, use };
