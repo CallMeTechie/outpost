@@ -40,6 +40,7 @@ export const Vault = () => {
     const [agentUrl, setAgentUrl] = useState("");
     const [suggested, setSuggested] = useState(false);
     const [ipBindingDefault, setIpBindingDefault] = useState(true);
+    const [fillAnywhere, setFillAnywhere] = useState(false);
     const [saving, setSaving] = useState(false);
     const [loadFailed, setLoadFailed] = useState(false);
 
@@ -51,6 +52,7 @@ export const Vault = () => {
         setAgentUrl(data.agentUrl ?? (suggest ? window.location.origin : ""));
         setSuggested(suggest && !data.agentUrl);
         setIpBindingDefault(data.ipBindingDefault !== false);
+        setFillAnywhere(data.fillAnywhere === true);
     }, []);
 
     const load = useCallback(() => {
@@ -73,7 +75,7 @@ export const Vault = () => {
     const save = async () => {
         try {
             setSaving(true);
-            apply(await patchRequest("vault/settings", { agentUrl: trimmed || null, ipBindingDefault }));
+            apply(await patchRequest("vault/settings", { agentUrl: trimmed || null, ipBindingDefault, fillAnywhere }));
             refresh();
             sendToast(t("common.success"), s("saveSuccess"));
         } catch {
@@ -120,6 +122,13 @@ export const Vault = () => {
                 <SettingItem title={s("ipBindingDefault.title")} description={s("ipBindingDefault.description")}
                              dataUiId="UI-VAULT-SETTINGS-IPBIND">
                     <ToggleSwitch id="vault-ipbind-default" checked={ipBindingDefault} onChange={setIpBindingDefault} />
+                </SettingItem>
+                <SettingItem title={s("fillAnywhere.title")} description={s("fillAnywhere.description")}
+                             dataUiId="UI-VAULT-SETTINGS-FILLANY">
+                    <div className="vault-toggle-row">
+                        <ToggleSwitch id="vault-fill-anywhere" checked={fillAnywhere} onChange={setFillAnywhere} />
+                        <span className="vault-toggle-status">{s(fillAnywhere ? "fillAnywhere.on" : "fillAnywhere.off")}</span>
+                    </div>
                 </SettingItem>
                 {settings.trustProxyUnsafe && (
                     <div className="vault-proxy-warning" data-ui-id="UI-VAULT-SETTINGS-PROXY" role="alert">

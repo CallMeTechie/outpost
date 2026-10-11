@@ -12,13 +12,13 @@ const login = (overrides = {}) => ({
     secrets: { password: "pw" },
     ...overrides,
 });
-const apiKey = (fields) => ({ name: "gh", type: "api_key", fields: { hosts: ["api.github.com"], ...fields }, secrets: { token: "t" } });
+const apiKey = (fields, secrets = { token: "ghp_test" }) => ({ name: "gh", type: "api_key", fields: { hosts: ["api.github.com"], ...fields }, secrets });
 
 test("Einträge, Änderungen und Einstellungen werden je Typ per Whitelist geprüft und Ursprünge normalisiert", () => {
     const accepted = [
         [login({ fields: { username: "ma", origins: ["HTTPS://Portal.Example.com:443", "http://10.0.0.5:8080"] } }),
             (value) => assert.deepStrictEqual(value.fields.origins, ["https://portal.example.com", "http://10.0.0.5:8080"])],
-        [{ name: "gh.token_1", type: "api_key", fields: { hosts: ["api.github.com"] }, secrets: { token: "t" } },
+        [{ name: "gh.token_1", type: "api_key", fields: { hosts: ["api.github.com"] }, secrets: { token: "ghp_test" } },
             (value) => assert.deepStrictEqual(
                 [value.fields.headerName, value.fields.headerTemplate, value.organizationId, value.approvalRequired, value.allServers, value.bindings],
                 ["Authorization", "Bearer {{secret}}", null, true, false, []])],
@@ -79,5 +79,41 @@ test("Einträge, Änderungen und Einstellungen werden je Typ per Whitelist gepr�
     assert.strictEqual(settings("").error, undefined);
     for (const agentUrl of ["ftp://outpost.example.com", "https://outpost.example.com/?x=1", "https://u:p@outpost.example.com", "outpost.example.com"]) {
         assert.ok(settings(agentUrl).error, agentUrl);
+    }
+});
+
+test("API-Key und Sonstiges: Nutzung durch Agenten mit Standardwerten, Hosts mit Port, Token ab 4 Zeichen, fillAnywhere", () => {
+    const fieldsOf = (input) => {
+        const { error, value } = validate(createVaultItemValidation, input);
+        assert.strictEqual(error, undefined, error?.message);
+        return value.fields;
+    };
+    assert.deepStrictEqual(fieldsOf(apiKey({ hosts: ["Coolify.LAN:8000", "api.github.com"] })), {
+        hosts: ["Coolify.LAN:8000", "api.github.com"], headerName: "Authorization", headerTemplate: "Bearer {{secret}}",
+        readOnly: false, allowHttp: false, git: false, gitUsername: "x-access-token", fillOrigins: [],
+    });
+    const full = fieldsOf(apiKey({ readOnly: true, allowHttp: true, git: true, gitUsername: "oauth2", fillOrigins: ["HTTPS://Coolify.Example.net:443"] }));
+    assert.deepStrictEqual([full.readOnly, full.allowHttp, full.git, full.gitUsername, full.fillOrigins],
+        [true, true, true, "oauth2", ["https://coolify.example.net"]]);
+    assert.deepStrictEqual(fieldsOf({ name: "misc", type: "generic", fields: { fillOrigins: ["https://tool.example.com"] }, secrets: { value: "x" } }),
+        { fillOrigins: ["https://tool.example.com"] });
+    assert.strictEqual(validate(updateVaultItemSchema("api_key"), { secrets: { token: "abcd" } }).error, undefined);
+    assert.strictEqual(validate(updateVaultSettingsValidation, { fillAnywhere: true }).value.fillAnywhere, true);
+
+    for (const [label, schema, input] of [
+        ["Standardport 443", createVaultItemValidation, apiKey({ hosts: ["api.github.com:443"] })],
+        ["Standardport 80", createVaultItemValidation, apiKey({ hosts: ["coolify.lan:80"] })],
+        ["Port 0", createVaultItemValidation, apiKey({ hosts: ["coolify.lan:0"] })],
+        ["Git-Benutzername mit Leerzeichen", createVaultItemValidation, apiKey({ git: true, gitUsername: "x access" })],
+        ["Git-Benutzername mit 65 Zeichen", createVaultItemValidation, apiKey({ gitUsername: "a".repeat(65) })],
+        ["Origin mit Pfad", createVaultItemValidation, apiKey({ fillOrigins: ["https://coolify.example.net/login"] })],
+        ["21 Origins", createVaultItemValidation, apiKey({ fillOrigins: Array.from({ length: 21 }, (_, i) => `https://h${i}.example.net`) })],
+        ["readOnly kein Boolean", createVaultItemValidation, apiKey({ readOnly: "yes" })],
+        ["Token mit 3 Zeichen", createVaultItemValidation, apiKey({}, { token: "abc" })],
+        ["Token mit 3 Zeichen bei Änderung", updateVaultItemSchema("api_key"), { secrets: { token: "abc" } }],
+        ["Sonstiges mit ungültiger Origin", createVaultItemValidation, { name: "misc", type: "generic", fields: { fillOrigins: ["tool.example.com"] }, secrets: { value: "x" } }],
+        ["fillAnywhere kein Boolean", updateVaultSettingsValidation, { fillAnywhere: "on" }],
+    ]) {
+        assert.ok(validate(schema, input).error, label);
     }
 });

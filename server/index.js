@@ -9,6 +9,7 @@ const db = require("./utils/database");
 const packageJson = require("../package.json");
 const MigrationRunner = require("./utils/migrationRunner");
 const { authenticate } = require("./middlewares/auth");
+const { requestDeadline } = require("./middlewares/requestDeadline");
 const expressWs = require("express-ws");
 const { startStatusChecker, stopStatusChecker } = require("./utils/statusChecker");
 const { ensureInternalProvider } = require("./controllers/oidc");
@@ -62,7 +63,10 @@ generateOpenAPISpec(app);
 
 app.disable("x-powered-by");
 app.set("trust proxy", parseTrustProxy(process.env.TRUST_PROXY));
-app.use(express.json());
+app.use(requestDeadline());
+// /api/mcp reads its larger bodies itself, after authenticate: nobody unauthenticated gets 2 MB parsed.
+const json = express.json();
+app.use((req, res, next) => (req.path.toLowerCase() === "/api/mcp" || req.path.toLowerCase().startsWith("/api/mcp/") ? next() : json(req, res, next)));
 
 app.use("/api/service", require("./routes/service"));
 app.use("/api/accounts", require("./routes/account"));
@@ -90,7 +94,7 @@ app.use("/api/permissions", authenticate, requirePermission(Permission.PERMISSIO
 app.use("/api/sources", authenticate, requirePermission(Permission.SETTINGS_SOURCES), require("./routes/source"));
 app.use("/api/ai", authenticate, require("./routes/ai"));
 app.use("/api/browser", authenticate, require("./routes/browser"));
-app.use("/api/mcp", authenticate, require("./routes/mcp"));
+app.use("/api/mcp", authenticate, express.json({ limit: "2mb" }), require("./routes/mcp"));
 // Without `authenticate` here: GET /api/vault/agent-keys/probe must let a pending agent key through,
 // which authenticate turns away everywhere else. Every vault route carries authenticate itself.
 app.use("/api/vault", require("./routes/vault"));
@@ -188,9 +192,10 @@ db.authenticate()
 
         await controlPlane.start();
 
-        app.listen(APP_PORT, () =>
+        const httpServer = app.listen(APP_PORT, () =>
             logger.system(`Server listening on port ${APP_PORT}`)
         );
+        httpServer.requestTimeout = 0;
 
         if (hasSSLCerts()) {
             try {
@@ -200,6 +205,7 @@ db.authenticate()
                 };
 
                 const httpsServer = https.createServer(sslOptions, app);
+                httpsServer.requestTimeout = 0;
                 expressWs(app, httpsServer);
 
                 httpsServer.listen(HTTPS_PORT, () =>

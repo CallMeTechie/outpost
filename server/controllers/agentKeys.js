@@ -11,9 +11,11 @@ const { validateEntryAccess, resolveEntryScope } = require("./entry");
 const { createAuditLog, AUDIT_ACTIONS, RESOURCE_TYPES } = require("./audit");
 const { resolveIdentity } = require("../utils/identityResolver");
 const { normalizeIp } = require("../utils/ip");
-const { canUseVault } = require("../lib/vault/visibility");
+const { canUseVault, visibleItems } = require("../lib/vault/visibility");
 const { isAddressAllowed } = require("../lib/vault/ipBinding");
 const provision = require("../lib/vault/provision");
+const approvals = require("../lib/vault/approvals");
+const { gitHostsOf } = require("../lib/vault/gitHosts");
 const logger = require("../utils/logger");
 
 const PENDING_TTL_MS = 15 * 60 * 1000;
@@ -29,8 +31,17 @@ const endpoint = (agentUrl, path) => `${agentUrl.replace(/\/+$/, "")}${path}`;
 const outputLines = (stdout) => String(stdout ?? "").split(/\r?\n/).map((line) => line.trim());
 const cidrsOf = (value) => (Array.isArray(value) ? value : []);
 const expired = (key, now) => now - new Date(key.createdAt).getTime() > PENDING_TTL_MS;
-const manualCommand = (agentType, agentUrl, token) =>
-    ` ${provision.setupCommand({ agentType, cliPath: agentType, url: endpoint(agentUrl, "/api/mcp"), key: token })}`;
+const manualCommand = (agentType, agentUrl, token, gitHosts) => (agentType === "git"
+    ? ` ${provision.gitSetupCommand({ base: endpoint(agentUrl, ""), hosts: gitHosts, key: token })}`
+    : ` ${provision.setupCommand({ agentType, cliPath: agentType, url: endpoint(agentUrl, "/api/mcp"), key: token })}`);
+const setupCommandFor = ({ agentType, cliPath, agentUrl, keyFile, gitHosts }) => (agentType === "git"
+    ? provision.gitSetupCommand({ base: endpoint(agentUrl, ""), hosts: gitHosts, keyFile })
+    : provision.setupCommand({ agentType, cliPath, url: endpoint(agentUrl, "/api/mcp"), keyFile }));
+
+const gitHostsFor = async (accountId, entryId) => gitHostsOf(await visibleItems({ accountId, agent: { entryId } }));
+const forgetGitSession = (key) => {
+    if (key.agentType === "git") approvals.forgetSession(approvals.gitSessionId(key.id));
+};
 
 const serialize = (key, entryNames) => ({
     id: key.id,
@@ -95,17 +106,18 @@ const finalize = async (key, entry, context) => {
     });
     if (replaced.length > 0) {
         await ApiKey.destroy({ where: { id: replaced.map((old) => old.id) } });
+        replaced.forEach(forgetGitSession);
         await Promise.all(replaced.map((old) => auditRevoke(old, entry, "replaced", context)));
     }
     return true;
 };
 
-const setupAgent = async ({ accountId, entry, identity, agentUrl, key, token }) => {
-    const url = endpoint(agentUrl, "/api/mcp");
+const setupAgent = async ({ accountId, entry, identity, agentUrl, key, token, gitHosts }) => {
     const keyPrefix = keyPrefixOf(key);
     const keyFile = `key-${key.id}-${crypto.randomBytes(8).toString("hex")}`;
-    const manual = (reason, probe = null, replacedRegistration = false) => ({
-        status: "manual", reason, probe, replacedRegistration, command: manualCommand(key.agentType, agentUrl, token),
+    let checked = { probe: null, probeFailure: null };
+    const manual = (reason, replacedRegistration = false) => ({
+        status: "manual", reason, ...checked, replacedRegistration, command: manualCommand(key.agentType, agentUrl, token, gitHosts),
     });
     if (!identity) return manual("exec_failed");
 
@@ -120,33 +132,36 @@ const setupAgent = async ({ accountId, entry, identity, agentUrl, key, token }) 
 
     let finished = false;
     try {
-        await run(provision.probeCommand({ url: endpoint(agentUrl, "/api/vault/agent-keys/probe"), keyFile }));
+        const probeRun = await run(provision.probeCommand({ url: endpoint(agentUrl, "/api/vault/agent-keys/probe"), keyFile }));
         const probe = await probeResult(key.id, entry);
+        // 127 is the probe's own exit for "neither curl nor wget"; a probe that never ran proves nothing either way.
+        const probeFailure = probe || !probeRun.ran ? null : probeRun.exitCode === 127 ? "no_client" : "unreachable";
+        checked = { probe, probeFailure };
 
         const found = await run(provision.findCliCommand(key.agentType));
-        if (!found.ran) return manual("exec_failed", probe);
+        if (!found.ran) return manual("exec_failed");
         const cliPath = found.exitCode === 0 ? outputLines(found.stdout).filter((line) => line.startsWith("/")).pop() : null;
-        if (!cliPath) return manual("cli_missing", probe);
+        if (!cliPath) return manual("cli_missing");
 
-        const setup = await run(provision.setupCommand({ agentType: key.agentType, cliPath, url, keyFile }));
+        const setup = await run(setupCommandFor({ agentType: key.agentType, cliPath, agentUrl, keyFile, gitHosts }));
         const replacedRegistration = outputLines(setup.stdout).includes("OUTPOST_REPLACED=1");
-        const configured = { status: "configured", reason: null, probe, replacedRegistration };
+        const configured = { status: "configured", reason: null, ...checked, replacedRegistration };
         if (setup.ran && setup.exitCode === 0) {
             finished = true;
             return configured;
         }
         if (!setup.ran) {
             // An exec error or timeout says nothing about the remote side: the setup may have gone through.
-            const check = await run(provision.registrationCheckCommand({ agentType: key.agentType, keyPrefix }));
+            const check = await run(provision.registrationCheckCommand({ agentType: key.agentType, keyPrefix, base: endpoint(agentUrl, "") }));
             if (check.ran && outputLines(check.stdout).includes("MATCH")) return configured;
         }
-        return manual("exec_failed", probe, replacedRegistration);
+        return manual("exec_failed", replacedRegistration);
     } finally {
         if (!finished) await cleanup();
     }
 };
 
-const setupOne = async ({ accountId, entry, identity, organizationId, agentUrl, attempt, ipBinding, allowedCidrs, context }) => {
+const setupOne = async ({ accountId, entry, identity, organizationId, agentUrl, gitHosts, attempt, ipBinding, allowedCidrs, context }) => {
     const { agentType, token } = attempt;
     const remoteUser = identity?.username || null;
     const key = await ApiKey.create({
@@ -168,9 +183,9 @@ const setupOne = async ({ accountId, entry, identity, organizationId, agentUrl, 
     }
     attempt.key = key;
 
-    const outcome = await setupAgent({ accountId, entry, identity, agentUrl, key, token });
+    const outcome = await setupAgent({ accountId, entry, identity, agentUrl, key, token, gitHosts });
     if (outcome.status === "configured") await finalize(key, entry, context);
-    return { id: key.id, agentType, remoteUser, ...outcome };
+    return { id: key.id, agentType, remoteUser, ...(agentType === "git" ? { hosts: gitHosts } : {}), ...outcome };
 };
 
 const createAgentKeys = async ({
@@ -192,19 +207,26 @@ const createAgentKeys = async ({
     try {
         const identity = await remoteIdentity(entry, accountId);
         const organizationId = (await resolveEntryScope(entry)).organizationId ?? null;
-        const shared = { accountId, entry, identity, organizationId, agentUrl, ipBinding, allowedCidrs, context: { ipAddress, userAgent } };
-        const attempts = agentTypes.map((agentType) => ({ agentType, token: generateToken(), key: null }));
+        const gitHosts = agentTypes.includes("git") ? await gitHostsFor(accountId, entry.id) : [];
+        const runnable = agentTypes.filter((agentType) => agentType !== "git" || gitHosts.length > 0);
+        const shared = { accountId, entry, identity, organizationId, agentUrl, gitHosts, ipBinding, allowedCidrs, context: { ipAddress, userAgent } };
+        const attempts = runnable.map((agentType) => ({ agentType, token: generateToken(), key: null }));
         const settled = await Promise.allSettled(attempts.map((attempt) => setupOne({ ...shared, attempt })));
-        return { results: settled.map(({ status, value, reason }, i) => {
+        const results = settled.map(({ status, value, reason }, i) => {
             if (status === "fulfilled") return value;
             const { agentType, token, key } = attempts[i];
             logger.warn("Agent setup failed", { entryId: entry.id, agentType, error: reason?.name });
             return {
-                id: key?.id ?? null, agentType, remoteUser: identity?.username || null,
-                status: "manual", reason: "exec_failed", probe: null, replacedRegistration: false,
-                ...(key ? { command: manualCommand(agentType, agentUrl, token) } : {}),
+                id: key?.id ?? null, agentType, remoteUser: identity?.username || null, ...(agentType === "git" ? { hosts: gitHosts } : {}),
+                status: "manual", reason: "exec_failed", probe: null, probeFailure: null, replacedRegistration: false,
+                ...(key ? { command: manualCommand(agentType, agentUrl, token, gitHosts) } : {}),
             };
-        }) };
+        });
+        const noGitEntries = {
+            id: null, agentType: "git", remoteUser: identity?.username || null, hosts: [],
+            status: "manual", reason: "no_git_entries", probe: null, probeFailure: null, replacedRegistration: false,
+        };
+        return { results: agentTypes.map((agentType) => (runnable.includes(agentType) ? results[runnable.indexOf(agentType)] : noGitEntries)) };
     } finally {
         setupsInFlight.delete(entry.id);
     }
@@ -246,12 +268,14 @@ const revoke = async (accountId, id, { ipAddress = null, userAgent = null } = {}
     const key = await ApiKey.findOne({ where: { id, accountId, kind: "agent" } });
     if (!key) return { code: 404, message: "Agent key not found" };
     await ApiKey.destroy({ where: { id: key.id } });
+    forgetGitSession(key);
 
     const entry = await Entry.findByPk(key.entryId);
     let registration = "absent";
     let commands = null;
     if (!key.pending) {
-        const command = provision.revokeCommands({ agentType: key.agentType, keyPrefix: keyPrefixOf(key) });
+        const base = key.agentType === "git" ? endpoint(key.agentUrl || (await VaultSettings.getOrCreate()).agentUrl || "", "") : undefined;
+        const command = provision.revokeCommands({ agentType: key.agentType, keyPrefix: keyPrefixOf(key), base });
         const identity = key.identityId ? await Identity.findByPk(key.identityId) : null;
         const result = entry && identity ? await runRemote(accountId, entry, identity.id, command) : { ran: false, stdout: "" };
         registration = result.ran ? parseRegistration(result.stdout) : "unknown";

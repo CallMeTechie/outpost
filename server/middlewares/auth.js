@@ -10,6 +10,11 @@ const INVALID_API_KEY = { message: "The provided API key is not valid" };
 
 const pathOf = (req) => req.originalUrl.split("?")[0];
 const isMcpPath = (path) => path === "/api/mcp" || path.startsWith("/api/mcp/");
+const isGitPath = (path) => path.startsWith("/api/vault/git/");
+const AREAS = {
+    git: { allows: isGitPath, message: "Git keys can only access the vault Git proxy" },
+    mcp: { allows: isMcpPath, message: "Agent keys can only access the MCP endpoint" },
+};
 
 const rejectAgentKey = async (req, apiKey) => {
     const { isVaultEnabled } = require("../lib/vault/state");
@@ -19,8 +24,9 @@ const rejectAgentKey = async (req, apiKey) => {
     if (apiKey.pending)
         return req.method === "GET" && path === PROBE_PATH ? null : { status: 401, body: INVALID_API_KEY };
 
-    if (!isMcpPath(path))
-        return { status: 403, body: { code: 403, message: "Agent keys can only access the MCP endpoint" } };
+    const area = apiKey.agentType === "git" ? AREAS.git : AREAS.mcp;
+    if (!area.allows(path))
+        return { status: 403, body: { code: 403, message: area.message } };
 
     const { validateEntryAccess } = require("../controllers/entry");
     const entry = await Entry.findByPk(apiKey.entryId);

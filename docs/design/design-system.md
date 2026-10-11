@@ -162,6 +162,25 @@ Agenten werden mit ihrem Produktnamen in Klartext benannt („Claude Code“,
 „Codex“), ohne eigenes Icon und ohne KI-Symbolik. Agenten-Keys tragen das
 Icon `KeyRound` wie API-Keys.
 
+**Neu in Runde 16 — Vault-Werkzeuge (Teilprojekt 2a).** Die Freigabe-Karte nennt
+unter dem Eintrag das Werkzeug und das Ziel in `--type-mono`: Methode, Host und
+Pfad ohne Query (`POST api.github.com/repos/o/r/issues`), `Git · github.com/o/r`
+oder die Ziel-Origin beim Eintragen. Ein schreibender Zugriff trägt rechts in der
+Kopfzeile das Abzeichen „schreibt“ — Pill wie der Schlüsselstatus der
+Vault-Einstellungen (`--type-caption`, `--radius-sm`, Innenabstand `--space-1`
+`--space-2`), Text `--warning` auf `--warning-opacity`, Icon `PenLine`. Lesende
+Zugriffe tragen kein Abzeichen; das Fehlen ist die Aussage. Git als dritter Agent
+heißt in Klartext „Git“, ohne Icon wie Claude Code und Codex.
+
+Die neuen Schalter im Eintrag-Dialog sind ToggleSwitches in der Reihe „Nutzung
+durch Agenten“ nach „Freigabe erforderlich“ und vor Speichern, je mit einer Zeile Beschriftung und einer Zeile
+`--subtext`; „Git-Benutzername“ erscheint als IconInput erst, wenn „Für Git nutzen“
+an ist. Die Origin-Liste „Darf im Browser eingetragen werden auf“ ist dieselbe
+Listen-Eingabe wie die Origins eines Logins (IconInput, Einträge durch Komma oder
+Leerzeichen getrennt); das Artboard zeigt die Einträge nur zur Lesbarkeit als Chips. In der Detailansicht steht dieselbe
+Gruppe als Region „Nutzung durch Agenten“ mit `--type-body`-Zeilen; aus = die
+Zeile fehlt, nicht „aus“.
+
 ## Copy und Ton
 
 Knapp, technisch, keine Erklärtexte im Normalbetrieb. **Ausnahme Leer- und

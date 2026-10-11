@@ -1,5 +1,5 @@
 import { beforeEach, expect, test, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import testI18n from "@/test/i18n.js";
 import { renderWithProviders } from "@/test/renderWithProviders.jsx";
@@ -22,6 +22,8 @@ const settings = (overrides = {}) => ({ keyStatus: "active", agentUrl: null, tru
 const servers = { getServerById: () => null };
 const Servers = ({ children }) => <ServerContext.Provider value={servers}>{children}</ServerContext.Provider>;
 const mount = () => renderWithProviders(<Vault />, { providers: [ToastProvider] });
+const node = (id) => document.querySelector(`[data-ui-id='${id}']`);
+const toggle = (id) => within(node(id)).getByRole("checkbox");
 
 beforeEach(() => {
     requestDouble.reset();
@@ -39,15 +41,17 @@ test.each([
     expect(screen.getByText(t(pillKey))).toBeInTheDocument();
 });
 
-test("an empty address is suggested from the browser; a wrong one blocks saving, a valid one is saved with the binding default", async () => {
+test("an empty address is suggested from the browser; a wrong one blocks saving, a valid one is saved with the binding default and fillAnywhere", async () => {
     const user = userEvent.setup();
-    requestDouble.stub("getRequest", "vault/settings", settings());
-    requestDouble.stub("patchRequest", "vault/settings", settings({ agentUrl: "http://192.168.2.10:6989", ipBindingDefault: false }));
+    requestDouble.stub("getRequest", "vault/settings", settings({ fillAnywhere: true }));
+    requestDouble.stub("patchRequest", "vault/settings", settings({ agentUrl: "http://192.168.2.10:6989", ipBindingDefault: false, fillAnywhere: false }));
     mount();
     const field = await screen.findByRole("textbox");
     const save = () => screen.getByRole("button", { name: t("settings.vault.saveSettings") });
     expect(field).toHaveValue(window.location.origin);
     expect(screen.getByText(t("settings.vault.agentUrl.suggested"))).toBeInTheDocument();
+    expect(toggle("UI-VAULT-SETTINGS-FILLANY")).toBeChecked();
+    expect(within(node("UI-VAULT-SETTINGS-FILLANY")).getByText(t("settings.vault.fillAnywhere.on"))).toBeInTheDocument();
 
     await user.clear(field);
     await user.type(field, "192.168.2.10:6989");
@@ -57,14 +61,18 @@ test("an empty address is suggested from the browser; a wrong one blocks saving,
 
     await user.clear(field);
     await user.type(field, "http://192.168.2.10:6989");
-    await user.click(screen.getByRole("checkbox"));
+    await user.click(toggle("UI-VAULT-SETTINGS-IPBIND"));
+    await user.click(toggle("UI-VAULT-SETTINGS-FILLANY"));
+    expect(within(node("UI-VAULT-SETTINGS-FILLANY")).getByText(t("settings.vault.fillAnywhere.off"))).toBeInTheDocument();
     await user.click(save());
 
-    await waitFor(() => expect(requestDouble.calls).toContainEqual(
-        { method: "patchRequest", path: "vault/settings", body: { agentUrl: "http://192.168.2.10:6989", ipBindingDefault: false } },
-    ));
+    await waitFor(() => expect(requestDouble.calls).toContainEqual({
+        method: "patchRequest", path: "vault/settings",
+        body: { agentUrl: "http://192.168.2.10:6989", ipBindingDefault: false, fillAnywhere: false },
+    }));
     expect(vaultAvailable.refresh).toHaveBeenCalled();
-    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    expect(toggle("UI-VAULT-SETTINGS-IPBIND")).not.toBeChecked();
+    expect(toggle("UI-VAULT-SETTINGS-FILLANY")).not.toBeChecked();
 });
 
 test("failed loads show an error with retry instead of loading text or the empty state", async () => {

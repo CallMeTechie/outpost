@@ -4,14 +4,18 @@ const { activeOrganizationIds, canUseVault, canCreateFor } = require("../lib/vau
 
 const getVaultSettings = async () => {
     const settings = await VaultSettings.getOrCreate();
-    return { keyStatus: getKeyStatus(), agentUrl: settings.agentUrl || null, ipBindingDefault: settings.ipBindingDefault !== false };
+    return {
+        keyStatus: getKeyStatus(), agentUrl: settings.agentUrl || null,
+        ipBindingDefault: settings.ipBindingDefault !== false, fillAnywhere: settings.fillAnywhere === true,
+    };
 };
 
-const updateVaultSettings = async ({ agentUrl, ipBindingDefault }) => {
+const updateVaultSettings = async ({ agentUrl, ipBindingDefault, fillAnywhere }) => {
     const settings = await VaultSettings.getOrCreate();
     await settings.update({
         ...(agentUrl !== undefined ? { agentUrl: agentUrl || null } : {}),
         ...(ipBindingDefault !== undefined ? { ipBindingDefault } : {}),
+        ...(fillAnywhere !== undefined ? { fillAnywhere } : {}),
     });
     return getVaultSettings();
 };

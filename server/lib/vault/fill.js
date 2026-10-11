@@ -4,6 +4,7 @@ const { VaultError, VaultErrorCode } = require("./errors");
 
 const OBJECT_GROUP = "vault-fill";
 const USERNAME_TYPES = new Set(["text", "email", "tel"]);
+const SECRET_INPUT_TYPES = new Set(["text", "password", "search", "url"]);
 const FRAME_OWNERS = new Set(["IFRAME", "FRAME"]);
 const MAX_FRAME_DEPTH = 16;
 // Clearing instead of select-all: a selection would land in the primary selection, which every
@@ -13,11 +14,22 @@ const GONE = /No node (found|with given id)|detached from document|Could not fin
 
 // Runs in the realm of the element's own frame and reads only the global location, which is
 // unforgeable there. Getters such as ownerDocument can be replaced by page script to fake an origin.
+// The label is page content for the approval card only; page script can fake or break it, so it
+// must not be able to fail the origin check.
 const INSPECT = `function () {
     const ancestors = [];
     for (let i = 0; i < location.ancestorOrigins.length; i++) ancestors.push(location.ancestorOrigins[i]);
     const input = this instanceof HTMLInputElement;
-    return { origin: location.origin, ancestors, input, type: input ? this.type : null, connected: this.isConnected };
+    const textarea = this instanceof HTMLTextAreaElement;
+    let label = null;
+    try {
+        const labelledBy = (this.getAttribute("aria-labelledby") || "").split(/\\s+/).filter(Boolean)
+            .map((id) => document.getElementById(id)?.textContent || "").join(" ");
+        const candidates = [labelledBy, this.getAttribute("aria-label"), this.labels?.[0]?.textContent,
+            this.getAttribute("placeholder"), this.getAttribute("name"), this.id];
+        label = candidates.find((value) => typeof value === "string" && value.trim()) ?? null;
+    } catch {}
+    return { origin: location.origin, ancestors, input, textarea, type: input ? this.type : null, connected: this.isConnected, label };
 }`;
 const DEEPEST_ACTIVE = `function () {
     let el = this.activeElement;
@@ -33,6 +45,15 @@ const normalizeOrigin = (value) => {
         return null;
     }
 };
+
+const MAX_LABEL = 60;
+const labelOf = (session, value) => {
+    if (typeof value !== "string") return null;
+    const label = vaultGuard.redactText(session.contextKey, value.replace(/\s+/g, " ").trim()).slice(0, MAX_LABEL).trim();
+    return label || null;
+};
+
+const releaseObjects = (session) => session.send("Runtime.releaseObjectGroup", { objectGroup: OBJECT_GROUP }).catch(() => {});
 
 const staleRef = () => new BrowserError(BrowserErrorCode.STALE_REF, "The element no longer exists; take a new snapshot");
 const unlessGone = (err) => {
@@ -86,7 +107,24 @@ const checkFillTarget = async (session, { passwordRef, usernameRef = null }, ori
                 `${usernameRef} is not a text, email or tel input in the frame of the password field; pass another usernameRef or leave it out.`);
         return { passwordNodeId: password.backendNodeId, usernameNodeId: username?.backendNodeId ?? null };
     } finally {
-        session.send("Runtime.releaseObjectGroup", { objectGroup: OBJECT_GROUP }).catch(() => {});
+        releaseObjects(session);
+    }
+};
+
+// origins null: the entry has no fill origins and fillAnywhere is on, so any page with an origin of its own.
+const checkSecretTarget = async (session, ref, origins) => {
+    try {
+        const field = await inspect(session, ref);
+        const origin = normalizeOrigin(field.origin);
+        if (origins !== null) assertOrigins(field, new Set(origins.map(normalizeOrigin).filter(Boolean)));
+        else if (origin === null)
+            throw new VaultError(VaultErrorCode.ORIGIN_MISMATCH,
+                `${ref} is in a frame without an origin of its own (about:blank, data: or sandboxed); nothing was filled. Open the page directly.`);
+        const fieldType = field.textarea ? "textarea" : field.input && SECRET_INPUT_TYPES.has(field.type) ? field.type : null;
+        if (fieldType === null) throw new VaultError(VaultErrorCode.FIELD_NOT_FILLABLE);
+        return { backendNodeId: field.backendNodeId, origin, fieldType, label: labelOf(session, field.label) };
+    } finally {
+        releaseObjects(session);
     }
 };
 
@@ -115,29 +153,41 @@ const typeInto = async (session, backendNodeId, text, beforeInsert) => {
     })().catch(unlessGone);
     if ((await focusedNodeId(session)) !== backendNodeId)
         throw new VaultError(VaultErrorCode.FOCUS_LOST,
-            "The page moved the focus away from the field before typing; nothing was typed into it. Take a new snapshot and call browser_fill_credential again.");
+            "The page moved the focus away from the field before typing; nothing was typed into it. Take a new snapshot and call the fill tool again.");
     beforeInsert();
     await session.agentSend("Input.insertText", { text });
 };
 
-const fillCredential = async (session, { passwordNodeId, usernameNodeId = null, username = null, password }) => {
+// markFilled checks the taint in the same synchronous step, so no browser_evaluate in a popup of
+// this context can slip in between the check and the first keystroke. Only the marked field is
+// registered: a filled field that is no longer type=password locks screenshots.
+const markBeforeInsert = (session, backendNodeId, secret) => {
     let marked = false;
-    // markFilled checks the taint in the same synchronous step, so no browser_evaluate in a popup of
-    // this context can slip in between the check and the first keystroke. Only the password field is
-    // marked: a filled field that is no longer type=password locks screenshots.
-    const markOnce = () => {
+    return () => {
         if (marked) return;
         if (session.closed)
             throw new BrowserError(BrowserErrorCode.SESSION_CLOSED, `Session ${session.id} has ended; nothing was typed. Open a new session with browser_open and fill there.`);
-        vaultGuard.markFilled(session.contextKey, { targetId: session.targetId, backendNodeIds: [passwordNodeId], secret: password });
+        vaultGuard.markFilled(session.contextKey, { targetId: session.targetId, backendNodeIds: [backendNodeId], secret });
         marked = true;
     };
+};
+
+const fillField = async (session, backendNodeId, secret) => {
+    try {
+        await typeInto(session, backendNodeId, secret, markBeforeInsert(session, backendNodeId, secret));
+    } finally {
+        releaseObjects(session);
+    }
+};
+
+const fillCredential = async (session, { passwordNodeId, usernameNodeId = null, username = null, password }) => {
+    const markOnce = markBeforeInsert(session, passwordNodeId, password);
     try {
         if (usernameNodeId !== null) await typeInto(session, usernameNodeId, username, markOnce);
         await typeInto(session, passwordNodeId, password, markOnce);
     } finally {
-        session.send("Runtime.releaseObjectGroup", { objectGroup: OBJECT_GROUP }).catch(() => {});
+        releaseObjects(session);
     }
 };
 
-module.exports = { checkFillTarget, fillCredential, assertFillableSession, normalizeOrigin };
+module.exports = { checkFillTarget, checkSecretTarget, fillCredential, fillField, assertFillableSession, normalizeOrigin };

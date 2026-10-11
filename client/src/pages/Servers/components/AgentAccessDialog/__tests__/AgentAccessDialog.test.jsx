@@ -5,6 +5,7 @@ import testI18n from "@/test/i18n.js";
 import { renderWithProviders } from "@/test/renderWithProviders.jsx";
 import { ToastProvider } from "@/common/contexts/ToastContext.jsx";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
+import AgentKeysSection from "@/pages/Settings/pages/Account/components/AgentKeysSection";
 import { AgentAccessDialog } from "../AgentAccessDialog.jsx";
 
 const requestDouble = await vi.hoisted(async () => {
@@ -164,4 +165,91 @@ test("the address of the server's last setup prefills the field and goes with th
         method: "postRequest", path: "vault/agent-keys",
         body: { entryId: 7, agentTypes: ["claude", "codex"], agentUrl: "https://outpost.example.org", allowedCidrs: [] },
     });
+});
+
+test.each([
+    ["set up", { id: 46, agentType: "git", status: "configured", remoteUser: "root", hosts: ["github.com"], probe: null, replacedRegistration: false },
+        "Git set up for root: https://github.com runs through Outpost."],
+    ["without a Git entry", { id: null, agentType: "git", hosts: [], status: "manual", reason: "no_git_entries", remoteUser: "root", probe: null, replacedRegistration: false },
+        t("servers.agentAccess.result.noGitEntries")],
+])("the SSH note follows the Git checkbox, setup sends git, and the result says %s", async (_, result, text) => {
+    const user = userEvent.setup();
+    open();
+    const git = screen.getByRole("checkbox", { name: t("vault.agents.git") });
+    expect(git).not.toBeChecked();
+    expect(node("UI-AGENT-ACCESS-GIT-NOTE")).toBeNull();
+
+    await user.click(git);
+    expect(node("UI-AGENT-ACCESS-GIT-NOTE")).toHaveTextContent("Remotes over SSH (git@github.com:) do not go through the vault — switch them to HTTPS.");
+    await user.click(git);
+    expect(node("UI-AGENT-ACCESS-GIT-NOTE")).toBeNull();
+    await user.click(git);
+    await runSetup(user, [result]);
+
+    expect(requestDouble.calls).toContainEqual({
+        method: "postRequest", path: "vault/agent-keys",
+        body: { entryId: 7, agentTypes: ["claude", "codex", "git"], agentUrl: "http://192.168.2.10:6989", allowedCidrs: [] },
+    });
+    const shown = node("UI-AGENT-ACCESS-RESULT");
+    expect(shown).toHaveTextContent(text);
+    expect(within(shown).queryByText(t("servers.agentAccess.result.failed"))).toBeNull();
+    expect(within(shown).queryByRole("button", { name: t("servers.agentAccess.result.copy") })).toBeNull();
+    expect(shown.querySelector(".is-fail, .is-error")).toBeNull();
+});
+
+test("the account's agent keys list Git as the third agent of a server, after Claude Code and Codex", async () => {
+    vaultAvailable.current = { ...AVAILABLE, enabled: true };
+    const key = (id, agentType) => ({
+        id, entryId: 7, agentType, pending: false, ipBinding: true, allowedCidrs: [],
+        agentUrl: "http://192.168.2.10:6989", createdAt: "2026-10-10T08:00:00.000Z", lastUsedAt: null,
+    });
+    requestDouble.stub("getRequest", "vault/agent-keys", { keys: [key(50, "git"), key(49, "codex"), key(48, "claude")] });
+    renderWithProviders(<AgentKeysSection />, { providers: [ToastProvider, Servers] });
+
+    const section = node("UI-API-KEYS-AGENTS");
+    await within(section).findByText(t("vault.agents.git"));
+    expect([...section.querySelectorAll(".item-details h3")].map((heading) => heading.textContent))
+        .toEqual([t("vault.agents.claude"), t("vault.agents.codex"), t("vault.agents.git")]);
+});
+
+test("a failed callback during setup is named, without curl or wget apart from a wrong address, even without IP binding", async () => {
+    const user = userEvent.setup();
+    vaultAvailable.current = { ...AVAILABLE, ipBindingDefault: false, agentUrl: "https://192.168.2.10:6989" };
+    open();
+    const configured = { id: 51, agentType: "claude", status: "configured", remoteUser: "root", replacedRegistration: false };
+
+    const expected = (key) => t(key, { server: "web01", url: "https://192.168.2.10:6989", interpolation: { escapeValue: false } });
+
+    await runSetup(user, [{ ...configured, probe: null, probeFailure: "unreachable" }]);
+    expect(node("UI-AGENT-ACCESS-UNREACHABLE")).toHaveTextContent(expected("servers.agentAccess.result.unreachable"));
+
+    await runSetup(user, [{ ...configured, id: 52, probe: null, probeFailure: "no_client" }]);
+    expect(node("UI-AGENT-ACCESS-UNREACHABLE")).toHaveTextContent(expected("servers.agentAccess.result.noHttpClient"));
+
+    await runSetup(user, [{ ...configured, id: 53, probe: { seenIp: "192.168.2.40", matches: true }, probeFailure: null }]);
+    expect(node("UI-AGENT-ACCESS-UNREACHABLE")).toBeNull();
+});
+
+test("the guide walks through its sections over the dialog, and Escape closes only the guide", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    open(onClose);
+
+    await user.click(screen.getByRole("button", { name: t("servers.agentAccess.guide.open") }));
+    const guide = within(node("UI-AGENT-ACCESS-GUIDE"));
+    for (const section of ["needs", "github", "gitlab", "tips", "how"]) {
+        await user.click(within(guide.getByRole("navigation")).getByRole("button", { name: new RegExp(t(`servers.agentAccess.guide.${section}.nav`)) }));
+        expect(guide.getByRole("region", { name: t(`servers.agentAccess.guide.${section}.nav`) })).toBeInTheDocument();
+    }
+    await user.click(guide.getByRole("button", { name: t("servers.agentAccess.guide.next", { section: t("servers.agentAccess.guide.needs.nav") }) }));
+    expect(guide.getByRole("button", { current: "step" })).toHaveTextContent(t("servers.agentAccess.guide.needs.nav"));
+
+    await user.keyboard("{Escape}");
+    const dialogs = document.querySelectorAll(".dialog");
+    fireEvent(dialogs[dialogs.length - 1], new Event("webkitAnimationEnd", { bubbles: true }));
+
+    await waitFor(() => expect(node("UI-AGENT-ACCESS-GUIDE")).toBeNull());
+    expect(node("UI-AGENT-ACCESS")).not.toBeNull();
+    expect(document.querySelector(".dialog-hidden")).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
 });

@@ -1,6 +1,6 @@
 # Einstellungen › Vault — Umsetzungsanleitung (UI-VAULT-SETTINGS)
 
-Artboard: docs/design/mockups/ui-vault-settings.html · Manifest-Revision: 12
+Artboard: docs/design/mockups/ui-vault-settings.html · Manifest-Revision: 16
 
 Die Seite gibt es noch nicht. Sie folgt dem Bestand der Browser-Einstellungsseite (`client/src/pages/Settings/pages/Browser/`): gleiche Struktur, gleiche Registrierung, gleiche Rechtefilterung. Neu sind die Statusanzeige für `VAULT_KEY` und der Proxy-Hinweis. Nicht neu gebaut: Seitenrahmen, Einstellungsdialog, Rechtesystem.
 
@@ -40,6 +40,13 @@ Die Seite gibt es noch nicht. Sie folgt dem Bestand der Browser-Einstellungsseit
 - Datenquelle: `ipBindingDefault` aus `GET /api/vault/settings`, geschrieben mit `PATCH /api/vault/settings` zusammen mit der Adresse.
 - Zustände: `default` an, `selected` aus. Belegt den Schalter UI-AGENT-ACCESS-IPBIND neuer Einrichtungen vor; bestehende Keys ändern sich nicht.
 
+### UI-VAULT-SETTINGS-FILLANY — Token auf jeder Seite eintragen erlauben (neu in Rev. 16)
+- `data-ui-id` an der Zeile (Titel, Beschreibung, `ToggleSwitch`), nach dem Muster von `UI-VAULT-SETTINGS-IPBIND`; Reihenfolge: Adresse, IP-Bindung, **diese Zeile**, Proxy-Hinweis. Genau einmal.
+- Datenquelle: `fillAnywhere` aus `GET /api/vault/settings`, geschrieben mit `PATCH /api/vault/settings` zusammen mit Adresse und IP-Bindung (Einstellung `vault.fillAnywhere`, Standard aus). Es gilt das gemeinsame Speichern über `UI-VAULT-SETTINGS-SAVE`; kein Autosave.
+- Zustände: `default` aus, Hinweis „aus“; `selected` an, Hinweis „an — Werte ohne eigene Liste lassen sich auf jeder Seite eintragen, jedes Mal mit Freigabe.“
+- Bedeutung: erlaubt `browser_fill_secret`, einen Wert ohne eigene Origin-Liste (`UI-VAULT-DIALOG-FILL`) auf jeder Seite einzutragen, immer mit Freigabe; eine Sitzungsfreigabe gilt nur für die eine Origin, die auf der Karte stand.
+- Nicht: keine Origin-Liste (`not: fill_origin`) und keine Freigabe-Einstellung der Einträge (`not: approval_policy`).
+
 ### UI-VAULT-SETTINGS-PROXY — Hinweis Reverse-Proxy (neu)
 - `data-ui-id` am Wrapper des Hinweises, zwischen Adresse und Speichern. Im Zustand `default` nicht gerendert (kein Platzhalter, keine Lücke) — genau einmal im DOM, solange die Warnung gilt.
 - Datenquelle: Feld `trustProxyUnsafe` (boolean) aus `GET /api/vault/settings`; `true` genau dann, wenn `TRUST_PROXY=true` (in `server/index.js` gelesen). Eine Hop-Zahl oder Adressliste ist `false`. Nur Anzeige, nicht über `PATCH` schreibbar.
@@ -59,7 +66,7 @@ Die Seite gibt es noch nicht. Sie folgt dem Bestand der Browser-Einstellungsseit
 - Der Artboard-Rahmen (gestrichelte Zustandsboxen, Tags, Code-Beschriftung mit der ID) ist Darstellung der Zustände, nicht Produkt.
 
 ## i18n
-Neuer Block `settings.vault.*` neben `settings.browser` in `client/public/assets/locales/de_DE.json` (Quellsprache zuerst, dann `en.json`), plus `settings.pages.vault` („Vault“). Schema wie Browser: `title`, `description`, `key.title`, `key.active|missing|mismatch`, `agentUrl.title|description|invalid`, `proxy.title|warning`, `saveSettings`, `saveSuccess`, `loading`, `errors.loadSettings|saveSettings`.
+Neuer Block `settings.vault.*` neben `settings.browser` in `client/public/assets/locales/de_DE.json` (Quellsprache zuerst, dann `en.json`), plus `settings.pages.vault` („Vault“). Schema wie Browser: `title`, `description`, `key.title`, `key.active|missing|mismatch`, `agentUrl.title|description|invalid`, `fillAnywhere.title|description|off|on`, `proxy.title|warning`, `saveSettings`, `saveSuccess`, `loading`, `errors.loadSettings|saveSettings`.
 
 ## Fertig, wenn
-- Vier Marker auf Tier A; `/design-verify --screen UI-VAULT-SETTINGS` MATCH.
+- Alle Marker (inklusive `UI-VAULT-SETTINGS-FILLANY`) auf Tier A; `/design-verify --screen UI-VAULT-SETTINGS` MATCH.

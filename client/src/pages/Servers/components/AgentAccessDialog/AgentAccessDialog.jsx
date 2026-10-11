@@ -1,7 +1,7 @@
 import "./styles.sass";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { Copy as IconCopy, KeyRound as IconKeyRound, Link as IconLink, Network as IconNetwork } from "lucide-react";
+import { Trans, useTranslation } from "react-i18next";
+import { CircleHelp as IconCircleHelp, Copy as IconCopy, Info as IconInfo, KeyRound as IconKeyRound, Link as IconLink, Network as IconNetwork } from "lucide-react";
 import { DialogProvider } from "@/common/components/Dialog";
 import Button from "@/common/components/Button";
 import Checkbox from "@/common/components/Checkbox";
@@ -15,8 +15,9 @@ import { deleteRequest, getRequest, postRequest } from "@/common/utils/RequestUt
 import { isValidAgentUrl } from "@/common/utils/agentUrl.js";
 import { copyToClipboard } from "@/common/utils/clipboard.js";
 import { formatTimeAgo } from "@/common/utils/timeAgo.js";
+import { AgentAccessGuide } from "./AgentAccessGuide.jsx";
 
-const AGENT_TYPES = ["claude", "codex"];
+const AGENT_TYPES = ["claude", "codex", "git"];
 const raw = { interpolation: { escapeValue: false } };
 
 // The prefix is optional: Task 8 stores a bare address as /32 or /128.
@@ -49,7 +50,7 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
     const [keys, setKeys] = useState(null);
     const [remoteUser, setRemoteUser] = useState(null);
     const [otherAccountConfigured, setOtherAccountConfigured] = useState(false);
-    const [agents, setAgents] = useState({ claude: true, codex: true });
+    const [agents, setAgents] = useState({ claude: true, codex: true, git: false });
     const [ipBindingChoice, setIpBinding] = useState(null);
     const [urlText, setUrlText] = useState(null);
     const [cidrText, setCidrText] = useState("");
@@ -58,7 +59,8 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
     const [results, setResults] = useState([]);
     const [adoptOffer, setAdoptOffer] = useState(null);
     const [adoptSeenIp, setAdoptSeenIp] = useState(false);
-    const [probeFailed, setProbeFailed] = useState(false);
+    const [probeFailure, setProbeFailure] = useState(null);
+    const [guideOpen, setGuideOpen] = useState(false);
     const [revokeTarget, setRevokeTarget] = useState(null);
     const [revokeErrorId, setRevokeErrorId] = useState(null);
     const [revokeOutcome, setRevokeOutcome] = useState(null);
@@ -108,7 +110,7 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
         try {
             await discardPending(results);
             setResults([]);
-            setProbeFailed(false);
+            setProbeFailure(null);
             const data = await postRequest("vault/agent-keys", {
                 entryId,
                 agentTypes: AGENT_TYPES.filter((type) => agents[type]),
@@ -121,7 +123,8 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
             setResults(next);
             setAdoptOffer(mismatch ? mismatch.probe.seenIp : null);
             setAdoptSeenIp(false);
-            setProbeFailed(ipBinding && next.some((result) => result.probe === null));
+            const failed = next.find((result) => result.status === "configured" && result.probeFailure);
+            setProbeFailure(failed ? { kind: failed.probeFailure, url: agentUrl } : null);
             loadKeys();
         } catch (err) {
             sendToast(t("common.error"), err?.message || t("common.error"));
@@ -200,7 +203,7 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
         setResults([]);
         setAdoptOffer(null);
         setAdoptSeenIp(false);
-        setProbeFailed(false);
+        setProbeFailure(null);
         setKeys(null);
         setCidrText("");
         setCidrInvalid(false);
@@ -232,6 +235,14 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
     ].join(" · ");
 
     const resultText = (result) => {
+        if (result.reason === "no_git_entries") return t("servers.agentAccess.result.noGitEntries");
+        if (result.status === "configured" && result.agentType === "git") {
+            const hosts = (result.hosts || []).map((host) => `https://${host}`).join(", ");
+            return (
+                <Trans i18nKey="servers.agentAccess.result.successGit" values={{ user: result.remoteUser, hosts }}
+                       components={{ mono: <span className="mono" /> }} tOptions={raw} />
+            );
+        }
         if (result.status === "configured") {
             return t(result.agentType === "codex" ? "servers.agentAccess.result.successCodex" : "servers.agentAccess.result.success",
                 { user: result.remoteUser, ...raw });
@@ -242,9 +253,16 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
     };
 
     return (
-        <DialogProvider open={open} onClose={handleClose} disableClosing={settingUp}>
+        <DialogProvider open={open} onClose={handleClose} disableClosing={settingUp || guideOpen}>
             <div className="agent-access-dialog" data-ui-id="UI-AGENT-ACCESS" onKeyDown={onKeyDown}>
-                <h2>{t("servers.agentAccess.title", { name: serverName, ...raw })}</h2>
+                <div className="agent-access-title">
+                    <h2>{t("servers.agentAccess.title", { name: serverName, ...raw })}</h2>
+                    <button type="button" className="agent-access-guide-btn" data-ui-id="UI-AGENT-ACCESS-HELP"
+                            aria-label={t("servers.agentAccess.guide.open")} title={t("servers.agentAccess.guide.open")}
+                            aria-haspopup="dialog" aria-expanded={guideOpen} onClick={() => setGuideOpen(true)}>
+                        <Icon icon={IconCircleHelp} />
+                    </button>
+                </div>
 
                 <section className="agent-access-keys" data-ui-id="UI-AGENT-ACCESS-KEYS" aria-busy={keys === null || undefined}>
                     <h3>{t("servers.agentAccess.keys.title")}</h3>
@@ -318,9 +336,15 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
                             </div>
                         ))}
                     </div>
+                    {agents.git && (
+                        <p className="agent-access-help agent-access-git-note" data-ui-id="UI-AGENT-ACCESS-GIT-NOTE">
+                            <Icon icon={IconInfo} />
+                            <span><Trans i18nKey="servers.agentAccess.gitNote" components={{ mono: <span className="mono" /> }} /></span>
+                        </p>
+                    )}
                     <div className={`agent-access-cidr-field${cidrInvalid ? " is-error" : ""}`}>
                         <label htmlFor="agent-access-cidrs">{t("servers.agentAccess.setup.cidrLabel")}</label>
-                        <IconInput id="agent-access-cidrs" icon={IconNetwork} value={cidrText} disabled={fieldsDisabled}
+                        <IconInput id="agent-access-cidrs" icon={IconNetwork} value={cidrText} disabled={fieldsDisabled} invalid={cidrInvalid}
                                    setValue={(value) => { setCidrText(value); setCidrInvalid(false); }} />
                         {cidrInvalid && (
                             <span className="agent-access-help is-error" role="alert">{t("servers.agentAccess.setup.cidrInvalid")}</span>
@@ -365,9 +389,6 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
                             </div>
                         </div>
                     )}
-                    {probeFailed && (
-                        <p className="agent-access-notice" role="status">{t("servers.agentAccess.ipBind.probeFailed")}</p>
-                    )}
                     {trustProxyUnsafe && (
                         <div className="agent-access-warning" role="alert">
                             <p>{t("servers.agentAccess.ipBind.trustProxy")}</p>
@@ -376,36 +397,49 @@ export const AgentAccessDialog = ({ open, entryId, onClose }) => {
                 </div>
 
                 <section className="agent-access-result" data-ui-id="UI-AGENT-ACCESS-RESULT">
+                    {probeFailure && (
+                        <div className="agent-access-warning" data-ui-id="UI-AGENT-ACCESS-UNREACHABLE" role="alert">
+                            <p>{t(probeFailure.kind === "no_client" ? "servers.agentAccess.result.noHttpClient" : "servers.agentAccess.result.unreachable",
+                                { server: serverName, url: probeFailure.url, ...raw })}</p>
+                        </div>
+                    )}
                     {results.length === 0 ? (
                         <p className="agent-access-empty">{t("servers.agentAccess.result.empty")}</p>
-                    ) : results.map((result) => (
-                        <div key={result.id ?? result.agentType} className={`agent-result ${result.status === "configured" ? "is-ok" : "is-fail"}`}>
-                            <div className="agent-result-head">
-                                <span>{agentLabel(result.agentType)}</span>
-                                <span className="agent-result-status">
-                                    {t(result.status === "configured" ? "servers.agentAccess.result.configured" : "servers.agentAccess.result.failed")}
-                                </span>
-                            </div>
-                            <p className={`agent-access-help${result.status === "configured" ? "" : " is-error"}`}>{resultText(result)}</p>
-                            {result.replacedRegistration && (
-                                <p className="agent-access-notice">{t("servers.agentAccess.result.replaced")}</p>
-                            )}
-                            {result.status !== "configured" && result.command && (
-                                <>
-                                    <div className="agent-result-command">
-                                        <pre>{result.command}</pre>
-                                        <Button type="secondary" buttonType="button" icon={IconCopy}
-                                                text={t("servers.agentAccess.result.copy")} onClick={() => copyCommand(result)} />
-                                    </div>
-                                    {!result.confirmed && (
-                                        <p className="agent-access-notice">{t("servers.agentAccess.result.keyNotice")}</p>
+                    ) : results.map((result) => {
+                        const configured = result.status === "configured";
+                        const neutral = result.reason === "no_git_entries";
+                        return (
+                            <div key={result.id ?? result.agentType} className={`agent-result${configured ? " is-ok" : neutral ? "" : " is-fail"}`}>
+                                <div className="agent-result-head">
+                                    <span>{agentLabel(result.agentType)}</span>
+                                    {!neutral && (
+                                        <span className="agent-result-status">
+                                            {t(configured ? "servers.agentAccess.result.configured" : "servers.agentAccess.result.failed")}
+                                        </span>
                                     )}
-                                </>
-                            )}
-                        </div>
-                    ))}
+                                </div>
+                                <p className={`agent-access-help${configured || neutral ? "" : " is-error"}`}>{resultText(result)}</p>
+                                {result.replacedRegistration && result.agentType !== "git" && (
+                                    <p className="agent-access-notice">{t("servers.agentAccess.result.replaced")}</p>
+                                )}
+                                {result.status !== "configured" && result.command && (
+                                    <>
+                                        <div className="agent-result-command">
+                                            <pre>{result.command}</pre>
+                                            <Button type="secondary" buttonType="button" icon={IconCopy}
+                                                    text={t("servers.agentAccess.result.copy")} onClick={() => copyCommand(result)} />
+                                        </div>
+                                        {!result.confirmed && (
+                                            <p className="agent-access-notice">{t("servers.agentAccess.result.keyNotice")}</p>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        );
+                    })}
                 </section>
             </div>
+            <AgentAccessGuide open={guideOpen} onClose={() => setGuideOpen(false)} />
         </DialogProvider>
     );
 };

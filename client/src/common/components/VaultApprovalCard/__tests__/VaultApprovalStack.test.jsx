@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { act, screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import testI18n from "@/test/i18n.js";
 import { renderWithProviders } from "@/test/renderWithProviders.jsx";
@@ -124,4 +124,31 @@ test("Esc on the focused card denies", async () => {
     await waitFor(() => expect(requestDouble.calls).toContainEqual(
         { method: "postRequest", path: "vault/approvals/a1", body: { decision: "deny" } },
     ));
+});
+
+test("the card names tool, target and the field of a fill; only a writing request carries the badge; without allowSession there is no session button", () => {
+    mount();
+    push([
+        { ...approval("a1", 120_000), item: "github-pat", tool: "vault_http", access: "write", target: "POST api.github.com/repos/o/r/issues" },
+        { ...approval("a2", 110_000), item: "github-pat", tool: "git", access: "read", target: "Git · github.com/o/r" },
+        { ...approval("a3", 100_000), item: "coolify-login", tool: "browser_fill_credential", access: "write", target: "https://coolify.example.net" },
+        {
+            ...approval("a4", 90_000), item: "coolify-token", tool: "browser_fill_secret", access: "write", target: "https://coolify.example.net",
+            field: "<b>Comment</b>", allowSession: false,
+        },
+    ]);
+    const cardOf = (line) => within(screen.getByText(line).closest(".vault-approval-card"));
+    const badge = (line) => cardOf(line).queryByText(t("vault.approval.write"));
+    const session = (line) => cardOf(line).queryByRole("button", { name: t("vault.approval.actions.session") });
+
+    expect(badge("POST api.github.com/repos/o/r/issues")).toBeInTheDocument();
+    expect(badge("Git · github.com/o/r")).not.toBeInTheDocument();
+    expect(badge(t("vault.approval.target.fill", { origin: "https://coolify.example.net" }))).toBeInTheDocument();
+    expect(document.querySelectorAll("[data-ui-id='UI-VAULT-APPROVAL-WRITE']")).toHaveLength(3);
+
+    const fieldLine = "Fill in on https://coolify.example.net · field “<b>Comment</b>”";
+    expect(screen.getByText(fieldLine)).toBeInTheDocument();
+    expect(document.querySelector(".vault-approval-card b")).toBeNull();
+    expect(session(fieldLine)).not.toBeInTheDocument();
+    expect(session(t("vault.approval.target.fill", { origin: "https://coolify.example.net" }))).toBeInTheDocument();
 });

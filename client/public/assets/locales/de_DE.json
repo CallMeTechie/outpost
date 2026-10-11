@@ -481,7 +481,16 @@
       "edit": "Bearbeiten",
       "delete": "Löschen",
       "deleteConfirm": "{{name}} löschen? Agenten verlieren den Zugriff sofort.",
-      "deleteFailed": "Löschen fehlgeschlagen."
+      "deleteFailed": "Löschen fehlgeschlagen.",
+      "usage": {
+        "title": "Nutzung durch Agenten",
+        "readOnly": "Nur lesen",
+        "allowHttp": "Auch über http",
+        "git": "Git · Benutzername {{user}}",
+        "fill": "Eintragen auf",
+        "empty": "vault_http über https",
+        "emptyGeneric": "Nur von Hand nutzbar — kein Eintragen im Browser"
+      }
     },
     "fields": {
       "name": "Name",
@@ -547,11 +556,30 @@
       "create": "Erstellen",
       "save": "Speichern",
       "saving": "Speichere …",
-      "saveFailed": "Speichern fehlgeschlagen."
+      "saveFailed": "Speichern fehlgeschlagen.",
+      "usage": {
+        "title": "Nutzung durch Agenten",
+        "off": "aus",
+        "on": "an",
+        "readOnly": "Nur lesen",
+        "readOnlyHint": "an — nur lesen",
+        "allowHttp": "Unverschlüsseltes HTTP erlauben",
+        "allowHttpOff": "aus — nur https",
+        "allowHttpWarning": "an — der Token geht unverschlüsselt über das Netz",
+        "git": "Für Git nutzen",
+        "gitHint": "an · Git-Benutzername",
+        "gitUsername": "Git-Benutzername",
+        "gitUsernameHelp": "Standard x-access-token für GitHub, oauth2 für GitLab",
+        "gitUsernameMissing": "Git-Benutzername fehlt.",
+        "fill": "Darf im Browser eingetragen werden auf",
+        "fillEmpty": "Nirgends — nur für vault_http und Git",
+        "fillInvalid": "Keine gültige Origin (scheme://host[:port])."
+      }
     },
     "agents": {
       "claude": "Claude Code",
-      "codex": "Codex"
+      "codex": "Codex",
+      "git": "Git"
     },
     "approval": {
       "title": "Freigabe angefordert",
@@ -564,6 +592,11 @@
         "once": "Einmal",
         "session": "Für diese Sitzung",
         "deny": "Ablehnen"
+      },
+      "write": "schreibt",
+      "target": {
+        "fill": "Eintragen auf {{origin}}",
+        "fillField": "Eintragen auf {{origin}} · Feld „{{field}}“"
       }
     }
   },
@@ -874,7 +907,7 @@
         "loadFailed": "Agenten-Schlüssel konnten nicht geladen werden",
         "retry": "Erneut versuchen",
         "sectionTitle": "Agenten-Schlüssel",
-        "sectionDescription": "Agenten-Schlüssel erreichen nur den MCP-Endpunkt.",
+        "sectionDescription": "Agenten-Schlüssel erreichen nur den MCP-Endpunkt, Git-Keys nur den Git-Proxy.",
         "edit": "Bearbeiten",
         "revoke": "Entziehen",
         "revokeConfirm": "Zugang von {{agent}} auf {{server}} entziehen? Der Agent verliert sofort den Zugriff.",
@@ -1766,6 +1799,12 @@
       "ipBindingDefault": {
         "title": "IP-Bindung als Standard",
         "description": "Neue Agenten-Keys gelten nur von der IP ihres Servers. Abschalten, wenn Outpost die Absenderadressen nicht sieht, etwa hinter NAT; im Dialog lässt es sich je Server ändern."
+      },
+      "fillAnywhere": {
+        "title": "Token auf jeder Seite eintragen erlauben",
+        "description": "Werte ohne eigene Origin-Liste lassen sich dann auf jeder Seite eintragen — jedes Mal mit Freigabe, eine Sitzungsfreigabe gilt nur für die eine Seite. Einträge einer Organisation nur für Mitglieder, die sie aufdecken dürfen.",
+        "off": "aus",
+        "on": "an — Werte ohne eigene Liste lassen sich auf jeder Seite eintragen, jedes Mal mit Freigabe."
       }
     }
   },
@@ -1905,7 +1944,6 @@
         "on": "an",
         "off": "aus — von überall",
         "seenOther": "Gesehen wurde {{seen}} statt {{expected}} — als Adressbereich übernehmen? Ohne Übernahme weist Outpost den Key ab.",
-        "probeFailed": "Adresse konnte nicht gemessen werden — der Key gilt für die aufgelöste Adresse des Servers.",
         "adopt": "Übernehmen",
         "decline": "Nein",
         "trustProxy": "TRUST_PROXY=true — die IP-Bindung ist wirkungslos."
@@ -1920,7 +1958,99 @@
         "manual": "Befehl kopieren und auf dem Server ausführen.",
         "copy": "Kopieren",
         "keyNotice": "Der Key ist nur jetzt sichtbar. Schließen ohne Übernahme löscht ihn.",
-        "replaced": "Bestehende Registrierung ersetzt — der alte Konto-Key bleibt gültig, bis du ihn unter API-Schlüssel löschst."
+        "replaced": "Bestehende Registrierung ersetzt — der alte Konto-Key bleibt gültig, bis du ihn unter API-Schlüssel löschst.",
+        "successGit": "Git eingerichtet für {{user}}: <mono>{{hosts}}</mono> läuft über Outpost.",
+        "noGitEntries": "Kein Eintrag mit „Für Git nutzen“ gilt für diesen Server.",
+        "unreachable": "{{server}} hat Outpost unter {{url}} nicht erreicht. Adresse prüfen (http oder https?) — bis dahin kann sich kein Agent verbinden.",
+        "noHttpClient": "Auf {{server}} fehlen curl und wget — Outpost konnte nicht prüfen, ob der Server {{url}} erreicht."
+      },
+      "gitNote": "Remotes per SSH (<mono>git@github.com:</mono>) gehen nicht über den Vault — auf HTTPS umstellen.",
+      "guide": {
+        "open": "Anleitung",
+        "title": "Agenten-Zugang einrichten",
+        "subtitle": "Claude Code, Codex und Git nutzen Vault-Einträge, ohne den geheimen Wert je zu sehen.",
+        "sectionsLabel": "Abschnitte",
+        "progress": "Schritt {{current}} von {{total}}",
+        "back": "Zurück",
+        "next": "Weiter: {{section}}",
+        "done": "Fertig",
+        "copy": "Kopieren",
+        "copied": "Kopiert",
+        "how": {
+          "nav": "So funktioniert's",
+          "lead": "Der Agent bekommt nie den Token selbst, sondern nur einen eigenen Agenten-Key. Jede Nutzung läuft über Outpost — verlangt ein Eintrag eine Freigabe, fragt Outpost dich vorher.",
+          "agent": "Agent auf dem Server",
+          "agentText": "kennt nur seinen Agenten-Key",
+          "outpost": "Outpost",
+          "outpostText": "prüft, fragt dich, setzt den Token ein",
+          "service": "GitHub, APIs",
+          "serviceText": "bekommen den echten Token",
+          "setUpLabel": "Was eingerichtet wird",
+          "claude": "Outpost als MCP-Server: Werkzeuge wie <mono>vault_http</mono> und der Outpost-Browser.",
+          "claudeAfter": "Danach: <b>Claude Code neu starten</b>, dann <mono>/mcp</mono>",
+          "codex": "Dieselben Werkzeuge, als MCP-Server in Codex eingetragen.",
+          "codexAfter": "Danach: <b>Codex in einer neuen Shell starten</b>",
+          "git": "https-Remotes laufen über Outpost. In <mono>~/.gitconfig</mono> liegt nur ein Agenten-Key.",
+          "gitAfter": "Danach wie gewohnt: <mono>git clone</mono>, <mono>pull</mono>, <mono>push</mono>"
+        },
+        "needs": {
+          "nav": "Voraussetzungen",
+          "lead": "Drei Dinge, dann richtet Outpost alles per Klick ein.",
+          "ssh": "SSH-Zugang zu diesem Server",
+          "sshText": "Über ihn richtet Outpost den Zugang ein — derselbe, mit dem du dich in Outpost verbindest.",
+          "address": "Eine Outpost-Adresse, die der Server erreicht",
+          "addressText": "Mit dem richtigen Protokoll: Outpost spricht auf seinem eigenen Port nur http.",
+          "lan": "im LAN",
+          "proxy": "hinter einem Reverse-Proxy",
+          "wrong": "https auf dem http-Port",
+          "programs": "Programme auf dem Server",
+          "programsText": "<mono>curl</mono> oder <mono>wget</mono>, dazu je nach Agent <mono>claude</mono>, <mono>codex</mono> oder <mono>git</mono>."
+        },
+        "github": {
+          "nav": "Git mit GitHub",
+          "lead": "Etwa fünf Minuten. Danach laufen Clone, Pull und Push dieses Servers über Outpost.",
+          "onGithub": "Auf GitHub",
+          "inOutpost": "In Outpost",
+          "onServer": "Auf dem Server",
+          "token": "Fine-grained Token anlegen",
+          "scope": "Zugriff eingrenzen",
+          "contentsHint": "Read-only reicht für Clone und Pull",
+          "issuesValue": "nur wenn der Agent sie per API bearbeiten soll",
+          "expirationValue": "ein Datum setzen",
+          "copyToken": "Token kopieren",
+          "copyTokenText": "GitHub zeigt ihn nur dieses eine Mal.",
+          "entry": "{{vault}} › {{newEntry}}",
+          "tokenValue": "einfügen",
+          "git": "„{{useForGit}}“ einschalten",
+          "readOnlyValue": "an, wenn der Agent nichts pushen soll",
+          "share": "Freigeben und erstellen",
+          "shareText": "„{{scope}}“ diesen Server oder {{allServers}}, „{{approval}}“ an lassen, {{create}}.",
+          "setup": "Hier Git anhaken und {{setup}}",
+          "setupText": "Im Agenten-Zugang dieses Servers.",
+          "try": "Ausprobieren",
+          "tryText": "In Outpost erscheint unten rechts die Freigabe-Karte."
+        },
+        "gitlab": {
+          "nav": "Git mit GitLab",
+          "lead": "Wie bei GitHub ab Schritt 4, mit diesen Werten:",
+          "hostsValue": "oder deine Instanz",
+          "tokenValue": "Personal Access Token",
+          "scopes": "Scopes",
+          "api": "Für API-Aufrufe",
+          "apiValue": "zusätzlich <mono>api</mono>"
+        },
+        "tips": {
+          "nav": "Gut zu wissen",
+          "lead": "Was im Alltag auffällt.",
+          "https": "Nur https-Remotes",
+          "httpsText": "SSH-Remotes (<mono>git@github.com:</mono>) gehen nicht über Outpost. So stellst du um:",
+          "approval": "Freigabe-Karte",
+          "approvalText": "„{{once}}“ gilt für genau diesen Zugriff, „{{session}}“ für weitere gleicher Art. Lesen und Schreiben gibst du getrennt frei.",
+          "ipBind": "IP-Bindung",
+          "ipBindText": "„{{label}}“ lässt den Key nur von dort zu. Sieht Outpost eine andere Adresse, etwa hinter Docker oder NAT, bietet der Dialog an, sie zu übernehmen.",
+          "revoke": "Entziehen",
+          "revokeText": "Widerruft den Key sofort und entfernt die Einrichtung auf dem Server. Fremde Zeilen in der gitconfig bleiben stehen."
+        }
       }
     },
     "passwordHint": {

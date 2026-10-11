@@ -29,7 +29,7 @@ const MESSAGES = {
 /**
  * POST /vault/approvals/{id}
  * @summary Answer Vault Approval
- * @description Answers an open approval request of the authenticated account: once allows exactly one fill, session allows the entry for the rest of the agent's MCP session, deny blocks the same caller for this entry for 60 seconds. Requires a signed-in session; API keys and impersonation sessions get 403.
+ * @description Answers an open approval request of the authenticated account: once allows exactly one fill, session allows the entry for the rest of the agent's MCP session (a request with allowSession false counts it as once), deny blocks the same caller for this entry for 60 seconds. Requires a signed-in session; API keys and impersonation sessions get 403.
  * @tags Vault
  * @produces application/json
  * @security BearerAuth

@@ -38,9 +38,18 @@ const ITEM = {
     fields: { username: "ma", origins: ["https://portal.example.com", "https://sso.example.com"] },
 };
 const OTHER_ITEMS = [8, 9, 10].map((id) => ({ ...ITEM, id, name: `login-${id}` }));
+const API_KEY = {
+    id: 12, accountId: 1, organizationId: null, name: "github", type: "api_key", updatedAt: "2026-10-10T08:00:00.000Z",
+    fields: {
+        hosts: ["api.github.com", "github.com"], headerName: "Authorization", headerTemplate: "Bearer {{secret}}",
+        readOnly: false, allowHttp: false, git: true, gitUsername: "x-access-token", fillOrigins: [],
+    },
+};
+const HOUR = 60 * 60 * 1000;
 const call = (overrides = {}) => ({
     accountId: 1, keyId: 5, transportId: "t-1", agentType: "claude", entryName: "web-01",
-    item: ITEM, target: "https://portal.example.com", signal: new AbortController().signal, ...overrides,
+    item: ITEM, target: "https://portal.example.com", tool: "browser_fill_credential", access: "write", scope: "fill",
+    signal: new AbortController().signal, ...overrides,
 });
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
@@ -65,7 +74,7 @@ test("Einmal gibt genau ein Ausfüllen frei; die erste Antwort gewinnt, jede wei
     const first = approvals.requestApproval(call());
     await flush();
     const [card] = window.cards();
-    assert.deepStrictEqual(Object.keys(card).sort(), ["agentType", "entryName", "expiresAt", "id", "impersonated", "item", "remainingMs", "target"]);
+    assert.deepStrictEqual(Object.keys(card).sort(), ["access", "agentType", "allowSession", "entryName", "expiresAt", "field", "id", "impersonated", "item", "remainingMs", "target", "tool"]);
     assert.deepStrictEqual([card.item, card.agentType, card.entryName, card.impersonated, card.target], ["portal-login", "claude", "web-01", false, "https://portal.example.com"]);
 
     assert.deepStrictEqual(approvals.answerApproval(card.id, 2, "once"), { status: 404 });
@@ -83,7 +92,7 @@ test("Einmal gibt genau ein Ausfüllen frei; die erste Antwort gewinnt, jede wei
     assert.strictEqual(await second, "once");
 });
 
-test("Für diese Sitzung gilt bis zum Ende des Transports, nur für ihn und nur für den unveränderten Eintrag", async (t) => {
+test("Für diese Sitzung gilt bis zum Ende des Transports, nur für ihn und nur für den unveränderten Eintrag; eine Anfrage ohne allowSession nimmt sie als Einmal", async (t) => {
     const window = openWindow(t, 1);
     const first = approvals.requestApproval(call());
     await flush();
@@ -92,12 +101,12 @@ test("Für diese Sitzung gilt bis zum Ende des Transports, nur für ihn und nur 
 
     assert.strictEqual(await approvals.requestApproval(call()), "session");
     const reordered = { ...ITEM, fields: { ...ITEM.fields, origins: [...ITEM.fields.origins].reverse() } };
-    assert.strictEqual(approvals.hasSessionApproval("t-1", reordered), true);
+    assert.strictEqual(approvals.hasSessionApproval("t-1", reordered, "fill"), true);
     await flush();
     assert.deepStrictEqual(window.cards(), []);
 
     const moved = { ...ITEM, fields: { ...ITEM.fields, origins: ["https://portal.example.net"] } };
-    assert.strictEqual(approvals.hasSessionApproval("t-1", moved), false);
+    assert.strictEqual(approvals.hasSessionApproval("t-1", moved, "fill"), false);
     const edited = { ...ITEM, updatedAt: "2026-10-10T08:05:00.000Z" };
     const afterEdit = approvals.requestApproval(call({ item: edited }));
     await flush();
@@ -111,8 +120,26 @@ test("Für diese Sitzung gilt bis zum Ende des Transports, nur für ihn und nur 
     approvals.answerApproval(window.cards()[0].id, 1, "once");
     await otherTransport;
 
+    const textField = { tool: "browser_fill_secret", item: API_KEY, target: "https://github.com", field: "Comment", allowSession: false };
+    const passwordField = approvals.requestApproval(call({ ...textField, field: "Token", allowSession: true }));
+    await flush();
+    approvals.answerApproval(window.cards()[0].id, 1, "session");
+    assert.strictEqual(await passwordField, "session");
+    const once = approvals.requestApproval(call(textField));
+    await flush();
+    assert.deepStrictEqual([window.cards()[0].field, window.cards()[0].allowSession], ["Comment", false]);
+    assert.deepStrictEqual(approvals.answerApproval(window.cards()[0].id, 1, "session"), { status: 200 });
+    assert.strictEqual(await once, "once", "without allowSession the server takes session as once");
+    assert.deepStrictEqual(audits.at(-1).details.decision, "once");
+    assert.ok(!JSON.stringify(audits).includes("Comment"));
+    const again = approvals.requestApproval(call(textField));
+    await flush();
+    assert.strictEqual(window.cards().length, 1, "no session approval was stored");
+    approvals.answerApproval(window.cards()[0].id, 1, "once");
+    await again;
+
     approvals.forgetTransport("t-1");
-    assert.strictEqual(approvals.hasSessionApproval("t-1", ITEM), false);
+    assert.strictEqual(approvals.hasSessionApproval("t-1", ITEM, "fill"), false);
 });
 
 test("Ablehnen sperrt denselben Aufrufer für denselben Eintrag 60 s, auch über einen neuen Transport", async (t) => {
@@ -243,4 +270,95 @@ test("Freigabe-Antworten nur aus einer Login-Session: Impersonation und Konto-Ke
     assert.strictEqual((await answer("s-owner")).status, 200);
     assert.strictEqual(await pending, "once");
     assert.strictEqual((await answer("s-owner")).status, 409);
+});
+
+test("Für diese Sitzung gilt je Umfang: Lesen deckt Schreiben nicht, Schreiben nicht Eintragen, Eintragen auf Origin A nicht Origin B", async (t) => {
+    const window = openWindow(t, 1);
+    const answerNext = async (decision) => {
+        await flush();
+        assert.strictEqual(window.cards().length, 1);
+        approvals.answerApproval(window.cards()[0].id, 1, decision);
+    };
+    const http = (access) => call({ item: API_KEY, tool: "vault_http", access, scope: access, target: `${access === "read" ? "GET" : "POST"} api.github.com/repos/o/r/issues` });
+
+    const read = approvals.requestApproval(http("read"));
+    await answerNext("session");
+    assert.strictEqual(await read, "session");
+    assert.strictEqual(await approvals.requestApproval(http("read")), "session");
+    assert.strictEqual(approvals.hasSessionApproval("t-1", API_KEY, "write"), false);
+    const write = approvals.requestApproval(http("write"));
+    await answerNext("session");
+    assert.strictEqual(await write, "session");
+    assert.strictEqual(approvals.hasSessionApproval("t-1", API_KEY, "fill"), false);
+
+    const fill = (origin) => call({ item: API_KEY, tool: "browser_fill_secret", access: "write", scope: `fill|${origin}`, target: origin });
+    const onA = approvals.requestApproval(fill("https://a.example.net"));
+    await answerNext("session");
+    assert.strictEqual(await onA, "session");
+    assert.strictEqual(await approvals.requestApproval(fill("https://a.example.net")), "session");
+    assert.deepStrictEqual(["fill|https://b.example.net", "fill"].map((scope) => approvals.hasSessionApproval("t-1", API_KEY, scope)), [false, false]);
+    const onB = approvals.requestApproval(fill("https://b.example.net"));
+    await answerNext("once");
+    assert.strictEqual(await onB, "once");
+});
+
+test("jede Änderung an Hosts, Lesen/Schreiben, http, Git oder Eintrags-Origins beendet die Sitzungsfreigabe", async (t) => {
+    const window = openWindow(t, 1);
+    const pending = approvals.requestApproval(call({ item: API_KEY, tool: "vault_http", access: "read", scope: "read", target: "GET api.github.com/user" }));
+    await flush();
+    approvals.answerApproval(window.cards()[0].id, 1, "session");
+    await pending;
+    assert.strictEqual(approvals.hasSessionApproval("t-1", API_KEY, "read"), true);
+    const reordered = { ...API_KEY, fields: { ...API_KEY.fields, hosts: ["github.com", "api.github.com"] } };
+    assert.strictEqual(approvals.hasSessionApproval("t-1", reordered, "read"), true);
+
+    for (const change of [
+        { hosts: ["api.github.com", "evil.example.net"] }, { readOnly: true }, { allowHttp: true }, { git: false },
+        { gitUsername: "oauth2" }, { fillOrigins: ["https://a.example.net"] },
+    ]) {
+        const changed = { ...API_KEY, fields: { ...API_KEY.fields, ...change } };
+        assert.strictEqual(approvals.hasSessionApproval("t-1", changed, "read"), false, JSON.stringify(change));
+    }
+    assert.notStrictEqual(approvals.grantStamp({ ...API_KEY, updatedAt: "2026-10-10T08:05:00.000Z" }), approvals.grantStamp(API_KEY));
+});
+
+test("Git-Sitzung git:<keyId>: Freigaben bleiben, solange touchSession sie auffrischt, und enden 12 h nach dem letzten touchSession", async (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 1_000_000 });
+    const window = openWindow(t, 1);
+    const session = approvals.gitSessionId(5);
+    assert.strictEqual(session, "git:5");
+    const grant = async (transportId, tool, target) => {
+        if (transportId === session) approvals.touchSession(session);
+        const pending = approvals.requestApproval(call({ transportId, agentType: transportId === session ? "git" : "claude", item: API_KEY, tool, access: "read", scope: "read", target }));
+        await flush();
+        approvals.answerApproval(window.cards()[0].id, 1, "session");
+        await pending;
+    };
+    const gitRequest = () => {
+        approvals.touchSession(session);
+        return approvals.hasSessionApproval(session, API_KEY, "read");
+    };
+    await grant(session, "git", "Git · github.com/o/r");
+    await grant("t-1", "vault_http", "GET api.github.com/user");
+
+    t.mock.timers.tick(11 * HOUR);
+    assert.strictEqual(gitRequest(), true);
+    t.mock.timers.tick(12 * HOUR - 1);
+    assert.strictEqual(gitRequest(), true);
+    t.mock.timers.tick(12 * HOUR);
+    assert.strictEqual(gitRequest(), false);
+    assert.strictEqual(approvals.hasSessionApproval("t-1", API_KEY, "read"), true, "MCP transports do not expire here");
+
+    await grant(session, "git", "Git · github.com/o/r");
+    approvals.forgetSession(session);
+    assert.strictEqual(approvals.hasSessionApproval(session, API_KEY, "read"), false);
+});
+
+test("listOpenApprovals liefert Werkzeug, Art und Ziel jeder offenen Anfrage", async (t) => {
+    openWindow(t, 1);
+    const pending = approvals.requestApproval(call({ item: API_KEY, tool: "vault_http", access: "write", target: "POST api.github.com/repos/o/r/issues" }));
+    const [card] = approvals.listOpenApprovals(1);
+    assert.deepStrictEqual([card.tool, card.access, card.target], ["vault_http", "write", "POST api.github.com/repos/o/r/issues"]);
+    approvals.answerApproval(card.id, 1, "once");
+    await pending;
 });

@@ -14,7 +14,7 @@ const cidr = Joi.string().trim().max(64).custom((value, helpers) => {
 
 module.exports.createAgentKeysValidation = Joi.object({
     entryId: Joi.number().integer().positive().required(),
-    agentTypes: Joi.array().items(Joi.string().valid("claude", "codex")).min(1).unique().required(),
+    agentTypes: Joi.array().items(Joi.string().valid("claude", "codex", "git")).min(1).unique().required(),
     agentUrl: agentUrl.allow(null, ""),
     ipBinding: Joi.boolean(),
     allowedCidrs: Joi.array().items(cidr).max(16).unique().default([]),

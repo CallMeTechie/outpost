@@ -23,6 +23,19 @@ const ORG_API = {
     fields: { hosts: ["api.shop.test"], headerName: "Authorization", headerTemplate: "Bearer {{secret}}" }, approvalRequired: true, allServers: true,
 };
 
+const GIT_API = {
+    id: 43, accountId: 1, organizationId: null, name: "gh-token", type: "api_key", description: null,
+    fields: {
+        hosts: ["github.com"], headerName: "Authorization", headerTemplate: "Bearer {{secret}}",
+        readOnly: true, git: true, gitUsername: "x-access-token", fillOrigins: ["https://github.com"],
+    },
+    approvalRequired: true, allServers: true,
+};
+const NOTE = {
+    id: 44, accountId: 1, organizationId: null, name: "webhook-secret", type: "generic", description: null,
+    fields: {}, approvalRequired: false, allServers: true,
+};
+
 const fakePage = () => {
     const page = {
         nodes: new Map([
@@ -91,6 +104,7 @@ const fakeApprovals = () => {
             });
         },
         forgetTransport: () => {},
+        forgetSession: () => {},
     };
 };
 
@@ -120,12 +134,12 @@ const until = async (condition) => {
 
 const rpc = (id, method, params = {}) => ({ jsonrpc: "2.0", id, method, params });
 
-test("vault_list names every visible entry without a stored value; organization entries as org:<id>/<name>", async () => {
-    const { provider, ctx, text } = setup({ items: [LOGIN, ORG_API] });
+test("vault_list names every visible entry without a stored value; organization entries as org:<id>/<name>; usableBy follows type, git, fill origins and, for fillAnywhere on organization entries, reveal", async () => {
+    const { provider, ctx, text } = setup({ items: [LOGIN, ORG_API, GIT_API, NOTE] });
     const result = await provider.call("vault_list", {}, ctx());
 
     const serialized = JSON.stringify(result);
-    for (const value of [SECRET, "tok-123-secret"]) assert.ok(!serialized.includes(value), `vault_list leaks ${value}`);
+    for (const value of [SECRET, "tok-123-secret", "x-access-token"]) assert.ok(!serialized.includes(value), `vault_list leaks ${value}`);
     assert.strictEqual(bed.state.secretReads, 0, "vault_list never decrypts");
     assert.deepStrictEqual(JSON.parse(text(result)), [
         {
@@ -133,11 +147,27 @@ test("vault_list names every visible entry without a stored value; organization 
             origins: ["https://login.test"], approvalRequired: false, usableBy: ["browser_fill_credential"],
         },
         {
-            item: "org:3/shop-api", owner: "Shop GmbH", type: "api_key", description: "Shop API",
-            hosts: ["api.shop.test"], approvalRequired: true, usableBy: [],
+            item: "org:3/shop-api", owner: "Shop GmbH", type: "api_key", description: "Shop API", hosts: ["api.shop.test"],
+            readOnly: false, allowHttp: false, git: false, fillOrigins: [], approvalRequired: true, usableBy: ["vault_http"],
         },
+        {
+            item: "gh-token", owner: "personal", type: "api_key", description: null, hosts: ["github.com"],
+            readOnly: true, allowHttp: false, git: true, fillOrigins: ["https://github.com"], approvalRequired: true,
+            usableBy: ["vault_http", "git", "browser_fill_secret"],
+        },
+        { item: "webhook-secret", owner: "personal", type: "generic", description: null, fillOrigins: [], approvalRequired: false, usableBy: [] },
     ]);
+
+    bed.state.settings.fillAnywhere = true;
+    const anywhere = JSON.parse(text(await provider.call("vault_list", {}, ctx())));
+    assert.deepStrictEqual(anywhere.map((entry) => entry.usableBy), [
+        ["browser_fill_credential"], ["vault_http"], ["vault_http", "git", "browser_fill_secret"], ["browser_fill_secret"],
+    ], "with fillAnywhere every personal API key and other entry can be filled in the browser, an organization's only with reveal");
+    bed.state.permissions.add(Permission.VAULT_REVEAL);
+    const revealer = JSON.parse(text(await provider.call("vault_list", {}, ctx())));
+    assert.deepStrictEqual(revealer[1].usableBy, ["vault_http", "browser_fill_secret"]);
 });
+
 
 test("an approval answered after more than 90 s still fills: the wait runs outside runAgent and leaves the session free; an impersonated call always asks", async (t) => {
     t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
@@ -146,6 +176,7 @@ test("an approval answered after more than 90 s still fills: the wait runs outsi
     await until(() => env.approvals.open.length === 1);
     assert.strictEqual(env.session.agentTool, null, "nobody holds the session while the user decides");
     assert.strictEqual(env.approvals.open[0].request.target, "https://login.test");
+    assert.strictEqual(env.approvals.open[0].request.scope, "fill");
 
     const second = await env.provider.call(FILL, { item: "github", passwordRef: "e1" }, env.ctx("A"));
     assert.match(env.text(second), /\(vault\.approval_pending\)$/, "a second call meets the open approval, not a busy session");
@@ -187,6 +218,9 @@ test("after the approval every check runs again with the entry as it is now; a f
         ["the key of the connection is revoked", "vault.item_unknown", () => {
             bed.state.apiKeys.clear();
         }],
+        ["the password field moves to another origin", "vault.origin_mismatch", (env) => {
+            env.page.nodes.get(11).origin = "https://evil.test";
+        }],
     ];
     for (const [change, code, during] of cases) {
         const env = setup({ items: [{ ...LOGIN, approvalRequired: true }] });
@@ -199,13 +233,14 @@ test("after the approval every check runs again with the entry as it is now; a f
         assert.strictEqual(result.isError, true, change);
         assert.ok(env.text(result).endsWith(`(${code})`), `${change}: ${env.text(result)}`);
         assert.deepStrictEqual(env.typed(), [], change);
+        assert.strictEqual(bed.state.secretReads, 0, `${change}: the password is not decrypted before the field checks pass`);
         const denied = env.vaultAudit().find((entry) => entry.action === "vault.use_denied");
         assert.deepStrictEqual([denied.details.code, denied.details.stage, denied.details.target, denied.details.item],
             [code, "after_approval", "https://login.test", "github"], change);
     }
 });
 
-test("without connect.browser the MCP endpoint lists only vault_list and answers browser_fill_credential as an unknown tool", async () => {
+test("without connect.browser the MCP endpoint lists no browser tool and answers browser_fill_credential as an unknown tool", async () => {
     const env = setup({ permissions: [Permission.VAULT_USE] });
     const mcp = createMcpServer({ providers: [env.provider] });
     const init = await mcp.handle({
@@ -214,13 +249,13 @@ test("without connect.browser the MCP endpoint lists only vault_list and answers
     const transportId = init.headers["Mcp-Session-Id"];
     const names = async () => (await mcp.handle({ body: rpc(2, "tools/list"), transportId, accountId: 1 })).body.result.tools.map((tool) => tool.name);
 
-    assert.deepStrictEqual(await names(), ["vault_list"]);
+    assert.deepStrictEqual(await names(), ["vault_list", "vault_http"]);
     const called = await mcp.handle({ body: rpc(3, "tools/call", { name: FILL, arguments: { item: "github", passwordRef: "e1" } }), transportId, accountId: 1 });
     assert.strictEqual(called.body.error.code, -32602);
     assert.deepStrictEqual(env.typed(), []);
 
     bed.state.permissions.add(Permission.CONNECT_BROWSER);
-    assert.deepStrictEqual(await names(), ["vault_list", FILL]);
+    assert.deepStrictEqual(await names(), ["vault_list", "vault_http", FILL, "browser_fill_secret"]);
 });
 
 test("when the page keeps the focus on another element the fill stops with vault.focus_lost before Input.insertText", async (t) => {

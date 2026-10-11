@@ -34,6 +34,7 @@ const app = express();
 app.set("trust proxy", true);
 app.use(express.json());
 app.use("/api/mcp", authenticate, echo);
+app.use("/api/vault/git", authenticate, echo);
 app.get("/api/vault/agent-keys/probe", authenticate, (req, res) => res.json({ seenIp: req.ip }));
 app.use("/api/entries", authenticate, echo);
 app.get(REVEAL_PATH, authenticate, requireLoginSession, echo);
@@ -114,6 +115,22 @@ test("ein endgültiger Agenten-Key erreicht nur /api/mcp, nur bei laufendem Vaul
 
     const accountKey = await createApiKey(anna.id, { name: "cli" });
     assert.strictEqual((await call("GET", "/api/entries", accountKey.token)).status, 200);
+});
+
+test("ein Git-Key erreicht nur Pfade unter /api/vault/git/, ein Claude-Key dort nichts", async () => {
+    const GIT_REFS = "/api/vault/git/github.com/o/r.git/info/refs?service=git-upload-pack";
+    const git = await agentKey(servers.nas, { agentType: "git", name: "git@nas" });
+    const claude = await agentKey(servers.nas);
+    const gitOnly = { status: 403, body: { code: 403, message: "Git keys can only access the vault Git proxy" } };
+
+    assert.deepStrictEqual(await call("POST", "/api/mcp", git.token), gitOnly);
+    assert.deepStrictEqual(await call("GET", "/api/entries", git.token), gitOnly);
+    assert.deepStrictEqual(await call("GET", GIT_REFS, claude.token),
+        { status: 403, body: { code: 403, message: "Agent keys can only access the MCP endpoint" } });
+
+    const refs = await call("GET", GIT_REFS, git.token);
+    assert.deepStrictEqual([refs.status, refs.body.agent], [200, { keyId: git.id, entryId: servers.nas.id, agentType: "git" }]);
+    assert.strictEqual((await call("POST", "/api/vault/git/github.com/o/r.git/git-upload-pack", git.token)).status, 200);
 });
 
 test("ein pending-Key passiert nur probe, dort ohne IP-Bindung (Spec-Test 1, Einrichtung 1a)", async () => {

@@ -194,9 +194,28 @@ test("PATCH mit geändertem Ursprung löscht die gespeicherten Werte im selben V
     const { updatedAt } = await VaultItem.findByPk(item.id);
     assert.ok(typeof updatedAt === "string" && new Date(updatedAt) > new Date(STAMP), "a new value ends grants stamped with the old updatedAt");
 
+    for (const [type, secret, fields] of [
+        ["api_key", "token", { hosts: ["api.example.com"] }],
+        ["generic", "value", {}],
+    ]) {
+        const fillable = await post("/items", "s-owner", {
+            name: `fill-${type.replace("_", "-")}`, type,
+            fields: { ...fields, fillOrigins: ["https://app.example.com", "https://docs.example.com"] }, secrets: { [secret]: "tok-one" },
+        });
+        const reordered = await patch(`/items/${fillable.body.item.id}`, "s-owner", {
+            fields: { ...fields, fillOrigins: ["https://docs.example.com", "https://app.example.com"] },
+        });
+        assert.deepStrictEqual([reordered.body.secretsCleared, reordered.body.item.secretFields], [false, [secret]], type);
+        const redirected = await patch(`/items/${fillable.body.item.id}`, "s-owner", {
+            fields: { ...fields, fillOrigins: ["https://app.example.com", "https://attacker.example"] },
+        });
+        assert.deepStrictEqual([redirected.status, redirected.body.secretsCleared, redirected.body.item.secretFields], [200, true, []], type);
+        assert.strictEqual(await readSecret(fillable.body.item.id, secret), null, type);
+    }
+
     const list = await get("/items", "s-owner");
-    assert.deepStrictEqual(list.body.items.map((entry) => entry.ref).sort(), ["org:20/backup-db", "portal-login", "shop-login"]);
-    assert.doesNotMatch(list.text + JSON.stringify(audits), /pw-one|pw-two|pw-three|hunter2/);
+    assert.deepStrictEqual(list.body.items.map((entry) => entry.ref).sort(), ["fill-api-key", "fill-generic", "org:20/backup-db", "portal-login", "shop-login"]);
+    assert.doesNotMatch(list.text + JSON.stringify(audits), /pw-one|pw-two|pw-three|hunter2|tok-one/);
 });
 
 test("PATCH, dessen Speichern scheitert, verliert keine Werte: Name zwischen Prüfung und Schreiben vergeben, Ziel geändert → 409, Wert und Felder wie vorher", async (t) => {
@@ -223,13 +242,16 @@ test("PATCH, dessen Speichern scheitert, verliert keine Werte: Name zwischen Pr�
     assert.ok(!audits.some((entry) => entry.action === "vault.item_update"));
 });
 
-test("available meldet Schalter, Rechte, Agenten-Adresse, Standard der IP-Bindung, Impersonation und TRUST_PROXY=true; bei ausgeschaltetem Vault sind alle Rechte leer", async (t) => {
+test("Einstellungen speichern Agenten-Adresse, IP-Bindung und fillAnywhere; available meldet Schalter, Rechte, Agenten-Adresse, Standard der IP-Bindung, Impersonation und TRUST_PROXY=true; bei ausgeschaltetem Vault sind alle Rechte leer", async (t) => {
     const { get, patch } = await listen(t, { trustProxy: true });
 
     assert.strictEqual((await patch("/settings", "s-owner", { agentUrl: "https://outpost.example.com" })).status, 403);
     assert.deepStrictEqual((await patch("/settings", "s-revealer", { agentUrl: "https://outpost.example.com/", ipBindingDefault: false })).body,
-        { keyStatus: "active", agentUrl: "https://outpost.example.com", ipBindingDefault: false, trustProxyUnsafe: true });
+        { keyStatus: "active", agentUrl: "https://outpost.example.com", ipBindingDefault: false, fillAnywhere: false, trustProxyUnsafe: true });
     assert.strictEqual((await patch("/settings", "s-revealer", {})).status, 400);
+    assert.strictEqual((await patch("/settings", "s-revealer", { fillAnywhere: true })).body.fillAnywhere, true);
+    assert.deepStrictEqual((await get("/settings", "s-revealer")).body,
+        { keyStatus: "active", agentUrl: "https://outpost.example.com", ipBindingDefault: false, fillAnywhere: true, trustProxyUnsafe: true });
     const urlFields = { agentUrl: "https://outpost.example.com", ipBindingDefault: false };
 
     assert.deepStrictEqual((await get("/available", "s-imp")).body, {

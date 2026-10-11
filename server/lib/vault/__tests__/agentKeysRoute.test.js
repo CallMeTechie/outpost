@@ -18,7 +18,7 @@ const ACCOUNT_B = 2;
 const audits = [];
 const execs = [];
 const SERVER_IP = "198.51.100.7";
-const RESET = { cliFound: true, setupFails: false, registered: "ABSENT", revokeOutput: "REMOVED\n", probeFrom: SERVER_IP, auditFailsFor: null };
+const RESET = { cliFound: true, setupFails: false, registered: "ABSENT", revokeOutput: "REMOVED\n", probeFrom: SERVER_IP, probeExit: null, auditFailsFor: null };
 const dropped = {};
 const files = [];
 const state = { base: null, identityOf: {}, ...RESET };
@@ -75,6 +75,7 @@ fake("../../controlPlane/ControlPlaneServer", {
             return ok("");
         }
         if (command.includes("/api/vault/agent-keys/probe")) {
+            if (state.probeExit !== null) return { success: true, stdout: "", stderr: "", exitCode: state.probeExit };
             const token = dropped[/key-\d+-[0-9a-f]{16}/.exec(command)[0]];
             const res = await fetch(`${state.base}/api/vault/agent-keys/probe`, {
                 headers: { authorization: `Bearer ${token}`, ...(state.probeFrom ? { "x-forwarded-for": state.probeFrom } : {}) },
@@ -85,6 +86,7 @@ fake("../../controlPlane/ControlPlaneServer", {
             if (state.setupFails) throw new Error("exec timed out");
             return ok("OUTPOST_REPLACED=1\n");
         }
+        if (command.includes(".insteadOf")) return ok("OUTPOST_REPLACED=0\n");
         if (command.includes("echo FOREIGN")) return ok(state.revokeOutput);
         if (command.includes("MATCH|OTHER")) return ok(`${state.registered}\n`);
         if (command.includes("command -v")) return state.cliFound ? ok("/home/deploy/.local/bin/claude\n") : { success: true, stdout: "", stderr: "", exitCode: 1 };
@@ -98,6 +100,7 @@ const Session = require("../../../models/Session");
 const Entry = require("../../../models/Entry");
 const Identity = require("../../../models/Identity");
 const VaultSettings = require("../../../models/VaultSettings");
+const VaultItem = require("../../../models/VaultItem");
 const { createApiKey } = require("../../../controllers/apiKey");
 const { initVaultState } = require("../state");
 const { authenticate } = require("../../../middlewares/auth");
@@ -355,4 +358,66 @@ test("eine Adresse aus dem Dialog gilt für diesen Key; ohne Angabe gelten Stand
     const { body } = await call("GET", `/api/vault/agent-keys?entryId=${ENTRY_ID}`, tokens.a);
     assert.deepStrictEqual(body.keys.map((key) => [key.agentType, key.agentUrl]).sort(),
         [["claude", "https://gate.example.net/outpost"], ["codex", "https://outpost.example/"]]);
+});
+
+const gitItem = (accountId, name, fields, allServers = true) => VaultItem.create({
+    accountId, name, type: "api_key", fields: { headerName: "Authorization", headerTemplate: "Bearer {{secret}}", ...fields },
+    approvalRequired: true, allServers, createdBy: accountId,
+});
+
+test("Git: die Einrichtung legt git@web01 an und schreibt je Host des Servers eine insteadOf-Zeile; Entziehen nutzt dieselbe Adresse", async (t) => {
+    await listen(t);
+    t.after(() => VaultItem.destroy({ where: {} }));
+    await gitItem(ACCOUNT_B, "github", { hosts: ["GitHub.com", "git.example.net:8443", "fd00::1"], git: true });
+    await gitItem(ACCOUNT_B, "gitlab-api", { hosts: ["gitlab.example.com"], git: false });
+    await gitItem(ACCOUNT_B, "elsewhere", { hosts: ["code.example.org"], git: true }, false);
+
+    const [result] = (await setUp(tokens.b, { agentTypes: ["git"] })).body.results;
+
+    assert.deepStrictEqual([result.agentType, result.status, result.reason, result.hosts],
+        ["git", "configured", null, ["git.example.net:8443", "github.com"]]);
+    assert.strictEqual((await ApiKey.findByPk(result.id)).name, "git@web01");
+    const [setup] = execs.filter((exec) => exec.command.includes(".insteadOf"));
+    const base = "https://outpost.example/api/vault/git/";
+    for (const host of ["github.com", "git.example.net:8443"])
+        assert.ok(setup.command.includes(`url.${base}${host}/.insteadOf`) && setup.command.includes(`https://${host}/`), host);
+    assert.ok(!/gitlab\.example\.com|code\.example\.org|GitHub|fd00/.test(setup.command));
+    assert.ok(setup.command.includes(`printf '\\''[http "%s"]\\n\\textraHeader = "%s"\\n'\\'' '\\''${base}'\\''`),
+        "the header goes in with printf, not as an argument of git");
+    assert.ok(!setup.command.includes(keyFrom(execs[0].command)), "the key is read from the drop file");
+
+    execs.length = 0;
+    assert.deepStrictEqual((await call("DELETE", `/api/vault/agent-keys/${result.id}`, tokens.b)).body, { success: true, registration: "removed" });
+    assert.ok(execs[0].command.includes(`http.${base}.extraHeader`));
+});
+
+test("Git: ohne Eintrag mit „Für Git nutzen“ für diesen Server entsteht kein Key", async (t) => {
+    await listen(t);
+    t.after(() => VaultItem.destroy({ where: {} }));
+    await gitItem(ACCOUNT_A, "github", { hosts: ["github.com"], git: true });
+    await gitItem(ACCOUNT_B, "github-api", { hosts: ["api.github.com"], git: false });
+    await gitItem(ACCOUNT_B, "ipv6-only", { hosts: ["fd00::1"], git: true });
+
+    const { status, body } = await setUp(tokens.b, { agentTypes: ["git"] });
+
+    assert.strictEqual(status, 201);
+    assert.deepStrictEqual(body.results, [{
+        id: null, agentType: "git", remoteUser: "deploy", hosts: [], status: "manual", reason: "no_git_entries", probe: null, probeFailure: null, replacedRegistration: false,
+    }]);
+    assert.deepStrictEqual(execs, []);
+    assert.strictEqual(await ApiKey.count({ where: { agentType: "git" } }), 0);
+});
+
+// Account B: account A's per-account limiter is spent by the tests above.
+test("a probe that never reached Outpost is told apart from a server without curl or wget", async (t) => {
+    await listen(t);
+    const outcome = async (probeExit) => {
+        state.probeExit = probeExit;
+        const [result] = (await setUp(tokens.b)).body.results;
+        return { status: result.status, seenIp: result.probe?.seenIp ?? null, probeFailure: result.probeFailure };
+    };
+
+    assert.deepStrictEqual(await outcome(7), { status: "configured", seenIp: null, probeFailure: "unreachable" });
+    assert.deepStrictEqual(await outcome(127), { status: "configured", seenIp: null, probeFailure: "no_client" });
+    assert.deepStrictEqual(await outcome(null), { status: "configured", seenIp: SERVER_IP, probeFailure: null });
 });

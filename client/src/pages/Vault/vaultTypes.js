@@ -15,8 +15,11 @@ export const VAULT_TYPES = {
         defaults: { username: "", origins: "" },
     },
     api_key: {
-        labelKey: "vault.types.apiKey", icon: IconKeyRound, secrets: ["token"], targets: ["hosts"],
-        defaults: { hosts: "", headerName: "Authorization", headerTemplate: "Bearer {{secret}}" },
+        labelKey: "vault.types.apiKey", icon: IconKeyRound, secrets: ["token"], targets: ["hosts", "fillOrigins"],
+        defaults: {
+            hosts: "", headerName: "Authorization", headerTemplate: "Bearer {{secret}}",
+            readOnly: false, allowHttp: false, git: false, gitUsername: "x-access-token", fillOrigins: "",
+        },
     },
     ssh: {
         labelKey: "vault.types.ssh", icon: IconSquareTerminal, secrets: ["privateKey", "password", "passphrase"], targets: [],
@@ -26,12 +29,14 @@ export const VAULT_TYPES = {
         labelKey: "vault.types.database", icon: IconDatabase, secrets: ["password"], targets: ["host"],
         defaults: { engine: "postgres", host: "", port: "", database: "", username: "" },
     },
-    generic: { labelKey: "vault.types.other", icon: IconLock, secrets: ["value"], targets: [], defaults: {} },
+    generic: { labelKey: "vault.types.other", icon: IconLock, secrets: ["value"], targets: ["fillOrigins"], defaults: { fillOrigins: "" } },
 };
 
 export const TYPE_KEYS = Object.keys(VAULT_TYPES);
 
-const LIST_FIELDS = ["origins", "hosts"];
+export const USAGE_FIELDS = ["readOnly", "allowHttp", "git", "gitUsername", "fillOrigins"];
+
+const LIST_FIELDS = ["origins", "hosts", "fillOrigins"];
 
 // Mirrors the required fields of Task 5 (`FIELDS` in server/validations/vault.js); the server stays authoritative.
 const REQUIRED_FIELDS = {
@@ -53,18 +58,41 @@ export const missingFields = (type, payloadFields) => REQUIRED_FIELDS[type].filt
     return Array.isArray(value) ? value.length === 0 : value === undefined;
 });
 
-export const toFormFields = (type, fields = {}) => Object.fromEntries(
-    Object.entries({ ...VAULT_TYPES[type].defaults, ...fields })
-        .filter(([key]) => key in VAULT_TYPES[type].defaults)
-        .map(([key, value]) => [key, Array.isArray(value) ? value.join(", ") : value == null ? "" : String(value)]),
-);
+export const toFormFields = (type, fields = {}) => {
+    const { defaults } = VAULT_TYPES[type];
+    return Object.fromEntries(Object.entries({ ...defaults, ...fields })
+        .filter(([key]) => key in defaults)
+        .map(([key, value]) => {
+            if (typeof defaults[key] === "boolean") return [key, value === true];
+            return [key, Array.isArray(value) ? value.join(", ") : value == null ? "" : String(value)];
+        }));
+};
+
+const splitList = (value) => value.split(/[\s,]+/).filter(Boolean);
 
 export const toPayloadFields = (formFields) => Object.fromEntries(Object.entries(formFields).flatMap(([key, value]) => {
-    if (LIST_FIELDS.includes(key)) return [[key, value.split(/[\s,]+/).filter(Boolean)]];
+    if (typeof value === "boolean") return [[key, value]];
+    if (LIST_FIELDS.includes(key)) return [[key, splitList(value)]];
+    if (key === "gitUsername" && !formFields.git) return [];
     const trimmed = value.trim();
     if (!trimmed) return [];
     return [[key, key === "port" ? Number(trimmed) : trimmed]];
 }));
+
+const isOrigin = (value) => {
+    try {
+        const url = new URL(value);
+        return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password
+            && url.pathname === "/" && !url.search && !url.hash;
+    } catch {
+        return false;
+    }
+};
+
+export const usageProblems = (formFields) => ({
+    gitUsername: formFields.git === true && !formFields.gitUsername.trim(),
+    fillOrigins: typeof formFields.fillOrigins === "string" && splitList(formFields.fillOrigins).some((origin) => !isOrigin(origin)),
+});
 
 const hostOf = (origin) => {
     try {
