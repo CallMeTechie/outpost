@@ -40,9 +40,29 @@
   @media (max-width: breakpoints.$mobile)
     border-radius: tokens.$radius-lg tokens.$radius-lg 0 0
 
+  .vault-approval-head
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: tokens.$space-2
+
   h3
     margin: 0
     font: tokens.$type-heading
+
+  .vault-approval-write
+    display: inline-flex
+    align-items: center
+    gap: tokens.$space-1
+    padding: tokens.$space-1 tokens.$space-2
+    border-radius: tokens.$radius-sm
+    font: tokens.$type-caption
+    color: colors.$warning
+    background: colors.$warning-opacity
+
+    svg
+      width: 1em
+      height: 1em
 
   .vault-approval-who,
   .vault-approval-status
