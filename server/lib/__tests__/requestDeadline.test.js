@@ -22,7 +22,7 @@ app.post("/api/vault/git/cleared", (req, res, next) => {
 app.post("/api/vault/git/kept", drain);
 app.post("/api/vault/git/refused", (req, res) => res.status(401).json({ message: "no" }));
 app.post("/api/entries", drain);
-app.post("/api/slow", (req, res) => setTimeout(() => res.json({ ok: req.body.ok }), DEADLINE_MS * 2));
+app.post("/api/slow", (req, res) => setTimeout(() => res.end("ok"), DEADLINE_MS * 2));
 
 let server;
 
@@ -91,7 +91,7 @@ test("a body that has not arrived after the deadline ends with 408, also under /
     assert.deepStrictEqual(await post("/api/entries", trickle), { status: 408, connection: "close" });
     assert.deepStrictEqual(await post("/api/vault/git/kept", trickle), { status: 408, connection: "close" }, "the git prefix alone lifts nothing");
     assert.strictEqual((await post("/api/vault/git/cleared", trickle)).status, 200, "clearRequestDeadline lets the upload run past the deadline");
-    assert.strictEqual((await post("/api/slow", { body: JSON.stringify({ ok: true }), type: "application/json" })).status, 200,
+    assert.strictEqual((await post("/api/slow")).status, 200,
         "a complete body is not cut off while the route takes its time");
 
     const refused = await uploadUntilClosed("/api/vault/git/refused", { giveUpMs: DEADLINE_MS * 10 });
