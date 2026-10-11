@@ -77,6 +77,8 @@ const ownerNodes = (servers, owner) => (owner === "personal"
     ? (servers || []).filter((node) => node.type !== "organization")
     : (servers || []).find((node) => node.type === "organization" && node.id === owner)?.entries || []);
 
+const targetOf = (fields, field) => JSON.stringify([].concat(fields[field] ?? []).sort());
+
 // Mount with a fresh `key` per opening: the form is initialised from props once, not synced by an effect.
 export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwner, onSaved }) => {
     const { t } = useTranslation();
@@ -98,8 +100,7 @@ export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwn
     const isEdit = item !== null;
     const payloadFields = toPayloadFields(form.fields);
     const storedFields = item ? toPayloadFields(toFormFields(item.type, item.fields)) : {};
-    const targetChanged = isEdit && spec.targets.some((field) =>
-        JSON.stringify(payloadFields[field] ?? null) !== JSON.stringify(storedFields[field] ?? null));
+    const targetChanged = isEdit && spec.targets.some((field) => targetOf(payloadFields, field) !== targetOf(storedFields, field));
     const secretsMissing = isSecretMissing(form.type, secrets);
     const nameValid = NAME_PATTERN.test(form.name);
     const fieldsMissing = missingFields(form.type, payloadFields).length > 0;

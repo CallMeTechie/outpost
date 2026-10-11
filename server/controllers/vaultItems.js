@@ -21,11 +21,11 @@ const NOT_FOUND = { code: 404, message: "Vault entry not found" };
 const FORBIDDEN = { code: 403, message: "You are not allowed to do this with this vault entry" };
 const NAME_TAKEN = { code: 409, message: "A vault entry with this name already exists for this owner" };
 const APPROVAL_OFF_FORBIDDEN = { code: 403, message: "Turning off approvals requires a signed-in session" };
-const TARGET_FIELD = { login: "origins", api_key: "hosts", database: "host" };
+const TARGET_FIELDS = { login: ["origins"], api_key: ["hosts", "fillOrigins"], database: ["host"], generic: ["fillOrigins"] };
 const LABEL_MODELS = { entry: Entry, folder: Folder, tag: Tag };
 const ITEM_COLUMNS = ["name", "description", "fields", "approvalRequired", "allServers"];
 
-const targetOf = (type, fields) => JSON.stringify([].concat(fields?.[TARGET_FIELD[type]] ?? []).sort());
+const targetOf = (type, fields) => JSON.stringify((TARGET_FIELDS[type] ?? []).map((field) => [].concat(fields?.[field] ?? []).sort()));
 
 // SEC-TENANT-01: every lookup by id is scoped to the caller's own entries and active memberships.
 const findScopedItem = async (accountId, id) => {
