@@ -17,6 +17,7 @@ const machine = (name, overrides = {}) => ({
     name, algorithm: "ssh-ed25519", fingerprint: fp(name), accepts: () => true,
     run: (command) => ({ stdout: `${name}: ${command}`, stderr: "", exitCode: 0, timedOut: false }),
     home: `/home/${name}`, files: new Map(), writable: () => true, setsMode: () => true,
+    writeBegin: () => new Promise((resolve) => setImmediate(resolve)),
     ...overrides,
 });
 const pinKeyOf = (itemId, ref) => `${itemId} ${ref}`;
@@ -79,6 +80,7 @@ class FakeSftpClient {
     }
 
     async writeFile(path, source, { exclusive = false, finalMode = 0 } = {}) {
+        await this.machine.writeBegin(path);
         if (exclusive && this.machine.files.has(path)) throw Object.assign(new Error("Already exists"), { notOpened: true });
         if (!this.machine.writable(path)) throw Object.assign(new Error("Permission denied"), { notOpened: true });
         const real = exclusive ? path : this.follow(path);
@@ -87,7 +89,14 @@ class FakeSftpClient {
         file.data = Buffer.alloc(0);
         const chunks = [];
         if (Buffer.isBuffer(source)) chunks.push(source);
-        else for await (const chunk of source) chunks.push(chunk);
+        else {
+            if (source.destroyed) throw source.errored ?? new Error("Source closed");
+            await new Promise((resolve, reject) => {
+                source.on("data", (chunk) => chunks.push(chunk));
+                source.on("end", resolve);
+                source.on("error", reject);
+            });
+        }
         file.data = Buffer.concat(chunks);
         const modeSet = !finalMode || this.machine.setsMode(path);
         if (finalMode && modeSet) file.mode = (file.mode & TYPE_MASK) | (finalMode & 0o777);

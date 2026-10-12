@@ -119,7 +119,7 @@ const openAgentServerSession = async (ctx, { signal = null } = {}) => {
     const key = await ApiKey.findByPk(ctx.keyId);
     if (!key || key.entryId !== ctx.agent.entryId || !key.identityId || !key.remoteUser) throw noServer();
     const entry = await Entry.findByPk(key.entryId);
-    if (!entry?.config?.ip || !(await validateEntryAccess(ctx.accountId, entry)).valid) throw noServer();
+    if (entry?.type !== "server" || !entry.config?.ip || !(await validateEntryAccess(ctx.accountId, entry)).valid) throw noServer();
     const { host, port, params } = await resolveFileTransferContext(entry, key.identityId, null, ctx.accountId)
         .catch(() => { throw noServer(); });
     if (params.username !== key.remoteUser) throw noServer();

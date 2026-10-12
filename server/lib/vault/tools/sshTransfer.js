@@ -92,25 +92,24 @@ const copy = async ({ from, to, sourcePath, targetPath, mode, overwrite, signal,
                 done(bytes > FILE_LIMIT ? withPath(VaultErrorCode.FILE_TOO_LARGE, names.source) : null, chunk);
             },
         });
+        // writeFile listens to its source only once WriteBegin is answered; an error before that would be uncaught.
+        counted.on("error", () => {});
         const stop = () => counted.destroy(new VaultError(VaultErrorCode.CLIENT_GONE));
         signal?.addEventListener("abort", stop, { once: true });
         read.stream.on("error", (err) => counted.destroy(fileFailure(err, names.source)));
+        // Only the write's own outcome tells whether this call created the temp file, so it is awaited even when the read fails first.
         try {
-            await Promise.all([
-                to.writeFile(temp, read.stream.pipe(counted), { exclusive: true, finalMode: (existing ?? { mode }).mode & 0o777 })
-                    .catch((err) => {
-                        if (err?.message === MODE_NOT_SET) {
-                            modeSet = false;
-                            return;
-                        }
-                        if (err?.notOpened) keepTemp = true;
-                        throw fileFailure(err, names.target);
-                    }),
-                read.done.catch((err) => { throw fileFailure(err, names.source); }),
-            ]);
+            await to.writeFile(temp, read.stream.pipe(counted), { exclusive: true, finalMode: (existing ?? { mode }).mode & 0o777 });
+        } catch (err) {
+            if (err?.message !== MODE_NOT_SET) {
+                keepTemp = err?.notOpened === true;
+                throw fileFailure(err, names.target);
+            }
+            modeSet = false;
         } finally {
             signal?.removeEventListener("abort", stop);
         }
+        await read.done.catch((err) => { throw fileFailure(err, names.source); });
         if (signal?.aborted) throw new VaultError(VaultErrorCode.CLIENT_GONE);
         try {
             await to.rename(temp, targetPath);

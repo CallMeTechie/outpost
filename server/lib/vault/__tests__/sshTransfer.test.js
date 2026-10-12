@@ -156,7 +156,7 @@ test("ssh_get logs in at the target only after the approval: the card names the 
     assert.strictEqual(env.appmonster.files.has("/home/ma/logs/dir"), false);
 });
 
-test("a transfer that passes 100 MB or whose call ends stops and deletes its temp file", async (t) => {
+test("a transfer that passes 100 MB, whose call ends, even before its temp file is open, or whose source cannot be read stops, deletes only a temp file it created and closes its sessions", async (t) => {
     const env = setup(t);
     const MIB = Buffer.alloc(1024 * 1024);
     env.web02.files.set("/var/log/huge.log", {
@@ -177,10 +177,42 @@ test("a transfer that passes 100 MB or whose call ends stops and deletes its tem
         },
     });
     const live = env.call("ssh_get", { remotePath: "/var/log/live.log", localPath: "/home/ma/live.log" }, { signal: controller.signal });
-    await until(() => ssh.world.reads.some(([, path]) => path === "/var/log/live.log"));
+    await until(() => env.appmonster.files.size === 1);
     controller.abort();
     assert.ok(env.text(await live).endsWith("(vault.client_gone)"));
     assert.deepStrictEqual([...env.appmonster.files.keys()], []);
+
+    let answerWriteBegin = null;
+    const writeBegin = env.appmonster.writeBegin;
+    env.appmonster.writeBegin = () => new Promise((resolve) => { answerWriteBegin = resolve; });
+    const early = new AbortController();
+    const beforeOpen = env.call("ssh_get", { remotePath: "/var/log/live.log", localPath: "/home/ma/early.log" }, { signal: early.signal });
+    await until(() => answerWriteBegin !== null);
+    early.abort();
+    await new Promise((resolve) => setImmediate(resolve));
+    answerWriteBegin();
+    env.appmonster.writeBegin = writeBegin;
+    assert.ok(env.text(await beforeOpen).endsWith("(vault.client_gone)"));
+    assert.deepStrictEqual([...env.appmonster.files.keys()], []);
+
+    env.web02.files.set("/var/log/secret.log", {
+        ...file("secret", 0o100600),
+        stream: () => {
+            const stream = new PassThrough();
+            process.nextTick(() => stream.destroy(new Error("Permission denied")));
+            return stream;
+        },
+    });
+    const unreadable = { remotePath: "/var/log/secret.log", localPath: "/home/ma/secret.log" };
+    assert.strictEqual(env.text(await env.call("ssh_get", unreadable)), "/var/log/secret.log: permission denied; nothing was copied. (vault.ssh_failed)");
+    assert.deepStrictEqual([...env.appmonster.files.keys()], []);
+
+    t.mock.method(crypto, "randomBytes", () => Buffer.alloc(4));
+    env.appmonster.files.set("/home/ma/secret.log.outpost-00000000.tmp", file("not ours", 0o100644));
+    assert.strictEqual(env.text(await env.call("ssh_get", unreadable)), "/home/ma/secret.log: already exists; nothing was copied. (vault.ssh_failed)");
+    assert.deepStrictEqual([...env.appmonster.files.keys()], ["/home/ma/secret.log.outpost-00000000.tmp"]);
+    const sessions = ssh.world.opened.filter(({ options }) => !options.probeHostKey).map(({ sessionId }) => sessionId);
+    assert.deepStrictEqual(sessions.filter((id) => !ssh.world.closed.includes(id)), [], "every session is closed again");
 });
 
 test("file transfer needs an agent key on a server whose identity is its remote user; vault_list names ssh_put and ssh_get only then", async (t) => {
