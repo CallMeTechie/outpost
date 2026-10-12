@@ -57,6 +57,19 @@ const resolveHome = async (session, path, signal) => {
     return `${home.replace(/\/+$/, "")}/${path.slice(2)}`;
 };
 
+// Only while opening: a session that follows the signal itself would close under copy, which still has to delete its temp file.
+const openUntilAbort = async (signal, openWith) => {
+    const opening = new AbortController();
+    const stop = () => opening.abort();
+    if (signal?.aborted) stop();
+    else signal?.addEventListener("abort", stop, { once: true });
+    try {
+        return await openWith(opening.signal);
+    } finally {
+        signal?.removeEventListener("abort", stop);
+    }
+};
+
 const statOrNull = (client, path) => client.stat(path, { owner: false }).catch(() => null);
 const isRegular = (stat) => (stat.mode & TYPE_MASK) === REGULAR;
 
@@ -156,12 +169,12 @@ const putHandler = async (args, ctx, deps) => {
         },
         card: () => ({ file: { from: args.localPath, to: args.remotePath, bytes: size } }),
         act: async ({ open }) => {
-            const agent = await openAgentServerSession(ctx);
+            const agent = await openUntilAbort(ctx.signal, (signal) => openAgentServerSession(ctx, { signal }));
             let target = null;
             try {
                 const sourcePath = await resolveHome(agent, args.localPath, ctx.signal);
                 const source = assertSource(await statOrNull(agent.client, sourcePath), args.localPath);
-                target = await open();
+                target = await openUntilAbort(ctx.signal, (signal) => open({ signal }));
                 const targetPath = await resolveHome(target, args.remotePath, ctx.signal);
                 const copied = await copy({
                     from: agent.client, to: target.client, sourcePath, targetPath, mode: source.mode, overwrite, signal: ctx.signal,
@@ -194,12 +207,12 @@ const getHandler = async (args, ctx, deps) => {
         },
         card: () => ({ file: { from: args.remotePath, to: args.localPath, bytes: null } }),
         act: async ({ open }) => {
-            const target = await open();
+            const target = await openUntilAbort(ctx.signal, (signal) => open({ signal }));
             let agent = null;
             try {
                 const sourcePath = await resolveHome(target, args.remotePath, ctx.signal);
                 const source = assertSource(await statOrNull(target.client, sourcePath), args.remotePath);
-                agent = await openAgentServerSession(ctx);
+                agent = await openUntilAbort(ctx.signal, (signal) => openAgentServerSession(ctx, { signal }));
                 const targetPath = await resolveHome(agent, args.localPath, ctx.signal);
                 const copied = await copy({
                     from: target.client, to: agent.client, sourcePath, targetPath, mode: source.mode, overwrite, signal: ctx.signal,
