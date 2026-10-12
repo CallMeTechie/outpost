@@ -34,7 +34,7 @@ const setup = () => {
             return "sent";
         },
     });
-    return { open, audit, acted, use };
+    return { open, audit, acted, use, broker, ctx };
 };
 
 const assertNothingDone = (env, code) => {
@@ -66,4 +66,45 @@ test("the key of the caller is revoked while the approval is open: vault.item_un
 
     await assert.rejects(pending, { code: VaultErrorCode.ITEM_UNKNOWN });
     assertNothingDone(env, VaultErrorCode.ITEM_UNKNOWN);
+});
+
+test("forceApproval asks even where the entry needs no approval; like scope and card it is read after check(before), and the request skips session grants", async () => {
+    const env = setup();
+    bed.state.items[0].approvalRequired = false;
+    const probe = { fingerprint: null };
+    const run = (forceApproval) => env.broker.use({
+        ctx: env.ctx, itemRef: "github-api", tool: "ssh_exec", access: "exec", lazySecret: true,
+        check: (item, { phase }) => {
+            if (phase === "before") probe.fingerprint = "SHA256:probed";
+        },
+        scope: () => `exec#server:12#${probe.fingerprint}`,
+        forceApproval,
+        card: () => ({ hostKey: { fingerprint: probe.fingerprint, new: true } }),
+        act: () => "ran",
+    });
+
+    const forced = run(() => probe.fingerprint !== null);
+    await until(() => env.open.length === 1);
+    const { request } = env.open[0];
+    assert.deepStrictEqual([request.scope, request.card, request.skipSessionGrant],
+        ["exec#server:12#SHA256:probed", { hostKey: { fingerprint: "SHA256:probed", new: true } }, true]);
+    env.open[0].answer("once");
+    assert.strictEqual((await forced).result, "ran");
+
+    assert.strictEqual((await run(false)).result, "ran");
+    assert.strictEqual(env.open.length, 1, "without forceApproval the entry's switch decides");
+});
+
+test("username or allowSession change while the approval is open: vault.approval_stale, the value is never read and act never runs", async () => {
+    for (const change of [{ username: "root" }, { allowSession: true }]) {
+        const env = setup();
+        bed.state.items[0].fields = { ...API.fields, username: "deploy", servers: [12], allowSession: false };
+        const pending = env.use();
+        await until(() => env.open.length === 1);
+        bed.state.items[0].fields = { ...bed.state.items[0].fields, ...change };
+        env.open[0].answer("once");
+
+        await assert.rejects(pending, { code: VaultErrorCode.APPROVAL_STALE }, JSON.stringify(change));
+        assertNothingDone(env, VaultErrorCode.APPROVAL_STALE);
+    }
 });
