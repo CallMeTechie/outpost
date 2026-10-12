@@ -167,7 +167,7 @@ test("a server entry moved to another machine: the engine refuses the pinned key
     assert.ok(env.text(await env.exec({ command: "id" })).endsWith("(vault.host_key_changed)"), "a failing audit does not hide the mismatch");
 });
 
-test("a target removed while the card is open ends with vault.approval_stale; nothing logs in and no secret is read", async (t) => {
+test("a target removed or a key forgotten while the card is open ends with vault.approval_stale; nothing logs in and no secret is read", async (t) => {
     const env = setup(t, { item: { approvalRequired: true }, pinned: [WEB02_KEY] });
     const pending = env.exec({ command: "uptime" });
     await until(() => env.cards().length === 1);
@@ -176,6 +176,14 @@ test("a target removed while the card is open ends with vault.approval_stale; no
 
     assert.ok(env.text(await pending).endsWith("(vault.approval_stale)"));
     assert.deepStrictEqual([ssh.world.logins, bed.state.secretReads], [[], 0]);
+
+    bed.state.items[0].fields = { ...bed.state.items[0].fields, servers: [12] };
+    const forgotten = env.exec({ command: "uptime" });
+    await until(() => env.cards().length === 1);
+    ssh.forget(61, "server:12");
+    env.answer("once");
+    assert.ok(env.text(await forgotten).endsWith("(vault.approval_stale)"));
+    assert.deepStrictEqual([ssh.world.logins, bed.state.secretReads, ssh.pinned(61, "server:12")], [[], 0, null]);
 });
 
 test("refusals come before any card, connection or secret: wrong type, no targets, foreign target, bad command or timeout, missing rights, no engine", async (t) => {
@@ -276,6 +284,7 @@ test("per key at most 2 runs at a time and 30 calls a minute: the third run is v
 
     ssh.world.machines.set("nas.lan:2222", ssh.machine("nas", { accepts: () => false }));
     assert.match(env.text(await env.exec({ target: "host:nas.lan:2222", command: "uptime" })), /\(login refused\).*\(vault\.ssh_failed\)$/s);
+    assert.ok(ssh.world.closed.includes(ssh.world.opened.at(-1).sessionId), "the refused session is closed");
     web02.run = (command) => ({ stdout: command, stderr: "", exitCode: 0, timedOut: false });
     for (let call = 5; call <= 30; call++) assert.ok(!(await env.exec({ command: "uptime" })).isError, `call ${call}`);
 
