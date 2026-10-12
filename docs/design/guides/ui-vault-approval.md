@@ -1,6 +1,6 @@
 # Freigabe-Karte — Umsetzungsanleitung (UI-VAULT-APPROVAL)
 
-Artboard: docs/design/mockups/ui-vault-approval.html · Manifest-Revision: 21
+Artboard: docs/design/mockups/ui-vault-approval.html · Manifest-Revision: 22
 
 Den Screen gibt es nicht. Neu: eine seitenübergreifende Karte, die offene Freigabe-Anfragen aus dem
 Zustandsstrom rendert und per `POST /api/vault/approvals/:id` beantwortet. Kein Toast, kein Dialog:
@@ -57,7 +57,7 @@ Zustandsstrom rendert und per `POST /api/vault/approvals/:id` beantwortet. Kein 
 - Abzeichen in der Kopfzeile wie `-WRITE`, aber `--error` auf `--error-opacity`, Icon `SquareTerminal`. Nur bei `tool === "ssh_exec"` (`access: "exec"`); nie zusammen mit „schreibt“.
 
 ### UI-VAULT-APPROVAL-COMMAND — Befehl (neu in Rev. 20)
-- `<pre>` in `--type-mono` auf `--terminal`, `white-space: pre-wrap`, `overflow-wrap: anywhere`. Der Text kommt unverändert aus der Anfrage (kein Kürzen, kein Markup). Ab 20 Zeilen auf 20 Zeilen begrenzt mit Knopf „Ganz anzeigen (n Zeilen)“; ausgeklappt scrollt der Block (max. 40vh), die Knöpfe der Karte bleiben sichtbar.
+- `<pre>` in `--type-mono` auf `--terminal`, `white-space: pre-wrap`, `overflow-wrap: anywhere`. Der Text kommt unverändert aus der Anfrage (kein Kürzen, kein Markup). Über 20 Zeilen oder 1200 Zeichen auf die ersten 20 Zeilen (höchstens 1200 Zeichen) begrenzt mit Knopf „Ganz anzeigen (n Zeilen)“ bzw. „Ganz anzeigen (n Zeichen)“; der `pre` scrollt immer ab 40vh, `.vault-approval-stack` bekommt eine `max-height` und scrollt; bis dahin sind „Einmal“ und „Für diese Sitzung“ `disabled` mit dem Hinweis „Zum Freigeben erst ganz anzeigen.“ (Rev. 22), „Ablehnen“ geht immer. Ausgeklappt scrollt der Block (max. 40vh), die Knöpfe der Karte bleiben sichtbar.
 
 ### UI-VAULT-APPROVAL-HOSTKEY — Neues Ziel (neu in Rev. 20)
 - Kasten über dem Befehl, Warnrand links, `--warning-opacity`; „Neues Ziel — <Algorithmus> <SHA256:…>. Mit ssh-keyscan oder an der Konsole vergleichen.“ Fingerabdruck in `--type-mono`, vollständig (nicht gekürzt). Nur wenn die Anfrage `hostKey.new === true` trägt.

@@ -434,7 +434,8 @@ echo "Fertig"</pre><span class="cmd-more">Ganz anzeigen (42 Zeilen)</span></div>
 		<div class="demo-card">
 			<div class="cap">empty — nicht sichtbar außer bei ssh_exec</div>
 			<div class="body" style="justify-content:flex-end">
-				<section data-ui-state="empty">
+				<section class="state" data-ui-state="disabled"><div class="cmd-note" style="font:var(--type-caption);color:var(--subtext)">Zum Freigeben erst ganz anzeigen.</div><div style="display:flex;gap:var(--space-2);margin-top:var(--space-2)"><button class="btn primary" type="button" disabled>Einmal</button><button class="btn" type="button" disabled>Für diese Sitzung</button><button class="btn" type="button">Ablehnen</button></div></section>
+					<section data-ui-state="empty">
 				<div class="approval-card">
 <div class="head"><h3>Freigabe angefordert</h3><span class="write-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/></svg>schreibt</span></div><div class="who">Claude Code auf appmonster</div><div class="target">deploy-nas</div><div class="tool">Datei hochladen · nas · admin@nas.example.net:2222</div>
 				</div>

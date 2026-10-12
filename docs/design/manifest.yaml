@@ -1,6 +1,6 @@
 schema: mockingbird/1
 project: outpost
-revision: 21
+revision: 22
 updated: 2026-10-11
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
@@ -85,6 +85,10 @@ changelog:
     date: 2026-10-11
     summary: Nachzug aus dem Spec-Review 2b — SSH folgt „Freigabe erforderlich“ wie die anderen Typen (ein neues Ziel fragt immer); freie Hosts nur mit dem Recht „Direkt verbinden“; „Datei holen“ zeigt die Größe erst nach der Freigabe
     touched: [UI-VAULT-DIALOG-SSH-SESSION, UI-VAULT-DIALOG-SSH-HOSTS, UI-VAULT-APPROVAL-CARD]
+  - rev: 22
+    date: 2026-10-12
+    summary: Nachzug aus dem Plan-Review 2b — langer Befehl (über 20 Zeilen oder 1200 Zeichen) erst ganz anzeigen, dann freigeben; Server-Ziele über die vorhandene Mehrfachauswahl
+    touched: [UI-VAULT-APPROVAL-COMMAND, UI-VAULT-DIALOG-SSH-SERVERS]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -1411,7 +1415,8 @@ screens:
         semantic_anchor:
           means: >
             Server aus Outposts Serverliste, auf denen ssh_exec, ssh_put und ssh_get mit diesem Benutzer und
-            Geheimnis arbeiten dürfen. Host, Port, Jump-Hosts und Engine kommen vom Server-Eintrag, dessen
+            Geheimnis arbeiten dürfen; gewählt über die vorhandene durchsuchbare Mehrfachauswahl wie bei „Gilt für“,
+            Einträge als „Name · IP“. Host, Port, Jump-Hosts und Engine kommen vom Server-Eintrag, dessen
             Identität wird nicht benutzt. Nur SSH-Server; bei Organisations-Einträgen nur Server derselben
             Organisation. Nicht „Gilt für“: das sagt, von welchem Server aus ein Agent den Eintrag nutzt.
           concept: ssh_target_server
@@ -1942,14 +1947,17 @@ screens:
         semantic_anchor:
           means: >
             Der vollständige Befehl einer ssh_exec-Anfrage in Monospace, so wie er auf dem Ziel läuft — nichts
-            gekürzt oder umformuliert. Ab 20 Zeilen eingeklappt mit „Ganz anzeigen (n Zeilen)“; die Karte
-            bleibt dabei bedienbar.
+            gekürzt oder umformuliert. Über 20 Zeilen oder 1200 Zeichen eingeklappt (die ersten 20 Zeilen, höchstens
+            1200 Zeichen sichtbar) mit „Ganz anzeigen (n Zeilen)“ bzw. „Ganz anzeigen (n Zeichen)“; der Block scrollt ab
+            40vh, der Kartenstapel ab Bildschirmhöhe; bis dahin sind „Einmal“ und „Für diese Sitzung“ gesperrt, „Ablehnen“ geht immer — sonst
+            ließe sich der entscheidende Teil hinter 20 harmlose Zeilen legen.
           concept: ssh_command
           not: [audit_log, terminal]
           example: "docker compose -f /srv/app/compose.yml ps"
         states:
           - { id: default, copy: "docker compose -f /srv/app/compose.yml ps" }
           - { id: partial, copy: "Ganz anzeigen (42 Zeilen)" }
+          - { id: disabled, copy: "Zum Freigeben erst ganz anzeigen." }
           - { id: empty, copy: "nicht sichtbar außer bei ssh_exec" }
         locators:
           web: "[data-ui-id='UI-VAULT-APPROVAL-COMMAND']"

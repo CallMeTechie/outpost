@@ -1,6 +1,6 @@
 # Eintrag anlegen / bearbeiten — Umsetzungsanleitung (UI-VAULT-DIALOG)
 
-Artboard: docs/design/mockups/ui-vault-dialog.html · Manifest-Revision: 21
+Artboard: docs/design/mockups/ui-vault-dialog.html · Manifest-Revision: 22
 
 Neuer Dialog, im Client gibt es noch keine Vault-Seite. Er folgt dem Muster von `SnippetDialog` (ein Formular, `DialogProvider`, Toast bei Fehlern). Nicht neu gebaut: Dialog-Rahmen, Eingabefelder, Auswahl, Schalter, Chips, Ordner- und Tag-Laden.
 
@@ -82,7 +82,7 @@ Neuer Dialog, im Client gibt es noch keine Vault-Seite. Er folgt dem Muster von 
 
 ### UI-VAULT-DIALOG-SSH-SERVERS — Ziele aus der Serverliste (neu in Rev. 20)
 - `data-ui-id` am Wrapper (Label, Chips, „+ Server“). Nur bei Typ `ssh`, in „Nutzung durch Agenten“ unter Benutzer und Geheimnissen.
-- Chips je Server mit Name und Host (`--type-mono`, `--subtext`); „+ Server“ öffnet eine durchsuchbare Liste der SSH-Server aus `ServerContext`, die der Bearbeiter sieht. Bei Organisations-Einträgen nur Server derselben Organisation (wie „Gilt für“). Gespeichert als `fields.servers` (Entry-IDs).
+- Rev. 22: die vorhandene `SelectBox` (`multiple`, `searchable`) wie bei „Gilt für“, Optionen „<Name> · <IP>“ aus den SSH-Servern in `ServerContext`, die der Bearbeiter sieht; kein eigener Chip-Picker. Bei Organisations-Einträgen nur Server derselben Organisation (wie „Gilt für“). Gespeichert als `fields.servers` (Entry-IDs).
 - Nicht verwechseln mit „Gilt für“ (`UI-VAULT-DIALOG-SCOPE`): das bleibt die Bindung an den Server des Agenten.
 - Zieländerung beim Bearbeiten: Hinweis wie bei API-Key (`vault.dialog.secretCleared`), Geheimnisse müssen neu eingegeben werden.
 
