@@ -47,10 +47,22 @@ const VaultErrorCode = Object.freeze({
     GIT_NO_OPERATION: "vault.git_no_operation",
     UPSTREAM_REFUSED: "vault.upstream_refused",
     SECRET_TOO_SHORT: "vault.secret_too_short",
+    NO_TARGETS: "vault.no_targets",
+    TARGET_NOT_ALLOWED: "vault.target_not_allowed",
+    TARGET_UNAVAILABLE: "vault.target_unavailable",
+    BAD_COMMAND: "vault.bad_command",
+    BAD_TIMEOUT: "vault.bad_timeout",
+    BAD_PATH: "vault.bad_path",
+    NOT_A_FILE: "vault.not_a_file",
+    FILE_TOO_LARGE: "vault.file_too_large",
+    FILE_EXISTS: "vault.file_exists",
+    NO_AGENT_SERVER: "vault.no_agent_server",
+    HOST_KEY_CHANGED: "vault.host_key_changed",
+    SSH_FAILED: "vault.ssh_failed",
 });
 
 const C = VaultErrorCode;
-// <kind>, <host> and <entries> are placeholders: callers pass the message with them replaced.
+// <kind>, <host>, <entries>, <target>, <path>, <alt> and <neu> are placeholders: callers pass the message with them replaced.
 const VaultErrorMessage = Object.freeze({
     [C.ITEM_UNKNOWN]: "This vault item does not exist or is not available on this server. Call vault_list to see the items you can use here.",
     [C.WRONG_TYPE]: "This vault entry cannot be used with this tool, so nothing was done. Call vault_list and pick an entry whose usableBy lists the tool.",
@@ -91,6 +103,18 @@ const VaultErrorMessage = Object.freeze({
     [C.GIT_NO_OPERATION]: "This request does not belong to a running git operation; run the git command again.",
     [C.UPSTREAM_REFUSED]: "The token was refused by <host>; ask the user to check the entry.",
     [C.SECRET_TOO_SHORT]: "The token of this entry is shorter than 4 characters; ask the user to replace it in Outpost.",
+    [C.NO_TARGETS]: "This SSH entry has no targets; ask the user to add a server or host in Outpost.",
+    [C.TARGET_NOT_ALLOWED]: "This target is not one of the entry's targets (vault_list shows them).",
+    [C.TARGET_UNAVAILABLE]: "This server is no longer available to you in Outpost; nothing was done.",
+    [C.BAD_COMMAND]: "command must be a non-empty string of at most 8 KB, without control or bidi characters.",
+    [C.BAD_TIMEOUT]: "timeoutSec must be a whole number from 1 to 600.",
+    [C.BAD_PATH]: "Paths must be absolute or start with ~/, at most 4 KB, on one line, without control characters.",
+    [C.NOT_A_FILE]: "<path> is not a regular file.",
+    [C.FILE_TOO_LARGE]: "<path> is larger than 100 MB.",
+    [C.FILE_EXISTS]: "<path> exists; pass overwrite: true to replace it.",
+    [C.NO_AGENT_SERVER]: "File transfer needs an agent key set up on a server; this connection has none.",
+    [C.HOST_KEY_CHANGED]: "The host key of <target> changed (expected <alt>, got <neu>); nothing was sent. Ask the user to check the server and forget the old key in Outpost.",
+    [C.SSH_FAILED]: "The SSH connection to <target> failed (<kind>); nothing was done.",
 });
 
 module.exports = { VaultError, VaultErrorCode, VaultErrorMessage };

@@ -6,11 +6,16 @@ const Organization = require("../models/Organization");
 const Entry = require("../models/Entry");
 const Folder = require("../models/Folder");
 const Tag = require("../models/Tag");
+const Account = require("../models/Account");
+const VaultSshHostKey = require("../models/VaultSshHostKey");
+const { hasAccountPermission } = require("../utils/permission");
+const { Permission } = require("../permissions/registry");
 const { createAuditLog, AUDIT_ACTIONS, RESOURCE_TYPES } = require("./audit");
 const {
     itemRef, activeOrganizationIds, ownedItems, canManageItem, canRevealItem, canCreateFor,
 } = require("../lib/vault/visibility");
 const { validateBindings, setBindings } = require("../lib/vault/bindings");
+const { targetRefsOf, parseTargetRef, usableSshServer, pinnedKey, forgetKey, dropKeysExcept } = require("../lib/vault/sshTargets");
 const { readSecret, writeSecret, clearSecrets, isUnreadable } = require("../lib/vault/secrets");
 const { VaultError, VaultErrorCode } = require("../lib/vault/errors");
 const { SECRET_FIELDS, updateVaultItemSchema } = require("../validations/vault");
@@ -21,7 +26,12 @@ const NOT_FOUND = { code: 404, message: "Vault entry not found" };
 const FORBIDDEN = { code: 403, message: "You are not allowed to do this with this vault entry" };
 const NAME_TAKEN = { code: 409, message: "A vault entry with this name already exists for this owner" };
 const APPROVAL_OFF_FORBIDDEN = { code: 403, message: "Turning off approvals requires a signed-in session" };
-const TARGET_FIELDS = { login: ["origins"], api_key: ["hosts", "fillOrigins"], database: ["host"], generic: ["fillOrigins"] };
+const SESSION_ON_FORBIDDEN = { code: 403, message: "Allowing approvals for a whole session requires a signed-in session" };
+const HOST_KEY_NOT_FOUND = { code: 404, message: "No host key is stored for this target" };
+const FREE_HOSTS_FORBIDDEN = { code: 400, message: "Free hosts need the permission to connect without an entry" };
+const TARGET_FIELDS = {
+    login: ["origins"], api_key: ["hosts", "fillOrigins"], ssh: ["servers", "hosts"], database: ["host"], generic: ["fillOrigins"],
+};
 const LABEL_MODELS = { entry: Entry, folder: Folder, tag: Tag };
 const ITEM_COLUMNS = ["name", "description", "fields", "approvalRequired", "allServers"];
 
@@ -53,14 +63,44 @@ const bindingLabels = async (bindings) => {
     return labels;
 };
 
+const hostKeysOf = async (items) => {
+    const byItem = new Map();
+    const ids = items.filter((item) => item.type === "ssh").map((item) => item.id);
+    if (!ids.length) return byItem;
+    const rows = await VaultSshHostKey.findAll({ where: { itemId: ids }, order: [["target", "ASC"]] });
+    const accountIds = [...new Set(rows.map((row) => row.confirmedBy).filter(Boolean))];
+    const accounts = accountIds.length ? await Account.findAll({ where: { id: accountIds }, attributes: ["id", "firstName", "lastName"] }) : [];
+    for (const row of rows) {
+        const account = accounts.find((candidate) => candidate.id === row.confirmedBy);
+        byItem.set(row.itemId, [...(byItem.get(row.itemId) ?? []), {
+            target: row.target, algorithm: row.algorithm, fingerprint: row.fingerprint, confirmedAt: row.confirmedAt,
+            confirmedBy: account ? { id: account.id, name: `${account.firstName} ${account.lastName}` } : null,
+        }]);
+    }
+    return byItem;
+};
+
+// Only targets this save adds: kept ones were checked when they were added, and every tool call checks the agent's account again.
+const sshTargetProblem = async (accountId, organizationId, fields, previous = {}) => {
+    for (const id of fields.servers ?? []) {
+        if ((previous.servers ?? []).includes(id)) continue;
+        if (!(await usableSshServer(accountId, organizationId, id)))
+            return { code: 400, message: `Server ${id} is not an SSH server you can use for this entry` };
+    }
+    const addsHost = (fields.hosts ?? []).some((host) => !(previous.hosts ?? []).includes(host));
+    if (addsHost && !(await hasAccountPermission(accountId, Permission.CONNECT_DIRECT))) return FREE_HOSTS_FORBIDDEN;
+    return null;
+};
+
 const serializeItems = async (caller, items) => {
     if (!items.length) return [];
     const ids = items.map((item) => item.id);
     const organizationIds = [...new Set(items.map((item) => item.organizationId).filter(Boolean))];
-    const [secrets, bindings, organizations] = await Promise.all([
+    const [secrets, bindings, organizations, hostKeys] = await Promise.all([
         VaultSecret.findAll({ where: { itemId: ids }, attributes: ["itemId", "field"] }),
         VaultBinding.findAll({ where: { itemId: ids }, attributes: ["itemId", "kind", "targetId"] }),
         organizationIds.length ? Organization.findAll({ where: { id: organizationIds }, attributes: ["id", "name"] }) : [],
+        hostKeysOf(items),
     ]);
     const labels = await bindingLabels(bindings);
     return Promise.all(items.map(async (item) => ({
@@ -78,6 +118,7 @@ const serializeItems = async (caller, items) => {
         bindings: bindings.filter((binding) => binding.itemId === item.id)
             .map(({ kind, targetId }) => ({ kind, targetId, label: labels[`${kind}:${targetId}`] ?? null })),
         secretFields: secrets.filter((secret) => secret.itemId === item.id).map((secret) => secret.field).sort(),
+        ...(item.type === "ssh" ? { hostKeys: hostKeys.get(item.id) ?? [] } : {}),
         unreadable: isUnreadable(item.id),
         lastUsedAt: item.lastUsedAt ?? null,
         canManage: await canManageItem(caller.accountId, item),
@@ -104,17 +145,28 @@ const audit = (caller, item, action, details = {}) => createAuditLog({
 const removeItem = async (id) => {
     await clearSecrets(id);
     await setBindings(id, []);
+    await dropKeysExcept(id, []);
     await VaultItem.destroy({ where: { id } });
 };
 
 module.exports.listItems = async (caller) => ({ items: await serializeItems(caller, await ownedItems(caller.accountId)) });
 
+module.exports.getItem = async (caller, id) => {
+    const item = (await ownedItems(caller.accountId)).find((candidate) => candidate.id === id);
+    return item ? { item: (await serializeItems(caller, [item]))[0] } : NOT_FOUND;
+};
+
 module.exports.createItem = async (caller, body) => {
     const { organizationId, name, type, description, fields, secrets, approvalRequired, allServers, bindings } = body;
     if (!(await canCreateFor(caller.accountId, { organizationId }))) return FORBIDDEN;
     if (approvalRequired === false && !caller.revealAllowed) return APPROVAL_OFF_FORBIDDEN;
+    if (type === "ssh" && fields?.allowSession === true && !caller.revealAllowed) return SESSION_ON_FORBIDDEN;
     const check = await validateBindings({ accountId: caller.accountId, organizationId }, bindings);
     if (!check.valid) return { code: 400, message: check.message };
+    if (type === "ssh") {
+        const problem = await sshTargetProblem(caller.accountId, organizationId, fields);
+        if (problem) return problem;
+    }
     const owner = organizationId ? { accountId: null, organizationId } : { accountId: caller.accountId, organizationId: null };
     if (await nameTaken(owner, name)) return NAME_TAKEN;
 
@@ -143,10 +195,16 @@ module.exports.updateItem = async (caller, id, body) => {
     const { error, value } = updateVaultItemSchema(item.type).validate(body, { errors: { wrap: { label: "" } }, allowUnknown: false });
     if (error) return { code: 400, message: error.details[0].message };
     if (value.approvalRequired === false && item.approvalRequired !== false && !caller.revealAllowed) return APPROVAL_OFF_FORBIDDEN;
+    if (item.type === "ssh" && value.fields?.allowSession === true && item.fields?.allowSession !== true && !caller.revealAllowed)
+        return SESSION_ON_FORBIDDEN;
     if (value.name !== undefined && value.name !== item.name && await nameTaken(item, value.name, item.id)) return NAME_TAKEN;
     if (value.bindings) {
         const check = await validateBindings({ accountId: caller.accountId, organizationId: item.organizationId ?? null }, value.bindings);
         if (!check.valid) return { code: 400, message: check.message };
+    }
+    if (item.type === "ssh" && value.fields) {
+        const problem = await sshTargetProblem(caller.accountId, item.organizationId ?? null, value.fields, item.fields ?? {});
+        if (problem) return problem;
     }
 
     // A new target with the old value would let vault.manage without vault.reveal send an
@@ -158,6 +216,7 @@ module.exports.updateItem = async (caller, id, body) => {
         await db.transaction(async (transaction) => {
             if (Object.keys(changes).length) await VaultItem.update(changes, { where: { id: item.id }, transaction });
             if (secretsCleared) await clearSecrets(item.id, { transaction });
+            if (item.type === "ssh" && value.fields) await dropKeysExcept(item.id, targetRefsOf({ fields: value.fields }), { transaction });
             for (const [field, secret] of Object.entries(value.secrets ?? {})) await writeSecret(item.id, field, secret, { transaction });
             // "For this session" grants are stamped with updatedAt (approvals.js), so a new value has to move it.
             // Model.update skips a change that touches only updatedAt.
@@ -204,4 +263,15 @@ module.exports.revealSecret = async (caller, id, field) => {
     if (value === null) return NOT_FOUND;
     await audit(caller, item, AUDIT_ACTIONS.VAULT_REVEAL, { field });
     return { value };
+};
+
+module.exports.forgetHostKey = async (caller, id, target) => {
+    const item = await findScopedItem(caller.accountId, id);
+    if (!item || item.type !== "ssh") return NOT_FOUND;
+    if (!(await canManageItem(caller.accountId, item))) return FORBIDDEN;
+    const pinned = parseTargetRef(target) ? await pinnedKey(item.id, target) : null;
+    if (!pinned || !(await forgetKey(item.id, target))) return HOST_KEY_NOT_FOUND;
+    await VaultItem.sequelize.getQueryInterface().bulkUpdate(VaultItem.getTableName(), { updatedAt: new Date() }, { id: item.id }, {}, VaultItem.getAttributes());
+    await audit(caller, item, AUDIT_ACTIONS.VAULT_SSH_HOST_KEY_FORGOTTEN, { target, fingerprint: pinned.fingerprint });
+    return { success: true };
 };

@@ -1,4 +1,5 @@
 const Joi = require("joi");
+const { normalizeHost } = require("../lib/vault/sshRefs");
 
 const TYPES = ["login", "api_key", "ssh", "database", "generic"];
 
@@ -39,6 +40,8 @@ const host = Joi.string().max(261).custom((value, helpers) => {
 }).messages({ "any.invalid": "hosts must look like host or host:port", "host.defaultPort": "hosts: leave out the default port (80 or 443)" });
 
 const fillOrigins = Joi.array().items(origin).max(20).default([]);
+const sshHost = Joi.string().max(261).custom((value, helpers) => normalizeHost(value) ?? helpers.error("any.invalid"))
+    .messages({ "any.invalid": "hosts must look like host, host:port or [IPv6]:port" });
 
 const FIELDS = {
     login: Joi.object({
@@ -58,6 +61,9 @@ const FIELDS = {
     }),
     ssh: Joi.object({
         username: Joi.string().max(255).required(),
+        servers: Joi.array().items(Joi.number().integer().positive()).max(50).unique().default([]),
+        hosts: Joi.array().items(sshHost).max(50).unique().default([]),
+        allowSession: Joi.boolean().default(false),
     }),
     database: Joi.object({
         engine: Joi.string().valid("postgres", "mysql", "sqlite").required(),
