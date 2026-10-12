@@ -375,6 +375,14 @@ test("Freie Hosts: neue verlangen connect.direct; unveränderte (auch anders ges
     SYSTEM[1] = ["vault.use", "connect.direct"];
     const created = await post("/items", "s-owner", body);
     assert.deepStrictEqual([created.status, created.body.item.fields.hosts], [201, ["nas.lan", "[fe80::1]:2222"]]);
+    for (const [label, fields] of [
+        ["Host mit Leerzeichen", { username: "root", hosts: ["nas lan"] }],
+        ["Host mit Pfad", { username: "root", hosts: ["nas.lan/x"] }],
+        ["Server als Text", { username: "root", servers: ["web"] }],
+        ["allowSession als Text", { username: "root", hosts: ["nas.lan"], allowSession: "yes" }],
+    ]) {
+        assert.strictEqual((await post("/items", "s-owner", { ...body, name: "nas-bad", fields })).status, 400, label);
+    }
 
     SYSTEM[1] = ["vault.use"];
     const path = `/items/${created.body.item.id}`;
