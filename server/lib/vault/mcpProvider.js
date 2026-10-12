@@ -5,6 +5,9 @@ const { checkFillTarget, fillCredential, assertFillableSession, normalizeOrigin 
 const { createBroker, createRateLimit } = require("./broker");
 const { createHttpLimits } = require("./tools/http");
 const fillSecret = require("./tools/fillSecret");
+const { createSshLimits } = require("./sshUse");
+const { resolveTarget } = require("./sshSession");
+const { targetRefsOf, pinnedRefs } = require("./sshTargets");
 const { getVaultSettings } = require("../../controllers/vaultSettings");
 const { defaultAudit } = require("../browser/tools");
 const vaultGuard = require("../browser/vaultGuard");
@@ -18,6 +21,7 @@ const LIST = "vault_list";
 const FILL = "browser_fill_credential";
 const HTTP = "vault_http";
 const FILL_SECRET = "browser_fill_secret";
+const SSH_EXEC = "ssh_exec";
 const FILL_WINDOW_MS = 60 * 1000;
 const FILL_LIMIT = 20;
 const REF_PATTERN = /^e\d{1,9}$/;
@@ -31,11 +35,12 @@ const errorResult = (err) => ({
 const fieldsOf = (item) => item.fields ?? {};
 const canUseBrowser = (accountId) => permission.hasAccountPermission(accountId, Permission.CONNECT_BROWSER);
 
-const usableBy = (item, fields, { canFill, fillAnywhere }) => {
+const usableBy = (item, fields, { canFill, fillAnywhere, sshTargets }) => {
     const fillable = canFill && ((fields.fillOrigins ?? []).length > 0 || fillAnywhere.has(item.id));
     if (item.type === "login") return canFill ? [FILL] : [];
     if (item.type === "api_key") return [HTTP, ...(fields.git === true ? ["git"] : []), ...(fillable ? [FILL_SECRET] : [])];
     if (item.type === "generic") return fillable ? [FILL_SECRET] : [];
+    if (item.type === "ssh") return sshTargets.get(item.id).length > 0 ? [SSH_EXEC] : [];
     return [];
 };
 
@@ -49,9 +54,10 @@ const describeItem = (item, orgNames, abilities) => {
         ...(typeof fields.username === "string" && { username: fields.username }),
         ...(typeof fields.host === "string" && { host: fields.host }),
         ...(Array.isArray(fields.origins) && { origins: fields.origins.map(String) }),
-        ...(Array.isArray(fields.hosts) && { hosts: fields.hosts.map(String) }),
+        ...(Array.isArray(fields.hosts) && item.type !== "ssh" && { hosts: fields.hosts.map(String) }),
         ...(item.type === "api_key" && { readOnly: fields.readOnly === true, allowHttp: fields.allowHttp === true, git: fields.git === true }),
         ...(FILLABLE_TYPES.has(item.type) && { fillOrigins: (fields.fillOrigins ?? []).map(String) }),
+        ...(item.type === "ssh" && { allowSession: fields.allowSession === true, targets: abilities.sshTargets.get(item.id) }),
         approvalRequired: !!item.approvalRequired,
         usableBy: usableBy(item, fields, abilities),
     };
@@ -68,6 +74,15 @@ const assertFillArgs = ({ item, passwordRef, usernameRef, sessionId }) => {
     if (sessionId != null && typeof sessionId !== "string") throw invalid("sessionId needs a session id as browser_list shows it");
 };
 
+const sshTargetsOf = async (item, ctx, pinned) => {
+    const targets = [];
+    for (const ref of targetRefsOf(item)) {
+        const target = await resolveTarget(item, ref, ctx, { withJumpHosts: false }).catch(() => null);
+        if (target) targets.push({ ref, name: target.name, host: target.host, port: target.port, hostKeyKnown: pinned.has(`${item.id} ${ref}`) });
+    }
+    return targets;
+};
+
 const listItems = async (args, ctx) => {
     const items = await visibleItems({ accountId: ctx.accountId, agent: ctx.agent ?? null });
     const orgIds = [...new Set(items.map((item) => item.organizationId).filter(Boolean))];
@@ -79,8 +94,12 @@ const listItems = async (args, ctx) => {
     if (canFill && withoutOrigins.length > 0 && (await getVaultSettings()).fillAnywhere === true) {
         for (const item of withoutOrigins) if (await fillSecret.mayFillAnywhere(item, ctx.accountId)) fillAnywhere.add(item.id);
     }
+    const sshItems = items.filter((item) => item.type === "ssh");
+    const pinned = sshItems.length > 0 ? await pinnedRefs(sshItems.map((item) => item.id)) : new Set();
+    const sshTargets = new Map();
+    for (const item of sshItems) sshTargets.set(item.id, await sshTargetsOf(item, ctx, pinned));
     return textResult(items.length > 0
-        ? JSON.stringify(items.map((item) => describeItem(item, orgNames, { canFill, fillAnywhere })), null, 2)
+        ? JSON.stringify(items.map((item) => describeItem(item, orgNames, { canFill, fillAnywhere, sshTargets })), null, 2)
         : "No vault entries are available to this connection.");
 };
 
@@ -136,13 +155,14 @@ const TOOLS = {
     [LIST]: {
         def: {
             name: LIST,
-            description: "List the vault entries this connection may use. Never returns a secret value: per entry its id for the vault tools (item), owner, type, username or host, origins or hosts, whether the user approves each use, and the tools that can use it (usableBy).",
+            description: "List the vault entries this connection may use. Never returns a secret value: per entry its id for the vault tools (item), owner, type, username or host, origins, hosts or SSH targets, whether the user approves each use, and the tools that can use it (usableBy).",
             inputSchema: { type: "object", properties: {} },
         },
         handler: listItems,
         needsBrowser: false,
     },
     [HTTP]: require("./tools/http"),
+    [SSH_EXEC]: require("./tools/sshExec"),
     [FILL]: {
         def: {
             name: FILL,
@@ -170,8 +190,10 @@ const createVaultProvider = ({ getBrowserTools, approvals = require("./approvals
         broker: createBroker({ approvals, audit }),
         getBrowserTools,
         approvals,
+        audit,
         fillRate: createRateLimit({ windowMs: FILL_WINDOW_MS, limit: FILL_LIMIT }),
         httpLimits: createHttpLimits(),
+        sshLimits: createSshLimits(),
     };
     const offered = (name, browser) => Object.hasOwn(TOOLS, name) && (!TOOLS[name].needsBrowser || browser);
 

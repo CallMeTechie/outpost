@@ -39,6 +39,25 @@ const createRateLimit = ({ windowMs, limit }) => {
     };
 };
 
+const createCallLimits = ({ windowMs, limit, maxRunning }) => {
+    const running = new Map();
+    return {
+        rate: createRateLimit({ windowMs, limit }),
+        enter: (ctx) => {
+            const key = callerKey(ctx);
+            const count = running.get(key) ?? 0;
+            if (count >= maxRunning) throw new VaultError(VaultErrorCode.BUSY);
+            running.set(key, count + 1);
+            return key;
+        },
+        leave: (key) => {
+            const count = (running.get(key) ?? 1) - 1;
+            if (count > 0) running.set(key, count);
+            else running.delete(key);
+        },
+    };
+};
+
 const createBroker = ({ approvals = require("./approvals"), audit = defaultAudit } = {}) => {
     const rateAudited = new Map();
 
@@ -160,4 +179,4 @@ const createBroker = ({ approvals = require("./approvals"), audit = defaultAudit
 let shared = null;
 const use = (options) => (shared ??= createBroker()).use(options);
 
-module.exports = { createBroker, createRateLimit, callerKey, use };
+module.exports = { createBroker, createRateLimit, createCallLimits, callerKey, use };
