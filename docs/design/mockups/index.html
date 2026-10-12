@@ -2,7 +2,7 @@
 <html lang="de" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<title>outpost — Mockups (Revision 22)</title>
+<title>outpost — Mockups (Revision 23)</title>
 <link rel="stylesheet" href="./tokens.css">
 <style>
 .mb-page { font: var(--type-body, 500 0.875rem/1.45 system-ui, sans-serif); color: var(--text, #eee); background: var(--background, #111); margin: 0; padding: var(--space-8, 2rem); }
@@ -1064,7 +1064,7 @@
 </head>
 <body class="mb-page">
 <h1>outpost — Mockups</h1>
-<p class="sub">Manifest-Revision 22 · 2026-10-11 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
+<p class="sub">Manifest-Revision 23 · 2026-10-12 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
 <ul class="mb-toc">
 <li><a href="#UI-SHELL">Rahmen — Navigation</a> <code>UI-SHELL</code></li>
 <li><a href="#UI-SERVERS">Servers — Arbeitsfläche</a> <code>UI-SERVERS</code></li>
@@ -4623,8 +4623,8 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 <tr><td><code>UI-VAULT-APPROVAL-CARD</code></td><td>Freigabe angefordert</td><td>Eine Karte unten rechts über jeder Seite, nicht modal: ein Agent will einen Vault-Eintrag nutzen. Zeigt Agent und Server, Eintrag, Werkzeug und Ziel (Ursprung beim Eintragen, Methode mit Host und Pfad bei vault_http, Git mit Host und Repo) und die verbleibende Zeit; Antworten Einmal, Für diese Sitzung, Ablehnen. „Für diese Sitzung“ gilt getrennt für lesende und schreibende Zugriffe. Beim Eintragen eines Tokens nennt die Zeile auch das Feld, wie die Seite es bezeichnet („Eintragen auf https://github.com · Feld „Kommentar““); ist es kein Passwortfeld, gibt es nur „Einmal“ und „Ablehnen“. Bei SSH: Werkzeug (SSH-Befehl, Datei hochladen, Datei holen), Ziel als Name und benutzer@host:port, beim Befehl der Befehlsblock, bei Dateien Quelle → Ziel mit Größe (bei „Datei holen“ erst nach der Freigabe bekannt, dann „Größe nach der Freigabe“); „Für diese Sitzung“ nur, wenn der Eintrag es erlaubt, und dann je Ziel. Mehrere Anfragen stapeln sich, die älteste unten. Der Stapel liegt über Dialogen und Toasts. Eine abgelaufene Karte zeigt fünf Sekunden den Fehlerzustand und verschwindet; scheitert das Senden einer Antwort, bleibt die Karte stehen und ein Toast nennt den Grund. <b>Nicht:</b> notification, toast, error.</td><td><code>default · empty · partial · loading · error · disabled</code></td></tr>
 <tr><td><code>UI-VAULT-APPROVAL-WRITE</code></td><td>schreibt</td><td>Abzeichen in der Kopfzeile der Freigabe-Karte, wenn der Zugriff etwas verändert; bei lesenden Zugriffen fehlt es. Eine Sitzungsfreigabe für Lesen gibt Schreiben nicht frei. <b>Nicht:</b> error, warning_toast.</td><td><code>default · empty</code></td></tr>
 <tr><td><code>UI-VAULT-APPROVAL-EXEC</code></td><td>führt aus</td><td>Rotes Abzeichen in der Kopfzeile der Freigabe-Karte bei ssh_exec. Ein Shell-Befehl kann alles, was der Ziel-Benutzer darf; ob er schreibt, lässt sich nicht erkennen. Steht anstelle von „schreibt“, nie zusammen damit. <b>Nicht:</b> write_access, error, warning_toast.</td><td><code>default · empty</code></td></tr>
+<tr><td><code>UI-VAULT-APPROVAL-HOSTKEY</code></td><td>Neues Ziel</td><td>Hervorgehobener Kasten auf der Karte, wenn Outpost dieses Ziel für diesen Eintrag noch nie gesehen hat: Algorithmus und SHA256-Fingerabdruck des Host-Keys mit dem Rat, ihn mit ssh-keyscan oder an der Konsole zu vergleichen. Mit „Einmal“ oder „Für diese Sitzung“ wird er gemerkt; danach bricht jede Verbindung mit anderem Key vor der Anmeldung ab. Steht über dem Befehlsblock, damit er nicht unter einem langen Befehl verschwindet; der Fingerabdruck wird nie gekürzt. <b>Nicht:</b> error, toast.</td><td><code>default · empty</code></td></tr>
 <tr><td><code>UI-VAULT-APPROVAL-COMMAND</code></td><td>Befehl</td><td>Der vollständige Befehl einer ssh_exec-Anfrage in Monospace, so wie er auf dem Ziel läuft — nichts gekürzt oder umformuliert. Über 20 Zeilen oder 1200 Zeichen eingeklappt (die ersten 20 Zeilen, höchstens 1200 Zeichen sichtbar) mit „Ganz anzeigen (n Zeilen)“ bzw. „Ganz anzeigen (n Zeichen)“; der Block scrollt ab 40vh, der Kartenstapel ab Bildschirmhöhe; bis dahin sind „Einmal“ und „Für diese Sitzung“ gesperrt, „Ablehnen“ geht immer — sonst ließe sich der entscheidende Teil hinter 20 harmlose Zeilen legen. <b>Nicht:</b> audit_log, terminal.</td><td><code>default · partial · disabled · empty</code></td></tr>
-<tr><td><code>UI-VAULT-APPROVAL-HOSTKEY</code></td><td>Neues Ziel</td><td>Hervorgehobener Kasten auf der Karte, wenn Outpost dieses Ziel für diesen Eintrag noch nie gesehen hat: Algorithmus und SHA256-Fingerabdruck des Host-Keys mit dem Rat, ihn mit ssh-keyscan oder an der Konsole zu vergleichen. Mit „Einmal“ oder „Für diese Sitzung“ wird er gemerkt; danach bricht jede Verbindung mit anderem Key vor der Anmeldung ab. <b>Nicht:</b> error, toast.</td><td><code>default · empty</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-vault-approval.html — alle Zustände, wie im Artboard</div><div id="ab-ui-vault-approval">
 
@@ -4702,7 +4702,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 							<div class="who">Claude Code auf appmonster</div>
 							<div class="target">deploy-web</div>
 							<div class="tool">SSH-Befehl · web02 · deploy@192.168.2.40:22</div>
-							<div class="hostkey"><strong>Neues Ziel</strong> — ED25519 SHA256:3f9aT0…Xc21. Mit ssh-keyscan oder an der Konsole vergleichen.</div>
+							<div class="hostkey"><strong>Neues Ziel</strong> — ED25519 SHA256:3f9aT0kQ2mZ7rB1wYvN8LpXe5HdJ6sUcGo4iFtAyc21. Mit ssh-keyscan oder an der Konsole vergleichen.</div>
 							<pre class="cmd">docker compose -f /srv/app/compose.yml pull &amp;&amp; docker compose -f /srv/app/compose.yml up -d</pre>
 							<div class="actions"><span class="btn primary">Einmal</span><span class="btn">Ablehnen</span></div>
 							<div class="timer">1:42</div>
@@ -5016,7 +5016,7 @@ echo "Fertig"</pre><span class="cmd-more">Ganz anzeigen (42 Zeilen)</span></div>
 <div class="block" style="margin-top:var(--space-6)">
 	<h2>Neues Ziel <code>UI-VAULT-APPROVAL-HOSTKEY</code></h2>
 	<p class="anchor">Hervorgehobener Kasten auf der Karte, wenn Outpost dieses Ziel für diesen Eintrag noch nie gesehen hat: Algorithmus und SHA256-Fingerabdruck des Host-Keys mit dem Rat, ihn mit ssh-keyscan oder an der Konsole zu vergleichen. Mit „Einmal“ oder „Für diese Sitzung“ wird er gemerkt; danach bricht jede Verbindung mit anderem Key vor der Anmeldung ab.</p>
-	<p class="anchor-example">Beispiel: Neues Ziel — ED25519 SHA256:3f9aT0…Xc21. Mit ssh-keyscan oder an der Konsole vergleichen.</p>
+	<p class="anchor-example">Beispiel: Neues Ziel — ED25519 SHA256:3f9aT0kQ2mZ7rB1wYvN8LpXe5HdJ6sUcGo4iFtAyc21. Mit ssh-keyscan oder an der Konsole vergleichen.</p>
 
 	<div class="demo-row">
 		<div class="demo-card">
@@ -5024,7 +5024,7 @@ echo "Fertig"</pre><span class="cmd-more">Ganz anzeigen (42 Zeilen)</span></div>
 			<div class="body" style="justify-content:flex-end">
 				<section data-ui-state="default">
 				<div class="approval-card">
-<div class="head"><h3>Freigabe angefordert</h3><span class="exec-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> führt aus</span></div><div class="who">Claude Code auf appmonster</div><div class="target">deploy-web</div><div class="tool">SSH-Befehl · web02 · deploy@192.168.2.40:22</div><div class="hostkey" data-ui-id="UI-VAULT-APPROVAL-HOSTKEY"><strong>Neues Ziel</strong> — ED25519 SHA256:3f9aT0…Xc21. Mit ssh-keyscan oder an der Konsole vergleichen.</div>
+<div class="head"><h3>Freigabe angefordert</h3><span class="exec-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> führt aus</span></div><div class="who">Claude Code auf appmonster</div><div class="target">deploy-web</div><div class="tool">SSH-Befehl · web02 · deploy@192.168.2.40:22</div><div class="hostkey" data-ui-id="UI-VAULT-APPROVAL-HOSTKEY"><strong>Neues Ziel</strong> — ED25519 SHA256:3f9aT0kQ2mZ7rB1wYvN8LpXe5HdJ6sUcGo4iFtAyc21. Mit ssh-keyscan oder an der Konsole vergleichen.</div>
 				</div>
 				</section>
 			</div>

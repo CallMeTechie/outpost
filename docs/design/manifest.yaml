@@ -1,7 +1,7 @@
 schema: mockingbird/1
 project: outpost
-revision: 22
-updated: 2026-10-11
+revision: 23
+updated: 2026-10-12
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
 tokens_css: docs/design/mockups/tokens.css
@@ -89,6 +89,10 @@ changelog:
     date: 2026-10-12
     summary: Nachzug aus dem Plan-Review 2b — langer Befehl (über 20 Zeilen oder 1200 Zeichen) erst ganz anzeigen, dann freigeben; Server-Ziele über die vorhandene Mehrfachauswahl
     touched: [UI-VAULT-APPROVAL-COMMAND, UI-VAULT-DIALOG-SSH-SERVERS]
+  - rev: 23
+    date: 2026-10-12
+    summary: Design-Sync nach der Umsetzung 2b — der Kasten „Neues Ziel“ steht über dem Befehlsblock, der Fingerabdruck erscheint vollständig
+    touched: [UI-VAULT-APPROVAL-HOSTKEY, UI-VAULT-APPROVAL-COMMAND]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -1938,6 +1942,29 @@ screens:
         locators:
           web: "[data-ui-id='UI-VAULT-APPROVAL-EXEC']"
 
+      - id: UI-VAULT-APPROVAL-HOSTKEY
+        type: feedback
+        label: Neues Ziel
+        status: required
+        verify: required
+        data_source: "Fingerabdruck aus der Probe-Verbindung der Engine, wenn für Eintrag und Ziel noch kein Host-Key gemerkt ist"
+        semantic_anchor:
+          means: >
+            Hervorgehobener Kasten auf der Karte, wenn Outpost dieses Ziel für diesen Eintrag noch nie gesehen
+            hat: Algorithmus und SHA256-Fingerabdruck des Host-Keys mit dem Rat, ihn mit ssh-keyscan oder an
+            der Konsole zu vergleichen. Mit „Einmal“ oder „Für diese Sitzung“ wird er gemerkt; danach bricht
+            jede Verbindung mit anderem Key vor der Anmeldung ab.
+            Steht über dem Befehlsblock, damit er nicht unter einem langen Befehl verschwindet; der Fingerabdruck
+            wird nie gekürzt.
+          concept: ssh_host_key_pin
+          not: [error, toast]
+          example: "Neues Ziel — ED25519 SHA256:3f9aT0kQ2mZ7rB1wYvN8LpXe5HdJ6sUcGo4iFtAyc21. Mit ssh-keyscan oder an der Konsole vergleichen."
+        states:
+          - { id: default, copy: "Neues Ziel — ED25519 SHA256:3f9aT0kQ2mZ7rB1wYvN8LpXe5HdJ6sUcGo4iFtAyc21. Mit ssh-keyscan oder an der Konsole vergleichen." }
+          - { id: empty, copy: "nicht sichtbar bei gemerktem Host-Key" }
+        locators:
+          web: "[data-ui-id='UI-VAULT-APPROVAL-HOSTKEY']"
+
       - id: UI-VAULT-APPROVAL-COMMAND
         type: region
         label: Befehl
@@ -1961,25 +1988,4 @@ screens:
           - { id: empty, copy: "nicht sichtbar außer bei ssh_exec" }
         locators:
           web: "[data-ui-id='UI-VAULT-APPROVAL-COMMAND']"
-
-      - id: UI-VAULT-APPROVAL-HOSTKEY
-        type: feedback
-        label: Neues Ziel
-        status: required
-        verify: required
-        data_source: "Fingerabdruck aus der Probe-Verbindung der Engine, wenn für Eintrag und Ziel noch kein Host-Key gemerkt ist"
-        semantic_anchor:
-          means: >
-            Hervorgehobener Kasten auf der Karte, wenn Outpost dieses Ziel für diesen Eintrag noch nie gesehen
-            hat: Algorithmus und SHA256-Fingerabdruck des Host-Keys mit dem Rat, ihn mit ssh-keyscan oder an
-            der Konsole zu vergleichen. Mit „Einmal“ oder „Für diese Sitzung“ wird er gemerkt; danach bricht
-            jede Verbindung mit anderem Key vor der Anmeldung ab.
-          concept: ssh_host_key_pin
-          not: [error, toast]
-          example: "Neues Ziel — ED25519 SHA256:3f9aT0…Xc21. Mit ssh-keyscan oder an der Konsole vergleichen."
-        states:
-          - { id: default, copy: "Neues Ziel — ED25519 SHA256:3f9aT0…Xc21. Mit ssh-keyscan oder an der Konsole vergleichen." }
-          - { id: empty, copy: "nicht sichtbar bei gemerktem Host-Key" }
-        locators:
-          web: "[data-ui-id='UI-VAULT-APPROVAL-HOSTKEY']"
 
