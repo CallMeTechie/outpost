@@ -334,10 +334,12 @@ test("SSH-Server als Ziel: nur SSH-Server, die der Speichernde mit connect.ssh v
     const rdp = await Entry.create({ accountId: 1, type: "server", name: "own-rdp", config: { protocol: "rdp", ip: "192.0.2.11" } });
     const foreign = await sshServer({ accountId: 2, name: "foreign-web" });
     const orgServer = await sshServer({ organizationId: 20, name: "org-web" });
+    const otherOrgServer = await sshServer({ organizationId: 30, name: "other-org-web" });
     const revealerOwn = await sshServer({ accountId: 3, name: "revealer-web" });
     SYSTEM[1] = ["vault.use", "connect.ssh"];
     SYSTEM[3] = ["settings.vault", "connect.ssh"];
     ORG["3:20"] = ["vault.reveal", "vault.manage", "connect.ssh"];
+    ORG["3:30"] = ["connect.ssh"];
     const ssh = (name, servers, extra = {}) => ({ name, type: "ssh", fields: { username: "deploy", servers }, secrets: { password: "pw-ssh" }, ...extra });
     const rejected = (id) => [400, `Server ${id} is not an SSH server you can use for this entry`];
 
@@ -347,6 +349,7 @@ test("SSH-Server als Ziel: nur SSH-Server, die der Speichernde mit connect.ssh v
         ["Server der Organisation ohne connect.ssh dort", "s-owner", ssh("t-org", [orgServer.id]), orgServer.id],
         ["unbekannter Server", "s-owner", ssh("t-missing", [999999]), 999999],
         ["Organisations-Eintrag mit persönlichem Server", "s-revealer", ssh("t-mixed", [revealerOwn.id], { organizationId: 20 }), revealerOwn.id],
+        ["Organisations-Eintrag mit Server einer anderen Organisation", "s-revealer", ssh("t-other-org", [otherOrgServer.id], { organizationId: 20 }), otherOrgServer.id],
     ]) {
         const res = await post("/items", token, body);
         assert.deepStrictEqual([res.status, res.body.message], rejected(id), label);
