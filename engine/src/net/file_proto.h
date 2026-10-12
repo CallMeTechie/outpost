@@ -62,7 +62,7 @@ int fp_send_dir_list(int fd, uint32_t rid, const fp_entries_t* list);
 int fp_send_stat(int fd, uint32_t rid, const fp_stat_t* st);
 int fp_send_realpath(int fd, uint32_t rid, const char* path, bool is_dir);
 int fp_send_exec_result(int fd, uint32_t rid, const char* stdout_data,
-                        const char* stderr_data, int32_t exit_code);
+                        const char* stderr_data, int32_t exit_code, bool timed_out);
 int fp_send_search_result(int fd, uint32_t rid, const fp_search_t* ctx);
 
 int64_t fp_monotonic_ms(void);

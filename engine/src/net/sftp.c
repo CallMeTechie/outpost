@@ -13,6 +13,9 @@ extern outpost_session_manager_t g_session_manager;
 #include <libssh2_sftp.h>
 
 #include "sftp_protocol_reader.h"
+#include "control_plane_reader.h"
+
+#include <openssl/evp.h>
 
 #include <errno.h>
 #include <poll.h>
@@ -20,6 +23,7 @@ extern outpost_session_manager_t g_session_manager;
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 #define SFTP_WRITE_BUF     1048576
@@ -29,6 +33,43 @@ typedef struct {
     outpost_session_t* session;
     outpost_control_plane_t* cp;
 } sftp_thread_args_t;
+
+typedef struct {
+    char algorithm[32];
+    char fingerprint[64];
+} sftp_host_key_t;
+
+static const char* host_key_algorithm(int type) {
+    switch (type) {
+        case LIBSSH2_HOSTKEY_TYPE_RSA:       return "ssh-rsa";
+        case LIBSSH2_HOSTKEY_TYPE_DSS:       return "ssh-dss";
+        case LIBSSH2_HOSTKEY_TYPE_ECDSA_256: return "ecdsa-sha2-nistp256";
+        case LIBSSH2_HOSTKEY_TYPE_ECDSA_384: return "ecdsa-sha2-nistp384";
+        case LIBSSH2_HOSTKEY_TYPE_ECDSA_521: return "ecdsa-sha2-nistp521";
+        case LIBSSH2_HOSTKEY_TYPE_ED25519:   return "ssh-ed25519";
+        default:                             return "";
+    }
+}
+
+static bool read_host_key(LIBSSH2_SESSION* ssh, sftp_host_key_t* out) {
+    size_t len = 0;
+    int type = LIBSSH2_HOSTKEY_TYPE_UNKNOWN;
+    out->algorithm[0] = '\0';
+    out->fingerprint[0] = '\0';
+
+    if (libssh2_session_hostkey(ssh, &len, &type))
+        snprintf(out->algorithm, sizeof(out->algorithm), "%s", host_key_algorithm(type));
+
+    const unsigned char* hash = (const unsigned char*)
+        libssh2_hostkey_hash(ssh, LIBSSH2_HOSTKEY_HASH_SHA256);
+    if (!hash) return false;
+
+    unsigned char b64[48];
+    int n = EVP_EncodeBlock(b64, hash, 32);
+    while (n > 0 && b64[n - 1] == '=') b64[--n] = '\0';
+    snprintf(out->fingerprint, sizeof(out->fingerprint), "SHA256:%s", (const char*)b64);
+    return true;
+}
 
 static const char* sftp_strerror(unsigned long err) {
     switch (err) {
@@ -64,7 +105,7 @@ static int exec_command(LIBSSH2_SESSION* ssh, const char* cmd,
                         char* out, size_t out_sz,
                         char* err_buf, size_t err_sz,
                         int* exit_code, uint32_t timeout_ms,
-                        bool* timed_out) {
+                        bool* timed_out, int cancel_fd) {
     LIBSSH2_CHANNEL* ch = libssh2_channel_open_session(ssh);
     if (!ch) return -1;
 
@@ -120,6 +161,14 @@ static int exec_command(LIBSSH2_SESSION* ssh, const char* cmd,
 
         if (failed) break;
         if (libssh2_channel_eof(ch)) break;
+        if (cancel_fd >= 0) {
+            char peek;
+            ssize_t r = recv(cancel_fd, &peek, 1, MSG_PEEK | MSG_DONTWAIT);
+            if (r == 0 || (r < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)) {
+                *timed_out = true;
+                break;
+            }
+        }
         if (fp_monotonic_ms() >= deadline) {
             *timed_out = true;
             break;
@@ -260,6 +309,8 @@ static void stat_get_owner_group(LIBSSH2_SESSION* ssh, const char* path,
                                   char* group, size_t group_sz) {
     owner[0] = '\0';
     group[0] = '\0';
+    // fish reads \' inside single quotes as an escaped quote.
+    if (strpbrk(path, "\\\n\r")) return;
 
     char escaped[FP_MAX_PATH * 2];
     shell_escape_path(path, escaped, sizeof(escaped));
@@ -271,7 +322,7 @@ static void stat_get_owner_group(LIBSSH2_SESSION* ssh, const char* path,
     char err[256];
     int ec;
     bool timed_out = false;
-    if (exec_command(ssh, cmd, NULL, out, sizeof(out), err, sizeof(err), &ec, 30000, &timed_out) != 0)
+    if (exec_command(ssh, cmd, NULL, out, sizeof(out), err, sizeof(err), &ec, 30000, &timed_out, -1) != 0)
         return;
 
     size_t len = strlen(out);
@@ -286,7 +337,7 @@ static void stat_get_owner_group(LIBSSH2_SESSION* ssh, const char* path,
 }
 
 static void handle_stat(LIBSSH2_SFTP* sftp, LIBSSH2_SESSION* ssh,
-                        int fd, uint32_t rid, const char* path) {
+                        int fd, uint32_t rid, const char* path, bool owner) {
     LIBSSH2_SFTP_ATTRIBUTES attrs;
     if (libssh2_sftp_stat(sftp, path, &attrs) != 0) {
         send_sftp_error(sftp, fd, rid);
@@ -302,8 +353,9 @@ static void handle_stat(LIBSSH2_SFTP* sftp, LIBSSH2_SESSION* ssh,
     st.atime = (uint32_t)attrs.atime;
     st.mtime = (uint32_t)attrs.mtime;
     st.is_dir = (attrs.permissions & LIBSSH2_SFTP_S_IFMT) == LIBSSH2_SFTP_S_IFDIR;
-    stat_get_owner_group(ssh, path, st.owner, sizeof(st.owner),
-                         st.group, sizeof(st.group));
+    if (owner)
+        stat_get_owner_group(ssh, path, st.owner, sizeof(st.owner),
+                             st.group, sizeof(st.group));
 
     fp_send_stat(fd, rid, &st);
 }
@@ -488,7 +540,7 @@ static void handle_exec(LIBSSH2_SESSION* ssh, int fd, uint32_t rid,
     int exit_code = -1;
     bool timed_out = false;
     if (exec_command(ssh, command, stdin_data, out, SFTP_EXEC_BUF,
-                     err_buf, SFTP_EXEC_BUF, &exit_code, timeout_ms, &timed_out) != 0) {
+                     err_buf, SFTP_EXEC_BUF, &exit_code, timeout_ms, &timed_out, fd) != 0) {
         free(out);
         free(err_buf);
         fp_send_error(fd, rid, "Failed to execute command", -1);
@@ -503,7 +555,7 @@ static void handle_exec(LIBSSH2_SESSION* ssh, int fd, uint32_t rid,
                  el ? "\n" : "", timeout_ms / 1000);
     }
 
-    fp_send_exec_result(fd, rid, out, err_buf, exit_code);
+    fp_send_exec_result(fd, rid, out, err_buf, exit_code, timed_out);
     free(out);
     free(err_buf);
 }
@@ -538,6 +590,7 @@ static void handle_search_dirs(LIBSSH2_SFTP* sftp, int fd, uint32_t rid,
 typedef struct {
     LIBSSH2_SFTP_HANDLE* handle;
     uint32_t rid;
+    uint32_t final_mode;
     uint8_t* buf;
     size_t buf_len;
     size_t buf_cap;
@@ -621,7 +674,9 @@ static void dispatch_path_op(Outpost_SftpProtocol_SftpMsgType_enum_t mt,
         case Outpost_SftpProtocol_SftpMsgType_ListDir:
             handle_list_dir(sftp, data_fd, rid, path); return;
         case Outpost_SftpProtocol_SftpMsgType_Stat:
-            handle_stat(sftp, ssh, data_fd, rid, path); return;
+            handle_stat(sftp, ssh, data_fd, rid, path,
+                Outpost_SftpProtocol_PathReq_owner(Outpost_SftpProtocol_SftpMessage_path_req(msg)));
+            return;
         case Outpost_SftpProtocol_SftpMsgType_Mkdir:
             handle_mkdir(sftp, data_fd, rid, path); return;
         case Outpost_SftpProtocol_SftpMsgType_Unlink:
@@ -646,9 +701,26 @@ static void dispatch_write_op(Outpost_SftpProtocol_SftpMsgType_enum_t mt,
     if (mt == Outpost_SftpProtocol_SftpMsgType_WriteEnd) {
         if (ws->handle) {
             if (sftp_flush_write(sftp, data_fd, ws) != 0) return;
-            libssh2_sftp_close(ws->handle);
+            bool mode_set = true;
+            unsigned long mode_err = 0;
+            if (ws->final_mode != 0) {
+                LIBSSH2_SFTP_ATTRIBUTES attrs;
+                memset(&attrs, 0, sizeof(attrs));
+                attrs.flags = LIBSSH2_SFTP_ATTR_PERMISSIONS;
+                attrs.permissions = ws->final_mode & 0777;
+                if (libssh2_sftp_fsetstat(ws->handle, &attrs) != 0) {
+                    mode_set = false;
+                    mode_err = libssh2_sftp_last_error(sftp);
+                }
+            }
+            int closed = libssh2_sftp_close(ws->handle);
             ws->handle = NULL;
-            fp_send_ok(data_fd, ws->rid);
+            if (closed != 0)
+                send_sftp_error(sftp, data_fd, ws->rid);
+            else if (!mode_set)
+                fp_send_error(data_fd, ws->rid, "Could not set permissions", (int32_t)mode_err);
+            else
+                fp_send_ok(data_fd, ws->rid);
         }
         return;
     }
@@ -669,14 +741,19 @@ static void dispatch_write_op(Outpost_SftpProtocol_SftpMsgType_enum_t mt,
     const char* path = req ? Outpost_SftpProtocol_WriteBeginReq_path(req) : NULL;
     if (!path) { fp_send_error(data_fd, rid, "Missing path", -1); return; }
 
+    bool exclusive = Outpost_SftpProtocol_WriteBeginReq_exclusive(req);
+    ws->final_mode = 0;
     ws->handle = libssh2_sftp_open(sftp, path,
-        LIBSSH2_FXF_WRITE | LIBSSH2_FXF_CREAT | LIBSSH2_FXF_TRUNC,
-        LIBSSH2_SFTP_S_IRUSR | LIBSSH2_SFTP_S_IWUSR |
-        LIBSSH2_SFTP_S_IRGRP | LIBSSH2_SFTP_S_IROTH);
+        exclusive ? (LIBSSH2_FXF_WRITE | LIBSSH2_FXF_CREAT | LIBSSH2_FXF_EXCL)
+                  : (LIBSSH2_FXF_WRITE | LIBSSH2_FXF_CREAT | LIBSSH2_FXF_TRUNC),
+        exclusive ? (LIBSSH2_SFTP_S_IRUSR | LIBSSH2_SFTP_S_IWUSR)
+                  : (LIBSSH2_SFTP_S_IRUSR | LIBSSH2_SFTP_S_IWUSR |
+                     LIBSSH2_SFTP_S_IRGRP | LIBSSH2_SFTP_S_IROTH));
     if (!ws->handle) {
         send_sftp_error(sftp, data_fd, rid);
     } else {
         ws->rid = rid;
+        ws->final_mode = Outpost_SftpProtocol_WriteBeginReq_final_mode(req);
         fp_send_ok(data_fd, rid);
     }
 }
@@ -746,6 +823,11 @@ static int sftp_dispatch_message(LIBSSH2_SFTP* sftp, LIBSSH2_SESSION* ssh,
     Outpost_SftpProtocol_SftpMsgType_enum_t mt =
         Outpost_SftpProtocol_SftpMessage_msg_type(msg);
     uint32_t rid = Outpost_SftpProtocol_SftpMessage_request_id(msg);
+
+    if (!sftp && mt != Outpost_SftpProtocol_SftpMsgType_Exec) {
+        fp_send_error(data_fd, rid, "SFTP not available", -1);
+        return 0;
+    }
 
     switch (mt) {
         case Outpost_SftpProtocol_SftpMsgType_ListDir:
@@ -832,8 +914,11 @@ static void* sftp_session_thread(void* arg) {
     LIBSSH2_SESSION* ssh = NULL;
     LIBSSH2_SFTP* sftp = NULL;
     jump_chain_t jump_chain = {0};
+    sftp_host_key_t host_key = {0};
 
-    session->state = SESSION_STATE_CONNECTING;
+    outpost_sm_lock(&g_session_manager);
+    if (session->state != SESSION_STATE_CLOSING) session->state = SESSION_STATE_CONNECTING;
+    outpost_sm_unlock(&g_session_manager);
 
     const char* username   = outpost_session_get_param(session, "username");
     const char* password   = outpost_session_get_param(session, "password");
@@ -850,14 +935,17 @@ static void* sftp_session_thread(void* arg) {
     jump_host_t jump_hosts[MAX_JUMP_HOSTS];
     int jump_count = outpost_extract_jump_hosts(session, jump_hosts, MAX_JUMP_HOSTS);
 
-    LOG_INFO("SFTP session %s: connecting to %s:%u as %s (jump_hosts=%d)",
-             session->session_id, session->host, session->port, username, jump_count);
+    LOG_INFO("SFTP session %s: connecting to %s:%u as %s (jump_hosts=%d, probe=%d, exec_only=%d)",
+             session->session_id, session->host, session->port, username, jump_count,
+             session->probe_host_key, session->exec_only);
 
-    data_fd = outpost_cp_open_data_connection(cp, session->session_id);
-    if (data_fd < 0) {
-        outpost_cp_send_session_result(cp, session->session_id, false,
-                                       "Failed to open data connection", NULL);
-        goto cleanup;
+    if (!session->probe_host_key) {
+        data_fd = outpost_cp_open_data_connection(cp, session->session_id);
+        if (data_fd < 0) {
+            outpost_cp_send_session_result(cp, session->session_id, false,
+                                           "Failed to open data connection", NULL);
+            goto cleanup;
+        }
     }
 
     if (outpost_ssh_setup_with_jumphosts(session->host, session->port,
@@ -867,9 +955,39 @@ static void* sftp_session_thread(void* arg) {
         goto cleanup;
     }
 
-    if (outpost_ssh_auth(ssh, username, password, priv_key, passphrase) != 0) {
+    bool have_key = read_host_key(ssh, &host_key);
+
+    if (session->expected_host_key[0] != '\0' &&
+        (!have_key || strcmp(session->expected_host_key, host_key.fingerprint) != 0)) {
+        LOG_WARN("SFTP session %s: host key mismatch (expected %s, got %s)",
+                 session->session_id, session->expected_host_key,
+                 have_key ? host_key.fingerprint : "none");
+        outpost_cp_send_session_result_ex(cp, session->session_id, false,
+            "Host key mismatch", NULL, Outpost_ControlPlane_ErrorCode_HostKeyMismatch,
+            host_key.algorithm, host_key.fingerprint);
+        goto cleanup;
+    }
+
+    if (session->probe_host_key) {
+        if (have_key)
+            outpost_cp_send_session_result_ex(cp, session->session_id, true, NULL, NULL,
+                Outpost_ControlPlane_ErrorCode_None, host_key.algorithm, host_key.fingerprint);
+        else
+            outpost_cp_send_session_result(cp, session->session_id, false,
+                                           "Failed to read host key", NULL);
+        goto cleanup;
+    }
+
+    if (session->state == SESSION_STATE_CLOSING) {
         outpost_cp_send_session_result(cp, session->session_id, false,
-                                       "SSH authentication failed", NULL);
+                                       "Session closed", NULL);
+        goto cleanup;
+    }
+
+    if (outpost_ssh_auth(ssh, username, password, priv_key, passphrase) != 0) {
+        outpost_cp_send_session_result_ex(cp, session->session_id, false,
+            "SSH authentication failed", NULL, Outpost_ControlPlane_ErrorCode_AuthFailed,
+            host_key.algorithm, host_key.fingerprint);
         goto cleanup;
     }
 
@@ -879,23 +997,36 @@ static void* sftp_session_thread(void* arg) {
     if (!sftp) {
         char* errmsg = NULL;
         libssh2_session_last_error(ssh, &errmsg, NULL, 0);
-        LOG_ERROR("SFTP session %s: failed to open SFTP: %s",
-                  session->session_id, errmsg ? errmsg : "unknown");
-        outpost_cp_send_session_result(cp, session->session_id, false,
-                                       "Failed to open SFTP subsystem", NULL);
+        LOG_WARN("SFTP session %s: failed to open SFTP: %s",
+                 session->session_id, errmsg ? errmsg : "unknown");
+        if (!session->exec_only) {
+            outpost_cp_send_session_result_ex(cp, session->session_id, false,
+                "SFTP not available", NULL, Outpost_ControlPlane_ErrorCode_ConnectionFailed,
+                host_key.algorithm, host_key.fingerprint);
+            goto cleanup;
+        }
+    }
+
+    outpost_sm_lock(&g_session_manager);
+    bool closing = session->state == SESSION_STATE_CLOSING;
+    if (!closing) session->state = SESSION_STATE_ACTIVE;
+    outpost_sm_unlock(&g_session_manager);
+    if (closing) {
+        outpost_cp_send_session_result(cp, session->session_id, false, "Session closed", NULL);
         goto cleanup;
     }
 
-    session->state = SESSION_STATE_ACTIVE;
-    outpost_cp_send_session_result(cp, session->session_id, true, NULL, NULL);
+    outpost_cp_send_session_result_ex(cp, session->session_id, true, NULL, NULL,
+        Outpost_ControlPlane_ErrorCode_None, host_key.algorithm, host_key.fingerprint);
 
     if (fp_send_ready(data_fd) != 0) {
         LOG_ERROR("SFTP session %s: failed to send Ready", session->session_id);
         goto cleanup;
     }
 
-    LOG_INFO("SFTP session %s active (target=%s:%u, user=%s)",
-             session->session_id, session->host, session->port, username);
+    LOG_INFO("SFTP session %s active (target=%s:%u, user=%s, sftp=%s)",
+             session->session_id, session->host, session->port, username,
+             sftp ? "yes" : "no");
 
     sftp_request_loop(session, sftp, ssh, data_fd);
 

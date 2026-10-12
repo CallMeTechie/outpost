@@ -170,13 +170,14 @@ int fp_send_realpath(int fd, uint32_t rid, const char* path, bool is_dir) {
 }
 
 int fp_send_exec_result(int fd, uint32_t rid, const char* stdout_data,
-                        const char* stderr_data, int32_t exit_code) {
+                        const char* stderr_data, int32_t exit_code, bool timed_out) {
     flatcc_builder_t b;
     fp_start_message(&b, Outpost_SftpProtocol_SftpMsgType_ExecResult, rid);
     Outpost_SftpProtocol_SftpMessage_exec_res_start(&b);
     Outpost_SftpProtocol_ExecRes_stdout_data_create_str(&b, stdout_data);
     Outpost_SftpProtocol_ExecRes_stderr_data_create_str(&b, stderr_data);
     Outpost_SftpProtocol_ExecRes_exit_code_add(&b, exit_code);
+    Outpost_SftpProtocol_ExecRes_timed_out_add(&b, timed_out);
     Outpost_SftpProtocol_SftpMessage_exec_res_end(&b);
     Outpost_SftpProtocol_SftpMessage_end_as_root(&b);
     return fp_finalize_and_send(&b, fd);
