@@ -237,7 +237,7 @@ test("vault_list shows an SSH entry with its user, allowSession and only the tar
     assert.deepStrictEqual(await list(), {
         item: "deploy", owner: "personal", type: "ssh", description: null, username: "deploy", allowSession: false,
         targets: [{ ref: "server:12", name: "web02", host: "10.0.0.12", port: 22, hostKeyKnown: true }],
-        approvalRequired: false, usableBy: ["ssh_exec"],
+        approvalRequired: false, usableBy: ["ssh_exec", "ssh_put", "ssh_get"],
     });
     bed.state.permissions.add(Permission.CONNECT_DIRECT);
     assert.deepStrictEqual((await list()).targets.map((target) => [target.ref, target.hostKeyKnown]), [["server:12", true], ["host:nas.lan:2222", false]]);

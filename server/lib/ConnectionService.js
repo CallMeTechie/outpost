@@ -825,6 +825,7 @@ module.exports = {
     buildSSHParams,
     resolveJumpHosts,
     resolveCredentials,
+    resolveFileTransferContext,
     openEngineSession,
     extractIdentity,
     IdentityAccessDeniedError,

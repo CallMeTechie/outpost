@@ -2,7 +2,10 @@ const { randomUUID } = require("node:crypto");
 const controlPlane = require("../controlPlane/ControlPlaneServer");
 const EngineSftpClient = require("../EngineSftpClient");
 const { SessionType } = require("../generated/control_plane_generated");
-const { openEngineSession, resolveJumpHosts } = require("../ConnectionService");
+const { openEngineSession, resolveJumpHosts, resolveFileTransferContext } = require("../ConnectionService");
+const ApiKey = require("../../models/ApiKey");
+const Entry = require("../../models/Entry");
+const { validateEntryAccess } = require("../../controllers/entry");
 const { hasAccountPermission } = require("../../utils/permission");
 const { Permission } = require("../../permissions/registry");
 const { VaultError, VaultErrorCode, VaultErrorMessage } = require("./errors");
@@ -110,4 +113,24 @@ const sshParams = (item, { privateKey = null, passphrase = null, password = null
     ...(passphrase && { passphrase }),
 });
 
-module.exports = { resolveTarget, assertEngine, probeHostKey, openTargetSession, sshParams, sshFailure, hostKeyChanged };
+const openAgentServerSession = async (ctx, { signal = null } = {}) => {
+    const noServer = () => new VaultError(VaultErrorCode.NO_AGENT_SERVER);
+    if (!ctx.agent?.entryId || ctx.keyId == null) throw noServer();
+    const key = await ApiKey.findByPk(ctx.keyId);
+    if (!key || key.entryId !== ctx.agent.entryId || !key.identityId || !key.remoteUser) throw noServer();
+    const entry = await Entry.findByPk(key.entryId);
+    if (!entry?.config?.ip || !(await validateEntryAccess(ctx.accountId, entry)).valid) throw noServer();
+    const { host, port, params } = await resolveFileTransferContext(entry, key.identityId, null, ctx.accountId)
+        .catch(() => { throw noServer(); });
+    if (params.username !== key.remoteUser) throw noServer();
+    const server = {
+        ref: `server:${entry.id}`, kind: "server", name: entry.name, host, port: Number(port) || 22,
+        jumpHosts: await resolveJumpHosts(entry), engineId: entry.config.engineId ?? null,
+    };
+    assertEngine(server);
+    return { ...(await openTargetSession(server, params, { signal })), user: params.username };
+};
+
+module.exports = {
+    resolveTarget, assertEngine, probeHostKey, openTargetSession, openAgentServerSession, sshParams, sshFailure, hostKeyChanged,
+};

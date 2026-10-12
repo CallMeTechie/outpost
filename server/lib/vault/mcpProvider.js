@@ -5,6 +5,7 @@ const { checkFillTarget, fillCredential, assertFillableSession, normalizeOrigin 
 const { createBroker, createRateLimit } = require("./broker");
 const { createHttpLimits } = require("./tools/http");
 const fillSecret = require("./tools/fillSecret");
+const sshTransfer = require("./tools/sshTransfer");
 const { createSshLimits } = require("./sshUse");
 const { resolveTarget } = require("./sshSession");
 const { targetRefsOf, pinnedRefs } = require("./sshTargets");
@@ -22,6 +23,8 @@ const FILL = "browser_fill_credential";
 const HTTP = "vault_http";
 const FILL_SECRET = "browser_fill_secret";
 const SSH_EXEC = "ssh_exec";
+const SSH_PUT = "ssh_put";
+const SSH_GET = "ssh_get";
 const FILL_WINDOW_MS = 60 * 1000;
 const FILL_LIMIT = 20;
 const REF_PATTERN = /^e\d{1,9}$/;
@@ -35,12 +38,12 @@ const errorResult = (err) => ({
 const fieldsOf = (item) => item.fields ?? {};
 const canUseBrowser = (accountId) => permission.hasAccountPermission(accountId, Permission.CONNECT_BROWSER);
 
-const usableBy = (item, fields, { canFill, fillAnywhere, sshTargets }) => {
+const usableBy = (item, fields, { canFill, fillAnywhere, sshTargets, agentServer }) => {
     const fillable = canFill && ((fields.fillOrigins ?? []).length > 0 || fillAnywhere.has(item.id));
     if (item.type === "login") return canFill ? [FILL] : [];
     if (item.type === "api_key") return [HTTP, ...(fields.git === true ? ["git"] : []), ...(fillable ? [FILL_SECRET] : [])];
     if (item.type === "generic") return fillable ? [FILL_SECRET] : [];
-    if (item.type === "ssh") return sshTargets.get(item.id).length > 0 ? [SSH_EXEC] : [];
+    if (item.type === "ssh") return sshTargets.get(item.id).length > 0 ? [SSH_EXEC, ...(agentServer ? [SSH_PUT, SSH_GET] : [])] : [];
     return [];
 };
 
@@ -99,7 +102,7 @@ const listItems = async (args, ctx) => {
     const sshTargets = new Map();
     for (const item of sshItems) sshTargets.set(item.id, await sshTargetsOf(item, ctx, pinned));
     return textResult(items.length > 0
-        ? JSON.stringify(items.map((item) => describeItem(item, orgNames, { canFill, fillAnywhere, sshTargets })), null, 2)
+        ? JSON.stringify(items.map((item) => describeItem(item, orgNames, { canFill, fillAnywhere, sshTargets, agentServer: Boolean(ctx.agent?.entryId) })), null, 2)
         : "No vault entries are available to this connection.");
 };
 
@@ -163,6 +166,8 @@ const TOOLS = {
     },
     [HTTP]: require("./tools/http"),
     [SSH_EXEC]: require("./tools/sshExec"),
+    [SSH_PUT]: sshTransfer.put,
+    [SSH_GET]: sshTransfer.get,
     [FILL]: {
         def: {
             name: FILL,
