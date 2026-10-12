@@ -248,6 +248,14 @@ static void handle_session_open(outpost_control_plane_t* cp,
     store_jump_hosts_as_params(session,
         Outpost_ControlPlane_SessionOpen_jump_hosts(open_msg));
 
+    const char* expected_host_key =
+        Outpost_ControlPlane_SessionOpen_expected_host_key(open_msg);
+    if (expected_host_key)
+        snprintf(session->expected_host_key, sizeof(session->expected_host_key),
+                 "%s", expected_host_key);
+    session->probe_host_key = Outpost_ControlPlane_SessionOpen_probe_host_key(open_msg);
+    session->exec_only = Outpost_ControlPlane_SessionOpen_exec_only(open_msg);
+
     if (start_session_connection(session, cp, stype) != 0) {
         outpost_cp_send_session_result(cp, sid, false,
             "Failed to start connection", NULL);
@@ -903,11 +911,14 @@ int outpost_cp_send(outpost_control_plane_t* cp, const uint8_t* buf, size_t len)
     return outpost_send_frame_s(cp->sock_fd, cp->ssl, buf, len, &cp->send_mutex);
 }
 
-int outpost_cp_send_session_result(outpost_control_plane_t* cp,
-                                   const char* session_id,
-                                   bool success,
-                                   const char* error_message,
-                                   const char* connection_id) {
+int outpost_cp_send_session_result_ex(outpost_control_plane_t* cp,
+                                      const char* session_id,
+                                      bool success,
+                                      const char* error_message,
+                                      const char* connection_id,
+                                      int error_code,
+                                      const char* host_key_algorithm,
+                                      const char* host_key_fingerprint) {
     flatcc_builder_t builder;
     flatcc_builder_init(&builder);
 
@@ -920,18 +931,31 @@ int outpost_cp_send_session_result(outpost_control_plane_t* cp,
 
     if (!success) {
         Outpost_ControlPlane_SessionOpenResult_error_code_add(&builder,
-            Outpost_ControlPlane_ErrorCode_ConnectionFailed);
+            (Outpost_ControlPlane_ErrorCode_enum_t)error_code);
         if (error_message)
             Outpost_ControlPlane_SessionOpenResult_error_message_create_str(&builder, error_message);
     }
 
     if (connection_id)
         Outpost_ControlPlane_SessionOpenResult_connection_id_create_str(&builder, connection_id);
+    if (host_key_algorithm && host_key_algorithm[0])
+        Outpost_ControlPlane_SessionOpenResult_host_key_algorithm_create_str(&builder, host_key_algorithm);
+    if (host_key_fingerprint && host_key_fingerprint[0])
+        Outpost_ControlPlane_SessionOpenResult_host_key_fingerprint_create_str(&builder, host_key_fingerprint);
 
     Outpost_ControlPlane_Envelope_session_open_result_end(&builder);
     Outpost_ControlPlane_Envelope_end_as_root(&builder);
 
     return cp_send(cp, &builder);
+}
+
+int outpost_cp_send_session_result(outpost_control_plane_t* cp,
+                                   const char* session_id,
+                                   bool success,
+                                   const char* error_message,
+                                   const char* connection_id) {
+    return outpost_cp_send_session_result_ex(cp, session_id, success, error_message,
+        connection_id, Outpost_ControlPlane_ErrorCode_ConnectionFailed, NULL, NULL);
 }
 
 int outpost_cp_send_session_closed(outpost_control_plane_t* cp,

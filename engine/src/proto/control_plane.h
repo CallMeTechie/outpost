@@ -51,6 +51,15 @@ int outpost_cp_send_session_result(outpost_control_plane_t* cp,
                                    const char* error_message,
                                    const char* connection_id);
 
+int outpost_cp_send_session_result_ex(outpost_control_plane_t* cp,
+                                      const char* session_id,
+                                      bool success,
+                                      const char* error_message,
+                                      const char* connection_id,
+                                      int error_code,
+                                      const char* host_key_algorithm,
+                                      const char* host_key_fingerprint);
+
 int outpost_cp_send_session_closed(outpost_control_plane_t* cp,
                                     const char* session_id,
                                     const char* reason);
