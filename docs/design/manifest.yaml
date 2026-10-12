@@ -1,6 +1,6 @@
 schema: mockingbird/1
 project: outpost
-revision: 20
+revision: 21
 updated: 2026-10-11
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
@@ -81,6 +81,10 @@ changelog:
     date: 2026-10-11
     summary: Vault Teilprojekt 2b (ssh_exec) — SSH-Eintrag mit Zielen aus der Serverliste, freien Hosts und Sitzungsfreigabe-Schalter; Ziele mit gemerktem Host-Key und Vergessen; Freigabe-Karte mit Befehl, Abzeichen „führt aus“ und Kasten für neue Ziele; Anleitung um SSH ergänzt
     touched: [UI-VAULT-DIALOG-SSH-SERVERS, UI-VAULT-DIALOG-SSH-HOSTS, UI-VAULT-DIALOG-SSH-SESSION, UI-VAULT-DETAIL-SSH-TARGETS, UI-VAULT-DETAIL-USAGE, UI-VAULT-APPROVAL-CARD, UI-VAULT-APPROVAL-EXEC, UI-VAULT-APPROVAL-COMMAND, UI-VAULT-APPROVAL-HOSTKEY, UI-AGENT-ACCESS-GUIDE]
+  - rev: 21
+    date: 2026-10-11
+    summary: Nachzug aus dem Spec-Review 2b — SSH folgt „Freigabe erforderlich“ wie die anderen Typen (ein neues Ziel fragt immer); freie Hosts nur mit dem Recht „Direkt verbinden“; „Datei holen“ zeigt die Größe erst nach der Freigabe
+    touched: [UI-VAULT-DIALOG-SSH-SESSION, UI-VAULT-DIALOG-SSH-HOSTS, UI-VAULT-APPROVAL-CARD]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -1434,7 +1438,8 @@ screens:
           means: >
             Rechner außerhalb der Serverliste als host[:port], durch Komma oder Leerzeichen getrennt. Sie laufen
             über die Standard-Engine, ohne Jump-Hosts. Ändern verwirft die gespeicherten Geheimnisse und die
-            gemerkten Host-Keys der entfernten Ziele.
+            gemerkten Host-Keys der entfernten Ziele. Nur mit dem Recht „Direkt verbinden“ (connect.direct);
+            ohne es ist das Feld gesperrt mit Hinweis.
           concept: ssh_target_host
           aliases: [ssh_target]
           not: [api_host, fill_origin, vault_binding]
@@ -1445,6 +1450,7 @@ screens:
           - { id: default }
           - { id: empty, copy: "nas.example.net:2222" }
           - { id: error, copy: "Kein gültiger Host (host oder host:port)." }
+          - { id: disabled, copy: "Freie Hosts brauchen das Recht „Direkt verbinden“." }
         locators:
           web: "[data-ui-id='UI-VAULT-DIALOG-SSH-HOSTS']"
 
@@ -1457,8 +1463,9 @@ screens:
         semantic_anchor:
           means: >
             Ob die Freigabe-Karte für SSH-Zugriffe dieses Eintrags „Für diese Sitzung“ anbietet. Aus: jeder
-            Befehl und jede Datei braucht „Einmal“. An: eine Sitzungsfreigabe gilt je Ziel und Art (ausführen,
-            schreiben, lesen) für beliebige Befehle bis Sitzungsende. Standard aus.
+            Befehl und jede Datei mit Karte braucht „Einmal“. An: eine Sitzungsfreigabe gilt je Ziel, Art
+            (ausführen, schreiben, lesen) und Host-Key für beliebige Befehle bis Sitzungsende. Ob überhaupt eine
+            Karte kommt, sagt „Freigabe erforderlich“ des Eintrags; ein neues Ziel fragt immer. Standard aus.
           concept: ssh_session_policy
           not: [approval_policy, vault_binding]
           example: "aus — jeder Befehl einzeln"
@@ -1870,7 +1877,8 @@ screens:
             („Eintragen auf https://github.com · Feld „Kommentar““); ist es kein Passwortfeld, gibt es nur
             „Einmal“ und „Ablehnen“.
             Bei SSH: Werkzeug (SSH-Befehl, Datei hochladen, Datei holen), Ziel als Name und benutzer@host:port,
-            beim Befehl der Befehlsblock, bei Dateien Quelle → Ziel mit Größe; „Für diese Sitzung“ nur, wenn der
+            beim Befehl der Befehlsblock, bei Dateien Quelle → Ziel mit Größe (bei „Datei holen“ erst nach der
+            Freigabe bekannt, dann „Größe nach der Freigabe“); „Für diese Sitzung“ nur, wenn der
             Eintrag es erlaubt, und dann je Ziel.
             Mehrere Anfragen stapeln sich, die älteste unten. Der Stapel liegt über Dialogen und
             Toasts. Eine abgelaufene Karte zeigt fünf Sekunden den Fehlerzustand und verschwindet;

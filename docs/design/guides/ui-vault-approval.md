@@ -1,6 +1,6 @@
 # Freigabe-Karte — Umsetzungsanleitung (UI-VAULT-APPROVAL)
 
-Artboard: docs/design/mockups/ui-vault-approval.html · Manifest-Revision: 20
+Artboard: docs/design/mockups/ui-vault-approval.html · Manifest-Revision: 21
 
 Den Screen gibt es nicht. Neu: eine seitenübergreifende Karte, die offene Freigabe-Anfragen aus dem
 Zustandsstrom rendert und per `POST /api/vault/approvals/:id` beantwortet. Kein Toast, kein Dialog:
@@ -63,7 +63,7 @@ Zustandsstrom rendert und per `POST /api/vault/approvals/:id` beantwortet. Kein 
 - Kasten über dem Befehl, Warnrand links, `--warning-opacity`; „Neues Ziel — <Algorithmus> <SHA256:…>. Mit ssh-keyscan oder an der Konsole vergleichen.“ Fingerabdruck in `--type-mono`, vollständig (nicht gekürzt). Nur wenn die Anfrage `hostKey.new === true` trägt.
 
 ### UI-VAULT-APPROVAL-CARD — SSH (Rev. 20)
-- Zielzeile `<Werkzeug> · <Name> · <benutzer@host:port>` (Werkzeug: „SSH-Befehl“, „Datei hochladen“, „Datei holen“). Bei Dateien zusätzlich `quelle → ziel · <Größe>`. „Für diese Sitzung“ nur bei `allowSession === true` der Anfrage.
+- Zielzeile `<Werkzeug> · <Name> · <benutzer@host:port>` (Werkzeug: „SSH-Befehl“, „Datei hochladen“, „Datei holen“). Bei Dateien zusätzlich `quelle → ziel · <Größe>`; bei „Datei holen“ ist `file.bytes` `null` (Outpost meldet sich am Ziel erst nach der Freigabe an), dann steht dort „Größe nach der Freigabe“. „Für diese Sitzung“ nur bei `allowSession === true` der Anfrage.
 
 ## Ausdrücklich nicht
 - Die Karte ist kein Toast und kein Dialog: keine Auto-Ausblendung der offenen Anfrage (nur der abgelaufenen Karte), kein Backdrop, kein Modal (`semantic_anchor.not`: notification, toast, error). `--warning` ist Randfarbe, die Karte ist keine Fehlermeldung.

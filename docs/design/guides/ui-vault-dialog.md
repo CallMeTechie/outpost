@@ -1,6 +1,6 @@
 # Eintrag anlegen / bearbeiten — Umsetzungsanleitung (UI-VAULT-DIALOG)
 
-Artboard: docs/design/mockups/ui-vault-dialog.html · Manifest-Revision: 20
+Artboard: docs/design/mockups/ui-vault-dialog.html · Manifest-Revision: 21
 
 Neuer Dialog, im Client gibt es noch keine Vault-Seite. Er folgt dem Muster von `SnippetDialog` (ein Formular, `DialogProvider`, Toast bei Fehlern). Nicht neu gebaut: Dialog-Rahmen, Eingabefelder, Auswahl, Schalter, Chips, Ordner- und Tag-Laden.
 
@@ -87,10 +87,10 @@ Neuer Dialog, im Client gibt es noch keine Vault-Seite. Er folgt dem Muster von 
 - Zieländerung beim Bearbeiten: Hinweis wie bei API-Key (`vault.dialog.secretCleared`), Geheimnisse müssen neu eingegeben werden.
 
 ### UI-VAULT-DIALOG-SSH-HOSTS — Freie Hosts (neu in Rev. 20)
-- `data-ui-id` am Feld-Wrapper; `IconInput` mit Globus-Icon, `vault-mono`, Platzhalter `nas.example.net:2222`, Trennung an Komma/Leerzeichen wie `hosts` beim API-Key. `error` „Kein gültiger Host (host oder host:port).“ mit `aria-invalid`.
+- `data-ui-id` am Feld-Wrapper; `IconInput` mit Globus-Icon, `vault-mono`, Platzhalter `nas.example.net:2222`, Trennung an Komma/Leerzeichen wie `hosts` beim API-Key. `error` „Kein gültiger Host (host oder host:port).“ mit `aria-invalid`. Rev. 21: `disabled` ohne `connect.direct` des Bearbeiters (Feld gesperrt, Hinweis „Freie Hosts brauchen das Recht „Direkt verbinden“.“); vorhandene Hosts bleiben sichtbar.
 
 ### UI-VAULT-DIALOG-SSH-SESSION — „Für diese Sitzung“ erlauben (neu in Rev. 20)
-- `UsageSwitch` wie `UI-VAULT-DIALOG-HTTP`; Hinweis aus „aus — jeder Befehl einzeln“, an „an — eine Freigabe gilt bis Sitzungsende für beliebige Befehle auf diesem Ziel“ (Warnton wie beim HTTP-Schalter). `fields.allowSession`, Standard aus.
+- `UsageSwitch` wie `UI-VAULT-DIALOG-HTTP`; Hinweis aus „aus — jeder Befehl einzeln“, an „an — eine Freigabe gilt bis Sitzungsende für beliebige Befehle auf diesem Ziel“ (Warnton wie beim HTTP-Schalter). `fields.allowSession`, Standard aus. Rev. 21: Ob überhaupt eine Karte kommt, bestimmt weiter „Freigabe erforderlich“ (`UI-VAULT-DIALOG-APPROVAL`), auch bei SSH.
 
 ### UI-VAULT-DIALOG-SAVE — Speichern (neu)
 - `data-ui-id` am primären `Button`. Beschriftung „Erstellen“ beim Anlegen, „Speichern“ beim Bearbeiten. Anlegen `POST /api/vault/items`, Bearbeiten `PATCH /api/vault/items/:id`.
