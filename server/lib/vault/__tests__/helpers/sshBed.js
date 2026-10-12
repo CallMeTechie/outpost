@@ -58,6 +58,7 @@ class FakeSftpClient {
     }
 
     async realpath(path) {
+        if (path === "." && !this.machine.home) throw new Error("Permission denied");
         return { path: path === "." ? this.machine.home : path, isDirectory: path === "." };
     }
 

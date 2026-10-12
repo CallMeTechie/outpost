@@ -2,7 +2,7 @@ const crypto = require("node:crypto");
 const { Transform } = require("node:stream");
 const { VaultError, VaultErrorCode, VaultErrorMessage } = require("../errors");
 const { HIDDEN } = require("../sshRefs");
-const { openAgentServerSession } = require("../sshSession");
+const { openAgentServerSession, sshFailure } = require("../sshSession");
 const { sshUse } = require("../sshUse");
 
 const PUT = "ssh_put";
@@ -50,10 +50,11 @@ const assertArgs = (ctx, args) => {
     if (!validPath(args.localPath) || !validPath(args.remotePath)) throw new VaultError(VaultErrorCode.BAD_PATH);
 };
 
-const resolveHome = async (client, path) => {
+const resolveHome = async (session, path, signal) => {
     if (!path.startsWith("~/")) return path;
-    const home = (await client.realpath(".")).path.replace(/\/+$/, "");
-    return `${home}/${path.slice(2)}`;
+    const { path: home } = await session.client.realpath(".")
+        .catch((err) => { throw sshFailure(fileFailure(err, path), session, signal); });
+    return `${home.replace(/\/+$/, "")}/${path.slice(2)}`;
 };
 
 const statOrNull = (client, path) => client.stat(path, { owner: false }).catch(() => null);
@@ -148,7 +149,7 @@ const putHandler = async (args, ctx, deps) => {
         prepare: async () => {
             const agent = await openAgentServerSession(ctx);
             try {
-                size = assertSource(await statOrNull(agent.client, await resolveHome(agent.client, args.localPath)), args.localPath).size;
+                size = assertSource(await statOrNull(agent.client, await resolveHome(agent, args.localPath, ctx.signal)), args.localPath).size;
             } finally {
                 agent.close();
             }
@@ -158,10 +159,10 @@ const putHandler = async (args, ctx, deps) => {
             const agent = await openAgentServerSession(ctx);
             let target = null;
             try {
-                const sourcePath = await resolveHome(agent.client, args.localPath);
+                const sourcePath = await resolveHome(agent, args.localPath, ctx.signal);
                 const source = assertSource(await statOrNull(agent.client, sourcePath), args.localPath);
                 target = await open();
-                const targetPath = await resolveHome(target.client, args.remotePath);
+                const targetPath = await resolveHome(target, args.remotePath, ctx.signal);
                 const copied = await copy({
                     from: agent.client, to: target.client, sourcePath, targetPath, mode: source.mode, overwrite, signal: ctx.signal,
                     names: { source: args.localPath, target: args.remotePath },
@@ -186,7 +187,7 @@ const getHandler = async (args, ctx, deps) => {
         prepare: async () => {
             const agent = await openAgentServerSession(ctx);
             try {
-                assertFree(await statOrNull(agent.client, await resolveHome(agent.client, args.localPath)), args.localPath, overwrite);
+                assertFree(await statOrNull(agent.client, await resolveHome(agent, args.localPath, ctx.signal)), args.localPath, overwrite);
             } finally {
                 agent.close();
             }
@@ -196,10 +197,10 @@ const getHandler = async (args, ctx, deps) => {
             const target = await open();
             let agent = null;
             try {
-                const sourcePath = await resolveHome(target.client, args.remotePath);
+                const sourcePath = await resolveHome(target, args.remotePath, ctx.signal);
                 const source = assertSource(await statOrNull(target.client, sourcePath), args.remotePath);
                 agent = await openAgentServerSession(ctx);
-                const targetPath = await resolveHome(agent.client, args.localPath);
+                const targetPath = await resolveHome(agent, args.localPath, ctx.signal);
                 const copied = await copy({
                     from: target.client, to: agent.client, sourcePath, targetPath, mode: source.mode, overwrite, signal: ctx.signal,
                     names: { source: args.remotePath, target: args.localPath },

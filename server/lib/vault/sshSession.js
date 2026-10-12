@@ -98,7 +98,7 @@ const openTargetSession = async (target, params, { expectedHostKey = null, execO
         client = new EngineSftpClient(socket);
         await client.waitForReady();
         if (signal?.aborted) throw new VaultError(VaultErrorCode.CLIENT_GONE);
-        return { client, close };
+        return { client, close, ref: target.ref };
     } catch (err) {
         close();
         if (err?.errorCode === "HostKeyMismatch") throw hostKeyChanged(target.ref, expectedHostKey, err.hostKey?.fingerprint ?? "none");
@@ -125,7 +125,7 @@ const openAgentServerSession = async (ctx, { signal = null } = {}) => {
     if (params.username !== key.remoteUser) throw noServer();
     const server = {
         ref: `server:${entry.id}`, kind: "server", name: entry.name, host, port: Number(port) || 22,
-        jumpHosts: await resolveJumpHosts(entry), engineId: entry.config.engineId ?? null,
+        jumpHosts: await resolveJumpHosts(entry).catch(() => { throw noServer(); }), engineId: entry.config.engineId ?? null,
     };
     assertEngine(server);
     return { ...(await openTargetSession(server, params, { signal })), user: params.username };
