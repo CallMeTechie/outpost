@@ -25,6 +25,7 @@ const grantStamp = (item) => {
     return JSON.stringify([
         new Date(item.updatedAt).getTime(), sorted(fields.origins), sorted(fields.hosts),
         fields.readOnly === true, fields.allowHttp === true, fields.git === true, fields.gitUsername ?? null, sorted(fields.fillOrigins),
+        fields.username ?? null, sorted(fields.servers), fields.allowSession === true,
     ]);
 };
 const early = (code) => new VaultError(code, undefined, { early: true });
@@ -86,9 +87,9 @@ const hasSessionApproval = (transportId, item, scope) => {
 
 const requestApproval = async ({
     accountId, keyId = null, transportId, agentType = null, entryName = null, impersonated = false,
-    item, target, tool, access, scope = access, field = null, allowSession = true, signal,
+    item, target, tool, access, scope = access, field = null, allowSession = true, card = null, skipSessionGrant = false, signal,
 }) => {
-    if (allowSession && hasSessionApproval(transportId, item, scope)) return "session";
+    if (!skipSessionGrant && allowSession && hasSessionApproval(transportId, item, scope)) return "session";
     const now = Date.now();
     prune(now);
     if ((denials.get(denialKey(accountId, keyId, item.id)) ?? 0) > now) throw early(VaultErrorCode.APPROVAL_DENIED);
@@ -104,7 +105,7 @@ const requestApproval = async ({
         const request = {
             id: randomUUID(), accountId, keyId, caller: callerKey(accountId, keyId), transportId,
             itemId: item.id, stamp: grantStamp(item), organizationId: item.organizationId ?? null, item: itemRef(item),
-            agentType, entryName, impersonated: Boolean(impersonated), target, tool, access, scope, field, allowSession: allowSession !== false,
+            agentType, entryName, impersonated: Boolean(impersonated), target, tool, access, scope, field, allowSession: allowSession !== false, card,
             expiresAt: now + APPROVAL_TTL_MS, resolve, reject, signal,
         };
         request.timer = setTimeout(() => expire(request, "expired"), APPROVAL_TTL_MS);
@@ -152,8 +153,8 @@ const listOpenApprovals = (accountId) => {
     return [...open.values()]
         .filter((request) => Number(request.accountId) === Number(accountId))
         .sort((a, b) => a.expiresAt - b.expiresAt)
-        .map(({ id, agentType, entryName, impersonated, item, tool, access, target, field, allowSession, expiresAt }) => ({
-            id, agentType, entryName, impersonated, item, tool, access, target, field, allowSession,
+        .map(({ id, agentType, entryName, impersonated, item, tool, access, target, field, allowSession, card, expiresAt }) => ({
+            ...card, id, agentType, entryName, impersonated, item, tool, access, target, field, allowSession,
             expiresAt: new Date(expiresAt).toISOString(), remainingMs: Math.max(0, expiresAt - now),
         }));
 };
