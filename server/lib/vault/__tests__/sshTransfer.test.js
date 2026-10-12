@@ -251,7 +251,7 @@ test("file transfer needs an agent key on a server whose identity is its remote 
     assert.deepStrictEqual([ssh.world.opened, env.ops("web02")], [[], []]);
 });
 
-test("a relative path is refused before any connection; a target directory without write permission or an unreadable home directory reports the SFTP status, not a connection failure; a file whose mode cannot be set is still placed with 0600 and a note", async (t) => {
+test("a relative path is refused before any connection; a target directory without write permission or an unreadable home directory reports the SFTP status, not a connection failure; a file whose mode cannot be set, also mode 000, is still placed with 0600 and a note", async (t) => {
     const env = setup(t);
     env.appmonster.files.set("/home/ma/a.txt", file("a", 0o100644));
     env.web02.writable = (path) => !path.startsWith("/srv/locked/");
@@ -270,6 +270,11 @@ test("a relative path is refused before any connection; a target directory witho
     const placed = env.web02.files.get("/srv/nomode/a.txt");
     assert.deepStrictEqual([placed.data.toString(), placed.mode], ["a", 0o100600]);
     assert.strictEqual(env.audits.filter((entry) => entry.action === "vault.use").pop().details.modeSet, false);
+
+    env.appmonster.files.set("/home/ma/none.txt", file("n", 0o100000));
+    assert.strictEqual(env.text(await env.call("ssh_put", { localPath: "/home/ma/none.txt", remotePath: "/srv/none.txt" })),
+        "Copied 1 bytes from /home/ma/none.txt to /srv/none.txt. Permissions could not be set; the file keeps mode 0600.");
+    assert.strictEqual(env.web02.files.get("/srv/none.txt").mode, 0o100600);
 
     assert.strictEqual(env.text(await env.call("ssh_put", { localPath: "/home/ma/$&.txt", remotePath: "/srv/a.txt" })),
         "/home/ma/$&.txt is not a regular file. (vault.not_a_file)");

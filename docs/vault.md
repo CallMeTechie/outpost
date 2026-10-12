@@ -235,7 +235,7 @@ The first time an entry connects to a target, the approval card shows the host k
 - Paths are absolute or start with `~/`, at most 4 KB. `~/` becomes the home directory of the session's user.
 - An existing destination is replaced only with `overwrite: true` (`vault.file_exists`).
 - Outpost writes to a temporary file next to the destination, named `<destination>.outpost-<8 hex characters>.tmp`, created exclusively (an existing file of that name makes the call fail) with mode 0600, and renames it afterwards. The final mode is set on the open handle before it is closed: the mode of the source, or on replacing, the mode of the old file.
-- If the target does not allow setting the mode (SMB/CIFS mounts, FAT, ACL-only shares), the file is still written, keeps mode 0600, and the result says "Permissions could not be set; the file keeps mode 0600."
+- If the target does not allow setting the mode (SMB/CIFS mounts, FAT, ACL-only shares), or the mode to set is `000`, the file is still written, keeps mode 0600, and the result says "Permissions could not be set; the file keeps mode 0600."
 - The owner of the new file is the entry's user on the target. When replacing, the old owner is lost.
 - If the rename fails after the old file was deleted, the old file is gone and the result names the temporary file.
 - The card for `ssh_get` shows the size only after approval, because Outpost logs in to the target only then. The transfer stops beyond 100 MB and removes the temporary file.

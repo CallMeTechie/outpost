@@ -95,7 +95,9 @@ const copy = async ({ from, to, sourcePath, targetPath, mode, overwrite, signal,
     const shownTemp = `${names.target}${temp.slice(targetPath.length)}`;
     let read = null;
     let keepTemp = false;
-    let modeSet = true;
+    const finalMode = (existing ?? { mode }).mode & 0o777;
+    // The engine reads final_mode 0 as "leave the mode alone", so a mode of 000 cannot be set.
+    let modeSet = finalMode !== 0;
     let bytes = 0;
     try {
         if (signal?.aborted) throw new VaultError(VaultErrorCode.CLIENT_GONE);
@@ -113,7 +115,7 @@ const copy = async ({ from, to, sourcePath, targetPath, mode, overwrite, signal,
         read.stream.on("error", (err) => counted.destroy(fileFailure(err, names.source)));
         // Only the write's own outcome tells whether this call created the temp file, so it is awaited even when the read fails first.
         try {
-            await to.writeFile(temp, read.stream.pipe(counted), { exclusive: true, finalMode: (existing ?? { mode }).mode & 0o777 });
+            await to.writeFile(temp, read.stream.pipe(counted), { exclusive: true, finalMode });
         } catch (err) {
             if (err?.message !== MODE_NOT_SET) {
                 keepTemp = err?.notOpened === true;
