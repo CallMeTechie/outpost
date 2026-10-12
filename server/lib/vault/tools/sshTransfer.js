@@ -15,7 +15,7 @@ const REGULAR = 0o100000;
 const SFTP_STATUS = new Set(["Path does not exist", "Permission denied", "Operation failed", "Already exists",
     "Write protected", "No media", "No space left", "Quota exceeded", "SFTP error"]);
 const MODE_NOT_SET = "Could not set permissions";
-const DESCRIPTION = "Copy one file between your own server and a target of a vault SSH entry. Outpost reads and writes the file itself — on your server as your own user, on the target as the entry's user — so the content never passes through you. At most 100 MB; an existing file is only replaced with overwrite: true. Needs approval.";
+const DESCRIPTION = "Copy one file between your own server and a target of a vault SSH entry. Outpost reads and writes the file itself — on your server as your own user, on the target as the entry's user — so the content never passes through you. At most 100 MB; an existing file is only replaced with overwrite: true. If the entry requires approval, the user approves each call and sees both paths; a new target always asks.";
 
 const defOf = (name) => ({
     name,

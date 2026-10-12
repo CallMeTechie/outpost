@@ -13,7 +13,7 @@ const MAX_TIMEOUT_SEC = 600;
 
 const def = {
     name: NAME,
-    description: "Run a shell command on one of the targets of a vault SSH entry. Outpost logs in itself with the entry's user and key or password; you never see them. No terminal: interactive programs and sudo password prompts do not work — use an entry for the user you need. The user approves every call and sees the full command. Output: exit code, stdout and stderr, each cut at 64 KB; the entry's password and key are replaced by ••••.",
+    description: "Run a shell command on one of the targets of a vault SSH entry. Outpost logs in itself with the entry's user and key or password; you never see them. No terminal: interactive programs and sudo password prompts do not work — use an entry for the user you need. If the entry requires approval, the user approves each call and sees the full command; a new target always asks. Output: exit code, stdout and stderr, each cut at 64 KB; the entry's password and key are replaced by ••••.",
     inputSchema: {
         type: "object",
         properties: {
