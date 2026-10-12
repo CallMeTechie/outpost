@@ -56,11 +56,7 @@ const handler = (args, ctx, deps) => {
                 details.commandSent = true;
                 run = await session.client.exec(command, timeoutSec * 1000);
             } catch (err) {
-                const failure = sshFailure(err, target, ctx.signal);
-                if (failure.code !== VaultErrorCode.SSH_FAILED) throw failure;
-                if (err?.message === "Failed to execute command") throw failure;
-                throw new VaultError(VaultErrorCode.SSH_FAILED, failure.message.replace("; nothing was done.",
-                    "; the command was sent and may have run in full or in part. Check on the target before running it again."));
+                throw sshFailure(err, target, ctx.signal, { sent: err?.message !== "Failed to execute command" });
             } finally {
                 session.close();
             }
