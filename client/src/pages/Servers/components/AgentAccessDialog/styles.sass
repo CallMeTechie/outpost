@@ -401,6 +401,9 @@
     &--two
       grid-template-columns: repeat(2, minmax(0, 1fr))
 
+    & + .guide-cards
+      margin-top: tokens.$space-3
+
   .guide-card
     display: flex
     flex-direction: column

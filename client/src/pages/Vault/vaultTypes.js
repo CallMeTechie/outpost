@@ -22,8 +22,9 @@ export const VAULT_TYPES = {
         },
     },
     ssh: {
-        labelKey: "vault.types.ssh", icon: IconSquareTerminal, secrets: ["privateKey", "password", "passphrase"], targets: [],
-        defaults: { username: "" },
+        labelKey: "vault.types.ssh", icon: IconSquareTerminal, secrets: ["privateKey", "password", "passphrase"],
+        targets: ["servers", "hosts"],
+        defaults: { username: "", servers: [], hosts: "", allowSession: false },
     },
     database: {
         labelKey: "vault.types.database", icon: IconDatabase, secrets: ["password"], targets: ["host"],
@@ -35,8 +36,23 @@ export const VAULT_TYPES = {
 export const TYPE_KEYS = Object.keys(VAULT_TYPES);
 
 export const USAGE_FIELDS = ["readOnly", "allowHttp", "git", "gitUsername", "fillOrigins"];
+const SSH_USAGE_FIELDS = ["servers", "hosts", "allowSession"];
+
+export const usageFieldsOf = (type) => (type === "ssh" ? SSH_USAGE_FIELDS : USAGE_FIELDS);
 
 const LIST_FIELDS = ["origins", "hosts", "fillOrigins"];
+
+const HOSTNAME = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/;
+
+// Mirrors normalizeHost in server/lib/vault/sshRefs.js, which stays authoritative.
+export const normalizeHost = (text) => {
+    const match = /^(\[[0-9a-f:.]+\]|[^:[\]]+)(?::(\d{1,5}))?$/i.exec(text.trim());
+    if (!match) return null;
+    const host = match[1].toLowerCase();
+    const port = match[2] === undefined ? 22 : Number(match[2]);
+    if (port < 1 || port > 65535 || (!host.startsWith("[") && !HOSTNAME.test(host))) return null;
+    return port === 22 ? host : `${host}:${port}`;
+};
 
 // Mirrors the required fields of Task 5 (`FIELDS` in server/validations/vault.js); the server stays authoritative.
 const REQUIRED_FIELDS = {
@@ -58,20 +74,22 @@ export const missingFields = (type, payloadFields) => REQUIRED_FIELDS[type].filt
     return Array.isArray(value) ? value.length === 0 : value === undefined;
 });
 
+const splitList = (value) => value.split(/[\s,]+/).filter(Boolean);
+
 export const toFormFields = (type, fields = {}) => {
     const { defaults } = VAULT_TYPES[type];
     return Object.fromEntries(Object.entries({ ...defaults, ...fields })
         .filter(([key]) => key in defaults)
         .map(([key, value]) => {
             if (typeof defaults[key] === "boolean") return [key, value === true];
+            if (Array.isArray(defaults[key])) return [key, Array.isArray(value) ? value : []];
             return [key, Array.isArray(value) ? value.join(", ") : value == null ? "" : String(value)];
         }));
 };
 
-const splitList = (value) => value.split(/[\s,]+/).filter(Boolean);
-
-export const toPayloadFields = (formFields) => Object.fromEntries(Object.entries(formFields).flatMap(([key, value]) => {
-    if (typeof value === "boolean") return [[key, value]];
+export const toPayloadFields = (formFields, type) => Object.fromEntries(Object.entries(formFields).flatMap(([key, value]) => {
+    if (typeof value === "boolean" || Array.isArray(value)) return [[key, value]];
+    if (key === "hosts" && type === "ssh") return [[key, splitList(value).map((host) => normalizeHost(host) ?? host)]];
     if (LIST_FIELDS.includes(key)) return [[key, splitList(value)]];
     if (key === "gitUsername" && !formFields.git) return [];
     const trimmed = value.trim();
@@ -89,9 +107,10 @@ const isOrigin = (value) => {
     }
 };
 
-export const usageProblems = (formFields) => ({
+export const usageProblems = (formFields, type) => ({
     gitUsername: formFields.git === true && !formFields.gitUsername.trim(),
     fillOrigins: typeof formFields.fillOrigins === "string" && splitList(formFields.fillOrigins).some((origin) => !isOrigin(origin)),
+    hosts: type === "ssh" && splitList(formFields.hosts).some((host) => !normalizeHost(host)),
 });
 
 const hostOf = (origin) => {
@@ -131,3 +150,27 @@ export const detailRows = ({ type, fields = {} }) => {
     }[type] || [];
     return rows.filter(([, value]) => value !== undefined && value !== null && value !== "");
 };
+
+export const sshServers = (nodes = []) => nodes.flatMap((node) => {
+    if (node.type === "folder" || node.type === "organization") return sshServers(node.entries || []);
+    return node.type === "server" && node.protocol === "ssh" ? [{ id: node.id, name: node.name, ip: node.ip, port: node.port || 22 }] : [];
+});
+
+const splitHostPort = (value) => {
+    const match = /^(\[[^\]]+\]|[^:]+)(?::(\d+))?$/.exec(value);
+    return { host: match?.[1] ?? value, port: match?.[2] ?? "22" };
+};
+
+export const sshTargetRows = ({ fields = {} }, known) => [
+    ...(fields.servers || []).map((id) => {
+        const server = known.find((entry) => entry.id === id);
+        return {
+            ref: `server:${id}`, kind: "server", name: server?.name ?? `server:${id}`,
+            address: server?.ip ? `${fields.username}@${server.ip}:${server.port}` : null,
+        };
+    }),
+    ...(fields.hosts || []).map((value) => {
+        const { host, port } = splitHostPort(value);
+        return { ref: `host:${value}`, kind: "host", name: host, address: `${fields.username}@${host}:${port}` };
+    }),
+];

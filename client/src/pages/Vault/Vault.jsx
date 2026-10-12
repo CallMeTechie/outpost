@@ -170,7 +170,8 @@ export const Vault = () => {
                                canCreate={canCreate} onCreate={openCreate} />
                 </aside>
                 <main className="vault-main">
-                    <VaultDetail item={selected} impersonating={impersonating} onEdit={openEdit} onDelete={remove} />
+                    <VaultDetail item={selected} impersonating={impersonating} onEdit={openEdit} onDelete={remove}
+                                 onHostKeyForgotten={loadItems} />
                 </main>
             </div>
 

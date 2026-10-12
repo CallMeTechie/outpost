@@ -21,10 +21,10 @@ const t = (key, options) => testI18n.t(key, options);
 
 // Module level, not inside a component: the stack registers from an effect, and the
 // handler has to leave that effect without a write to an outer variable during render.
-const stream = { handler: null };
+const stream = { handlers: {} };
 const streamValue = {
     registerHandler: (type, handler) => {
-        if (type === STATE_TYPES.VAULT_APPROVALS) stream.handler = handler;
+        stream.handlers[type] = handler;
         return () => {};
     },
 };
@@ -33,7 +33,7 @@ const Stream = ({ children }) => (
 );
 
 const mount = () => renderWithProviders(<VaultApprovalStack />, { providers: [ToastProvider, Stream] });
-const push = (list) => act(() => { stream.handler(list); });
+const push = (list) => act(() => { stream.handlers[STATE_TYPES.VAULT_APPROVALS](list); });
 // The server clock runs an hour ahead: only remainingMs may drive the countdown.
 const SERVER_CLOCK_AHEAD_MS = 3_600_000;
 const approval = (id, remainingMs) => ({
@@ -45,7 +45,7 @@ const button = (key) => screen.getByRole("button", { name: t(key) });
 
 beforeEach(() => {
     requestDouble.reset();
-    stream.handler = null;
+    stream.handlers = {};
 });
 afterEach(() => { vi.useRealTimers(); });
 
@@ -151,4 +151,85 @@ test("the card names tool, target and the field of a fill; only a writing reques
     expect(document.querySelector(".vault-approval-card b")).toBeNull();
     expect(session(fieldLine)).not.toBeInTheDocument();
     expect(session(t("vault.approval.target.fill", { origin: "https://coolify.example.net" }))).toBeInTheDocument();
+});
+
+const FINGERPRINT = "SHA256:3f9aT0qW8eLk2mN7vB1cX5zR4tY6uI9oP0aS3dFXc21";
+const web02 = { ref: "server:12", name: "web02", user: "deploy", host: "192.168.2.40", port: 22 };
+const nas = { ref: "server:13", name: "nas", user: "admin", host: "nas.example.net", port: 2222 };
+
+test("ssh_exec: „führt aus“ statt „schreibt“, Ziel mit benutzer@host:port, Kasten „Neues Ziel“ mit vollem Fingerabdruck, Befehl als Text und über 20 Zeilen oder 1200 Zeichen eingeklappt; freigeben erst nach „Ganz anzeigen“, ablehnen immer", async () => {
+    const user = userEvent.setup();
+    const command = ["<b>echo start</b>", ...Array.from({ length: 41 }, (_, index) => `echo ${index + 1}`)].join("\n");
+    mount();
+    push([{
+        ...approval("a1", 120_000), item: "deploy-web", tool: "ssh_exec", access: "exec", target: "server:12",
+        sshTarget: web02, command, hostKey: { algorithm: "ssh-ed25519", fingerprint: FINGERPRINT, new: true }, allowSession: true,
+    }]);
+
+    expect(document.querySelector("[data-ui-id='UI-VAULT-APPROVAL-EXEC']")).toHaveTextContent("executes");
+    expect(document.querySelector("[data-ui-id='UI-VAULT-APPROVAL-WRITE']")).toBeNull();
+    expect(screen.getByText("SSH command · web02 · deploy@192.168.2.40:22")).toBeInTheDocument();
+    expect(document.querySelector("[data-ui-id='UI-VAULT-APPROVAL-HOSTKEY']"))
+        .toHaveTextContent(`New target — ED25519 ${FINGERPRINT}. Compare with ssh-keyscan or at the console.`);
+
+    const block = document.querySelector("[data-ui-id='UI-VAULT-APPROVAL-COMMAND'] pre");
+    expect(block.textContent.split("\n")).toHaveLength(20);
+    expect(block.textContent.startsWith("<b>echo start</b>")).toBe(true);
+    expect(block.querySelector("b")).toBeNull();
+    expect(button("vault.approval.actions.once")).toBeDisabled();
+    expect(button("vault.approval.actions.session")).toBeDisabled();
+    expect(button("vault.approval.actions.deny")).toBeEnabled();
+    expect(screen.getByText("Show the whole command before approving.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Show all (42 lines)" }));
+    expect(block.textContent).toBe(command);
+    expect(button("vault.approval.actions.once")).toBeEnabled();
+    expect(button("vault.approval.actions.session")).toBeEnabled();
+    expect(screen.queryByText("Show the whole command before approving.")).toBeNull();
+
+    const oneLine = "x".repeat(3000);
+    push([{ ...approval("a2", 120_000), item: "deploy-web", tool: "ssh_exec", access: "exec", target: "server:12", sshTarget: web02, command: oneLine }]);
+    const single = document.querySelector("[data-ui-id='UI-VAULT-APPROVAL-COMMAND'] pre");
+    expect(single.textContent).toBe(oneLine.slice(0, 1200));
+    expect(button("vault.approval.actions.once")).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Show all (3000 characters)" }));
+    expect(single.textContent).toBe(oneLine);
+    expect(button("vault.approval.actions.once")).toBeEnabled();
+});
+
+test("Dateien: Hochladen nennt Quelle → Ziel mit Größe und „schreibt“, Holen zeigt „Größe nach der Freigabe“; „Für diese Sitzung“ nur mit allowSession", () => {
+    mount();
+    push([
+        {
+            ...approval("a1", 120_000), item: "deploy-nas", tool: "ssh_put", access: "write", target: "server:13", sshTarget: nas,
+            allowSession: true, file: { from: "appmonster:~/build/app.tar.gz", to: "nas:/volume1/deploy/app.tar.gz", bytes: 50_541_363 },
+        },
+        {
+            ...approval("a2", 110_000), item: "deploy-nas", tool: "ssh_get", access: "read", target: "server:13", sshTarget: nas,
+            allowSession: false, file: { from: "nas:/volume1/logs/app.log", to: "appmonster:~/app.log", bytes: null },
+        },
+    ]);
+    const cardOf = (line) => within(screen.getByText(line).closest(".vault-approval-card"));
+    const upload = cardOf("Upload file · nas · admin@nas.example.net:2222");
+    const fetchFile = cardOf("Fetch file · nas · admin@nas.example.net:2222");
+    const session = { name: t("vault.approval.actions.session") };
+
+    expect(upload.getByText("appmonster:~/build/app.tar.gz → nas:/volume1/deploy/app.tar.gz · 48.2 MB")).toBeInTheDocument();
+    expect(upload.getByText(t("vault.approval.write"))).toBeInTheDocument();
+    expect(upload.getByRole("button", session)).toBeInTheDocument();
+    expect(fetchFile.getByText("nas:/volume1/logs/app.log → appmonster:~/app.log · size after approval")).toBeInTheDocument();
+    expect(fetchFile.queryByText(t("vault.approval.write"))).toBeNull();
+    expect(fetchFile.queryByRole("button", session)).toBeNull();
+    expect(document.querySelector("[data-ui-id='UI-VAULT-APPROVAL-EXEC']")).toBeNull();
+    expect(document.querySelector("[data-ui-id='UI-VAULT-APPROVAL-COMMAND']")).toBeNull();
+    expect(document.querySelector("[data-ui-id='UI-VAULT-APPROVAL-HOSTKEY']")).toBeNull();
+});
+
+test("a host key mismatch notice shows a toast naming the target", async () => {
+    mount();
+    act(() => {
+        stream.handlers[STATE_TYPES.VAULT_NOTICE]({ kind: "ssh_host_key_mismatch", item: "deploy-web", target: "server:12", name: "web02" });
+    });
+
+    expect(await screen.findByText("Host key of web02 changed — connection aborted")).toBeInTheDocument();
 });

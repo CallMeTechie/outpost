@@ -12,12 +12,15 @@
   display: flex
   flex-direction: column
   gap: tokens.$space-2
+  max-height: calc(100vh - 2 * #{tokens.$space-4})
+  overflow-y: auto
 
   @media (max-width: breakpoints.$mobile)
     left: 0
     right: 0
     bottom: var(--mobile-nav-height)
     width: auto
+    max-height: calc(100vh - var(--mobile-nav-height))
 
 .vault-approval-count
   font: tokens.$type-caption
@@ -50,7 +53,8 @@
     margin: 0
     font: tokens.$type-heading
 
-  .vault-approval-write
+  .vault-approval-write,
+  .vault-approval-exec
     display: inline-flex
     align-items: center
     gap: tokens.$space-1
@@ -63,6 +67,50 @@
     svg
       width: 1em
       height: 1em
+
+  .vault-approval-exec
+    color: colors.$error
+    background: colors.$error-opacity
+
+  .vault-approval-hostkey
+    padding: tokens.$space-2 tokens.$space-3
+    border-left: 3px solid colors.$warning
+    border-radius: tokens.$radius-md
+    background: colors.$warning-opacity
+    font: tokens.$type-body
+    overflow-wrap: anywhere
+
+  .vault-approval-fingerprint
+    font: tokens.$type-mono
+
+  .vault-approval-command
+    display: flex
+    flex-direction: column
+    gap: tokens.$space-1
+
+    pre
+      margin: 0
+      padding: tokens.$space-2 tokens.$space-3
+      border-radius: tokens.$radius-md
+      background: colors.$terminal
+      font: tokens.$type-mono
+      white-space: pre-wrap
+      overflow-wrap: anywhere
+      max-height: 40vh
+      overflow-y: auto
+
+  .vault-approval-locked
+    font: tokens.$type-caption
+    color: colors.$subtext
+
+  .vault-approval-more
+    align-self: flex-start
+    padding: 0
+    border: none
+    background: none
+    color: colors.$primary
+    font: tokens.$type-caption
+    cursor: pointer
 
   .vault-approval-who,
   .vault-approval-status

@@ -26,6 +26,7 @@ export const Permission = Object.freeze({
     CONNECT_PROXMOX: "connect.proxmox",
     CONNECT_TUNNEL: "connect.tunnel",
     CONNECT_BROWSER: "connect.browser",
+    CONNECT_DIRECT: "connect.direct",
     FILES_VIEW: "files.view",
     FILES_UPLOAD: "files.upload",
     FILES_DOWNLOAD: "files.download",
