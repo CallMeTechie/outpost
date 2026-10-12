@@ -271,6 +271,9 @@ test("a relative path is refused before any connection; a target directory witho
     assert.deepStrictEqual([placed.data.toString(), placed.mode], ["a", 0o100600]);
     assert.strictEqual(env.audits.filter((entry) => entry.action === "vault.use").pop().details.modeSet, false);
 
+    assert.strictEqual(env.text(await env.call("ssh_put", { localPath: "/home/ma/$&.txt", remotePath: "/srv/a.txt" })),
+        "/home/ma/$&.txt is not a regular file. (vault.not_a_file)");
+
     env.appmonster.home = null;
     assert.strictEqual(env.text(await env.call("ssh_put", { localPath: "~/a.txt", remotePath: "/srv/a.txt" })),
         "~/a.txt: permission denied; nothing was copied. (vault.ssh_failed)");

@@ -24,11 +24,11 @@ const closeEngineSession = (sessionId, target) => {
 };
 
 const sshFailed = (target, kind) => new VaultError(VaultErrorCode.SSH_FAILED,
-    VaultErrorMessage[VaultErrorCode.SSH_FAILED].replace("<target>", target.ref).replace("<kind>", kind)
+    VaultErrorMessage[VaultErrorCode.SSH_FAILED].replace("<target>", () => target.ref).replace("<kind>", () => kind)
     + (kind === KIND.LOGIN ? " Ask the user to check the entry's user and key." : ""));
 
 const hostKeyChanged = (ref, expected, actual) => new VaultError(VaultErrorCode.HOST_KEY_CHANGED,
-    VaultErrorMessage[VaultErrorCode.HOST_KEY_CHANGED].replace("<target>", ref).replace("<alt>", expected).replace("<neu>", actual),
+    VaultErrorMessage[VaultErrorCode.HOST_KEY_CHANGED].replace("<target>", () => ref).replace("<alt>", () => expected).replace("<neu>", () => actual),
     { expected, actual });
 
 // Engine errors only ever leave as one of these kinds: their text may name hosts behind jump hosts or libssh2 details.

@@ -36,7 +36,7 @@ const defOf = (name) => ({
 const textResult = (text) => ({ content: [{ type: "text", text }] });
 const copiedText = (from, to, { bytes, modeSet }) =>
     `Copied ${bytes} bytes from ${from} to ${to}.${modeSet ? "" : " Permissions could not be set; the file keeps mode 0600."}`;
-const withPath = (code, path) => new VaultError(code, VaultErrorMessage[code].replace("<path>", path));
+const withPath = (code, path) => new VaultError(code, VaultErrorMessage[code].replace("<path>", () => path));
 const shown = (path) => (typeof path === "string" ? path.slice(0, AUDIT_PATH_LIMIT) : null);
 
 const fileFailure = (err, path) => (err instanceof VaultError || !SFTP_STATUS.has(err?.message) ? err
