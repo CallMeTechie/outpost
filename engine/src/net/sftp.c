@@ -100,12 +100,51 @@ static void append_capped(char* dst, size_t cap, size_t* len,
     *len += copy;
 }
 
+#define SFTP_ABANDON_WAIT_MS 50
+#define SFTP_MAX_ABANDONED   16
+
+static _Thread_local struct {
+    LIBSSH2_CHANNEL* channels[SFTP_MAX_ABANDONED];
+    int count;
+    bool untracked;
+} t_abandoned;
+
+// A blocking close waits for the peer's CLOSE, which OpenSSH sends only once the command has exited.
+static void abandon_channel(LIBSSH2_SESSION* ssh, LIBSSH2_CHANNEL* ch) {
+    long prev_timeout = libssh2_session_get_timeout(ssh);
+    libssh2_session_set_blocking(ssh, 1);
+    libssh2_session_set_timeout(ssh, SFTP_ABANDON_WAIT_MS);
+#if LIBSSH2_VERSION_NUM >= 0x010b00
+    libssh2_channel_signal_ex(ch, "TERM", 4);
+#endif
+    libssh2_channel_close(ch);
+    int rc = libssh2_channel_free(ch);
+    libssh2_session_set_timeout(ssh, prev_timeout);
+    if (rc == 0) return;
+    if (t_abandoned.count < SFTP_MAX_ABANDONED)
+        t_abandoned.channels[t_abandoned.count++] = ch;
+    else
+        t_abandoned.untracked = true;
+}
+
+static void reap_abandoned(LIBSSH2_SESSION* ssh) {
+    if (t_abandoned.count == 0) return;
+    libssh2_session_set_blocking(ssh, 0);
+    int kept = 0;
+    for (int i = 0; i < t_abandoned.count; i++)
+        if (libssh2_channel_free(t_abandoned.channels[i]) != 0)
+            t_abandoned.channels[kept++] = t_abandoned.channels[i];
+    t_abandoned.count = kept;
+    libssh2_session_set_blocking(ssh, 1);
+}
+
 static int exec_command(LIBSSH2_SESSION* ssh, const char* cmd,
                         const char* stdin_data,
                         char* out, size_t out_sz,
                         char* err_buf, size_t err_sz,
                         int* exit_code, uint32_t timeout_ms,
                         bool* timed_out, int cancel_fd) {
+    reap_abandoned(ssh);
     LIBSSH2_CHANNEL* ch = libssh2_channel_open_session(ssh);
     if (!ch) return -1;
 
@@ -120,8 +159,7 @@ static int exec_command(LIBSSH2_SESSION* ssh, const char* cmd,
         while (written < total) {
             ssize_t n = libssh2_channel_write(ch, stdin_data + written, total - written);
             if (n <= 0) {
-                libssh2_channel_close(ch);
-                libssh2_channel_free(ch);
+                abandon_channel(ssh, ch);
                 return -1;
             }
             written += (size_t)n;
@@ -180,9 +218,14 @@ static int exec_command(LIBSSH2_SESSION* ssh, const char* cmd,
     err_buf[err_len] = '\0';
 
     libssh2_session_set_blocking(ssh, 1);
+    if (*timed_out) {
+        abandon_channel(ssh, ch);
+        *exit_code = 124;
+        return 0;
+    }
     libssh2_channel_close(ch);
-    if (!*timed_out) libssh2_channel_wait_closed(ch);
-    *exit_code = *timed_out ? 124 : libssh2_channel_get_exit_status(ch);
+    libssh2_channel_wait_closed(ch);
+    *exit_code = libssh2_channel_get_exit_status(ch);
     libssh2_channel_free(ch);
     return 0;
 }
@@ -1033,6 +1076,11 @@ static void* sftp_session_thread(void* arg) {
     LOG_INFO("SFTP session %s ending", session->session_id);
 
 cleanup:
+    if (ssh) reap_abandoned(ssh);
+    if (ssh && (t_abandoned.count > 0 || t_abandoned.untracked)) {
+        libssh2_session_disconnect(ssh, "Session ended");
+        if (ssh_sock >= 0) shutdown(ssh_sock, SHUT_RDWR);
+    }
     if (sftp) libssh2_sftp_shutdown(sftp);
     outpost_ssh_full_cleanup(ssh, NULL, ssh_sock, &jump_chain, "Session ended");
     if (data_fd >= 0)
