@@ -49,6 +49,8 @@ enum ErrorCode : byte {
     ProtocolError = 3,
     Timeout = 4,
     Internal = 5,
+    AuthFailed = 6,
+    HostKeyMismatch = 7,
 }
 
 table EngineHello {
@@ -91,6 +93,9 @@ table SessionOpen {
     port: uint16;
     params: [ConnectionParam];
     jump_hosts: [JumpHost];
+    expected_host_key: string;
+    probe_host_key: bool;
+    exec_only: bool;
 }
 
 table SessionOpenResult {
@@ -99,6 +104,8 @@ table SessionOpenResult {
     error_code: ErrorCode;
     error_message: string;
     connection_id: string;
+    host_key_algorithm: string;
+    host_key_fingerprint: string;
 }
 
 table SessionClose {
