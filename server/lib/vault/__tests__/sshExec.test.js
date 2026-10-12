@@ -176,6 +176,7 @@ test("refusals come before any card, connection or secret: wrong type, no target
     const API = { ...ITEM, id: 62, name: "api", type: "api_key", fields: { hosts: ["api.example.com"] } };
     const BARE = { ...ITEM, id: 63, name: "bare", fields: { username: "deploy", servers: [], hosts: [] } };
     const cases = [
+        ["an entry the caller cannot see", { item: "foreign" }, "vault.item_unknown"],
         ["an API key entry", { item: "api" }, "vault.wrong_type"],
         ["an SSH entry without targets", { item: "bare" }, "vault.no_targets"],
         ["a server the entry does not list", { target: "server:13" }, "vault.target_not_allowed"],
@@ -217,6 +218,9 @@ test("the output blanks password, passphrase and the key, a partial cat line by 
             use.details.command, use.details.exitCode, use.details.timedOut, use.details.bytes],
         ["ssh_exec", "exec", "server:12", "10.0.0.12", 22, "deploy", command, 124, true, Buffer.byteLength(stdout) + Buffer.byteLength(stderr)]);
     for (const secret of [PASSWORD, PASSPHRASE, KEY_LINES[0]]) assert.ok(!JSON.stringify(env.audit).includes(secret), secret);
+
+    await env.exec({ command: `echo ${PASSWORD} ${"x".repeat(1100)}` });
+    assert.strictEqual(env.audit.filter((entry) => entry.action === "vault.use")[1].details.command, `echo •••• ${"x".repeat(1100)}`.slice(0, 1024));
 });
 
 test("a stream over 64 KB is cut on the limit without leaving the start of the password behind", async (t) => {
