@@ -159,6 +159,12 @@ test("a server entry moved to another machine: the engine refuses the pinned key
     assert.strictEqual(env.window.notices().length, 1, "one toast a minute for the same key");
     assert.deepStrictEqual(ssh.world.logins, []);
     assert.ok(!JSON.stringify(env.audit).includes(PASSWORD));
+
+    env.audit.push = function (entry) {
+        if (entry.action === "vault.ssh_host_key_mismatch") throw new Error("audit log unavailable");
+        return Array.prototype.push.call(this, entry);
+    };
+    assert.ok(env.text(await env.exec({ command: "id" })).endsWith("(vault.host_key_changed)"), "a failing audit does not hide the mismatch");
 });
 
 test("a target removed while the card is open ends with vault.approval_stale; nothing logs in and no secret is read", async (t) => {
