@@ -1,6 +1,6 @@
 const { VaultError, VaultErrorCode, VaultErrorMessage } = require("../errors");
 const { itemRef } = require("../visibility");
-const { createRateLimit, callerKey } = require("../broker");
+const { createCallLimits } = require("../broker");
 const { MIN_LENGTH, secretVariants, redactSecretText, truncateAndRedact } = require("../redact");
 
 const NAME = "vault_http";
@@ -45,24 +45,7 @@ const def = {
 
 const textResult = (text) => ({ content: [{ type: "text", text }] });
 
-const createHttpLimits = () => {
-    const running = new Map();
-    return {
-        rate: createRateLimit({ windowMs: 60 * 1000, limit: 60 }),
-        enter: (ctx) => {
-            const key = callerKey(ctx);
-            const count = running.get(key) ?? 0;
-            if (count >= MAX_RUNNING) throw new VaultError(VaultErrorCode.BUSY);
-            running.set(key, count + 1);
-            return key;
-        },
-        leave: (key) => {
-            const count = (running.get(key) ?? 1) - 1;
-            if (count > 0) running.set(key, count);
-            else running.delete(key);
-        },
-    };
-};
+const createHttpLimits = () => createCallLimits({ windowMs: 60_000, limit: 60, maxRunning: MAX_RUNNING });
 
 const parseUrl = (value) => {
     if (typeof value !== "string" || Buffer.byteLength(value) > URL_LIMIT) return null;
