@@ -1,13 +1,26 @@
 const { Op } = require("sequelize");
 const db = require("../../utils/database");
 const VaultBinding = require("../../models/VaultBinding");
+const VaultItem = require("../../models/VaultItem");
+const VaultSshHostKey = require("../../models/VaultSshHostKey");
 const Entry = require("../../models/Entry");
 const Tag = require("../../models/Tag");
 const { validateFolderAccess } = require("../../utils/permission");
 
+const dropSshServers = async (entryIds, { transaction } = {}) => {
+    for (const item of await VaultItem.findAll({ where: { type: "ssh" }, transaction })) {
+        const servers = item.fields?.servers ?? [];
+        const kept = servers.filter((id) => !entryIds.includes(id));
+        if (kept.length === servers.length) continue;
+        await VaultItem.update({ fields: { ...item.fields, servers: kept } }, { where: { id: item.id }, transaction });
+        await VaultSshHostKey.destroy({ where: { itemId: item.id, target: entryIds.map((id) => `server:${id}`) }, transaction });
+    }
+};
+
 const removeBindings = async (kind, ids, { transaction } = {}) => {
     const targetIds = (ids ?? []).filter((id) => id !== null && id !== undefined);
     if (!targetIds.length) return 0;
+    if (kind === "entry") await dropSshServers(targetIds.map(Number), { transaction });
     return VaultBinding.destroy({ where: { kind, targetId: { [Op.in]: targetIds } }, transaction });
 };
 

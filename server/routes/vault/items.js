@@ -6,7 +6,9 @@ const { requireVaultEnabled } = require("../../lib/vault/state");
 const { validateSchema } = require("../../utils/schema");
 const { sendError } = require("../../utils/error");
 const { createVaultItemValidation } = require("../../validations/vault");
-const { listItems, createItem, updateItem, deleteItem, revealSecret } = require("../../controllers/vaultItems");
+const {
+    listItems, getItem, createItem, updateItem, deleteItem, revealSecret, forgetHostKey,
+} = require("../../controllers/vaultItems");
 const logger = require("../../utils/logger");
 
 const app = Router();
@@ -45,7 +47,7 @@ const handle = (action, status = 200) => async (req, res) => {
 /**
  * GET /vault/items
  * @summary List Vault Entries
- * @description Lists the vault entries the account owns (with vault.use) and those of organizations it is an active member of. Never contains secret values, only the names of the stored secret fields.
+ * @description Lists the vault entries the account owns (with vault.use) and those of organizations it is an active member of. Never contains secret values, only the names of the stored secret fields. SSH entries carry their remembered host keys (hostKeys).
  * @tags Vault
  * @produces application/json
  * @security BearerAuth
@@ -53,6 +55,19 @@ const handle = (action, status = 200) => async (req, res) => {
  * @return {object} 404 - Vault is disabled
  */
 app.get("/items", authenticate, requireVaultEnabled, handle((req) => listItems(callerOf(req))));
+
+/**
+ * GET /vault/items/{id}
+ * @summary Get Vault Entry
+ * @description One entry as in the list; SSH entries carry hostKeys: [{ target, algorithm, fingerprint, confirmedAt, confirmedBy: { id, name } | null }].
+ * @tags Vault
+ * @produces application/json
+ * @security BearerAuth
+ * @param {number} id.path.required - Entry id
+ * @return {object} 200 - { item }
+ * @return {object} 404 - Unknown entry
+ */
+app.get("/items/:id", authenticate, requireVaultEnabled, handle((req) => getItem(callerOf(req), itemIdOf(req))));
 
 /**
  * POST /vault/items
@@ -76,7 +91,7 @@ app.post("/items", authenticate, requireVaultEnabled, handle((req, res) => {
 /**
  * PATCH /vault/items/{id}
  * @summary Update Vault Entry
- * @description Updates an entry. Changing its target (origins, hosts or host) deletes all stored secret values in the same request; only values sent along are stored again.
+ * @description Updates an entry. Changing its target (origins, hosts, host, fill origins or SSH servers) deletes all stored secret values in the same request; only values sent along are stored again. Removed SSH targets lose their remembered host key. New SSH servers need connect.ssh on that server, new free hosts connect.direct.
  * @tags Vault
  * @produces application/json
  * @security BearerAuth
@@ -101,6 +116,21 @@ app.patch("/items/:id", authenticate, requireVaultEnabled, handle((req) => updat
  * @return {object} 404 - Unknown entry
  */
 app.delete("/items/:id", authenticate, requireVaultEnabled, handle((req) => deleteItem(callerOf(req), itemIdOf(req))));
+
+/**
+ * DELETE /vault/items/{id}/host-keys/{target}
+ * @summary Forget SSH Host Key
+ * @description Forgets the remembered host key of one target of an SSH entry; the next connection asks for approval with the new fingerprint. Same right as editing the entry.
+ * @tags Vault
+ * @security BearerAuth
+ * @param {number} id.path.required - Entry id
+ * @param {string} target.path.required - Target, URL-encoded: server:<entryId> or host:<host>[:<port>]
+ * @return 204 - Forgotten
+ * @return {object} 403 - Not allowed to manage this entry
+ * @return {object} 404 - Unknown entry or no host key for this target
+ */
+app.delete("/items/:id/host-keys/:target", authenticate, requireVaultEnabled,
+    handle((req) => forgetHostKey(callerOf(req), itemIdOf(req), req.params.target), 204));
 
 /**
  * GET /vault/items/{id}/secrets/{field}

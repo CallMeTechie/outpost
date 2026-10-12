@@ -396,6 +396,7 @@ module.exports.listEntries = async (accountId) => {
                 identities: identities,
                 protocol: entry.config?.protocol,
                 ip: entry.config?.ip,
+                port: entry.config?.port || null,
                 macAddress: entry.config?.macAddress,
                 wakeOnLanEnabled: entry.config?.wakeOnLanEnabled,
                 tmuxEnabled: Boolean(entry.config?.tmuxEnabled),

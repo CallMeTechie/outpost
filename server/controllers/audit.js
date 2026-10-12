@@ -92,6 +92,9 @@ const AUDIT_ACTIONS = {
     VAULT_SCREENSHOT_LOCKED: "vault.screenshot_locked",
     VAULT_INPUT_LOCKED: "vault.input_locked",
     VAULT_PERSISTENT_NOT_ALLOWED: "vault.persistent_not_allowed",
+    VAULT_SSH_HOST_KEY_PINNED: "vault.ssh_host_key_pinned",
+    VAULT_SSH_HOST_KEY_MISMATCH: "vault.ssh_host_key_mismatch",
+    VAULT_SSH_HOST_KEY_FORGOTTEN: "vault.ssh_host_key_forgotten",
 };
 
 const RESOURCE_TYPES = {
@@ -173,6 +176,9 @@ const ACTION_LABELS = {
     "vault.screenshot_locked": "Screenshot blocked while a password is shown",
     "vault.input_locked": "Text selection or paste blocked after a credential fill",
     "vault.persistent_not_allowed": "Credential fill refused in the persistent profile",
+    "vault.ssh_host_key_pinned": "SSH host key remembered",
+    "vault.ssh_host_key_mismatch": "SSH connection stopped: host key changed",
+    "vault.ssh_host_key_forgotten": "SSH host key forgotten",
 };
 
 const ACTION_CATEGORIES = [

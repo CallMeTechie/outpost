@@ -25,6 +25,12 @@ const CALLERS = {
     "s-revealer": { user: { id: 3 }, session: { id: 13, accountId: 3, impersonatorId: null } },
     "s-invited": { user: { id: 4 }, session: { id: 14, accountId: 4, impersonatorId: null } },
 };
+const SYSTEM_DEFAULT = structuredClone(SYSTEM);
+const ORG_DEFAULT = structuredClone(ORG);
+const resetTo = (target, defaults) => {
+    for (const key of Object.keys(target)) delete target[key];
+    Object.assign(target, structuredClone(defaults));
+};
 
 fake("../../../utils/database", db);
 fake("../../../permissions/engine", {
@@ -54,6 +60,10 @@ const VaultItem = require("../../../models/VaultItem");
 const VaultSecret = require("../../../models/VaultSecret");
 const Organization = require("../../../models/Organization");
 const OrganizationMember = require("../../../models/OrganizationMember");
+const Entry = require("../../../models/Entry");
+const Account = require("../../../models/Account");
+const { pinKey, pinnedKey } = require("../sshTargets");
+const { deleteEntry } = require("../../../controllers/entry");
 const itemsRouter = require("../../../routes/vault/items");
 const settingsRouter = require("../../../routes/vault/settings");
 
@@ -82,7 +92,11 @@ test.before(async () => {
     await writeSecret(shared.id, "password", "hunter2-shared");
 });
 
-test.beforeEach(() => { audits.length = 0; });
+test.beforeEach(() => {
+    audits.length = 0;
+    resetTo(SYSTEM, SYSTEM_DEFAULT);
+    resetTo(ORG, ORG_DEFAULT);
+});
 
 const listen = async (t, { trustProxy = false } = {}) => {
     const app = express();
@@ -101,7 +115,7 @@ const listen = async (t, { trustProxy = false } = {}) => {
         const text = await res.text();
         return { status: res.status, text, body: res.headers.get("content-type")?.includes("json") ? JSON.parse(text) : null };
     };
-    return { get: call("GET"), post: call("POST"), patch: call("PATCH") };
+    return { get: call("GET"), post: call("POST"), patch: call("PATCH"), del: call("DELETE") };
 };
 
 test("Reveal: Besitzer persönlich und vault.reveal in der Organisation ja, Mitglied ohne Recht 403, fremder Mandant 404, unlesbarer Wert 422; jeder Abruf auditiert", async (t) => {
@@ -280,4 +294,159 @@ test("Einstellungen speichern Agenten-Adresse, IP-Bindung und fillAnywhere; avai
 
     const behindOneProxy = await listen(t, { trustProxy: 1 });
     assert.strictEqual((await behindOneProxy.get("/available", "s-owner")).body.trustProxyUnsafe, false);
+});
+
+const sshServer = (fields) => Entry.create({ type: "server", config: { protocol: "ssh", ip: "192.0.2.10" }, ...fields });
+
+test("SSH: Zieländerung verwirft die Werte und die gemerkten Host-Keys entfernter Ziele, Benutzer und allowSession nicht; GET liefert hostKeys", async (t) => {
+    SYSTEM[1] = ["vault.use", "connect.ssh", "connect.direct"];
+    const { get, post, patch } = await listen(t);
+    await Account.create({ id: 1, firstName: "Ma", lastName: "Backes", username: "ma", password: "x" });
+    const web = await sshServer({ accountId: 1, name: "web02" });
+    const created = await post("/items", "s-owner", {
+        name: "deploy-ssh", type: "ssh", fields: { username: "deploy", servers: [web.id], hosts: ["NAS.lan:22"] }, secrets: { password: "pw-ssh" },
+    });
+    const { id } = created.body.item;
+    assert.deepStrictEqual([created.status, created.body.item.fields, created.body.item.hostKeys],
+        [201, { username: "deploy", servers: [web.id], hosts: ["nas.lan"], allowSession: false }, []]);
+    await pinKey({ itemId: id, ref: `server:${web.id}`, algorithm: "ssh-ed25519", fingerprint: "SHA256:web", accountId: 1 });
+    await pinKey({ itemId: id, ref: "host:nas.lan", algorithm: "ecdsa-sha2-nistp256", fingerprint: "SHA256:nas", accountId: 1 });
+
+    const sameTargets = await patch(`/items/${id}`, "s-owner", { fields: { username: "root", servers: [web.id], hosts: ["nas.lan"], allowSession: true } });
+    assert.deepStrictEqual([sameTargets.status, sameTargets.body.secretsCleared, sameTargets.body.item.secretFields], [200, false, ["password"]]);
+    const detail = (await get(`/items/${id}`, "s-owner")).body.item;
+    assert.deepStrictEqual(detail.hostKeys.map(({ confirmedAt, ...key }) => ({ ...key, confirmed: Boolean(confirmedAt) })), [
+        { target: "host:nas.lan", algorithm: "ecdsa-sha2-nistp256", fingerprint: "SHA256:nas", confirmedBy: { id: 1, name: "Ma Backes" }, confirmed: true },
+        { target: `server:${web.id}`, algorithm: "ssh-ed25519", fingerprint: "SHA256:web", confirmedBy: { id: 1, name: "Ma Backes" }, confirmed: true },
+    ]);
+
+    const moved = await patch(`/items/${id}`, "s-owner", { fields: { username: "root", servers: [web.id], hosts: [], allowSession: true } });
+    assert.deepStrictEqual([moved.status, moved.body.secretsCleared, moved.body.item.secretFields], [200, true, []]);
+    assert.deepStrictEqual(moved.body.item.hostKeys.map((key) => key.target), [`server:${web.id}`]);
+    assert.strictEqual(await readSecret(id, "password"), null);
+    assert.doesNotMatch(moved.text + JSON.stringify(audits), /pw-ssh/);
+});
+
+test("SSH-Server als Ziel: nur SSH-Server, die der Speichernde mit connect.ssh verbinden darf, bei Organisations-Einträgen aus derselben Organisation; schon gespeicherte werden nicht erneut geprüft", async (t) => {
+    const { post, patch } = await listen(t);
+    const own = await sshServer({ accountId: 1, name: "own-web" });
+    const ownSecond = await sshServer({ accountId: 1, name: "own-db" });
+    const rdp = await Entry.create({ accountId: 1, type: "server", name: "own-rdp", config: { protocol: "rdp", ip: "192.0.2.11" } });
+    const foreign = await sshServer({ accountId: 2, name: "foreign-web" });
+    const orgServer = await sshServer({ organizationId: 20, name: "org-web" });
+    const revealerOwn = await sshServer({ accountId: 3, name: "revealer-web" });
+    SYSTEM[1] = ["vault.use", "connect.ssh"];
+    SYSTEM[3] = ["settings.vault", "connect.ssh"];
+    ORG["3:20"] = ["vault.reveal", "vault.manage", "connect.ssh"];
+    const ssh = (name, servers, extra = {}) => ({ name, type: "ssh", fields: { username: "deploy", servers }, secrets: { password: "pw-ssh" }, ...extra });
+    const rejected = (id) => [400, `Server ${id} is not an SSH server you can use for this entry`];
+
+    for (const [label, token, body, id] of [
+        ["kein SSH-Server", "s-owner", ssh("t-rdp", [rdp.id]), rdp.id],
+        ["Server eines anderen Kontos", "s-owner", ssh("t-foreign", [foreign.id]), foreign.id],
+        ["Server der Organisation ohne connect.ssh dort", "s-owner", ssh("t-org", [orgServer.id]), orgServer.id],
+        ["unbekannter Server", "s-owner", ssh("t-missing", [999999]), 999999],
+        ["Organisations-Eintrag mit persönlichem Server", "s-revealer", ssh("t-mixed", [revealerOwn.id], { organizationId: 20 }), revealerOwn.id],
+    ]) {
+        const res = await post("/items", token, body);
+        assert.deepStrictEqual([res.status, res.body.message], rejected(id), label);
+    }
+    assert.strictEqual((await post("/items", "s-revealer", ssh("org-deploy", [orgServer.id], { organizationId: 20 }))).status, 201);
+
+    const created = await post("/items", "s-owner", ssh("own-deploy", [own.id]));
+    assert.strictEqual(created.status, 201);
+    const path = `/items/${created.body.item.id}`;
+    SYSTEM[1] = ["vault.use"];
+    const kept = await patch(path, "s-owner", { fields: { username: "deploy", servers: [own.id] } });
+    assert.deepStrictEqual([kept.status, kept.body.secretsCleared], [200, false]);
+    const added = await patch(path, "s-owner", { fields: { username: "deploy", servers: [own.id, ownSecond.id] } });
+    assert.deepStrictEqual([added.status, added.body.message], rejected(ownSecond.id));
+    const removed = await patch(path, "s-owner", { fields: { username: "deploy", servers: [] } });
+    assert.deepStrictEqual([removed.status, removed.body.secretsCleared], [200, true]);
+});
+
+test("Freie Hosts: neue verlangen connect.direct; unveränderte (auch anders geschrieben) speichern und entfernen nicht", async (t) => {
+    const { post, patch } = await listen(t);
+    const FREE_HOSTS = [400, "Free hosts need the permission to connect without an entry"];
+    const body = { name: "nas-root", type: "ssh", fields: { username: "root", hosts: ["NAS.lan:22", "[FE80::1]:2222"] }, secrets: { password: "pw-nas" } };
+
+    const denied = await post("/items", "s-owner", body);
+    assert.deepStrictEqual([denied.status, denied.body.message], FREE_HOSTS);
+    SYSTEM[1] = ["vault.use", "connect.direct"];
+    const created = await post("/items", "s-owner", body);
+    assert.deepStrictEqual([created.status, created.body.item.fields.hosts], [201, ["nas.lan", "[fe80::1]:2222"]]);
+
+    SYSTEM[1] = ["vault.use"];
+    const path = `/items/${created.body.item.id}`;
+    const hosts = (list) => ({ fields: { username: "root", hosts: list } });
+    const same = await patch(path, "s-owner", hosts(["NAS.LAN", "[fe80::1]:2222"]));
+    assert.deepStrictEqual([same.status, same.body.secretsCleared], [200, false]);
+    const added = await patch(path, "s-owner", hosts(["nas.lan", "backup.lan:2222"]));
+    assert.deepStrictEqual([added.status, added.body.message], FREE_HOSTS);
+    const removed = await patch(path, "s-owner", hosts(["nas.lan"]));
+    assert.deepStrictEqual([removed.status, removed.body.secretsCleared, removed.body.item.fields.hosts], [200, true, ["nas.lan"]]);
+});
+
+test("DELETE …/host-keys/:target: mit Bearbeitungsrecht 204 und Audit, danach und bei fremdem Bezeichner 404, ohne Recht 403", async (t) => {
+    const { del } = await listen(t);
+    const item = await VaultItem.create({
+        organizationId: 20, name: "org-nas", type: "ssh", fields: { username: "deploy", servers: [], hosts: ["nas.lan:2222"], allowSession: false },
+        approvalRequired: true, allServers: false, createdBy: 3,
+    });
+    await pinKey({ itemId: item.id, ref: "host:nas.lan:2222", algorithm: "ssh-ed25519", fingerprint: "SHA256:abc", accountId: 3 });
+    await db.getQueryInterface().bulkUpdate("vault_items", { updatedAt: new Date(0) }, { id: item.id });
+    const updatedAt = async () => new Date((await VaultItem.findByPk(item.id)).updatedAt).getTime();
+    const forget = (ref, token) => del(`/items/${item.id}/host-keys/${encodeURIComponent(ref)}`, token);
+
+    assert.strictEqual((await forget("host:nas.lan:2222", "s-owner")).status, 403);
+    assert.strictEqual((await forget("host:nas.lan:2222", "s-invited")).status, 404);
+    assert.deepStrictEqual([audits, await updatedAt()], [[], 0]);
+
+    assert.strictEqual((await forget("host:nas.lan:2222", "s-revealer")).status, 204);
+    assert.strictEqual(await pinnedKey(item.id, "host:nas.lan:2222"), null);
+    assert.ok(await updatedAt() > 0, "a stamped session approval of the entry ends");
+    assert.deepStrictEqual(audits.map((a) => [a.action, a.organizationId, a.details.item, a.details.target, a.details.fingerprint]),
+        [["vault.ssh_host_key_forgotten", 20, "org:20/org-nas", "host:nas.lan:2222", "SHA256:abc"]]);
+    assert.strictEqual((await forget("host:nas.lan:2222", "s-revealer")).status, 404);
+    assert.strictEqual((await forget("server:abc", "s-revealer")).status, 404);
+});
+
+test("Server-Eintrag gelöscht: seine ID verschwindet aus servers aller SSH-Einträge samt gemerktem Key, die Werte bleiben", async (t) => {
+    SYSTEM[1] = ["vault.use", "connect.ssh", "resources.manage"];
+    const { get, post } = await listen(t);
+    const gone = await sshServer({ accountId: 1, name: "old-web" });
+    const stays = await sshServer({ accountId: 1, name: "new-web" });
+    const { item } = (await post("/items", "s-owner", {
+        name: "web-deploy", type: "ssh", fields: { username: "deploy", servers: [gone.id, stays.id] }, secrets: { privateKey: "key-material" },
+    })).body;
+    for (const entry of [gone, stays])
+        await pinKey({ itemId: item.id, ref: `server:${entry.id}`, algorithm: "ssh-ed25519", fingerprint: `SHA256:${entry.name}`, accountId: 1 });
+
+    assert.deepStrictEqual(await deleteEntry(1, gone.id), { success: true });
+
+    const after = (await get(`/items/${item.id}`, "s-owner")).body.item;
+    assert.deepStrictEqual([after.fields.servers, after.hostKeys.map((key) => key.target), after.secretFields],
+        [[stays.id], [`server:${stays.id}`], ["privateKey"]]);
+});
+
+test("allowSession einschalten verlangt eine Login-Session ohne Impersonation; ein schon eingeschaltetes bleibt beim Bearbeiten per Konto-Key", async (t) => {
+    SYSTEM[1] = ["vault.use", "connect.direct"];
+    const { post, patch } = await listen(t);
+    const SESSION_ON = [403, "Allowing approvals for a whole session requires a signed-in session"];
+    const fields = (allowSession, username = "root") => ({ username, hosts: ["nas.lan"], allowSession });
+
+    for (const token of ["s-imp", "k-owner"]) {
+        const created = await post("/items", token, { name: "nas-session", type: "ssh", fields: fields(true), secrets: { password: "pw-nas" } });
+        assert.deepStrictEqual([created.status, created.body.message], SESSION_ON, token);
+    }
+    const created = await post("/items", "k-owner", { name: "nas-session", type: "ssh", fields: fields(false), secrets: { password: "pw-nas" } });
+    assert.strictEqual(created.status, 201);
+    const path = `/items/${created.body.item.id}`;
+
+    const switched = await patch(path, "s-imp", { fields: fields(true) });
+    assert.deepStrictEqual([switched.status, switched.body.message], SESSION_ON);
+    const fromSession = await patch(path, "s-owner", { fields: fields(true) });
+    assert.deepStrictEqual([fromSession.status, fromSession.body.item.fields.allowSession], [200, true]);
+    const kept = await patch(path, "k-owner", { fields: fields(true, "admin") });
+    assert.deepStrictEqual([kept.status, kept.body.item.fields], [200, { ...fields(true, "admin"), servers: [] }]);
 });
