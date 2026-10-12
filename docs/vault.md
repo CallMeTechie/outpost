@@ -209,7 +209,7 @@ An SSH entry gives an agent three tools: `ssh_exec` runs a command on a target, 
 
 ### Host keys
 
-The first time an entry connects to a target, the approval card shows the host key's algorithm and fingerprint (`SHA256:…`) in a box **New target**, and always asks, even for an entry with **Approval required** off. Compare the fingerprint with the output of `ssh-keyscan -t <type> <host> | ssh-keygen -lf -`, where `<type>` is the algorithm shown on the card: `ed25519`, `ecdsa` or `rsa`. Outpost does not log in before you approve.
+The first time an entry connects to a target, the approval card shows the host key's algorithm and fingerprint (`SHA256:…`) in a box **New target**, and always asks, even for an entry with **Approval required** off. Compare the fingerprint with the output of `ssh-keyscan -t <type> <host> | ssh-keygen -lf -`, where `<type>` is the algorithm shown on the card: `ed25519`, `ecdsa` or `rsa`. Outpost does not log in to the target before you approve. The file tools do connect to the agent's own server first, to check the local file.
 
 - After the approval, Outpost remembers the key per entry and target. Two entries with the same target remember their keys separately.
 - If the key differs later, the engine aborts before logging in: the agent gets `vault.host_key_changed`, you see the notice `Host key of <target> changed — connection aborted`, and there is no card. Open the entry and choose **Forget** on the target; the next connection shows the new fingerprint.
@@ -223,7 +223,7 @@ The first time an entry connects to a target, the approval card shows the host k
 
 - `timeoutSec` is 1 to 600 seconds, 60 by default. When it runs out, the result says `(timed out after <n> s)`; the process on the target can keep running.
 - Each output stream is cut at 64 KB. The engine itself delivers at most 256 KB per stream and nothing after a NUL byte; invalid UTF-8 is replaced.
-- Outpost replaces the entry's password, passphrase and private key (also each line of the key) with `••••`. Nothing else is replaced: whoever may run commands as `deploy` reads everything `deploy` can read, including other secrets in files.
+- Outpost replaces the entry's password, passphrase and private key (also each line of the key) with `••••`. Values shorter than 4 characters are not replaced. Nothing else is replaced: whoever may run commands as `deploy` reads everything `deploy` can read, including other secrets in files.
 - A target without an SFTP service still runs commands; file transfer does not work there.
 - A command with control or bidi characters, also invisible ones, is refused (`vault.bad_command`), as is a path with them or with a line break (`vault.bad_path`). The card would otherwise show something different from what runs.
 - If a call ends after the command was sent, `vault.ssh_failed` says so: the command may have run in full or in part. Check on the target before running it again. A cancelled call ends the running command in the engine; the process on the target may keep running.
@@ -239,7 +239,7 @@ The first time an entry connects to a target, the approval card shows the host k
 - The owner of the new file is the entry's user on the target. When replacing, the old owner is lost.
 - If the rename fails after the old file was deleted, the old file is gone and the result names the temporary file.
 - The card for `ssh_get` shows the size only after approval, because Outpost logs in to the target only then. The transfer stops beyond 100 MB and removes the temporary file.
-- File system errors come back as `vault.ssh_failed` with the SFTP status, for example `<path>: Permission denied; nothing was copied.` If the temporary file stayed, the message names it.
+- File system errors come back as `vault.ssh_failed` with the SFTP status, for example `<path>: permission denied; nothing was copied.` If the temporary file stayed, the message names it.
 
 ### Upgrades
 
@@ -430,7 +430,7 @@ Outpost sends the request itself and puts the token into the header named by the
 
 ### SSH tools
 
-The three tools share a limit of 30 calls per minute and at most 2 running at the same time per agent key (`vault.rate_limited`, `vault.busy`). Outpost checks, in this order: the entry is visible and an SSH entry; the target belongs to the entry and the account behind the key may still use it (`vault.target_not_allowed`, `vault.target_unavailable`); the arguments; the limits; the engine of the target is connected; the host key and the approval; only then the secrets are read and the connection is made. See [SSH](#_4a-ssh).
+The three tools share a limit of 30 calls per minute and at most 2 running at the same time per agent key (`vault.rate_limited`, `vault.busy`). Outpost checks, in this order: the entry is visible and an SSH entry; the target belongs to the entry and the account behind the key may still use it (`vault.target_not_allowed`, `vault.target_unavailable`); the arguments; the limits; the engine of the target is connected; for `ssh_put` and `ssh_get`, the file checks on the agent's own server (`vault.not_a_file`, `vault.file_too_large`, `vault.file_exists`, `vault.no_agent_server`, `vault.ssh_failed`); the host key and the approval; only then the secrets are read and the connection is made. See [SSH](#_4a-ssh).
 
 ### `browser_fill_secret`
 

@@ -1,7 +1,17 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const controlPlane = require("../controlPlane/ControlPlaneServer");
 const packageJson = require("../../../package.json");
+
+const enginePath = require.resolve("../../controllers/engine");
+let tokenLookups = 0;
+require.cache[enginePath] = {
+    id: enginePath, filename: enginePath, loaded: true,
+    exports: {
+        findByToken: async () => { tokenLookups++; return { id: 7, name: "engine" }; },
+        updateLastConnected: async () => {},
+    },
+};
+const controlPlane = require("../controlPlane/ControlPlaneServer");
 
 test("an engine whose version differs from the server is refused before it is registered", async (t) => {
     const sent = [];
@@ -18,5 +28,6 @@ test("an engine whose version differs from the server is refused before it is re
 
     assert.strictEqual(destroyed, true);
     assert.strictEqual(sent.length, 1);
+    assert.strictEqual(tokenLookups, 0);
     assert.strictEqual(controlPlane._engines.size, before);
 });
