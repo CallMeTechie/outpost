@@ -176,6 +176,7 @@ test("refusals come before any card, connection or secret: wrong type, no target
     const API = { ...ITEM, id: 62, name: "api", type: "api_key", fields: { hosts: ["api.example.com"] } };
     const BARE = { ...ITEM, id: 63, name: "bare", fields: { username: "deploy", servers: [], hosts: [] } };
     const cases = [
+        ["an entry the caller cannot see", { item: "foreign" }, "vault.item_unknown"],
         ["an API key entry", { item: "api" }, "vault.wrong_type"],
         ["an SSH entry without targets", { item: "bare" }, "vault.no_targets"],
         ["a server the entry does not list", { target: "server:13" }, "vault.target_not_allowed"],
