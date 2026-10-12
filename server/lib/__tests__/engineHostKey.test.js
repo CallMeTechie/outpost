@@ -134,9 +134,9 @@ test("exec reports whether the engine stopped the command at its timeout", async
     assert.deepStrictEqual(await quick, { stdout: "partial", stderr: "", exitCode: 0, timedOut: false });
 });
 
-test("a failed open closes the data connection the engine reports afterwards, so no session stays behind", async (t) => {
+test("a failed open closes the data connection the engine reports, before or after its result, so no session stays behind", async (t) => {
     t.mock.timers.enable({ apis: ["setTimeout"] });
-    const { sent, answer } = fakeEngine(t, ["vault-ssh-late", "vault-ssh-late-silent"]);
+    const { sent, answer } = fakeEngine(t, ["vault-ssh-late", "vault-ssh-late-silent", "vault-ssh-early"]);
     const opening = openEngineSession("vault-ssh-late", SessionType.SFTP, "10.0.0.5", 22, { username: "deploy" }, [], ENGINE,
         { execOnly: true });
     answer("vault-ssh-late", { success: false, errorCode: ErrorCode.AuthFailed, errorMessage: "SSH authentication failed" });
@@ -158,6 +158,15 @@ test("a failed open closes the data connection the engine reports afterwards, so
     controlPlane.emit("dataConnectionReady", { sessionId: "vault-ssh-late-silent", socket: late });
     await new Promise(setImmediate);
     assert.strictEqual(late.destroyed, true);
+
+    const early = { destroyed: false, destroy() { this.destroyed = true; } };
+    const beforeResult = openEngineSession("vault-ssh-early", SessionType.SFTP, "10.0.0.5", 22, { username: "deploy" }, [], ENGINE,
+        { execOnly: true });
+    controlPlane.emit("dataConnectionReady", { sessionId: "vault-ssh-early", socket: early });
+    answer("vault-ssh-early", { success: false, errorCode: ErrorCode.HostKeyMismatch, errorMessage: "Host key mismatch", hostKey: KEY });
+    await assert.rejects(beforeResult, { errorCode: "HostKeyMismatch" });
+    await new Promise(setImmediate);
+    assert.strictEqual(early.destroyed, true);
 });
 
 test("stat and writeFile hand the engine the owner, exclusive and final-mode options; only a refused WriteBegin is marked notOpened", async () => {

@@ -19,6 +19,7 @@ const bed = require("./helpers/vaultBed");
 require("../../../models/ApiKey").findByPk = async (id) => (id === 5 ? { id: 5, entryId: 30, identityId: 7, remoteUser: "ma" } : null);
 require("../../../controllers/audit").createAuditLog = async () => {};
 const stateBroadcaster = require("../../StateBroadcaster");
+const controlPlane = require("../../controlPlane/ControlPlaneServer");
 const approvals = require("../approvals");
 const { Permission } = require("../../../permissions/registry");
 const { createVaultProvider } = require("../mcpProvider");
@@ -156,7 +157,7 @@ test("ssh_get logs in at the target only after the approval: the card names the 
     assert.strictEqual(env.appmonster.files.has("/home/ma/logs/dir"), false);
 });
 
-test("a transfer that passes 100 MB, whose call ends, even before its temp file is open, or whose source cannot be read stops, deletes only a temp file it created and closes its sessions", async (t) => {
+test("a transfer that passes 100 MB, whose call ends, even during the login or before its temp file is open, or whose source cannot be read stops, deletes only a temp file it created and closes its sessions", async (t) => {
     const env = setup(t);
     const MIB = Buffer.alloc(1024 * 1024);
     env.web02.files.set("/var/log/huge.log", {
@@ -195,6 +196,24 @@ test("a transfer that passes 100 MB, whose call ends, even before its temp file 
     assert.ok(env.text(await beforeOpen).endsWith("(vault.client_gone)"));
     assert.deepStrictEqual([...env.appmonster.files.keys()], []);
 
+    const { openSession, closeSession } = controlPlane;
+    t.after(() => Object.assign(controlPlane, { openSession, closeSession }));
+    let opens = 0;
+    let hung = null;
+    controlPlane.openSession = (sessionId, ...rest) => (++opens === 2
+        ? new Promise((_, reject) => { hung = { sessionId, reject }; })
+        : openSession(sessionId, ...rest));
+    controlPlane.closeSession = (sessionId, ...rest) => {
+        if (sessionId === hung?.sessionId) hung.reject(new Error("Session closed"));
+        return closeSession(sessionId, ...rest);
+    };
+    const opening = new AbortController();
+    const duringOpen = env.call("ssh_get", { remotePath: "/var/log/live.log", localPath: "/home/ma/opening.log" }, { signal: opening.signal });
+    await until(() => hung !== null);
+    opening.abort();
+    assert.ok(env.text(await duringOpen).endsWith("(vault.client_gone)"), "the call ends while the login still hangs");
+    Object.assign(controlPlane, { openSession, closeSession });
+
     env.web02.files.set("/var/log/secret.log", {
         ...file("secret", 0o100600),
         stream: () => {
@@ -232,7 +251,7 @@ test("file transfer needs an agent key on a server whose identity is its remote 
     assert.deepStrictEqual([ssh.world.opened, env.ops("web02")], [[], []]);
 });
 
-test("a relative path is refused before any connection; a target directory without write permission reports the SFTP status, not a connection failure; a file whose mode cannot be set is still placed with 0600 and a note", async (t) => {
+test("a relative path is refused before any connection; a target directory without write permission or an unreadable home directory reports the SFTP status, not a connection failure; a file whose mode cannot be set, also mode 000, is still placed with 0600 and a note", async (t) => {
     const env = setup(t);
     env.appmonster.files.set("/home/ma/a.txt", file("a", 0o100644));
     env.web02.writable = (path) => !path.startsWith("/srv/locked/");
@@ -251,4 +270,16 @@ test("a relative path is refused before any connection; a target directory witho
     const placed = env.web02.files.get("/srv/nomode/a.txt");
     assert.deepStrictEqual([placed.data.toString(), placed.mode], ["a", 0o100600]);
     assert.strictEqual(env.audits.filter((entry) => entry.action === "vault.use").pop().details.modeSet, false);
+
+    env.appmonster.files.set("/home/ma/none.txt", file("n", 0o100000));
+    assert.strictEqual(env.text(await env.call("ssh_put", { localPath: "/home/ma/none.txt", remotePath: "/srv/none.txt" })),
+        "Copied 1 bytes from /home/ma/none.txt to /srv/none.txt. Permissions could not be set; the file keeps mode 0600.");
+    assert.strictEqual(env.web02.files.get("/srv/none.txt").mode, 0o100600);
+
+    assert.strictEqual(env.text(await env.call("ssh_put", { localPath: "/home/ma/$&.txt", remotePath: "/srv/a.txt" })),
+        "/home/ma/$&.txt is not a regular file. (vault.not_a_file)");
+
+    env.appmonster.home = null;
+    assert.strictEqual(env.text(await env.call("ssh_put", { localPath: "~/a.txt", remotePath: "/srv/a.txt" })),
+        "~/a.txt: permission denied; nothing was copied. (vault.ssh_failed)");
 });

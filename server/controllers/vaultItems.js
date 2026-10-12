@@ -27,6 +27,7 @@ const FORBIDDEN = { code: 403, message: "You are not allowed to do this with thi
 const NAME_TAKEN = { code: 409, message: "A vault entry with this name already exists for this owner" };
 const APPROVAL_OFF_FORBIDDEN = { code: 403, message: "Turning off approvals requires a signed-in session" };
 const SESSION_ON_FORBIDDEN = { code: 403, message: "Allowing approvals for a whole session requires a signed-in session" };
+const FORGET_FORBIDDEN = { code: 403, message: "Forgetting a host key requires a signed-in session" };
 const HOST_KEY_NOT_FOUND = { code: 404, message: "No host key is stored for this target" };
 const FREE_HOSTS_FORBIDDEN = { code: 400, message: "Free hosts need the permission to connect without an entry" };
 const TARGET_FIELDS = {
@@ -269,6 +270,8 @@ module.exports.forgetHostKey = async (caller, id, target) => {
     const item = await findScopedItem(caller.accountId, id);
     if (!item || item.type !== "ssh") return NOT_FOUND;
     if (!(await canManageItem(caller.accountId, item))) return FORBIDDEN;
+    if (!caller.revealAllowed) return FORGET_FORBIDDEN;
+    if (!(await canRevealItem(caller.accountId, item))) return FORBIDDEN;
     const pinned = parseTargetRef(target) ? await pinnedKey(item.id, target) : null;
     if (!pinned || !(await forgetKey(item.id, target))) return HOST_KEY_NOT_FOUND;
     await VaultItem.sequelize.getQueryInterface().bulkUpdate(VaultItem.getTableName(), { updatedAt: new Date() }, { id: item.id }, {}, VaultItem.getAttributes());

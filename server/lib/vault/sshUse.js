@@ -7,6 +7,7 @@ const { targetRefsOf, pinnedKey, pinKey } = require("./sshTargets");
 const { resolveTarget, assertEngine, probeHostKey, openTargetSession, sshParams, sshFailure, hostKeyChanged } = require("./sshSession");
 const stateBroadcaster = require("../StateBroadcaster");
 const { AUDIT_ACTIONS, RESOURCE_TYPES } = require("../../controllers/audit");
+const logger = require("../../utils/logger");
 
 const NOTICE_WINDOW_MS = 60 * 1000;
 const MIN_KEY_LINE = 16;
@@ -48,11 +49,17 @@ const sshUse = async (ctx, { broker, sshLimits, audit }, {
     const hostKey = () => state.pinned ?? state.probed;
     let entered = null;
 
-    const record = (item, action, details) => audit({
-        accountId: ctx.accountId, organizationId: item.organizationId ?? null, action, resource: RESOURCE_TYPES.VAULT, resourceId: item.id,
-        details: { item: itemRef(item), tool, keyId: ctx.keyId ?? null, target: state.target.ref, ...details },
-        ipAddress: ctx.ipAddress ?? null, userAgent: ctx.userAgent ?? null,
-    });
+    const record = async (item, action, details) => {
+        try {
+            await audit({
+                accountId: ctx.accountId, organizationId: item.organizationId ?? null, action, resource: RESOURCE_TYPES.VAULT, resourceId: item.id,
+                details: { item: itemRef(item), tool, keyId: ctx.keyId ?? null, target: state.target.ref, ...details },
+                ipAddress: ctx.ipAddress ?? null, userAgent: ctx.userAgent ?? null,
+            });
+        } catch (err) {
+            logger.warn("Could not audit an SSH host key event", { itemId: item.id, tool, action, error: err?.name });
+        }
+    };
 
     const reportMismatch = async (item, { expected, actual }) => {
         await record(item, AUDIT_ACTIONS.VAULT_SSH_HOST_KEY_MISMATCH, { expected, actual });

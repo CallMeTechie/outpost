@@ -2,7 +2,7 @@ const crypto = require("node:crypto");
 const { Transform } = require("node:stream");
 const { VaultError, VaultErrorCode, VaultErrorMessage } = require("../errors");
 const { HIDDEN } = require("../sshRefs");
-const { openAgentServerSession } = require("../sshSession");
+const { openAgentServerSession, sshFailure } = require("../sshSession");
 const { sshUse } = require("../sshUse");
 
 const PUT = "ssh_put";
@@ -15,7 +15,7 @@ const REGULAR = 0o100000;
 const SFTP_STATUS = new Set(["Path does not exist", "Permission denied", "Operation failed", "Already exists",
     "Write protected", "No media", "No space left", "Quota exceeded", "SFTP error"]);
 const MODE_NOT_SET = "Could not set permissions";
-const DESCRIPTION = "Copy one file between your own server and a target of a vault SSH entry. Outpost reads and writes the file itself — on your server as your own user, on the target as the entry's user — so the content never passes through you. At most 100 MB; an existing file is only replaced with overwrite: true. Needs approval.";
+const DESCRIPTION = "Copy one file between your own server and a target of a vault SSH entry. Outpost reads and writes the file itself — on your server as your own user, on the target as the entry's user — so the content never passes through you. At most 100 MB; an existing file is only replaced with overwrite: true. If the entry requires approval, the user approves each call and sees both paths; a new target always asks.";
 
 const defOf = (name) => ({
     name,
@@ -36,7 +36,7 @@ const defOf = (name) => ({
 const textResult = (text) => ({ content: [{ type: "text", text }] });
 const copiedText = (from, to, { bytes, modeSet }) =>
     `Copied ${bytes} bytes from ${from} to ${to}.${modeSet ? "" : " Permissions could not be set; the file keeps mode 0600."}`;
-const withPath = (code, path) => new VaultError(code, VaultErrorMessage[code].replace("<path>", path));
+const withPath = (code, path) => new VaultError(code, VaultErrorMessage[code].replace("<path>", () => path));
 const shown = (path) => (typeof path === "string" ? path.slice(0, AUDIT_PATH_LIMIT) : null);
 
 const fileFailure = (err, path) => (err instanceof VaultError || !SFTP_STATUS.has(err?.message) ? err
@@ -50,10 +50,24 @@ const assertArgs = (ctx, args) => {
     if (!validPath(args.localPath) || !validPath(args.remotePath)) throw new VaultError(VaultErrorCode.BAD_PATH);
 };
 
-const resolveHome = async (client, path) => {
+const resolveHome = async (session, path, signal) => {
     if (!path.startsWith("~/")) return path;
-    const home = (await client.realpath(".")).path.replace(/\/+$/, "");
-    return `${home}/${path.slice(2)}`;
+    const { path: home } = await session.client.realpath(".")
+        .catch((err) => { throw sshFailure(fileFailure(err, path), session, signal); });
+    return `${home.replace(/\/+$/, "")}/${path.slice(2)}`;
+};
+
+// Only while opening: a session that follows the signal itself would close under copy, which still has to delete its temp file.
+const openUntilAbort = async (signal, openWith) => {
+    const opening = new AbortController();
+    const stop = () => opening.abort();
+    if (signal?.aborted) stop();
+    else signal?.addEventListener("abort", stop, { once: true });
+    try {
+        return await openWith(opening.signal);
+    } finally {
+        signal?.removeEventListener("abort", stop);
+    }
 };
 
 const statOrNull = (client, path) => client.stat(path, { owner: false }).catch(() => null);
@@ -81,7 +95,9 @@ const copy = async ({ from, to, sourcePath, targetPath, mode, overwrite, signal,
     const shownTemp = `${names.target}${temp.slice(targetPath.length)}`;
     let read = null;
     let keepTemp = false;
-    let modeSet = true;
+    const finalMode = (existing ?? { mode }).mode & 0o777;
+    // The engine reads final_mode 0 as "leave the mode alone", so a mode of 000 cannot be set.
+    let modeSet = finalMode !== 0;
     let bytes = 0;
     try {
         if (signal?.aborted) throw new VaultError(VaultErrorCode.CLIENT_GONE);
@@ -99,7 +115,7 @@ const copy = async ({ from, to, sourcePath, targetPath, mode, overwrite, signal,
         read.stream.on("error", (err) => counted.destroy(fileFailure(err, names.source)));
         // Only the write's own outcome tells whether this call created the temp file, so it is awaited even when the read fails first.
         try {
-            await to.writeFile(temp, read.stream.pipe(counted), { exclusive: true, finalMode: (existing ?? { mode }).mode & 0o777 });
+            await to.writeFile(temp, read.stream.pipe(counted), { exclusive: true, finalMode });
         } catch (err) {
             if (err?.message !== MODE_NOT_SET) {
                 keepTemp = err?.notOpened === true;
@@ -148,20 +164,20 @@ const putHandler = async (args, ctx, deps) => {
         prepare: async () => {
             const agent = await openAgentServerSession(ctx);
             try {
-                size = assertSource(await statOrNull(agent.client, await resolveHome(agent.client, args.localPath)), args.localPath).size;
+                size = assertSource(await statOrNull(agent.client, await resolveHome(agent, args.localPath, ctx.signal)), args.localPath).size;
             } finally {
                 agent.close();
             }
         },
         card: () => ({ file: { from: args.localPath, to: args.remotePath, bytes: size } }),
         act: async ({ open }) => {
-            const agent = await openAgentServerSession(ctx);
+            const agent = await openUntilAbort(ctx.signal, (signal) => openAgentServerSession(ctx, { signal }));
             let target = null;
             try {
-                const sourcePath = await resolveHome(agent.client, args.localPath);
+                const sourcePath = await resolveHome(agent, args.localPath, ctx.signal);
                 const source = assertSource(await statOrNull(agent.client, sourcePath), args.localPath);
-                target = await open();
-                const targetPath = await resolveHome(target.client, args.remotePath);
+                target = await openUntilAbort(ctx.signal, (signal) => open({ signal }));
+                const targetPath = await resolveHome(target, args.remotePath, ctx.signal);
                 const copied = await copy({
                     from: agent.client, to: target.client, sourcePath, targetPath, mode: source.mode, overwrite, signal: ctx.signal,
                     names: { source: args.localPath, target: args.remotePath },
@@ -186,20 +202,20 @@ const getHandler = async (args, ctx, deps) => {
         prepare: async () => {
             const agent = await openAgentServerSession(ctx);
             try {
-                assertFree(await statOrNull(agent.client, await resolveHome(agent.client, args.localPath)), args.localPath, overwrite);
+                assertFree(await statOrNull(agent.client, await resolveHome(agent, args.localPath, ctx.signal)), args.localPath, overwrite);
             } finally {
                 agent.close();
             }
         },
         card: () => ({ file: { from: args.remotePath, to: args.localPath, bytes: null } }),
         act: async ({ open }) => {
-            const target = await open();
+            const target = await openUntilAbort(ctx.signal, (signal) => open({ signal }));
             let agent = null;
             try {
-                const sourcePath = await resolveHome(target.client, args.remotePath);
+                const sourcePath = await resolveHome(target, args.remotePath, ctx.signal);
                 const source = assertSource(await statOrNull(target.client, sourcePath), args.remotePath);
-                agent = await openAgentServerSession(ctx);
-                const targetPath = await resolveHome(agent.client, args.localPath);
+                agent = await openUntilAbort(ctx.signal, (signal) => openAgentServerSession(ctx, { signal }));
+                const targetPath = await resolveHome(agent, args.localPath, ctx.signal);
                 const copied = await copy({
                     from: target.client, to: agent.client, sourcePath, targetPath, mode: source.mode, overwrite, signal: ctx.signal,
                     names: { source: args.remotePath, target: args.localPath },

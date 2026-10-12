@@ -160,7 +160,7 @@ const openEngineSession = async (sessionId, sessionType, host, port, params, jum
     try {
         await controlPlane.openSession(sessionId, sessionType, host, port, params, jumpHosts, engineId || null, options);
     } catch (err) {
-        dataSocketPromise.catch(() => {});
+        dataSocketPromise.then((socket) => { if (isLatest()) socket.destroy(); }, () => {});
         if (err.errorCode === "Timeout") controlPlane.closeSession(sessionId, engineId || null);
         // The first waiter expires together with the open; a retry under the same id keeps its socket.
         controlPlane.waitForDataConnection(sessionId)

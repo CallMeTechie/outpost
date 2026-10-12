@@ -62,7 +62,7 @@ const VaultErrorCode = Object.freeze({
 });
 
 const C = VaultErrorCode;
-// <kind>, <host>, <entries>, <target>, <path>, <alt> and <neu> are placeholders: callers pass the message with them replaced.
+// <kind>, <host>, <entries>, <target>, <path>, <alt>, <neu> and <outcome> are placeholders: callers pass the message with them replaced.
 const VaultErrorMessage = Object.freeze({
     [C.ITEM_UNKNOWN]: "This vault item does not exist or is not available on this server. Call vault_list to see the items you can use here.",
     [C.WRONG_TYPE]: "This vault entry cannot be used with this tool, so nothing was done. Call vault_list and pick an entry whose usableBy lists the tool.",
@@ -114,7 +114,7 @@ const VaultErrorMessage = Object.freeze({
     [C.FILE_EXISTS]: "<path> exists; pass overwrite: true to replace it.",
     [C.NO_AGENT_SERVER]: "File transfer needs an agent key set up on a server; this connection has none.",
     [C.HOST_KEY_CHANGED]: "The host key of <target> changed (expected <alt>, got <neu>); nothing was sent. Ask the user to check the server and forget the old key in Outpost.",
-    [C.SSH_FAILED]: "The SSH connection to <target> failed (<kind>); nothing was done.",
+    [C.SSH_FAILED]: "The SSH connection to <target> failed (<kind>); <outcome>",
 });
 
 module.exports = { VaultError, VaultErrorCode, VaultErrorMessage };

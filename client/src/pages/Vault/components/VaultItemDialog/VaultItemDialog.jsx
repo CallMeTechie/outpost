@@ -113,7 +113,8 @@ export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwn
         || problems.gitUsername || problems.fillOrigins || problems.hosts;
     const canDirect = hasPermission(Permission.CONNECT_DIRECT);
     const sshOptions = useMemo(() => {
-        const options = sshServers(ownerNodes(servers, form.owner)).map((server) => ({ value: server.id, label: `${server.name} · ${server.ip}` }));
+        const offered = sshServers(form.owner === "personal" ? servers || [] : ownerNodes(servers, form.owner));
+        const options = offered.map((server) => ({ value: server.id, label: `${server.name} · ${server.ip}` }));
         for (const id of item?.fields?.servers || []) {
             if (!options.some((option) => option.value === id)) options.push({ value: id, label: `server:${id}` });
         }

@@ -13,7 +13,7 @@ const MAX_TIMEOUT_SEC = 600;
 
 const def = {
     name: NAME,
-    description: "Run a shell command on one of the targets of a vault SSH entry. Outpost logs in itself with the entry's user and key or password; you never see them. No terminal: interactive programs and sudo password prompts do not work — use an entry for the user you need. The user approves every call and sees the full command. Output: exit code, stdout and stderr, each cut at 64 KB; the entry's password and key are replaced by ••••.",
+    description: "Run a shell command on one of the targets of a vault SSH entry. Outpost logs in itself with the entry's user and key or password; you never see them. No terminal: interactive programs and sudo password prompts do not work — use an entry for the user you need. If the entry requires approval, the user approves each call and sees the full command; a new target always asks. Output: exit code, stdout and stderr, each cut at 64 KB; the entry's password and key are replaced by ••••.",
     inputSchema: {
         type: "object",
         properties: {
@@ -56,11 +56,7 @@ const handler = (args, ctx, deps) => {
                 details.commandSent = true;
                 run = await session.client.exec(command, timeoutSec * 1000);
             } catch (err) {
-                const failure = sshFailure(err, target, ctx.signal);
-                if (failure.code !== VaultErrorCode.SSH_FAILED) throw failure;
-                if (err?.message === "Failed to execute command") throw failure;
-                throw new VaultError(VaultErrorCode.SSH_FAILED, failure.message.replace("; nothing was done.",
-                    "; the command was sent and may have run in full or in part. Check on the target before running it again."));
+                throw sshFailure(err, target, ctx.signal, { sent: err?.message !== "Failed to execute command" });
             } finally {
                 session.close();
             }

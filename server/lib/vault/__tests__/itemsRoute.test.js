@@ -23,6 +23,7 @@ const CALLERS = {
     "s-imp": { user: { id: 1 }, session: { id: 12, accountId: 1, impersonatorId: 99 } },
     "k-owner": { user: { id: 1 }, apiKey: { id: 5, kind: "account" } },
     "s-revealer": { user: { id: 3 }, session: { id: 13, accountId: 3, impersonatorId: null } },
+    "k-revealer": { user: { id: 3 }, apiKey: { id: 6, kind: "account" } },
     "s-invited": { user: { id: 4 }, session: { id: 14, accountId: 4, impersonatorId: null } },
 };
 const SYSTEM_DEFAULT = structuredClone(SYSTEM);
@@ -398,7 +399,7 @@ test("Freie Hosts: neue verlangen connect.direct; unveränderte (auch anders ges
     assert.deepStrictEqual([removed.status, removed.body.secretsCleared, removed.body.item.fields.hosts], [200, true, ["nas.lan"]]);
 });
 
-test("DELETE …/host-keys/:target: mit Bearbeitungsrecht 204 und Audit, danach und bei fremdem Bezeichner 404, ohne Recht 403", async (t) => {
+test("DELETE …/host-keys/:target: mit Bearbeitungs- und Reveal-Recht aus einer Login-Session 204 und Audit, danach und bei fremdem Bezeichner 404, ohne Recht, ohne Reveal-Recht oder per API-Key 403 und der Key bleibt", async (t) => {
     const { del } = await listen(t);
     const item = await VaultItem.create({
         organizationId: 20, name: "org-nas", type: "ssh", fields: { username: "deploy", servers: [], hosts: ["nas.lan:2222"], allowSession: false },
@@ -411,6 +412,12 @@ test("DELETE …/host-keys/:target: mit Bearbeitungsrecht 204 und Audit, danach 
 
     assert.strictEqual((await forget("host:nas.lan:2222", "s-owner")).status, 403);
     assert.strictEqual((await forget("host:nas.lan:2222", "s-invited")).status, 404);
+    const fromKey = await forget("host:nas.lan:2222", "k-revealer");
+    assert.deepStrictEqual([fromKey.status, fromKey.body.message], [403, "Forgetting a host key requires a signed-in session"]);
+    ORG["3:20"] = ["vault.manage"];
+    assert.strictEqual((await forget("host:nas.lan:2222", "s-revealer")).status, 403);
+    ORG["3:20"] = ORG_DEFAULT["3:20"];
+    assert.strictEqual((await pinnedKey(item.id, "host:nas.lan:2222")).fingerprint, "SHA256:abc");
     assert.deepStrictEqual([audits, await updatedAt()], [[], 0]);
 
     assert.strictEqual((await forget("host:nas.lan:2222", "s-revealer")).status, 204);

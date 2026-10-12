@@ -128,7 +128,8 @@ export const VaultDetail = ({ item, impersonating, onEdit, onDelete, onHostKeyFo
                             <li>{t(item.fields?.allowSession === true ? "vault.detail.usage.sshSession" : "vault.detail.usage.sshOnce")}</li>
                         </ul>
                     </div>
-                    <SshTargets key={item.id} item={item} onForgotten={onHostKeyForgotten} />
+                    <SshTargets key={item.id} item={item} canForget={item.canManage && item.canReveal && !impersonating}
+                                onForgotten={onHostKeyForgotten} />
                 </>
             )}
 

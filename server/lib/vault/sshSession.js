@@ -23,24 +23,31 @@ const closeEngineSession = (sessionId, target) => {
     } catch {}
 };
 
-const sshFailed = (target, kind) => new VaultError(VaultErrorCode.SSH_FAILED,
-    VaultErrorMessage[VaultErrorCode.SSH_FAILED].replace("<target>", target.ref).replace("<kind>", kind)
+const OUTCOME = Object.freeze({
+    NOTHING: "nothing was done.",
+    SENT: "the command was sent and may have run in full or in part. Check on the target before running it again.",
+});
+
+const sshFailed = (target, kind, { sent = false } = {}) => new VaultError(VaultErrorCode.SSH_FAILED,
+    VaultErrorMessage[VaultErrorCode.SSH_FAILED].replace("<target>", () => target.ref).replace("<kind>", () => kind)
+        .replace("<outcome>", () => (sent ? OUTCOME.SENT : OUTCOME.NOTHING))
     + (kind === KIND.LOGIN ? " Ask the user to check the entry's user and key." : ""));
 
 const hostKeyChanged = (ref, expected, actual) => new VaultError(VaultErrorCode.HOST_KEY_CHANGED,
-    VaultErrorMessage[VaultErrorCode.HOST_KEY_CHANGED].replace("<target>", ref).replace("<alt>", expected).replace("<neu>", actual),
+    VaultErrorMessage[VaultErrorCode.HOST_KEY_CHANGED].replace("<target>", () => ref).replace("<alt>", () => expected).replace("<neu>", () => actual),
     { expected, actual });
 
 // Engine errors only ever leave as one of these kinds: their text may name hosts behind jump hosts or libssh2 details.
-const sshFailure = (err, target, signal = null) => {
+const sshFailure = (err, target, signal = null, { sent = false } = {}) => {
     if (err instanceof VaultError) return err;
     if (signal?.aborted) return new VaultError(VaultErrorCode.CLIENT_GONE);
     const message = String(err?.message ?? "");
-    if (err?.errorCode === "AuthFailed") return sshFailed(target, KIND.LOGIN);
-    if (message.includes("SFTP not available")) return sshFailed(target, KIND.SFTP);
-    if (message === "No engine connected") return sshFailed(target, KIND.ENGINE);
-    if (err?.errorCode === "Timeout" || /timeout/i.test(message)) return sshFailed(target, KIND.TIMEOUT);
-    return sshFailed(target, KIND.CONNECTION);
+    const failed = (kind) => sshFailed(target, kind, { sent });
+    if (err?.errorCode === "AuthFailed") return failed(KIND.LOGIN);
+    if (message.includes("SFTP not available")) return failed(KIND.SFTP);
+    if (message === "No engine connected") return failed(KIND.ENGINE);
+    if (err?.errorCode === "Timeout" || /timeout/i.test(message)) return failed(KIND.TIMEOUT);
+    return failed(KIND.CONNECTION);
 };
 
 const resolveTarget = async (item, ref, ctx, { withJumpHosts = true } = {}) => {
@@ -98,7 +105,7 @@ const openTargetSession = async (target, params, { expectedHostKey = null, execO
         client = new EngineSftpClient(socket);
         await client.waitForReady();
         if (signal?.aborted) throw new VaultError(VaultErrorCode.CLIENT_GONE);
-        return { client, close };
+        return { client, close, ref: target.ref };
     } catch (err) {
         close();
         if (err?.errorCode === "HostKeyMismatch") throw hostKeyChanged(target.ref, expectedHostKey, err.hostKey?.fingerprint ?? "none");
@@ -125,7 +132,7 @@ const openAgentServerSession = async (ctx, { signal = null } = {}) => {
     if (params.username !== key.remoteUser) throw noServer();
     const server = {
         ref: `server:${entry.id}`, kind: "server", name: entry.name, host, port: Number(port) || 22,
-        jumpHosts: await resolveJumpHosts(entry), engineId: entry.config.engineId ?? null,
+        jumpHosts: await resolveJumpHosts(entry).catch(() => { throw noServer(); }), engineId: entry.config.engineId ?? null,
     };
     assertEngine(server);
     return { ...(await openTargetSession(server, params, { signal })), user: params.username };
