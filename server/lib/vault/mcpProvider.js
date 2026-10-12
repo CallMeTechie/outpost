@@ -80,7 +80,10 @@ const assertFillArgs = ({ item, passwordRef, usernameRef, sessionId }) => {
 const sshTargetsOf = async (item, ctx, pinned) => {
     const targets = [];
     for (const ref of targetRefsOf(item)) {
-        const target = await resolveTarget(item, ref, ctx, { withJumpHosts: false }).catch(() => null);
+        const target = await resolveTarget(item, ref, ctx, { withJumpHosts: false }).catch((err) => {
+            if (err instanceof VaultError) return null;
+            throw err;
+        });
         if (target) targets.push({ ref, name: target.name, host: target.host, port: target.port, hostKeyKnown: pinned.has(`${item.id} ${ref}`) });
     }
     return targets;
