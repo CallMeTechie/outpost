@@ -329,6 +329,14 @@ class EngineSftpClient extends EventEmitter {
             throw this._closed || err.message === "Request timeout" ? err : Object.assign(err, { notOpened: true });
         });
 
+        // A source that failed while WriteBegin was pending has already emitted its error and will never end.
+        // Nothing was sent yet, so WriteEnd only closes the handle the engine just opened.
+        if (!Buffer.isBuffer(source) && source.destroyed) {
+            this._buildAndSend(rid, SftpMsgType.WriteEnd, () => ({}));
+            await this._waitResponse(rid).catch(() => {});
+            throw source.errored ?? new Error("Source closed");
+        }
+
         // Without this placeholder _handleMessage silently drops every error frame of the data
         // phase, and a server error only surfaces after WRITE_END_TIMEOUT with no message.
         let rejectDataPhase;

@@ -61,7 +61,7 @@ test("an error frame during the data phase rejects writeFile with the server mes
 // stream has to come off there as well: the REST upload hands in the raw request, so a surviving
 // "data" listener would pump the whole body at a request id the engine has already dropped, and a
 // pending "drain" would leave that request paused forever.
-test("a rejected data phase detaches every listener from the source stream", async () => {
+test("a rejected data phase, or a source that failed before WriteBegin was answered, leaves every listener off the source stream", async () => {
     const client = createClient();
     const sent = [];
     client._sendWriteData = (_rid, chunk) => { sent.push(chunk.toString()); };
@@ -81,6 +81,21 @@ test("a rejected data phase detaches every listener from the source stream", asy
     assert.strictEqual(source.listenerCount("end"), 0);
     assert.strictEqual(source.listenerCount("error"), 0);
     assert.strictEqual(client._socket.listenerCount("drain"), 0);
+
+    const sentTypes = [];
+    client._buildAndSend = (_rid, msgType) => { sentTypes.push(msgType); };
+    const failed = new PassThrough();
+    failed.on("error", () => {});
+    const early = client.writeFile("/tmp/y", failed);
+    const [beginRid] = [...client._pending.keys()];
+    failed.destroy(new Error("permission denied"));
+    await new Promise((r) => setImmediate(r));
+    client._resolvePending(beginRid, client._pending.get(beginRid));
+    await new Promise((r) => setImmediate(r));
+    assert.deepStrictEqual(sentTypes, [SftpMsgType.WriteBegin, SftpMsgType.WriteEnd], "WriteEnd closes the handle the engine opened");
+    client._resolvePending(beginRid, client._pending.get(beginRid));
+    await assert.rejects(early, /permission denied/);
+    assert.deepStrictEqual([sent, failed.listenerCount("data"), client._pending.size], [["before"], 0, 0]);
 });
 
 // A real Ok frame, so the test drives _handleMessage instead of poking _pending directly — that is
