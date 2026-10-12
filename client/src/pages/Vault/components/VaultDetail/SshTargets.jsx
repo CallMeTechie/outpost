@@ -10,7 +10,7 @@ import { sshServers, sshTargetRows } from "../../vaultTypes.js";
 
 const raw = { interpolation: { escapeValue: false } };
 
-export const SshTargets = ({ item, onForgotten }) => {
+export const SshTargets = ({ item, canForget, onForgotten }) => {
     const { t } = useTranslation();
     const { servers } = useContext(ServerContext);
     const [confirming, setConfirming] = useState(null);
@@ -62,7 +62,7 @@ export const SshTargets = ({ item, onForgotten }) => {
                                                 </span>
                                                 {" · "}{confirmedText(key)}
                                             </span>
-                                            {item.canManage && (
+                                            {canForget && (
                                                 <Button type="secondary" buttonType="button" text={t("vault.detail.ssh.forget")}
                                                         onClick={() => { setFailed(false); setConfirming(row); }} />
                                             )}

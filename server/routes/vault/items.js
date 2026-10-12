@@ -120,13 +120,13 @@ app.delete("/items/:id", authenticate, requireVaultEnabled, handle((req) => dele
 /**
  * DELETE /vault/items/{id}/host-keys/{target}
  * @summary Forget SSH Host Key
- * @description Forgets the remembered host key of one target of an SSH entry; the next connection asks for approval with the new fingerprint. Same right as editing the entry.
+ * @description Forgets the remembered host key of one target of an SSH entry; the next connection asks for approval with the new fingerprint. Needs the rights to edit and to reveal the entry, from a signed-in session (API keys and impersonation get 403).
  * @tags Vault
  * @security BearerAuth
  * @param {number} id.path.required - Entry id
  * @param {string} target.path.required - Target, URL-encoded: server:<entryId> or host:<host>[:<port>]
  * @return 204 - Forgotten
- * @return {object} 403 - Not allowed to manage this entry
+ * @return {object} 403 - Not allowed to manage or reveal this entry, or not a signed-in session
  * @return {object} 404 - Unknown entry or no host key for this target
  */
 app.delete("/items/:id/host-keys/:target", authenticate, requireVaultEnabled,

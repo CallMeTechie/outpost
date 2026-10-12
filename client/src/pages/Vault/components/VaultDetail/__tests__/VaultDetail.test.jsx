@@ -102,7 +102,7 @@ const ssh = {
     }],
 };
 
-test("SSH-Ziele zeigen den gemerkten Host-Key oder „noch nie verbunden“; Vergessen fragt nach, meldet einen Fehler und lädt nach dem zweiten Versuch die Liste neu; ohne Ziele der Leerzustand", async () => {
+test("SSH-Ziele zeigen den gemerkten Host-Key oder „noch nie verbunden“; Vergessen nur mit Reveal-Recht und ohne Impersonation, fragt nach, meldet einen Fehler und lädt nach dem zweiten Versuch die Liste neu; ohne Ziele der Leerzustand", async () => {
     const user = userEvent.setup();
     const reload = vi.fn();
     const sshDetail = (shown) => (
@@ -135,6 +135,10 @@ test("SSH-Ziele zeigen den gemerkten Host-Key oder „noch nie verbunden“; Ver
     await user.click(within(targets.getByRole("alertdialog")).getByRole("button", { name: "Forget" }));
     await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
     expect(targets.queryByRole("alert")).toBeNull();
+    rerender(sshDetail({ ...ssh, canReveal: false }));
+    expect(within(web02).queryByRole("button", { name: "Forget" })).toBeNull();
+    rerender(<VaultDetail item={ssh} impersonating onEdit={() => {}} onDelete={() => {}} onHostKeyForgotten={reload} />);
+    expect(within(web02).queryByRole("button", { name: "Forget" })).toBeNull();
     rerender(sshDetail({ ...ssh, hostKeys: [] }));
     expect(web02).toHaveTextContent("never connected");
 
