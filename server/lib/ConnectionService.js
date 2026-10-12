@@ -150,15 +150,25 @@ const resolveJumpHosts = async (entry) => {
     return jumpHosts;
 };
 
+const openAttempts = new Map();
+
 const openEngineSession = async (sessionId, sessionType, host, port, params, jumpHosts = [], engineId, options = {}) => {
+    const attempt = Symbol(sessionId);
+    openAttempts.set(sessionId, attempt);
+    const isLatest = () => openAttempts.get(sessionId) === attempt;
     const dataSocketPromise = controlPlane.waitForDataConnection(sessionId);
     try {
         await controlPlane.openSession(sessionId, sessionType, host, port, params, jumpHosts, engineId || null, options);
     } catch (err) {
-        // After a server-side "Request timeout" the engine may still connect; without destroy that session lives on.
-        dataSocketPromise.then((socket) => socket.destroy(), () => {});
+        dataSocketPromise.catch(() => {});
+        if (err.errorCode === "Timeout") controlPlane.closeSession(sessionId, engineId || null);
+        // The first waiter expires together with the open; a retry under the same id keeps its socket.
+        controlPlane.waitForDataConnection(sessionId)
+            .then((socket) => { if (isLatest()) socket.destroy(); }, () => {})
+            .finally(() => { if (isLatest()) openAttempts.delete(sessionId); });
         throw err;
     }
+    if (isLatest()) openAttempts.delete(sessionId);
     return dataSocketPromise;
 };
 

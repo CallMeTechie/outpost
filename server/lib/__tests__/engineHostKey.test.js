@@ -38,7 +38,7 @@ const fakeEngine = (t, sessionIds) => {
     const socket = {};
     const sent = [];
     const sendFrame = controlPlane._sendFrame;
-    controlPlane._sendFrame = (_socket, frame) => sent.push(Envelope.getRootAsEnvelope(new flatbuffers.ByteBuffer(frame)).sessionOpen());
+    controlPlane._sendFrame = (_socket, frame) => sent.push(Envelope.getRootAsEnvelope(new flatbuffers.ByteBuffer(frame)));
     controlPlane._engines.set(ENGINE, { socket, engineId: ENGINE });
     t.after(() => {
         controlPlane._sendFrame = sendFrame;
@@ -53,7 +53,10 @@ const fakeEngine = (t, sessionIds) => {
 test("openSession hands the engine the host-key options and returns the host key it reports, also with a mismatch", async (t) => {
     t.mock.timers.enable({ apis: ["setTimeout"] });
     const { sent, answer } = fakeEngine(t, ["vault-ssh-run", "vault-ssh-mismatch", "vault-ssh-probe", "vault-ssh-silent"]);
-    const optionsOf = (open) => [open.expectedHostKey(), open.probeHostKey(), open.execOnly()];
+    const optionsOf = (frame) => {
+        const open = frame.sessionOpen();
+        return [open.expectedHostKey(), open.probeHostKey(), open.execOnly()];
+    };
 
     const run = controlPlane.openSession("vault-ssh-run", SessionType.SFTP, "10.0.0.5", 22, { username: "deploy" }, [], ENGINE,
         { expectedHostKey: KEY.fingerprint, execOnly: true });
@@ -132,7 +135,8 @@ test("exec reports whether the engine stopped the command at its timeout", async
 });
 
 test("a failed open closes the data connection the engine reports afterwards, so no session stays behind", async (t) => {
-    const { answer } = fakeEngine(t, ["vault-ssh-late"]);
+    t.mock.timers.enable({ apis: ["setTimeout"] });
+    const { sent, answer } = fakeEngine(t, ["vault-ssh-late", "vault-ssh-late-silent"]);
     const opening = openEngineSession("vault-ssh-late", SessionType.SFTP, "10.0.0.5", 22, { username: "deploy" }, [], ENGINE,
         { execOnly: true });
     answer("vault-ssh-late", { success: false, errorCode: ErrorCode.AuthFailed, errorMessage: "SSH authentication failed" });
@@ -142,6 +146,18 @@ test("a failed open closes the data connection the engine reports afterwards, so
     controlPlane.emit("dataConnectionReady", { sessionId: "vault-ssh-late", socket: { destroy: () => { destroyed = true; } } });
     await new Promise(setImmediate);
     assert.strictEqual(destroyed, true);
+
+    const silent = openEngineSession("vault-ssh-late-silent", SessionType.SFTP, "10.0.0.5", 22, { username: "deploy" }, [], ENGINE,
+        { execOnly: true });
+    t.mock.timers.tick(30000);
+    await assert.rejects(silent, { message: "Request timeout", errorCode: "Timeout" });
+    const close = sent.at(-1);
+    assert.deepStrictEqual([close.msgType(), close.sessionClose()?.sessionId()], [MessageType.SessionClose, "vault-ssh-late-silent"]);
+
+    const late = { destroyed: false, destroy() { this.destroyed = true; } };
+    controlPlane.emit("dataConnectionReady", { sessionId: "vault-ssh-late-silent", socket: late });
+    await new Promise(setImmediate);
+    assert.strictEqual(late.destroyed, true);
 });
 
 test("stat and writeFile hand the engine the owner, exclusive and final-mode options; only a refused WriteBegin is marked notOpened", async () => {
