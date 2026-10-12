@@ -80,8 +80,8 @@ const MESSAGE_HANDLERS = {
     [SftpMsgType.ExecResult]: (msg, rid, pending, self) => {
         const res = msg.execRes();
         self._resolvePending(rid, pending, res
-            ? { stdout: res.stdoutData() || "", stderr: res.stderrData() || "", exitCode: res.exitCode() }
-            : { stdout: "", stderr: "", exitCode: -1 });
+            ? { stdout: res.stdoutData() || "", stderr: res.stderrData() || "", exitCode: res.exitCode(), timedOut: res.timedOut() }
+            : { stdout: "", stderr: "", exitCode: -1, timedOut: false });
     },
 
     [SftpMsgType.SearchResult]: (msg, rid, pending, self) => {
@@ -143,8 +143,16 @@ class EngineSftpClient extends EventEmitter {
         return this._pathRequest(SftpMsgType.ListDir, path);
     }
 
-    stat(path) {
-        return this._pathRequest(SftpMsgType.Stat, path);
+    stat(path, { owner = true } = {}) {
+        const rid = this._nextId();
+        this._buildAndSend(rid, SftpMsgType.Stat, (b) => {
+            const pathOff = b.createString(path);
+            PathReq.startPathReq(b);
+            PathReq.addPath(b, pathOff);
+            if (!owner) PathReq.addOwner(b, false);
+            return { pathReq: PathReq.endPathReq(b) };
+        });
+        return this._waitResponse(rid);
     }
 
     mkdir(path) {
@@ -304,17 +312,22 @@ class EngineSftpClient extends EventEmitter {
         return { stream, totalSizePromise, done };
     }
 
-    async writeFile(path, source) {
+    async writeFile(path, source, { exclusive = false, finalMode = 0 } = {}) {
         const rid = this._nextId();
 
         this._buildAndSend(rid, SftpMsgType.WriteBegin, (b) => {
             const pathOff = b.createString(path);
             WriteBeginReq.startWriteBeginReq(b);
             WriteBeginReq.addPath(b, pathOff);
+            if (exclusive) WriteBeginReq.addExclusive(b, true);
+            if (finalMode) WriteBeginReq.addFinalMode(b, finalMode);
             return { writeBeginReq: WriteBeginReq.endWriteBeginReq(b) };
         });
 
-        await this._waitResponse(rid);
+        // Only an engine refusal guarantees nothing was created; after a close or timeout the file may exist.
+        await this._waitResponse(rid).catch((err) => {
+            throw this._closed || err.message === "Request timeout" ? err : Object.assign(err, { notOpened: true });
+        });
 
         // Without this placeholder _handleMessage silently drops every error frame of the data
         // phase, and a server error only surfaces after WRITE_END_TIMEOUT with no message.

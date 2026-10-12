@@ -150,12 +150,13 @@ const resolveJumpHosts = async (entry) => {
     return jumpHosts;
 };
 
-const openEngineSession = async (sessionId, sessionType, host, port, params, jumpHosts = [], engineId) => {
+const openEngineSession = async (sessionId, sessionType, host, port, params, jumpHosts = [], engineId, options = {}) => {
     const dataSocketPromise = controlPlane.waitForDataConnection(sessionId);
     try {
-        await controlPlane.openSession(sessionId, sessionType, host, port, params, jumpHosts, engineId || null);
+        await controlPlane.openSession(sessionId, sessionType, host, port, params, jumpHosts, engineId || null, options);
     } catch (err) {
-        dataSocketPromise.catch(() => {});
+        // After a server-side "Request timeout" the engine may still connect; without destroy that session lives on.
+        dataSocketPromise.then((socket) => socket.destroy(), () => {});
         throw err;
     }
     return dataSocketPromise;
