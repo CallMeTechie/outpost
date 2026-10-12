@@ -25,6 +25,7 @@ const SERVERS = [
     { id: 12, type: "server", name: "web02", protocol: "ssh", ip: "10.0.1.12" },
     { id: 13, type: "server", name: "nas", protocol: "ssh", ip: "192.168.2.60" },
     { id: 14, type: "server", name: "win01", protocol: "rdp", ip: "10.0.1.20" },
+    { id: 20, type: "organization", name: "Ops", entries: [{ id: 21, type: "server", name: "ops-db", protocol: "ssh", ip: "10.0.2.21" }] },
 ];
 
 const Targets = ({ children, permissions = ["connect.direct"] }) => (
@@ -157,7 +158,7 @@ const ssh = {
     fields: { username: "deploy", servers: [12], hosts: ["backup.example.net"], allowSession: false },
 };
 
-test("SSH: Server-Ziele nur aus SSH-Servern, ein neues Ziel verwirft die Werte, freie Hosts werden geprüft und brauchen „Direkt verbinden“, Speichern schickt Ziele und Schalter", async () => {
+test("SSH: Server-Ziele nur aus SSH-Servern, bei persönlichen Einträgen auch aus Organisationen, ein neues Ziel verwirft die Werte, freie Hosts werden geprüft und brauchen „Direkt verbinden“, Speichern schickt Ziele und Schalter", async () => {
     const user = userEvent.setup();
     requestDouble.stub("patchRequest", "vault/items/9", { item: ssh, secretsCleared: true });
     const { unmount } = editEntry(ssh);
@@ -169,7 +170,7 @@ test("SSH: Server-Ziele nur aus SSH-Servern, ein neues Ziel verwirft die Werte, 
 
     await user.click(node("UI-VAULT-DIALOG-SSH-SERVERS").querySelector(".select-box__selected"));
     const offered = await screen.findAllByRole("menuitem");
-    expect(offered.map((option) => option.textContent)).toEqual(["web02 · 10.0.1.12", "nas · 192.168.2.60"]);
+    expect(offered.map((option) => option.textContent)).toEqual(["web02 · 10.0.1.12", "nas · 192.168.2.60", "ops-db · 10.0.2.21"]);
     await user.click(screen.getByRole("menuitem", { name: "nas · 192.168.2.60" }));
 
     expect(servers.getByText("nas · 192.168.2.60")).toBeInTheDocument();
