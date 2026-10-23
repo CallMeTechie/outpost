@@ -15,13 +15,13 @@ test("Rechtsklick in die Liste bietet Neuer Eintrag an und lässt die Auswahl un
     const onSelect = vi.fn();
     const { unmount } = renderWithProviders(list({ onCreate, onSelect }));
 
-    fireEvent.contextMenu(screen.getByText("portal-login"));
+    expect(fireEvent.contextMenu(screen.getByText("portal-login"))).toBe(false);
     expect(onSelect).not.toHaveBeenCalled();
     await user.click(await screen.findByText("New entry"));
     expect(onCreate).toHaveBeenCalledTimes(1);
 
     unmount();
     renderWithProviders(list({ canCreate: false }));
-    fireEvent.contextMenu(screen.getByText("portal-login"));
+    expect(fireEvent.contextMenu(screen.getByText("portal-login"))).toBe(true);
     expect(screen.queryByText("New entry")).not.toBeInTheDocument();
 });

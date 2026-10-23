@@ -25,7 +25,7 @@ const defOf = (name) => ({
         properties: {
             item: { type: "string", description: "Entry id as vault_list shows it, e.g. web-deploy or org:3/ops" },
             target: { type: "string", description: "Target as vault_list shows it under targets, e.g. server:12" },
-            localPath: { type: "string", description: "Absolute path or ~/… on your own server" },
+            localPath: { type: "string", description: "Absolute path or ~/… on your own server; on a Synology NAS the home is /home/…" },
             remotePath: { type: "string", description: "Absolute path or ~/… on the target, as the entry's user; on a Synology NAS the home is /home/…" },
             overwrite: { type: "boolean", description: "Replace an existing file; default false" },
         },
@@ -96,7 +96,6 @@ const copy = async ({ from, to, sourcePath, targetPath, mode, modeMask = 0o777, 
     let read = null;
     let keepTemp = false;
     const finalMode = (existing ?? { mode }).mode & modeMask;
-    // Synology reports 0777 over SFTP for every file on ACL shares; ssh_get passes 0o755 so that never becomes a world-writable local file.
     // The engine reads final_mode 0 as "leave the mode alone", so a mode of 000 cannot be set.
     let modeSet = finalMode !== 0;
     let bytes = 0;
@@ -217,6 +216,7 @@ const getHandler = async (args, ctx, deps) => {
                 const source = assertSource(await statOrNull(target.client, sourcePath), args.remotePath);
                 agent = await openUntilAbort(ctx.signal, (signal) => openAgentServerSession(ctx, { signal }));
                 const targetPath = await resolveHome(agent, args.localPath, ctx.signal);
+                // Synology reports 0777 over SFTP for every file on ACL shares; never let that become a world-writable local file.
                 const copied = await copy({
                     from: target.client, to: agent.client, sourcePath, targetPath, mode: source.mode, modeMask: 0o755, overwrite, signal: ctx.signal,
                     names: { source: args.remotePath, target: args.localPath },

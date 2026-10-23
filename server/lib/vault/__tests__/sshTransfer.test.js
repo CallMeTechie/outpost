@@ -94,9 +94,10 @@ test("ssh_put writes one exclusively created temp file with a random name and th
     assert.deepStrictEqual([use.details.from, use.details.to, use.details.bytes], ["~/build/app.tar.gz", "/srv/app/app.tar.gz", 13]);
     assert.ok(!JSON.stringify(env.audits).includes("archive-bytes"));
 
-    env.appmonster.files.set("/home/ma/build/app2.tar.gz", file("next", 0o100644));
+    env.appmonster.files.set("/home/ma/build/app2.tar.gz", file("next", 0o100666));
     assert.ok(!(await env.call("ssh_put", { localPath: "/home/ma/build/app2.tar.gz", remotePath: "/srv/app/app2.tar.gz" })).isError);
     assert.notStrictEqual(env.ops("web02")[2][1].slice(-17), temp.slice(-17), "every call draws a new temp name");
+    assert.strictEqual(env.ops("web02")[2][2].finalMode, 0o666, "ssh_put keeps the source mode");
 
     t.mock.method(crypto, "randomBytes", () => Buffer.alloc(4));
     const collided = await env.call("ssh_put", { localPath: "~/build/app.tar.gz", remotePath: "/srv/app/app.tar.gz", overwrite: true });
