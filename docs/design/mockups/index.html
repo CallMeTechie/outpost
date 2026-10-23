@@ -2,7 +2,7 @@
 <html lang="de" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<title>outpost — Mockups (Revision 23)</title>
+<title>outpost — Mockups (Revision 24)</title>
 <link rel="stylesheet" href="./tokens.css">
 <style>
 .mb-page { font: var(--type-body, 500 0.875rem/1.45 system-ui, sans-serif); color: var(--text, #eee); background: var(--background, #111); margin: 0; padding: var(--space-8, 2rem); }
@@ -1064,7 +1064,7 @@
 </head>
 <body class="mb-page">
 <h1>outpost — Mockups</h1>
-<p class="sub">Manifest-Revision 23 · 2026-10-12 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
+<p class="sub">Manifest-Revision 24 · 2026-10-23 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
 <ul class="mb-toc">
 <li><a href="#UI-SHELL">Rahmen — Navigation</a> <code>UI-SHELL</code></li>
 <li><a href="#UI-SERVERS">Servers — Arbeitsfläche</a> <code>UI-SERVERS</code></li>
@@ -3269,7 +3269,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <div class="ctx"><b>Art:</b> Seite · Route <code>/vault</code><br><b>Tastatur:</b> N Neuer Eintrag; ↑/↓ wählt in der Liste; E Bearbeiten; unter 768px Zurück-Pfeil im Kopf der Details" </div>
 <p class="meta">Artboard: <a href="./ui-vault.html">ui-vault.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-vault.md</code></p>
 <table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
-<tr><td><code>UI-VAULT-NEW</code></td><td>Neuer Eintrag</td><td>Öffnet den Eintrag-Dialog zum Anlegen. Nur sichtbar mit Recht vault.use oder vault.manage in mindestens einer Organisation.</td><td><code>default · disabled</code></td></tr>
+<tr><td><code>UI-VAULT-NEW</code></td><td>Neuer Eintrag</td><td>Öffnet den Eintrag-Dialog zum Anlegen. Nur sichtbar mit Recht vault.use oder vault.manage in mindestens einer Organisation. Derselbe Befehl steht im Kontextmenü der Liste (Rechtsklick), solange das Anlegen erlaubt ist.</td><td><code>default · disabled</code></td></tr>
 <tr><td><code>UI-VAULT-SCOPE</code></td><td>Persönlich · Organisationen</td><td>Wechselt, wessen Einträge die Liste zeigt — die eigenen oder die einer Organisation. Ein Reiter je Besitzer. <b>Nicht:</b> server_folder, tag, item_type.</td><td><code>default · selected</code></td></tr>
 <tr><td><code>UI-VAULT-SEARCH</code></td><td>Suchen</td><td>Filtert die Liste nach Name, Benutzer, Host, Ursprung und Beschreibung. Durchsucht nie geheime Werte.</td><td><code>default · empty</code></td></tr>
 <tr><td><code>UI-VAULT-TYPES</code></td><td>Alle · Login · API-Key · SSH · Datenbank · Sonstiges</td><td>Filtert die Liste nach der Art der Zugangsdaten. <b>Nicht:</b> vault_owner, tag.</td><td><code>default · selected</code></td></tr>
@@ -3616,7 +3616,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 			<div class="element" data-ui-id="UI-VAULT-DIALOG-SCOPE">
 				<header><code>UI-VAULT-DIALOG-SCOPE</code><span class="type">field</span><span>Gilt für — Chips plus „Alle Server“</span></header>
 				<section data-ui-state="default"><div class="chips"><span class="chip sel"><span class="k">Ordner</span>Produktion</span><span class="chip sel"><span class="k">Server</span>nas</span><span class="chip add">+ Server</span><span class="chip add">+ Ordner</span><span class="chip add">+ Tag</span></div><div class="row"><span>Alle Server</span><span class="toggle" role="switch" aria-checked="false" aria-label="Alle Server"></span></div></section>
-				<section data-ui-state="empty"><div class="chips"><span class="chip add">+ Server</span><span class="chip add">+ Ordner</span><span class="chip add">+ Tag</span></div><span class="help">Für keinen Server freigegeben.</span><div class="row"><span>Alle Server</span><span class="toggle" role="switch" aria-checked="false" aria-label="Alle Server"></span></div></section>
+				<section data-ui-state="empty"><div class="chips"><span class="chip add">+ Server</span><span class="chip add">+ Ordner</span><span class="chip add">+ Tag</span></div><span class="help">Für keinen Server freigegeben — kein Agent sieht diesen Eintrag.</span><div class="row"><span>Alle Server</span><span class="toggle" role="switch" aria-checked="false" aria-label="Alle Server"></span></div></section>
 				<section data-ui-state="selected"><div class="chips"><span class="chip off"><span class="k">Ordner</span>Produktion</span><span class="chip off"><span class="k">Server</span>nas</span></div><div class="row"><span>Alle Server</span><span class="toggle on" role="switch" aria-checked="true" aria-label="Alle Server"></span></div></section>
 			</div>
 

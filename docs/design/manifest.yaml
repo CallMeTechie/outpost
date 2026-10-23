@@ -1,7 +1,7 @@
 schema: mockingbird/1
 project: outpost
-revision: 23
-updated: 2026-10-12
+revision: 24
+updated: 2026-10-23
 design_system: docs/design/design-system.md
 mockups_index: docs/design/mockups/index.html
 tokens_css: docs/design/mockups/tokens.css
@@ -93,6 +93,10 @@ changelog:
     date: 2026-10-12
     summary: Design-Sync nach der Umsetzung 2b — der Kasten „Neues Ziel“ steht über dem Befehlsblock, der Fingerabdruck erscheint vollständig
     touched: [UI-VAULT-APPROVAL-HOSTKEY, UI-VAULT-APPROVAL-COMMAND]
+  - rev: 24
+    date: 2026-10-23
+    summary: Design-Sync nach dem Handtest 2b — der Dialog sagt bei leerem „Gilt für“, dass kein Agent den Eintrag sieht; „Neuer Eintrag“ auch per Rechtsklick in der Liste
+    touched: [UI-VAULT-DIALOG-SCOPE, UI-VAULT-NEW]
 
 adapters:
   web: { locator: attribute, attribute: data-ui-id, visual_check: false }
@@ -971,7 +975,7 @@ screens:
         verify: required
         data_source: static
         semantic_anchor:
-          means: Öffnet den Eintrag-Dialog zum Anlegen. Nur sichtbar mit Recht vault.use oder vault.manage in mindestens einer Organisation.
+          means: Öffnet den Eintrag-Dialog zum Anlegen. Nur sichtbar mit Recht vault.use oder vault.manage in mindestens einer Organisation. Derselbe Befehl steht im Kontextmenü der Liste (Rechtsklick), solange das Anlegen erlaubt ist.
         states:
           - { id: default }
           - { id: disabled }
@@ -1311,7 +1315,7 @@ screens:
           example: "Ordner Produktion · Server nas"
         states:
           - { id: default }
-          - { id: empty, copy: "Für keinen Server freigegeben." }
+          - { id: empty, copy: "Für keinen Server freigegeben — kein Agent sieht diesen Eintrag." }
           - { id: selected, copy: "Alle Server" }
         locators:
           web: "[data-ui-id='UI-VAULT-DIALOG-SCOPE']"

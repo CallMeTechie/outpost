@@ -258,7 +258,7 @@ Ein Test je Verhalten, möglichst über echte Nahtstellen:
 `docs/vault.md` bekommt einen Abschnitt „SSH“: Ziele und „Gilt für“, Host-Key beim ersten Mal und Vergessen, kein Terminal und kein `sudo` mit Passwortabfrage (eigener Eintrag für den nötigen Benutzer), Dateiübertragung, Grenzen (Jump-Hosts ungeprüft, freie Hosts nur über die Standard-Engine), Fehlercodes, Werkzeugtabelle. Die Engine erscheint im selben Release wie der Server; ältere Engines verbinden sich nach dem Update nicht, wie bisher bei jedem Release.
 
 <!-- mockingbird:design:begin -->
-<!-- design: manifest=docs/design/manifest.yaml design_rev=23 design_hash=sha256:2e403a97304a241c8b2e294dbb112459c7f45b9bccd4ca61f35e5c4aa528ed4d system=docs/design/design-system.md index=docs/design/mockups/index.html adapter=web screens=UI-VAULT,UI-VAULT-DIALOG,UI-VAULT-APPROVAL,UI-AGENT-ACCESS consumes=UI-SHELL-ACCOUNT,UI-SHELL-MOBILE-NAV,UI-SHELL-NAV -->
+<!-- design: manifest=docs/design/manifest.yaml design_rev=24 design_hash=sha256:9e85428aa748849b3c3b8240b79afe9adcd0ec34aaf8529e6c736d57dafcbe89 system=docs/design/design-system.md index=docs/design/mockups/index.html adapter=web screens=UI-VAULT,UI-VAULT-DIALOG,UI-VAULT-APPROVAL,UI-AGENT-ACCESS consumes=UI-SHELL-ACCOUNT,UI-SHELL-MOBILE-NAV,UI-SHELL-NAV -->
 <!-- Generiert aus docs/design/manifest.yaml. Nicht von Hand ändern —
      Änderungen hier werden beim nächsten mockingbird-Lauf überschrieben.
      Design ändern heißt Manifest ändern. -->
@@ -267,7 +267,7 @@ Ein Test je Verhalten, möglichst über echte Nahtstellen:
 
 | ID | Element | Screen | Status | Fachlicher Anker |
 |----|---------|--------|--------|------------------|
-| UI-VAULT-NEW | Neuer Eintrag | UI-VAULT | required | Öffnet den Eintrag-Dialog zum Anlegen. Nur sichtbar mit Recht vault.use oder vault.manage in mindestens einer Organisation. |
+| UI-VAULT-NEW | Neuer Eintrag | UI-VAULT | required | Öffnet den Eintrag-Dialog zum Anlegen. Nur sichtbar mit Recht vault.use oder vault.manage in mindestens einer Organisation. Derselbe Befehl steht im Kontextmenü der Liste (Rechtsklick), solange das Anlegen erlaubt ist. |
 | UI-VAULT-SCOPE | Persönlich · Organisationen | UI-VAULT | required | Wechselt, wessen Einträge die Liste zeigt — die eigenen oder die einer Organisation. Ein Reiter je Besitzer. Nicht: server_folder, tag, item_type. |
 | UI-VAULT-SEARCH | Suchen | UI-VAULT | required | Filtert die Liste nach Name, Benutzer, Host, Ursprung und Beschreibung. Durchsucht nie geheime Werte. |
 | UI-VAULT-TYPES | Alle · Login · API-Key · SSH · Datenbank · Sonstiges | UI-VAULT | required | Filtert die Liste nach der Art der Zugangsdaten. Nicht: vault_owner, tag. |

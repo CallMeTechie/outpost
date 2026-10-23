@@ -26,7 +26,7 @@ Die Seite gibt es noch nicht; sie ist komplett **neu**. Bestand sind nur Rahmen 
 
 ## Elemente — eins nach dem anderen
 ### UI-VAULT-NEW — Neuer Eintrag (neu)
-- `data-ui-id` an `Button` über `dataUiId`. Sichtbar nur mit `vault.use` (persönlich) oder `vault.manage` in mindestens einer Organisation; `disabled`, wenn der gewählte Besitzer kein Anlegen erlaubt.
+- `data-ui-id` an `Button` über `dataUiId`. Sichtbar nur mit `vault.use` (persönlich) oder `vault.manage` in mindestens einer Organisation; `disabled`, wenn der gewählte Besitzer kein Anlegen erlaubt. Zusätzlich ein Kontextmenü auf `UI-VAULT-LIST` (`ContextMenu`/`useContextMenu` wie in `ServerList.jsx`) mit „Neuer Eintrag“, nur wenn das Anlegen erlaubt ist; der Rechtsklick ändert die Auswahl nicht.
 
 ### UI-VAULT-SCOPE — Persönlich · Organisationen (neu)
 - `data-ui-id` über das neue optionale Prop `dataUiId` am `TabSwitcher`. Ein Reiter je Besitzer; „Persönlich“ nur mit `vault.use`; Organisationen aus `getRequest("organizations")` wie in `Snippets.jsx`. `selected` = aktiver Reiter.

@@ -45,7 +45,7 @@ Neuer Dialog, im Client gibt es noch keine Vault-Seite. Er folgt dem Muster von 
 ### UI-VAULT-DIALOG-SCOPE — Gilt für (neu)
 - `data-ui-id` am Wrapper aus Chip-Zeile und „Alle Server“-Zeile. Gewählte Bindungen als Chips mit Art-Präfix (Ordner, Server, Tag), daneben „+ Server“, „+ Ordner“, „+ Tag“ (öffnen `SelectBox` multiple, searchable).
 - Datenquelle: Server und Ordner aus `useContext(ServerContext).servers` (Baum, `type` `folder`/`organization`/Server; beim Besitzer „Persönlich“ die Knoten ohne Organisation, sonst `entries` der gewählten Organisation); Tags aus dem `TagContext`, nur bei Besitzer „Persönlich“ (bei Organisationen entfällt „+ Tag“). Ordner gelten mit Unterordnern.
-- Zustände: `empty` „Für keinen Server freigegeben.“ (Standard). `selected` bei Schalter „Alle Server“ (`ToggleSwitch`, `allServers`): Chips werden gedimmt und nicht mehr bearbeitet. Wechsel des Besitzers verwirft Bindungen, die dort nicht gelten.
+- Zustände: `empty` „Für keinen Server freigegeben — kein Agent sieht diesen Eintrag.“ (Standard; derselbe Text wie in der Detailansicht, `vault.bindings.empty`). `selected` bei Schalter „Alle Server“ (`ToggleSwitch`, `allServers`): Chips werden gedimmt und nicht mehr bearbeitet. Wechsel des Besitzers verwirft Bindungen, die dort nicht gelten.
 
 ### UI-VAULT-DIALOG-READONLY — Nur lesen (neu in Rev. 16)
 - `data-ui-id` an der Zeilen-Wrapper-`div` um den `ToggleSwitch` (`id="vault-read-only"`), nach dem Muster von `UI-VAULT-DIALOG-APPROVAL`: `vault-item-dialog-switch` mit `label` und Schalter. Eigener Knoten, genau einmal. Die Gruppe „Nutzung durch Agenten“ (READONLY, HTTP, GIT, FILL) steht im Dialog-Formular nach „Freigabe erforderlich“ und vor „Speichern“, wie im Artboard.
