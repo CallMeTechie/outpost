@@ -488,5 +488,5 @@ With an agent key, the browser tools see only the sessions this key opened and t
 | `vault.file_too_large` | `<path> is larger than 100 MB.` |
 | `vault.file_exists` | `<path> exists; pass overwrite: true to replace it.` |
 | `vault.no_agent_server` | "File transfer needs an agent key set up on a server; this connection has none." |
-| `vault.host_key_changed` | `The host key of <target> changed (expected <old>, got <new>); nothing was sent. Ask the user to check the server and forget the old key in Outpost.` No card; the user has to forget the key first. |
+| `vault.host_key_changed` | `The host key of <target> changed (expected <old>, got <new>); nothing was sent. Ask the user to check the server and forget the old key in Outpost.` No card lets the call through; the user has to forget the key first. |
 | `vault.ssh_failed` | `The SSH connection to <target> failed (<kind>); nothing was done.` The kind is connection, timeout, login refused, engine not connected or SFTP not available. For a refused login the message adds "ask the user to check the entry's user and key". If the command of `ssh_exec` was already sent, it ends with "; the command was sent and may have run in full or in part. Check on the target before running it again." instead; do not repeat it blindly. File errors use the SFTP status, see [Files](#files). |
