@@ -88,14 +88,15 @@ const assertFree = (existing, path, overwrite) => {
 // Random per call: the temp file is created exclusively, so an entry planted under a fixed name would block every transfer.
 const tempNameOf = (path) => `${path}.outpost-${crypto.randomBytes(4).toString("hex")}.tmp`;
 
-const copy = async ({ from, to, sourcePath, targetPath, mode, overwrite, signal, names }) => {
+const copy = async ({ from, to, sourcePath, targetPath, mode, modeMask = 0o777, overwrite, signal, names }) => {
     const existing = await statOrNull(to, targetPath);
     assertFree(existing, names.target, overwrite);
     const temp = tempNameOf(targetPath);
     const shownTemp = `${names.target}${temp.slice(targetPath.length)}`;
     let read = null;
     let keepTemp = false;
-    const finalMode = (existing ?? { mode }).mode & 0o777;
+    const finalMode = (existing ?? { mode }).mode & modeMask;
+    // Synology reports 0777 over SFTP for every file on ACL shares; ssh_get passes 0o755 so that never becomes a world-writable local file.
     // The engine reads final_mode 0 as "leave the mode alone", so a mode of 000 cannot be set.
     let modeSet = finalMode !== 0;
     let bytes = 0;
@@ -217,7 +218,7 @@ const getHandler = async (args, ctx, deps) => {
                 agent = await openUntilAbort(ctx.signal, (signal) => openAgentServerSession(ctx, { signal }));
                 const targetPath = await resolveHome(agent, args.localPath, ctx.signal);
                 const copied = await copy({
-                    from: target.client, to: agent.client, sourcePath, targetPath, mode: source.mode, overwrite, signal: ctx.signal,
+                    from: target.client, to: agent.client, sourcePath, targetPath, mode: source.mode, modeMask: 0o755, overwrite, signal: ctx.signal,
                     names: { source: args.remotePath, target: args.localPath },
                 });
                 details.bytes = copied.bytes;

@@ -128,6 +128,12 @@ test("an existing file is only replaced with overwrite: true, the old one goes r
         "/srv/app/releases is not a regular file. (vault.not_a_file)");
     assert.strictEqual(env.ops("web02").length, 3);
 
+    env.web02.files.set("/srv/acl/open.sh", file("#!/bin/sh\n", 0o100777));
+    env.appmonster.files.set("/home/ma/logs/loose.sh", file("old", 0o100666));
+    assert.ok(!(await env.call("ssh_get", { remotePath: "/srv/acl/open.sh", localPath: "~/logs/open.sh" })).isError);
+    assert.ok(!(await env.call("ssh_get", { remotePath: "/srv/acl/open.sh", localPath: "~/logs/loose.sh", overwrite: true })).isError);
+    assert.deepStrictEqual([env.appmonster.files.get("/home/ma/logs/open.sh").mode, env.appmonster.files.get("/home/ma/logs/loose.sh").mode], [0o100755, 0o100644]);
+
     bed.state.items[0].approvalRequired = true;
     env.appmonster.files.set("/home/ma/logs/app.log", file("local", 0o100644));
     const before = ssh.world.logins.length;
