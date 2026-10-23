@@ -26,7 +26,7 @@ const defOf = (name) => ({
             item: { type: "string", description: "Entry id as vault_list shows it, e.g. web-deploy or org:3/ops" },
             target: { type: "string", description: "Target as vault_list shows it under targets, e.g. server:12" },
             localPath: { type: "string", description: "Absolute path or ~/… on your own server" },
-            remotePath: { type: "string", description: "Absolute path or ~/… on the target, as the entry's user" },
+            remotePath: { type: "string", description: "Absolute path or ~/… on the target, as the entry's user; on a Synology NAS the home is /home/…" },
             overwrite: { type: "boolean", description: "Replace an existing file; default false" },
         },
         required: ["item", "target", "localPath", "remotePath"],
