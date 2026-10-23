@@ -249,13 +249,13 @@ test("without connect.browser the MCP endpoint lists no browser tool and answers
     const transportId = init.headers["Mcp-Session-Id"];
     const names = async () => (await mcp.handle({ body: rpc(2, "tools/list"), transportId, accountId: 1 })).body.result.tools.map((tool) => tool.name);
 
-    assert.deepStrictEqual(await names(), ["vault_list", "vault_http"]);
+    assert.deepStrictEqual(await names(), ["vault_list", "vault_http", "ssh_exec", "ssh_put", "ssh_get"]);
     const called = await mcp.handle({ body: rpc(3, "tools/call", { name: FILL, arguments: { item: "github", passwordRef: "e1" } }), transportId, accountId: 1 });
     assert.strictEqual(called.body.error.code, -32602);
     assert.deepStrictEqual(env.typed(), []);
 
     bed.state.permissions.add(Permission.CONNECT_BROWSER);
-    assert.deepStrictEqual(await names(), ["vault_list", "vault_http", FILL, "browser_fill_secret"]);
+    assert.deepStrictEqual(await names(), ["vault_list", "vault_http", "ssh_exec", "ssh_put", "ssh_get", FILL, "browser_fill_secret"]);
 });
 
 test("when the page keeps the focus on another element the fill stops with vault.focus_lost before Input.insertText", async (t) => {

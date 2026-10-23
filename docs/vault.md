@@ -2,7 +2,7 @@
 
 The vault keeps credentials in Outpost: website logins, API keys, SSH keys, database passwords and anything else a tool needs. AI agents such as Claude Code and Codex, running on your servers in Outpost terminals, can use these entries without ever seeing the value. Outpost inserts the secret itself and hands the agent only the result. Every use can require your approval, is limited to the servers you choose, and ends up in the audit log.
 
-Agents can use two kinds of entry. A **login** is filled into a sign-in form in an Outpost browser tab (see [Browser Tabs & Claude](/browser-tabs)). An **API key** serves three purposes: Outpost calls an HTTP API with it (`vault_http`), Outpost forwards Git traffic to a Git host with it, and Outpost types it into a field of a browser tab (`browser_fill_secret`). An **Other** entry can be typed into a browser field as well. SSH and database entries can already be stored and viewed; agent tools for them follow in a later release.
+Agents can use two kinds of entry. A **login** is filled into a sign-in form in an Outpost browser tab (see [Browser Tabs & Claude](/browser-tabs)). An **API key** serves three purposes: Outpost calls an HTTP API with it (`vault_http`), Outpost forwards Git traffic to a Git host with it, and Outpost types it into a field of a browser tab (`browser_fill_secret`). An **Other** entry can be typed into a browser field as well. An **SSH** entry lets an agent run commands on other machines and copy files to and from them (`ssh_exec`, `ssh_put`, `ssh_get`, see [SSH](#_4a-ssh)). Database entries can already be stored and viewed; agent tools for them follow in a later release.
 
 ## 1. Create and set the vault key
 
@@ -70,9 +70,18 @@ Once the vault is on, **Vault** appears in the main navigation for accounts with
 | - | - | - | - |
 | Login | username, allowed origins (`scheme://host[:port]`, at least one) | password | `browser_fill_credential` |
 | API key | hosts, header name (default `Authorization`), header template (default <code v-pre>Bearer {{secret}}</code>), read only, allow http, use for Git (Git username), fill origins | token (at least 4 characters) | `vault_http`, `git`, `browser_fill_secret` |
-| SSH | username | private key and/or password, optional passphrase | not yet |
+| SSH | username, targets (servers, free hosts), allow "For this session" | private key and/or password, optional passphrase | `ssh_exec`, `ssh_put`, `ssh_get` |
 | Database | engine (`postgres`, `mysql`, `sqlite`), host, port, database, username | password | not yet |
 | Other | fill origins | value | `browser_fill_secret` |
+
+**SSH targets.** An SSH entry lists the machines it may log in to. A target is either a **server** from your server list or a **free host** written as `host[:port]` (port 22 when left out).
+
+- A server target uses the host, port, jump hosts and engine of the server's own entry. The identity stored on that server entry is never used; the SSH entry brings its own user and secret. It needs the permission `connect.ssh` for that server.
+- A free host connects through the default engine, without jump hosts. Adding one needs the permission `connect.direct`, which is off by default.
+- Both are checked when you save, only for targets that are new in that save, and again on every call for the account behind the agent key.
+- **Applies to** is a different setting: it decides from which server an agent sees the entry. The targets decide where the agent can log in.
+- Changing the targets deletes the stored values of the entry, like the other target fields below. An entry may be saved without targets; the tools then answer `vault.no_targets`.
+- **Allow "For this session"** (off by default) permits session approvals for this entry; only a signed-in session can switch it on. Without it, every call needs its own **Once**.
 
 **Use by agents.** An API key and an Other entry carry switches that decide what agents may do with the value. All of them start switched off or empty.
 
@@ -101,7 +110,7 @@ The default is none: a new entry is invisible to every agent until you choose. O
 
 **Approval required.** On by default. Every use by an agent then needs a click in an Outpost window, see [Approvals](#_5-approvals). Only a signed-in session can switch it off: saving an entry with approvals off through an account API key or during an impersonation session answers `403` ("Turning off approvals requires a signed-in session"). A fill requested during an impersonation session always asks for approval, even for entries with approvals off.
 
-**Changing a target clears the values.** When you change the origins of a login, the hosts of an API key or the host of a database entry, Outpost deletes all stored values of that entry in the same step, and the dialog asks for them again. Otherwise someone who may edit an organization entry, but not see its values, could point it at a site of their own and let an agent fill the password there.
+**Changing a target clears the values.** When you change the origins of a login, the hosts of an API key, the targets of an SSH entry or the host of a database entry, Outpost deletes all stored values of that entry in the same step, and the dialog asks for them again. Otherwise someone who may edit an organization entry, but not see its values, could point it at a site of their own and let an agent fill the password there.
 
 **Show and copy.** The list never carries values. **Show** fetches one value when you click it and hides it again after 30 seconds; **Copy** puts it on the clipboard. Both are available to the owner of a personal entry and, for organization entries, to members with `vault.reveal`. Every call is audited. Everyone else sees a note that the value can only be used by agents.
 
@@ -194,6 +203,52 @@ Revoke a key under **Settings → Account** in the agent keys section (**Edit** 
 
 If the identity used for the setup has been deleted in the meantime, or removing the registration fails or cannot be confirmed, the key is revoked anyway and the result shows the removal command with a copy button. Run it on the server in your own terminal. Deleting the server entry deletes its agent keys.
 
+## 4a. SSH
+
+An SSH entry gives an agent three tools: `ssh_exec` runs a command on a target, `ssh_put` and `ssh_get` copy one file. Outpost logs in itself, through its engine, with the entry's user and key or password. The agent never sees them. The tools need an entry with at least one target (see [SSH targets](#_3-entries)). `ssh_put` and `ssh_get` work only with an agent key that was set up on a server.
+
+### Host keys
+
+The first time an entry connects to a target, the approval card shows the host key's algorithm and fingerprint (`SHA256:…`) in a box **New target**, and always asks, even for an entry with **Approval required** off. Compare the fingerprint with the output of `ssh-keyscan -t <type> <host> | ssh-keygen -lf -`, where `<type>` is the algorithm shown on the card: `ed25519`, `ecdsa` or `rsa`. Outpost does not log in to the target before you approve. The file tools do connect to the agent's own server first, to check the local file.
+
+- After the approval, Outpost remembers the key per entry and target. Two entries with the same target remember their keys separately.
+- If the key differs later, the engine aborts before logging in: the agent gets `vault.host_key_changed` and you see the notice `Host key of <target> changed — connection aborted`. No card lets you skip the check: for an entry with **Approval required** the usual card appears first, and the call still ends with `vault.host_key_changed` after you approve it. Open the entry and choose **Forget** on the target; the next connection shows the new fingerprint. **Forget** needs the right to reveal the entry and a signed-in session without impersonation, since the next approval sends the secrets to whatever answers at the target.
+- A server entry whose host or port is edited keeps its remembered key. The same machine still matches; another machine ends in `vault.host_key_changed`.
+- Jump hosts and the agent's own server (used by `ssh_put` and `ssh_get`) are not checked.
+- The engine's libssh2 chooses the host key algorithm. After an engine update with another libssh2 version it may choose another algorithm, and every remembered key then reports `vault.host_key_changed`. Forget the key and confirm it again.
+
+### Commands
+
+`ssh_exec` has no terminal. Interactive programs and `sudo` with a password prompt do not work; for another user, create an entry for that user.
+
+- `timeoutSec` is 1 to 600 seconds, 60 by default. When it runs out, the result says `(timed out after <n> s)`; the process on the target can keep running.
+- Each output stream is cut at 64 KB. The engine itself delivers at most 256 KB per stream and nothing after a NUL byte; invalid UTF-8 is replaced.
+- Outpost replaces the entry's password, passphrase and private key (also each line of the key) with `••••`. Values shorter than 4 characters are not replaced. Nothing else is replaced: whoever may run commands as `deploy` reads everything `deploy` can read, including other secrets in files.
+- A target without an SFTP service still runs commands; file transfer does not work there.
+- A command with control or bidi characters, also invisible ones, is refused (`vault.bad_command`), as is a path with them or with a line break (`vault.bad_path`). The card would otherwise show something different from what runs.
+- If a call ends after the command was sent, `vault.ssh_failed` says so: the command may have run in full or in part. Check on the target before running it again. A cancelled call ends the running command in the engine; the process on the target may keep running.
+
+### Files
+
+`ssh_put` copies a file from the agent's server to a target, `ssh_get` the other way round. The content never passes through the agent. The file is at most 100 MB. On the agent's server, Outpost reads and writes as the same user for whom the agent access was set up; the agent gets no extra rights there.
+
+- Paths are absolute or start with `~/`, at most 4 KB. `~/` becomes the home directory of the session's user. On a Synology NAS the SFTP root is the list of shares and the home lives under `/home/<user>`, so `~/` resolves to `/` there and writing fails; use `/home/<user>/…`.
+- An existing destination is replaced only with `overwrite: true` (`vault.file_exists`).
+- Outpost writes to a temporary file next to the destination, named `<destination>.outpost-<8 hex characters>.tmp`, created exclusively (an existing file of that name makes the call fail) with mode 0600, and renames it afterwards. The final mode is set on the open handle before it is closed: the mode of the source, or on replacing, the mode of the old file. `ssh_get` removes the write bits for group and others (`& 0o755`) on the file it writes on the agent's server, also when replacing, because some targets (Synology shares with ACL) report 0777 for every file.
+- If the target does not allow setting the mode (SMB/CIFS mounts, FAT, ACL-only shares), or the mode to set is `000`, the file is still written, keeps mode 0600, and the result says "Permissions could not be set; the file keeps mode 0600." Synology is a special case on shares with an ACL: it accepts the mode over SFTP without applying it, and the file shows `-rwxrwxrwx+` afterwards. Outpost cannot detect this, and any SFTP client sees the same. Control the permissions there through the ACL of the share in DSM.
+- The owner of the new file is the entry's user on the target. When replacing, the old owner is lost.
+- If the rename fails after the old file was deleted, the old file is gone and the result names the temporary file.
+- The card for `ssh_get` shows the size only after approval, because Outpost logs in to the target only then. The transfer stops beyond 100 MB and removes the temporary file.
+- File system errors come back as `vault.ssh_failed` with the SFTP status, for example `<path>: permission denied; nothing was copied.` If the temporary file stayed, the message names it.
+
+### Upgrades
+
+Engine and server come from the same release. The server refuses an engine of another version at its hello, and the host key check relies on this: an engine that skips the host key comparison can never be connected. After an update, update your engines too.
+
+### Privileged users
+
+Whoever may run commands as `root` on a target can capture later logins (PAM, sshd) and learn the entry's password. A key reveals only proof. For privileged users, use a key instead of a password.
+
 ## 5. Approvals
 
 When an agent wants to use an entry with **Approval required**, a card appears bottom right in every Outpost window of the account that owns the agent key, including popouts. For organization entries this is the same user, not the organization's admins. The card shows agent and server, the tool, entry and target (for example `POST api.github.com/repos/o/r/issues`, `Git · github.com/o/r` or the page a field is filled on), and the time left. A request from an impersonation session is marked "Requested from an impersonation session" and offers only **Once** and **Deny**.
@@ -203,6 +258,14 @@ When an agent wants to use an entry with **Approval required**, a card appears b
 | Once | Allows exactly one use: one API call, one fill, or one Git operation. For a Git push it allows exactly one push (see below). |
 | For this session | Allows this entry for the rest of the agent's session (see below), for the same kind of use. Not offered for a request from an impersonation session; the server refuses it with `vault.session_not_allowed`. |
 | Deny | Refuses. For 60 seconds the same agent gets `vault.approval_denied` for this entry at once, without a new card, even over a new MCP session. The block covers the whole entry, reading and writing alike: whoever denies a write also blocks reading it for 60 seconds. |
+
+### SSH
+
+An SSH call follows **Approval required** of the entry. A new target always asks (see [Host keys](#host-keys)). The card names the target as `<name> · user@host:port` and carries the badge **executes** (red) for `ssh_exec`; `ssh_put` counts as writing, `ssh_get` as reading.
+
+A command of more than 20 lines or 1200 characters appears collapsed (the first 20 lines, at most 1200 characters). **Once** and **For this session** become available only after **Show all**; **Deny** always works.
+
+**For this session** is offered only when the entry allows it (**Allow "For this session"**). It then applies per target, kind (execute, write, read) and host key. An approval for `web02` does not cover `nas`, and none covers another host key.
 
 ### Reading and writing
 
@@ -298,7 +361,7 @@ To check, run `docker exec outpost cat /proc/net/tcp6` while a server is connect
 - **Impersonation.** Admins who sign in as another user see that user's entries but cannot show values, answer approvals, switch off **Approval required**, or set up or revoke agent access. Fills requested during impersonation always ask for approval: the card marks them, and they can only be approved once, never for the session. The admin cannot create API keys for that user during impersonation either (`403` "This action requires a signed-in session"), so no key outlives the impersonation. Device-code authorization (`/api/auth/device/authorize`) rejects API keys, and a device session created from an impersonation session is itself an impersonation session with the same limits. Every audit entry from an HTTP request of such a session, of any action, names the admin as `impersonatorId`; entries from WebSocket connections (terminal, SFTP, AI chat) do not carry it yet.
 - **Leaving an organization** hides its entries at once, also for MCP sessions that are already running and for a request whose approval card is still waiting.
 - **Agent keys open only ephemeral browser sessions.** `browser_open` with `profile: "persistent"` answers `INVALID_PROFILE` for an agent key before a browser starts, so an agent never sees the cookies and logins of your persistent profile.
-- **Audit log.** Category Vault: `vault.item_create`, `vault.item_update`, `vault.item_delete`, `vault.reveal`, `vault.use`, `vault.use_denied`, `vault.approve`, `vault.deny`, `vault.approval_timeout`, `vault.agent_key_create`, `vault.agent_key_revoke`, `vault.agent_ip_denied`, `vault.item_unreadable`, `vault.evaluate_locked`, `vault.screenshot_locked`, `vault.input_locked`, `vault.persistent_not_allowed`. Entries name the vault entry, agent, server and target, never a value. `vault.use` and `vault.use_denied` also carry the tool and whether it was reading or writing. For `vault_http` they list method, host, path (without query), status and bytes; for `browser_fill_secret` origin and field type; for Git host, repository, `fetch` or `push` and the bytes of the whole operation, written when it ends. Never headers, bodies or query strings.
+- **Audit log.** Category Vault: `vault.item_create`, `vault.item_update`, `vault.item_delete`, `vault.reveal`, `vault.use`, `vault.use_denied`, `vault.approve`, `vault.deny`, `vault.approval_timeout`, `vault.agent_key_create`, `vault.agent_key_revoke`, `vault.agent_ip_denied`, `vault.item_unreadable`, `vault.evaluate_locked`, `vault.screenshot_locked`, `vault.input_locked`, `vault.persistent_not_allowed`, `vault.ssh_host_key_pinned`, `vault.ssh_host_key_mismatch`, `vault.ssh_host_key_forgotten`. Entries name the vault entry, agent, server and target, never a value. `vault.use` and `vault.use_denied` also carry the tool and whether it was reading or writing. For `vault_http` they list method, host, path (without query), status and bytes; for `browser_fill_secret` origin and field type; for Git host, repository, `fetch` or `push` and the bytes of the whole operation, written when it ends. For SSH they list target, host, port and user, and for `ssh_exec` the command (cut at 1 KB, with the entry's secrets replaced), exit code, whether it timed out and the bytes of output; for files source, destination and bytes. Never headers, bodies, query strings, file contents or command output.
 - **No master password.** Whoever controls the Outpost host or container, and with it `VAULT_KEY`, can decrypt the vault.
 
 ## 8. Content Security Policy
@@ -338,14 +401,17 @@ The desktop app ships its own policy; this one applies to Outpost in the browser
 
 ## 9. Tools
 
-The vault adds four MCP tools and the Git proxy. The tools appear next to the [browser tools](/browser-tabs#tools) when the vault is on and the account has `vault.use` or is an active member of an organization. `browser_fill_credential` and `browser_fill_secret` additionally need the **Browser Sessions** permission; without it, they behave like unknown tools.
+The vault adds seven MCP tools and the Git proxy. The tools appear next to the [browser tools](/browser-tabs#tools) when the vault is on and the account has `vault.use` or is an active member of an organization. `browser_fill_credential` and `browser_fill_secret` additionally need the **Browser Sessions** permission; without it, they behave like unknown tools.
 
 | Tool | Purpose |
 | - | - |
-| `vault_list` | Lists the entries the caller may use, each with `item` (the identifier for the other tools), `owner` (`personal` or the organization's name), `type`, `description`, `username` or `host`, `origins` or `hosts`, `approvalRequired` and `usableBy` (the tools that can use this entry: `vault_http`, `git` and `browser_fill_secret` for an API key, the last one only with fill origins or **Allow filling tokens on any page**). API keys also show `readOnly`, `allowHttp`, `git` and `fillOrigins`. Never a value, and not the Git username. |
+| `vault_list` | Lists the entries the caller may use, each with `item` (the identifier for the other tools), `owner` (`personal` or the organization's name), `type`, `description`, `username` or `host`, `origins` or `hosts`, `approvalRequired` and `usableBy` (the tools that can use this entry: `vault_http`, `git` and `browser_fill_secret` for an API key, the last one only with fill origins or **Allow filling tokens on any page**). API keys also show `readOnly`, `allowHttp`, `git` and `fillOrigins`. SSH entries show `username`, `allowSession` and `targets` (each `ref`, `name`, `host`, `port`, `hostKeyKnown`); `usableBy` lists `ssh_exec`, and `ssh_put` and `ssh_get` for agent keys with a server, and is empty without targets. Never a value, and not the Git username. |
 | `browser_fill_credential` | `{ item, passwordRef, usernameRef?, sessionId? }`. Fills username and password of a login entry into the fields `passwordRef` and `usernameRef` from `browser_snapshot`. Answers only that both were filled. |
 | `vault_http` | `{ item, method, url, headers?, body? }`. Calls an HTTP API with an API key entry. Returns `HTTP <status>`, a short list of response headers and the body as text. |
 | `browser_fill_secret` | `{ item, ref, sessionId? }`. Types the value of an API key or Other entry into the field `ref` from `browser_snapshot`. Answers `Filled the value of <item> into the field.` |
+| `ssh_exec` | `{ item, target, command, timeoutSec? }`. Runs a shell command on a target of an SSH entry. `target` is as `vault_list` shows it: `server:<id>` or `host:<host>[:<port>]`. `command` is at most 8 KB; `timeoutSec` is 1 to 600, 60 by default. Returns `exit <code>` (with `(timed out after <n> s)` when the time ran out), then stdout and stderr under `--- stdout ---` and `--- stderr ---`, each cut at 64 KB. |
+| `ssh_put` | `{ item, target, localPath, remotePath, overwrite? }`. Copies a file from the agent's server to the target. Returns `Copied <bytes> bytes from <source> to <destination>.` Only for agent keys set up on a server. |
+| `ssh_get` | `{ item, target, remotePath, localPath, overwrite? }`. Copies a file from the target to the agent's server. Same result and restriction as `ssh_put`. |
 | Git proxy | Not a tool: `GET` and `POST` under `/api/vault/git/<host>/<repository>/` for `info/refs`, `git-upload-pack` and `git-receive-pack`, used by `git` itself after the [Git setup](#git). Everything else is `404`. |
 
 `browser_fill_credential` checks, in this order: the entry is visible and a login; the browser session belongs to the caller and is not paused; no `browser_evaluate` has run in its browser context; the session does not use `via` or the persistent profile; the frame of the password field and all frames above it match an allowed origin; `passwordRef` is a password field and `usernameRef` a text, email or phone field; the approval, if required. After the approval Outpost checks once more, right before typing, because the session was free for other tools while the card waited: the agent key is still valid, the entry is still visible to it with the same type and origins, and the session checks pass again. If the entry disappeared in the meantime, for example because you left its organization, the agent gets `vault.item_unknown`; if its origins changed, `vault.origin_mismatch`. Nothing is typed in either case.
@@ -361,6 +427,10 @@ Outpost sends the request itself and puts the token into the header named by the
 - **Response:** the status, the headers `content-type`, `content-length`, `location`, `link`, `etag`, `last-modified`, `retry-after`, `x-ratelimit-*` and `x-github-request-id` (never `set-cookie`), and the body as UTF-8 text up to 256 KB for text types (`text/*`, JSON, XML, JavaScript, form data). A longer body ends with `[truncated after 262144 bytes]`; Outpost cuts at the end first and removes a trailing piece that could be the start of the token. Other bodies appear as `[binary body, <type>, <bytes> bytes]`. See [Responses](#_7-security-model-and-limits) for what is replaced.
 - **Limits:** 60 calls per minute and at most 4 running at the same time per agent key (`vault.rate_limited`, `vault.busy`).
 - A network failure answers `vault.http_failed` with the kind (timeout, connection, TLS), without query and without token.
+
+### SSH tools
+
+The three tools share a limit of 30 calls per minute and at most 2 running at the same time per agent key (`vault.rate_limited`, `vault.busy`). Outpost checks, in this order: the entry is visible and an SSH entry; the target belongs to the entry and the account behind the key may still use it (`vault.target_not_allowed`, `vault.target_unavailable`); the arguments; the limits; the engine of the target is connected; for `ssh_put` and `ssh_get`, the file checks on the agent's own server (`vault.not_a_file`, `vault.file_too_large`, `vault.file_exists`, `vault.no_agent_server`, `vault.ssh_failed`); the host key and the approval; only then the secrets are read and the connection is made. See [SSH](#_4a-ssh).
 
 ### `browser_fill_secret`
 
@@ -408,4 +478,15 @@ With an agent key, the browser tools see only the sessions this key opened and t
 | `vault.git_no_operation` | "This request does not belong to a running git operation; run the git command again." |
 | `vault.upstream_refused` | `The token was refused by <host>; ask the user to check the entry.` The Git host answered `401` or `403`. |
 | `vault.secret_too_short` | "The token of this entry is shorter than 4 characters; ask the user to replace it in Outpost." Nothing was sent. |
-
+| `vault.no_targets` | "This SSH entry has no targets; ask the user to add a server or host in Outpost." |
+| `vault.target_not_allowed` | "This target is not one of the entry's targets (vault_list shows them)." |
+| `vault.target_unavailable` | "This server is no longer available to you in Outpost; nothing was done." |
+| `vault.bad_command` | "command must be a non-empty string of at most 8 KB, without control or bidi characters." |
+| `vault.bad_timeout` | "timeoutSec must be a whole number from 1 to 600." |
+| `vault.bad_path` | "Paths must be absolute or start with ~/, at most 4 KB, on one line, without control characters." |
+| `vault.not_a_file` | `<path> is not a regular file.` |
+| `vault.file_too_large` | `<path> is larger than 100 MB.` |
+| `vault.file_exists` | `<path> exists; pass overwrite: true to replace it.` |
+| `vault.no_agent_server` | "File transfer needs an agent key set up on a server; this connection has none." |
+| `vault.host_key_changed` | `The host key of <target> changed (expected <old>, got <new>); nothing was sent. Ask the user to check the server and forget the old key in Outpost.` No card lets the call through; the user has to forget the key first. |
+| `vault.ssh_failed` | `The SSH connection to <target> failed (<kind>); nothing was done.` The kind is connection, timeout, login refused, engine not connected or SFTP not available. For a refused login the message adds "ask the user to check the entry's user and key". If the command of `ssh_exec` was already sent, it ends with "; the command was sent and may have run in full or in part. Check on the target before running it again." instead; do not repeat it blindly. File errors use the SFTP status, see [Files](#files). |

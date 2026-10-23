@@ -8,6 +8,7 @@ const flatbuffers = require("flatbuffers");
 const {
     MessageType,
     Envelope,
+    ErrorCode,
 } = require("../generated/control_plane_generated");
 const {
     buildEngineHelloAck,
@@ -96,7 +97,7 @@ class ControlPlaneServer extends EventEmitter {
         logger.system("Control plane server stopped");
     }
 
-    openSession(sessionId, sessionType, host, port, params = {}, jumpHosts = [], engineId = null) {
+    openSession(sessionId, sessionType, host, port, params = {}, jumpHosts = [], engineId = null, options = {}) {
         const engine = this._resolveEngine(engineId);
         if (!engine) return Promise.reject(new Error("No engine connected"));
 
@@ -106,7 +107,7 @@ class ControlPlaneServer extends EventEmitter {
         return this._createPendingRequest(sessionId, (result) => {
             if (!result.success) this._sessionEngineMap.delete(sessionId);
         }, () => {
-            this._sendFrame(engine.socket, buildSessionOpen(sessionId, sessionType, host, port, params, jumpHosts));
+            this._sendFrame(engine.socket, buildSessionOpen(sessionId, sessionType, host, port, params, jumpHosts, options));
         }, null, engine.engineId);
     }
 
@@ -218,7 +219,7 @@ class ControlPlaneServer extends EventEmitter {
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
                 this._pending.delete(key);
-                reject(new Error("Request timeout"));
+                reject(Object.assign(new Error("Request timeout"), { errorCode: "Timeout" }));
             }, timeoutMs);
 
             this._pending.set(key, { resolve, reject, timeout, onResult, joinSessionId, ownerEngineId });
@@ -566,17 +567,24 @@ class ControlPlaneServer extends EventEmitter {
                 if (!result) break;
 
                 const sessionId = result.sessionId();
+                const fingerprint = result.hostKeyFingerprint();
+                const hostKey = fingerprint ? { algorithm: result.hostKeyAlgorithm() || "", fingerprint } : null;
                 const payload = {
                     success: result.success(),
                     errorMessage: result.errorMessage(),
                     connectionId: result.connectionId(),
                     sessionId,
+                    hostKey,
                 };
 
                 if (payload.success) {
                     this._resolvePending(sessionId, payload, respondingEngineId);
                 } else {
-                    this._rejectPending(sessionId, new Error(payload.errorMessage || "Session open failed"), respondingEngineId);
+                    const code = result.errorCode();
+                    const error = new Error(payload.errorMessage || "Session open failed");
+                    error.errorCode = code !== ErrorCode.None && ErrorCode[code] ? ErrorCode[code] : "ConnectionFailed";
+                    error.hostKey = hostKey;
+                    this._rejectPending(sessionId, error, respondingEngineId);
                 }
 
                 this.emit("sessionOpenResult", payload);

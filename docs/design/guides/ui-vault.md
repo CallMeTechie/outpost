@@ -1,6 +1,6 @@
 # Vault — Umsetzungsanleitung (UI-VAULT)
 
-Artboard: docs/design/mockups/ui-vault.html · Manifest-Revision: 16
+Artboard: docs/design/mockups/ui-vault.html · Manifest-Revision: 20
 
 Die Seite gibt es noch nicht; sie ist komplett **neu**. Bestand sind nur Rahmen und Bausteine (Shell, Navigation, `PageHeader`, `TabSwitcher`, `Button`, `ActionConfirmDialog`, Clipboard-Helfer). Der Eintrag-Dialog (`UI-VAULT-DIALOG`) und die Freigabe-Karte (`UI-VAULT-APPROVAL-CARD`) haben eigene Anleitungen; hier werden sie nur geöffnet bzw. eingebunden.
 
@@ -26,7 +26,7 @@ Die Seite gibt es noch nicht; sie ist komplett **neu**. Bestand sind nur Rahmen 
 
 ## Elemente — eins nach dem anderen
 ### UI-VAULT-NEW — Neuer Eintrag (neu)
-- `data-ui-id` an `Button` über `dataUiId`. Sichtbar nur mit `vault.use` (persönlich) oder `vault.manage` in mindestens einer Organisation; `disabled`, wenn der gewählte Besitzer kein Anlegen erlaubt.
+- `data-ui-id` an `Button` über `dataUiId`. Sichtbar nur mit `vault.use` (persönlich) oder `vault.manage` in mindestens einer Organisation; `disabled`, wenn der gewählte Besitzer kein Anlegen erlaubt. Zusätzlich ein Kontextmenü auf `UI-VAULT-LIST` (`ContextMenu`/`useContextMenu` wie in `ServerList.jsx`) mit „Neuer Eintrag“, nur wenn das Anlegen erlaubt ist; der Rechtsklick ändert die Auswahl nicht.
 
 ### UI-VAULT-SCOPE — Persönlich · Organisationen (neu)
 - `data-ui-id` über das neue optionale Prop `dataUiId` am `TabSwitcher`. Ein Reiter je Besitzer; „Persönlich“ nur mit `vault.use`; Organisationen aus `getRequest("organizations")` wie in `Snippets.jsx`. `selected` = aktiver Reiter.
@@ -76,6 +76,13 @@ Die Seite gibt es noch nicht; sie ist komplett **neu**. Bestand sind nur Rahmen 
 - Datenquelle: `fields.readOnly`, `fields.allowHttp`, `fields.git`, `fields.gitUsername`, `fields.fillOrigins` des Eintrags aus `GET /api/vault/items` (nicht geheim, kommt mit der Liste). Zeilen nur für **eingeschaltete** Optionen; Ausgeschaltetes fehlt als Zeile: „Nur lesen“; „Auch über http“; „Git · Benutzername <gitUsername>“ mit Benutzername in `--type-mono`; „Eintragen auf <Origins>“ mit den Origins in `--type-mono`, kommagetrennt. Beispiel: „Nur lesen · Git · Benutzername x-access-token · Eintragen auf https://coolify.example.net“.
 - Zustände: `default` die Zeilen; `empty` bei API-Key ohne eingeschaltete Option: „vault_http über https“ (in `--subtext`, `vault_http` in `--type-mono`) — wörtlich, ohne Zusatz; `disabled` (Rev. 17) bei Sonstiges ohne `fillOrigins`: „Nur von Hand nutzbar — kein Eintragen im Browser“ in `--subtext`.
 - Nicht: keine Bindung (`vault_binding`, das ist `UI-VAULT-DETAIL-SCOPE`), keine Freigabe-Einstellung (`approval_policy`, das ist `UI-VAULT-DETAIL-POLICY`), kein Recht; kein geheimer Wert, auch nicht in Teilen.
+
+- Rev. 20: Bei SSH nur eine Zeile — „Nur Einmal“ (`allowSession` aus) oder „Sitzungsfreigabe erlaubt“.
+
+### UI-VAULT-DETAIL-SSH-TARGETS — Ziele (neu in Rev. 20)
+- `data-ui-id` am Listen-Container, nur bei Typ `ssh`, unter „Nutzung durch Agenten“.
+- Je Ziel eine Zeile: Icon (Server bzw. Globus für freie Hosts), Name oder Host, `benutzer@host:port` in `--type-mono`; rechts der gemerkte Host-Key (`ED25519 SHA256:…`, gekürzt mit vollem Wert im `title`) mit „bestätigt <Datum> von <Name>“ und Ghost-Button „Vergessen“, sonst „noch nie verbunden“ in `--subtext`.
+- „Vergessen“ → Inline-Bestätigung (Warnrand, „Abbrechen“/„Vergessen“) → `DELETE /api/vault/items/:id/host-keys/:target`; Fehler „Vergessen fehlgeschlagen.“ (`role="alert"`). Nur wer den Eintrag verwalten darf, sieht den Knopf.
 
 ## Ausdrücklich nicht
 - Nie ein Teil eines Werts anzeigen (keine letzten vier Zeichen), nie eine Länge andeuten; kein Wert in Liste, Suche, Toast, Log oder URL.

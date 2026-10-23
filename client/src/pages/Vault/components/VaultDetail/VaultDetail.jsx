@@ -8,10 +8,11 @@ import ActionConfirmDialog from "@/common/components/ActionConfirmDialog";
 import { formatTimeAgo } from "@/common/utils/timeAgo.js";
 import { VAULT_TYPES, detailRows } from "../../vaultTypes.js";
 import { SecretRow } from "./SecretRow.jsx";
+import { SshTargets } from "./SshTargets.jsx";
 
 const USAGE_TYPES = ["api_key", "generic"];
 
-export const VaultDetail = ({ item, impersonating, onEdit, onDelete }) => {
+export const VaultDetail = ({ item, impersonating, onEdit, onDelete, onHostKeyForgotten }) => {
     const { t } = useTranslation();
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [unreadableId, setUnreadableId] = useState(null);
@@ -117,6 +118,19 @@ export const VaultDetail = ({ item, impersonating, onEdit, onDelete }) => {
                         </p>
                     )}
                 </div>
+            )}
+
+            {item.type === "ssh" && (
+                <>
+                    <div className="vault-detail-section" data-ui-id="UI-VAULT-DETAIL-USAGE">
+                        <h4>{t("vault.detail.usage.title")}</h4>
+                        <ul className="vault-detail-usage">
+                            <li>{t(item.fields?.allowSession === true ? "vault.detail.usage.sshSession" : "vault.detail.usage.sshOnce")}</li>
+                        </ul>
+                    </div>
+                    <SshTargets key={item.id} item={item} canForget={item.canManage && item.canReveal && !impersonating}
+                                onForgotten={onHostKeyForgotten} />
+                </>
             )}
 
             <ActionConfirmDialog open={confirmOpen} setOpen={setConfirmOpen} onConfirm={() => onDelete(item)}

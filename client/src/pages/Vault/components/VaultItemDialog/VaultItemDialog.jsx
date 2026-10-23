@@ -13,11 +13,13 @@ import IconInput from "@/common/components/IconInput";
 import SelectBox from "@/common/components/SelectBox";
 import ToggleSwitch from "@/common/components/ToggleSwitch";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
+import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { useTags } from "@/common/contexts/TagContext.jsx";
 import { patchRequest, postRequest } from "@/common/utils/RequestUtil.js";
+import { Permission } from "@/common/utils/permissions.js";
 import {
-    DB_ENGINES, NAME_PATTERN, TYPE_KEYS, USAGE_FIELDS, VAULT_TYPES, isSecretMissing, missingFields, ownerKey, toFormFields,
-    toPayloadFields, usageProblems,
+    DB_ENGINES, NAME_PATTERN, TYPE_KEYS, VAULT_TYPES, isSecretMissing, missingFields, ownerKey, sshServers, toFormFields,
+    toPayloadFields, usageFieldsOf, usageProblems,
 } from "../../vaultTypes.js";
 
 const FIELD_INPUTS = {
@@ -83,6 +85,7 @@ const targetOf = (fields, field) => JSON.stringify([].concat(fields[field] ?? []
 export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwner, onSaved }) => {
     const { t } = useTranslation();
     const { servers } = useContext(ServerContext);
+    const { hasPermission } = useContext(UserContext);
     const { tags } = useTags();
     const [form, setForm] = useState(() => initialForm(item, defaultOwner));
     const [pristine] = useState(() => JSON.stringify(initialForm(item, defaultOwner)));
@@ -98,15 +101,25 @@ export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwn
 
     const spec = VAULT_TYPES[form.type];
     const isEdit = item !== null;
-    const payloadFields = toPayloadFields(form.fields);
-    const storedFields = item ? toPayloadFields(toFormFields(item.type, item.fields)) : {};
-    const targetChanged = isEdit && spec.targets.some((field) => targetOf(payloadFields, field) !== targetOf(storedFields, field));
+    const payloadFields = toPayloadFields(form.fields, form.type);
+    const storedFields = item ? toPayloadFields(toFormFields(item.type, item.fields), item.type) : {};
+    const changed = (field) => isEdit && targetOf(payloadFields, field) !== targetOf(storedFields, field);
+    const targetChanged = spec.targets.some(changed);
     const secretsMissing = isSecretMissing(form.type, secrets);
     const nameValid = NAME_PATTERN.test(form.name);
     const fieldsMissing = missingFields(form.type, payloadFields).length > 0;
-    const problems = usageProblems(form.fields);
+    const problems = usageProblems(form.fields, form.type);
     const saveBlocked = saving || !nameValid || fieldsMissing || (targetChanged && secretsMissing)
-        || problems.gitUsername || problems.fillOrigins;
+        || problems.gitUsername || problems.fillOrigins || problems.hosts;
+    const canDirect = hasPermission(Permission.CONNECT_DIRECT);
+    const sshOptions = useMemo(() => {
+        const offered = sshServers(form.owner === "personal" ? servers || [] : ownerNodes(servers, form.owner));
+        const options = offered.map((server) => ({ value: server.id, label: `${server.name} · ${server.ip}` }));
+        for (const id of item?.fields?.servers || []) {
+            if (!options.some((option) => option.value === id)) options.push({ value: id, label: `server:${id}` });
+        }
+        return options;
+    }, [servers, form.owner, item]);
 
     const targets = useMemo(() => {
         const found = collectTargets(ownerNodes(servers, form.owner));
@@ -217,7 +230,7 @@ export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwn
                                            setValue={(value) => { set("name", value); setFailure(null); }} placeholder="portal-login" />
                                 {failure === "nameTaken" && <span className="vault-help vault-help--error" role="alert">{t("vault.dialog.nameTaken")}</span>}
                             </div>
-                            {Object.keys(form.fields).filter((key) => !USAGE_FIELDS.includes(key)).map((key) => (key === "engine" ? (
+                            {Object.keys(form.fields).filter((key) => !usageFieldsOf(form.type).includes(key)).map((key) => (key === "engine" ? (
                                 <div className="form-group" key={key}>
                                     <label>{t("vault.fields.engine")}</label>
                                     <SelectBox options={DB_ENGINES} selected={form.fields.engine} setSelected={(value) => setField("engine", value)} />
@@ -276,7 +289,7 @@ export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwn
                                 ))}
                             </div>
                             {!form.allServers && Object.values(form.bindings).every((ids) => ids.length === 0) && (
-                                <span className="vault-help">{t("vault.bindings.emptyDialog")}</span>
+                                <span className="vault-help">{t("vault.bindings.empty")}</span>
                             )}
                             <div className="vault-item-dialog-switch">
                                 <label htmlFor="vault-all-servers">{t("vault.bindings.allServers")}</label>
@@ -289,9 +302,38 @@ export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwn
                             <ToggleSwitch id="vault-approval" checked={form.approvalRequired} onChange={(value) => set("approvalRequired", value)} />
                         </div>
 
-                        {"fillOrigins" in form.fields && (
+                        {(form.type === "ssh" || "fillOrigins" in form.fields) && (
                             <div className="vault-item-dialog-usage" role="group" aria-labelledby="vault-usage-title">
                                 <h3 id="vault-usage-title">{t("vault.dialog.usage.title")}</h3>
+                                {form.type === "ssh" && (
+                                    <>
+                                        <div className="form-group" data-ui-id="UI-VAULT-DIALOG-SSH-SERVERS">
+                                            <label>{t("vault.dialog.ssh.servers")}</label>
+                                            <SelectBox multiple searchable options={sshOptions} selected={form.fields.servers}
+                                                       setSelected={(ids) => setField("servers", ids)} placeholder={t("vault.bindings.addServer")} />
+                                            {changed("servers") ? (
+                                                <span className="vault-help vault-help--error" role="alert">{t("vault.dialog.secretCleared")}</span>
+                                            ) : form.fields.servers.length === 0 && (
+                                                <span className="vault-help">{t("vault.dialog.ssh.noServers")}</span>
+                                            )}
+                                        </div>
+                                        <div className={`form-group${problems.hosts ? " is-error" : ""}`} data-ui-id="UI-VAULT-DIALOG-SSH-HOSTS">
+                                            <label htmlFor="vault-ssh-hosts">{t("vault.dialog.ssh.hosts")}</label>
+                                            <IconInput id="vault-ssh-hosts" icon={IconGlobe} customClass="vault-mono" placeholder="nas.example.net:2222"
+                                                       disabled={!canDirect} invalid={problems.hosts}
+                                                       value={form.fields.hosts} setValue={(value) => setField("hosts", value)} />
+                                            {!canDirect ? (
+                                                <span className="vault-help">{t("vault.dialog.ssh.hostsLocked")}</span>
+                                            ) : problems.hosts && (
+                                                <span className="vault-help vault-help--error" role="alert">{t("vault.dialog.ssh.hostsInvalid")}</span>
+                                            )}
+                                        </div>
+                                        <UsageSwitch id="vault-ssh-session" dataUiId="UI-VAULT-DIALOG-SSH-SESSION"
+                                                     label={t("vault.dialog.ssh.session")} checked={form.fields.allowSession}
+                                                     onChange={(value) => setField("allowSession", value)} warning={form.fields.allowSession}
+                                                     hint={t(form.fields.allowSession ? "vault.dialog.ssh.sessionOn" : "vault.dialog.ssh.sessionOff")} />
+                                    </>
+                                )}
                                 {form.type === "api_key" && (
                                     <>
                                         <UsageSwitch id="vault-read-only" dataUiId="UI-VAULT-DIALOG-READONLY"
@@ -320,16 +362,18 @@ export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwn
                                         </div>
                                     </>
                                 )}
-                                <div className={`form-group${problems.fillOrigins ? " is-error" : ""}`} data-ui-id="UI-VAULT-DIALOG-FILL">
-                                    <label htmlFor="vault-fill-origins">{t("vault.dialog.usage.fill")}</label>
-                                    <IconInput id="vault-fill-origins" icon={IconGlobe} customClass="vault-mono"
-                                               value={form.fields.fillOrigins} setValue={(value) => setField("fillOrigins", value)} />
-                                    {problems.fillOrigins ? (
-                                        <span className="vault-help vault-help--error" role="alert">{t("vault.dialog.usage.fillInvalid")}</span>
-                                    ) : !form.fields.fillOrigins.trim() && (
-                                        <span className="vault-help">{t("vault.dialog.usage.fillEmpty")}</span>
-                                    )}
-                                </div>
+                                {"fillOrigins" in form.fields && (
+                                    <div className={`form-group${problems.fillOrigins ? " is-error" : ""}`} data-ui-id="UI-VAULT-DIALOG-FILL">
+                                        <label htmlFor="vault-fill-origins">{t("vault.dialog.usage.fill")}</label>
+                                        <IconInput id="vault-fill-origins" icon={IconGlobe} customClass="vault-mono"
+                                                   value={form.fields.fillOrigins} setValue={(value) => setField("fillOrigins", value)} />
+                                        {problems.fillOrigins ? (
+                                            <span className="vault-help vault-help--error" role="alert">{t("vault.dialog.usage.fillInvalid")}</span>
+                                        ) : !form.fields.fillOrigins.trim() && (
+                                            <span className="vault-help">{t("vault.dialog.usage.fillEmpty")}</span>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

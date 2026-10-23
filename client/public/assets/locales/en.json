@@ -489,7 +489,19 @@
         "git": "Git · username {{user}}",
         "fill": "Fill in on",
         "empty": "vault_http over https",
-        "emptyGeneric": "Manual use only — not filled in the browser"
+        "emptyGeneric": "Manual use only — not filled in the browser",
+        "sshOnce": "Once only",
+        "sshSession": "Session approval allowed"
+      },
+      "ssh": {
+        "title": "Targets",
+        "empty": "No targets — add servers or hosts in the dialog.",
+        "never": "never connected",
+        "confirmed": "confirmed {{date}} by {{name}}",
+        "confirmedAnonymous": "confirmed {{date}}",
+        "forget": "Forget",
+        "forgetConfirm": "Forget the stored host key of {{name}}? The next connection asks again.",
+        "forgetFailed": "Forgetting failed."
       }
     },
     "fields": {
@@ -529,7 +541,6 @@
       "tag": "Tag",
       "allServers": "All servers",
       "empty": "Not enabled for any server — no agent sees this entry.",
-      "emptyDialog": "Not enabled for any server.",
       "addServer": "+ Server",
       "addFolder": "+ Folder",
       "addTag": "+ Tag"
@@ -574,6 +585,16 @@
         "fill": "May be filled in the browser on",
         "fillEmpty": "Nowhere — only for vault_http and Git",
         "fillInvalid": "Not a valid origin (scheme://host[:port])."
+      },
+      "ssh": {
+        "servers": "Targets from the server list",
+        "noServers": "No servers selected",
+        "hosts": "Free hosts",
+        "hostsInvalid": "Not a valid host (host or host:port).",
+        "hostsLocked": "Free hosts need the “Connect Without an Entry” permission.",
+        "session": "Allow “For this session”",
+        "sessionOff": "off — each command on its own",
+        "sessionOn": "on — one approval covers any command on this target until the session ends"
       }
     },
     "agents": {
@@ -597,7 +618,26 @@
       "target": {
         "fill": "Fill in on {{origin}}",
         "fillField": "Fill in on {{origin}} · field “{{field}}”"
+      },
+      "exec": "executes",
+      "ssh": {
+        "exec": "SSH command",
+        "put": "Upload file",
+        "get": "Fetch file",
+        "sizeLater": "size after approval"
+      },
+      "command": {
+        "expand": "Show all ({{lines}} lines)",
+        "expandChars": "Show all ({{chars}} characters)",
+        "locked": "Show the whole command before approving."
+      },
+      "hostKey": {
+        "title": "New target",
+        "advice": "Compare with ssh-keyscan or at the console."
       }
+    },
+    "notice": {
+      "hostKeyChanged": "Host key of {{target}} changed — connection aborted"
     }
   },
   "monitoring": {
@@ -1993,7 +2033,9 @@
           "codex": "The same tools, registered as an MCP server in Codex.",
           "codexAfter": "Afterwards: <b>start Codex in a new shell</b>",
           "git": "https remotes go through Outpost. <mono>~/.gitconfig</mono> only holds an agent key.",
-          "gitAfter": "Afterwards as usual: <mono>git clone</mono>, <mono>pull</mono>, <mono>push</mono>"
+          "gitAfter": "Afterwards as usual: <mono>git clone</mono>, <mono>pull</mono>, <mono>push</mono>",
+          "ssh": "SSH",
+          "sshText": "Commands and files on the targets of an SSH entry — Outpost logs in itself, the key stays in the vault. The first time, the approval card shows the target's fingerprint."
         },
         "needs": {
           "nav": "Requirements",
@@ -2051,7 +2093,9 @@
           "ipBind": "IP binding",
           "ipBindText": "“{{label}}” accepts the key from there only. If Outpost sees a different address, for example behind Docker or NAT, the dialog offers to adopt it.",
           "revoke": "Revoke",
-          "revokeText": "Invalidates the key immediately and removes the setup on the server. Other lines in the gitconfig stay."
+          "revokeText": "Invalidates the key immediately and removes the setup on the server. Other lines in the gitconfig stay.",
+          "ssh": "SSH without a terminal",
+          "sshText": "<mono>ssh_exec</mono> runs without a terminal: interactive programs and <mono>sudo</mono> with a password prompt do not work. For rights as another user, create a separate SSH entry."
         }
       }
     },

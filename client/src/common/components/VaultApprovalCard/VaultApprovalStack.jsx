@@ -37,6 +37,13 @@ export const VaultApprovalStack = () => {
         setNow(current);
     }), [registerHandler]);
 
+    useEffect(() => registerHandler(STATE_TYPES.VAULT_NOTICE, (notice) => {
+        if (notice?.kind !== "ssh_host_key_mismatch") return;
+        sendToast(t("common.error"), t("vault.notice.hostKeyChanged", {
+            target: notice.name || notice.target, interpolation: { escapeValue: false },
+        }));
+    }), [registerHandler, sendToast, t]);
+
     const visible = approvals
         .filter((approval) => !answered.has(approval.id) && now < approval.deadline + EXPIRED_VISIBLE_MS)
         .sort((a, b) => b.deadline - a.deadline);

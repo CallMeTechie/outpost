@@ -111,6 +111,22 @@
 	.v-policy { display: flex; align-items: center; gap: var(--space-2); }
 	.v-policy.off { color: var(--subtext); }
 
+	.v-tg { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+	.v-tg-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--gray); color: var(--subtext); }
+	.v-tg-row:last-child { border-bottom: 0; }
+	.v-tg-row .t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+	.v-tg-row .n { color: var(--text); }
+	.v-tg-row .m { font: var(--type-mono); color: var(--subtext); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.v-tg-row .hk { font: var(--type-caption); color: var(--subtext); }
+	.v-tg-row .hk .v-mono { color: var(--text); font: var(--type-mono); }
+	.v-tg-row .none { font: var(--type-caption); color: var(--subtext); font-style: italic; }
+	.v-tg-row.sel { background: var(--primary-opacity); margin: 0 calc(-1 * var(--space-2)); padding-left: var(--space-2); padding-right: var(--space-2); }
+	.v-btn.ghost { background: transparent; border-color: transparent; color: var(--primary); height: 1.75rem; }
+	.v-tg-confirm { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-2); padding: var(--space-3); border: 1px solid var(--error); border-radius: var(--radius-md); background: var(--lighter-background); }
+	.v-tg-confirm p { margin: 0; flex: 1; min-width: 14rem; color: var(--text); }
+	.v-tg-err { margin-top: var(--space-2); color: var(--error); font: var(--type-caption); }
+	.v-ssh-demo { max-width: 40rem; border: 1px solid var(--gray); border-radius: var(--radius-md); background: var(--background); }
+
 	/* schmal */
 	.v-phones { display: flex; gap: var(--space-6); flex-wrap: wrap; align-items: flex-start; }
 	.v-phone { width: 24rem; max-width: 100%; border: 1px solid var(--gray); border-radius: var(--radius-lg); overflow: hidden; background: var(--background); display: flex; flex-direction: column; height: 40rem; }
@@ -153,6 +169,8 @@
 	<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
 	<symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></symbol>
 	<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+	<symbol id="i-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01"/><path d="M6 18h.01"/></symbol>
+	<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></symbol>
 	<symbol id="i-back" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol>
 </svg>
 
@@ -302,13 +320,39 @@
 		</div>
 
 		<div class="v-cell" data-ui-id="UI-VAULT-DETAIL-USAGE">
-			<div class="v-cap"><code>UI-VAULT-DETAIL-USAGE</code> · region · Nutzung durch Agenten · nur bei API-Key und Sonstiges sichtbar</div>
+			<div class="v-cap"><code>UI-VAULT-DETAIL-USAGE</code> · region · Nutzung durch Agenten · bei API-Key und Sonstiges; bei SSH nur eine Zeile</div>
 			<section class="v-state" data-ui-state="default"><div class="v-usage"><div>Nur lesen</div><div>Git · Benutzername x-access-token</div><div>Eintragen auf <span class="v-mono">https://coolify.example.net</span></div></div></section>
 			<section class="v-state" data-ui-state="empty"><div class="v-usage"><div class="sub">vault_http über https</div></div></section>
 			<section class="v-state" data-ui-state="disabled"><div class="v-usage"><div class="sub">Nur von Hand nutzbar — kein Eintragen im Browser</div></div></section>
+			<section class="v-state" data-ui-state="default" data-variant="ssh"><div class="v-usage"><div>Nur Einmal</div></div></section>
+			<section class="v-state" data-ui-state="default" data-variant="ssh-session"><div class="v-usage"><div>Sitzungsfreigabe erlaubt</div></div></section>
+		</div>
+
+		<div class="v-cell wide" data-ui-id="UI-VAULT-DETAIL-SSH-TARGETS">
+			<div class="v-cap"><code>UI-VAULT-DETAIL-SSH-TARGETS</code> · list · Ziele · nur bei SSH sichtbar · Beispiel-Eintrag deploy-web, Benutzer deploy</div>
+			<section class="v-state" data-ui-state="default"><ul class="v-tg"><li class="v-tg-row"><svg class="v-ico"><use href="#i-server"/></svg><span class="t"><span class="n">web02</span><span class="m">deploy@192.168.2.40:22</span></span><span class="hk"><span class="v-mono">ED25519 SHA256:3f9aT0…Xc21</span> · bestätigt 11.10. von Ada</span><span class="v-btn ghost">Vergessen</span></li><li class="v-tg-row"><svg class="v-ico"><use href="#i-server"/></svg><span class="t"><span class="n">web01</span><span class="m">deploy@192.168.2.41:22</span></span><span class="hk"><span class="v-mono">ED25519 SHA256:3f9aT0…Xc21</span> · bestätigt 09.10. von Ada</span><span class="v-btn ghost">Vergessen</span></li></ul></section>
+			<section class="v-state" data-ui-state="empty"><div class="v-note">Keine Ziele — im Dialog Server oder Hosts eintragen.</div></section>
+			<section class="v-state" data-ui-state="partial"><ul class="v-tg"><li class="v-tg-row"><svg class="v-ico"><use href="#i-server"/></svg><span class="t"><span class="n">web02</span><span class="m">deploy@192.168.2.40:22</span></span><span class="hk"><span class="v-mono">ED25519 SHA256:3f9aT0…Xc21</span> · bestätigt 11.10. von Ada</span><span class="v-btn ghost">Vergessen</span></li><li class="v-tg-row"><svg class="v-ico"><use href="#i-globe"/></svg><span class="t"><span class="n">backup.example.net</span><span class="m">deploy@backup.example.net:22</span></span><span class="none">noch nie verbunden</span></li></ul></section>
+			<section class="v-state" data-ui-state="selected"><ul class="v-tg"><li class="v-tg-row sel"><svg class="v-ico"><use href="#i-server"/></svg><span class="t"><span class="n">web02</span><span class="m">deploy@192.168.2.40:22</span></span><span class="hk"><span class="v-mono">ED25519 SHA256:3f9aT0…Xc21</span> · bestätigt 11.10. von Ada</span><span class="v-btn ghost">Vergessen</span></li><li class="v-tg-row"><svg class="v-ico"><use href="#i-server"/></svg><span class="t"><span class="n">web01</span><span class="m">deploy@192.168.2.41:22</span></span><span class="hk"><span class="v-mono">ED25519 SHA256:3f9aT0…Xc21</span> · bestätigt 09.10. von Ada</span><span class="v-btn ghost">Vergessen</span></li></ul><div class="v-tg-confirm" role="alertdialog" aria-label="Host-Key vergessen"><p>Gemerkten Host-Key von web02 vergessen? Die nächste Verbindung fragt wieder.</p><span class="v-btn">Abbrechen</span><span class="v-btn danger-solid">Vergessen</span></div></section>
+			<section class="v-state" data-ui-state="error"><ul class="v-tg"><li class="v-tg-row sel"><svg class="v-ico"><use href="#i-server"/></svg><span class="t"><span class="n">web02</span><span class="m">deploy@192.168.2.40:22</span></span><span class="hk"><span class="v-mono">ED25519 SHA256:3f9aT0…Xc21</span> · bestätigt 11.10. von Ada</span><span class="v-btn ghost">Vergessen</span></li><li class="v-tg-row"><svg class="v-ico"><use href="#i-server"/></svg><span class="t"><span class="n">web01</span><span class="m">deploy@192.168.2.41:22</span></span><span class="hk"><span class="v-mono">ED25519 SHA256:3f9aT0…Xc21</span> · bestätigt 09.10. von Ada</span><span class="v-btn ghost">Vergessen</span></li></ul><div class="v-tg-err" role="alert">Vergessen fehlgeschlagen.</div></section>
 		</div>
 
 	</div>
+</div>
+
+<!-- ============ SSH-Detail ============ -->
+<div class="v-block">
+	<h2>Details eines SSH-Eintrags <code>UI-VAULT</code></h2>
+	<section class="v-state v-ssh-demo" data-variant="ssh-detail">
+		<div class="v-dhead">
+			<div><h3>deploy-web</h3><div class="v-meta"><svg class="v-ico"><use href="#i-ssh"/></svg>SSH · Homelab</div></div>
+			<div class="v-actions"><span class="v-btn"><svg class="v-ico"><use href="#i-pencil"/></svg>Bearbeiten</span><span class="v-btn danger"><svg class="v-ico"><use href="#i-trash"/></svg>Löschen</span></div>
+		</div>
+		<div class="v-sec"><h4>Angaben</h4><dl class="v-kv"><dt>Benutzer</dt><dd>deploy</dd></dl></div>
+		<div class="v-sec"><h4>Ziele</h4><ul class="v-tg"><li class="v-tg-row"><svg class="v-ico"><use href="#i-server"/></svg><span class="t"><span class="n">web02</span><span class="m">deploy@192.168.2.40:22</span></span><span class="hk"><span class="v-mono">ED25519 SHA256:3f9aT0…Xc21</span> · bestätigt 11.10. von Ada</span><span class="v-btn ghost">Vergessen</span></li><li class="v-tg-row"><svg class="v-ico"><use href="#i-server"/></svg><span class="t"><span class="n">web01</span><span class="m">deploy@192.168.2.41:22</span></span><span class="hk"><span class="v-mono">ED25519 SHA256:3f9aT0…Xc21</span> · bestätigt 09.10. von Ada</span><span class="v-btn ghost">Vergessen</span></li><li class="v-tg-row"><svg class="v-ico"><use href="#i-globe"/></svg><span class="t"><span class="n">backup.example.net</span><span class="m">deploy@backup.example.net:22</span></span><span class="none">noch nie verbunden</span></li></ul></div>
+		<div class="v-sec"><h4>Nutzung durch Agenten</h4><div class="v-usage"><div>Nur Einmal</div></div></div>
+		<div class="v-sec"><div class="v-policy"><svg class="v-ico"><use href="#i-shield"/></svg>Freigabe erforderlich · zuletzt genutzt vor 2 Stunden</div></div>
+	</section>
 </div>
 
 <!-- ============ Schmal ============ -->

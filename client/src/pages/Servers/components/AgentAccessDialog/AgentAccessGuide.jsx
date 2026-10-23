@@ -104,6 +104,11 @@ const How = () => {
                 {agent(IconPlug, "codex", "vault.agents.codex")}
                 {agent(IconGitBranch, "git", "vault.agents.git")}
             </div>
+            <div className="guide-cards">
+                <Card icon={IconTerminal} title={t(`${G}.how.ssh`)}>
+                    <p>{t(`${G}.how.sshText`)}</p>
+                </Card>
+            </div>
         </>
     );
 };
@@ -234,6 +239,9 @@ const Tips = () => {
             </Card>
             <Card icon={IconUndo} title={t(`${k}.revoke`)}>
                 <p>{t(`${k}.revokeText`)}</p>
+            </Card>
+            <Card icon={IconTerminal} title={t(`${k}.ssh`)}>
+                <p><T k={`${k}.sshText`} /></p>
             </Card>
         </div>
     );

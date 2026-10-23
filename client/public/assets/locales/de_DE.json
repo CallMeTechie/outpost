@@ -489,7 +489,19 @@
         "git": "Git · Benutzername {{user}}",
         "fill": "Eintragen auf",
         "empty": "vault_http über https",
-        "emptyGeneric": "Nur von Hand nutzbar — kein Eintragen im Browser"
+        "emptyGeneric": "Nur von Hand nutzbar — kein Eintragen im Browser",
+        "sshOnce": "Nur Einmal",
+        "sshSession": "Sitzungsfreigabe erlaubt"
+      },
+      "ssh": {
+        "title": "Ziele",
+        "empty": "Keine Ziele — im Dialog Server oder Hosts eintragen.",
+        "never": "noch nie verbunden",
+        "confirmed": "bestätigt {{date}} von {{name}}",
+        "confirmedAnonymous": "bestätigt {{date}}",
+        "forget": "Vergessen",
+        "forgetConfirm": "Gemerkten Host-Key von {{name}} vergessen? Die nächste Verbindung fragt wieder.",
+        "forgetFailed": "Vergessen fehlgeschlagen."
       }
     },
     "fields": {
@@ -529,7 +541,6 @@
       "tag": "Tag",
       "allServers": "Alle Server",
       "empty": "Für keinen Server freigegeben — kein Agent sieht diesen Eintrag.",
-      "emptyDialog": "Für keinen Server freigegeben.",
       "addServer": "+ Server",
       "addFolder": "+ Ordner",
       "addTag": "+ Tag"
@@ -574,6 +585,16 @@
         "fill": "Darf im Browser eingetragen werden auf",
         "fillEmpty": "Nirgends — nur für vault_http und Git",
         "fillInvalid": "Keine gültige Origin (scheme://host[:port])."
+      },
+      "ssh": {
+        "servers": "Ziele aus der Serverliste",
+        "noServers": "Keine Server ausgewählt",
+        "hosts": "Freie Hosts",
+        "hostsInvalid": "Kein gültiger Host (host oder host:port).",
+        "hostsLocked": "Freie Hosts brauchen das Recht „Direkt verbinden“.",
+        "session": "„Für diese Sitzung“ erlauben",
+        "sessionOff": "aus — jeder Befehl einzeln",
+        "sessionOn": "an — eine Freigabe gilt bis Sitzungsende für beliebige Befehle auf diesem Ziel"
       }
     },
     "agents": {
@@ -597,7 +618,26 @@
       "target": {
         "fill": "Eintragen auf {{origin}}",
         "fillField": "Eintragen auf {{origin}} · Feld „{{field}}“"
+      },
+      "exec": "führt aus",
+      "ssh": {
+        "exec": "SSH-Befehl",
+        "put": "Datei hochladen",
+        "get": "Datei holen",
+        "sizeLater": "Größe nach der Freigabe"
+      },
+      "command": {
+        "expand": "Ganz anzeigen ({{lines}} Zeilen)",
+        "expandChars": "Ganz anzeigen ({{chars}} Zeichen)",
+        "locked": "Zum Freigeben erst ganz anzeigen."
+      },
+      "hostKey": {
+        "title": "Neues Ziel",
+        "advice": "Mit ssh-keyscan oder an der Konsole vergleichen."
       }
+    },
+    "notice": {
+      "hostKeyChanged": "Host-Key von {{target}} hat sich geändert — Verbindung abgebrochen"
     }
   },
   "monitoring": {
@@ -1991,7 +2031,9 @@
           "codex": "Dieselben Werkzeuge, als MCP-Server in Codex eingetragen.",
           "codexAfter": "Danach: <b>Codex in einer neuen Shell starten</b>",
           "git": "https-Remotes laufen über Outpost. In <mono>~/.gitconfig</mono> liegt nur ein Agenten-Key.",
-          "gitAfter": "Danach wie gewohnt: <mono>git clone</mono>, <mono>pull</mono>, <mono>push</mono>"
+          "gitAfter": "Danach wie gewohnt: <mono>git clone</mono>, <mono>pull</mono>, <mono>push</mono>",
+          "ssh": "SSH",
+          "sshText": "Befehle und Dateien auf den Zielen eines SSH-Eintrags — Outpost meldet sich selbst an, der Schlüssel bleibt im Vault. Beim ersten Mal zeigt die Freigabe-Karte den Fingerabdruck des Ziels."
         },
         "needs": {
           "nav": "Voraussetzungen",
@@ -2049,7 +2091,9 @@
           "ipBind": "IP-Bindung",
           "ipBindText": "„{{label}}“ lässt den Key nur von dort zu. Sieht Outpost eine andere Adresse, etwa hinter Docker oder NAT, bietet der Dialog an, sie zu übernehmen.",
           "revoke": "Entziehen",
-          "revokeText": "Widerruft den Key sofort und entfernt die Einrichtung auf dem Server. Fremde Zeilen in der gitconfig bleiben stehen."
+          "revokeText": "Widerruft den Key sofort und entfernt die Einrichtung auf dem Server. Fremde Zeilen in der gitconfig bleiben stehen.",
+          "ssh": "SSH ohne Terminal",
+          "sshText": "<mono>ssh_exec</mono> läuft ohne Terminal: interaktive Programme und <mono>sudo</mono> mit Passwortabfrage gehen nicht. Für Rechte als anderer Benutzer einen eigenen SSH-Eintrag anlegen."
         }
       }
     },

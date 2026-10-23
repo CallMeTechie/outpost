@@ -10,6 +10,7 @@ const VaultSettings = require("../../../models/VaultSettings");
 const migration = require("../../../migrations/0047-add-vault");
 const agentUrlMigration = require("../../../migrations/0048-add-vault-agent-url");
 const fillAnywhereMigration = require("../../../migrations/0049-add-vault-fill-anywhere");
+const sshHostKeysMigration = require("../../../migrations/0050-add-vault-ssh-host-keys");
 const { initVaultState, getKeyStatus, isVaultEnabled, _resetForTests } = require("../state");
 const { writeSecret } = require("../secrets");
 const { decryptValue } = require("../crypto");
@@ -37,6 +38,8 @@ test.before(async () => {
     await agentUrlMigration.up(queryInterface, DataTypes);
     await fillAnywhereMigration.up(queryInterface, DataTypes);
     await fillAnywhereMigration.up(queryInterface, DataTypes);
+    await sshHostKeysMigration.up(queryInterface, DataTypes);
+    await sshHostKeysMigration.up(queryInterface, DataTypes);
 });
 
 test.afterEach(() => {

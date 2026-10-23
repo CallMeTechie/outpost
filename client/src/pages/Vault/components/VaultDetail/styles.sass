@@ -144,6 +144,67 @@
   .vault-detail-mono
     font: tokens.$type-mono
 
+  .vault-ssh-targets
+    display: flex
+    flex-direction: column
+    gap: tokens.$space-1
+    margin: 0
+    padding: 0
+    list-style: none
+
+    li
+      display: flex
+      flex-wrap: wrap
+      align-items: center
+      gap: tokens.$space-2 tokens.$space-3
+      padding: tokens.$space-2
+      border-radius: tokens.$radius-md
+
+      &.is-selected
+        background: colors.$primary-opacity
+
+      > svg
+        width: 1rem
+        height: 1rem
+        color: colors.$subtext
+
+  .vault-ssh-target-name
+    display: flex
+    flex: 1
+    flex-direction: column
+    min-width: 0
+
+  .vault-ssh-target-address
+    color: colors.$subtext
+    word-break: break-all
+
+  .vault-ssh-target-key
+    color: colors.$subtext
+    font: tokens.$type-caption
+
+    .vault-detail-mono
+      color: colors.$white
+
+  .vault-ssh-confirm
+    margin-top: tokens.$space-2
+    padding: tokens.$space-3
+    border-left: 3px solid colors.$warning
+    border-radius: tokens.$radius-md
+    background: colors.$warning-opacity
+
+    p
+      margin: 0
+
+  .vault-ssh-confirm-actions
+    display: flex
+    justify-content: flex-end
+    gap: tokens.$space-2
+    margin-top: tokens.$space-2
+
+  .vault-ssh-error
+    margin: tokens.$space-2 0 0
+    color: colors.$error
+
   .vault-detail-policy
     display: flex
     align-items: center

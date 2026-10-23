@@ -1,8 +1,9 @@
 const OrganizationMember = require("../models/OrganizationMember");
 const logger = require("../utils/logger");
 
-const STATE_TYPES = { ENTRIES: "ENTRIES", IDENTITIES: "IDENTITIES", SNIPPETS: "SNIPPETS", CONNECTIONS: "CONNECTIONS", LIVE_SESSIONS: "LIVE_SESSIONS", SESSION_PRESENCE: "SESSION_PRESENCE", BROWSER_SESSIONS: "BROWSER_SESSIONS", VAULT_APPROVALS: "VAULT_APPROVALS", LOGOUT: "LOGOUT" };
+const STATE_TYPES = { ENTRIES: "ENTRIES", IDENTITIES: "IDENTITIES", SNIPPETS: "SNIPPETS", CONNECTIONS: "CONNECTIONS", LIVE_SESSIONS: "LIVE_SESSIONS", SESSION_PRESENCE: "SESSION_PRESENCE", BROWSER_SESSIONS: "BROWSER_SESSIONS", VAULT_APPROVALS: "VAULT_APPROVALS", VAULT_NOTICE: "VAULT_NOTICE", LOGOUT: "LOGOUT" };
 const BROADCASTABLE_TYPES = [STATE_TYPES.ENTRIES, STATE_TYPES.IDENTITIES, STATE_TYPES.SNIPPETS, STATE_TYPES.CONNECTIONS, STATE_TYPES.LIVE_SESSIONS, STATE_TYPES.BROWSER_SESSIONS, STATE_TYPES.VAULT_APPROVALS];
+const OWNER_ONLY_TYPES = new Set([STATE_TYPES.VAULT_APPROVALS, STATE_TYPES.VAULT_NOTICE]);
 
 class StateBroadcaster {
     constructor() {
@@ -71,7 +72,7 @@ class StateBroadcaster {
 
     async sendStateToConnection(accountId, conn, stateType) {
         if (conn.ws.readyState !== 1) return;
-        if (conn.impersonating && stateType === STATE_TYPES.VAULT_APPROVALS) return;
+        if (conn.impersonating && OWNER_ONLY_TYPES.has(stateType)) return;
         try {
             const data = await this.getStateData(stateType, accountId, conn.tabId, conn.browserId);
             conn.ws.send(JSON.stringify({ type: stateType, data }));
@@ -101,7 +102,7 @@ class StateBroadcaster {
             const conns = this.connections.get(accountId);
             if (!conns?.size) continue;
             for (const conn of conns) {
-                if (conn.ws.readyState !== 1) continue;
+                if (conn.ws.readyState !== 1 || (conn.impersonating && OWNER_ONLY_TYPES.has(stateType))) continue;
                 try {
                     conn.ws.send(JSON.stringify({ type: stateType, data }));
                 } catch (error) {

@@ -158,6 +158,12 @@
 	.usage-group { display: grid; gap: var(--space-3); }
 	.usage-title { font: var(--type-heading); color: var(--text); padding-top: var(--space-2); border-top: 1px solid var(--gray); }
 	.stack { display: grid; gap: var(--space-3); }
+	.chip.srv { display: inline-flex; flex-direction: column; line-height: 1.2; padding: var(--space-1) var(--space-2); }
+	.chip.srv .h { font: var(--type-mono); font-size: 0.6875rem; color: var(--subtext); }
+	.picker { border: 1px solid var(--gray); border-radius: var(--radius-sm); background: var(--background); box-shadow: var(--shadow-lg); padding: var(--space-2); display: grid; gap: var(--space-1); max-width: 20rem; }
+	.picker .opt { display: flex; justify-content: space-between; gap: var(--space-2); padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); font: var(--type-body); }
+	.picker .opt .h { font: var(--type-mono); font-size: 0.75rem; color: var(--subtext); }
+	.picker .opt.on { background: var(--primary-opacity); }
 </style>
 </head>
 <body>
@@ -185,8 +191,8 @@
 
 			<div class="element" data-ui-id="UI-VAULT-DIALOG-OWNER">
 				<header><code>UI-VAULT-DIALOG-OWNER</code><span class="type">field</span><span>Besitzer — nur beim Anlegen wählbar</span></header>
-				<section data-ui-state="default"><div class="field"><label for="a-owner">Besitzer</label><select class="input" id="a-owner"><option selected>Persönlich (ma.backes)</option></select></div></section>
-				<section data-ui-state="disabled"><div class="field"><label for="a-owner-d">Besitzer</label><select class="input is-disabled" id="a-owner-d" disabled><option selected>Persönlich (ma.backes)</option></select></div><span class="help">nach dem Anlegen fest</span></section>
+				<section data-ui-state="default"><div class="field"><label for="a-owner">Besitzer</label><select class="input" id="a-owner"><option selected>Persönlich (ada)</option></select></div></section>
+				<section data-ui-state="disabled"><div class="field"><label for="a-owner-d">Besitzer</label><select class="input is-disabled" id="a-owner-d" disabled><option selected>Persönlich (ada)</option></select></div><span class="help">nach dem Anlegen fest</span></section>
 			</div>
 
 			<div class="element" data-ui-id="UI-VAULT-DIALOG-FIELDS">
@@ -218,7 +224,7 @@
 			<div class="element" data-ui-id="UI-VAULT-DIALOG-SCOPE">
 				<header><code>UI-VAULT-DIALOG-SCOPE</code><span class="type">field</span><span>Gilt für — Chips plus „Alle Server“</span></header>
 				<section data-ui-state="default"><div class="chips"><span class="chip sel"><span class="k">Ordner</span>Produktion</span><span class="chip sel"><span class="k">Server</span>nas</span><span class="chip add">+ Server</span><span class="chip add">+ Ordner</span><span class="chip add">+ Tag</span></div><div class="row"><span>Alle Server</span><span class="toggle" role="switch" aria-checked="false" aria-label="Alle Server"></span></div></section>
-				<section data-ui-state="empty"><div class="chips"><span class="chip add">+ Server</span><span class="chip add">+ Ordner</span><span class="chip add">+ Tag</span></div><span class="help">Für keinen Server freigegeben.</span><div class="row"><span>Alle Server</span><span class="toggle" role="switch" aria-checked="false" aria-label="Alle Server"></span></div></section>
+				<section data-ui-state="empty"><div class="chips"><span class="chip add">+ Server</span><span class="chip add">+ Ordner</span><span class="chip add">+ Tag</span></div><span class="help">Für keinen Server freigegeben — kein Agent sieht diesen Eintrag.</span><div class="row"><span>Alle Server</span><span class="toggle" role="switch" aria-checked="false" aria-label="Alle Server"></span></div></section>
 				<section data-ui-state="selected"><div class="chips"><span class="chip off"><span class="k">Ordner</span>Produktion</span><span class="chip off"><span class="k">Server</span>nas</span></div><div class="row"><span>Alle Server</span><span class="toggle on" role="switch" aria-checked="true" aria-label="Alle Server"></span></div></section>
 			</div>
 
@@ -260,6 +266,31 @@
 				<section data-ui-state="empty"><div class="field"><span class="label">Darf im Browser eingetragen werden auf</span><div class="chips"><span class="chip add">+ Origin</span></div><span class="help">Nirgends — nur für vault_http und Git</span></div></section>
 				<section data-ui-state="error"><div class="field"><span class="label">Darf im Browser eingetragen werden auf</span><div class="chips"><span class="chip sel" style="box-shadow: inset 0 0 0 1px var(--error); background: var(--error-opacity)">coolify</span><span class="chip add">+ Origin</span></div><span class="help error" role="alert">Keine gültige Origin (scheme://host[:port]).</span></div></section>
 			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-SSH-SERVERS">
+				<header><code>UI-VAULT-DIALOG-SSH-SERVERS</code><span class="type">field</span><span>Ziele aus der Serverliste</span></header>
+				<span class="help">Erscheint nur bei Typ SSH. Nur SSH-Server aus der Serverliste.</span>
+				<section data-ui-state="default"><div class="field"><span class="label">Ziele aus der Serverliste</span><div class="chips"><span class="chip srv sel"><span>web02</span><span class="h">10.0.1.12</span></span><span class="chip add">+ Server</span></div><div class="picker" role="listbox" aria-label="SSH-Server wählen"><input class="input" placeholder="Server suchen" aria-label="Server suchen"><div class="opt on"><span>web02</span><span class="h">10.0.1.12</span></div><div class="opt"><span>nas</span><span class="h">192.168.2.60</span></div></div></div></section>
+				<section data-ui-state="empty"><div class="field"><span class="label">Ziele aus der Serverliste</span><div class="chips"><span class="chip add">+ Server</span></div><span class="help">Keine Server ausgewählt</span></div></section>
+				<section data-ui-state="selected"><div class="field"><span class="label">Ziele aus der Serverliste</span><div class="chips"><span class="chip srv sel"><span>web02</span><span class="h">10.0.1.12</span></span><span class="chip srv sel"><span>nas</span><span class="h">192.168.2.60</span></span><span class="chip add">+ Server</span></div><span class="help">web02, nas</span></div></section>
+				<section data-ui-state="error"><div class="field"><span class="label">Ziele aus der Serverliste</span><div class="chips"><span class="chip add">+ Server</span></div><span class="help error" role="alert">Ziel geändert — gespeicherte Werte werden verworfen. Neu eingeben.</span></div></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-SSH-HOSTS">
+				<header><code>UI-VAULT-DIALOG-SSH-HOSTS</code><span class="type">field</span><span>Freie Hosts</span></header>
+				<span class="help">Erscheint nur bei Typ SSH. host oder host:port, durch Komma oder Leerzeichen getrennt.</span>
+				<section data-ui-state="default"><div class="field"><label for="s-hosts">Freie Hosts</label><input class="input mono" id="s-hosts" value="nas.example.net:2222" placeholder="nas.example.net:2222"></div></section>
+				<section data-ui-state="empty"><div class="field"><label for="s-hosts-m">Freie Hosts</label><input class="input mono" id="s-hosts-m" value="" placeholder="nas.example.net:2222"></div></section>
+				<section data-ui-state="error"><div class="field"><label for="s-hosts-e">Freie Hosts</label><input class="input mono is-error" id="s-hosts-e" value="nas.example.net:" aria-invalid="true"><span class="help error" role="alert">Kein gültiger Host (host oder host:port).</span></div></section>
+					<section data-ui-state="disabled"><div class="field"><label for="s-hosts-d">Freie Hosts</label><input class="input mono" id="s-hosts-d" placeholder="nas.example.net:2222" disabled><span class="help">Freie Hosts brauchen das Recht „Direkt verbinden“.</span></div></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-SSH-SESSION">
+				<header><code>UI-VAULT-DIALOG-SSH-SESSION</code><span class="type">toggle</span><span>„Für diese Sitzung“ erlauben</span></header>
+				<span class="help">Erscheint nur bei Typ SSH.</span>
+				<section data-ui-state="default"><div class="row"><span class="stack-sm"><span>„Für diese Sitzung“ erlauben</span><span class="help">aus — jeder Befehl einzeln</span></span><span class="toggle" role="switch" aria-checked="false" aria-label="„Für diese Sitzung“ erlauben"></span></div></section>
+				<section data-ui-state="selected"><div class="row"><span class="stack-sm"><span>„Für diese Sitzung“ erlauben</span><span class="help">an — eine Freigabe gilt bis Sitzungsende für beliebige Befehle auf diesem Ziel</span></span><span class="toggle on" role="switch" aria-checked="true" aria-label="„Für diese Sitzung“ erlauben"></span></div></section>
+			</div>
 			</div>
 
 </div>
@@ -278,7 +309,7 @@
 <div class="dialog" role="dialog" aria-labelledby="dlg-title-b" data-variant="edit">
 <div class="dialog-head"><h1 id="dlg-title-b">Eintrag bearbeiten</h1><button class="close" aria-label="Schließen">×</button></div>
 <div class="dialog-body">
-<div class="grid"><div class="c6"><div class="field"><label for="b-type">Typ</label><select class="input is-disabled" id="b-type" disabled><option selected>Login</option></select></div><span class="help">nach dem Anlegen fest</span></div><div class="c6"><div class="field"><label for="b-owner">Besitzer</label><select class="input is-disabled" id="b-owner" disabled><option selected>Persönlich (ma.backes)</option></select></div><span class="help">nach dem Anlegen fest</span></div></div>
+<div class="grid"><div class="c6"><div class="field"><label for="b-type">Typ</label><select class="input is-disabled" id="b-type" disabled><option selected>Login</option></select></div><span class="help">nach dem Anlegen fest</span></div><div class="c6"><div class="field"><label for="b-owner">Besitzer</label><select class="input is-disabled" id="b-owner" disabled><option selected>Persönlich (ada)</option></select></div><span class="help">nach dem Anlegen fest</span></div></div>
 
 <div class="grid">
 <div class="field c6"><label for="b-name">Name</label><input class="input mono" id="b-name" value="portal-login"></div>
@@ -291,6 +322,30 @@
 <div class="row"><span>Freigabe erforderlich</span><span class="toggle on" role="switch" aria-checked="true" aria-label="Freigabe erforderlich"></span></div>
 </div>
 <div class="dialog-foot"><div class="actions"><button class="btn ghost" type="button">Abbrechen</button><button class="btn primary" type="button">Speichern</button></div></div>
+</div>
+
+
+<div class="dialog" role="dialog" aria-labelledby="dlg-title-c" data-variant="ssh">
+<div class="dialog-head"><h1 id="dlg-title-c">Eintrag anlegen</h1><button class="close" aria-label="Schließen">×</button></div>
+<div class="variant-title">Anlegen — Typ SSH</div>
+<div class="dialog-body">
+<div class="grid"><div class="c6"><div class="field"><label for="c-type">Typ</label><select class="input" id="c-type"><option selected>SSH</option></select></div></div><div class="c6"><div class="field"><label for="c-owner">Besitzer</label><select class="input" id="c-owner"><option selected>Persönlich (ada)</option></select></div></div></div>
+<div class="grid">
+<div class="field c6"><label for="c-name">Name</label><input class="input mono" id="c-name" value="deploy-web"></div>
+<div class="field c6"><label for="c-user">Benutzer</label><input class="input mono" id="c-user" value="deploy"></div>
+</div>
+<div class="field"><label for="c-key">Privater Schlüssel</label><input class="input mono" id="c-key" type="password" value="" placeholder="Privater Schlüssel einfügen"></div>
+<div class="grid"><div class="field c6"><label for="c-pw">Passwort</label><input class="input mono" id="c-pw" type="password" value="" placeholder="Passwort eingeben"></div><div class="field c6"><label for="c-pp">Passphrase</label><input class="input mono" id="c-pp" type="password" value="" placeholder="Passphrase eingeben"></div></div>
+<div class="field"><span class="label">Gilt für</span><div class="chips"><span class="chip sel"><span class="k">Server</span>appmonster</span><span class="chip add">+ Server</span><span class="chip add">+ Ordner</span><span class="chip add">+ Tag</span></div><div class="row"><span>Alle Server</span><span class="toggle" role="switch" aria-checked="false" aria-label="Alle Server"></span></div></div>
+<div class="row"><span>Freigabe erforderlich</span><span class="toggle on" role="switch" aria-checked="true" aria-label="Freigabe erforderlich"></span></div>
+<div class="usage-group" role="group" aria-label="Nutzung durch Agenten">
+<div class="usage-title">Nutzung durch Agenten</div>
+<div class="field"><span class="label">Ziele aus der Serverliste</span><div class="chips"><span class="chip srv sel"><span>web02</span><span class="h">10.0.1.12</span></span><span class="chip srv sel"><span>nas</span><span class="h">192.168.2.60</span></span><span class="chip add">+ Server</span></div></div>
+<div class="field"><label for="c-hosts">Freie Hosts</label><input class="input mono" id="c-hosts" value="nas.example.net:2222" placeholder="nas.example.net:2222"></div>
+<div class="row"><span class="stack-sm"><span>„Für diese Sitzung“ erlauben</span><span class="help">aus — jeder Befehl einzeln</span></span><span class="toggle" role="switch" aria-checked="false" aria-label="„Für diese Sitzung“ erlauben"></span></div>
+</div>
+</div>
+<div class="dialog-foot"><div class="actions"><button class="btn ghost" type="button">Abbrechen</button><button class="btn primary" type="button">Erstellen</button></div></div>
 </div>
 
 

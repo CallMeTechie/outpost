@@ -20,8 +20,8 @@ const DENIAL_ACTIONS = {
 const defaultAudit = (entry) => require("../../controllers/audit").createAuditLog(entry);
 const callerKey = (ctx) => `${ctx.accountId}:${ctx.keyId ?? null}`;
 const valueOf = (value, item) => (typeof value !== "function" ? value : item ? value(item) : null);
-// Without updatedAt: an edit outside the stamped fields (description, username) does not stop a use the
-// user has just approved. Session approvals still end on every edit, their stamp keeps updatedAt.
+// Without updatedAt: an edit outside the stamped fields (the description) does not stop a use the user has just
+// approved. Session approvals still end on every edit, their stamp keeps updatedAt.
 const useStamp = (item) => grantStamp({ id: item.id, fields: item.fields, updatedAt: 0 });
 const REVOKED_MESSAGE = "The key of this connection was revoked while the approval was open; nothing was done.";
 const staleEntry = () => new VaultError(VaultErrorCode.APPROVAL_STALE);
@@ -36,6 +36,25 @@ const createRateLimit = ({ windowMs, limit }) => {
         if (recent.length >= limit) throw new VaultError(VaultErrorCode.RATE_LIMITED);
         recent.push(now);
         calls.set(key, recent);
+    };
+};
+
+const createCallLimits = ({ windowMs, limit, maxRunning }) => {
+    const running = new Map();
+    return {
+        rate: createRateLimit({ windowMs, limit }),
+        enter: (ctx) => {
+            const key = callerKey(ctx);
+            const count = running.get(key) ?? 0;
+            if (count >= maxRunning) throw new VaultError(VaultErrorCode.BUSY);
+            running.set(key, count + 1);
+            return key;
+        },
+        leave: (key) => {
+            const count = (running.get(key) ?? 1) - 1;
+            if (count > 0) running.set(key, count);
+            else running.delete(key);
+        },
     };
 };
 
@@ -73,6 +92,7 @@ const createBroker = ({ approvals = require("./approvals"), audit = defaultAudit
     const use = async ({
         ctx, itemRef: ref, tool, access, target = null, scope = access, field, check, act, fieldLabel = null, allowSession = true,
         approved = null, precheck = null, stale = staleEntry, revoked = REVOKED_MESSAGE, lazySecret = false, deferUse = false, auditExtra = {},
+        forceApproval = false, card = null,
     }) => {
         const caller = { accountId: ctx.accountId, agent: ctx.agent ?? null };
         const note = { item: typeof ref === "string" ? ref.slice(0, 200) : null, stage: "before_approval" };
@@ -94,7 +114,8 @@ const createBroker = ({ approvals = require("./approvals"), audit = defaultAudit
             const approving = approved === null && (Boolean(item.approvalRequired) || ctx.impersonatorId != null);
             await check(item, { phase: "before", approving });
             const scopeNow = valueOf(scope, item);
-            if (approved !== null || approving || String(scopeNow).includes("|")) {
+            const forced = approved === null && Boolean(valueOf(forceApproval, item));
+            if (approved !== null || approving || forced || String(scopeNow).includes("|")) {
                 const expected = approved ?? { itemId: item.id, stamp: useStamp(item) };
                 const stampOf = approved ? grantStamp : useStamp;
                 if (approved === null) {
@@ -104,7 +125,8 @@ const createBroker = ({ approvals = require("./approvals"), audit = defaultAudit
                         accountId: ctx.accountId, keyId: ctx.keyId ?? null, transportId: ctx.transportId,
                         agentType: ctx.agent?.agentType ?? null, entryName: await entryNameOf(ctx.agent),
                         impersonated: Boolean(ctx.impersonatorId), item, target: valueOf(target, item), tool, access, scope: scopeNow,
-                        field: valueOf(fieldLabel, item), allowSession: valueOf(allowSession, item) !== false, signal: ctx.signal,
+                        field: valueOf(fieldLabel, item), allowSession: valueOf(allowSession, item) !== false,
+                        card: valueOf(card, item), skipSessionGrant: forced, signal: ctx.signal,
                     }).catch((err) => {
                         // approvals.js audits answers, timeouts and withdrawn cards itself; only early refusals come back unaudited.
                         auditedByApprovals = APPROVAL_CODES.has(err?.code) && !err.details?.early;
@@ -157,4 +179,4 @@ const createBroker = ({ approvals = require("./approvals"), audit = defaultAudit
 let shared = null;
 const use = (options) => (shared ??= createBroker()).use(options);
 
-module.exports = { createBroker, createRateLimit, callerKey, use };
+module.exports = { createBroker, createRateLimit, createCallLimits, callerKey, use };

@@ -1,9 +1,10 @@
 import { beforeEach, expect, test, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { VaultItemDialog } from "@/pages/Vault/components/VaultItemDialog/VaultItemDialog.jsx";
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import { TagContext } from "@/common/contexts/TagContext.jsx";
+import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { renderWithProviders } from "@/test/renderWithProviders.jsx";
 
 const requestDouble = await vi.hoisted(async () => {
@@ -20,11 +21,21 @@ const item = {
     canManage: true, canReveal: true, unreadable: false,
 };
 
-const Targets = ({ children }) => (
-    <ServerContext.Provider value={{ servers: [] }}>
-        <TagContext.Provider value={{ tags: [] }}>{children}</TagContext.Provider>
-    </ServerContext.Provider>
+const SERVERS = [
+    { id: 12, type: "server", name: "web02", protocol: "ssh", ip: "10.0.1.12" },
+    { id: 13, type: "server", name: "nas", protocol: "ssh", ip: "192.168.2.60" },
+    { id: 14, type: "server", name: "win01", protocol: "rdp", ip: "10.0.1.20" },
+    { id: 20, type: "organization", name: "Ops", entries: [{ id: 21, type: "server", name: "ops-db", protocol: "ssh", ip: "10.0.2.21" }] },
+];
+
+const Targets = ({ children, permissions = ["connect.direct"] }) => (
+    <UserContext.Provider value={{ hasPermission: (permission) => permissions.includes(permission) }}>
+        <ServerContext.Provider value={{ servers: SERVERS }}>
+            <TagContext.Provider value={{ tags: [] }}>{children}</TagContext.Provider>
+        </ServerContext.Provider>
+    </UserContext.Provider>
 );
+const WithoutDirect = ({ children }) => <Targets permissions={[]}>{children}</Targets>;
 
 const dialog = (open) => (
     <VaultItemDialog open={open} onClose={() => {}} item={item} onSaved={() => {}} defaultOwner="personal"
@@ -42,6 +53,7 @@ test("ein geänderter Ursprung verwirft den gespeicherten Wert: Speichern erst m
     editItem();
     const save = screen.getByRole("button", { name: "Save" });
     expect(screen.getByLabelText("Password")).toHaveAttribute("placeholder", "stored — leave empty to keep");
+    expect(screen.getByText("Not enabled for any server — no agent sees this entry.")).toBeInTheDocument();
 
     await user.clear(screen.getByLabelText("Origin"));
 
@@ -87,10 +99,10 @@ const apiKey = {
     fields: { hosts: ["api.github.com"], headerName: "Authorization", headerTemplate: "Bearer {{secret}}" },
 };
 const generic = { ...item, id: 7, ref: "coolify-token", name: "coolify-token", type: "generic", fields: {}, secretFields: ["value"] };
-const editEntry = (shown) => renderWithProviders(
+const editEntry = (shown, providers = [Targets]) => renderWithProviders(
     <VaultItemDialog open onClose={() => {}} item={shown} onSaved={() => {}} defaultOwner="personal"
                      owners={[{ value: "personal", label: "Personal (ma.backes)", organizationId: null }]} />,
-    { providers: [Targets] },
+    { providers },
 );
 const node = (id) => document.querySelector(`[data-ui-id='${id}']`);
 
@@ -140,4 +152,57 @@ test("API-Key zeigt die Nutzung durch Agenten, der Git-Benutzername erscheint er
     expect(node("UI-VAULT-DIALOG-HTTP")).toBeNull();
     expect(node("UI-VAULT-DIALOG-GIT")).toBeNull();
     expect(node("UI-VAULT-DIALOG-FILL")).toHaveTextContent("Nowhere — only for vault_http and Git");
+});
+
+const ssh = {
+    ...item, id: 9, ref: "deploy-web", name: "deploy-web", type: "ssh", secretFields: ["privateKey"],
+    fields: { username: "deploy", servers: [12], hosts: ["backup.example.net"], allowSession: false },
+};
+
+test("SSH: Server-Ziele nur aus SSH-Servern, bei persönlichen Einträgen auch aus Organisationen, ein neues Ziel verwirft die Werte, freie Hosts werden geprüft und brauchen „Direkt verbinden“, Speichern schickt Ziele und Schalter", async () => {
+    const user = userEvent.setup();
+    requestDouble.stub("patchRequest", "vault/items/9", { item: ssh, secretsCleared: true });
+    const { unmount } = editEntry(ssh);
+    const servers = within(node("UI-VAULT-DIALOG-SSH-SERVERS"));
+    const save = screen.getByRole("button", { name: "Save" });
+
+    expect(servers.getByText("web02 · 10.0.1.12")).toBeInTheDocument();
+    expect(servers.queryByRole("alert")).toBeNull();
+
+    await user.click(node("UI-VAULT-DIALOG-SSH-SERVERS").querySelector(".select-box__selected"));
+    const offered = await screen.findAllByRole("menuitem");
+    expect(offered.map((option) => option.textContent)).toEqual(["web02 · 10.0.1.12", "nas · 192.168.2.60", "ops-db · 10.0.2.21"]);
+    await user.click(screen.getByRole("menuitem", { name: "nas · 192.168.2.60" }));
+
+    expect(servers.getByText("nas · 192.168.2.60")).toBeInTheDocument();
+    expect(servers.getByRole("alert")).toHaveTextContent("Target changed — stored values will be discarded. Enter them again.");
+    expect(save).toBeDisabled();
+
+    const hosts = screen.getByLabelText("Free hosts");
+    await user.clear(hosts);
+    await user.type(hosts, "backup.example.net nas.example.net:");
+    expect(within(node("UI-VAULT-DIALOG-SSH-HOSTS")).getByRole("alert")).toHaveTextContent("Not a valid host (host or host:port).");
+    await user.type(hosts, "2222");
+    expect(within(node("UI-VAULT-DIALOG-SSH-HOSTS")).queryByRole("alert")).toBeNull();
+
+    expect(node("UI-VAULT-DIALOG-SSH-SESSION")).toHaveTextContent("off — each command on its own");
+    await user.click(screen.getByRole("checkbox", { name: "Allow “For this session”" }));
+    expect(node("UI-VAULT-DIALOG-SSH-SESSION")).toHaveTextContent("on — one approval covers any command on this target until the session ends");
+
+    await user.type(screen.getByLabelText("Private key"), "-----BEGIN OPENSSH PRIVATE KEY-----");
+    await user.click(save);
+
+    expect(requestDouble.calls).toEqual([{
+        method: "patchRequest", path: "vault/items/9",
+        body: expect.objectContaining({
+            fields: { username: "deploy", servers: [12, 13], hosts: ["backup.example.net", "nas.example.net:2222"], allowSession: true },
+            secrets: { privateKey: "-----BEGIN OPENSSH PRIVATE KEY-----" },
+        }),
+    }]);
+
+    unmount();
+    editEntry(ssh, [WithoutDirect]);
+    expect(screen.getByLabelText("Free hosts")).toBeDisabled();
+    expect(screen.getByLabelText("Free hosts")).toHaveValue("backup.example.net");
+    expect(node("UI-VAULT-DIALOG-SSH-HOSTS")).toHaveTextContent("Free hosts need the “Connect Without an Entry” permission.");
 });

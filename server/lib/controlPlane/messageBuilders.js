@@ -101,12 +101,13 @@ const buildPing = () => {
     return finishEnvelope(builder, Envelope.endEnvelope(builder));
 };
 
-const buildSessionOpen = (sessionId, sessionType, host, port, params, jumpHosts) => {
+const buildSessionOpen = (sessionId, sessionType, host, port, params, jumpHosts, { expectedHostKey, probeHostKey, execOnly } = {}) => {
     const builder = new flatbuffers.Builder(512);
     const sidOff = builder.createString(sessionId);
     const hostOff = builder.createString(host);
     const paramsVecOff = buildConnectionParams(builder, params);
     const jumpHostsVecOff = buildJumpHostsVector(builder, jumpHosts);
+    const expectedOff = expectedHostKey ? builder.createString(expectedHostKey) : 0;
 
     SessionOpen.startSessionOpen(builder);
     SessionOpen.addSessionId(builder, sidOff);
@@ -115,6 +116,9 @@ const buildSessionOpen = (sessionId, sessionType, host, port, params, jumpHosts)
     SessionOpen.addPort(builder, port);
     if (paramsVecOff) SessionOpen.addParams(builder, paramsVecOff);
     if (jumpHostsVecOff) SessionOpen.addJumpHosts(builder, jumpHostsVecOff);
+    if (expectedOff) SessionOpen.addExpectedHostKey(builder, expectedOff);
+    if (probeHostKey) SessionOpen.addProbeHostKey(builder, true);
+    if (execOnly) SessionOpen.addExecOnly(builder, true);
     const openOff = SessionOpen.endSessionOpen(builder);
 
     Envelope.startEnvelope(builder);

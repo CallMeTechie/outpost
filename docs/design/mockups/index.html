@@ -2,7 +2,7 @@
 <html lang="de" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<title>outpost — Mockups (Revision 19)</title>
+<title>outpost — Mockups (Revision 24)</title>
 <link rel="stylesheet" href="./tokens.css">
 <style>
 .mb-page { font: var(--type-body, 500 0.875rem/1.45 system-ui, sans-serif); color: var(--text, #eee); background: var(--background, #111); margin: 0; padding: var(--space-8, 2rem); }
@@ -780,6 +780,13 @@
 #ab-ui-vault-approval .approval-card .head{ display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 #ab-ui-vault-approval .approval-card .tool{ font: var(--type-mono); color: var(--text); overflow-wrap: anywhere; }
 #ab-ui-vault-approval .write-badge{ display: inline-flex; align-items: center; gap: var(--space-1); font: var(--type-caption); border-radius: var(--radius-sm); padding: var(--space-1) var(--space-2); color: var(--warning); background: var(--warning-opacity); white-space: nowrap; }
+#ab-ui-vault-approval .exec-badge{ display: inline-flex; align-items: center; gap: var(--space-1); font: var(--type-caption); border-radius: var(--radius-sm); padding: var(--space-1) var(--space-2); color: var(--error); background: var(--error-opacity); white-space: nowrap; }
+#ab-ui-vault-approval .approval-card .cmd{ margin: 0; padding: var(--space-2) var(--space-3); background: var(--terminal); border: 1px solid var(--gray); border-radius: var(--radius-sm); font: var(--type-mono); color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+#ab-ui-vault-approval .approval-card .cmd-wrap{ position: relative; }
+#ab-ui-vault-approval .approval-card .cmd-wrap .cmd{ max-height: calc(20 * 1.4em + 2 * var(--space-2)); overflow: hidden; line-height: 1.4; }
+#ab-ui-vault-approval .approval-card .cmd-more{ display: inline-block; margin-top: var(--space-1); font: var(--type-caption); color: var(--primary); }
+#ab-ui-vault-approval .approval-card .hostkey{ padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); border-left: 3px solid var(--warning); background: var(--warning-opacity); color: var(--text); overflow-wrap: anywhere; }
+#ab-ui-vault-approval .approval-card .filemv{ font: var(--type-mono); color: var(--text); overflow-wrap: anywhere; }
 #ab-ui-vault-approval .approval-stack{ display: flex; flex-direction: column; gap: var(--space-2); }
 #ab-ui-vault-approval .approval-stack .count{ font: var(--type-caption); color: var(--subtext); text-align: right; }
 #ab-ui-vault-approval .approval-empty{ width: 24rem; max-width: 100%; border: 1px dashed var(--gray-strong); border-radius: var(--radius-lg); padding: var(--space-4); font: var(--type-caption); color: var(--subtext); }
@@ -882,6 +889,12 @@
 #ab-ui-vault-dialog .usage-group{ display: grid; gap: var(--space-3); }
 #ab-ui-vault-dialog .usage-title{ font: var(--type-heading); color: var(--text); padding-top: var(--space-2); border-top: 1px solid var(--gray); }
 #ab-ui-vault-dialog .stack{ display: grid; gap: var(--space-3); }
+#ab-ui-vault-dialog .chip.srv{ display: inline-flex; flex-direction: column; line-height: 1.2; padding: var(--space-1) var(--space-2); }
+#ab-ui-vault-dialog .chip.srv .h{ font: var(--type-mono); font-size: 0.6875rem; color: var(--subtext); }
+#ab-ui-vault-dialog .picker{ border: 1px solid var(--gray); border-radius: var(--radius-sm); background: var(--background); box-shadow: var(--shadow-lg); padding: var(--space-2); display: grid; gap: var(--space-1); max-width: 20rem; }
+#ab-ui-vault-dialog .picker .opt{ display: flex; justify-content: space-between; gap: var(--space-2); padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); font: var(--type-body); }
+#ab-ui-vault-dialog .picker .opt .h{ font: var(--type-mono); font-size: 0.75rem; color: var(--subtext); }
+#ab-ui-vault-dialog .picker .opt.on{ background: var(--primary-opacity); }
 
 </style>
 <style>
@@ -974,6 +987,21 @@
 #ab-ui-vault .v-chip{ display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-2); border: 1px solid var(--gray); border-radius: var(--radius-md); background: var(--lighter-background); }
 #ab-ui-vault .v-policy{ display: flex; align-items: center; gap: var(--space-2); }
 #ab-ui-vault .v-policy.off{ color: var(--subtext); }
+#ab-ui-vault .v-tg{ list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+#ab-ui-vault .v-tg-row{ display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--gray); color: var(--subtext); }
+#ab-ui-vault .v-tg-row:last-child{ border-bottom: 0; }
+#ab-ui-vault .v-tg-row .t{ flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#ab-ui-vault .v-tg-row .n{ color: var(--text); }
+#ab-ui-vault .v-tg-row .m{ font: var(--type-mono); color: var(--subtext); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#ab-ui-vault .v-tg-row .hk{ font: var(--type-caption); color: var(--subtext); }
+#ab-ui-vault .v-tg-row .hk .v-mono{ color: var(--text); font: var(--type-mono); }
+#ab-ui-vault .v-tg-row .none{ font: var(--type-caption); color: var(--subtext); font-style: italic; }
+#ab-ui-vault .v-tg-row.sel{ background: var(--primary-opacity); margin: 0 calc(-1 * var(--space-2)); padding-left: var(--space-2); padding-right: var(--space-2); }
+#ab-ui-vault .v-btn.ghost{ background: transparent; border-color: transparent; color: var(--primary); height: 1.75rem; }
+#ab-ui-vault .v-tg-confirm{ display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-2); padding: var(--space-3); border: 1px solid var(--error); border-radius: var(--radius-md); background: var(--lighter-background); }
+#ab-ui-vault .v-tg-confirm p{ margin: 0; flex: 1; min-width: 14rem; color: var(--text); }
+#ab-ui-vault .v-tg-err{ margin-top: var(--space-2); color: var(--error); font: var(--type-caption); }
+#ab-ui-vault .v-ssh-demo{ max-width: 40rem; border: 1px solid var(--gray); border-radius: var(--radius-md); background: var(--background); }
 #ab-ui-vault .v-phones{ display: flex; gap: var(--space-6); flex-wrap: wrap; align-items: flex-start; }
 #ab-ui-vault .v-phone{ width: 24rem; max-width: 100%; border: 1px solid var(--gray); border-radius: var(--radius-lg); overflow: hidden; background: var(--background); display: flex; flex-direction: column; height: 40rem; }
 #ab-ui-vault .v-phone .v-left{ min-width: 0; max-width: none; border-right: 0; flex: 1; }
@@ -1036,7 +1064,7 @@
 </head>
 <body class="mb-page">
 <h1>outpost — Mockups</h1>
-<p class="sub">Manifest-Revision 19 · 2026-10-11 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
+<p class="sub">Manifest-Revision 24 · 2026-10-23 · Quelle der Wahrheit: <code>docs/design/manifest.yaml</code> · Design-System: <code>docs/design/design-system.md</code>. Jedes Artboard zeigt alle deklarierten Zustände gestapelt; die Kopfzeile jedes Artboards erklärt, wie und wo der Screen erscheint.</p>
 <ul class="mb-toc">
 <li><a href="#UI-SHELL">Rahmen — Navigation</a> <code>UI-SHELL</code></li>
 <li><a href="#UI-SERVERS">Servers — Arbeitsfläche</a> <code>UI-SERVERS</code></li>
@@ -3241,7 +3269,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <div class="ctx"><b>Art:</b> Seite · Route <code>/vault</code><br><b>Tastatur:</b> N Neuer Eintrag; ↑/↓ wählt in der Liste; E Bearbeiten; unter 768px Zurück-Pfeil im Kopf der Details" </div>
 <p class="meta">Artboard: <a href="./ui-vault.html">ui-vault.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-vault.md</code></p>
 <table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
-<tr><td><code>UI-VAULT-NEW</code></td><td>Neuer Eintrag</td><td>Öffnet den Eintrag-Dialog zum Anlegen. Nur sichtbar mit Recht vault.use oder vault.manage in mindestens einer Organisation.</td><td><code>default · disabled</code></td></tr>
+<tr><td><code>UI-VAULT-NEW</code></td><td>Neuer Eintrag</td><td>Öffnet den Eintrag-Dialog zum Anlegen. Nur sichtbar mit Recht vault.use oder vault.manage in mindestens einer Organisation. Derselbe Befehl steht im Kontextmenü der Liste (Rechtsklick), solange das Anlegen erlaubt ist.</td><td><code>default · disabled</code></td></tr>
 <tr><td><code>UI-VAULT-SCOPE</code></td><td>Persönlich · Organisationen</td><td>Wechselt, wessen Einträge die Liste zeigt — die eigenen oder die einer Organisation. Ein Reiter je Besitzer. <b>Nicht:</b> server_folder, tag, item_type.</td><td><code>default · selected</code></td></tr>
 <tr><td><code>UI-VAULT-SEARCH</code></td><td>Suchen</td><td>Filtert die Liste nach Name, Benutzer, Host, Ursprung und Beschreibung. Durchsucht nie geheime Werte.</td><td><code>default · empty</code></td></tr>
 <tr><td><code>UI-VAULT-TYPES</code></td><td>Alle · Login · API-Key · SSH · Datenbank · Sonstiges</td><td>Filtert die Liste nach der Art der Zugangsdaten. <b>Nicht:</b> vault_owner, tag.</td><td><code>default · selected</code></td></tr>
@@ -3252,7 +3280,8 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <tr><td><code>UI-VAULT-DETAIL-SECRET</code></td><td>Geheimer Wert</td><td>Je geheimem Feld eine Zeile mit genau zwölf Punkten, unabhängig von der Länge des Werts. Anzeigen und Kopieren nur für den Besitzer persönlicher Einträge oder mit vault.reveal, nie in einer Impersonations-Sitzung; sonst der Hinweis, dass der Wert nur für Agenten nutzbar ist. Ein angezeigter Wert verbirgt sich nach 30 Sekunden. <b>Nicht:</b> vault_item_fields, identity.</td><td><code>default · selected · disabled · success</code></td></tr>
 <tr><td><code>UI-VAULT-DETAIL-SCOPE</code></td><td>Gilt für</td><td>Für welche Server Agenten diesen Eintrag sehen — einzelne Server, Ordner mit Unterordnern, Tags oder alle Server. <b>Nicht:</b> vault_owner, permission.</td><td><code>default · empty</code></td></tr>
 <tr><td><code>UI-VAULT-DETAIL-POLICY</code></td><td>Freigabe erforderlich</td><td>Ob jede Nutzung durch einen Agenten bestätigt werden muss, und wann der Eintrag zuletzt genutzt wurde. <b>Nicht:</b> permission, vault_binding.</td><td><code>default · disabled</code></td></tr>
-<tr><td><code>UI-VAULT-DETAIL-USAGE</code></td><td>Nutzung durch Agenten</td><td>Was Agenten mit diesem Wert tun dürfen: nur lesen, auch über http, für Git (mit Benutzername), Eintragen im Browser auf den genannten Origins. Ausgeschaltetes fehlt als Zeile. Nur bei API-Key und Sonstiges sichtbar. <b>Nicht:</b> vault_binding, approval_policy, permission.</td><td><code>default · empty · disabled</code></td></tr>
+<tr><td><code>UI-VAULT-DETAIL-USAGE</code></td><td>Nutzung durch Agenten</td><td>Was Agenten mit diesem Wert tun dürfen: nur lesen, auch über http, für Git (mit Benutzername), Eintragen im Browser auf den genannten Origins. Ausgeschaltetes fehlt als Zeile. Bei API-Key und Sonstiges; bei SSH nur die Zeile „Nur Einmal“ oder „Sitzungsfreigabe erlaubt“. <b>Nicht:</b> vault_binding, approval_policy, permission.</td><td><code>default · empty · disabled</code></td></tr>
+<tr><td><code>UI-VAULT-DETAIL-SSH-TARGETS</code></td><td>Ziele</td><td>Je Ziel eines SSH-Eintrags eine Zeile: Name bzw. Host, benutzer@host:port und der gemerkte Host-Key (Algorithmus, SHA256-Fingerabdruck, bestätigt am, von wem) oder „noch nie verbunden“. „Vergessen“ löscht den gemerkten Host-Key; die nächste Verbindung zeigt den Fingerabdruck wieder auf der Freigabe-Karte. Nur bei SSH sichtbar. <b>Nicht:</b> vault_binding, identity, ssh_key.</td><td><code>default · empty · partial · selected · error</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-vault.html — alle Zustände, wie im Artboard</div><div id="ab-ui-vault">
 
@@ -3282,6 +3311,8 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 	<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
 	<symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></symbol>
 	<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+	<symbol id="i-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01"/><path d="M6 18h.01"/></symbol>
+	<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></symbol>
 	<symbol id="i-back" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol>
 </svg>
 
@@ -3431,13 +3462,39 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 		</div>
 
 		<div class="v-cell" data-ui-id="UI-VAULT-DETAIL-USAGE">
-			<div class="v-cap"><code>UI-VAULT-DETAIL-USAGE</code> · region · Nutzung durch Agenten · nur bei API-Key und Sonstiges sichtbar</div>
+			<div class="v-cap"><code>UI-VAULT-DETAIL-USAGE</code> · region · Nutzung durch Agenten · bei API-Key und Sonstiges; bei SSH nur eine Zeile</div>
 			<section class="v-state" data-ui-state="default"><div class="v-usage"><div>Nur lesen</div><div>Git · Benutzername x-access-token</div><div>Eintragen auf <span class="v-mono">https://coolify.example.net</span></div></div></section>
 			<section class="v-state" data-ui-state="empty"><div class="v-usage"><div class="sub">vault_http über https</div></div></section>
 			<section class="v-state" data-ui-state="disabled"><div class="v-usage"><div class="sub">Nur von Hand nutzbar — kein Eintragen im Browser</div></div></section>
+			<section class="v-state" data-ui-state="default" data-variant="ssh"><div class="v-usage"><div>Nur Einmal</div></div></section>
+			<section class="v-state" data-ui-state="default" data-variant="ssh-session"><div class="v-usage"><div>Sitzungsfreigabe erlaubt</div></div></section>
+		</div>
+
+		<div class="v-cell wide" data-ui-id="UI-VAULT-DETAIL-SSH-TARGETS">
+			<div class="v-cap"><code>UI-VAULT-DETAIL-SSH-TARGETS</code> · list · Ziele · nur bei SSH sichtbar · Beispiel-Eintrag deploy-web, Benutzer deploy</div>
+			<section class="v-state" data-ui-state="default"><ul class="v-tg"><li class="v-tg-row"><svg class="v-ico"><use href="#i-server"/></svg><span class="t"><span class="n">web02</span><span class="m">deploy@192.168.2.40:22</span></span><span class="hk"><span class="v-mono">ED25519 SHA256:3f9aT0…Xc21</span> · bestätigt 11.10. von Ada</span><span class="v-btn ghost">Vergessen</span></li><li class="v-tg-row"><svg class="v-ico"><use href="#i-server"/></svg><span class="t"><span class="n">web01</span><span class="m">deploy@192.168.2.41:22</span></span><span class="hk"><span class="v-mono">ED25519 SHA256:3f9aT0…Xc21</span> · bestätigt 09.10. von Ada</span><span class="v-btn ghost">Vergessen</span></li></ul></section>
+			<section class="v-state" data-ui-state="empty"><div class="v-note">Keine Ziele — im Dialog Server oder Hosts eintragen.</div></section>
+			<section class="v-state" data-ui-state="partial"><ul class="v-tg"><li class="v-tg-row"><svg class="v-ico"><use href="#i-server"/></svg><span class="t"><span class="n">web02</span><span class="m">deploy@192.168.2.40:22</span></span><span class="hk"><span class="v-mono">ED25519 SHA256:3f9aT0…Xc21</span> · bestätigt 11.10. von Ada</span><span class="v-btn ghost">Vergessen</span></li><li class="v-tg-row"><svg class="v-ico"><use href="#i-globe"/></svg><span class="t"><span class="n">backup.example.net</span><span class="m">deploy@backup.example.net:22</span></span><span class="none">noch nie verbunden</span></li></ul></section>
+			<section class="v-state" data-ui-state="selected"><ul class="v-tg"><li class="v-tg-row sel"><svg class="v-ico"><use href="#i-server"/></svg><span class="t"><span class="n">web02</span><span class="m">deploy@192.168.2.40:22</span></span><span class="hk"><span class="v-mono">ED25519 SHA256:3f9aT0…Xc21</span> · bestätigt 11.10. von Ada</span><span class="v-btn ghost">Vergessen</span></li><li class="v-tg-row"><svg class="v-ico"><use href="#i-server"/></svg><span class="t"><span class="n">web01</span><span class="m">deploy@192.168.2.41:22</span></span><span class="hk"><span class="v-mono">ED25519 SHA256:3f9aT0…Xc21</span> · bestätigt 09.10. von Ada</span><span class="v-btn ghost">Vergessen</span></li></ul><div class="v-tg-confirm" role="alertdialog" aria-label="Host-Key vergessen"><p>Gemerkten Host-Key von web02 vergessen? Die nächste Verbindung fragt wieder.</p><span class="v-btn">Abbrechen</span><span class="v-btn danger-solid">Vergessen</span></div></section>
+			<section class="v-state" data-ui-state="error"><ul class="v-tg"><li class="v-tg-row sel"><svg class="v-ico"><use href="#i-server"/></svg><span class="t"><span class="n">web02</span><span class="m">deploy@192.168.2.40:22</span></span><span class="hk"><span class="v-mono">ED25519 SHA256:3f9aT0…Xc21</span> · bestätigt 11.10. von Ada</span><span class="v-btn ghost">Vergessen</span></li><li class="v-tg-row"><svg class="v-ico"><use href="#i-server"/></svg><span class="t"><span class="n">web01</span><span class="m">deploy@192.168.2.41:22</span></span><span class="hk"><span class="v-mono">ED25519 SHA256:3f9aT0…Xc21</span> · bestätigt 09.10. von Ada</span><span class="v-btn ghost">Vergessen</span></li></ul><div class="v-tg-err" role="alert">Vergessen fehlgeschlagen.</div></section>
 		</div>
 
 	</div>
+</div>
+
+<!-- ============ SSH-Detail ============ -->
+<div class="v-block">
+	<h2>Details eines SSH-Eintrags <code>UI-VAULT</code></h2>
+	<section class="v-state v-ssh-demo" data-variant="ssh-detail">
+		<div class="v-dhead">
+			<div><h3>deploy-web</h3><div class="v-meta"><svg class="v-ico"><use href="#i-ssh"/></svg>SSH · Homelab</div></div>
+			<div class="v-actions"><span class="v-btn"><svg class="v-ico"><use href="#i-pencil"/></svg>Bearbeiten</span><span class="v-btn danger"><svg class="v-ico"><use href="#i-trash"/></svg>Löschen</span></div>
+		</div>
+		<div class="v-sec"><h4>Angaben</h4><dl class="v-kv"><dt>Benutzer</dt><dd>deploy</dd></dl></div>
+		<div class="v-sec"><h4>Ziele</h4><ul class="v-tg"><li class="v-tg-row"><svg class="v-ico"><use href="#i-server"/></svg><span class="t"><span class="n">web02</span><span class="m">deploy@192.168.2.40:22</span></span><span class="hk"><span class="v-mono">ED25519 SHA256:3f9aT0…Xc21</span> · bestätigt 11.10. von Ada</span><span class="v-btn ghost">Vergessen</span></li><li class="v-tg-row"><svg class="v-ico"><use href="#i-server"/></svg><span class="t"><span class="n">web01</span><span class="m">deploy@192.168.2.41:22</span></span><span class="hk"><span class="v-mono">ED25519 SHA256:3f9aT0…Xc21</span> · bestätigt 09.10. von Ada</span><span class="v-btn ghost">Vergessen</span></li><li class="v-tg-row"><svg class="v-ico"><use href="#i-globe"/></svg><span class="t"><span class="n">backup.example.net</span><span class="m">deploy@backup.example.net:22</span></span><span class="none">noch nie verbunden</span></li></ul></div>
+		<div class="v-sec"><h4>Nutzung durch Agenten</h4><div class="v-usage"><div>Nur Einmal</div></div></div>
+		<div class="v-sec"><div class="v-policy"><svg class="v-ico"><use href="#i-shield"/></svg>Freigabe erforderlich · zuletzt genutzt vor 2 Stunden</div></div>
+	</section>
 </div>
 
 <!-- ============ Schmal ============ -->
@@ -3495,6 +3552,9 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <tr><td><code>UI-VAULT-DIALOG-HTTP</code></td><td>Unverschlüsseltes HTTP erlauben</td><td>Ob vault_http den Token auch über http:// statt nur https:// schicken darf, etwa an Dienste im LAN. Nur bei API-Key. Standard aus. <b>Nicht:</b> allowed_origin, approval_policy.</td><td><code>default · selected</code></td></tr>
 <tr><td><code>UI-VAULT-DIALOG-GIT</code></td><td>Für Git nutzen</td><td>Ob der Git-Proxy von Outpost diesen Token gegenüber den Hosts des Eintrags einsetzen darf (clone, fetch, push über https). Ist er an, erscheint das Feld „Git-Benutzername“ (Standard x-access-token für GitHub, oauth2 für GitLab). Nur bei API-Key. Standard aus. <b>Nicht:</b> ssh_key, identity.</td><td><code>default · selected · error</code></td></tr>
 <tr><td><code>UI-VAULT-DIALOG-FILL</code></td><td>Darf im Browser eingetragen werden auf</td><td>Die Origins (scheme://host[:port]), auf denen browser_fill_secret den Wert in ein Formularfeld eintragen darf. Leer heißt: kein Eintragen im Browser — außer „Token auf jeder Seite eintragen erlauben“ ist in den Einstellungen an. Für API-Key und Sonstiges. <b>Nicht:</b> api_host, vault_binding.</td><td><code>default · empty · error</code></td></tr>
+<tr><td><code>UI-VAULT-DIALOG-SSH-SERVERS</code></td><td>Ziele aus der Serverliste</td><td>Server aus Outposts Serverliste, auf denen ssh_exec, ssh_put und ssh_get mit diesem Benutzer und Geheimnis arbeiten dürfen; gewählt über die vorhandene durchsuchbare Mehrfachauswahl wie bei „Gilt für“, Einträge als „Name · IP“. Host, Port, Jump-Hosts und Engine kommen vom Server-Eintrag, dessen Identität wird nicht benutzt. Nur SSH-Server; bei Organisations-Einträgen nur Server derselben Organisation. Nicht „Gilt für“: das sagt, von welchem Server aus ein Agent den Eintrag nutzt. <b>Nicht:</b> vault_binding, identity, jump_host.</td><td><code>default · empty · selected · error</code></td></tr>
+<tr><td><code>UI-VAULT-DIALOG-SSH-HOSTS</code></td><td>Freie Hosts</td><td>Rechner außerhalb der Serverliste als host[:port], durch Komma oder Leerzeichen getrennt. Sie laufen über die Standard-Engine, ohne Jump-Hosts. Ändern verwirft die gespeicherten Geheimnisse und die gemerkten Host-Keys der entfernten Ziele. Nur mit dem Recht „Direkt verbinden“ (connect.direct); ohne es ist das Feld gesperrt mit Hinweis. <b>Nicht:</b> api_host, fill_origin, vault_binding.</td><td><code>default · empty · error · disabled</code></td></tr>
+<tr><td><code>UI-VAULT-DIALOG-SSH-SESSION</code></td><td>„Für diese Sitzung“ erlauben</td><td>Ob die Freigabe-Karte für SSH-Zugriffe dieses Eintrags „Für diese Sitzung“ anbietet. Aus: jeder Befehl und jede Datei mit Karte braucht „Einmal“. An: eine Sitzungsfreigabe gilt je Ziel, Art (ausführen, schreiben, lesen) und Host-Key für beliebige Befehle bis Sitzungsende. Ob überhaupt eine Karte kommt, sagt „Freigabe erforderlich“ des Eintrags; ein neues Ziel fragt immer. Standard aus. <b>Nicht:</b> approval_policy, vault_binding.</td><td><code>default · selected</code></td></tr>
 <tr><td><code>UI-VAULT-DIALOG-SAVE</code></td><td>Speichern</td><td>Legt den Eintrag an bzw. speichert Änderungen und schließt den Dialog; Beschriftung Erstellen beim Anlegen.</td><td><code>default · disabled · loading · error</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-vault-dialog.html — alle Zustände, wie im Artboard</div><div id="ab-ui-vault-dialog">
@@ -3523,8 +3583,8 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 
 			<div class="element" data-ui-id="UI-VAULT-DIALOG-OWNER">
 				<header><code>UI-VAULT-DIALOG-OWNER</code><span class="type">field</span><span>Besitzer — nur beim Anlegen wählbar</span></header>
-				<section data-ui-state="default"><div class="field"><label for="a-owner">Besitzer</label><select class="input" id="a-owner"><option selected>Persönlich (ma.backes)</option></select></div></section>
-				<section data-ui-state="disabled"><div class="field"><label for="a-owner-d">Besitzer</label><select class="input is-disabled" id="a-owner-d" disabled><option selected>Persönlich (ma.backes)</option></select></div><span class="help">nach dem Anlegen fest</span></section>
+				<section data-ui-state="default"><div class="field"><label for="a-owner">Besitzer</label><select class="input" id="a-owner"><option selected>Persönlich (ada)</option></select></div></section>
+				<section data-ui-state="disabled"><div class="field"><label for="a-owner-d">Besitzer</label><select class="input is-disabled" id="a-owner-d" disabled><option selected>Persönlich (ada)</option></select></div><span class="help">nach dem Anlegen fest</span></section>
 			</div>
 
 			<div class="element" data-ui-id="UI-VAULT-DIALOG-FIELDS">
@@ -3556,7 +3616,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 			<div class="element" data-ui-id="UI-VAULT-DIALOG-SCOPE">
 				<header><code>UI-VAULT-DIALOG-SCOPE</code><span class="type">field</span><span>Gilt für — Chips plus „Alle Server“</span></header>
 				<section data-ui-state="default"><div class="chips"><span class="chip sel"><span class="k">Ordner</span>Produktion</span><span class="chip sel"><span class="k">Server</span>nas</span><span class="chip add">+ Server</span><span class="chip add">+ Ordner</span><span class="chip add">+ Tag</span></div><div class="row"><span>Alle Server</span><span class="toggle" role="switch" aria-checked="false" aria-label="Alle Server"></span></div></section>
-				<section data-ui-state="empty"><div class="chips"><span class="chip add">+ Server</span><span class="chip add">+ Ordner</span><span class="chip add">+ Tag</span></div><span class="help">Für keinen Server freigegeben.</span><div class="row"><span>Alle Server</span><span class="toggle" role="switch" aria-checked="false" aria-label="Alle Server"></span></div></section>
+				<section data-ui-state="empty"><div class="chips"><span class="chip add">+ Server</span><span class="chip add">+ Ordner</span><span class="chip add">+ Tag</span></div><span class="help">Für keinen Server freigegeben — kein Agent sieht diesen Eintrag.</span><div class="row"><span>Alle Server</span><span class="toggle" role="switch" aria-checked="false" aria-label="Alle Server"></span></div></section>
 				<section data-ui-state="selected"><div class="chips"><span class="chip off"><span class="k">Ordner</span>Produktion</span><span class="chip off"><span class="k">Server</span>nas</span></div><div class="row"><span>Alle Server</span><span class="toggle on" role="switch" aria-checked="true" aria-label="Alle Server"></span></div></section>
 			</div>
 
@@ -3598,6 +3658,31 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 				<section data-ui-state="empty"><div class="field"><span class="label">Darf im Browser eingetragen werden auf</span><div class="chips"><span class="chip add">+ Origin</span></div><span class="help">Nirgends — nur für vault_http und Git</span></div></section>
 				<section data-ui-state="error"><div class="field"><span class="label">Darf im Browser eingetragen werden auf</span><div class="chips"><span class="chip sel" style="box-shadow: inset 0 0 0 1px var(--error); background: var(--error-opacity)">coolify</span><span class="chip add">+ Origin</span></div><span class="help error" role="alert">Keine gültige Origin (scheme://host[:port]).</span></div></section>
 			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-SSH-SERVERS">
+				<header><code>UI-VAULT-DIALOG-SSH-SERVERS</code><span class="type">field</span><span>Ziele aus der Serverliste</span></header>
+				<span class="help">Erscheint nur bei Typ SSH. Nur SSH-Server aus der Serverliste.</span>
+				<section data-ui-state="default"><div class="field"><span class="label">Ziele aus der Serverliste</span><div class="chips"><span class="chip srv sel"><span>web02</span><span class="h">10.0.1.12</span></span><span class="chip add">+ Server</span></div><div class="picker" role="listbox" aria-label="SSH-Server wählen"><input class="input" placeholder="Server suchen" aria-label="Server suchen"><div class="opt on"><span>web02</span><span class="h">10.0.1.12</span></div><div class="opt"><span>nas</span><span class="h">192.168.2.60</span></div></div></div></section>
+				<section data-ui-state="empty"><div class="field"><span class="label">Ziele aus der Serverliste</span><div class="chips"><span class="chip add">+ Server</span></div><span class="help">Keine Server ausgewählt</span></div></section>
+				<section data-ui-state="selected"><div class="field"><span class="label">Ziele aus der Serverliste</span><div class="chips"><span class="chip srv sel"><span>web02</span><span class="h">10.0.1.12</span></span><span class="chip srv sel"><span>nas</span><span class="h">192.168.2.60</span></span><span class="chip add">+ Server</span></div><span class="help">web02, nas</span></div></section>
+				<section data-ui-state="error"><div class="field"><span class="label">Ziele aus der Serverliste</span><div class="chips"><span class="chip add">+ Server</span></div><span class="help error" role="alert">Ziel geändert — gespeicherte Werte werden verworfen. Neu eingeben.</span></div></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-SSH-HOSTS">
+				<header><code>UI-VAULT-DIALOG-SSH-HOSTS</code><span class="type">field</span><span>Freie Hosts</span></header>
+				<span class="help">Erscheint nur bei Typ SSH. host oder host:port, durch Komma oder Leerzeichen getrennt.</span>
+				<section data-ui-state="default"><div class="field"><label for="s-hosts">Freie Hosts</label><input class="input mono" id="s-hosts" value="nas.example.net:2222" placeholder="nas.example.net:2222"></div></section>
+				<section data-ui-state="empty"><div class="field"><label for="s-hosts-m">Freie Hosts</label><input class="input mono" id="s-hosts-m" value="" placeholder="nas.example.net:2222"></div></section>
+				<section data-ui-state="error"><div class="field"><label for="s-hosts-e">Freie Hosts</label><input class="input mono is-error" id="s-hosts-e" value="nas.example.net:" aria-invalid="true"><span class="help error" role="alert">Kein gültiger Host (host oder host:port).</span></div></section>
+					<section data-ui-state="disabled"><div class="field"><label for="s-hosts-d">Freie Hosts</label><input class="input mono" id="s-hosts-d" placeholder="nas.example.net:2222" disabled><span class="help">Freie Hosts brauchen das Recht „Direkt verbinden“.</span></div></section>
+			</div>
+
+			<div class="element" data-ui-id="UI-VAULT-DIALOG-SSH-SESSION">
+				<header><code>UI-VAULT-DIALOG-SSH-SESSION</code><span class="type">toggle</span><span>„Für diese Sitzung“ erlauben</span></header>
+				<span class="help">Erscheint nur bei Typ SSH.</span>
+				<section data-ui-state="default"><div class="row"><span class="stack-sm"><span>„Für diese Sitzung“ erlauben</span><span class="help">aus — jeder Befehl einzeln</span></span><span class="toggle" role="switch" aria-checked="false" aria-label="„Für diese Sitzung“ erlauben"></span></div></section>
+				<section data-ui-state="selected"><div class="row"><span class="stack-sm"><span>„Für diese Sitzung“ erlauben</span><span class="help">an — eine Freigabe gilt bis Sitzungsende für beliebige Befehle auf diesem Ziel</span></span><span class="toggle on" role="switch" aria-checked="true" aria-label="„Für diese Sitzung“ erlauben"></span></div></section>
+			</div>
 			</div>
 
 </div>
@@ -3616,7 +3701,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <div class="dialog" role="dialog" aria-labelledby="dlg-title-b" data-variant="edit">
 <div class="dialog-head"><h1 id="dlg-title-b">Eintrag bearbeiten</h1><button class="close" aria-label="Schließen">×</button></div>
 <div class="dialog-body">
-<div class="grid"><div class="c6"><div class="field"><label for="b-type">Typ</label><select class="input is-disabled" id="b-type" disabled><option selected>Login</option></select></div><span class="help">nach dem Anlegen fest</span></div><div class="c6"><div class="field"><label for="b-owner">Besitzer</label><select class="input is-disabled" id="b-owner" disabled><option selected>Persönlich (ma.backes)</option></select></div><span class="help">nach dem Anlegen fest</span></div></div>
+<div class="grid"><div class="c6"><div class="field"><label for="b-type">Typ</label><select class="input is-disabled" id="b-type" disabled><option selected>Login</option></select></div><span class="help">nach dem Anlegen fest</span></div><div class="c6"><div class="field"><label for="b-owner">Besitzer</label><select class="input is-disabled" id="b-owner" disabled><option selected>Persönlich (ada)</option></select></div><span class="help">nach dem Anlegen fest</span></div></div>
 
 <div class="grid">
 <div class="field c6"><label for="b-name">Name</label><input class="input mono" id="b-name" value="portal-login"></div>
@@ -3629,6 +3714,30 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <div class="row"><span>Freigabe erforderlich</span><span class="toggle on" role="switch" aria-checked="true" aria-label="Freigabe erforderlich"></span></div>
 </div>
 <div class="dialog-foot"><div class="actions"><button class="btn ghost" type="button">Abbrechen</button><button class="btn primary" type="button">Speichern</button></div></div>
+</div>
+
+
+<div class="dialog" role="dialog" aria-labelledby="dlg-title-c" data-variant="ssh">
+<div class="dialog-head"><h1 id="dlg-title-c">Eintrag anlegen</h1><button class="close" aria-label="Schließen">×</button></div>
+<div class="variant-title">Anlegen — Typ SSH</div>
+<div class="dialog-body">
+<div class="grid"><div class="c6"><div class="field"><label for="c-type">Typ</label><select class="input" id="c-type"><option selected>SSH</option></select></div></div><div class="c6"><div class="field"><label for="c-owner">Besitzer</label><select class="input" id="c-owner"><option selected>Persönlich (ada)</option></select></div></div></div>
+<div class="grid">
+<div class="field c6"><label for="c-name">Name</label><input class="input mono" id="c-name" value="deploy-web"></div>
+<div class="field c6"><label for="c-user">Benutzer</label><input class="input mono" id="c-user" value="deploy"></div>
+</div>
+<div class="field"><label for="c-key">Privater Schlüssel</label><input class="input mono" id="c-key" type="password" value="" placeholder="Privater Schlüssel einfügen"></div>
+<div class="grid"><div class="field c6"><label for="c-pw">Passwort</label><input class="input mono" id="c-pw" type="password" value="" placeholder="Passwort eingeben"></div><div class="field c6"><label for="c-pp">Passphrase</label><input class="input mono" id="c-pp" type="password" value="" placeholder="Passphrase eingeben"></div></div>
+<div class="field"><span class="label">Gilt für</span><div class="chips"><span class="chip sel"><span class="k">Server</span>appmonster</span><span class="chip add">+ Server</span><span class="chip add">+ Ordner</span><span class="chip add">+ Tag</span></div><div class="row"><span>Alle Server</span><span class="toggle" role="switch" aria-checked="false" aria-label="Alle Server"></span></div></div>
+<div class="row"><span>Freigabe erforderlich</span><span class="toggle on" role="switch" aria-checked="true" aria-label="Freigabe erforderlich"></span></div>
+<div class="usage-group" role="group" aria-label="Nutzung durch Agenten">
+<div class="usage-title">Nutzung durch Agenten</div>
+<div class="field"><span class="label">Ziele aus der Serverliste</span><div class="chips"><span class="chip srv sel"><span>web02</span><span class="h">10.0.1.12</span></span><span class="chip srv sel"><span>nas</span><span class="h">192.168.2.60</span></span><span class="chip add">+ Server</span></div></div>
+<div class="field"><label for="c-hosts">Freie Hosts</label><input class="input mono" id="c-hosts" value="nas.example.net:2222" placeholder="nas.example.net:2222"></div>
+<div class="row"><span class="stack-sm"><span>„Für diese Sitzung“ erlauben</span><span class="help">aus — jeder Befehl einzeln</span></span><span class="toggle" role="switch" aria-checked="false" aria-label="„Für diese Sitzung“ erlauben"></span></div>
+</div>
+</div>
+<div class="dialog-foot"><div class="actions"><button class="btn ghost" type="button">Abbrechen</button><button class="btn primary" type="button">Erstellen</button></div></div>
 </div>
 
 
@@ -3666,7 +3775,7 @@ outpost     running(2)   /volume1/docker/outpost/compose.yaml
 <tr><td><code>UI-AGENT-ACCESS-GIT-NOTE</code></td><td>Hinweis Git über SSH</td><td>Steht im Agenten-Zugang, sobald Git ausgewählt ist — Remotes über SSH (git@github.com:…) laufen nicht über den Vault und müssen auf https umgestellt werden. <b>Nicht:</b> error, agent_setup_result.</td><td><code>default · empty</code></td></tr>
 <tr><td><code>UI-AGENT-ACCESS-UNREACHABLE</code></td><td>Outpost nicht erreicht</td><td>Warnung über dem Ergebnis, wenn der Server Outpost während der Einrichtung nicht unter der eingetragenen Adresse zurückgerufen hat (probeFailure eines eingerichteten Agenten) — unabhängig von der IP-Bindung. unreachable: der Rückruf lief und kam nicht an, typisch https vor einem Port, an dem Outpost nur http spricht; ohne ihn kann sich auch kein Agent verbinden. no_client: auf dem Server fehlen curl und wget, die Adresse ist ungeprüft, nicht falsch. <b>Nicht:</b> ip_binding, agent_setup_result, toast.</td><td><code>default · partial · empty</code></td></tr>
 <tr><td><code>UI-AGENT-ACCESS-HELP</code></td><td>Anleitung</td><td>Fragezeichen-Knopf rechts neben dem Titel des Agenten-Zugangs; öffnet die Einrichtungsanleitung (UI-AGENT-ACCESS-GUIDE) über dem Dialog. Der Agenten-Zugang bleibt mit allen Eingaben offen und lässt sich, solange die Anleitung offen ist, nicht schließen. <b>Nicht:</b> support_dialog, tooltip, agent_setup_result.</td><td><code>default · selected</code></td></tr>
-<tr><td><code>UI-AGENT-ACCESS-GUIDE</code></td><td>Agenten-Zugang einrichten</td><td>Modale Anleitung über dem Agenten-Zugang, randlos gerahmt mit Kopf (Titel, ein Satz), Abschnittsleiste links (auf dem Handy oben, nur Nummern plus aktiver Abschnitt) und Fuß mit Fortschritt, Zurück und Weiter. Fünf Abschnitte, je einer sichtbar: So funktioniert's (Agent → Outpost → Dienst, Karten je Agent mit dem Schritt danach), Voraussetzungen (SSH, erreichbare Adresse mit richtigen und falschen Beispielen, curl/wget und claude/codex/git), Git mit GitHub (acht Schritte in drei Phasen vom Fine-grained PAT bis zum ersten Clone, Feldtabellen mit den Beschriftungen des Vault-Dialogs, Kopieren-Knöpfe für Werte und Befehle), Git mit GitLab (Feldtabelle), Gut zu wissen (SSH-Remotes, Freigabe-Karte, IP-Bindung, Entziehen). Fertig, Esc, Backdrop oder Schließen führen zurück in den Dialog. <b>Nicht:</b> support_dialog, agent_setup_result, documentation_page.</td><td><code>default</code></td></tr>
+<tr><td><code>UI-AGENT-ACCESS-GUIDE</code></td><td>Agenten-Zugang einrichten</td><td>Modale Anleitung über dem Agenten-Zugang, randlos gerahmt mit Kopf (Titel, ein Satz), Abschnittsleiste links (auf dem Handy oben, nur Nummern plus aktiver Abschnitt) und Fuß mit Fortschritt, Zurück und Weiter. Fünf Abschnitte, je einer sichtbar: So funktioniert's (Agent → Outpost → Dienst, Karten je Agent mit dem Schritt danach, dazu ein Absatz zu SSH: Befehle und Dateien auf Zielen des Eintrags, Host-Key beim ersten Mal), Voraussetzungen (SSH, erreichbare Adresse mit richtigen und falschen Beispielen, curl/wget und claude/codex/git), Git mit GitHub (acht Schritte in drei Phasen vom Fine-grained PAT bis zum ersten Clone, Feldtabellen mit den Beschriftungen des Vault-Dialogs, Kopieren-Knöpfe für Werte und Befehle), Git mit GitLab (Feldtabelle), Gut zu wissen (SSH-Remotes, Freigabe-Karte, IP-Bindung, Entziehen, SSH ohne Terminal: kein sudo mit Passwortabfrage). Fertig, Esc, Backdrop oder Schließen führen zurück in den Dialog. <b>Nicht:</b> support_dialog, agent_setup_result, documentation_page.</td><td><code>default</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-agent-access.html — alle Zustände, wie im Artboard</div><div id="ab-ui-agent-access">
 
@@ -4125,6 +4234,9 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
           <div class="ag-card"><div class="ag-card-head"><svg><use href="#i-plug"/></svg>Codex</div><p>Dieselben Werkzeuge, als MCP-Server in Codex eingetragen.</p><div class="after">Danach: <b>Codex in einer neuen Shell starten</b></div></div>
           <div class="ag-card"><div class="ag-card-head"><svg><use href="#i-branch"/></svg>Git</div><p>https-Remotes laufen über Outpost. In <code>~/.gitconfig</code> liegt nur ein Agenten-Key.</p><div class="after">Danach: <b>einfach</b> <code>git clone</code>, <code>pull</code>, <code>push</code></div></div>
         </div>
+        <div class="ag-cards" style="margin-top:var(--space-3)">
+          <div class="ag-card"><div class="ag-card-head"><svg><use href="#i-term"/></svg>SSH</div><p>Befehle und Dateien auf den Zielen eines SSH-Eintrags — Outpost meldet sich selbst an, der Schlüssel bleibt im Vault. Beim ersten Mal zeigt die Freigabe-Karte den Fingerabdruck des Ziels.</p></div>
+        </div>
       </div>
 <div class="ag-cap">Vorschau Abschnitt 2: Voraussetzungen</div>
       <div class="ag-preview">
@@ -4162,6 +4274,7 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
           <div class="ag-card"><div class="ag-card-head"><svg><use href="#i-shield"/></svg>Freigabe-Karte</div><p>„Einmal“ gilt für genau diesen Zugriff, „Für diese Sitzung“ für weitere gleicher Art. Lesen und Schreiben gibst du getrennt frei.</p><div class="ag-mini"><span>Einmal</span><span>Für diese Sitzung</span><span class="ag-badge">schreibt</span></div></div>
           <div class="ag-card"><div class="ag-card-head"><svg><use href="#i-net"/></svg>IP-Bindung</div><p>„Nur von der IP dieses Servers“ lässt den Key nur von dort zu. Sieht Outpost eine andere Adresse, etwa hinter Docker oder NAT, bietet der Dialog an, sie zu übernehmen.</p></div>
           <div class="ag-card"><div class="ag-card-head"><svg><use href="#i-undo"/></svg>Entziehen</div><p>Widerruft den Key sofort und entfernt die Einrichtung auf dem Server. Fremde Zeilen in der gitconfig bleiben stehen.</p></div>
+          <div class="ag-card"><div class="ag-card-head"><svg><use href="#i-term"/></svg>SSH ohne Terminal</div><p><code>ssh_exec</code> läuft ohne Terminal: interaktive Programme und <code>sudo</code> mit Passwortabfrage gehen nicht. Für Rechte als anderer Benutzer einen eigenen SSH-Eintrag anlegen.</p></div>
         </div>
       </div>
 </div>
@@ -4507,8 +4620,11 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 <div class="ctx"><b>Art:</b> Shell (auf jedem Screen)<br><b>Erscheint über:</b> UI-SHELL<br><b>Öffnen durch:</b> ein Agent fordert die Nutzung eines Vault-Eintrags an<br><b>Größe:</b> unten rechts<br><b>Schließen:</b> nur durch Antwort oder Ablauf<br><b>Tastatur:</b> Tab erreicht die Karte; Enter Einmal</div>
 <p class="meta">Artboard: <a href="./ui-vault-approval.html">ui-vault-approval.html</a> · Umsetzungsanleitung: <code>docs/design/guides/ui-vault-approval.md</code></p>
 <table><tr><th>ID</th><th>Element</th><th>Fachlicher Anker</th><th>Zustände</th></tr>
-<tr><td><code>UI-VAULT-APPROVAL-CARD</code></td><td>Freigabe angefordert</td><td>Eine Karte unten rechts über jeder Seite, nicht modal: ein Agent will einen Vault-Eintrag nutzen. Zeigt Agent und Server, Eintrag, Werkzeug und Ziel (Ursprung beim Eintragen, Methode mit Host und Pfad bei vault_http, Git mit Host und Repo) und die verbleibende Zeit; Antworten Einmal, Für diese Sitzung, Ablehnen. „Für diese Sitzung“ gilt getrennt für lesende und schreibende Zugriffe. Beim Eintragen eines Tokens nennt die Zeile auch das Feld, wie die Seite es bezeichnet („Eintragen auf https://github.com · Feld „Kommentar““); ist es kein Passwortfeld, gibt es nur „Einmal“ und „Ablehnen“. Mehrere Anfragen stapeln sich, die älteste unten. Der Stapel liegt über Dialogen und Toasts. Eine abgelaufene Karte zeigt fünf Sekunden den Fehlerzustand und verschwindet; scheitert das Senden einer Antwort, bleibt die Karte stehen und ein Toast nennt den Grund. <b>Nicht:</b> notification, toast, error.</td><td><code>default · empty · partial · loading · error · disabled</code></td></tr>
+<tr><td><code>UI-VAULT-APPROVAL-CARD</code></td><td>Freigabe angefordert</td><td>Eine Karte unten rechts über jeder Seite, nicht modal: ein Agent will einen Vault-Eintrag nutzen. Zeigt Agent und Server, Eintrag, Werkzeug und Ziel (Ursprung beim Eintragen, Methode mit Host und Pfad bei vault_http, Git mit Host und Repo) und die verbleibende Zeit; Antworten Einmal, Für diese Sitzung, Ablehnen. „Für diese Sitzung“ gilt getrennt für lesende und schreibende Zugriffe. Beim Eintragen eines Tokens nennt die Zeile auch das Feld, wie die Seite es bezeichnet („Eintragen auf https://github.com · Feld „Kommentar““); ist es kein Passwortfeld, gibt es nur „Einmal“ und „Ablehnen“. Bei SSH: Werkzeug (SSH-Befehl, Datei hochladen, Datei holen), Ziel als Name und benutzer@host:port, beim Befehl der Befehlsblock, bei Dateien Quelle → Ziel mit Größe (bei „Datei holen“ erst nach der Freigabe bekannt, dann „Größe nach der Freigabe“); „Für diese Sitzung“ nur, wenn der Eintrag es erlaubt, und dann je Ziel. Mehrere Anfragen stapeln sich, die älteste unten. Der Stapel liegt über Dialogen und Toasts. Eine abgelaufene Karte zeigt fünf Sekunden den Fehlerzustand und verschwindet; scheitert das Senden einer Antwort, bleibt die Karte stehen und ein Toast nennt den Grund. <b>Nicht:</b> notification, toast, error.</td><td><code>default · empty · partial · loading · error · disabled</code></td></tr>
 <tr><td><code>UI-VAULT-APPROVAL-WRITE</code></td><td>schreibt</td><td>Abzeichen in der Kopfzeile der Freigabe-Karte, wenn der Zugriff etwas verändert; bei lesenden Zugriffen fehlt es. Eine Sitzungsfreigabe für Lesen gibt Schreiben nicht frei. <b>Nicht:</b> error, warning_toast.</td><td><code>default · empty</code></td></tr>
+<tr><td><code>UI-VAULT-APPROVAL-EXEC</code></td><td>führt aus</td><td>Rotes Abzeichen in der Kopfzeile der Freigabe-Karte bei ssh_exec. Ein Shell-Befehl kann alles, was der Ziel-Benutzer darf; ob er schreibt, lässt sich nicht erkennen. Steht anstelle von „schreibt“, nie zusammen damit. <b>Nicht:</b> write_access, error, warning_toast.</td><td><code>default · empty</code></td></tr>
+<tr><td><code>UI-VAULT-APPROVAL-HOSTKEY</code></td><td>Neues Ziel</td><td>Hervorgehobener Kasten auf der Karte, wenn Outpost dieses Ziel für diesen Eintrag noch nie gesehen hat: Algorithmus und SHA256-Fingerabdruck des Host-Keys mit dem Rat, ihn mit ssh-keyscan oder an der Konsole zu vergleichen. Mit „Einmal“ oder „Für diese Sitzung“ wird er gemerkt; danach bricht jede Verbindung mit anderem Key vor der Anmeldung ab. Steht über dem Befehlsblock, damit er nicht unter einem langen Befehl verschwindet; der Fingerabdruck wird nie gekürzt. <b>Nicht:</b> error, toast.</td><td><code>default · empty</code></td></tr>
+<tr><td><code>UI-VAULT-APPROVAL-COMMAND</code></td><td>Befehl</td><td>Der vollständige Befehl einer ssh_exec-Anfrage in Monospace, so wie er auf dem Ziel läuft — nichts gekürzt oder umformuliert. Über 20 Zeilen oder 1200 Zeichen eingeklappt (die ersten 20 Zeilen, höchstens 1200 Zeichen sichtbar) mit „Ganz anzeigen (n Zeilen)“ bzw. „Ganz anzeigen (n Zeichen)“; der Block scrollt ab 40vh, der Kartenstapel ab Bildschirmhöhe; bis dahin sind „Einmal“ und „Für diese Sitzung“ gesperrt, „Ablehnen“ geht immer — sonst ließe sich der entscheidende Teil hinter 20 harmlose Zeilen legen. <b>Nicht:</b> audit_log, terminal.</td><td><code>default · partial · disabled · empty</code></td></tr>
 </table>
 <div class="mb-embed"><div class="mb-embed-label">Auszug: ui-vault-approval.html — alle Zustände, wie im Artboard</div><div id="ab-ui-vault-approval">
 
@@ -4553,6 +4669,64 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 						<div class="timer">1:42</div>
 						<div class="bar"><i style="width:70%"></i></div>
 					</div>
+					</section>
+				</div>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">default — SSH-Befehl (ssh_exec), Eintrag erlaubt Sitzung</div>
+			<div class="body" style="justify-content:flex-end">
+				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
+					<section data-variant="ssh-exec">
+					<div class="approval-card">
+							<div class="head"><h3>Freigabe angefordert</h3><span class="exec-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> führt aus</span></div>
+							<div class="who">Claude Code auf appmonster</div>
+							<div class="target">deploy-web</div>
+							<div class="tool">SSH-Befehl · web02 · deploy@192.168.2.40:22</div>
+							<pre class="cmd">docker compose -f /srv/app/compose.yml pull &amp;&amp; docker compose -f /srv/app/compose.yml up -d</pre>
+							<div class="actions"><span class="btn primary">Einmal</span><span class="btn">Für diese Sitzung</span><span class="btn">Ablehnen</span></div>
+							<div class="timer">1:42</div>
+							<div class="bar"><i style="width:70%"></i></div>
+						</div>
+					</section>
+				</div>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">default — SSH, erste Verbindung (Eintrag ohne allowSession)</div>
+			<div class="body" style="justify-content:flex-end">
+				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
+					<section data-variant="ssh-first">
+					<div class="approval-card">
+							<div class="head"><h3>Freigabe angefordert</h3><span class="exec-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> führt aus</span></div>
+							<div class="who">Claude Code auf appmonster</div>
+							<div class="target">deploy-web</div>
+							<div class="tool">SSH-Befehl · web02 · deploy@192.168.2.40:22</div>
+							<div class="hostkey"><strong>Neues Ziel</strong> — ED25519 SHA256:3f9aT0kQ2mZ7rB1wYvN8LpXe5HdJ6sUcGo4iFtAyc21. Mit ssh-keyscan oder an der Konsole vergleichen.</div>
+							<pre class="cmd">docker compose -f /srv/app/compose.yml pull &amp;&amp; docker compose -f /srv/app/compose.yml up -d</pre>
+							<div class="actions"><span class="btn primary">Einmal</span><span class="btn">Ablehnen</span></div>
+							<div class="timer">1:42</div>
+							<div class="bar"><i style="width:70%"></i></div>
+						</div>
+					</section>
+				</div>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">default — SSH, Datei hochladen (ssh_put)</div>
+			<div class="body" style="justify-content:flex-end">
+				<div data-ui-id="UI-VAULT-APPROVAL-CARD">
+					<section data-variant="ssh-put">
+					<div class="approval-card">
+							<div class="head"><h3>Freigabe angefordert</h3><span class="write-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/></svg>schreibt</span></div>
+							<div class="who">Claude Code auf appmonster</div>
+							<div class="target">deploy-nas</div>
+							<div class="tool">Datei hochladen · nas · admin@nas.example.net:2222</div>
+							<div class="filemv">appmonster:~/build/app.tar.gz → nas:/volume1/deploy/app.tar.gz · 48,2 MB</div>
+							<div class="actions"><span class="btn primary">Einmal</span><span class="btn">Für diese Sitzung</span><span class="btn">Ablehnen</span></div>
+							<div class="timer">1:42</div>
+							<div class="bar"><i style="width:70%"></i></div>
+						</div>
 					</section>
 				</div>
 			</div>
@@ -4724,6 +4898,145 @@ export OUTPOST_MCP_TOKEN=outpost_••••</pre>
 				</div>
 				</section>
 				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="block" style="margin-top:var(--space-6)">
+	<h2>führt aus <code>UI-VAULT-APPROVAL-EXEC</code></h2>
+	<p class="anchor">Rotes Abzeichen in der Kopfzeile der Freigabe-Karte bei ssh_exec. Ein Shell-Befehl kann alles, was der Ziel-Benutzer darf; ob er schreibt, lässt sich nicht erkennen. Steht anstelle von „schreibt“, nie zusammen damit.</p>
+	<p class="anchor-example">Beispiel: führt aus</p>
+
+	<div class="demo-row">
+		<div class="demo-card">
+			<div class="cap">default — ssh_exec</div>
+			<div class="body" style="justify-content:flex-end">
+				<section data-ui-state="default">
+				<div class="approval-card">
+<div class="head"><h3>Freigabe angefordert</h3><span class="exec-badge" data-ui-id="UI-VAULT-APPROVAL-EXEC"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> führt aus</span></div><div class="who">Claude Code auf appmonster</div><div class="target">deploy-web</div><div class="tool">SSH-Befehl · web02 · deploy@192.168.2.40:22</div>
+				</div>
+				</section>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">empty — nicht sichtbar außer bei ssh_exec</div>
+			<div class="body" style="justify-content:flex-end">
+				<section data-ui-state="empty">
+				<div class="approval-card">
+<div class="head"><h3>Freigabe angefordert</h3></div><div class="who">Claude Code auf web01</div><div class="target">github-pat</div><div class="tool">POST api.github.com/repos/o/r/issues</div>
+				</div>
+				</section>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="block" style="margin-top:var(--space-6)">
+	<h2>Befehl <code>UI-VAULT-APPROVAL-COMMAND</code></h2>
+	<p class="anchor">Der vollständige Befehl einer ssh_exec-Anfrage in Monospace, so wie er auf dem Ziel läuft — nichts gekürzt oder umformuliert. Ab 20 Zeilen eingeklappt mit „Ganz anzeigen (n Zeilen)“; die Karte bleibt dabei bedienbar.</p>
+	<p class="anchor-example">Beispiel: docker compose -f /srv/app/compose.yml ps</p>
+
+	<div class="demo-row">
+		<div class="demo-card">
+			<div class="cap">default — kurzer Befehl</div>
+			<div class="body" style="justify-content:flex-end">
+				<section data-ui-state="default">
+				<div class="approval-card">
+<div class="head"><h3>Freigabe angefordert</h3><span class="exec-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> führt aus</span></div><div class="who">Claude Code auf appmonster</div><div class="target">deploy-web</div><div class="tool">SSH-Befehl · web02 · deploy@192.168.2.40:22</div><pre class="cmd" data-ui-id="UI-VAULT-APPROVAL-COMMAND">docker compose -f /srv/app/compose.yml ps</pre>
+				</div>
+				</section>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">partial — 42 Zeilen, ab Zeile 20 eingeklappt</div>
+			<div class="body" style="justify-content:flex-end">
+				<section data-ui-state="partial">
+				<div class="approval-card">
+<div class="head"><h3>Freigabe angefordert</h3><span class="exec-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> führt aus</span></div><div class="who">Claude Code auf appmonster</div><div class="target">deploy-web</div><div class="tool">SSH-Befehl · web02 · deploy@192.168.2.40:22</div><div class="cmd-wrap"><pre class="cmd">#!/bin/sh
+set -eu
+cd /srv/app
+docker compose pull
+docker compose run --rm app migrate
+docker compose up -d --remove-orphans
+echo "Warte auf Healthcheck"
+i=0
+while [ "$i" -lt 30 ]; do
+  if curl -fsS http://localhost:8080/health &gt;/dev/null; then
+    echo "bereit nach ${i}s"
+    break
+  fi
+  i=$((i + 1))
+  sleep 1
+done
+if [ "$i" -ge 30 ]; then
+  echo "Healthcheck fehlgeschlagen" &gt;&amp;2
+  docker compose logs --tail=50 app &gt;&amp;2
+  exit 1
+fi
+docker image prune -f
+docker compose ps
+df -h /srv/app
+echo "Backup der Konfiguration"
+tar czf /srv/backup/app-config.tar.gz /srv/app/compose.yml
+ls -lh /srv/backup
+echo "Alte Backups entfernen"
+find /srv/backup -name "app-config*.tar.gz" -mtime +14 -delete
+echo "Dienste prüfen"
+for svc in app worker db; do
+  docker compose ps "$svc"
+done
+echo "Logrotation"
+logrotate -f /etc/logrotate.d/app
+echo "Cache leeren"
+docker compose exec -T app cache clear
+echo "Version"
+docker compose exec -T app version
+date -u
+uptime
+echo "Fertig"</pre><span class="cmd-more">Ganz anzeigen (42 Zeilen)</span></div>
+				</div>
+				</section>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">empty — nicht sichtbar außer bei ssh_exec</div>
+			<div class="body" style="justify-content:flex-end">
+				<section class="state" data-ui-state="disabled"><div class="cmd-note" style="font:var(--type-caption);color:var(--subtext)">Zum Freigeben erst ganz anzeigen.</div><div style="display:flex;gap:var(--space-2);margin-top:var(--space-2)"><button class="btn primary" type="button" disabled>Einmal</button><button class="btn" type="button" disabled>Für diese Sitzung</button><button class="btn" type="button">Ablehnen</button></div></section>
+					<section data-ui-state="empty">
+				<div class="approval-card">
+<div class="head"><h3>Freigabe angefordert</h3><span class="write-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/></svg>schreibt</span></div><div class="who">Claude Code auf appmonster</div><div class="target">deploy-nas</div><div class="tool">Datei hochladen · nas · admin@nas.example.net:2222</div>
+				</div>
+				</section>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="block" style="margin-top:var(--space-6)">
+	<h2>Neues Ziel <code>UI-VAULT-APPROVAL-HOSTKEY</code></h2>
+	<p class="anchor">Hervorgehobener Kasten auf der Karte, wenn Outpost dieses Ziel für diesen Eintrag noch nie gesehen hat: Algorithmus und SHA256-Fingerabdruck des Host-Keys mit dem Rat, ihn mit ssh-keyscan oder an der Konsole zu vergleichen. Mit „Einmal“ oder „Für diese Sitzung“ wird er gemerkt; danach bricht jede Verbindung mit anderem Key vor der Anmeldung ab.</p>
+	<p class="anchor-example">Beispiel: Neues Ziel — ED25519 SHA256:3f9aT0kQ2mZ7rB1wYvN8LpXe5HdJ6sUcGo4iFtAyc21. Mit ssh-keyscan oder an der Konsole vergleichen.</p>
+
+	<div class="demo-row">
+		<div class="demo-card">
+			<div class="cap">default — erste Verbindung</div>
+			<div class="body" style="justify-content:flex-end">
+				<section data-ui-state="default">
+				<div class="approval-card">
+<div class="head"><h3>Freigabe angefordert</h3><span class="exec-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> führt aus</span></div><div class="who">Claude Code auf appmonster</div><div class="target">deploy-web</div><div class="tool">SSH-Befehl · web02 · deploy@192.168.2.40:22</div><div class="hostkey" data-ui-id="UI-VAULT-APPROVAL-HOSTKEY"><strong>Neues Ziel</strong> — ED25519 SHA256:3f9aT0kQ2mZ7rB1wYvN8LpXe5HdJ6sUcGo4iFtAyc21. Mit ssh-keyscan oder an der Konsole vergleichen.</div>
+				</div>
+				</section>
+			</div>
+		</div>
+		<div class="demo-card">
+			<div class="cap">empty — nicht sichtbar bei gemerktem Host-Key</div>
+			<div class="body" style="justify-content:flex-end">
+				<section data-ui-state="empty">
+				<div class="approval-card">
+<div class="head"><h3>Freigabe angefordert</h3><span class="exec-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> führt aus</span></div><div class="who">Claude Code auf appmonster</div><div class="target">deploy-web</div><div class="tool">SSH-Befehl · web02 · deploy@192.168.2.40:22</div>
+				</div>
+				</section>
 			</div>
 		</div>
 	</div>

@@ -1293,7 +1293,7 @@ static void ftp_dispatch_message(ftp_conn_t* c, int data_fd,
 
         case Outpost_SftpProtocol_SftpMsgType_Exec:
             fp_send_exec_result(data_fd, rid, "",
-                                "Command execution is not available over FTP", 127);
+                                "Command execution is not available over FTP", 127, false);
             return;
 
         default:

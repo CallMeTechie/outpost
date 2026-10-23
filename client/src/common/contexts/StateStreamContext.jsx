@@ -6,6 +6,7 @@ export const StateStreamContext = createContext({});
 export { STATE_TYPES };
 
 const stateTypes = Object.values(STATE_TYPES).filter(t => t !== "LOGOUT");
+const UNBUFFERED_TYPES = [STATE_TYPES.VAULT_NOTICE];
 
 export const StateStreamProvider = ({ children }) => {
     const { sessionToken } = useContext(UserContext);
@@ -14,7 +15,7 @@ export const StateStreamProvider = ({ children }) => {
 
     const stateHandlers = useMemo(() => ({
         ...Object.fromEntries(stateTypes.map(t => [t, (data) => {
-            stateBufferRef.current[t] = data;
+            if (!UNBUFFERED_TYPES.includes(t)) stateBufferRef.current[t] = data;
             handlersRef.current[t].forEach(h => h(data));
         }])),
         [STATE_TYPES.LOGOUT]: forceLogoutClient

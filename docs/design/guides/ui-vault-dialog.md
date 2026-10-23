@@ -1,6 +1,6 @@
 # Eintrag anlegen / bearbeiten — Umsetzungsanleitung (UI-VAULT-DIALOG)
 
-Artboard: docs/design/mockups/ui-vault-dialog.html · Manifest-Revision: 16
+Artboard: docs/design/mockups/ui-vault-dialog.html · Manifest-Revision: 22
 
 Neuer Dialog, im Client gibt es noch keine Vault-Seite. Er folgt dem Muster von `SnippetDialog` (ein Formular, `DialogProvider`, Toast bei Fehlern). Nicht neu gebaut: Dialog-Rahmen, Eingabefelder, Auswahl, Schalter, Chips, Ordner- und Tag-Laden.
 
@@ -45,7 +45,7 @@ Neuer Dialog, im Client gibt es noch keine Vault-Seite. Er folgt dem Muster von 
 ### UI-VAULT-DIALOG-SCOPE — Gilt für (neu)
 - `data-ui-id` am Wrapper aus Chip-Zeile und „Alle Server“-Zeile. Gewählte Bindungen als Chips mit Art-Präfix (Ordner, Server, Tag), daneben „+ Server“, „+ Ordner“, „+ Tag“ (öffnen `SelectBox` multiple, searchable).
 - Datenquelle: Server und Ordner aus `useContext(ServerContext).servers` (Baum, `type` `folder`/`organization`/Server; beim Besitzer „Persönlich“ die Knoten ohne Organisation, sonst `entries` der gewählten Organisation); Tags aus dem `TagContext`, nur bei Besitzer „Persönlich“ (bei Organisationen entfällt „+ Tag“). Ordner gelten mit Unterordnern.
-- Zustände: `empty` „Für keinen Server freigegeben.“ (Standard). `selected` bei Schalter „Alle Server“ (`ToggleSwitch`, `allServers`): Chips werden gedimmt und nicht mehr bearbeitet. Wechsel des Besitzers verwirft Bindungen, die dort nicht gelten.
+- Zustände: `empty` „Für keinen Server freigegeben — kein Agent sieht diesen Eintrag.“ (Standard; derselbe Text wie in der Detailansicht, `vault.bindings.empty`). `selected` bei Schalter „Alle Server“ (`ToggleSwitch`, `allServers`): Chips werden gedimmt und nicht mehr bearbeitet. Wechsel des Besitzers verwirft Bindungen, die dort nicht gelten.
 
 ### UI-VAULT-DIALOG-READONLY — Nur lesen (neu in Rev. 16)
 - `data-ui-id` an der Zeilen-Wrapper-`div` um den `ToggleSwitch` (`id="vault-read-only"`), nach dem Muster von `UI-VAULT-DIALOG-APPROVAL`: `vault-item-dialog-switch` mit `label` und Schalter. Eigener Knoten, genau einmal. Die Gruppe „Nutzung durch Agenten“ (READONLY, HTTP, GIT, FILL) steht im Dialog-Formular nach „Freigabe erforderlich“ und vor „Speichern“, wie im Artboard.
@@ -79,6 +79,18 @@ Neuer Dialog, im Client gibt es noch keine Vault-Seite. Er folgt dem Muster von 
 
 ### UI-VAULT-DIALOG-APPROVAL — Freigabe erforderlich (neu)
 - `data-ui-id` am Zeilen-Wrapper um den `ToggleSwitch` (`approvalRequired`). Standard an.
+
+### UI-VAULT-DIALOG-SSH-SERVERS — Ziele aus der Serverliste (neu in Rev. 20)
+- `data-ui-id` am Wrapper (Label, Chips, „+ Server“). Nur bei Typ `ssh`, in „Nutzung durch Agenten“ unter Benutzer und Geheimnissen.
+- Rev. 22: die vorhandene `SelectBox` (`multiple`, `searchable`) wie bei „Gilt für“, Optionen „<Name> · <IP>“ aus den SSH-Servern in `ServerContext`, die der Bearbeiter sieht; kein eigener Chip-Picker. Bei Organisations-Einträgen nur Server derselben Organisation (wie „Gilt für“). Gespeichert als `fields.servers` (Entry-IDs).
+- Nicht verwechseln mit „Gilt für“ (`UI-VAULT-DIALOG-SCOPE`): das bleibt die Bindung an den Server des Agenten.
+- Zieländerung beim Bearbeiten: Hinweis wie bei API-Key (`vault.dialog.secretCleared`), Geheimnisse müssen neu eingegeben werden.
+
+### UI-VAULT-DIALOG-SSH-HOSTS — Freie Hosts (neu in Rev. 20)
+- `data-ui-id` am Feld-Wrapper; `IconInput` mit Globus-Icon, `vault-mono`, Platzhalter `nas.example.net:2222`, Trennung an Komma/Leerzeichen wie `hosts` beim API-Key. `error` „Kein gültiger Host (host oder host:port).“ mit `aria-invalid`. Rev. 21: `disabled` ohne `connect.direct` des Bearbeiters (Feld gesperrt, Hinweis „Freie Hosts brauchen das Recht „Direkt verbinden“.“); vorhandene Hosts bleiben sichtbar.
+
+### UI-VAULT-DIALOG-SSH-SESSION — „Für diese Sitzung“ erlauben (neu in Rev. 20)
+- `UsageSwitch` wie `UI-VAULT-DIALOG-HTTP`; Hinweis aus „aus — jeder Befehl einzeln“, an „an — eine Freigabe gilt bis Sitzungsende für beliebige Befehle auf diesem Ziel“ (Warnton wie beim HTTP-Schalter). `fields.allowSession`, Standard aus. Rev. 21: Ob überhaupt eine Karte kommt, bestimmt weiter „Freigabe erforderlich“ (`UI-VAULT-DIALOG-APPROVAL`), auch bei SSH.
 
 ### UI-VAULT-DIALOG-SAVE — Speichern (neu)
 - `data-ui-id` am primären `Button`. Beschriftung „Erstellen“ beim Anlegen, „Speichern“ beim Bearbeiten. Anlegen `POST /api/vault/items`, Bearbeiten `PATCH /api/vault/items/:id`.

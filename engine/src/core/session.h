@@ -41,6 +41,10 @@ typedef struct outpost_session {
     char host[256];
     uint16_t port;
 
+    char expected_host_key[128];
+    bool probe_host_key;
+    bool exec_only;
+
     session_param_t params[MAX_PARAMS];
     int param_count;
 

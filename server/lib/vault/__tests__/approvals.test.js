@@ -46,6 +46,13 @@ const API_KEY = {
     },
 };
 const HOUR = 60 * 60 * 1000;
+const SSH = {
+    id: 13, accountId: 1, organizationId: null, name: "deploy", type: "ssh", updatedAt: "2026-10-12T08:00:00.000Z",
+    fields: { username: "deploy", servers: [12], hosts: [], allowSession: true },
+};
+const sshCall = (overrides = {}) => call({
+    item: SSH, tool: "ssh_exec", access: "exec", scope: "exec#server:12#SHA256:abc", target: "web02 · deploy@10.0.0.12:22", ...overrides,
+});
 const call = (overrides = {}) => ({
     accountId: 1, keyId: 5, transportId: "t-1", agentType: "claude", entryName: "web-01",
     item: ITEM, target: "https://portal.example.com", tool: "browser_fill_credential", access: "write", scope: "fill",
@@ -360,5 +367,39 @@ test("listOpenApprovals liefert Werkzeug, Art und Ziel jeder offenen Anfrage", a
     const [card] = approvals.listOpenApprovals(1);
     assert.deepStrictEqual([card.tool, card.access, card.target], ["vault_http", "write", "POST api.github.com/repos/o/r/issues"]);
     approvals.answerApproval(card.id, 1, "once");
+    await pending;
+});
+
+test("skipSessionGrant fragt trotz Sitzungsfreigabe für denselben Umfang; eine Antwort „Für diese Sitzung“ wird trotzdem gespeichert", async (t) => {
+    const window = openWindow(t, 1);
+    const answerNext = async (decision) => {
+        await flush();
+        assert.strictEqual(window.cards().length, 1);
+        approvals.answerApproval(window.cards()[0].id, 1, decision);
+    };
+
+    const forced = approvals.requestApproval(sshCall({ skipSessionGrant: true }));
+    await answerNext("session");
+    assert.strictEqual(await forced, "session");
+    assert.strictEqual(await approvals.requestApproval(sshCall()), "session", "the answer to a forced request is stored like any other");
+
+    const again = approvals.requestApproval(sshCall({ skipSessionGrant: true }));
+    await answerNext("once");
+    assert.strictEqual(await again, "once");
+});
+
+test("listOpenApprovals legt die Felder der Karte flach an die Anfrage", async (t) => {
+    const window = openWindow(t, 1);
+    const card = {
+        sshTarget: { ref: "server:12", name: "web02", user: "deploy", host: "10.0.0.12", port: 22 },
+        command: "docker compose ps",
+        hostKey: { algorithm: "ssh-ed25519", fingerprint: "SHA256:abc", new: true },
+    };
+    const pending = approvals.requestApproval(sshCall({ card }));
+    await flush();
+    const [shown] = window.cards();
+    assert.deepStrictEqual([shown.tool, shown.sshTarget, shown.command, shown.hostKey, shown.file, shown.card],
+        ["ssh_exec", card.sshTarget, card.command, card.hostKey, undefined, undefined]);
+    approvals.answerApproval(shown.id, 1, "once");
     await pending;
 });
