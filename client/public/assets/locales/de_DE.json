@@ -541,7 +541,6 @@
       "tag": "Tag",
       "allServers": "Alle Server",
       "empty": "Für keinen Server freigegeben — kein Agent sieht diesen Eintrag.",
-      "emptyDialog": "Für keinen Server freigegeben.",
       "addServer": "+ Server",
       "addFolder": "+ Ordner",
       "addTag": "+ Tag"

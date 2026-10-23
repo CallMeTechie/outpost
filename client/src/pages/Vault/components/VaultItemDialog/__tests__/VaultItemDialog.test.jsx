@@ -53,6 +53,7 @@ test("ein geänderter Ursprung verwirft den gespeicherten Wert: Speichern erst m
     editItem();
     const save = screen.getByRole("button", { name: "Save" });
     expect(screen.getByLabelText("Password")).toHaveAttribute("placeholder", "stored — leave empty to keep");
+    expect(screen.getByText("Not enabled for any server — no agent sees this entry.")).toBeInTheDocument();
 
     await user.clear(screen.getByLabelText("Origin"));
 

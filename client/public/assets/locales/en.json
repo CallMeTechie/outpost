@@ -541,7 +541,6 @@
       "tag": "Tag",
       "allServers": "All servers",
       "empty": "Not enabled for any server — no agent sees this entry.",
-      "emptyDialog": "Not enabled for any server.",
       "addServer": "+ Server",
       "addFolder": "+ Folder",
       "addTag": "+ Tag"

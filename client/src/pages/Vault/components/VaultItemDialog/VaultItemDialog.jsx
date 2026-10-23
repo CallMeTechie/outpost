@@ -289,7 +289,7 @@ export const VaultItemDialog = ({ open, onClose, item = null, owners, defaultOwn
                                 ))}
                             </div>
                             {!form.allServers && Object.values(form.bindings).every((ids) => ids.length === 0) && (
-                                <span className="vault-help">{t("vault.bindings.emptyDialog")}</span>
+                                <span className="vault-help">{t("vault.bindings.empty")}</span>
                             )}
                             <div className="vault-item-dialog-switch">
                                 <label htmlFor="vault-all-servers">{t("vault.bindings.allServers")}</label>
